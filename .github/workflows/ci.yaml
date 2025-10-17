@@ -97,13 +97,9 @@ jobs:
       - name: Cmd Tests
         run: |
           ./project/scripts/buildScalaBinary
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;sbt-test/scripted scala2-compat/* ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/publishLocal ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
-
-      - name: Scala.js Test
-        run: |
-          ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]
@@ -146,10 +142,6 @@ jobs:
 
       - name: win tests
         run: './project/scripts/winCmdTests.bat'
-        shell: cmd
-
-      - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
   test_windows_full:
@@ -200,11 +192,11 @@ jobs:
          )"
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -257,11 +249,11 @@ jobs:
          )"
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -314,11 +306,11 @@ jobs:
          )"
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -347,51 +339,6 @@ jobs:
         if: ${{ always() }}
         run: cat community-build/dotty-community-build-deps || true
 
-  test_sbt:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_sbt]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test sbt
-        run: ./project/scripts/sbt "sbt-test/scripted"
-
   publish_release:
     permissions:
       contents: write  # for GH CLI to create a release
@@ -403,7 +350,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, community_build_a, community_build_b, community_build_c, test_sbt, build-sdk-package, build-msi-package]
+    needs: [test, community_build_a, community_build_b, community_build_c, build-sdk-package, build-msi-package]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
@@ -415,11 +362,11 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE

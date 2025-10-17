@@ -914,15 +914,14 @@ object Types extends TypeUtils {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
-          val overridingRefinement = rinfo match
-            case AnnotatedType(rinfo1, ann) if ann.symbol == defn.RefineOverrideAnnot => rinfo1
-            case _ if pdenot.symbol.is(Tracked) => rinfo
-            case _ => NoType
-          if overridingRefinement.exists then
-            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
+          if tp.isPrecise  then
+            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
             val joint = CCState.withCollapsedFresh:
+                // We have to do a collapseFresh here since `pdenot` will see the class
+                // view and a fresh in the class will not be able to subsume a
+                // refinement from outside since level checking would fail.
                 pdenot.meet(
                   new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
                   pre,
@@ -1451,7 +1450,7 @@ object Types extends TypeUtils {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(using Context): Type = widen match
-      case tp: OrType =>
+      case tp: OrType if ctx.explicitNulls =>
         val tp1 = tp.stripNull(stripFlexibleTypes = false)
         if tp1 ne tp then
           val tp1Widen = tp1.widenUnionWithoutNull
@@ -1706,11 +1705,10 @@ object Types extends TypeUtils {
         if hasNext then current = f(current.asInstanceOf[TypeProxy])
         res
 
-    /** A prefix-less refined this or a termRef to a new skolem symbol
-     *  that has the given type as info.
+    /** A prefix-less TermRef to a new skolem symbol that has this type as info.
      */
-    def narrow(using Context): TermRef =
-      TermRef(NoPrefix, newSkolem(this))
+    def narrow(using Context)(owner: Symbol = defn.RootClass): TermRef =
+      TermRef(NoPrefix, newSkolem(owner, this))
 
     /** Useful for diagnostics: The underlying type if this type is a type proxy,
      *  otherwise NoType
@@ -2319,14 +2317,14 @@ object Types extends TypeUtils {
     override def dropIfProto = WildcardType
   }
 
-  /** Implementations of this trait cache the results of `narrow`. */
-  trait NarrowCached extends Type {
+  /** Implementations of this trait cache the results of `narrow` if the owner is RootClass. */
+  trait NarrowCached extends Type:
     private var myNarrow: TermRef | Null = null
-    override def narrow(using Context): TermRef = {
-      if (myNarrow == null) myNarrow = super.narrow
-      myNarrow.nn
-    }
-  }
+    override def narrow(using Context)(owner: Symbol): TermRef =
+      if owner == defn.RootClass then
+        if myNarrow == null then myNarrow = super.narrow(owner)
+        myNarrow.nn
+      else super.narrow(owner)
 
 // --- NamedTypes ------------------------------------------------------------------
 
@@ -3257,6 +3255,12 @@ object Types extends TypeUtils {
     else assert(refinedInfo.isInstanceOf[TypeType], this)
     assert(!refinedName.is(NameKinds.ExpandedName), this)
 
+    /** If true we know that refinedInfo is always more precise than the info for
+     *  field `refinedName` in parent, so no type intersection needs to be computed
+     *  for the type of this field.
+     */
+    def isPrecise: Boolean = false
+
     override def underlying(using Context): Type = parent
 
     private def badInst =
@@ -3264,11 +3268,14 @@ object Types extends TypeUtils {
 
     def checkInst(using Context): this.type = this // debug hook
 
+    def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+      RefinedType(parent, refinedName, refinedInfo)
+
     final def derivedRefinedType
         (parent: Type = this.parent, refinedName: Name = this.refinedName, refinedInfo: Type = this.refinedInfo)
         (using Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
-      else RefinedType(parent, refinedName, refinedInfo)
+      else newLikeThis(parent, refinedName, refinedInfo)
 
     /** Add this refinement to `parent`, provided `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(using Context): Type =
@@ -3300,6 +3307,21 @@ object Types extends TypeUtils {
   class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
   extends RefinedType(parent, refinedName, refinedInfo)
 
+  class PreciseRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
+  extends RefinedType(parent, refinedName, refinedInfo):
+    override def isPrecise = true
+    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+      PreciseRefinedType(parent, refinedName, refinedInfo)
+
+  /** Used for refined function types created at cc/Setup that come from original
+   *  generic function types. Function types of this class don't get their result
+   *  captures mapped from FreshCaps to ResultCaps with toResult.
+   */
+  class InferredRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
+  extends RefinedType(parent, refinedName, refinedInfo):
+    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+      InferredRefinedType(parent, refinedName, refinedInfo)
+
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(using Context): Type =
       if (names.isEmpty) parent
@@ -3309,6 +3331,14 @@ object Types extends TypeUtils {
       assert(!ctx.erasedTypes)
       unique(new CachedRefinedType(parent, name, info)).checkInst
     }
+
+    def precise(parent: Type, name: Name, info: Type)(using Context): RefinedType =
+      assert(!ctx.erasedTypes)
+      unique(new PreciseRefinedType(parent, name, info)).checkInst
+
+    def inferred(parent: Type, name: Name, info: Type)(using Context): RefinedType =
+      assert(!ctx.erasedTypes)
+      unique(new InferredRefinedType(parent, name, info)).checkInst
   }
 
   /** A recursive type. Instances should be constructed via the companion object.
@@ -6330,6 +6360,23 @@ object Types extends TypeUtils {
         null
 
     def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+      case c @ FreshCap(prefix) =>
+        // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
+        // We create at most one such skolem per FreshCap/context owner pair.
+        // This approximates towards creating fewer skolems than otherwise needed,
+        // which means we might get more separation conflicts than otherwise. But
+        // it's not clear we will get such conflicts anyway.
+        def ensurePath(pre: Type)(using Context): Type = pre match
+          case pre @ TermRef(pre1, _) => pre.withPrefix(ensurePath(pre1))
+          case NoPrefix | _: SingletonType => pre
+          case pre =>
+            c.skolems.get(ctx.owner) match
+              case Some(skolem) => skolem
+              case None =>
+                val skolem = pre.narrow(ctx.owner)
+                c.skolems = c.skolems.updated(ctx.owner, skolem)
+                skolem
+        c.derivedFreshCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
@@ -7066,7 +7113,10 @@ object Types extends TypeUtils {
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
         case tp: TypeParamRef =>
-          apply(n, TypeComparer.bounds(tp))
+          val bounds = TypeComparer.bounds(tp)
+          val loSize = apply(n, bounds.lo)
+          val hiSize = apply(n, bounds.hi)
+          hiSize max loSize
         case tp: LazyRef =>
           if seen.contains(tp) then n
           else

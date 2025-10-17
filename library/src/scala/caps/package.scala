@@ -145,6 +145,7 @@ object internal:
    *  info from the parent type, so no intersection needs to be formed.
    *  This could be useful for tracked parameters as well.
    */
+  @deprecated
   final class refineOverride extends annotation.StaticAnnotation
 
   /** An annotation used internally for root capability wrappers of `cap` that
@@ -173,10 +174,23 @@ end internal
 
 @experimental
 object unsafe:
-  /**
-   * Marks the constructor parameter as untracked.
-   * The capture set of this parameter will not be included in
-   * the capture set of the constructed object.
+  /** Two usages:
+   *
+   *   1. Marks the constructor parameter as untracked.
+   *      The capture set of this parameter will not be included in
+   *      the capture set of the constructed object.
+   *
+   *   2. Marks a class field that has a cap in its capture set, so that
+   *      the cap is not contributed to the class instance.
+   *      Example:
+   *
+   *          class A { val b B^ = ... }; new A()
+   *
+   *      has type A^ since b contributes a cap. But
+   *
+   *          class A { @untrackedCaptures val b: B^ = ... }; new A()
+   *
+   *      has type A. The `b` field does not contribute its cap.
    *
    * @note This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases

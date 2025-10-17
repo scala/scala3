@@ -17,7 +17,9 @@ import language.experimental.captureChecking
 import scala.collection.mutable.{ArrayBuffer, ArrayBuilder, Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
+import scala.runtime.ScalaRunTime.nullForGC
 import scala.runtime.Statics
+import caps.unsafe.untrackedCaptures
 
 /** Iterators are data structures that allow to iterate over a sequence
   * of elements. They have a `hasNext` method for checking
@@ -124,7 +126,6 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     private[this] var hd: A = _
     private[this] var hdDefined: Boolean = false
 
-
     def head: A = {
       if (!hdDefined) {
         hd = next()
@@ -161,12 +162,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
     require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
 
-    private[this] var buffer: Array[B] = null                 // current result
-    private[this] var prev: Array[B] = null                   // if sliding, overlap from previous result
+    private[this] var buffer: Array[B] | Null = null          // current result
+    private[this] var prev: Array[B] | Null = null            // if sliding, overlap from previous result
     private[this] var first = true                            // if !first, advancing may skip ahead
     private[this] var filled = false                          // whether the buffer is "hot"
     private[this] var partial = true                          // whether to emit partial sequence
-    private[this] var padding: () -> B = null                 // what to pad short sequences with
+    private[this] var padding: (() -> B) | Null = null        // what to pad short sequences with
     private[this] def pad = padding != null                   // irrespective of partial flag
     private[this] def newBuilder = {
       val b = ArrayBuilder.make[Any]
@@ -230,7 +231,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       val builder = newBuilder
       var done = false
       // keep prefix of previous buffer if stepping
-      if (prev != null) builder.addAll(prev)
+      if (prev != null) builder.addAll(prev.nn)
       // skip ahead
       if (!first && step > size) {
         var dropping = step - size
@@ -251,7 +252,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         if (index < size && pad) {
           builder.sizeHint(size)
           while (index < size) {
-            builder.addOne(padding())
+            builder.addOne(padding.nn())
             index += 1
           }
         }
@@ -273,14 +274,15 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       if (!fill()) Iterator.empty.next()
       else {
         filled = false
+        val buffer = this.buffer.nn
         // if stepping, retain overlap in prev
         if (step < size) {
           if (first) prev = buffer.drop(step)
-          else if (buffer.length == size) Array.copy(src = buffer, srcPos = step, dest = prev, destPos = 0, length = size - step)
+          else if (buffer.length == size) Array.copy(src = buffer, srcPos = step, dest = prev.nn, destPos = 0, length = size - step)
           else prev = null
         }
         val res = immutable.ArraySeq.unsafeWrapArray(buffer).asInstanceOf[immutable.ArraySeq[B]]
-        buffer = null
+        this.buffer = null
         first = false
         res
       }
@@ -702,7 +704,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
      * handling of structural calls. It's not what's intended here.
      */
     final class Leading extends AbstractIterator[A] {
-      private[this] var lookahead: mutable.Queue[A] = null
+      private[this] var lookahead: mutable.Queue[A] | Null = null
       private[this] var hd: A = _
       /* Status is kept with magic numbers
        *   1 means next element is in hd and we're still reading into this iterator
@@ -713,10 +715,10 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       private[this] var status = 0
       private def store(a: A): Unit = {
         if (lookahead == null) lookahead = new mutable.Queue[A]
-        lookahead += a
+        lookahead.nn += a
       }
       def hasNext = {
-        if (status < 0) (lookahead ne null) && lookahead.nonEmpty
+        if (status < 0) (lookahead ne null) && lookahead.nn.nonEmpty
         else if (status > 0) true
         else {
           if (self.hasNext) {
@@ -730,7 +732,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       def next() = {
         if (hasNext) {
           if (status == 1) { status = 0; hd }
-          else lookahead.dequeue()
+          else lookahead.nn.dequeue()
         }
         else Iterator.empty.next()
       }
@@ -772,14 +774,14 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         case 1 => if (self.hasNext) { status = 2 ; true } else { status = 3 ; false }
         case 0 => true
         case _ =>
-          if (myLeading.finish()) { status = 0 ; true } else { status = 1 ; myLeading = null ; hasNext }
+          if (myLeading.finish()) { status = 0 ; true } else { status = 1 ; myLeading = nullForGC[Leading]; hasNext }
       }
       def next() = {
         if (hasNext) {
           if (status == 0) {
             status = 1
             val res = myLeading.trailer
-            myLeading = null
+            myLeading = nullForGC[Leading]
             res
           } else {
             status = 1
@@ -873,7 +875,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def duplicate: (Iterator[A]^{this}, Iterator[A]^{this}) = {
     val gap = new scala.collection.mutable.Queue[A]
-    var ahead: Iterator[A]^ = null
+    var ahead: (Iterator[A]^) | Null = null
     class Partner extends AbstractIterator[A] {
       override def knownSize: Int = self.synchronized {
         val thisSize = self.knownSize
@@ -917,7 +919,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def patch[B >: A](from: Int, patchElems: Iterator[B]^, replaced: Int): Iterator[B]^{this, patchElems} =
     new AbstractIterator[B] {
-      private[this] var origElems: Iterator[B]^ = self
+      // TODO We should be able to prove that origElems is safe even though it is
+      // declared as Iterator[B]^. We could show that origElems is never assigned a
+      // freh cap. Maybe we can invent another annotation that is checked and that
+      // shows that the `^` is just used as an upper bound for concete non-fresh
+      // capabilities.
+      @untrackedCaptures private[this] var origElems: Iterator[B]^ = self
       // > 0  => that many more elems from `origElems` before switching to `patchElems`
       //   0  => need to drop elems from `origElems` and start using `patchElems`
       //  -1  => have dropped elems from `origElems`, will be using `patchElems` until it's empty
@@ -1149,10 +1156,13 @@ object Iterator extends IterableFactory[Iterator] {
   /** Creates an iterator to which other iterators can be appended efficiently.
    *  Nested ConcatIterators are merged to avoid blowing the stack.
    */
-  private final class ConcatIterator[+A](val from: Iterator[A @uncheckedVariance]^) extends AbstractIterator[A] {
-    private var current: Iterator[A]^{from} = from
-    private var tail: ConcatIteratorCell[A @uncheckedVariance] = null
-    private var last: ConcatIteratorCell[A @uncheckedVariance] = null
+  private final class ConcatIterator[+A](val from: (Iterator[A @uncheckedVariance]^) | Null) extends AbstractIterator[A] {
+    @annotation.stableNull
+    private var current: Iterator[A]^{from} | Null = from
+    @annotation.stableNull
+    private var tail: ConcatIteratorCell[A @uncheckedVariance] | Null = null
+    @annotation.stableNull
+    private var last: ConcatIteratorCell[A @uncheckedVariance] | Null = null
     private var currentHasNextChecked = false
 
     def hasNext =
@@ -1171,7 +1181,7 @@ object Iterator extends IterableFactory[Iterator] {
             currentHasNextChecked = c.currentHasNextChecked
             if (c.tail != null) {
               if (last == null) last = c.last
-              c.last.tail = tail
+              c.last.nn.tail = tail
               tail = c.tail
             }
             merge()
@@ -1187,7 +1197,7 @@ object Iterator extends IterableFactory[Iterator] {
           }
           else {
             current = tail.headIterator
-            if (last eq tail) last = last.tail
+            if (last eq tail) last = last.nn.tail
             tail = tail.tail
             merge()
             if (currentHasNextChecked) true
@@ -1203,7 +1213,7 @@ object Iterator extends IterableFactory[Iterator] {
     def next()  =
       if (hasNext) {
         currentHasNextChecked = false
-        current.next()
+        current.nn.next()
       } else Iterator.empty.next()
 
     override def concat[B >: A](that: => IterableOnce[B]^): Iterator[B]^{this, that} = {
@@ -1213,7 +1223,7 @@ object Iterator extends IterableFactory[Iterator] {
         last = c
       }
       else {
-        last.tail = c
+        last.nn.tail = c
         last = c
       }
       if (current == null) current = Iterator.empty
@@ -1221,7 +1231,7 @@ object Iterator extends IterableFactory[Iterator] {
     }
   }
 
-  private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: ConcatIteratorCell[A]^) {
+  private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: (ConcatIteratorCell[A]^) | Null) {
     def headIterator: Iterator[A]^{this} = head.iterator
   }
 
@@ -1289,7 +1299,7 @@ object Iterator extends IterableFactory[Iterator] {
     */
   private final class UnfoldIterator[A, S](init: S)(f: S => Option[(A, S)]) extends AbstractIterator[A] {
     private[this] var state: S = init
-    private[this] var nextResult: Option[(A, S)] = null
+    private[this] var nextResult: Option[(A, S)] | Null = null
 
     override def hasNext: Boolean = {
       if (nextResult eq null) {
@@ -1298,14 +1308,14 @@ object Iterator extends IterableFactory[Iterator] {
           if (res eq null) throw new NullPointerException("null during unfold")
           res
         }
-        state = null.asInstanceOf[S] // allow GC
+        state = nullForGC[S]
       }
-      nextResult.isDefined
+      nextResult.nn.isDefined
     }
 
     override def next(): A = {
       if (hasNext) {
-        val (value, newState) = nextResult.get
+        val (value, newState) = nextResult.nn.get
         state = newState
         nextResult = null
         value

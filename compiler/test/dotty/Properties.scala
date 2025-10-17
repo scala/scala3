@@ -57,9 +57,6 @@ object Properties {
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
 
-  /** dotty-library-js jar */
-  def dottyLibraryJS: String = sys.props("dotty.tests.classes.dottyLibraryJS")
-
   /** dotty-compiler jar */
   def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
 

@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import MegaPhase.*
+import core.Annotations.Annotation
 import core.Denotations.NonSymSingleDenotation
 import core.DenotTransformers.*
 import core.Symbols.*
@@ -111,6 +112,14 @@ object LambdaLift:
           else
             // Add Final when a method is lifted into a class.
             initFlags = initFlags | Final
+
+          // If local was a local method inside an @static method, mark the lifted local as @static as well
+          def isLocalToScalaStatic(sym: Symbol): Boolean =
+            val owner = sym.owner
+            owner.is(Method) && (owner.hasAnnotation(defn.ScalaStaticAnnot) || isLocalToScalaStatic(owner))
+          if isLocalToScalaStatic(local) then
+            local.addAnnotation(Annotation(defn.ScalaStaticAnnot, local.span))
+
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),

@@ -193,11 +193,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AppliedType(`tycon`, args0) => args0.last ne args.last
           case _ => false
         if expand then
-          val fn = depFun(
+          val (fn: RefinedType) = depFun(
             args.init, args.last,
             isContextual = defn.isContextFunctionClass(tycon.classSymbol))
               .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
-          AnnotatedType(fn, Annotation(defn.InferredDepFunAnnot, util.Spans.NoSpan))
+            .runtimeChecked
+          RefinedType.inferred(fn.parent, fn.refinedName, fn.refinedInfo)
         else tp
       case _ => tp
 
@@ -252,7 +253,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
   private def transformInferredType(tp: Type)(using Context): Type =
-    def mapInferred(refine: Boolean): TypeMap = new TypeMap with SetupTypeMap:
+    def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap:
       override def toString = "map inferred"
 
       var refiningNames: Set[Name] = Set()
@@ -262,23 +263,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
        *  where CV_1, ..., CV_n are fresh capture set variables.
        */
       def addCaptureRefinements(tp: Type): Type = tp match
-        case _: TypeRef | _: AppliedType if refine && tp.typeParams.isEmpty =>
+        case _: TypeRef | _: AppliedType if !inCaptureRefinement && tp.typeParams.isEmpty =>
           tp.typeSymbol match
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-              cls.paramGetters.foldLeft(tp) { (core, getter) =>
+              cls.paramGetters.foldLeft(tp): (core, getter) =>
                 if atPhase(thisPhase.next)(getter.hasTrackedParts)
                     && getter.isRefiningParamAccessor
                     && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
                 then
                   val getterType =
-                    mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType(core, getter.name,
-                      CapturingType(getterType, new CaptureSet.RefiningVar(ctx.owner)))
+                    mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
+                  RefinedType.precise(core, getter.name,
+                      CapturingType(getterType,
+                        CaptureSet.ProperVar(ctx.owner, isRefining = true)))
                     .showing(i"add capture refinement $tp --> $result", capt)
                 else
                   core
-              }
             case _ => tp
         case _ => tp
 
@@ -302,11 +303,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             mapFollowingAliases(tp)
         addVar(
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
-          ctx.owner)
+          ctx.owner,
+          isRefining = inCaptureRefinement)
     end mapInferred
 
     try
-      val tp1 = mapInferred(refine = true)(tp)
+      val tp1 = mapInferred(inCaptureRefinement = false)(tp)
       val tp2 = toResultInResults(NoSymbol, _ => assert(false))(tp1)
       if tp2 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
@@ -685,11 +687,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 // Infer the self type for the rest, which is all classes without explicit
                 // self types (to which we also add nested module classes), provided they are
                 // neither pure, nor are publicily extensible with an unconstrained self type.
-                val cs = CaptureSet.Var(cls)
+                val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
                 if cls.derivesFrom(defn.Caps_Capability) then
                   // If cls is a capability class, we need to add a fresh readonly capability to
                   // ensure we cannot treat the class as pure.
-                  CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
                 CapturingType(cinfo.selfType, cs)
 
             // Compute new parent types
@@ -851,8 +853,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else maybeAdd(tp, tp)
 
   /** Add a capture set variable to `tp` if necessary. */
-  private def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp, CaptureSet.Var(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner)))
+  private def addVar(tp: Type, owner: Symbol, isRefining: Boolean)(using Context): Type =
+    decorate(tp, CaptureSet.ProperVar(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining))
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types

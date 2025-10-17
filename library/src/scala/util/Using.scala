@@ -14,6 +14,7 @@ package scala.util
 
 import scala.language.`2.13`
 import scala.util.control.{ControlThrowable, NonFatal}
+import scala.runtime.ScalaRunTime.nullForGC
 
 /** A utility for performing automatic resource management. It can be used to perform an
   * operation using resources, after which it releases the resources in reverse order
@@ -198,7 +199,7 @@ object Using {
     }
 
     private def manage[A](op: Manager => A): A = {
-      var toThrow: Throwable = null
+      var toThrow: Throwable | Null = null
       try {
         op(this)
       } catch {
@@ -208,8 +209,8 @@ object Using {
       } finally {
         closed = true
         var rs = resources
-        resources = null // allow GC, in case something is holding a reference to `this`
-        while (rs.nonEmpty) {
+        resources = nullForGC[List[Resource[_]]] // allow GC, in case something is holding a reference to `this`
+        while (rs != null && rs.nonEmpty) {
           val resource = rs.head
           rs = rs.tail
           try resource.release()
@@ -292,7 +293,7 @@ object Using {
   def resource[R, A](resource: R)(body: R => A)(implicit releasable: Releasable[R]): A = {
     if (resource == null) throw new NullPointerException("null resource")
 
-    var toThrow: Throwable = null
+    var toThrow: Throwable | Null = null
     try {
       body(resource)
     } catch {

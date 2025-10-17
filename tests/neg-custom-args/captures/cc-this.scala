@@ -30,6 +30,6 @@ def test2(using consume cc: Cap) =
 
   def c1 = new C(f)
   def c2 = c1
-  def c3 = c2.y // error
+  def c3 = c2.y // was error, now OK
   val c4: C^ = c3
   val _ = c3: C^

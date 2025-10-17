@@ -23,6 +23,8 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.generic.SerializeEnd
 import scala.collection.mutable.{ArrayBuffer, StringBuilder}
 import scala.language.implicitConversions
+import scala.runtime.ScalaRunTime.nullForGC
+
 import Stream.cons
 
 @deprecated("Use LazyListIterable (which is fully lazy) instead of Stream (which has a lazy tail only)", "2.13.0")
@@ -396,13 +398,13 @@ object Stream extends SeqFactory[Stream] {
   final class Cons[A](override val head: A, tl: => Stream[A]) extends Stream[A] {
     override def isEmpty: Boolean = false
     @volatile private[this] var tlVal: Stream[A] = _
-    @volatile private[this] var tlGen = () => tl
+    @volatile private[this] var tlGen: (() => Stream[A]) | Null = () => tl
     protected def tailDefined: Boolean = tlGen eq null
     override def tail: Stream[A] = {
       if (!tailDefined)
         synchronized {
           if (!tailDefined) {
-            tlVal = tlGen()
+            tlVal = tlGen.nn()
             tlGen = null
           }
         }
@@ -479,8 +481,8 @@ object Stream extends SeqFactory[Stream] {
     new WithFilter[A](l, p)
 
   private[this] final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
-    private[this] var s = l                                                // set to null to allow GC after filtered
-    private[this] lazy val filtered: Stream[A] = { val f = s.filter(p); s = null.asInstanceOf[Stream[A]]; f } // don't set to null if throw during filter
+    private[this] var s: Stream[A] = l // set to null to allow GC after filtered
+    private[this] lazy val filtered: Stream[A] = { val f = s.filter(p); s = nullForGC[Stream[A]]; f } // don't set to null if throw during filter
     def map[B](f: A => B): Stream[B] = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]): Stream[B] = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)

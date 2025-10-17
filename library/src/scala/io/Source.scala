@@ -158,8 +158,8 @@ object Source {
   def createBufferedSource(
     inputStream: InputStream,
     bufferSize: Int = DefaultBufSize,
-    reset: () => Source = null,
-    close: () => Unit = null
+    reset: (() => Source) | Null = null,
+    close: (() => Unit) | Null = null
   )(implicit codec: Codec): BufferedSource = {
     // workaround for default arguments being unable to refer to other parameters
     val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(codec) else reset
@@ -344,15 +344,17 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, "warning! " + msg, out)
   }
 
-  private[this] var resetFunction: () => Source = null
-  private[this] var closeFunction: () => Unit = null
+  @annotation.stableNull
+  private[this] var resetFunction: (() => Source) | Null = null
+  @annotation.stableNull
+  private[this] var closeFunction: (() => Unit) | Null = null
   private[this] var positioner: Positioner = RelaxedPositioner
 
-  def withReset(f: () => Source): this.type = {
+  def withReset(f: (() => Source) | Null): this.type = {
     resetFunction = f
     this
   }
-  def withClose(f: () => Unit): this.type = {
+  def withClose(f: (() => Unit) | Null): this.type = {
     closeFunction = f
     this
   }

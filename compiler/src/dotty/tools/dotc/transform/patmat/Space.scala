@@ -304,7 +304,7 @@ object SpaceEngine {
 
   /** Is this an `'{..}` or `'[..]` irrefutable quoted patterns?
    *  @param  body The body of the quoted pattern
-   *  @param  bodyPt The scrutinee body type
+   *  @param  pt The scrutinee body type
    */
   def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
     if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
@@ -395,7 +395,7 @@ object SpaceEngine {
 
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
-      Typ(pat.tpe.narrow, decomposed = false)
+      Typ(pat.tpe.narrow(), decomposed = false)
   })
 
   private def project(tp: Type)(using Context): Space = tp match {
@@ -717,14 +717,12 @@ object SpaceEngine {
 
   extension (tp: Type)
     def isDecomposableToChildren(using Context): Boolean =
-      val sym = tp.typeSymbol  // e.g. Foo[List[Int]] = type Foo (i19275)
       val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
       tp.hasSimpleKind                  // can't decompose higher-kinded types
         && cls.is(Sealed)
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
-        && !sym.isOpaqueAlias           // can't instantiate subclasses to conform to an opaque type (i19275)
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))

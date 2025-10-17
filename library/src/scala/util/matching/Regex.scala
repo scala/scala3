@@ -284,7 +284,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  @param  s     The string to match
    *  @return       The matches
    */
-  def unapplySeq(s: CharSequence): Option[List[String]] = {
+  def unapplySeq(s: CharSequence): Option[List[String | Null]] = {
     val m = pattern.matcher(s)
     if (runMatcher(m)) Some(List.tabulate(m.groupCount) { i => m.group(i + 1) })
     else None
@@ -338,10 +338,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  Otherwise, this Regex is applied to the previously matched input,
    *  and the result of that match is used.
    */
-  def unapplySeq(m: Match): Option[List[String]] =
+  def unapplySeq(m: Match): Option[List[String | Null]] =
     if (m.matched == null) None
     else if (m.matcher.pattern == this.pattern) Regex.extractGroupsFromMatch(m)
-    else unapplySeq(m.matched)
+    else unapplySeq(m.matched.nn)
 
   //  @see UnanchoredRegex
   protected def runMatcher(m: Matcher): Boolean = m.matches()
@@ -650,45 +650,45 @@ object Regex {
     def end(i: Int): Int
 
     /** The matched string, or `null` if nothing was matched. */
-    def matched: String =
+    def matched: String | Null =
       if (start >= 0) source.subSequence(start, end).toString
       else null
 
     /** The matched string in group `i`,
      *  or `null` if nothing was matched.
      */
-    def group(i: Int): String =
+    def group(i: Int): String | Null =
       if (start(i) >= 0) source.subSequence(start(i), end(i)).toString
       else null
 
     /** All capturing groups, i.e., not including group(0). */
-    def subgroups: List[String] = (1 to groupCount).toList map group
+    def subgroups: List[String | Null] = (1 to groupCount).toList map group
 
     /** The char sequence before first character of match,
      *  or `null` if nothing was matched.
      */
-    def before: CharSequence =
+    def before: CharSequence | Null =
       if (start >= 0) source.subSequence(0, start)
       else null
 
     /** The char sequence before first character of match in group `i`,
      *  or `null` if nothing was matched for that group.
      */
-    def before(i: Int): CharSequence =
+    def before(i: Int): CharSequence | Null =
       if (start(i) >= 0) source.subSequence(0, start(i))
       else null
 
     /** Returns char sequence after last character of match,
      *  or `null` if nothing was matched.
      */
-    def after: CharSequence =
+    def after: CharSequence | Null =
       if (end >= 0) source.subSequence(end, source.length)
       else null
 
     /** The char sequence after last character of match in group `i`,
      *  or `null` if nothing was matched for that group.
      */
-    def after(i: Int): CharSequence =
+    def after(i: Int): CharSequence | Null =
       if (end(i) >= 0) source.subSequence(end(i), source.length)
       else null
 
@@ -708,7 +708,7 @@ object Regex {
      *  @return   The requested group
      *  @throws   IllegalArgumentException if the requested group name is not defined
      */
-    def group(id: String): String = (
+    def group(id: String): String | Null = (
       if (groupNamesNowarn.isEmpty)
         matcher group id
       else
@@ -719,7 +719,7 @@ object Regex {
     )
 
     /** The matched string; equivalent to `matched.toString`. */
-    override def toString: String = matched
+    override def toString: String = matched.nn
   }
 
   /** Provides information about a successful match. */
@@ -768,7 +768,7 @@ object Regex {
    *
    */
   object Match {
-    def unapply(m: Match): Some[String] = Some(m.matched)
+    def unapply(m: Match): Some[String] = Some(m.matched.nn)
   }
 
   /** An extractor object that yields the groups in the match. Using this extractor
@@ -783,12 +783,12 @@ object Regex {
    *  }}}
    */
   object Groups {
-    def unapplySeq(m: Match): Option[Seq[String]] = {
+    def unapplySeq(m: Match): Option[Seq[String | Null]] = {
       if (m.groupCount > 0) extractGroupsFromMatch(m) else None
     }
   }
 
-  @inline private def extractGroupsFromMatch(m: Match): Option[List[String]] =
+  @inline private def extractGroupsFromMatch(m: Match): Option[List[String | Null]] =
      Some(List.tabulate(m.groupCount) { i => m.group(i + 1) })
 
   /** A class to step through a sequence of regex matches.
@@ -895,7 +895,7 @@ object Regex {
     }
 
     // Appends the input prefix and the replacement text.
-    def replace(replacement: String) = matcher.appendReplacement(sb, replacement)
+    def replace(replacement: String): Matcher = matcher.appendReplacement(sb, replacement)
   }
 
   /** Quotes strings to be used literally in regex patterns.

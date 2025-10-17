@@ -37,7 +37,7 @@ def useInt(xs: Int*) = ???
 
   // Tests for harmonization with varargs
 
-  val darr: Array[Double] = Array(1.0, 2)
+  val darr: Array[Double] = Array(1.5, 2)
   val zs1 = Array(1, darr*, 2, darr*, 3)
   val _: Array[Double] = zs1
   val d: Double = 4

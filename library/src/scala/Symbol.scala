@@ -36,7 +36,7 @@ object Symbol extends UniquenessCache[String, Symbol] {
 
 /** This is private so it won't appear in the library API, but
   * abstracted to offer some hope of reusability.  */
-private[scala] abstract class UniquenessCache[K, V >: Null] {
+private[scala] abstract class UniquenessCache[K, V] {
   import java.lang.ref.WeakReference
   import java.util.WeakHashMap
   import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -50,7 +50,7 @@ private[scala] abstract class UniquenessCache[K, V >: Null] {
   protected def keyFromValue(v: V): Option[K]
 
   def apply(name: K): V = {
-    def cached(): V = {
+    def cached(): V | Null = {
       rlock.lock
       try {
         val reference = map get name

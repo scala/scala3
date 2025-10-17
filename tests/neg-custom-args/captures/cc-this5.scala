@@ -13,7 +13,7 @@ def foo(c: Cap) =
 def test(c: Cap) =
   class A:
     val x: A = this
-    def f = println(c)  // error
+    def f = println(c)
 
 def test2(c: Cap) =
   class A:

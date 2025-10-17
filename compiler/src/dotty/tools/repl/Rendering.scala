@@ -26,6 +26,35 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
+  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
+    def fallback() =
+      dotty.shaded.pprint.PPrinter.BlackWhite
+        .apply(value, width = width, height = height, initialOffset = initialOffset)
+        .plainText
+    try
+      val cl = classLoader()
+      val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$BlackWhite$", false, cl)
+      val fansiStrCls = Class.forName("dotty.shaded.fansi.Str", false, cl)
+      val BlackWhite = pprintCls.getField("MODULE$").get(null)
+      val BlackWhite_apply = pprintCls.getMethod("apply",
+        classOf[Any],     // value
+        classOf[Int],     // width
+        classOf[Int],     // height
+        classOf[Int],     // indentation
+        classOf[Int],     // initialOffset
+        classOf[Boolean], // escape Unicode
+        classOf[Boolean], // show field names
+      )
+      val FansiStr_plainText = fansiStrCls.getMethod("plainText")
+      val fansiStr = BlackWhite_apply.invoke(
+        BlackWhite, value, width, height, 2, initialOffset, false, true
+      )
+      FansiStr_plainText.invoke(fansiStr).asInstanceOf[String]
+    catch
+      case _: ClassNotFoundException => fallback()
+      case _: NoSuchMethodException  => fallback()
+  }
+
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -53,16 +82,21 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String = {
+  private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): String = {
     // pretty-print things with 100 cols 50 rows by default,
-    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value, width = 100, height = 50).plainText
+    pprintRender(
+      value,
+      width = 100,
+      height = 50,
+      initialOffset = prefixLength
+    )
   }
 
   /** Load the value of the symbol using reflection.
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] =
+  private def valueOf(sym: Symbol, prefixLength: Int)(using Context): Option[String] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
@@ -71,7 +105,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
     symValue
       .filter(_ => sym.is(Flags.Method) || sym.info != defn.UnitType)
-      .map(value => stripReplPrefix(replStringOf(sym, value)))
+      .map(value => stripReplPrefix(replStringOf(value, prefixLength)))
 
   private def stripReplPrefix(s: String): String =
     if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
@@ -108,7 +142,13 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     try
       Right(
         if d.symbol.is(Flags.Lazy) then Some(msg(dcl))
-        else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+        else {
+          val prefix = s"$dcl = "
+          // Prefix can have multiple lines, only consider the last one
+          // when determining the initial column offset for pretty-printing
+          val prefixLength = prefix.linesIterator.toSeq.lastOption.getOrElse("").length
+          valueOf(d.symbol, prefixLength).map(value => msg(s"$prefix$value"))
+        }
       )
     catch case e: ReflectiveOperationException => Left(e)
   end renderVal

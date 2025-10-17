@@ -313,7 +313,7 @@ class SymUtils:
       }
 
     def isField(using Context): Boolean =
-      self.isTerm && !self.is(Method)
+      self.isTerm && !self.isOneOf(Method | PhantomSymbol | NonMember)
 
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)

@@ -280,9 +280,6 @@ class Namer { typer: Typer =>
                 if rhs.isEmpty || flags.is(Opaque) then flags |= Deferred
             if flags.is(Param) then tree.rhs else analyzeRHS(tree.rhs)
 
-        def hasExplicitType(tree: ValOrDefDef): Boolean =
-          !tree.tpt.isEmpty || tree.mods.isOneOf(TermParamOrAccessor)
-
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
         // constructor is recorded and the context in which it is completed are
@@ -296,8 +293,6 @@ class Namer { typer: Typer =>
 
         val completer = tree match
           case tree: TypeDef => TypeDefCompleter(tree)(cctx)
-          case tree: ValOrDefDef if Feature.enabled(Feature.modularity) && hasExplicitType(tree) =>
-            new Completer(tree, isExplicit = true)(cctx)
           case _ => Completer(tree)(cctx)
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
@@ -813,7 +808,7 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree, override val isExplicit: Boolean = false)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
+  class Completer(val original: Tree)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
@@ -829,6 +824,11 @@ class Namer { typer: Typer =>
 
     def setNotNullInfos(infos: List[NotNullInfo]): Unit =
       myNotNullInfos = infos
+
+    /** Cache for type signature if computed without forcing annotations
+     *  by `typeSigOnly`
+     */
+    private var knownTypeSig: Type = NoType
 
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
@@ -1006,12 +1006,20 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
       addAnnotations(sym)
       addInlineInfo(sym)
-      denot.info = typeSig(sym)
+      denot.info = knownTypeSig `orElse` typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       normalizeFlags(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
+
+    /** Just the type signature without forcing any of the other parts of
+     *  this denotation. The denotation will still be completed later.
+     */
+    def typeSigOnly(sym: Symbol): Type =
+      if !knownTypeSig.exists then
+        knownTypeSig = typeSig(sym)
+      knownTypeSig
   }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
@@ -1925,6 +1933,10 @@ class Namer { typer: Typer =>
     else mbrTpe
   }
 
+  // Decides whether we want to run tracked inference on all code, not just
+  // code with x.modularity
+  private inline val testTrackedInference = false
+
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type =
     // Beware: ddef.name need not match sym.name if sym was freshened!
@@ -1973,11 +1985,12 @@ class Namer { typer: Typer =>
     def addTrackedIfNeeded(ddef: DefDef, owningSym: Symbol): Unit =
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
-        if needsTracked(psym, param, owningSym) then
+        if needsTracked(psym, param, owningSym) && Feature.enabled(modularity) then
           psym.setFlag(Tracked)
           setParamTrackedWithAccessors(psym, sym.maybeOwner.infoOrCompleter)
 
-    if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
+    if Feature.enabled(modularity) || testTrackedInference then
+      addTrackedIfNeeded(ddef, sym.maybeOwner)
 
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
@@ -2030,64 +2043,25 @@ class Namer { typer: Typer =>
       psym.setFlag(Tracked)
       acc.setFlag(Tracked)
 
-  /** `psym` needs tracked if it is referenced in any of the public signatures
-   *  of the defining class or when `psym` is a context bound witness with an
-   *  abstract type member
+  /** `psym` needs an inferred tracked if
+   *    - it is a val parameter of a class or
+   *      an evidence parameter of a context bound witness, and
+   *    - its type contains an abstract type member.
    */
   def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
-    lazy val abstractContextBound = isContextBoundWitnessWithAbstractMembers(psym, param, owningSym)
-    lazy val isRefInSignatures =
-      psym.maybeOwner.isPrimaryConstructor
-      && isReferencedInPublicSignatures(psym)
+    lazy val accessorSyms = maybeParamAccessors(owningSym, psym)
+
+    def infoDontForceAnnots = psym.infoOrCompleter match
+      case completer: this.Completer => completer.typeSigOnly(psym)
+      case tpe => tpe
+
     !psym.is(Tracked)
-    && psym.isTerm
-    && (
-      abstractContextBound
-      || isRefInSignatures
-    )
-
-  /** Under x.modularity, we add `tracked` to context bound witnesses and
-   *  explicit evidence parameters that have abstract type members
-   */
-  private def isContextBoundWitnessWithAbstractMembers(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
-    val accessorSyms = maybeParamAccessors(owningSym, psym)
-    (owningSym.isClass || owningSym.isAllOf(Given | Method))
-    && (param.hasAttachment(ContextBoundParam) || (psym.isOneOf(GivenOrImplicit) && !accessorSyms.forall(_.isOneOf(PrivateLocal))))
-    && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
-
-  extension (sym: Symbol)
-    private def infoWithForceNonInferingCompleter(using Context): Type = sym.infoOrCompleter match
-      case tpe: LazyType if tpe.isExplicit => sym.info
-      case tpe if sym.isType => sym.info
-      case info => info
-
-  /** Under x.modularity, we add `tracked` to term parameters whose types are
-   *  referenced in public signatures of the defining class
-   */
-  private def isReferencedInPublicSignatures(sym: Symbol)(using Context): Boolean =
-    val owner = sym.maybeOwner.maybeOwner
-    val accessorSyms = maybeParamAccessors(owner, sym)
-    def checkOwnerMemberSignatures(owner: Symbol): Boolean =
-      owner.infoOrCompleter match
-        case info: ClassInfo =>
-          info.decls.filter(_.isPublic)
-            .filter(_ != sym.maybeOwner)
-            .exists { decl =>
-              tpeContainsSymbolRef(decl.infoWithForceNonInferingCompleter, accessorSyms)
-            }
-        case _ => false
-    checkOwnerMemberSignatures(owner)
-
-  /** Check if any of syms are referenced in tpe */
-  private def tpeContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean =
-    val acc = new ExistsAccumulator(
-      { tpe => tpe.termSymbol.exists && syms.contains(tpe.termSymbol) },
-      StopAt.Static,
-      forceLazy = false
-    ) {
-      override def apply(acc: Boolean, tpe: Type): Boolean = super.apply(acc, tpe.safeDealias)
-    }
-    acc(false, tpe)
+      && psym.isTerm
+      && (owningSym.isClass || owningSym.isAllOf(Given | Method))
+      && accessorSyms.forall(!_.is(Mutable))
+      && (param.hasAttachment(ContextBoundParam) || accessorSyms.exists(!_.isOneOf(PrivateLocal)))
+      && infoDontForceAnnots.abstractTypeMembers.nonEmpty
+  end needsTracked
 
   private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] = owner.infoOrCompleter match
     case info: ClassInfo =>
@@ -2102,8 +2076,7 @@ class Namer { typer: Typer =>
   def setTrackedConstrParam(param: ValDef)(using Context): Unit =
     val sym = symbolOfTree(param)
     sym.maybeOwner.maybeOwner.infoOrCompleter match
-      case info: ClassInfo
-        if !sym.is(Tracked) && isContextBoundWitnessWithAbstractMembers(sym, param, sym.maybeOwner.maybeOwner) =>
+      case info: ClassInfo if needsTracked(sym, param, sym.maybeOwner.maybeOwner) =>
         typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
         setParamTrackedWithAccessors(sym, info)
       case _ =>

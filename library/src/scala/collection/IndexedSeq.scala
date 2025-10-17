@@ -24,8 +24,7 @@ import scala.math.Ordering
 /** Base trait for indexed sequences that have efficient `apply` and `length` */
 trait IndexedSeq[+A] extends Seq[A]
   with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
-  with IterableFactoryDefaults[A, IndexedSeq]
-  with caps.Pure {
+  with IterableFactoryDefaults[A, IndexedSeq] {
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix: String = "IndexedSeq"
 

@@ -18,6 +18,7 @@ import language.experimental.captureChecking
 
 import scala.annotation.nowarn
 import scala.collection.generic.CommonErrors
+import scala.runtime.ScalaRunTime.nullForGC
 
 
 trait SeqView[+A] extends SeqOps[A, View, View[A]] with View[A] {
@@ -187,13 +188,12 @@ object SeqView {
         }
       }
       evaluated = true
-      underlying = null
+      underlying = nullForGC[SomeSeqOps[A]]
       res
     }
 
     private[this] def elems: SomeSeqOps[A]^{this} = {
-      val orig: SomeSeqOps[A]^{this} = underlying
-      if (evaluated) _sorted else orig
+      if (evaluated) _sorted else underlying
     }
 
     def apply(i: Int): A = _sorted.apply(i)

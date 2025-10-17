@@ -211,16 +211,44 @@ class ReplDriver(settings: Array[String],
         val line = terminal.readLine(completer)
         ParseResult(line)
       } catch {
-        case _: EndOfFileException |
-            _: UserInterruptException => // Ctrl+D or Ctrl+C
+        case _: EndOfFileException => // Ctrl+D
           Quit
+        case _: UserInterruptException => // Ctrl+C at prompt - clear and continue
+          SigKill
       }
     }
 
     @tailrec def loop(using state: State)(): State = {
+
       val res = readLine()
       if (res == Quit) state
-      else loop(using interpret(res))()
+      // Ctrl-C pressed at prompt - just continue with same state (line is cleared by JLine)
+      else if (res == SigKill) loop(using state)()
+      else {
+        // Set up interrupt handler for command execution
+        var firstCtrlCEntered = false
+        val thread = Thread.currentThread()
+        val previousSignalHandler = terminal.handle(
+          org.jline.terminal.Terminal.Signal.INT,
+          (sig: org.jline.terminal.Terminal.Signal) => {
+            if (!firstCtrlCEntered) {
+              firstCtrlCEntered = true
+              thread.interrupt()
+              out.println("\nInterrupting running thread, Ctrl-C again to terminate the REPL Process")
+            } else {
+              out.println("\nTerminating REPL Process...")
+              System.exit(130)  // Standard exit code for SIGINT
+            }
+          }
+        )
+
+        val newState =
+          try interpret(res)
+          // Restore previous handler
+          finally terminal.handle(org.jline.terminal.Terminal.Signal.INT, previousSignalHandler)
+
+        loop(using newState)()
+      }
     }
 
     try runBody { loop() }

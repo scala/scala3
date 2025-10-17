@@ -10,6 +10,8 @@
 
 package scala.math
 
+import scala.language.`2.13`
+
 /** A marker class for Number types introduced by Scala
  *  @author  Martin Odersky, Paul Phillips
  *  @version 2.8
