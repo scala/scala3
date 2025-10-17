@@ -551,6 +551,7 @@ object projects:
     sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
   )
 
   lazy val izumiReflect = SbtCommunityProject(
