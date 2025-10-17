@@ -48,9 +48,7 @@ object ReplBytecodeInstrumentation:
       signature: String,
       exceptions: Array[String]
     ): MethodVisitor =
-      val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
-      if mv == null then mv
-      else new InstrumentMethodVisitor(mv)
+      new InstrumentMethodVisitor(super.visitMethod(access, name, descriptor, signature, exceptions))
 
   /** MethodVisitor that inserts stop checks at backward branches */
   private class InstrumentMethodVisitor(mv: MethodVisitor) extends MethodVisitor(ASM9, mv):
