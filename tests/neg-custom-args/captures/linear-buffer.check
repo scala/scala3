@@ -3,8 +3,16 @@
   |                           ^^^^^^^^^^^^^
   |      Separation failure: method append's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
   |      The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:7:29 ------------------------------------------------------
+7 |    def bar: BadBuffer[T]^ = this // error // error
+  |                             ^^^^
+  |           Separation failure: Illegal access to {BadBuffer.this} which is hidden by the previous definition
+  |           of method append with result type BadBuffer[T]^.
+  |           This type hides capabilities  {BadBuffer.this}
+  |
+  |           where:    ^ refers to a fresh root capability classified as Mutable in the result type of method append
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:7:13 ------------------------------------------------------
-7 |    def bar: BadBuffer[T]^ = this // error
+7 |    def bar: BadBuffer[T]^ = this // error // error
   |             ^^^^^^^^^^^^^
   |         Separation failure: method bar's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
   |         The access must be in a consume method to allow this.

@@ -4,7 +4,7 @@ import language.experimental.captureChecking
 class BadBuffer[T] extends Mutable:
   update def append(x: T): BadBuffer[T]^ = this // error
   def foo =
-    def bar: BadBuffer[T]^ = this // error
+    def bar: BadBuffer[T]^ = this // error // error
     bar
 
 class Buffer[T] extends Mutable:
