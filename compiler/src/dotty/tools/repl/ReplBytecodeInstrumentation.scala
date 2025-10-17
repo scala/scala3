@@ -10,13 +10,7 @@ import scala.collection.JavaConverters.*
 import java.util.concurrent.atomic.AtomicBoolean
   
 object ReplBytecodeInstrumentation:
-  /** Instrument bytecode to add stop checks at backward branches.
-   *
-   *  Backward branches indicate loops, which is where code can hang.
-   *  We inject a call to throwIfReplStopped() before each backward branch.
-   *
-   *  @param originalBytes the original class bytecode
-   *  @return the instrumented bytecode
+  /** Instrument bytecode to add checks to throw an exception if the REPL command is cancelled
    */
   def instrument(originalBytes: Array[Byte]): Array[Byte] =
     try
