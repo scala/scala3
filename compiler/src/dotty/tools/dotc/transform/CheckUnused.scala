@@ -11,8 +11,8 @@ import Scopes.newScope
 import StdNames.nme
 import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import Types.*
-import reporting.{CodeAction, UnusedSymbol}
-import rewrites.Rewrites
+import reporting.{CodeAction, Diagnostic, UnusedSymbol}
+import rewrites.Rewrites.ActionPatch
 
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer}
@@ -549,16 +549,15 @@ object CheckUnused:
 
   def reportUnused()(using Context): Unit =
     for (msg, pos, origin) <- warnings do
-      if origin.isEmpty then report.warning(msg, pos)
-      else report.warning(msg, pos, origin)
-      msg.actions.headOption.foreach(Rewrites.applyAction)
+      report.warning(msg, pos, origin)
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
   def warnings(using Context): Array[MessageInfo] =
-    val actionable = ctx.settings.rewrite.value.nonEmpty
+    val actionable: true = true //ctx.settings.rewrite.value.nonEmpty
     val warnings = ArrayBuilder.make[MessageInfo]
-    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
+    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = Diagnostic.OriginWarning.NoOrigin): Unit =
+      warnings.addOne((msg, pos, origin))
     val infos = refInfos
 
     // non-local sym was target of assignment or has a sibling setter that was referenced
@@ -721,7 +720,6 @@ object CheckUnused:
 
     def checkImports() =
       import scala.jdk.CollectionConverters.given
-      import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
