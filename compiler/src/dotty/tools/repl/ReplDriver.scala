@@ -34,6 +34,7 @@ import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io.*
 import dotty.tools.repl.Rendering.showUser
+import dotty.tools.repl.ReplBytecodeInstrumentation
 import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader.*
 
@@ -228,13 +229,20 @@ class ReplDriver(settings: Array[String],
         // Set up interrupt handler for command execution
         var firstCtrlCEntered = false
         val thread = Thread.currentThread()
+
+        // Clear the stop flag before executing new code
+        ReplBytecodeInstrumentation.setStopFlag(rendering.classLoader()(using state.context), false)
+
         val previousSignalHandler = terminal.handle(
           org.jline.terminal.Terminal.Signal.INT,
           (sig: org.jline.terminal.Terminal.Signal) => {
             if (!firstCtrlCEntered) {
               firstCtrlCEntered = true
+              // Set the stop flag to trigger throwIfReplStopped() in instrumented code
+              ReplBytecodeInstrumentation.setStopFlag(rendering.classLoader()(using state.context), true)
+              // Also interrupt the thread as a fallback for non-instrumented code
               thread.interrupt()
-              out.println("\nInterrupting running thread, Ctrl-C again to terminate the REPL Process")
+              out.println("\nInterrupting running thread")
             } else {
               out.println("\nTerminating REPL Process...")
               System.exit(130)  // Standard exit code for SIGINT
@@ -591,8 +599,9 @@ class ReplDriver(settings: Array[String],
             val prevClassLoader = rendering.classLoader()
             val jarClassLoader = fromURLsParallelCapable(
               jarClassPath.asURLs, prevClassLoader)
+            val instrumentBytecode = !ctx.settings.XreplDisableBytecodeInstrumentation.value
             rendering.myClassLoader = new AbstractFileClassLoader(
-              prevOutputDir, jarClassLoader)
+              prevOutputDir, jarClassLoader, instrumentBytecode)
 
             out.println(s"Added '$path' to classpath.")
         } catch {
