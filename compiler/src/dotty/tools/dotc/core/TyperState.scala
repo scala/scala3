@@ -28,6 +28,8 @@ object TyperState {
 
   opaque type Snapshot = (Constraint, TypeVars, LevelMap)
 
+  class BadTyperStateAssertion(msg: String) extends AssertionError(msg)
+
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
       (ts.constraint, ts.ownedVars, ts.upLevels)
@@ -43,7 +45,7 @@ object TyperState {
 }
 
 class TyperState() {
-  import TyperState.LevelMap
+  import TyperState.{LevelMap, BadTyperStateAssertion}
 
   private var myId: Int = uninitialized
   def id: Int = myId
@@ -269,8 +271,10 @@ class TyperState() {
    */
   private def includeVar(tvar: TypeVar)(using Context): Unit =
     val oldState = tvar.owningState.nn.get
-    assert(oldState == null || !oldState.isCommittable,
-      i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
+
+    if oldState != null && oldState.isCommittable then
+      throw BadTyperStateAssertion(
+        i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 
@@ -287,7 +291,7 @@ class TyperState() {
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
         val tvarState = tvar.owningState.nn.get
-        assert(tvarState eqn this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
+        assert(tvarState eq this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
         assert(!tvar.isPermanentlyInstantiated, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
         val inst = constraint.instType(tvar)
         if inst.exists then

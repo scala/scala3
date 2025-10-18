@@ -2,8 +2,10 @@
 63 |      Result:
 64 |        Future: // error, type mismatch
    |      ^
-   |      Found:    Result.Ok[box Future[box T^?]^{fr, contextual$1}]
+   |      Found:    Result.Ok[Future[T^'s1]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
+   |
+   |      Note that capability fr is not included in capture set {}.
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
@@ -14,16 +16,30 @@
     --------------------------------------------------------------------------------------------------------------------
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:74:10 ------------------------
-74 |          Future: fut ?=> // error: type mismatch
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:69:10 ------------------------
+69 |          Future: fut ?=> // error, type mismatch
    |          ^
-   |          Found:    Future[box T^?]^{fr, lbl}
-   |          Required: Future[box T^?]^?
+   |Found:    (contextual$9: boundary.Label[Result[Future[T^'s2]^'s3, E^'s4]^'s5]^'s6) ?->{fr, async} Future[T^'s7]^{fr, contextual$9}
+   |Required: (boundary.Label[Result[Future[T^'s8]^'s9, E^'s10]]^) ?=> Future[T^'s8]^'s9
+   |
+   |Note that capability contextual$9 cannot be included in outer capture set 's9.
+   |
+   |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
+   |          ^   refers to the universal root capability
+70 |            fr.await.ok
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:73:35 ------------------------
+73 |        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
+   |                                   ^
+   |Found:    (lbl: boundary.Label[Result[Future[T^'s11]^'s12, E^'s13]^'s14]^'s15) ?->{fr, async} Future[T^'s16]^{fr, lbl}
+   |Required: (boundary.Label[Result[Future[T], E]]^) ?=> Future[T]
+   |
+   |Note that capability fr is not included in capture set {}.
+   |
+   |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
+   |          ^   refers to the universal root capability
+74 |          Future: fut ?=>
 75 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:68:15 ---------------------------------------------
-68 |        Result.make: //lbl ?=> // error, escaping label from Result
-   |        ^^^^^^^^^^^
-   |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]^):
-   |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result

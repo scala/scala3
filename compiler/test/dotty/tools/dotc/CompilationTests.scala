@@ -37,6 +37,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFilesInDir("tests/pos-scala2", defaultOptions.and("-source", "3.0-migration")),
+      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
@@ -55,19 +56,13 @@ class CompilationTests {
     aggregateTests(tests*).checkCompile()
   }
 
-  @Test def posCC: Unit =
-    given TestGroup = TestGroup("compilePosCC")
-    aggregateTests(
-      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
-    ).checkCompile()
-
   @Test def rewrites: Unit = {
     implicit val testGroup: TestGroup = TestGroup("rewrites")
 
     aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", defaultOptions.and("-source", "3.0-migration").and("-rewrite", "-indent")),
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
-      compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Xfatal-warnings")),
+      compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Werror")),
       compileFile("tests/rewrites/i21394.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/uninitialized-var.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
@@ -88,7 +83,12 @@ class CompilationTests {
       compileFile("tests/rewrites/ambiguous-named-tuple-assignment.scala", defaultOptions.and("-rewrite", "-source:3.6-migration")),
       compileFile("tests/rewrites/i21382.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/unused.scala", defaultOptions.and("-rewrite", "-Wunused:all")),
-      compileFile("tests/rewrites/i22440.scala", defaultOptions.and("-rewrite"))
+      compileFile("tests/rewrites/i22440.scala", defaultOptions.and("-rewrite")),
+      compileFile("tests/rewrites/i22731.scala", defaultOptions.and("-rewrite", "-source:3.7-migration")),
+      compileFile("tests/rewrites/i22731b.scala", defaultOptions.and("-rewrite", "-source:3.7-migration")),
+      compileFile("tests/rewrites/implicit-to-given.scala", defaultOptions.and("-rewrite", "-Yimplicit-to-given")),
+      compileFile("tests/rewrites/i22792.scala", defaultOptions.and("-rewrite")),
+      compileFile("tests/rewrites/i23449.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
     ).checkRewrites()
   }
 
@@ -149,9 +149,9 @@ class CompilationTests {
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
+      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
-      compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Xfatal-warnings")),
+      compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Werror")),
       compileList("duplicate source", List(
         "tests/neg-custom-args/toplevel-samesource/S.scala",
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
@@ -172,7 +172,7 @@ class CompilationTests {
     aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
+      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ).checkRuns()
@@ -208,20 +208,41 @@ class CompilationTests {
   @Test def explicitNullsNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
-      compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions and "-Yno-flexible-types"),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-Yno-flexible-types"),
-    )
-  }.checkExpectedErrors()
+      compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions, FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
+      compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions `and` "-Yno-flexible-types"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-Yno-flexible-types", FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
+    ).checkExpectedErrors()
+
+    // locally {
+    //   val unsafeFile = compileFile("tests/explicit-nulls/flexible-unpickle/neg/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls")
+    //   val flexibleFile = compileFile("tests/explicit-nulls/flexible-unpickle/neg/Flexible_2.scala",
+    //       explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/neg/Unsafe_1"))
+
+    //   unsafeFile.keepOutput.checkCompile()
+    //   flexibleFile.keepOutput.checkExpectedErrors()
+
+    //   List(unsafeFile, flexibleFile).foreach(_.delete())
+    // }
+  }
 
   @Test def explicitNullsPos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls" and "-Yno-flexible-types"),
-    )
-  }.checkCompile()
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-language:unsafeNulls" `and` "-Yno-flexible-types"),
+    ).checkCompile()
+
+    // locally {
+    //   val tests = List(
+    //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
+    //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Flexible_2.scala",
+    //     explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/pos/Unsafe_1")),
+    //   ).map(_.keepOutput.checkCompile())
+
+    //   tests.foreach(_.delete())
+    // }
+  }
 
   @Test def explicitNullsWarn: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
@@ -237,21 +258,21 @@ class CompilationTests {
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
-    compileFilesInDir("tests/init-global/pos", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
+    compileFilesInDir("tests/init-global/pos", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     if Properties.usingScalaLibraryTasty && !Properties.usingScalaLibraryCCTasty then
       compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
-      compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
+      compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     end if
   }
 
   // initialization tests
-  @Test def checkInit: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Wsafe-init", "-Xfatal-warnings")
+  @Test def safeInit: Unit = {
+    given TestGroup = TestGroup("safeInit")
+    val options = defaultOptions.and("-Wsafe-init", "-Werror")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     compileFilesInDir("tests/init/warn", defaultOptions.and("-Wsafe-init")).checkWarnings()
     compileFilesInDir("tests/init/pos", options).checkCompile()
-    compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
+    compileFilesInDir("tests/init/crash", options.without("-Werror")).checkCompile()
     // The regression test for i12128 has some atypical classpath requirements.
     // The test consists of three files: (a) Reflect_1  (b) Macro_2  (c) Test_3
     // which must be compiled separately. In addition:
@@ -260,14 +281,14 @@ class CompilationTests {
     //   - the output from (a) _must not_ be on the classpath while compiling (c)
     locally {
       val i12128Group = TestGroup("checkInit/i12128")
-      val i12128Options = options.without("-Xfatal-warnings")
+      val i12128Options = options.without("-Werror")
       val outDir1 = defaultOutputDir + i12128Group + "/Reflect_1/i12128/Reflect_1"
       val outDir2 = defaultOutputDir + i12128Group + "/Macro_2/i12128/Macro_2"
 
       val tests = List(
-        compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(i12128Group),
-        compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(i12128Group),
-        compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(i12128Group)
+        compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(using i12128Group),
+        compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(using i12128Group),
+        compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(using i12128Group)
       ).map(_.keepOutput.checkCompile())
 
       tests.foreach(_.delete())
@@ -278,20 +299,45 @@ class CompilationTests {
      * compatible, but (b) and (c) are not. If (b) and (c) are compiled together, there should be
      * an error when reading the files' TASTy trees. */
     locally {
-      val tastyErrorGroup = TestGroup("checkInit/tasty-error")
-      val tastyErrorOptions = options.without("-Xfatal-warnings")
+      val tastyErrorGroup = TestGroup("checkInit/tasty-error/val-or-defdef")
+      val tastyErrorOptions = options.without("-Werror")
 
-      val a0Dir = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
-      val a1Dir = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
-      val b1Dir = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
+      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
+      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
 
       val tests = List(
-        compileFile("tests/init/tasty-error/v1/A.scala", tastyErrorOptions)(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/v1/B.scala", tastyErrorOptions.withClasspath(a1Dir))(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v1/B.scala", tastyErrorOptions.withClasspath(classA1))(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v0/A.scala", tastyErrorOptions)(using tastyErrorGroup),
       ).map(_.keepOutput.checkCompile())
 
-      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0Dir).withClasspath(b1Dir))(tastyErrorGroup).checkExpectedErrors()
+      compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
+
+      tests.foreach(_.delete())
+    }
+
+    /* This tests for errors in the program's TASTy trees.
+     * The test consists of five files: Main, C, v1/A, v1/B, and v0/A. The files v1/A, v1/B, and v0/A all depend on C. v1/A and v1/B are
+     * compatible, but v1/B and v0/A are not. If v1/B and v0/A are compiled together, there should be
+     * an error when reading the files' TASTy trees. This fact is demonstrated by the compilation of Main. */
+    locally {
+      val tastyErrorGroup = TestGroup("checkInit/tasty-error/typedef")
+      val tastyErrorOptions = options.without("-Werror").without("-Ycheck:all")
+
+      val classC = defaultOutputDir + tastyErrorGroup + "/C/typedef/C"
+      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
+      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
+      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+
+      val tests = List(
+        compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v1/A.scala", tastyErrorOptions.withClasspath(classC))(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v1/B.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA1))(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v0/A.scala", tastyErrorOptions.withClasspath(classC))(using tastyErrorGroup),
+      ).map(_.keepOutput.checkCompile())
+
+      compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }

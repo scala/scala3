@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/sep-lazyListState.scala:13:14 -------------------------------------------------
+13 |    def tail: LazyListIterable[A]^ = tl // error
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |    Separation failure: method tail's result type LazyListIterable[A]^ hides non-local this of class class Cons.
+   |    The access must be in a consume method to allow this.

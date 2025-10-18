@@ -33,12 +33,12 @@ class ScannerTest extends DottyTest {
   def scanDir(path: String): Unit = scanDir(Directory(path))
 
   def scanDir(dir: Directory): Unit = {
-    if (excluded exists (dir.jpath.toString endsWith _))
+    if excluded.exists(dir.jpath.toString.endsWith(_)) then
       println(s"excluded package: ${dir.toAbsolute.jpath}")
     else
       for (f <- dir.files)
         if (f.name.endsWith(".scala"))
-          if (excluded exists (f.jpath.toString endsWith _))
+          if excluded.exists(f.jpath.toString.endsWith(_)) then
             println(s"excluded file: ${f.toAbsolute.jpath}")
           else
             scan(new PlainFile(f))

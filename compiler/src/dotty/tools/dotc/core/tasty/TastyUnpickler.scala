@@ -3,8 +3,6 @@ package core
 package tasty
 
 import java.util.UUID
-import scala.language.unsafeNulls
-
 import dotty.tools.tasty.{TastyFormat, TastyVersion, TastyBuffer, TastyReader, TastyHeaderUnpickler, UnpicklerConfig}
 import dotty.tools.tasty.besteffort.{BestEffortTastyHeader, BestEffortTastyHeaderUnpickler}
 

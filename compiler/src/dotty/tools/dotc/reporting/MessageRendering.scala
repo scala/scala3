@@ -8,10 +8,11 @@ import java.lang.System.{lineSeparator => EOL}
 
 import core.Contexts.*
 import core.Decorators.*
+import io.AbstractFile
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
-import util.{ SourcePosition, NoSourcePosition }
+import util.{SourcePosition, NoSourcePosition}
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
@@ -158,9 +159,12 @@ trait MessageRendering {
       .mkString(EOL)
   }
 
+  // file.path or munge it to normalize for testing
+  protected def renderPath(file: AbstractFile): String = file.path
+
   /** The source file path, line and column numbers from the given SourcePosition */
   protected def posFileStr(pos: SourcePosition): String =
-    val path = pos.source.file.path
+    val path = renderPath(pos.source.file)
     if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
 
   /** The separator between errors containing the source file and error type
@@ -243,14 +247,28 @@ trait MessageRendering {
     given Level = Level(level)
     given Offset = Offset(maxLineNumber.toString.length + 2)
     val sb = StringBuilder()
-    val posString = posStr(pos, msg, diagnosticLevel(dia))
+    def adjust(pos: SourcePosition): SourcePosition =
+      if pos.span.isSynthetic
+      && pos.span.isZeroExtent
+      && pos.span.exists
+      && pos.span.start == pos.source.length
+      && pos.source(pos.span.start - 1) == '\n'
+      then
+        pos.withSpan(pos.span.shift(-1))
+      else
+        pos
+    val adjusted = adjust(pos)
+    val posString = posStr(adjusted, msg, diagnosticLevel(dia))
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
       val pos1 = pos.nonInlined
       if (pos1.exists && pos1.source.file.exists) {
-        val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-        val marker = positionMarker(pos1)
-        val err = errorMsg(pos1, msg.message)
+        val readjusted =
+          if pos1 == pos then adjusted
+          else adjust(pos1)
+        val (srcBefore, srcAfter, offset) = sourceLines(readjusted)
+        val marker = positionMarker(readjusted)
+        val err = errorMsg(readjusted, msg.message)
         sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
         if inlineStack.nonEmpty then

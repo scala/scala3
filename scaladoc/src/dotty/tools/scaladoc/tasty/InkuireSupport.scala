@@ -315,6 +315,8 @@ trait InkuireSupport(using DocContext) extends Resources:
         inner(tpe, vars) //TODO [Inkuire] Repeated types
       case AnnotatedType(tpe, _) =>
         inner(tpe, vars)
+      case FlexibleType(tpe) =>
+        inner(tpe, vars)
       case tl @ TypeLambda(paramNames, _, resType) =>
         Inkuire.TypeLambda(paramNames.map(Inkuire.TypeLambda.argument), inner(resType, vars)) //TODO [Inkuire] Type bounds
       case pt @ PolyType(paramNames, _, resType) =>

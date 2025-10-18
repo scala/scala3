@@ -39,6 +39,10 @@ object FooGiven:
 
   val foo = summon[Int]
 
+object SomeGivenImports:
+  given Int = 0
+  given String = "foo"
+
 /**
  * Import used as type name are considered
  * as used.
@@ -69,7 +73,7 @@ object InlineChecks:
   object InlinedBar:
     import collection.mutable.Set // warn (don't be fooled by inline expansion)
     import collection.mutable.Map // warn
-    val a = InlineFoo.getSet
+    val a = InlineFoo.getSet      // expansion is attributed mutable.Set.apply(1)
 
 object MacroChecks:
   object StringInterpol:
@@ -85,18 +89,12 @@ object InnerMostCheck:
     val a = Set(1)
 
 object IgnoreExclusion:
-  import collection.mutable.{Set => _} // OK
-  import collection.mutable.{Map => _} // OK
+  import collection.mutable.{Map => _, Set => _, *} // OK??
   import collection.mutable.{ListBuffer} // warn
   def check =
     val a = Set(1)
     val b = Map(1 -> 2)
-/**
-  * Some given values for the test
-  */
-object SomeGivenImports:
-  given Int = 0
-  given String = "foo"
+    def c = Seq(42)
 
 /* BEGIN : Check on packages*/
 package nestedpackageimport:
@@ -328,3 +326,143 @@ package i22692:
 
   type b = AbstractButton
   type t = swingEvent.AncestorListener
+
+package ancient:
+  package p {
+    class Bippo {
+      def length: Int = 123
+      class Tree
+    }
+  }
+
+  package object p1 {
+    import p._
+    class A
+    implicit class B(val s: String) { def bippy = s }
+    val c: Bippo = new Bippo
+    type D = String
+  }
+  package object p2 {
+    import p._
+    class A
+    implicit class B(val s: String) { def bippy = s }
+    val c: Bippo = new Bippo
+    type D = Int
+  }
+
+  trait NoWarn {
+    {
+      import p1._ // no warn
+      println("abc".bippy)
+    }
+
+    {
+      import p1._ // no warn
+      println(new A)
+    }
+
+    {
+      import p1.B // no warn
+      println("abc".bippy)
+    }
+
+    {
+      import p1._ // no warn
+      import c._  // no warn
+      println(length)
+    }
+
+    {
+      import p1._ // no warn
+      import c._  // no warn
+      val x: Tree = null
+      println(x)
+    }
+
+    {
+      import p1.D // no warn
+      val x: D = null
+      println(x)
+    }
+  }
+
+  trait Warn {
+    {
+      import p1.A // warn
+      println(123)
+    }
+
+    {
+      import p1.{ A, B } // warn on A
+      println("abc".bippy)
+    }
+
+    {
+      import p1.{ A, B } //warn // warn on both
+      println(123)
+    }
+
+    {
+      import p1._ // no warn (technically this could warn, but not worth the effort to unroll unusedness transitively)
+      import c._  // warn
+      println(123)
+    }
+
+    {
+      import p1._ // warn
+      println(123)
+    }
+
+    {
+      class Tree
+      import p1._ // no warn
+      import c._  // warn
+      val x: Tree = null
+      println(x)
+    }
+
+    {
+      import p1.c._  // warn
+      println(123)
+    }
+  }
+
+  trait Nested {
+    {
+      import p1._   // warn
+      trait Warn {
+        import p2.*
+        println(new A)
+        println("abc".bippy)
+      }
+      println("")
+    }
+
+    {
+      import p1._   // no warn
+      trait NoWarn {
+        import p2.B  // no warn
+        println("abc".bippy)
+        println(new A)
+      }
+      println(new NoWarn { })
+    }
+
+    {
+      import p1.A   // warn
+      trait Warn {
+        import p2.A
+        println(new A)
+      }
+      println(new Warn { })
+    }
+  }
+end ancient
+
+object `i22970 assign lhs was ignored`:
+  object X:
+    var global = 0
+  object Main:
+    import X.global // no warn
+    def main(args: Array[String]): Unit =
+      global = 1

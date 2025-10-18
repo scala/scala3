@@ -22,6 +22,7 @@ import scala.collection.mutable
 
 import QuoteUtils.*
 import dotty.tools.io.NoAbstractFile
+import dotty.tools.dotc.ast.TreeMapWithImplicits
 
 object PickledQuotes {
   import tpd.*
@@ -99,7 +100,7 @@ object PickledQuotes {
 
   /** Replace all term holes with the spliced terms */
   private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    def evaluateHoles = new TreeMapWithPreciseStatContexts {
+    def evaluateHoles = new TreeMapWithImplicits {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {

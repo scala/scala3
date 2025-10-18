@@ -1,0 +1,2 @@
+@deprecated
+class DeprecatedAnnotation extends annotation.StaticAnnotation

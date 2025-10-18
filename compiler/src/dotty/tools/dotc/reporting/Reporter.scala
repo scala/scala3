@@ -95,6 +95,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private var _errorCount = 0
   private var _warningCount = 0
+  private var _infoCount = 0
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -112,11 +113,16 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private var warnings: List[Warning] = Nil
 
+  private var infos: List[Info] = Nil
+
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
 
   /** All warnings reported by this reporter (ignoring outer reporters) */
   def allWarnings: List[Warning] = warnings
+
+  /** All infos reported by this reporter (ignoring outer reporters) */
+  def allInfos: List[Info] = infos
 
   /** Were sticky errors reported? Overridden in StoreReporter. */
   def hasStickyErrors: Boolean = false
@@ -171,7 +177,9 @@ abstract class Reporter extends interfaces.ReporterResult {
             _errorCount += 1
             if ctx.typerState.isGlobalCommittable then
               ctx.base.errorsToBeReported = true
-          case _: Info    => // nothing to do here
+          case i: Info    =>
+            infos = i :: infos
+            _infoCount += 1
           // match error if d is something else
         }
         markReported(dia)
@@ -216,7 +224,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     incompleteHandler(dia, ctx)
 
   def finalizeReporting()(using Context) =
-    if (hasWarnings && ctx.settings.XfatalWarnings.value)
+    if (hasWarnings && ctx.settings.Werror.value)
       report(new Error("No warnings can be incurred under -Werror (or -Xfatal-warnings)", NoSourcePosition))
 
   /** Summary of warnings and errors */

@@ -41,8 +41,8 @@ object StdNames {
     inline val Product                    = "Product"
 
     @sharable
-    private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
-    def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
+    private val disallowed = java.util.regex.Pattern.compile("""[<>]""")
+    def sanitize(str: String): String = disallowed.matcher(str).replaceAll("""\$""")
   }
 
   abstract class DefinedNames[N <: Name] {
@@ -120,8 +120,6 @@ object StdNames {
     val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
-    val CC_REACH: N                   = "$reach"
-    val CC_READONLY: N                = "$readOnly"
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -132,7 +130,6 @@ object StdNames {
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPORT: N                     = "<import>"
-    val INTO: N                       = "$into"
     val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
@@ -397,6 +394,7 @@ object StdNames {
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
     val Tuple2: N               = "Tuple2"
+    val Tuple: N                = "Tuple"
     val TYPE_ : N               = "TYPE"
     val TypeApply: N            = "TypeApply"
     val TypeRef: N              = "TypeRef"
@@ -445,7 +443,6 @@ object StdNames {
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
     val caps: N                 = "caps"
-    val capsOf: N               = "capsOf"
     val captureChecking: N      = "captureChecking"
     val checkInitialized: N     = "checkInitialized"
     val classOf: N              = "classOf"
@@ -457,6 +454,7 @@ object StdNames {
     val compiletime : N         = "compiletime"
     val compose: N              = "compose"
     val conforms_ : N           = "$conforms"
+    val consume: N              = "consume"
     val contents: N             = "contents"
     val copy: N                 = "copy"
     val create: N               = "create"
@@ -472,6 +470,7 @@ object StdNames {
     val doubleHash: N           = "doubleHash"
     val dotty: N                = "dotty"
     val drop: N                 = "drop"
+    val dropRight: N            = "dropRight"
     val dynamics: N             = "dynamics"
     val elem: N                 = "elem"
     val elems: N                = "elems"
@@ -533,6 +532,7 @@ object StdNames {
     val isEmpty: N              = "isEmpty"
     val isInstanceOf_ : N       = "isInstanceOf"
     val isInstanceOfPM: N       = "$isInstanceOf$"
+    val isSameLabelAs : N       = "isSameLabelAs"
     val java: N                 = "java"
     val key: N                  = "key"
     val label: N                = "label"
@@ -549,13 +549,12 @@ object StdNames {
     val ManifestFactory: N      = "ManifestFactory"
     val manifestToTypeTag: N    = "manifestToTypeTag"
     val map: N                  = "map"
-    val maybeCapability: N      = "maybeCapability"
     val materializeClassTag: N  = "materializeClassTag"
     val materializeWeakTypeTag: N = "materializeWeakTypeTag"
     val materializeTypeTag: N   = "materializeTypeTag"
+    val maybeCapability: N      = "maybeCapability"
     val mirror : N              = "mirror"
     val moduleClass : N         = "moduleClass"
-    val mut: N                  = "mut"
     val name: N                 = "name"
     val nameDollar: N           = "$name"
     val ne: N                   = "ne"
@@ -565,6 +564,7 @@ object StdNames {
     val next: N                 = "next"
     val nmeNewTermName: N       = "newTermName"
     val nmeNewTypeName: N       = "newTypeName"
+    val nn: N                   = "nn"
     val noAutoTupling: N        = "noAutoTupling"
     val normalize: N            = "normalize"
     val notifyAll_ : N          = "notifyAll"
@@ -572,6 +572,7 @@ object StdNames {
     val null_ : N               = "null"
     val ofDim: N                = "ofDim"
     val on: N                   = "on"
+    val only: N                 = "only"
     val opaque: N               = "opaque"
     val open: N                 = "open"
     val ordinal: N              = "ordinal"
@@ -619,6 +620,7 @@ object StdNames {
     val setSymbol: N            = "setSymbol"
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
+    val spread: N               = "spread"
     val standardInterpolator: N = "standardInterpolator"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"
@@ -801,6 +803,7 @@ object StdNames {
     val takeModulo: N             = "takeModulo"
     val takeNot: N                = "takeNot"
     val takeOr: N                 = "takeOr"
+    val takeRight: N              = "takeRight"
     val takeXor: N                = "takeXor"
     val testEqual: N              = "testEqual"
     val testGreaterOrEqualThan: N = "testGreaterOrEqualThan"

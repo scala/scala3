@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import scala.language.unsafeNulls
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
@@ -54,7 +53,7 @@ object Splicer {
         inContext(sliceContext) {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
-          try ctx.profiler.onMacroSplice(owner){
+          try {
             val interpreter = new SpliceInterpreter(splicePos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree

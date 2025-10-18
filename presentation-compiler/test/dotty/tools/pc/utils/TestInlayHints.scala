@@ -36,7 +36,7 @@ object TestInlayHints {
       InlayHints.fromData(inlayHint.getData().asInstanceOf[JsonElement])._2
     buffer += "/*"
     labels.zip(data).foreach { case (label, data) =>
-      buffer += label.nn
+      buffer += label
       buffer ++= readData(data)
     }
     buffer += "*/"

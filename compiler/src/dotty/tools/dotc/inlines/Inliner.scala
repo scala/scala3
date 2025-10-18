@@ -44,7 +44,7 @@ object Inliner:
          | DefDef(_, _, _, _) =>
         true
       case vdef @ ValDef(_, _, _) =>
-        if (vdef.symbol.flags is Mutable) false else apply(vdef.rhs)
+        if vdef.symbol.flags.is(Mutable) then false else apply(vdef.rhs)
       case _ =>
         false
     }
@@ -58,12 +58,12 @@ object Inliner:
       case Ident(_) =>
         isPureRef(tree) || tree.symbol.isAllOf(InlineParam)
       case Select(qual, _) =>
-        if (tree.symbol.is(Erased)) true
+        if tree.symbol.isErased then true
         else isPureRef(tree) && apply(qual)
       case New(_) | Closure(_, _, _) =>
         true
       case TypeApply(fn, _) =>
-        if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of) true else apply(fn)
+        if fn.symbol.isErased || fn.symbol == defn.QuotedTypeModule_of then true else apply(fn)
       case Apply(fn, args) =>
         val isCaseClassApply = {
           val cls = tree.tpe.classSymbol
@@ -96,6 +96,15 @@ object Inliner:
     }
   end isElideableExpr
 
+  // InlineCopier is a more fault-tolerant copier that does not cause errors when
+  // function types in applications are undefined. This is necessary since we copy at
+  // the same time as establishing the proper context in which the copied tree should
+  // be evaluated. This matters for opaque types, see neg/i14653.scala.
+  private class InlineCopier() extends TypedTreeCopier:
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
+      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
+
   // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
   // They are generally left alone (not mapped further, and if they wrap a type
   // the type Inlined wrapper gets dropped.
@@ -108,13 +117,7 @@ object Inliner:
       substFrom: List[Symbol],
       substTo: List[Symbol])(using Context)
     extends TreeTypeMap(
-      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo,
-      // It is necessary to use the `ConservativeTreeCopier` since we copy at
-      // the same time as establishing the proper context in which the copied
-      // tree should be evaluated. This matters for opaque types, see
-      // neg/i14653.scala.
-      ConservativeTreeCopier()
-    ):
+      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
     override def transform(tree: Tree)(using Context): Tree =
       tree match
@@ -162,28 +165,9 @@ object Inliner:
           else Nil
         case _ => Nil
       val refinements = openOpaqueAliases(cls.givenSelfType)
-
-      // Map references in the refinements from the proxied termRef
-      // to the recursive type of the refined type
-      // e.g.: Obj.type{type A = Obj.B; type B = Int} -> Obj.type{type A = <recthis>.B; type B = Int}
-      def mapRecTermRefReferences(recType: RecType, refinedType: Type) =
-        new TypeMap {
-          def apply(tp: Type) = tp match
-            case RefinedType(a: RefinedType, b, info) => RefinedType(apply(a), b, apply(info))
-            case RefinedType(a, b, info) => RefinedType(a, b, apply(info))
-            case TypeRef(prefix, des) => TypeRef(apply(prefix), des)
-            case termRef: TermRef if termRef == ref => recType.recThis
-            case _ => mapOver(tp)
-        }.apply(refinedType)
-
       val refinedType = refinements.foldLeft(ref: Type): (parent, refinement) =>
         RefinedType(parent, refinement._1, TypeAlias(refinement._2))
-
-      val recType = RecType.closeOver ( recType =>
-        mapRecTermRefReferences(recType, refinedType)
-      )
-
-      val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, recType, span)
+      val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, refinedType, span)
       refiningSym.termRef
 
     def unapply(refiningRef: TermRef)(using Context): Option[TermRef] =
@@ -402,15 +386,17 @@ class Inliner(val call: tpd.Tree)(using Context):
    */
   private val opaqueProxies = new mutable.ListBuffer[(TermRef, TermRef)]
 
-  /** TermRefs for which we already started synthesising proxies */
-  private val visitedTermRefs = new mutable.HashSet[TermRef]
-
   protected def hasOpaqueProxies = opaqueProxies.nonEmpty
 
   /** Map first halves of opaqueProxies pairs to second halves, using =:= as equality */
   private def mapRef(ref: TermRef): Option[TermRef] =
     opaqueProxies.collectFirst {
       case (from, to) if from.symbol == ref.symbol && from =:= ref => to
+    }
+
+  private def mapRefBack(ref: TermRef): Option[TermRef] =
+    opaqueProxies.collectFirst {
+      case (from, to) if to.symbol == ref.symbol && to =:= ref => from
     }
 
   /** If `tp` contains TermRefs that refer to objects with opaque
@@ -432,15 +418,12 @@ class Inliner(val call: tpd.Tree)(using Context):
         for cls <- ref.widen.baseClasses do
           if cls.containsOpaques
              && (forThisProxy || inlinedMethod.isContainedIn(cls))
-             && !visitedTermRefs.contains(ref)
+             && mapRef(ref).isEmpty
           then
-            visitedTermRefs += ref
             val refiningRef = OpaqueProxy(ref, cls, call.span)
             val refiningSym = refiningRef.symbol.asTerm
             val refinedType = refiningRef.info
-            val refiningDef = addProxiesForRecurrentOpaques(
-              ValDef(refiningSym, tpd.ref(ref).cast(refinedType), inferred = true).withSpan(span)
-            )
+            val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType), inferred = true).withSpan(span)
             inlining.println(i"add opaque alias proxy $refiningDef for $ref in $tp")
             bindingsBuf += refiningDef
             opaqueProxies += ((ref, refiningSym.termRef))
@@ -460,26 +443,21 @@ class Inliner(val call: tpd.Tree)(using Context):
           }
     )
 
-  /** Transforms proxies that reference other opaque types, like for:
-   * object Obj1 { opaque type A = Int }
-   * object Obj2 { opaque type B = A }
-   * and proxy$1 of type Obj2.type{type B = Obj1.A}
-   * creates proxy$2 of type Obj1.type{type A = Int}
-   * and transforms proxy$1 into Obj2.type{type B = proxy$2.A}
+  /** Map back all TermRefs that match the right element in `opaqueProxies` to the
+   *  corresponding left element.
+   *  E.g. for a previously created
+   *   `val proxy$1 = Time {type OpaqueInt = Int}` as part of the ongoing inlining
+   *  a `List[proxy$1.OpaqueInt]` will be mapped back into a `List[Time.OpaqueInt]`.
    */
-  private def addProxiesForRecurrentOpaques(binding: ValDef)(using Context): ValDef =
-    def fixRefinedTypes(ref: Type): Unit  =
-      ref match
-        case recType: RecType => fixRefinedTypes(recType.underlying)
-        case RefinedType(parent, name, info) =>
-          addOpaqueProxies(info.widen, binding.span, true)
-          fixRefinedTypes(parent)
-        case _ =>
-    fixRefinedTypes(binding.symbol.info)
-    binding.symbol.info = mapOpaques.typeMap(binding.symbol.info)
-    mapOpaques.transform(binding).asInstanceOf[ValDef]
-      .showing(i"transformed this binding exposing opaque aliases: $result", inlining)
-  end addProxiesForRecurrentOpaques
+  protected val mapBackToOpaques = TreeTypeMap(
+    typeMap = new TypeMap:
+      override def stopAt = StopAt.Package
+      def apply(t: Type) = mapOver {
+        t match
+          case ref: TermRef => mapRefBack(ref).getOrElse(ref)
+          case _ => t
+      }
+  )
 
   /** If `binding` contains TermRefs that refer to objects with opaque
    *  type aliases, add proxy definitions that expose these aliases
@@ -529,6 +507,48 @@ class Inliner(val call: tpd.Tree)(using Context):
     || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && inlinedMethod.isContainedIn(tpe.cls))
 
   private def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
+
+  def thisTypeProxyExists = !thisProxy.isEmpty
+
+  /** Maps a type that includes a thisProxy (e.g. `TermRef(NoPrefix,val Foo$_this)`)
+   *  by reading the defTree belonging to that thisProxy (`val Foo$_this: Foo.type = AnotherProxy`)
+   *  back into its original reference (`AnotherProxy`, which is directly or indirectly a refinement on `Foo`)
+   *
+   *  Usually when we end up with another proxy like this, we will be able to further unwrap it back
+   *  into `Foo` with mapBackToOpaques, but, for nested transparent inline calls, `AnotherProxy` will be
+   *  a proxy created by inlining the outer calls, that we might not be able to further unwrap this way
+   *  (as those proxies will not be a part of opaqueProxies created during this inlining).
+   *  We leave that as it is and treat this behavior as intended (see documentation with an example in
+   *  `Opaque Types in Transparent Inline Methods` section in `opaques-details.md`),
+   *  as we might need those opaques to have visible right hand sides for successful
+   *  typechecking of the outer inline call.
+   */
+  val thisTypeUnpacker =
+    TreeTypeMap(
+      typeMap = new TypeMap:
+        override def stopAt = StopAt.Package
+        def apply(t: Type) = mapOver {
+          t match
+            case a: TermRef if thisProxy.values.exists(_ == a) =>
+              a.termSymbol.defTree match
+                case untpd.ValDef(a, tpt, _) => tpt.tpe
+            case _ => t
+        }
+  )
+
+  /** Returns the result type of the Inlined code block after removing thisProxy and opaqueProxy TermRefs.
+   *  E.g. for an Inlined tree returning Block of type `Option[Foo$_this.OpaqueInt]`,
+   *  and for proxies:
+   *  ```
+   *  val $proxy1: Foo.type{type OpaqueInt = Int} = = ...
+   *  val Foo$_this: ($proxy1 : Foo.type{type OpaqueInt = Int}) = ...
+   *  ```
+   *  the method will return: `Foo.OpaqueInt`
+   */
+  def unpackProxiesFromResultType(inlined: Inlined): Type =
+    if thisTypeProxyExists then mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+    else inlined.tpe
+
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
@@ -726,7 +746,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         // call. This way, a defensively written rewrite method can always
         // report bad inputs at the point of call instead of revealing its internals.
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
-        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
+        val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next()
         // The context in which we report should still use the existing context reporter
         val ctxOrigReporter = ctxToReport.fresh.setReporter(ctx.reporter)
         inContext(ctxOrigReporter) {
@@ -1187,9 +1207,9 @@ class Inliner(val call: tpd.Tree)(using Context):
         else
           ctx.compilationUnit.suspend(hints.nn.toList.mkString(", ")) // this throws a SuspendException
 
-    val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
-      Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
-    }
+    val evaluatedSplice =
+      inContext(quoted.MacroExpansion.context(inlinedFrom)):
+        Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
     val inlinedNormalizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case tree @ Inlined(_, Nil, expr) if tree.inlinedFromOuterScope && enclosingInlineds.isEmpty => transform(expr)

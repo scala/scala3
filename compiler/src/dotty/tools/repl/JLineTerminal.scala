@@ -82,6 +82,10 @@ class JLineTerminal extends java.io.Closeable {
 
   def close(): Unit = terminal.close()
 
+  /** Register a signal handler and return the previous handler */
+  def handle(signal: org.jline.terminal.Terminal.Signal, handler: org.jline.terminal.Terminal.SignalHandler): org.jline.terminal.Terminal.SignalHandler =
+    terminal.handle(signal, handler)
+
   /** Provide syntax highlighting */
   private class Highlighter(using Context) extends reader.Highlighter {
     def highlight(reader: LineReader, buffer: String): AttributedString = {
@@ -106,7 +110,7 @@ class JLineTerminal extends java.io.Closeable {
     ) extends reader.ParsedLine {
       // Using dummy values, not sure what they are used for
       def wordIndex = -1
-      def words = java.util.Collections.emptyList[String]
+      def words: java.util.List[String] = java.util.Collections.emptyList[String]
     }
 
     def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine = {

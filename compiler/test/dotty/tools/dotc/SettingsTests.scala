@@ -1,8 +1,6 @@
 package dotty.tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import reporting.StoreReporter
 import vulpix.TestConfiguration
 
@@ -205,7 +203,7 @@ class SettingsTests {
     }
 
   @Test def `Output setting is overriding existing jar`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
@@ -220,11 +218,11 @@ class SettingsTests {
 
       assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
 
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
 
   @Test def `Output setting is respecting previous setting`: Unit =
     val result = Using.resources(
-      Files.createTempFile("myfile", ".jar").nn, Files.createTempFile("myfile2", ".jar").nn
+      Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
     ){ (file1, file2) =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
@@ -247,10 +245,10 @@ class SettingsTests {
       assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
       assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
 
-    }(Files.deleteIfExists(_), Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_), Files.deleteIfExists(_))
 
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
@@ -265,7 +263,7 @@ class SettingsTests {
 
       assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
 
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
 
   @Test def `Arguments of flags are correctly parsed with both ":" and " " separating`: Unit =
     object Settings extends SettingGroup:
@@ -321,7 +319,7 @@ class SettingsTests {
       testValues(summary = summaryColon)
       testValues(summary = summaryWhitespace)
 
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
 
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 

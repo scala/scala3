@@ -1,6 +1,6 @@
 import annotation.{capability, constructorOnly}
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 class C(x: Cap, @constructorOnly y: Cap)
 
@@ -19,6 +19,6 @@ def test(a: Cap, b: Cap) =
       println(b)
       2
   val d = () => new D()
-  val d_ok1: () ->{a, b} D^{a, b} = d
-  val d_ok2: () -> D^{a, b} = d  // because of function shorthand
-  val d_ok3: () ->{a, b} D^{b} = d // error, but should work
+  val d_ok1: () ->{a, b} D^{a, b} = d // ok
+  val d_ok2: () ->{a} D^{b} = d  // ok
+  val d_ok3: () -> D^{a, b} = d // error

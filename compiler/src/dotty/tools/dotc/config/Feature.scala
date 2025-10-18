@@ -28,19 +28,23 @@ object Feature:
 
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
+  val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val separationChecking = experimental("separationChecking")
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val packageObjectValues = experimental("packageObjectValues")
+  val multiSpreads = experimental("multiSpreads")
+  val subCases = experimental("subCases")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
-      .filterNot(_ == captureChecking) // TODO is this correct?
+      .filterNot(sym => sym == captureChecking || sym == separationChecking) // TODO is this correct?
 
   val values = List(
     (nme.help, "Display all available features"),
@@ -56,12 +60,15 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
+    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
+    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
     (into, "Allow into modifier on parameter types"),
-    (modularity, "Enable experimental modularity features")
+    (modularity, "Enable experimental modularity features"),
+    (packageObjectValues, "Enable experimental package objects as values"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -132,7 +139,7 @@ object Feature:
   /** Is captureChecking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
-    || ctx.compilationUnit.needsCaptureChecking
+    || ctx.originalCompilationUnit.needsCaptureChecking
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -152,6 +159,10 @@ object Feature:
     ctx.compilationUnit.sourceVersion match
       case Some(v) => v
       case none => sourceVersionSetting
+
+  /* Should we behave as scala 2?*/
+  def shouldBehaveAsScala2(using Context): Boolean =
+    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`

@@ -60,7 +60,7 @@ jobs:
     needs: build-chocolatey
     with:
       version     : ${{ inputs.version }}
-      java-version: 8
+      java-version: 17
   publish-chocolatey:
     uses: ./.github/workflows/publish-chocolatey.yml
     needs: [ build-chocolatey, test-chocolatey ]

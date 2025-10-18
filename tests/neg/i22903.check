@@ -1,0 +1,4 @@
+-- [E215] Pattern Match Error: tests/neg/i22903.scala:18:21 ------------------------------------------------------------
+18 |    case ProductMatch(someName = x) => println (x) // error
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         Named patterns cannot be used with CustomProduct, because it is not a named tuple or case class

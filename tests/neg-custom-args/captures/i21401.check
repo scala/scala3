@@ -1,25 +1,65 @@
 -- Error: tests/neg-custom-args/captures/i21401.scala:13:14 ------------------------------------------------------------
 13 |    op1(Boxed[IO^](x)) // error
    |              ^^^
-   |              Type variable T of object Boxed cannot be instantiated to box IO^ since
+   |              Type variable T of object Boxed cannot be instantiated to IO^ since
    |              that type captures the root capability `cap`.
+   |
+   |              where:    ^ refers to the universal root capability
 -- Error: tests/neg-custom-args/captures/i21401.scala:15:18 ------------------------------------------------------------
-15 |  val a = usingIO[IO^](x => x) // error
+15 |  val a = usingIO[IO^](x => x) // error // error
    |                  ^^^
-   |                  Type variable R of method usingIO cannot be instantiated to box IO^ since
+   |                  Type variable R of method usingIO cannot be instantiated to IO^ since
    |                  that type captures the root capability `cap`.
+   |
+   |                  where:    ^ refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:15:23 ---------------------------------------
+15 |  val a = usingIO[IO^](x => x) // error // error
+   |                       ^^^^^^
+   |Found:    (x: IO^'s1) ->'s2 IO^{x}
+   |Required: IO^ => IO^²
+   |
+   |Note that capability x is not included in capture set {cap}
+   |because (x : IO^'s1) is not visible from cap in value a.
+   |
+   |where:    =>         refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
+   |          ^          refers to the universal root capability
+   |          ^² and cap refer to a fresh root capability created in value a when checking argument to parameter op of method usingIO
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
 16 |  val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error
    |                                                                  ^^^
-   | Type variable R of method usingIO cannot be instantiated to [R, X <: Boxed[box IO^] -> R] => (op: X) -> R since
-   | the part box IO^ of that type captures the root capability `cap`.
+   |     Type variable R of method usingIO cannot be instantiated to [R, X <: Boxed[IO^] -> R] => (op: X) -> R since
+   |     the part IO^ of that type captures the root capability `cap`.
+   |
+   |     where:    ^ refers to the universal root capability
 -- Error: tests/neg-custom-args/captures/i21401.scala:17:29 ------------------------------------------------------------
-17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error
+17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
    |                             ^^^^^^^^^^
-   |                             Type variable R of value leaked cannot be instantiated to Boxed[box IO^] since
-   |                             the part box IO^ of that type captures the root capability `cap`.
+   |                             Type variable R of value leaked cannot be instantiated to Boxed[IO^] since
+   |                             the part IO^ of that type captures the root capability `cap`.
+   |
+   |                             where:    ^ refers to the universal root capability
 -- Error: tests/neg-custom-args/captures/i21401.scala:17:52 ------------------------------------------------------------
-17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error
+17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^
-   |                Type variable X of value leaked cannot be instantiated to Boxed[box IO^] -> Boxed[box IO^] since
-   |                the part box IO^ of that type captures the root capability `cap`.
+   |                        Type variable X of value leaked cannot be instantiated to Boxed[IO^] -> Boxed[IO^] since
+   |                        the part IO^ of that type captures the root capability `cap`.
+   |
+   |                        where:    ^ refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:67 ---------------------------------------
+17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
+   |                                                                   ^^^^^^
+   |Found:    (x: Boxed[IO^]^'s3) ->'s4 Boxed[IO^²]
+   |Required: Boxed[IO^] -> Boxed[IO^³]
+   |
+   |Note that capability cap is not included in capture set {cap²}
+   |because cap is not visible from cap² in value x².
+   |
+   |where:    ^           refers to the universal root capability
+   |          ^² and cap  refer to a root capability associated with the result type of (x: Boxed[IO^]^'s3): Boxed[IO^²]
+   |          ^³ and cap² refer to a fresh root capability created in value x²
+   |          x           is a reference to a value parameter
+   |          x²          is a value in method test2
+   |
+   | longer explanation available when compiling with `-explain`

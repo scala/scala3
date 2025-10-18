@@ -132,7 +132,6 @@ abstract class AccessProxies {
       *  access with a reference to the accessor.
       *
       *  @param reference    The original reference to the non-public symbol
-      *  @param onLHS        The reference is on the left-hand side of an assignment
       */
     def useAccessor(reference: RefTree)(using Context): Tree = {
       val accessed = reference.symbol.asTerm
@@ -141,8 +140,13 @@ abstract class AccessProxies {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameOf(accessed.name, accessorClass)
+        val mappedInfo = accessed.info match
+          // TypeRef pointing to module class seems to not be stable, so we remap that to a TermRef
+          // see test i22593.scala (and issue #i22593)
+          case tref @ TypeRef(prefix, _) if tref.symbol.is(Module) => TermRef(prefix, tref.symbol.companionModule)
+          case other => other
         val accessorInfo =
-          accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
+          mappedInfo.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
         rewire(reference, accessor)
       }

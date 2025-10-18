@@ -1,0 +1,20 @@
+-- [E198] Unused Symbol Warning: tests/warn/i23704.scala:9:8 -----------------------------------------------------------
+9 |    var position: Int = 0 // warn position is assigned but not read
+  |        ^^^^^^^^
+  |        private variable was mutated but not read
+-- [E198] Unused Symbol Warning: tests/warn/i23704.scala:16:14 ---------------------------------------------------------
+16 |  private var myvar: Int = 0 // warn for the same case with simpler syntax
+   |              ^^^^^
+   |              private variable was mutated but not read
+-- [E198] Unused Symbol Warning: tests/warn/i23704.scala:26:8 ----------------------------------------------------------
+26 |    var localvar = 0 // warn local variable was mutated but not read
+   |        ^^^^^^^^
+   |        local variable was mutated but not read
+-- [E198] Unused Symbol Warning: tests/warn/i23704.scala:33:8 ----------------------------------------------------------
+33 |    var settable: Int = 0 // warn private variable was mutated but not read
+   |        ^^^^^^^^
+   |        private variable was mutated but not read
+-- [E198] Unused Symbol Warning: tests/warn/i23704.scala:39:14 ---------------------------------------------------------
+39 |  private var myvar: Int = 0 // warn plain unused
+   |              ^^^^^
+   |              unused private member

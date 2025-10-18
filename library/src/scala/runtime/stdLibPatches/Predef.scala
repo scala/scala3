@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.language.experimental.captureChecking
+
 import scala.annotation.experimental
 import scala.annotation.internal.RuntimeChecked
 
@@ -56,12 +58,12 @@ object Predef:
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `eq` rather than only `==`. This is needed because `Null` no longer has
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
-    inline def eq(inline y: AnyRef | Null): Boolean =
+    inline infix def eq(inline y: AnyRef | Null): Boolean =
       x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `ne` rather than only `!=`. This is needed because `Null` no longer has
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
-    inline def ne(inline y: AnyRef | Null): Boolean =
+    inline infix def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
 
   extension (opt: Option.type)
@@ -93,7 +95,6 @@ object Predef:
      * val y :: ys = xs.runtimeChecked // `_ :: _` can be checked at runtime, so no warning
      * }}}
      */
-    @experimental
     inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
 
 end Predef

@@ -1,4 +1,7 @@
 package scala
+
+import language.experimental.captureChecking
+
 import annotation.experimental
 import language.experimental.erasedDefinitions
 
@@ -7,5 +10,5 @@ import language.experimental.erasedDefinitions
  *  in precise mode. This means that singleton types and union types are not
  *  widened.
  */
-@experimental erased trait Precise:
+@experimental trait Precise extends compiletime.Erased:
   type Self

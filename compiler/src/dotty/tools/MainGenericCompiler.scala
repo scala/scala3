@@ -1,7 +1,5 @@
 package dotty.tools
 
-import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.Try
@@ -87,7 +85,7 @@ case class CompileSettings(
 
 object MainGenericCompiler {
 
-  val classpathSeparator = File.pathSeparator
+  val classpathSeparator: String = File.pathSeparator
 
   @sharable val javaOption = raw"""-J(.*)""".r
   @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
@@ -133,9 +131,9 @@ object MainGenericCompiler {
       val tStopAtLvl="-XX:TieredStopAtLevel=1"
       println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
       process(tail, settings)
-    case javaOption(stripped) :: tail =>
+    case javaOption(stripped: String) :: tail =>
       process(tail, settings.withJavaArgs(stripped))
-    case javaPropOption(opt, value) :: tail =>
+    case javaPropOption(opt: String, value: String) :: tail =>
       process(tail, settings.withJavaProps(opt -> value))
     case arg :: tail =>
       process(tail, settings.withResidualArgs(arg))

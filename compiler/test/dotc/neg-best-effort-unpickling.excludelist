@@ -18,3 +18,15 @@ i18750.scala
 
 # Crash on invalid prefix ([A] =>> Int)
 i22357a.scala
+
+# `110 (of class java.lang.Integer)`
+context-function-syntax.scala
+
+# Failure to disambiguate overloaded reference
+i23402b.scala
+
+# Unhandled TypeError exception
+i23504.scala
+
+# owner of anon, where package object has funky name
+i20511-1.scala

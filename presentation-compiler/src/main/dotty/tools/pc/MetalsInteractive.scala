@@ -120,8 +120,9 @@ object MetalsInteractive:
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
-        if funSym.is(Synthetic) && funSym.owner.is(CaseClass) then
-          val sym = funSym.owner.info.member(name).symbol
+        lazy val owner = funSym.owner.companionClass
+        if funSym.is(Synthetic) && owner.is(CaseClass) then
+          val sym = owner.info.member(name).symbol
           List((sym, sym.info, None))
         else
           val paramSymbol =
@@ -130,12 +131,19 @@ object MetalsInteractive:
           val sym = paramSymbol.getOrElse(fn.symbol)
           List((sym, sym.info, None))
 
+      case NamedArg(name, _) :: UnApply(s, _, _) :: _ =>
+        lazy val owner = s.symbol.owner.companionClass
+        if s.symbol.is(Synthetic) && owner.is(CaseClass) then
+          val sym = owner.info.member(name).symbol
+          List((sym, sym.info, None))
+        else Nil
+
       case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
           (sym, sym.info, None)
         )
 
-      case (imp: Import) :: _ =>
+      case (imp: ImportOrExport) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
           (sym, sym.info, None)
         )
@@ -206,7 +214,7 @@ object MetalsInteractive:
       // Handle select on named tuples
       case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
         if fun.symbol.exists && fun.symbol.name == nme.apply &&
-            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
+            fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
           t.tpe.dealias match
             case AppliedType(_, args) => args.get(i)
@@ -230,13 +238,6 @@ object MetalsInteractive:
         if head.symbol.is(Exported) then
           val sym = head.symbol.sourceSymbol
           List((sym, sym.info, None))
-        else if head.symbol.is(Synthetic) then
-          enclosingSymbolsWithExpressionType(
-            tail,
-            pos,
-            indexed,
-            skipCheckOnName
-          )
         else if head.symbol != NoSymbol then
           if skipCheckOnName ||
             MetalsInteractive.isOnName(
@@ -245,6 +246,13 @@ object MetalsInteractive:
               indexed.ctx.source
             )
           then List((head.symbol, head.typeOpt, None))
+          else if head.symbol.is(Synthetic) then
+            enclosingSymbolsWithExpressionType(
+              tail,
+              pos,
+              indexed,
+              skipCheckOnName
+            )
           /* Type tree for List(1) has an Int type variable, which has span
            * but doesn't exist in code.
            * https://github.com/scala/scala3/issues/15937

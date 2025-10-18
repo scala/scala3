@@ -4,9 +4,6 @@
   |         Found:    (g : () -> A)
   |         Required: () -> Proc^{f}
   |
+  |         Note that capability f is not included in capture set {}.
+  |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/eta.scala:6:20 ----------------------------------------------------------------
-6 |         bar( () => f )  // error
-  |                    ^
-  |                    reference (f : Proc^) is not included in the allowed capture set {}
-  |                    of an enclosing function literal with expected type () -> box () ->? Unit

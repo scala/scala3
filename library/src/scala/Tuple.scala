@@ -1,5 +1,6 @@
 package scala
 
+// import language.experimental.captureChecking
 import annotation.showAsInfix
 import compiletime.*
 import compiletime.ops.int.*

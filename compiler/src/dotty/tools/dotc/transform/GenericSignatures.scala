@@ -171,7 +171,7 @@ object GenericSignatures {
     def fullNameInSig(sym: Symbol): Unit = {
       assert(sym.isClass)
       val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
-      builder.append('L').nn.append(name)
+      builder.append('L').append(name)
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
@@ -216,7 +216,7 @@ object GenericSignatures {
 
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
             val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-            builder.append(delimiter).nn.append(sanitizeName(sym.name))
+            builder.append(delimiter).append(sanitizeName(sym.name))
           }
           else fullNameInSig(sym)
         }
@@ -234,6 +234,7 @@ object GenericSignatures {
 
     @noinline
     def jsig(tp0: Type, toplevel: Boolean = false, unboxedVCs: Boolean = true): Unit = {
+      inline def jsig1(tp0: Type): Unit = jsig(tp0, toplevel = false, unboxedVCs = true)
 
       val tp = tp0.dealias
       tp match {
@@ -242,41 +243,41 @@ object GenericSignatures {
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
           // don't emit type param name if the param is upper-bounded by a primitive type (including via a value class)
           if erasedUnderlying.isPrimitiveValueType then
-            jsig(erasedUnderlying, toplevel, unboxedVCs)
+            jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
           else typeParamSig(ref.paramName.lastPart)
 
         case defn.ArrayOf(elemtp) =>
           if (isGenericArrayElement(elemtp, isScala2 = false))
-            jsig(defn.ObjectType)
+            jsig1(defn.ObjectType)
           else
             builder.append(ClassfileConstants.ARRAY_TAG)
             elemtp match
-              case TypeBounds(lo, hi) => jsig(hi.widenDealias)
-              case _ => jsig(elemtp)
+              case TypeBounds(lo, hi) => jsig1(hi.widenDealias)
+              case _ => jsig1(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
           if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
-            jsig(defn.TupleXXLClass.typeRef)
+            jsig1(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
-            jsig(defn.specialErasure(sym).nn.typeRef)
+            jsig1(defn.specialErasure(sym).typeRef)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
-            jsig(defn.BoxedUnitClass.typeRef)
+            jsig1(defn.BoxedUnitClass.typeRef)
           else if (sym == defn.NothingClass)
             builder.append("Lscala/runtime/Nothing$;")
           else if (sym == defn.NullClass)
             builder.append("Lscala/runtime/Null$;")
           else if (sym.isPrimitiveValueClass)
-            if (!unboxedVCs) jsig(defn.ObjectType)
-            else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
+            if (!unboxedVCs) jsig1(defn.ObjectType)
+            else if (sym == defn.UnitClass) jsig1(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
             if (unboxedVCs) {
               val erasedUnderlying = fullErasure(tp)
-              jsig(erasedUnderlying, toplevel)
+              jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = true)
             } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
@@ -286,22 +287,28 @@ object GenericSignatures {
           else if sym.isClass then
             classSig(sym, pre, args)
           else
-            jsig(erasure(tp), toplevel, unboxedVCs)
+            jsig(erasure(tp), toplevel = toplevel, unboxedVCs = unboxedVCs)
 
         case ExprType(restpe) if toplevel =>
           builder.append("()")
           methodResultSig(restpe)
 
         case ExprType(restpe) =>
-          jsig(defn.FunctionType(0).appliedTo(restpe))
+          jsig1(defn.FunctionType(0).appliedTo(restpe))
 
         case mtd: MethodOrPoly =>
           val (tparams, vparams, rte) = collectMethodParams(mtd)
           if (toplevel && !sym0.isConstructor) polyParamSig(tparams)
           builder.append('(')
-          for vparam <- vparams do jsig(vparam)
+          for vparam <- vparams do jsig1(vparam)
           builder.append(')')
           methodResultSig(rte)
+
+        case OrNull(tp1) if !tp1.derivesFrom(defn.AnyValClass) =>
+          // Special case for nullable union types whose underlying type is not a value class.
+          // For example, `T | Null` where `T` is a type parameter becomes `T` in the signature;
+          // `Int | Null` still becomes `Object`.
+          jsig1(tp1)
 
         case tp: AndType =>
           // Only intersections appearing as the upper-bound of a type parameter
@@ -316,7 +323,7 @@ object GenericSignatures {
           val (reprParents, _) = splitIntersection(parents)
           val repr =
             reprParents.find(_.typeSymbol.is(TypeParam)).getOrElse(reprParents.head)
-          jsig(repr, unboxedVCs = unboxedVCs)
+          jsig(repr, toplevel = false, unboxedVCs = unboxedVCs)
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
@@ -454,7 +461,7 @@ object GenericSignatures {
       else x
   }
 
-  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) = 
+  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) =
     val tparams = ListBuffer.empty[TypeParamInfo]
     val vparams = ListBuffer.empty[Type]
 
@@ -462,7 +469,7 @@ object GenericSignatures {
       case mtd: MethodType =>
         vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
         recur(mtd.resType)
-      case PolyType(tps, tpe) => 
+      case PolyType(tps, tpe) =>
         tparams ++= tps
         recur(tpe)
       case _ =>

@@ -131,7 +131,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     testScript(name = "<shadow-subdir-x>",
       """|scala> val (x, y) = (42, "foo")
          |val x: Int = 42
-         |val y: String = foo
+         |val y: String = "foo"
          |
          |scala> if (true) x else y
          |val res0: Int | String = 42

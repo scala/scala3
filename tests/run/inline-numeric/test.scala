@@ -29,7 +29,7 @@ object tests:
     def a: Int = 0
     def b: Int = 1
 
-    val v1 = foo(a, b) // should be a + b * b // can check with -Xprint:inlining
+    val v1 = foo(a, b) // should be a + b * b // can check with -Vprint:inlining
     val v2 = foo(a.toShort, b.toShort) // should be a + b * b
 
     val v3 = div(BigDecimal(a), BigDecimal(b))(using BigDecimalAsIfIntegral) // should be BigDecimal(a) quot BigDecimal(b) remainder BigDecimal(b)

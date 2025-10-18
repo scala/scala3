@@ -5,7 +5,7 @@ import scala.annotation.internal.sharable
 object Texts {
 
   @sharable
-  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m").nn
+  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m")
 
   sealed abstract class Text {
 
@@ -37,8 +37,8 @@ object Texts {
       case Fluid(Nil) =>
         width
       case Fluid(last :: prevs) =>
-        val r = last remaining width
-        if (r < 0) r else Fluid(prevs) remaining r
+        val r = last.remaining(width)
+        if (r < 0) r else Fluid(prevs).remaining(r)
       case Vertical(_) =>
         -1
     }
@@ -51,13 +51,13 @@ object Texts {
     def appendToLastLine(that: Text): Text = that match {
       case Str(s2, lines1) =>
         this match {
-          case Str(s1, lines2) => Str(s1 + s2, lines1 union lines2)
-          case Fluid(Str(s1, lines2) :: prev) => Fluid(Str(s1 + s2, lines1 union lines2) :: prev)
+          case Str(s1, lines2) => Str(s1 + s2, lines1 `union` lines2)
+          case Fluid(Str(s1, lines2) :: prev) => Fluid(Str(s1 + s2, lines1 `union` lines2) :: prev)
           case Fluid(relems) => Fluid(that :: relems)
           case Vertical(_) => throw new IllegalArgumentException("Unexpected Vertical.appendToLastLine")
         }
       case Fluid(relems) =>
-        relems.reverse.foldLeft(this)(_ appendToLastLine _)
+        relems.reverse.foldLeft(this)(_.appendToLastLine(_))
       case Vertical(_) => throw new IllegalArgumentException("Unexpected Text.appendToLastLine(Vertical(...))")
     }
 
@@ -74,7 +74,7 @@ object Texts {
       else appendIndented(that)(width)
 
     private def lengthWithoutAnsi(str: String): Int =
-      ansi.matcher(str).nn.replaceAll("").nn.length
+      ansi.matcher(str).replaceAll("").length
 
     def layout(width: Int): Text = this match {
       case Str(s, _) =>
@@ -82,18 +82,18 @@ object Texts {
       case Fluid(relems) =>
         relems.reverse.foldLeft(Str(""): Text)(_.append(width)(_))
       case Vertical(relems) =>
-        Vertical(relems map (_ layout width))
+        Vertical(relems.map(_.layout(width)))
     }
 
     def map(f: String => String): Text = this match {
       case Str(s, lines) => Str(f(s), lines)
-      case Fluid(relems) => Fluid(relems map (_ map f))
-      case Vertical(relems) => Vertical(relems map (_ map f))
+      case Fluid(relems) => Fluid(relems.map(_.map(f)))
+      case Vertical(relems) => Vertical(relems.map(_.map(f)))
     }
 
     def stripPrefix(pre: String): Text = this match {
       case Str(s, _) =>
-        if (s.startsWith(pre)) s drop pre.length else s
+        if (s.startsWith(pre)) s.drop(pre.length) else s
       case Fluid(relems) =>
         val elems = relems.reverse
         val head = elems.head.stripPrefix(pre)
@@ -137,9 +137,10 @@ object Texts {
       case _ => relems.foldLeft(-1)((acc, relem) => acc max relem.maxLine)
     }
 
-    def mkString(width: Int, withLineNumbers: Boolean): String = {
+    def mkString(width: Int = Int.MaxValue, withLineNumbers: Boolean = false): String = {
       val sb = new StringBuilder
-      val numberWidth = if (withLineNumbers) (2 * maxLine.toString.length) + 2 else 0
+      // width display can be upto a range "n-n" where 1 <= n <= maxLine+1
+      val numberWidth = if (withLineNumbers) (2 * (maxLine + 1).toString.length) + 2 else 0
       layout(width - numberWidth).print(sb, numberWidth)
       sb.toString
     }

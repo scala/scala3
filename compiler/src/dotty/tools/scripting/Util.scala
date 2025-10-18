@@ -1,7 +1,5 @@
 package dotty.tools.scripting
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{ Path }
 import java.io.File
 import java.net.{ URLClassLoader }
@@ -58,7 +56,7 @@ object Util:
     end match
   end detectMainClassAndMethod
 
-  def pathsep = sys.props("path.separator")
+  def pathsep: String = sys.props("path.separator").nn
 
 end Util
 

@@ -1,5 +1,7 @@
 package scala.runtime.coverage
 
+import language.experimental.captureChecking
+
 import scala.annotation.internal.sharable
 import scala.annotation.nowarn
 import scala.collection.concurrent.TrieMap
@@ -51,6 +53,6 @@ object Invoker {
   @nowarn("cat=deprecation")
   def measurementFile(dataDir: String): File = new File(
     dataDir,
-    MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.nn.getId
+    MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.getId
   )
 }

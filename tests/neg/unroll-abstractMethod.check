@@ -1,8 +1,8 @@
 -- [E207] Declaration Error: tests/neg/unroll-abstractMethod.scala:6:41 ------------------------------------------------
 6 |  def foo(s: String, n: Int = 1, @unroll b: Boolean = true): String // error
   |                                         ^
-  |                                         Cannot unroll parameters of method foo: it must not be abstract
+  |                                         Cannot unroll parameters of method foo because it can be overridden
 -- [E207] Declaration Error: tests/neg/unroll-abstractMethod.scala:10:41 -----------------------------------------------
 10 |  def foo(s: String, n: Int = 1, @unroll b: Boolean = true): String // error
    |                                         ^
-   |                                         Cannot unroll parameters of method foo: it must not be abstract
+   |                                         Cannot unroll parameters of method foo because it can be overridden

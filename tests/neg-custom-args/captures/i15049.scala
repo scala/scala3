@@ -7,4 +7,4 @@ class Foo:
 def Test: Unit =
   val f = new Foo
   f.withSession(s => s).request // error
-  f.withSession[Session^](t => t) // error
+  f.withSession[Session^](t => t) // error // error

@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
 
 import core.*
 import Contexts.*
@@ -18,10 +17,10 @@ import xsbti.api.SafeLazy.strict
  */
 object APIUtils {
   private object Constants {
-    val PublicAccess = api.Public.create()
-    val EmptyModifiers = new api.Modifiers(false, false, false, false, false, false, false, false)
-    val EmptyStructure = api.Structure.of(strict(Array.empty), strict(Array.empty), strict(Array.empty))
-    val EmptyType = api.EmptyType.of()
+    val PublicAccess: api.Public = api.Public.create()
+    val EmptyModifiers: api.Modifiers = new api.Modifiers(false, false, false, false, false, false, false, false)
+    val EmptyStructure: api.Structure = api.Structure.of(strict(Array.empty), strict(Array.empty), strict(Array.empty))
+    val EmptyType: api.EmptyType = api.EmptyType.of()
   }
 
   import Constants.*

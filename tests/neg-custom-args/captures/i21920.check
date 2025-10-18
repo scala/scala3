@@ -1,10 +1,13 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21920.scala:34:34 ---------------------------------------
-34 |  val cell: Cell[File] = File.open(f => Cell(Seq(f))) // error
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                         Found:    Cell[box File^{f, f²}]{val head: () ?->? IterableOnce[box File^{f²}]^?}^?
-   |                         Required: Cell[File]
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21920.scala:34:35 ---------------------------------------
+34 |  val cell: Cell[File] = File.open(f => Cell(() => Seq(f))) // error
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (f: File^'s1) ->'s2 Cell[File^'s3]{val head: () ->'s4 IterableOnce[File^'s5]^'s6}^'s7
+   |Required: File^ => Cell[File^'s8]{val head: () ->'s9 IterableOnce[File^'s10]^'s11}^'s12
    |
-   |                         where:    f  is a reference to a value parameter
-   |                                   f² is a reference to a value parameter
+   |Note that capability cap cannot be included in outer capture set 's13.
+   |
+   |where:    =>  refers to a fresh root capability created in value cell when checking argument to parameter f of method open
+   |          ^   refers to the universal root capability
+   |          cap is a root capability associated with the result type of (): IterableOnce[File^'s13]^²
    |
    | longer explanation available when compiling with `-explain`

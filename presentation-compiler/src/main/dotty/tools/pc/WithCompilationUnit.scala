@@ -22,11 +22,11 @@ class WithCompilationUnit(
     val driver: InteractiveDriver,
     params: VirtualFileParams,
 ):
-  val uri = params.uri()
-  val filePath = Paths.get(uri)
-  val sourceText = params.text
-  val text = sourceText.toCharArray()
-  val source =
+  val uri: java.net.URI = params.uri()
+  val filePath: java.nio.file.Path = Paths.get(uri)
+  val sourceText: String = params.text
+  val text: Array[Char] = sourceText.toCharArray()
+  val source: SourceFile =
     SourceFile.virtual(filePath.toString, sourceText)
   driver.run(uri, source)
   given ctx: Context = driver.currentCtx
@@ -76,7 +76,9 @@ class WithCompilationUnit(
         }
       else Set.empty
     val all =
-      if sym.is(Flags.ModuleClass) then
+      if sym.is(Flags.Exported) then
+        Set(sym, sym.sourceSymbol)
+      else if sym.is(Flags.ModuleClass) then
         Set(sym, sym.companionModule, sym.companionModule.companion)
       else if sym.isClass then
         Set(sym, sym.companionModule, sym.companion.moduleClass)

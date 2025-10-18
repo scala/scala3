@@ -4,7 +4,7 @@ import caps.cap
 class Ref extends Mutable:
   var x = 0
   def get: Int = x
-  mut def put(y: Int): Unit = x = y
+  update def put(y: Int): Unit = x = y
 
 class Pair[+X, +Y](val fst: X, val snd: Y)
 
@@ -29,8 +29,7 @@ def twoRefs2(): SamePair[Ref^] =
   r3
 
 def twoRefsBad(): Pair[Ref^, Ref^] =
-  Pair(Ref(), Ref()) // error // error: universal capability cannot be included in capture set
-                     // but should work since this is morally equivalent to `twoRefs`
+  Pair(Ref(), Ref()) // ok now
 
 def test(io: Object^): Unit =
   val two = twoRefs()

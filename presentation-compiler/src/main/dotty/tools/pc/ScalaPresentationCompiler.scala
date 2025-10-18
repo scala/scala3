@@ -15,11 +15,10 @@ import scala.jdk.CollectionConverters._
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.EmptyCancelToken
-import scala.meta.internal.metals.EmptyReportContext
+import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.internal.metals.PcQueryContext
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.metals.ReportLevel
-import scala.meta.internal.metals.StdReportContext
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.CompilerAccess
 import scala.meta.internal.pc.DefinitionResultImpl
@@ -54,14 +53,19 @@ case class ScalaPresentationCompiler(
     folderPath: Option[Path] = None,
     reportsLevel: ReportLevel = ReportLevel.Info,
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
+    reportContext: ReportContext = EmptyReportContext()
 ) extends PresentationCompiler:
+
+  given ReportContext = reportContext
 
   override def supportedCodeActions(): ju.List[String] = List(
      CodeActionId.ConvertToNamedArguments,
      CodeActionId.ImplementAbstractMembers,
      CodeActionId.ExtractMethod,
      CodeActionId.InlineValue,
-     CodeActionId.InsertInferredType
+     CodeActionId.InsertInferredType,
+     CodeActionId.InsertInferredMethod,
+     PcConvertToNamedLambdaParameters.codeActionId
    ).asJava
 
   def this() = this("", None, Nil, Nil)
@@ -71,10 +75,6 @@ case class ScalaPresentationCompiler(
   private val forbiddenOptions = Set("-print-lines", "-print-tasty")
   private val forbiddenDoubleOptions = Set.empty[String]
 
-  given ReportContext =
-    folderPath
-      .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
-      .getOrElse(EmptyReportContext)
 
   override def codeAction[T](
     params: OffsetParams,
@@ -82,26 +82,32 @@ case class ScalaPresentationCompiler(
     codeActionPayload: Optional[T]
    ): CompletableFuture[ju.List[TextEdit]] =
      (codeActionId, codeActionPayload.asScala) match
-       case (
-             CodeActionId.ConvertToNamedArguments,
-             Some(argIndices: ju.List[_])
-           ) =>
-         val payload =
-          argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
-         convertToNamedArguments(params, payload)
-       case (CodeActionId.ImplementAbstractMembers, _) =>
-         implementAbstractMembers(params)
-       case (CodeActionId.InsertInferredType, _) =>
-         insertInferredType(params)
-       case (CodeActionId.InlineValue, _) =>
-         inlineValue(params)
-       case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
-         params match {
-           case range: RangeParams =>
-             extractMethod(range, extractionPos)
-           case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
-         }
-       case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
+        case (
+              CodeActionId.ConvertToNamedArguments,
+              Some(argIndices: ju.List[_])
+            ) =>
+          val payload =
+            argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
+          convertToNamedArguments(params, payload)
+        case (CodeActionId.ImplementAbstractMembers, _) =>
+          implementAbstractMembers(params)
+        case (CodeActionId.InsertInferredType, _) =>
+          insertInferredType(params)
+        case (CodeActionId.InsertInferredMethod, _) =>
+          insertInferredMethod(params)
+        case (CodeActionId.InlineValue, _) =>
+          inlineValue(params)
+        case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
+          params match {
+            case range: RangeParams =>
+              extractMethod(range, extractionPos)
+            case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
+          }
+        case (PcConvertToNamedLambdaParameters.codeActionId, _) =>
+          compilerAccess.withNonInterruptableCompiler(List.empty[l.TextEdit].asJava, params.token) {
+            access => PcConvertToNamedLambdaParameters(access.compiler(), params).convertToNamedLambdaParameters
+          }(params.toQueryContext)
+        case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
 
   private def failedFuture[T](e: Throwable): CompletableFuture[T] =
     val f = new CompletableFuture[T]()
@@ -113,7 +119,7 @@ case class ScalaPresentationCompiler(
   ): PresentationCompiler =
     copy(completionItemPriority = priority)
 
-  override def withBuildTargetName(buildTargetName: String) =
+  override def withBuildTargetName(buildTargetName: String): PresentationCompiler =
     copy(buildTargetName = Some(buildTargetName))
 
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
@@ -349,13 +355,26 @@ case class ScalaPresentationCompiler(
         .asJava
     }(params.toQueryContext)
 
+  def insertInferredMethod(
+      params: OffsetParams
+  ): CompletableFuture[ju.List[l.TextEdit]] =
+    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
+    compilerAccess.withNonInterruptableCompiler(
+      empty,
+      params.token()
+    ) { pc =>
+      new InferredMethodProvider(params, pc.compiler(), config, search)
+        .inferredMethodEdits()
+        .asJava
+    }(params.toQueryContext)
+
   override def inlineValue(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
     val empty: Either[String, List[l.TextEdit]] = Right(List())
     (compilerAccess
       .withInterruptableCompiler(empty, params.token()) { pc =>
-        new PcInlineValueProviderImpl(pc.compiler(), params)
+        new PcInlineValueProvider(pc.compiler(), params)
           .getInlineTextEdits()
       }(params.toQueryContext))
       .thenApply {
@@ -507,6 +526,9 @@ case class ScalaPresentationCompiler(
 
   def withSearch(search: SymbolSearch): PresentationCompiler =
     copy(search = search)
+
+  override def withReportContext(reportContext: ReportContext): PresentationCompiler =
+    copy(reportContext = reportContext)
 
   def withWorkspace(workspace: Path): PresentationCompiler =
     copy(folderPath = Some(workspace))

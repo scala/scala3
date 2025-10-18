@@ -47,14 +47,10 @@
 26 |  val (name = x, agee = y) = person // error
    |                 ^^^^^^^^
    |                 No element named `agee` is defined in selector type (name : String, age : Int)
--- Error: tests/neg/named-tuples.scala:29:10 ---------------------------------------------------------------------------
-29 |    case (name = n, age = a) => () // error // error
-   |          ^^^^^^^^
-   |          No element named `name` is defined in selector type (String, Int)
--- Error: tests/neg/named-tuples.scala:29:20 ---------------------------------------------------------------------------
-29 |    case (name = n, age = a) => () // error // error
-   |                    ^^^^^^^
-   |                    No element named `age` is defined in selector type (String, Int)
+-- [E215] Pattern Match Error: tests/neg/named-tuples.scala:29:9 -------------------------------------------------------
+29 |    case (name = n, age = a) => () // error
+   |         ^^^^^^^^^^^^^^^^^^^
+   |         Named patterns cannot be used with (String, Int), because it is not a named tuple or case class
 -- [E172] Type Error: tests/neg/named-tuples.scala:31:27 ---------------------------------------------------------------
 31 |  val pp = person ++ (1, 2)  // error
    |                           ^
@@ -75,10 +71,10 @@
 41 |    case (name, age = a) => () // error
    |                ^^^^^^^
    |                Illegal combination of named and unnamed tuple elements
--- Error: tests/neg/named-tuples.scala:44:10 ---------------------------------------------------------------------------
+-- [E215] Pattern Match Error: tests/neg/named-tuples.scala:44:9 -------------------------------------------------------
 44 |    case (age = x) => // error
-   |          ^^^^^^^
-   |          No element named `age` is defined in selector type Tuple
+   |         ^^^^^^^^^
+   |         Named patterns cannot be used with Tuple, because it is not a named tuple or case class
 -- [E172] Type Error: tests/neg/named-tuples.scala:46:27 ---------------------------------------------------------------
 46 |  val p2 = person ++ person // error
    |                           ^

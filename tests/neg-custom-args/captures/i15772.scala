@@ -18,14 +18,14 @@ class C(val arg: C^) {
 
 def main1(x: C^) : () -> Int =
   () =>
-    val c : C^{x} = new C(x)  // error
+    val c : C^{x} = new C(x)
     val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
     boxed1((cap: C^) => unsafe(c))
     0
 
 def main2(x: C^) : () -> Int =
   () =>
-    val c : C^{x} = new C(x) // error
+    val c : C^{x} = new C(x)
     val boxed2 : Observe[C^] = box2(c)  // error
     boxed2((cap: C^) => unsafe(c))
     0
@@ -41,6 +41,6 @@ trait File:
 
 def main(io: Any^) =
   val sayHello: ((File^{io}) => Unit) = (file: File^{io}) => file.write("Hello World!\r\n")
-  val filesList : List[File]^{io} = ???
+  val filesList : List[File]^{io} = ??? // error
   val x = () => filesList.foreach(sayHello)
   x: (() -> Unit) // error

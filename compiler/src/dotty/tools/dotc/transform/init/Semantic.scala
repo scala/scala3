@@ -448,6 +448,18 @@ object Semantic:
   object TreeCache:
     class CacheData:
       private val emptyTrees = mutable.Set[ValOrDefDef]()
+      private val templatesToSkip = mutable.Set[Template]()
+
+      def checkTemplateBodyValidity(tpl: Template, className: String)(using Context): Unit =
+        if (templatesToSkip.contains(tpl))
+          throw new TastyTreeException(className)
+
+        val errorCount = ctx.reporter.errorCount
+        tpl.forceFields()
+
+        if (ctx.reporter.errorCount > errorCount)
+          templatesToSkip.add(tpl)
+          throw new TastyTreeException(className)
 
       extension (tree: ValOrDefDef)
         def getRhs(using Context): Tree =
@@ -465,7 +477,9 @@ object Semantic:
           if (emptyTrees.contains(tree)) EmptyTree
           else getTree
   end TreeCache
-  
+
+  inline def treeCache(using t: TreeCache.CacheData): TreeCache.CacheData = t
+
 // ----- Operations on domains -----------------------------
   extension (a: Value)
     def join(b: Value): Value =
@@ -654,6 +668,8 @@ object Semantic:
         val methodType = atPhaseBeforeTransforms { meth.info.stripPoly }
         var allArgsHot = true
         val allParamTypes = methodType.paramInfoss.flatten.map(_.repeatedToSingle)
+        if(allParamTypes.size != args.size)
+          report.warning("[Internal error] Number of parameters do not match number of arguments in " + meth.name)
         val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
           val tryReporter = Reporter.errorsIn { arg.promote }
           allArgsHot = allArgsHot && tryReporter.errors.isEmpty
@@ -1173,7 +1189,10 @@ object Semantic:
     given Cache.Data()
     given TreeCache.CacheData()
     for classSym <- classes if isConcreteClass(classSym) && !classSym.isStaticObject do
-      checkClass(classSym)
+      try
+        checkClass(classSym)
+      catch
+        case TastyTreeException(className) => report.warning("Skipping the analysis of " + classSym.show + " due to an error reading the body of " + className + "'s TASTy.")
 
 // ----- Semantic definition --------------------------------
   type ArgInfo = TraceValue[Value]
@@ -1520,6 +1539,8 @@ object Semantic:
    * @param klass     The class to which the template belongs.
    */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
+    treeCache.checkTemplateBodyValidity(tpl, klass.show)
+
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.objekt.field(vdef.symbol)
     }.toMap

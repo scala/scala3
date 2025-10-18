@@ -49,7 +49,7 @@ trait PcSymbolSearch:
   lazy val soughtSymbols: Option[(Set[Symbol], SourcePosition)] =
     soughtSymbols(path)
 
-  def soughtSymbols(path: List[Tree]): Option[(Set[Symbol], SourcePosition)] =
+  private def soughtSymbols(path: List[Tree]): Option[(Set[Symbol], SourcePosition)] =
     val sought = path match
       /* reference of an extension paramter
        * extension [EF](<<xs>>: List[EF])
@@ -148,7 +148,7 @@ trait PcSymbolSearch:
       /* Import selectors:
        * import scala.util.Tr@@y
        */
-      case (imp: Import) :: _ if imp.span.contains(pos.span) =>
+      case (imp: ImportOrExport) :: _ if imp.span.contains(pos.span) =>
         imp
           .selector(pos.span)
           .map(sym => (symbolAlternatives(sym), sym.sourcePos))

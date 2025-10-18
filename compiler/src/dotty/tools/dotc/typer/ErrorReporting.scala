@@ -73,12 +73,16 @@ object ErrorReporting {
 
   /** A mixin trait that can produce added elements for an error message */
   trait Addenda:
-    self =>
-    def toAdd(using Context): List[String] = Nil
-    def ++ (follow: Addenda) = new Addenda:
-      override def toAdd(using Context) = self.toAdd ++ follow.toAdd
+    def toAdd(using Context): List[String]
+    def ++(follow: Addenda) = new Addenda:
+      def toAdd(using Context) = Addenda.this.toAdd ++ follow.toAdd
 
-  object NothingToAdd extends Addenda
+  object Addenda:
+    def apply(msg: Context ?=> String): Addenda = new Addenda:
+      def toAdd(using Context) = msg :: Nil
+
+  object NothingToAdd extends Addenda:
+    def toAdd(using Context): List[String] = Nil
 
   class Errors(using Context) {
 
@@ -195,10 +199,11 @@ object ErrorReporting {
 
       def missingElse = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
-          "\nMaybe you are missing an else part for the conditional?"
-        case _ => ""
+          Addenda("\nMaybe you are missing an else part for the conditional?")
+        case _ =>
+          NothingToAdd
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), (addenda.toAdd :+ missingElse)*))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), addenda ++ missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -294,7 +299,7 @@ object ErrorReporting {
 
   def dependentMsg =
     """Term-dependent types are experimental,
-      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
+      |they must be enabled with a `experimental.modularity` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
 }

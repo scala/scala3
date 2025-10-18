@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package config
 
-import scala.language.unsafeNulls
-
 import Settings.*
 import core.Contexts.*
 import printing.Highlighting
@@ -33,8 +31,8 @@ trait CliCommand:
     |<phases> means one or a comma-separated list of:
     |  - (partial) phase names with an optional "+" suffix to include the next phase
     |  - the string "all"
-    |  example: -Xprint:all prints all phases.
-    |  example: -Xprint:typer,mixin prints the typer and mixin phases.
+    |  example: -Vprint:all prints all phases.
+    |  example: -Vprint:typer,mixin prints the typer and mixin phases.
     |  example: -Ylog:erasure+ logs the erasure phase and the phase after the erasure phase.
     |           This is useful because during the tree transform of phase X, we often
     |           already are in phase X + 1.
@@ -45,7 +43,7 @@ trait CliCommand:
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
-      case x if x startsWith "@"  => CommandLineParser.expandArg(x)
+      case x if x.startsWith("@") => CommandLineParser.expandArg(x)
       case x                      => List(x)
     }
 

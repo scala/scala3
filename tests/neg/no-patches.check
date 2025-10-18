@@ -1,0 +1,9 @@
+Flag -Yno-stdlib-patches set repeatedly
+-- Error: tests/neg/no-patches.scala:3:23 ------------------------------------------------------------------------------
+3 |val _ = scala.language.`3.4` // error: we do not patch `scala.language`
+  |        ^^^^^^^^^^^^^^^^^^^^
+  |        `3.4` can only be used at compile time in import statements
+-- Error: tests/neg/no-patches.scala:4:36 ------------------------------------------------------------------------------
+4 |val _ = scala.language.experimental.modularity // error: we do not patch `scala.language.experimental`
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |        `modularity` can only be used at compile time in import statements

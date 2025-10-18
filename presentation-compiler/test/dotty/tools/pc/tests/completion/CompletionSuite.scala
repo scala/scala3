@@ -94,33 +94,24 @@ class CompletionSuite extends BaseCompletionSuite:
          |newBuilder[A]: Builder[A, List[A]]
          |apply[A](elems: A*): List[A]
          |concat[A](xss: Iterable[A]*): List[A]
-         |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): List[List[List[A]] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): List[List[List[List[A]]] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): List[List[List[List[List[A]]]] @uncheckedVariance]
+         |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A]]
+         |fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): List[List[List[A]]]
+         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): List[List[List[List[A]]]]
+         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): List[List[List[List[List[A]]]]]
          |fill[A](n: Int)(elem: => A): List[A]
          |iterate[A](start: A, len: Int)(f: A => A): List[A]
          |range[A: Integral](start: A, end: A): List[A]
          |range[A: Integral](start: A, end: A, step: A): List[A]
-         |tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): List[List[A] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): List[List[List[A]] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]] @uncheckedVariance]
+         |tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): List[List[A]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): List[List[List[A]]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]]]
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
-         |->[B](y: B): (List.type, B)
-         |ensuring(cond: Boolean): List.type
-         |ensuring(cond: List.type => Boolean): List.type
-         |ensuring(cond: Boolean, msg: => Any): List.type
-         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
-         |nn: List.type & List.type
-         |runtimeChecked scala.collection.immutable
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
-         |formatted(fmtstr: String): String
-         |→[B](y: B): (List.type, B)
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean
@@ -129,9 +120,15 @@ class CompletionSuite extends BaseCompletionSuite:
          |isInstanceOf[X0]: Boolean
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |wait(): Unit
-         |wait(x$0: Long): Unit
-         |wait(x$0: Long, x$1: Int): Unit
+         |->[B](y: B): (List.type, B)
+         |ensuring(cond: Boolean): List.type
+         |ensuring(cond: List.type => Boolean): List.type
+         |ensuring(cond: Boolean, msg: => Any): List.type
+         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
+         |nn: List.type
+         |runtimeChecked scala.collection.immutable
+         |formatted(fmtstr: String): String
+         |→[B](y: B): (List.type, B)
          |""".stripMargin
     )
 
@@ -2041,6 +2038,43 @@ class CompletionSuite extends BaseCompletionSuite:
       filter = _.contains("name")
     )
 
+  @Test def `namedTuple-completions-2` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |def hello = (path = ".", num = 5)++ (line = 1)
+         |val hello2 = (path = ".", num = 5)++ (line = 1)
+         |
+         |@main def bla =
+         |   hello@@
+         |""".stripMargin,
+      """|hello2: (path : String, num : Int, line : Int)
+         |hello: (path : String, num : Int, line : Int)
+      """.stripMargin,
+    )
+
+  @Test def `namedTuple completions-3` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.@@name""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
+  @Test def `namedTuple completions-4` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.n@@ame""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
   @Test def `Selectable with namedTuple Fields member` =
     check(
       """|import scala.NamedTuple.*
@@ -2234,4 +2268,50 @@ class CompletionSuite extends BaseCompletionSuite:
       """package one.two@@
         |""".stripMargin,
       ""
+    )
+
+  @Test def `no-completions-on-package-selection` =
+    check(
+      """package one.@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-extension-completion-on-packages` =
+    check(
+      """object M:
+        |  scala.runt@@
+        |""".stripMargin,
+      """runtime scala
+        |PartialFunction scala""".stripMargin // those are the actual members of scala
+    )
+
+  @Test def `no-extension-completions-on-package-objects` =
+    check(
+      """package object magic { def test: Int = ??? }
+        |object M:
+        |  magic.@@
+        |""".stripMargin,
+      "test: Int"
+    )
+
+  @Test def `macros` =
+    check(
+      """
+        |object Macro:
+        |  import scala.quoted.*
+        |  def dbgImpl[A](a: Expr[A])(using Quotes): Expr[A] =
+        |    import quotes.reflect.*
+        |    a.asTer@@
+        |
+        |""".stripMargin,
+      "asTerm: Term"
+    )
+
+  @Test def `derives-no-square-brackets` =
+    check(
+      """
+        |case class Miau(y: Int) derives Ordering, CanEqu@@
+        |""".stripMargin,
+      "CanEqual scala"
     )

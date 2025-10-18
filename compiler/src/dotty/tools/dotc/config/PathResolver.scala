@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-import scala.language.unsafeNulls
-
 import WrappedProperties.AccessControl
 import io.{ClassPath, Directory, Path}
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
@@ -44,7 +42,7 @@ object PathResolver {
       // mutation of the System property map. stringPropertyNames internally uses the Enumeration interface,
       // rather than Iterator, and this disables the fail-fast ConcurrentModificationException.
       val propNames = props.stringPropertyNames()
-      propNames.asScala collectFirst { case k if k endsWith ".boot.class.path" => props.getProperty(k) } getOrElse ""
+      propNames.asScala collectFirst { case k if k.endsWith(".boot.class.path") => props.getProperty(k) } getOrElse ""
     }
 
     /** Environment variables which java pays attention to so it
@@ -112,7 +110,7 @@ object PathResolver {
     // scalaLibDirFound match {
     //   case Some(dir) if scalaHomeExists =>
     //     val paths = ClassPath expandDir dir.path
-    //     join(paths: _*)
+    //     join(paths*)
     //   case _                            => ""
     // }
 

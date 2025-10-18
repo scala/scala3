@@ -12,13 +12,11 @@ i9473.scala
 i13433.scala
 i13433b.scala
 macros-in-same-project1
-mixin-forwarder-overload
 t10889
 t3452d
 t3452e
 t3452g
 t7374
-t8905
 tuple-drop.scala
 tuple-ops.scala
 tuple-ops.scala
@@ -49,4 +47,7 @@ named-tuples-strawman-2.scala
 # typecheckErrors method unpickling
 typeCheckErrors.scala
 i18150.scala
+i22968.scala
 
+# Pickling differences with local parameters export forwarders of methods with into parameters. But their external type is the same
+Parser.scala

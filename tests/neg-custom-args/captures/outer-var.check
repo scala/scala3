@@ -4,8 +4,11 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p, q²} Unit
    |
-   |        where:    q  is a parameter in method inner
-   |                  q² is a parameter in method test
+   |        Note that capability cap is not included in capture set {p, q²}.
+   |
+   |        where:    => and cap refer to a fresh root capability in the type of parameter q
+   |                  q          is a parameter in method inner
+   |                  q²         is a parameter in method test
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
@@ -14,6 +17,10 @@
    |         Found:    () => Unit
    |         Required: () ->{p, q} Unit
    |
+   |         Note that capability cap is not included in capture set {p, q}.
+   |
+   |         where:    => and cap refer to a fresh root capability created in method inner
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:9 -------------------------------------
 14 |    y = (q: Proc)   // error
@@ -21,8 +28,9 @@
    |         Found:    () => Unit
    |         Required: () ->{p} Unit
    |
-   |         Note that the universal capability `cap`
-   |         cannot be included in capture set {p} of variable y
+   |         Note that capability cap cannot be included in capture set {p} of variable y.
+   |
+   |         where:    => and cap refer to a fresh root capability created in method inner
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:15:8 -------------------------------------
@@ -31,12 +39,15 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p} Unit
    |
-   |        Note that reference (q : () => Unit), defined in method inner
-   |        cannot be included in outer capture set {p} of variable y
+   |        Note that capability cap cannot be included in capture set {p} of variable y.
+   |
+   |        where:    => and cap refer to a fresh root capability in the type of parameter q
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/outer-var.scala:17:57 ---------------------------------------------------------
 17 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
    |                                                      ^^^^^^^^^^
-   |                             Type variable A of object ListBuffer cannot be instantiated to box () => Unit since
-   |                             that type captures the root capability `cap`.
+   |                                 Type variable A of object ListBuffer cannot be instantiated to () => Unit since
+   |                                 that type captures the root capability `cap`.
+   |
+   |                                 where:    => refers to the universal root capability

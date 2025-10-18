@@ -30,12 +30,15 @@ class BaseInlayHintsSuite extends BasePCSuite {
       withPkg.length()
     )
     val pcParams = CompilerInlayHintsParams(
-      rangeParams,
-      true,
-      true,
-      true,
-      true,
-      hintsInPatternMatch
+      rangeParams = rangeParams,
+      inferredTypes = true,
+      typeParameters = true,
+      implicitParameters = true,
+      hintsXRayMode = true,
+      byNameParameters = true,
+      implicitConversions = true,
+      namedParameters = true,
+      hintsInPatternMatch = hintsInPatternMatch
     )
 
     val inlayHints = presentationCompiler

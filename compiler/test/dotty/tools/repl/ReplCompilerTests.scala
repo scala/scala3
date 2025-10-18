@@ -262,7 +262,7 @@ class ReplCompilerTests extends ReplTest:
 
   @Test def testSingletonPrint = initially {
     run("""val a = "hello"; val x: a.type = a""")
-    assertMultiLineEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
+    assertMultiLineEquals("val a: String = \"hello\"\nval x: a.type = \"hello\"", storedOutput().trim)
   }
 
   @Test def i6574 = initially {
@@ -445,7 +445,6 @@ class ReplCompilerTests extends ReplTest:
     .andThen:
       val last = lines().last
       assertTrue(last, last.startsWith("val tpolecat: Object = null"))
-      assertTrue(last, last.endsWith("""// result of "tpolecat.toString" is null"""))
 
   @Test def `i17333 print toplevel object with null toString`: Unit =
     initially:
@@ -454,7 +453,6 @@ class ReplCompilerTests extends ReplTest:
       run("tpolecat")
       val last = lines().last
       assertTrue(last, last.startsWith("val res0: tpolecat.type = null"))
-      assertTrue(last, last.endsWith("""// result of "res0.toString" is null"""))
 
   @Test def `i21431 filter out best effort options`: Unit =
     initially:
@@ -511,6 +509,16 @@ class ReplCompilerTests extends ReplTest:
     val all = lines()
     assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
 
+  @Test def `i22844 regression colon eol`: Unit = initially:
+    run:
+      """|println:
+         |  "hello, world"
+         |""".stripMargin // outdent, but this test does not exercise the bug
+    assertEquals(List("hello, world"), lines())
+
+  @Test def `i22844b regression colon arrow eol`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete("List(42).map: x =>"))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
@@ -523,7 +531,7 @@ object ReplCompilerTests:
 
 end ReplCompilerTests
 
-class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Xprint:typer"):
+class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Vprint:typer"):
   @Test def i9111 = initially {
     run("""|enum E {
            |  case A
@@ -572,3 +580,34 @@ class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.st
       case class Tree(left: Tree, right: Tree)
       def deepTree(depth: Int): Tree
       deepTree(300)""")
+
+class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-experimental", "-Xprint:pickler")):
+  override val redirectOutput = true
+  @Test def i23408: Unit = initially:
+    run("""
+      import scala.annotation.unroll
+      case class Foo(x: Int, @unroll y: Option[String] = None)"""
+    )
+    val expected = List(
+      "def copy(x: Int, y: Option[String]): Foo = new Foo(x, y)",
+      "def copy(x: Int): Foo = this.copy(x, this.copy$default$2)",
+      "def copy$default$1: Int @uncheckedVariance = Foo.this.x",
+      "def copy$default$2: Option[String] @uncheckedVariance = Foo.this.y",
+      "def apply(x: Int, y: Option[String]): Foo = new Foo(x, y)",
+      "def apply(x: Int): Foo = this.apply(x, Foo.$lessinit$greater$default$2)",
+      """def fromProduct(x$0: Product): Foo.MirroredMonoType = {
+          val arity: Int = x$0.productArity
+          val x$1: Int = x$0.productElement(0).$asInstanceOf[Int]
+          val y$1: Option[String] = (if arity > 1 then x$0.productElement(1) else Foo.$lessinit$greater$default$2).$asInstanceOf[Option[String]]
+          new Foo(x$1, y$1)
+        }"""
+    )
+    def trimWhitespaces(input: String): String = input.replaceAll("\\s+", " ")
+    val output = storedOutput()
+    val normalizedOutput = trimWhitespaces(output)
+    expected.foreach: defn =>
+      val normalizedDefn = trimWhitespaces(defn)
+      assertTrue(
+        s"Output: '$output' did not contain expected definition: ${defn}",
+        normalizedOutput.contains(normalizedDefn)
+      )

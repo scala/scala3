@@ -1,30 +1,63 @@
 -- Error: tests/neg-custom-args/captures/try.scala:23:28 ---------------------------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error
    |                            ^^^^^^^^^^^^^^^^^^^
-   |                            Type variable R of method handle cannot be instantiated to box CT[Exception]^ since
+   |                            Type variable R of method handle cannot be instantiated to CT[Exception]^ since
    |                            that type captures the root capability `cap`.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:30:32 ------------------------------------------
-30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                Found:    () ->{x} Nothing
-   |                                Required: () ->? Nothing
+   |
+   |                            where:    ^ refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:24:4 -------------------------------------------
+24 |    (x: CanThrow[Exception]) => x // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (x: CT[Exception]^) ->'s1 CT[Exception]^{x}
+   |Required: CT[Exception]^ => CT[Exception]^²
+   |
+   |Note that capability x is not included in capture set {cap}
+   |because (x : CT[Exception]^) is not visible from cap in value a.
+   |
+   |where:    =>         refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |          ^          refers to the universal root capability
+   |          ^² and cap refer to a fresh root capability created in value a when checking argument to parameter op of method handle
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:52:2 -------------------------------------------
-47 |val global: () -> Int = handle {
-48 |  (x: CanThrow[Exception]) =>
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:30:4 -------------------------------------------
+30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (x: CT[Exception]^) ->'s2 () ->{x} Nothing
+   |Required: CT[Exception]^ => () -> Nothing
+   |
+   |Note that capability x is not included in capture set {}.
+   |
+   |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:36:4 -------------------------------------------
+36 |    (x: CanThrow[Exception]) => // error
+   |    ^
+   |Found:    (x: CT[Exception]^) ->'s3 () ->{x} Int
+   |Required: CT[Exception]^ => () ->'s4 Int
+   |
+   |Note that capability x cannot be included in outer capture set 's4.
+   |
+   |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
+37 |      () =>
+38 |        raise(new Exception)(using x)
+39 |        22
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:48:2 -------------------------------------------
+48 |  (x: CanThrow[Exception]) =>  // error
+   |  ^
+   |Found:    (x: CT[Exception]^) ->'s5 () ->{x} Int
+   |Required: CT[Exception]^ => () ->'s6 Int
+   |
+   |Note that capability x cannot be included in outer capture set 's6.
+   |
+   |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
 49 |    () =>
 50 |      raise(new Exception)(using x)
 51 |      22
-52 |} {  // error
-   |                        ^
-   |                        Found:    () ->{x} Int
-   |                        Required: () -> Int
-53 |  (ex: Exception) => () => 22
-54 |}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/try.scala:35:11 ---------------------------------------------------------------
-35 |  val xx = handle {  // error
-   |           ^^^^^^
-   |           local reference x leaks into outer capture set of type parameter R of method handle

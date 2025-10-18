@@ -239,6 +239,7 @@ object Phases {
     private var myErasurePhase: Phase = uninitialized
     private var myElimErasedValueTypePhase: Phase = uninitialized
     private var myLambdaLiftPhase: Phase = uninitialized
+    private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
     private var myGenBCodePhase: Phase = uninitialized
@@ -266,6 +267,7 @@ object Phases {
     final def gettersPhase: Phase = myGettersPhase
     final def erasurePhase: Phase = myErasurePhase
     final def elimErasedValueTypePhase: Phase = myElimErasedValueTypePhase
+    final def mixinPhase: Phase = myMixinPhase
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
@@ -295,6 +297,7 @@ object Phases {
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
       myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
+      myMixinPhase = phaseOfClass(classOf[Mixin])
       myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
       myCountOuterAccessesPhase = phaseOfClass(classOf[CountOuterAccesses])
       myFlattenPhase = phaseOfClass(classOf[Flatten])
@@ -314,7 +317,7 @@ object Phases {
      *  instance, it is possible to print trees after a given phase using:
      *
      *  ```bash
-     *  $ ./bin/scalac -Xprint:<phaseNameHere> sourceFile.scala
+     *  $ ./bin/scalac -Vprint:<phaseNameHere> sourceFile.scala
      *  ```
      */
     def phaseName: String
@@ -505,15 +508,14 @@ object Phases {
       * Enrich crash messages.
       */
     final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Boolean =
-      val unit = ctx.compilationUnit
-      if ctx.run.enterUnit(unit) then
+      ctx.run.enterUnit(ctx.compilationUnit)
+      && {
         try {body; true}
         catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
-          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing $unit"))
+          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
         finally ctx.run.advanceUnit()
-      else
-        false
+      }
 
     inline def runSubPhase[T](id: Run.SubPhase)(inline body: (Run.SubPhase, Context) ?=> T)(using Context): T =
       given Run.SubPhase = id
@@ -551,6 +553,7 @@ object Phases {
   def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
   def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
   def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase

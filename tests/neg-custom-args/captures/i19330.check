@@ -9,16 +9,11 @@
    |    Found:    () ->{t} Logger^{t*}
    |    Required: x.T
    |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:22:22 ---------------------------------------
-22 |  val bad: bar.T = foo(bar) // error
-   |                   ^^^^^^^^
-   |                   Found:    bar.T
-   |                   Required: () => Logger^
+   |    Note that capability t is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
 16 |    val t: () => Logger^ = () => l // error
    |           ^^^^^^^^^^^^^
    |           Separation failure: value t's type () => Logger^ hides parameter l.
-   |           The parameter needs to be annotated with @consume to allow this.
+   |           The parameter needs to be annotated with consume to allow this.

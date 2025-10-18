@@ -63,7 +63,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     if (prev.exists)
-      assert(cur.exists || prev.is(ConstructorProxy), i"companion disappeared from $symd")
+      assert(cur.exists || prev.is(PhantomSymbol), i"companion disappeared from $symd")
   }
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
@@ -244,7 +244,7 @@ object TreeChecker {
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+    override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
 
     def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
       var locally = List.empty[Symbol]
@@ -343,7 +343,7 @@ object TreeChecker {
       // case tree: untpd.TypeDef =>
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)
-        args.foreach(assertIdentNotJavaClass _)
+        args.foreach(assertIdentNotJavaClass(_))
       // case tree: untpd.This =>
       // case tree: untpd.Literal =>
       // case tree: untpd.New =>
@@ -354,7 +354,7 @@ object TreeChecker {
       case Assign(_, rhs) =>
         assertIdentNotJavaClass(rhs)
       case Block(stats, expr) =>
-        stats.foreach(assertIdentNotJavaClass _)
+        stats.foreach(assertIdentNotJavaClass(_))
         assertIdentNotJavaClass(expr)
       case If(_, thenp, elsep) =>
         assertIdentNotJavaClass(thenp)
@@ -387,7 +387,7 @@ object TreeChecker {
     }
 
     def isSymWithoutDef(sym: Symbol)(using Context): Boolean =
-      sym.is(ConstructorProxy) || sym.isContextBoundCompanion
+      sym.is(PhantomSymbol) || sym.isContextBoundCompanion
 
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
@@ -858,7 +858,7 @@ object TreeChecker {
         val stack =
           if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
           else if err.getStackTrace == null then "  no stacktrace"
-          else err.getStackTrace.nn.mkString("  ", "  \n", "")
+          else err.getStackTrace.mkString("  ", "  \n", "")
         report.error(
           em"""Malformed tree was found while expanding macro with -Xcheck-macros.
               |The tree does not conform to the compiler's tree invariants.

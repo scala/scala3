@@ -18,7 +18,7 @@ class AbstractFileClassLoaderTest:
   def closing[T <: Closeable, U](stream: T)(f: T => U): U = try f(stream) finally stream.close()
 
   extension (f: AbstractFile) def writeContent(s: String): Unit = closing(f.bufferedOutput)(_.write(s.getBytes(UTF8.charSet)))
-  def slurp(inputStream: => InputStream)(implicit codec: Codec): String = closing(Source.fromInputStream(inputStream)(codec))(_.mkString)
+  def slurp(inputStream: => InputStream)(implicit codec: Codec): String = closing(Source.fromInputStream(inputStream)(using codec))(_.mkString)
   def slurp(url: URL)(implicit codec: Codec): String = slurp(url.openStream())
 
   extension (input: InputStream) def bytes: Array[Byte] =
@@ -29,7 +29,7 @@ class AbstractFileClassLoaderTest:
   // cf ScalaClassLoader#classBytes
   extension (loader: ClassLoader)
     // An InputStream representing the given class name, or null if not found.
-    def classAsStream(className: String) = loader.getResourceAsStream {
+    def classAsStream(className: String): InputStream = loader.getResourceAsStream {
       if className.endsWith(".class") then className
       else s"${className.replace('.', '/')}.class"  // classNameToPath
     }

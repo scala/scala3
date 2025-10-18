@@ -96,11 +96,10 @@ object Inlines:
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
-   *  @param pt     The expected type of the call.
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree)(using Context): Tree =
+  def inlineCall(tree: Tree)(using Context): Tree = ctx.profiler.onInlineCall(tree.symbol):
     if tree.symbol.denot != SymDenotations.NoDenotation
       && tree.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
@@ -301,12 +300,12 @@ object Inlines:
 
         inContext(ctx.withSource(curSource)) {
           tree match
-            case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
-            case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
-            case tree: This => finalize(untpd.This(tree.qual)(curSource))
-            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
+            case tree: Ident => finalize(untpd.Ident(tree.name)(using curSource))
+            case tree: Literal => finalize(untpd.Literal(tree.const)(using curSource))
+            case tree: This => finalize(untpd.This(tree.qual)(using curSource))
+            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(using curSource))
             case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
             case tree: DefTree => super.transform(tree).setDefTree
             case EmptyTree => tree
@@ -395,6 +394,11 @@ object Inlines:
         case ConstantType(Constant(code: String)) =>
           val unitName = "tasty-reflect"
           val source2 = SourceFile.virtual(unitName, code)
+          def compilationUnits(untpdTree: untpd.Tree, tpdTree: Tree): List[CompilationUnit] =
+            val compilationUnit = CompilationUnit(unitName, code)
+            compilationUnit.tpdTree = tpdTree
+            compilationUnit.untpdTree = untpdTree
+            List(compilationUnit)
           // We need a dummy owner, as the actual one does not have a computed denotation yet,
           // but might be inspected in a transform phase, leading to cyclic errors
           val dummyOwner = newSymbol(ctx.owner, "$dummySymbol$".toTermName, Private, defn.AnyType, NoSymbol)
@@ -407,31 +411,30 @@ object Inlines:
             .withOwner(dummyOwner)
 
           inContext(newContext) {
-            val tree2 = new Parser(source2).block()
-            if ctx.reporter.allErrors.nonEmpty then
+            def noErrors = ctx.reporter.allErrors.isEmpty
+            val untpdTree = new Parser(source2).block()
+            if !noErrors then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
             else
-              val tree3 = ctx.typer.typed(tree2)
+              val tpdTree1 = ctx.typer.typed(untpdTree)
               ctx.base.postTyperPhase match
-                case postTyper: PostTyper if ctx.reporter.allErrors.isEmpty =>
-                  val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
+                case postTyper: PostTyper if noErrors =>
+                  val tpdTree2 =
+                    atPhase(postTyper) { postTyper.runOn(compilationUnits(untpdTree, tpdTree1)).head.tpdTree }
                   ctx.base.setRootTreePhase match
-                    case setRootTree =>
-                      val tree5 =
-                        val compilationUnit = CompilationUnit(unitName, code)
-                        compilationUnit.tpdTree = tree4
-                        compilationUnit.untpdTree = tree2
-                        var units = List(compilationUnit)
-                        atPhase(setRootTree)(setRootTree.runOn(units).head.tpdTree)
+                    case setRootTree if noErrors => // might be noPhase, if -Yretain-trees is not used
+                      val tpdTree3 =
+                        atPhase(setRootTree)(setRootTree.runOn(compilationUnits(untpdTree, tpdTree2)).head.tpdTree)
                       ctx.base.inliningPhase match
-                        case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
-                          val tree6 = atPhase(inlining) { inlining.newTransformer.transform(tree5) }
-                          if ctx.reporter.allErrors.isEmpty && reconstructedTransformPhases.nonEmpty then
-                            var transformTree = tree6
+                        case inlining: Inlining if noErrors =>
+                          val tpdTree4 = atPhase(inlining) { inlining.newTransformer.transform(tpdTree3) }
+                          if noErrors && reconstructedTransformPhases.nonEmpty then
+                            var transformTree = tpdTree4
                             for phase <- reconstructedTransformPhases do
-                              if ctx.reporter.allErrors.isEmpty then
+                              if noErrors then
                                 transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
                         case _ =>
+                    case _ =>
                 case _ =>
               ctx.reporter.allErrors.map((ErrorKind.Typer, _))
           }
@@ -569,12 +572,47 @@ object Inlines:
       // different for bindings from arguments and bindings from body.
       val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies then inlined
+      val hasOpaquesInResultFromCallWithTransparentContext =
+        val owners = call.symbol.ownersIterator.toSet
+        call.tpe.widenTermRefExpr.existsPart(
+          part => part.typeSymbol.is(Opaque) && owners.contains(part.typeSymbol.owner)
+        )
+
+      /** Remap ThisType nodes that are incorrect in the inlined context.
+       * Incorrect ThisType nodes can cause unwanted opaque type dealiasing later.
+       * E.g. if inlined in a `<root>.Foo` package (but outside of <root>.Foo.Bar object) we will map
+       *   `TermRef(ThisType(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),Bar$)),MyOpaque$)),one)`
+       * into
+       *   `TermRef(TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),object Bar),object MyOpaque),val one)`
+       * See test i13461-d
+       */
+      def fixThisTypeModuleClassReferences(tpe: Type): Type =
+        val owners = ctx.owner.ownersIterator.toSet
+        TreeTypeMap(
+          typeMap = new TypeMap:
+            override def stopAt = StopAt.Package
+            def apply(t: Type) = mapOver {
+              t match
+                case ThisType(tref @ TypeRef(prefix, _)) if tref.symbol.flags.is(Module) && !owners.contains(tref.symbol) =>
+                  TermRef(apply(prefix), tref.symbol.companionModule)
+                case _ => mapOver(t)
+            }
+        ).typeMap(tpe)
+
+      if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
-        val target =
-          if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
-          else call.tpe
-        inlined.ensureConforms(target)
+        val (target, forceCast) =
+          if inlinedMethod.is(Transparent) then
+            val unpacked = unpackProxiesFromResultType(inlined)
+            val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
+            (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
+          else (call.tpe, false)
+        if forceCast then
+          // we need to force the cast for issues with ThisTypes, as ensureConforms will just
+          // check subtyping and then choose not to cast, leaving the previous, incorrect type
+          inlined.cast(target)
+        else
+          inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is

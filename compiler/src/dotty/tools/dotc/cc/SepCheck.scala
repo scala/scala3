@@ -14,6 +14,7 @@ import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
 import reporting.trace
+import Capabilities.*
 
 /** The separation checker is  a tree traverser that is run after capture checking.
  *  It checks tree nodes for various separation conditions, explained in the
@@ -21,9 +22,9 @@ import reporting.trace
  *
  *   - Hidden sets of arguments must not be referred to in the same application
  *   - Hidden sets of (result-) types must not be referred to alter in the same scope.
- *   - Returned hidden sets can only refer to @consume parameters.
+ *   - Returned hidden sets can only refer to consume parameters.
  *   - If returned hidden sets refer to an encloding this, the reference must be
- *     from a @consume method.
+ *     from a consume method.
  *   - Consumed entities cannot be used subsequently.
  *   - Entitites cannot be consumed in a loop.
  */
@@ -72,7 +73,7 @@ object SepCheck:
    */
   abstract class ConsumedSet:
     /** The references in the set. The array should be treated as immutable in client code */
-    def refs: Array[CaptureRef]
+    def refs: Array[Capability]
 
     /** The associated source positoons. The array should be treated as immutable in client code */
     def locs: Array[SrcPos]
@@ -80,7 +81,7 @@ object SepCheck:
     /** The number of references in the set */
     def size: Int
 
-    def toMap: Map[CaptureRef, SrcPos] = refs.take(size).zip(locs).toMap
+    def toMap: Map[Capability, SrcPos] = refs.take(size).zip(locs).toMap
 
     def show(using Context) =
       s"[${toMap.map((ref, loc) => i"$ref -> $loc").toList}]"
@@ -89,15 +90,15 @@ object SepCheck:
   /** A fixed consumed set consisting of the given references `refs` and
    *  associated source positions `locs`
    */
-  class ConstConsumedSet(val refs: Array[CaptureRef], val locs: Array[SrcPos]) extends ConsumedSet:
+  class ConstConsumedSet(val refs: Array[Capability], val locs: Array[SrcPos]) extends ConsumedSet:
     def size = refs.size
 
   /** A mutable consumed set, which is initially empty */
   class MutConsumedSet extends ConsumedSet:
-    var refs: Array[CaptureRef] = new Array(4)
+    var refs: Array[Capability] = new Array(4)
     var locs: Array[SrcPos] = new Array(4)
     var size = 0
-    var peaks: Refs = emptyRefs
+    var directPeaks : Refs = emptyRefs
 
     private def double[T <: AnyRef : ClassTag](xs: Array[T]): Array[T] =
       val xs1 = new Array[T](xs.length * 2)
@@ -110,29 +111,29 @@ object SepCheck:
         locs = double(locs)
 
     /** If `ref` is in the set, its associated source position, otherwise `null` */
-    def get(ref: CaptureRef): SrcPos | Null =
+    def get(ref: Capability): SrcPos | Null =
       var i = 0
       while i < size && (refs(i) ne ref) do i += 1
       if i < size then locs(i) else null
 
-    def clashing(ref: CaptureRef)(using Context): SrcPos | Null =
-      val refPeaks = ref.peaks
-      if !peaks.sharedWith(refPeaks).isEmpty then
+    def clashing(ref: Capability)(using Context): SrcPos | Null =
+      val refPeaks = ref.directPeaks
+      if !directPeaks.sharedPeaks(refPeaks).isEmpty then
         var i = 0
-        while i < size && refs(i).peaks.sharedWith(refPeaks).isEmpty do
+        while i < size && refs(i).directPeaks.sharedPeaks(refPeaks).isEmpty do
           i += 1
         assert(i < size)
         locs(i)
       else null
 
     /** If `ref` is not yet in the set, add it with given source position */
-    def put(ref: CaptureRef, loc: SrcPos)(using Context): Unit =
+    def put(ref: Capability, loc: SrcPos)(using Context): Unit =
       if get(ref) == null then
         ensureCapacity(1)
         refs(size) = ref
         locs(size) = loc
         size += 1
-        peaks = peaks ++ ref.peaks
+        directPeaks  = directPeaks  ++ ref.directPeaks
 
     /** Add all references with their associated positions from `that` which
      *  are not yet in the set.
@@ -145,14 +146,14 @@ object SepCheck:
      */
     def segment(op: => Unit): ConsumedSet =
       val start = size
-      val savedPeaks = peaks
+      val savedPeaks = directPeaks
       try
         op
         if size == start then EmptyConsumedSet
         else ConstConsumedSet(refs.slice(start, size), locs.slice(start, size))
       finally
         size = start
-        peaks = savedPeaks
+        directPeaks  = savedPeaks
   end MutConsumedSet
 
   val EmptyConsumedSet = ConstConsumedSet(Array(), Array())
@@ -163,62 +164,80 @@ object SepCheck:
 
   extension (refs: Refs)
 
-    /** The footprint of a set of references `refs` the smallest set `F` such that
-     *   1. if includeMax is false then no maximal capability is in `F`
-     *   2. all capabilities in `refs` satisfying (1) are in `F`
-     *   3. if `f in F` then the footprint of `f`'s info is also in `F`.
-     */
-    private def footprint(includeMax: Boolean = false)(using Context): Refs =
-      def retain(ref: CaptureRef) = includeMax || !ref.isRootCapability
-      def recur(elems: Refs, newElems: List[CaptureRef]): Refs = newElems match
-        case newElem :: newElems1 =>
-          val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
-            retain(superElem) && !elems.contains(superElem)
-          recur(elems ++ superElems, newElems1 ++ superElems.toList)
-        case Nil => elems
-      val elems: Refs = refs.filter(retain)
-      recur(elems, elems.toList)
-
     private def peaks(using Context): Refs =
-      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = trace(i"peaks $acc, $newElems = "):
+      refs.filter(_.isTerminalCapability)
+
+    private def nonPeaks(using Context): Refs =
+      refs.filter(!_.isTerminalCapability)
+
+    /** The footprint of a set of capabilities `refs` is the closure
+     *  of `refs` under `_.captureSetOfInfo`, dropping any shared terminal
+     *  capabilities. If `followHidden` is true, we close under both
+     *  `_.captureSetOfInfo` and `_.hiddenElems`.
+     */
+    private def computeFootprint(followHidden: Boolean)(using Context): Refs =
+      def recur(seen: Refs, acc: Refs, newElems: List[Capability]): Refs = trace(i"peaks $acc, $newElems = "):
         newElems match
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
-          else newElem.stripReadOnly match
-            case root.Fresh(hidden) =>
-              if hidden.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
-              else
-                val superCaps =
-                  if newElem.isReadOnly then hidden.superCaps.map(_.readOnly)
-                  else hidden.superCaps
-                recur(seen + newElem, acc, superCaps ++ newElems)
+          else newElem.stripRestricted.stripReadOnly match
+            case _: FreshCap if !newElem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
+              val hiddens = if followHidden then newElem.hiddenSet.toList else Nil
+              recur(seen + newElem, acc + newElem, hiddens ++ newElems1)
+            case _ if newElem.isTerminalCapability =>
+              recur(seen + newElem, acc, newElems1)
             case _ =>
-              if newElem.isRootCapability
-                //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
-              then recur(seen + newElem, acc, newElems1)
-              else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
+              recur(seen + newElem, acc + newElem, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
         case Nil => acc
       recur(emptyRefs, emptyRefs, refs.toList)
 
-    /** The shared peaks between `refs` and `other` */
-    private def sharedWith(other: Refs)(using Context): Refs =
+    /** The direct footprint of a set of capabilities `refs` is the closure
+     *  of `refs` under `_.captureSetOfInfo`, dropping any shared terminal
+     *  capabilities.
+     */
+    private def directFootprint(using Context): Refs =
+      computeFootprint(followHidden = false)
+
+    /** The complete footprint of a set of capabilities `refs` is the closure
+     *  of `refs` under `_.captureSetOfInfo` and `_.hiddenElems`, dropping any shared terminal
+     *  capabilities.
+     */
+    private def completeFootprint(using Context): Refs =
+      computeFootprint(followHidden = true)
+
+    /** Same as completeFootprint.peaks under new scheme. Was maximal elements before */
+    private def allPeaks(using Context): Refs =
+      completeFootprint.peaks
+
+    /** The shared elements between the peak sets `refs` and `other`.
+     *  These are the core capabilities and fresh capabilities that appear
+     *  in a (possibly classified or readOnly) version in both sets and that
+     *  that appear in a non-readOnly version in at least one of the sets.
+     */
+    private def sharedPeaks(other: Refs)(using Context): Refs =
       def common(refs1: Refs, refs2: Refs) =
-        refs1.filter: ref =>
-          !ref.isReadOnly && refs2.exists(_.stripReadOnly eq ref)
+        var acc: Refs = emptyRefs
+        refs1.foreach: ref =>
+          if !ref.isReadOnly then
+            val coreRef = ref.stripRestricted
+            if refs2.exists(_.stripRestricted.stripReadOnly.coversFresh(coreRef)) then
+              acc += coreRef
+        acc
+      assert(refs.forall(_.isTerminalCapability))
+      assert(other.forall(_.isTerminalCapability))
       common(refs, other) ++ common(other, refs)
 
     /** The overlap of two footprint sets F1 and F2. This contains all exclusive references `r`
      *  such that one of the following is true:
      *   1.
      *      - one of the sets contains `r`
-     *      - the other contains a capability `s` or `s.rd` where `s` _covers_ `r`
+     *      - the other contains a capability `s` or `s.rd` where `s` covers `r`
      *   2.
      *      - one of the sets contains `r.rd`
-     *      - the other contains a capability `s` where `s` _covers_ `r`
+     *      - the other contains a capability `s` where `s` covers `r`
      *
-     *  A capability `s` covers `r` if `r` can be seen as a path extension of `s`. E.g.
-     *  if `s = x.a` and `r = x.a.b.c` then `s` covers `a`.
+     *  @see covers in Capability
      */
     private def overlapWith(other: Refs)(using Context): Refs =
       val refs1 = refs
@@ -235,11 +254,11 @@ object SepCheck:
         ++
         refs1
           .filter:
-            case ReadOnlyCapability(ref @ TermRef(prefix: CaptureRef, _)) =>
+            case ReadOnly(ref @ TermRef(prefix: CoreCapability, _)) =>
               // We can get away testing only references with at least one field selection
               // here since stripped readOnly references that equal a reference in refs2
               // are added by the first clause of the symmetric call to common.
-              !ref.isCap && refs2.exists(_.covers(prefix))
+              refs2.exists(_.covers(prefix))
             case _ =>
               false
           .map(_.stripReadOnly)
@@ -247,24 +266,34 @@ object SepCheck:
       common(refs, other) ++ common(other, refs)
     end overlapWith
 
-    /** The non-maximal elements hidden directly or indirectly by a maximal
+   /** Reduce a non-empty footprint set to
+     *   1. all its non-terminial capabilities if that set is nonempty, or
+     *   2. all its non-hidden capabilities if that set is nonempty, or
+     *   3. the set itself if it consists only of hidden terminal capabilities.
+     */
+    def reduced(using Context): Refs =
+      val concrete = refs.nonPeaks
+      if !concrete.isEmpty then concrete
+      else
+        val notHidden = refs -- refs.flatMap(_.hiddenSet)
+        if !notHidden.isEmpty then notHidden
+        else refs
+
+    /** The non-terminal elements hidden directly or indirectly by a terminal
      *  capability in `refs`. E g. if `R = {x, <cap hiding <y, <cap hiding z>>}` then
      *  its hidden set is `{y, z}`.
      */
-    private def hiddenSet(using Context): Refs =
-      val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
-
-      def hiddenByElem(elem: CaptureRef): Refs = elem match
-        case root.Fresh(hcs) => hcs.elems ++ recur(hcs.elems)
-        case ReadOnlyCapability(ref1) => hiddenByElem(ref1).map(_.readOnly)
-        case _ => emptyRefs
+    private def transHiddenSet(using Context): Refs =
+      val seen: util.EqHashSet[Capability] = new util.EqHashSet
 
       def recur(refs: Refs): Refs =
         (emptyRefs /: refs): (elems, elem) =>
-          if seen.add(elem) then elems ++ hiddenByElem(elem) else elems
+          if seen.add(elem)
+          then elems ++ elem.computeHiddenSet(refs => refs ++ recur(refs))
+          else elems
 
       recur(refs)
-    end hiddenSet
+    end transHiddenSet
 
     /** Subtract all elements that are covered by some element in `others` from this set. */
     private def deduct(others: Refs)(using Context): Refs =
@@ -279,8 +308,9 @@ object SepCheck:
 
   end extension
 
-  extension (ref: CaptureRef)
-    def peaks(using Context): Refs = SimpleIdentitySet(ref).peaks
+  extension (ref: Capability)
+    def directPeaks (using Context): Refs =
+      SimpleIdentitySet(ref).directFootprint.peaks
 
 class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import checker.*
@@ -309,33 +339,29 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  the latter contains a cap.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
-    arg.formalType.orElse(arg.nuType).deepCaptureSet.elems
+    arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
 
-   /** The deep capture set if the type of `tree` */
-  private def captures(tree: Tree)(using Context): Refs =
+   /** The span capture set of the type of `tree` */
+  private def spanCaptures(tree: Tree)(using Context): Refs =
+   tree.nuType.spanCaptureSet.elems
+
+   /** The deep capture set of the type of `tree` */
+  private def deepCaptures(tree: Tree)(using Context): Refs =
    tree.nuType.deepCaptureSet.elems
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
 
-  def sharedPeaksStr(shared: Refs)(using Context): String =
-    shared.nth(0) match
-      case fresh @ root.Fresh(hidden) =>
-        if hidden.owner.exists then i"$fresh of ${hidden.owner}" else i"$fresh"
-      case other =>
-        i"$other"
-
   def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
-    val hiddenFootprint = hiddenSet.footprint()
-    val clashFootprint = clashSet.footprint()
-    // The overlap of footprints, or, of this empty the set of shared peaks.
-    // We prefer footprint overlap since it tends to be more informative.
-    val overlap = hiddenFootprint.overlapWith(clashFootprint)
-    if !overlap.isEmpty then i"${CaptureSet(overlap)}"
-    else
-      val sharedPeaks = hiddenSet.footprint(includeMax = true).sharedWith:
-        clashSet.footprint(includeMax = true)
-      assert(!sharedPeaks.isEmpty, i"no overlap for $hiddenSet vs $clashSet")
-      sharedPeaksStr(sharedPeaks)
+    val hiddenFootprint = hiddenSet.directFootprint
+    val clashFootprint = clashSet.directFootprint
+    val shared = hiddenFootprint.overlapWith(clashFootprint).reduced
+    if shared.isEmpty then i"${CaptureSet(shared)}"
+    else shared.nth(0) match
+      case fresh: FreshCap =>
+        val where = if ctx.settings.YccVerbose.value then "" else i" of ${fresh.ccOwnerStr}"
+        i"{$fresh$where}"
+      case _ =>
+        i"${CaptureSet(shared)}"
 
   /** Report a separation failure in an application `fn(args)`
    *  @param fn          the function
@@ -375,8 +401,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     def clashTypeStr =
       if clashIdx == 0 && !isShowableMethod then "" // we already mentioned the type in `funStr`
       else i" with type  ${clashing.nuType}"
-    val hiddenSet = formalCaptures(polyArg).hiddenSet
-    val clashSet = captures(clashing)
+    val hiddenSet = formalCaptures(polyArg).transHiddenSet
+    val clashSet = if clashIdx == -1 then deepCaptures(clashing) else spanCaptures(clashing)
+    val hiddenFootprint = hiddenSet.completeFootprint
+    val clashFootprint = clashSet.completeFootprint
+
     report.error(
       em"""Separation failure: argument of type  ${polyArg.nuType}
           |to $funStr
@@ -385,10 +414,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           |Some of these overlap with the captures of the ${clashArgStr.trim}$clashTypeStr.
           |
           |  Hidden set of current argument        : ${CaptureSet(hiddenSet)}
-          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.footprint())}
+          |  Hidden footprint of current argument  : ${CaptureSet(hiddenFootprint.nonPeaks)}
           |  Capture set of $clashArgStr        : ${CaptureSet(clashSet)}
-          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.footprint())}
-          |  The two sets overlap at               : ${overlapStr(hiddenSet, clashSet)}""",
+          |  Footprint set of $clashArgStr      : ${CaptureSet(clashFootprint.nonPeaks)}
+          |  The two sets overlap at               : ${overlapStr(hiddenFootprint, clashFootprint)}""",
       polyArg.srcPos)
 
   /** Report a use/definition failure, where a previously hidden capability is
@@ -403,6 +432,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def sepUseError(tree: Tree, clashingDef: ValOrDefDef | Null, used: Refs, hidden: Refs)(using Context): Unit =
     if clashingDef != null then
       def resultStr = if clashingDef.isInstanceOf[DefDef] then " result" else ""
+      //println(i"sep use error: previous ${clashingDef.tpt.nuType}, ref = $used")
       report.error(
         em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
             |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
@@ -419,21 +449,21 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param loc     the position where the capability was consumed
    *  @param pos     the position where the capability was used again
    */
-  def consumeError(ref: CaptureRef, loc: SrcPos, pos: SrcPos)(using Context): Unit =
+  def consumeError(ref: Capability, loc: SrcPos, pos: SrcPos)(using Context): Unit =
     report.error(
       em"""Separation failure: Illegal access to $ref, which was passed to a
-          |@consume parameter or was used as a prefix to a @consume method on line ${loc.line + 1}
+          |consume parameter or was used as a prefix to a consume method on line ${loc.line + 1}
           |and therefore is no longer available.""",
       pos)
 
   /** Report a failure where a capability is consumed in a loop.
    *  @param ref     the capability
-   *  @param loc     the position where the capability was consumed
+   *  @param pos     the position where the capability was consumed
    */
-  def consumeInLoopError(ref: CaptureRef, pos: SrcPos)(using Context): Unit =
+  def consumeInLoopError(ref: Capability, pos: SrcPos)(using Context): Unit =
     report.error(
       em"""Separation failure: $ref appears in a loop, therefore it cannot
-          |be passed to a @consume parameter or be used as a prefix of a @consume method call.""",
+          |be passed to a consume parameter or be used as a prefix of a consume method call.""",
       pos)
 
   // ------------ Checks -----------------------------------------------------
@@ -457,58 +487,62 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  Also check separation via checkType within individual arguments widened to their
    *  formal paramater types.
    *
-   *  @param fn        the applied function
-   *  @param args      the flattened argument lists
-   *  @param app       the entire application tree
-   *  @param deps      cross argument dependencies: maps argument trees to
-   *                   those other arguments that where mentioned by coorresponding
-   *                   formal parameters.
+   *  @param fn            the applied function
+   *  @param args          the flattened argument lists
+   *  @param app           the entire application tree
+   *  @param deps          cross argument dependencies: maps argument trees to
+   *                       those other arguments that where mentioned by coorresponding
+   *                       formal parameters.
+   *  @param resultPeaks   peaks in the result type that could interfere with the
+   *                       hidden sets of formal parameters
    */
-  private def checkApply(fn: Tree, args: List[Tree], app: Tree, deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
+  private def checkApply(fn: Tree, args: List[Tree], app: Tree, deps: collection.Map[Tree, List[Tree]], resultPeaks: Refs)(using Context): Unit =
     val (qual, fnCaptures) = methPart(fn) match
       case Select(qual, _) => (qual, qual.nuType.captureSet)
       case _ => (fn, CaptureSet.empty)
-    var currentPeaks = PeaksPair(fnCaptures.elems.peaks, emptyRefs)
+    var currentPeaks = PeaksPair(fnCaptures.elems.allPeaks, emptyRefs)
     val partsWithPeaks = mutable.ListBuffer[(Tree, PeaksPair)]() += (qual -> currentPeaks)
 
     capt.println(
       i"""check separate $fn($args), fnCaptures = $fnCaptures,
          |  formalCaptures = ${args.map(arg => CaptureSet(formalCaptures(arg)))},
-         |  actualCaptures = ${args.map(arg => CaptureSet(captures(arg)))},
+         |  actualCaptures = ${args.map(arg => CaptureSet(spanCaptures(arg)))},
+         |  resultPeaks = ${resultPeaks},
          |  deps = ${deps.toList}""")
     val parts = qual :: args
+    var reported: SimpleIdentitySet[Tree] = SimpleIdentitySet.empty
 
     for arg <- args do
       val argPeaks = PeaksPair(
-          captures(arg).peaks,
-          if arg.needsSepCheck then formalCaptures(arg).hiddenSet.peaks else emptyRefs)
+          spanCaptures(arg).allPeaks,
+          if arg.needsSepCheck then formalCaptures(arg).transHiddenSet.allPeaks else emptyRefs)
       val argDeps = deps(arg)
 
       def clashingPart(argPeaks: Refs, selector: PeaksPair => Refs): Tree =
         partsWithPeaks.find: (prev, prevPeaks) =>
           !argDeps.contains(prev)
-          && !selector(prevPeaks).sharedWith(argPeaks).isEmpty
+          && !selector(prevPeaks).sharedPeaks(argPeaks).isEmpty
         match
           case Some(prev, _) => prev
           case None => EmptyTree
 
       // 1. test argPeaks.actual against previously captured hidden sets
-      if !argPeaks.actual.sharedWith(currentPeaks.hidden).isEmpty then
+      if !argPeaks.actual.sharedPeaks(currentPeaks.hidden).isEmpty then
         val clashing = clashingPart(argPeaks.actual, _.hidden)
-        if !clashing.isEmpty then sepApplyError(fn, parts, clashing, arg)
+        if !clashing.isEmpty then
+          sepApplyError(fn, parts, clashing, arg)
+          reported += clashing
         else assert(!argDeps.isEmpty)
 
       if arg.needsSepCheck then
         //println(i"testing $arg, formal = ${arg.formalType}, peaks = ${argPeaks.actual}/${argPeaks.hidden} against ${currentPeaks.actual}")
         checkType(arg.formalType, arg.srcPos, TypeRole.Argument(arg))
         // 2. test argPeaks.hidden against previously captured actuals
-        if !argPeaks.hidden.sharedWith(currentPeaks.actual).isEmpty then
+        if !argPeaks.hidden.sharedPeaks(currentPeaks.actual).isEmpty then
           val clashing = clashingPart(argPeaks.hidden, _.actual)
           if !clashing.isEmpty then
-            if !clashing.needsSepCheck then
-              // if clashing needs a separation check then we already got an erro
-              // in (1) at position of clashing. No need to report it twice.
-              //println(i"CLASH $arg / ${argPeaks.formal} vs $clashing / ${peaksOfTree(clashing).actual} / ${captures(clashing).peaks}")
+            if !reported.contains(clashing) then
+              //println(i"CLASH $arg / ${argPeaks.formal} vs $clashing / ${peaksOfTree(clashing).actual} / ${spanCaptures(clashing).peaks}")
               sepApplyError(fn, parts, arg, clashing)
           else assert(!argDeps.isEmpty)
 
@@ -518,26 +552,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           currentPeaks.hidden ++ argPeaks.hidden)
     end for
 
-    def collectRefs(args: List[Type], res: Type) =
-      args.foldLeft(argCaptures(res)): (refs, arg) =>
-        refs ++ arg.deepCaptureSet.elems
-
-    /** The deep capture sets of all parameters of this type (if it is a function type) */
-    def argCaptures(tpe: Type): Refs = tpe match
-      case defn.FunctionOf(args, resultType, isContextual) =>
-        collectRefs(args, resultType)
-      case defn.RefinedFunctionOf(mt) =>
-        collectRefs(mt.paramInfos, mt.resType)
-      case CapturingType(parent, _) =>
-        argCaptures(parent)
-      case _ =>
-        emptyRefs
-
-    if !deps(app).isEmpty then
-      lazy val appPeaks = argCaptures(app.nuType).peaks
+    if !resultPeaks.isEmpty then
       lazy val partPeaks = partsWithPeaks.toMap
-      for arg <- deps(app) do
-        if arg.needsSepCheck && !partPeaks(arg).hidden.sharedWith(appPeaks).isEmpty then
+      for arg <- args do
+        if arg.needsSepCheck && !partPeaks(arg).hidden.sharedPeaks(resultPeaks).isEmpty then
           sepApplyError(fn, parts, arg, app)
   end checkApply
 
@@ -549,32 +567,42 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val used = tree.markedFree.elems
     if !used.isEmpty then
       capt.println(i"check use $tree: $used")
-      val usedPeaks = used.peaks
-      val overlap = defsShadow.peaks.sharedWith(usedPeaks)
-      if !defsShadow.peaks.sharedWith(usedPeaks).isEmpty then
-        val sym = tree.symbol
+      val usedPeaks = used.allPeaks
+      val overlap = defsShadow.allPeaks.sharedPeaks(usedPeaks)
+      if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
+        // Drop all Selects unless they select from a `this`
+        def pathRoot(tree: Tree): Tree = tree match
+          case Select(This(_), _) => tree
+          case Select(prefix, _) => pathRoot(prefix)
+          case _ => tree
+
+        val rootSym = pathRoot(tree).symbol
 
         def findClashing(prevDefs: List[DefInfo]): Option[DefInfo] = prevDefs match
           case prevDef :: prevDefs1 =>
-            if prevDef.symbol == sym then Some(prevDef)
-            else if !prevDef.hiddenPeaks.sharedWith(usedPeaks).isEmpty then Some(prevDef)
+            if prevDef.symbol == rootSym then Some(prevDef)
+            else if !prevDef.hiddenPeaks.sharedPeaks(usedPeaks).isEmpty then Some(prevDef)
             else findClashing(prevDefs1)
           case Nil =>
             None
 
         findClashing(previousDefs) match
           case Some(clashing) =>
-            if clashing.symbol != sym then
+            //println(i"check use $tree, $used, $rootSym, ${clashing.symbol}")
+            if clashing.symbol != rootSym then
               sepUseError(tree, clashing.tree, used, clashing.hidden)
           case None =>
             sepUseError(tree, null, used, defsShadow)
+      end if
 
       for ref <- used do
         val pos = consumed.clashing(ref)
-        if pos != null then consumeError(ref, pos, tree.srcPos)
+        if pos != null then
+          // println(i"consumed so far ${consumed.refs.toList} with peaks ${consumed.directPeaks.toList}, used = $used, exposed = ${ref.directPeaks }")
+          consumeError(ref, pos, tree.srcPos)
   end checkUse
 
-  /** If `tp` denotes some version of a singleton capture ref `x.type` the set `{x, x*}`
+  /** If `tp` denotes some version of a singleton capability `x.type` the set `{x, x*}`
    *  otherwise the empty set.
    */
   def explicitRefs(tp: Type)(using Context): Refs = tp match
@@ -586,22 +614,22 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Check validity of consumed references `refsToCheck`. The references are consumed
    *  because they are hidden in a Fresh result type or they are referred
-   *  to in an argument to a @consume parameter or in a prefix of a @consume method --
+   *  to in an argument to a consume parameter or in a prefix of a consume method --
    *  which one applies is determined by the role parameter.
    *
    *  This entails the following checks:
-   *   - The reference must be defined in the same as method or class as
+   *   - The reference must be defined in the same method or class as
    *     the access.
    *   - If the reference is to a term parameter, that parameter must be
-   *     marked as @consume as well.
+   *     marked as consume as well.
    *   - If the reference is to a this type of the enclosing class, the
-   *     access must be in a @consume method.
+   *     access must be in a consume method.
    *
-   *  References that extend SharedCapability are excluded from checking.
+   *  References that extend caps.Sharable are excluded from checking.
    *  As a side effect, add all checked references with the given position `pos`
    *  to the global `consumed` map.
    *
-   *  @param refsToCheck   the referencves to check
+   *  @param refsToCheck   the references to check
    *  @param tpe           the type containing those references
    *  @param role          the role in which the type apears
    *  @param descr         a textual description of the type and its relationship with the checked reference
@@ -610,15 +638,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
-    for hiddenRef <- refsToCheck.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe)) do
-      if !hiddenRef.derivesFromSharedCapability then
+    for hiddenRef <- refsToCheck.deduct(explicitRefs(tpe)) do
+      if !hiddenRef.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
-          case ref: TermRef =>
+          case ref: TermRef if ref.symbol != role.dclSym =>
             val refSym = ref.symbol
             if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
               report.error(em"""Separation failure: $descr non-local $refSym""", pos)
             else if refSym.is(TermParam)
-              && !refSym.hasAnnotation(defn.ConsumeAnnot)
+              && !refSym.isConsumeParam
               && currentOwner.isContainedIn(refSym.owner)
             then
               badParams += refSym
@@ -630,7 +658,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             then
               report.error(
                 em"""Separation failure: $descr non-local this of class ${ref.cls}.
-                    |The access must be in a @consume method to allow this.""",
+                    |The access must be in a consume method to allow this.""",
                 pos)
           case _ =>
 
@@ -642,13 +670,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
       report.error(
         em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toList)}.
-            |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
+            |The parameter$pluralS need$singleS to be annotated with consume to allow this.""",
           pos)
 
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.derivesFromSharedCapability then
+          if !ref.isKnownClassifiedAs(defn.Caps_SharedCapability) then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs
@@ -675,9 +703,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     def sepTypeError(parts: List[Type], genPart: Type, otherPart: Type): Unit =
       val captured = genPart.deepCaptureSet.elems
-      val hiddenSet = captured.hiddenSet.pruned
+      val hiddenSet = captured.transHiddenSet.pruned
       val clashSet = otherPart.deepCaptureSet.elems
-      val deepClashSet = (clashSet.footprint() ++ clashSet.hiddenSet).pruned
+      val deepClashSet = clashSet.completeFootprint.nonPeaks.pruned
       report.error(
         em"""Separation failure in ${role.description} $tpe.
             |One part,  $genPart, hides capabilities  ${CaptureSet(hiddenSet)}.
@@ -695,9 +723,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
       for part <- parts do
         val captured = part.deepCaptureSet.elems.pruned
-        val hidden = captured.hiddenSet.pruned
+        val hidden = captured.transHiddenSet.pruned
         val actual = captured ++ hidden
-        val partPeaks = PeaksPair(actual.peaks, hidden.peaks)
+        val partPeaks = PeaksPair(actual.allPeaks, hidden.allPeaks)
         /*
         println(i"""check parts $parts
                    |current = ${currentPeaks.actual}/${currentPeaks.hidden}
@@ -707,18 +735,18 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
         def clashingPart(argPeaks: Refs, selector: PeaksPair => Refs): Type =
           partsWithPeaks.find: (prev, prevPeaks) =>
-            !selector(prevPeaks).sharedWith(argPeaks).isEmpty
+            !selector(prevPeaks).sharedPeaks(argPeaks).isEmpty
           match
             case Some(prev, _) => prev
             case None => NoType
 
-        if !partPeaks.actual.sharedWith(currentPeaks.hidden).isEmpty then
+        if !partPeaks.actual.sharedPeaks(currentPeaks.hidden).isEmpty then
           //println(i"CLASH ${partPeaks.actual} with ${currentPeaks.hidden}")
           val clashing = clashingPart(partPeaks.actual, _.hidden)
           //println(i"CLASH ${partPeaks.actual} with ${currentPeaks.hidden}")
           if clashing.exists then sepTypeError(parts, clashing, part)
 
-        if !partPeaks.hidden.sharedWith(currentPeaks.actual).isEmpty then
+        if !partPeaks.hidden.sharedPeaks(currentPeaks.actual).isEmpty then
           val clashing = clashingPart(partPeaks.hidden, _.actual)
           if clashing.exists then sepTypeError(parts, part, clashing)
 
@@ -755,7 +783,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               c.add(c1)
             case t @ CapturingType(parent, cs) =>
               val c1 = this(c, parent)
-              if cs.elems.exists(_.stripReadOnly.isFresh) then c1.add(Captures.Hidden)
+              if cs.elems.exists(_.core.isInstanceOf[FreshCap]) then c1.add(Captures.Hidden)
               else if !cs.elems.isEmpty then c1.add(Captures.Explicit)
               else c1
             case t: TypeRef if t.symbol.isAbstractOrParamType =>
@@ -768,7 +796,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     /** If `tpe` appears as a (result-) type of a definition, treat its
      *  hidden set minus its explicitly declared footprint as consumed.
-     *  If `tpe` appears as an argument to a @consume parameter, treat
+     *  If `tpe` appears as an argument to a consume parameter, treat
      *  its footprint as consumed.
      */
     def checkLegalRefs() = role match
@@ -780,12 +808,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.hiddenSet.footprint().deduct(refs.footprint())
+          val toCheck = refs.transHiddenSet.directFootprint.nonPeaks.deduct(refs.directFootprint.nonPeaks)
           checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
       case TypeRole.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
-          val capts = captures(arg).footprint()
-          checkConsumedRefs(capts, tpe, role, i"argument to @consume parameter with type ${arg.nuType} refers to", pos)
+          val capts = spanCaptures(arg).directFootprint.nonPeaks
+          checkConsumedRefs(capts, tpe, role, i"argument to consume parameter with type ${arg.nuType} refers to", pos)
       case _ =>
 
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
@@ -815,10 +843,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  then the dependencies of an application `f(a, b, c)` of type C^{y} is the map
    *
    *    [ b -> [a]
-   *    , c -> [a, b]
-   *    , f(a, b, c) -> [b]]
+   *    , c -> [a, b] ]
+   *
+   * It also returns the interfering peaks of the result of the application. They are the
+   * peaks of argument captures and deep captures of the result function type, minus the
+   * those dependent on parameters. For instance,
+   * if `f` has the type (x: A, y: B, c: C) -> (op: () ->{b} Unit) -> List[() ->{x, y, a} Unit], its interfering
+   * peaks will be the peaks of `a` and `b`.
    */
-  private def dependencies(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): collection.Map[Tree, List[Tree]] =
+  private def dependencies(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): (collection.Map[Tree, List[Tree]], Refs) =
     def isFunApply(sym: Symbol) =
       sym.name == nme.apply && defn.isFunctionClass(sym.owner)
     val mtpe =
@@ -830,24 +863,49 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val argMap = mtpsWithArgs.toMap
     val deps = mutable.HashMap[Tree, List[Tree]]().withDefaultValue(Nil)
 
+    def argOfDep(dep: Capability): Option[Tree] =
+      dep.stripReach match
+        case dep: TermParamRef =>
+          Some(argMap(dep.binder)(dep.paramNum))
+        case dep: ThisType if dep.cls == fn.symbol.owner =>
+          val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
+          Some(qual)
+        case _ =>
+          None
+
     def recordDeps(formal: Type, actual: Tree) =
-      for dep <- formal.captureSet.elems.toList do
-        val referred = dep.stripReach match
-          case dep: TermParamRef =>
-            argMap(dep.binder)(dep.paramNum) :: Nil
-          case dep: ThisType if dep.cls == fn.symbol.owner =>
-            val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
-            qual :: Nil
-          case _ =>
-            Nil
+      def captures = formal.captureSet
+      for dep <- captures.elems.toList do
+        val referred = argOfDep(dep)
         deps(actual) ++= referred
+
+    inline def isLocalRef(x: Capability): Boolean = x.isInstanceOf[TermParamRef]
+
+    def resultArgCaptures(tpe: Type): Refs =
+      def collectRefs(args: List[Type], res: Type) =
+        args.foldLeft(resultArgCaptures(res)): (refs, arg) =>
+          refs ++ arg.captureSet.elems
+      tpe match
+        case defn.FunctionOf(args, resultType, isContextual) =>
+          collectRefs(args, resultType)
+        case defn.RefinedFunctionOf(mt) =>
+          collectRefs(mt.paramInfos, mt.resType)
+        case CapturingType(parent, refs) =>
+          resultArgCaptures(parent) ++ tpe.boxedCaptureSet.elems
+        case _ =>
+          emptyRefs
 
     for (mt, args) <- mtpsWithArgs; (formal, arg) <- mt.paramInfos.zip(args) do
       recordDeps(formal, arg)
-    recordDeps(mtpe.finalResultType, app)
-    capt.println(i"deps for $app = ${deps.toList}")
-    deps
 
+    val resultType = mtpe.finalResultType
+    val resultCaptures =
+      (resultArgCaptures(resultType) ++ resultType.deepCaptureSet.elems).filter(!isLocalRef(_))
+      // See i23726.scala why deepCaptureSet is needed here.
+    val resultPeaks = resultCaptures.allPeaks
+    capt.println(i"deps for $app = ${deps.toList}")
+    (deps, resultPeaks)
+  end dependencies
 
   /** Decompose an application into a function prefix and a list of argument lists.
    *  If some of the arguments need a separation check because they are capture polymorphic,
@@ -859,7 +917,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case TypeApply(fn, args) => recur(fn, argss) // skip type arguments
       case _ =>
         if argss.nestedExists(_.needsSepCheck) then
-          checkApply(tree, argss.flatten, app, dependencies(tree, argss, app))
+          val (deps, resultPeaks) = dependencies(tree, argss, app)
+          checkApply(tree, argss.flatten, app, deps, resultPeaks)
     recur(app, Nil)
 
   /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`? */
@@ -869,7 +928,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
     defsShadow ++= hiddenByDef
-    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.peaks) :: previousDefs
+    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
 
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
@@ -879,8 +938,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
     if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
       checkType(tree.tpt, tree.symbol)
-      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint()}")
-      pushDef(tree, captures(tree.tpt).hiddenSet.deductSymRefs(tree.symbol))
+      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
+      pushDef(tree, spanCaptures(tree.tpt).transHiddenSet.deductSymRefs(tree.symbol))
 
   def inSection[T](op: => T)(using Context): T =
     val savedDefsShadow = defsShadow
@@ -892,17 +951,33 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))
 
+  /** Should separatiion checking be disabled for the body of this method?
+   */
+  def skippable(sym: Symbol)(using Context): Boolean =
+    sym.isInlineMethod
+      // We currently skip inline method bodies since these seem to generate
+      // spurious recheck completions. Test case is i20237.scala
+    || sym.is(Synthetic) && sym.name.startsWith("_")
+      // Approximation of case class getters _1, _2, ... . We can't separation check them
+      // or colltest5/CollectionStrawManCC5_1.scala would fail with an error in
+      // case class Filter. TODO Investigate to decide what needs to be done
+      //  - Can we make the accessors work somehow?
+      //  - If not, should we disable just accessors or all synthetic methods?
+      // Reporting an error in a synthetic method is very frustrating since we don't have
+      // a position with source code to show. On the other hand, skipping all synthetic members
+      // might cause soundness issues.
+
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
     if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
-        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.hasAnnotation(defn.ConsumeAnnot) =>
+        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsumeParam =>
           traverseChildren(tree)
           checkConsumedRefs(
-              captures(qual).footprint(), qual.nuType,
+              spanCaptures(qual).directFootprint.nonPeaks, qual.nuType,
               TypeRole.Qualifier(qual, tree.symbol),
-              i"call prefix of @consume ${tree.symbol} refers to", qual.srcPos)
+              i"call prefix of consume ${tree.symbol} refers to", qual.srcPos)
         case tree: GenericApply =>
           traverseChildren(tree)
           tree.tpe match
@@ -914,11 +989,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseChildren(tree)
           checkValOrDefDef(tree)
         case tree: DefDef =>
-          inSection:
-            consumed.segment:
-              for params <- tree.paramss; case param: ValDef <- params do
-                pushDef(param, emptyRefs)
-              traverseChildren(tree)
+          if skippable(tree.symbol) then
+            capt.println(i"skipping sep check of ${tree.symbol}")
+          else
+            inSection:
+              consumed.segment:
+                for params <- tree.paramss; case param: ValDef <- params do
+                  pushDef(param, emptyRefs)
+                traverseChildren(tree)
           checkValOrDefDef(tree)
         case If(cond, thenp, elsep) =>
           traverse(cond)

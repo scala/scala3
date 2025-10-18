@@ -1,7 +1,7 @@
 import language.experimental.modularity
 import compiletime.uninitialized
 
-class IO extends caps.Capability
+class IO extends caps.SharedCapability
 
 class File:
   def write(x: String): Unit = ???
@@ -17,10 +17,10 @@ object test1:
     op(new File)
 
   def test(io3: IO, io4: IO) =
-    withFile(io3): f =>
+    withFile(io3): f => // error
       val o = Service(io3, io4)
-      o.file = f // error
-      o.file2 = f // error
+      o.file = f
+      o.file2 = f
       o.log
 
 object test2:
@@ -34,8 +34,8 @@ object test2:
     op(new File)
 
   def test(io3: IO, io4: IO) =
-    withFile(io3): f =>
+    withFile(io3): f => // error
       val o = Service(io3, io4)
       o.file = f
-      o.file2 = f // error
+      o.file2 = f
       o.log

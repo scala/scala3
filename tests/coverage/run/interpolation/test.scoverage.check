@@ -127,6 +127,91 @@ Test
 Object
 <empty>.Test
 main
+200
+203
+10
+<none>
+Literal
+false
+0
+false
+"d"
+
+7
+interpolation/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+205
+208
+10
+<none>
+Literal
+false
+0
+false
+"o"
+
+8
+interpolation/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+210
+213
+10
+<none>
+Literal
+false
+0
+false
+"t"
+
+9
+interpolation/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+215
+218
+10
+<none>
+Literal
+false
+0
+false
+"t"
+
+10
+interpolation/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+220
+223
+10
+<none>
+Literal
+false
+0
+false
+"y"
+
+11
+interpolation/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
 229
 278
 11
@@ -137,24 +222,7 @@ false
 false
 xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
 
-7
-interpolation/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-229
-244
-11
-zipWithIndex
-Select
-false
-0
-false
-xs.zipWithIndex
-
-8
+12
 interpolation/test.scala
 <empty>
 Test
@@ -171,7 +239,7 @@ false
 false
 println(s"$i: $s")
 
-9
+13
 interpolation/test.scala
 <empty>
 Test
@@ -188,7 +256,7 @@ false
 false
 s"$i: $s"
 
-10
+14
 interpolation/test.scala
 <empty>
 Test
@@ -205,7 +273,7 @@ false
 false
 println(simple(1, "abc"))
 
-11
+15
 interpolation/test.scala
 <empty>
 Test
@@ -222,7 +290,7 @@ false
 false
 simple(1, "abc")
 
-12
+16
 interpolation/test.scala
 <empty>
 Test
@@ -239,7 +307,7 @@ false
 false
 println(hexa(127))
 
-13
+17
 interpolation/test.scala
 <empty>
 Test
@@ -256,7 +324,7 @@ false
 false
 hexa(127)
 
-14
+18
 interpolation/test.scala
 <empty>
 Test
@@ -273,7 +341,7 @@ false
 false
 println(raw"a\\nb")
 
-15
+19
 interpolation/test.scala
 <empty>
 Test
@@ -290,7 +358,7 @@ false
 false
 raw"a\\nb"
 
-16
+20
 interpolation/test.scala
 <empty>
 Test

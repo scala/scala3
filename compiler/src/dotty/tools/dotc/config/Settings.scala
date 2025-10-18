@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package config
 
-import scala.language.unsafeNulls
-
 import core.Contexts.*
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
@@ -361,7 +359,7 @@ object Settings:
           checkDependencies(stateWithArgs(skipped))
         case "--" :: args =>
           checkDependencies(stateWithArgs(skipped ++ args))
-        case x :: _ if x startsWith "-" =>
+        case x :: _ if x.startsWith("-") =>
           @tailrec def loop(settings: List[Setting[?]]): ArgsSummary = settings match
             case setting :: settings1 =>
               val state1 = setting.tryToSet(state)

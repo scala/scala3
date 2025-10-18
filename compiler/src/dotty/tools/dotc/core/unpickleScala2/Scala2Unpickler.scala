@@ -63,9 +63,15 @@ object Scala2Unpickler {
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
-  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit = {
-    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
-      val constr = newDefaultConstructor(cls)
+  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit =
+    doEnsureConstructor(cls, clsDenot, scope, fromScala2 = true)
+
+  private def doEnsureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope, fromScala2: Boolean)
+      (using Context): Unit =
+    if scope.lookup(nme.CONSTRUCTOR) == NoSymbol then
+      val constr =
+        if fromScala2 || cls.isAllOf(Trait | JavaDefined) then newDefaultConstructor(cls)
+        else newConstructor(cls, Private, paramNames = Nil, paramTypes = Nil)
       // Scala 2 traits have a constructor iff they have initialization code
       // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
       if clsDenot.flagsUNSAFE.is(Trait) then
@@ -73,8 +79,6 @@ object Scala2Unpickler {
         clsDenot.setFlag(NoInits)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
-    }
-  }
 
   def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(using Context): Unit = {
     val cls = denot.classSymbol
@@ -108,7 +112,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(cls, denot, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) doEnsureConstructor(cls, denot, decls, fromScala2)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
@@ -403,15 +407,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       // println(s"read ext symbol $name from ${owner.denot.debugString} in ${classRoot.debugString}")  // !!! DEBUG
 
       // (1) Try name.
-      fromName(name) orElse {
+      fromName(name) `orElse` {
         // (2) Try with expanded name.  Can happen if references to private
         // symbols are read from outside: for instance when checking the children
         // of a class.  See #1722.
-        fromName(name.toTermName.expandedName(owner)) orElse {
+        fromName(name.toTermName.expandedName(owner)) `orElse` {
           // (3) Try as a nested object symbol.
-          nestedObjectSymbol orElse {
+          nestedObjectSymbol `orElse` {
             // (4) Call the mirror's "missing" hook.
-            adjust(missingHook(owner, name)) orElse {
+            adjust(missingHook(owner, name)) `orElse` {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
@@ -575,7 +579,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef), privateWithin)
         else {
           def completer(cls: Symbol) = {
-            val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
+            val unpickler = new ClassUnpickler(infoRef).withDecls(symScope(cls))
             if (flags.is(ModuleClass))
               unpickler.withSourceModule(
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
@@ -588,7 +592,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         newSymbol(owner, name.asTermName, flags, localMemberUnpickler, privateWithin, coord = start)
       case MODULEsym =>
         if (isModuleRoot) {
-          moduleRoot setFlag flags
+          moduleRoot.setFlag(flags)
           moduleRoot.symbol
         } else newSymbol(owner, name.asTermName, flags,
           new LocalUnpickler().withModuleClass(
@@ -660,7 +664,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               assert(denot.is(ParamAccessor) || denot.symbol.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = // !!! DEBUG
                 trace.onDebug(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
-                  denot.info matches denot.owner.thisType.memberInfo(alt)
+                  denot.info.matches(denot.owner.thisType.memberInfo(alt))
                 }
               val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
               if alias.name == denot.name then denot.setFlag(SuperParamAlias)
@@ -744,7 +748,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         case _ => super.foldOver(x, tp)
 
     def removeSingleton(tp: Type): Type =
-      if (tp isRef defn.SingletonClass) defn.AnyType else tp
+      if tp.isRef(defn.SingletonClass) then defn.AnyType else tp
     def mapArg(arg: Type) = arg match {
       case arg: TypeRef if isBound(arg) => arg.symbol.info
       case _ => arg
@@ -1234,7 +1238,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val vparams = until(end, () => readValDefRef())
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
         val applyMeth = newSymbol(symbol.owner, nme.apply, Method, applyType)
-        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
+        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)))
 
       case ASSIGNtree =>
         val lhs = readTreeRef()

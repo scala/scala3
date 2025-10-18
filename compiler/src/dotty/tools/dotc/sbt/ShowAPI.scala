@@ -9,8 +9,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import xsbti.api.*
 
 import scala.util.Try
@@ -18,9 +16,9 @@ import scala.util.Try
 object DefaultShowAPI {
   private lazy val defaultNesting = Try { java.lang.Integer.parseInt(sys.props.get("sbt.inc.apidiff.depth").get) } getOrElse 2
 
-  def apply(d: Definition): String = ShowAPI.showDefinition(d)(defaultNesting)
-  def apply(d: Type): String = ShowAPI.showType(d)(defaultNesting)
-  def apply(a: ClassLike): String = ShowAPI.showApi(a)(defaultNesting)
+  def apply(d: Definition): String = ShowAPI.showDefinition(d)(using defaultNesting)
+  def apply(d: Type): String = ShowAPI.showType(d)(using defaultNesting)
+  def apply(a: ClassLike): String = ShowAPI.showApi(a)(using defaultNesting)
 }
 
 object ShowAPI {
@@ -154,9 +152,9 @@ object ShowAPI {
   }
 
   // limit nesting to prevent cycles and generally keep output from getting humongous
-  private def showNestedType(tp: Type)(implicit nesting: Int) = showType(tp)(nesting - 1)
-  private def showNestedTypeParameter(tp: TypeParameter)(implicit nesting: Int) = showTypeParameter(tp)(nesting - 1)
-  private def showNestedTypeParameters(tps: Seq[TypeParameter])(implicit nesting: Int) = showTypeParameters(tps)(nesting - 1)
-  private def showNestedDefinition(d: Definition)(implicit nesting: Int) = showDefinition(d)(nesting - 1)
+  private def showNestedType(tp: Type)(implicit nesting: Int) = showType(tp)(using nesting - 1)
+  private def showNestedTypeParameter(tp: TypeParameter)(implicit nesting: Int) = showTypeParameter(tp)(using nesting - 1)
+  private def showNestedTypeParameters(tps: Seq[TypeParameter])(implicit nesting: Int) = showTypeParameters(tps)(using nesting - 1)
+  private def showNestedDefinition(d: Definition)(implicit nesting: Int) = showDefinition(d)(using nesting - 1)
 }
 

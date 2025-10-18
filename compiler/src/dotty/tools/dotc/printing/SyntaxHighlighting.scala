@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package printing
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.StdNames.*
@@ -18,6 +16,9 @@ import java.util.Arrays
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
 
+  /** The name of the virtual source file used for highlighting */
+  val VirtualSourceName = "<highlighting>"
+
   /** if true, log erroneous positions being highlighted */
   private inline val debug = true
 
@@ -26,7 +27,7 @@ object SyntaxHighlighting {
   val CommentColor: String    = Console.BLUE
   val KeywordColor: String    = Console.YELLOW
   val ValDefColor: String     = Console.CYAN
-  val LiteralColor: String    = Console.RED
+  val LiteralColor: String    = Console.GREEN
   val StringColor: String     = Console.GREEN
   val TypeColor: String       = Console.MAGENTA
   val AnnotationColor: String = Console.MAGENTA
@@ -35,7 +36,7 @@ object SyntaxHighlighting {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
-      val source = SourceFile.virtual("<highlighting>", in)
+      val source = SourceFile.virtual(VirtualSourceName, in)
 
       given Context = freshCtx
         .setCompilationUnit(CompilationUnit(source, mustExist = false)(using freshCtx))
@@ -78,6 +79,9 @@ object SyntaxHighlighting {
 
           case IDENTIFIER if name == nme.??? =>
             highlightRange(start, end, Console.RED_B)
+
+          case IDENTIFIER if name.head.isUpper && name.exists(!_.isUpper) =>
+            highlightRange(start, end, KeywordColor)
 
           case _ =>
         }

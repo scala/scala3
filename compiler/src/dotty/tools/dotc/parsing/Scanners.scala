@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.migrateTo3
+import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
@@ -184,7 +184,7 @@ object Scanners {
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
-    val newSyntax = ctx.settings.newSyntax.value
+    val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
     val rewriteToIndent = ctx.settings.indent.value && rewrite
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite
@@ -603,6 +603,20 @@ object Scanners {
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
+      // can emit OUTDENT if line is not non-empty blank line at EOF
+      inline def isTrailingBlankLine: Boolean =
+        token == EOF && {
+          val end = buf.length - 1 // take terminal NL as empty last line
+          val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
+          prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
+        }
+
+      inline def canDedent: Boolean =
+           lastToken != INDENT
+        && !isLeadingInfixOperator(nextWidth)
+        && !statCtdTokens.contains(lastToken)
+        && !isTrailingBlankLine
+
       if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
@@ -615,9 +629,8 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
+          else if canDedent then
             currentRegion match
-              case _ if token == EOF => // no OUTDENT at EOF
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
@@ -671,13 +684,16 @@ object Scanners {
         reset()
         if atEOL then token = COLONeol
 
-    // consume => and insert <indent> if applicable
+    // consume => and insert <indent> if applicable. Used to detect colon arrow: x =>
     def observeArrowIndented(): Unit =
       if isArrow && indentSyntax then
         peekAhead()
-        val atEOL = isAfterLineEnd || token == EOF
+        val atEOL = isAfterLineEnd
+        val atEOF = token == EOF
         reset()
-        if atEOL then
+        if atEOF then
+          token = EOF
+        else if atEOL then
           val nextWidth = indentWidth(next.offset)
           val lastWidth = currentRegion.indentWidth
           if lastWidth < nextWidth then
@@ -1132,7 +1148,7 @@ object Scanners {
       val lookahead = LookaheadScanner()
       while
         lookahead.nextToken()
-        lookahead.isNewLine || lookahead.isSoftModifier
+        lookahead.token == NEWLINE || lookahead.isSoftModifier
       do ()
       modifierFollowers.contains(lookahead.token)
     }
@@ -1212,15 +1228,14 @@ object Scanners {
       && (softModifierNames.contains(name)
         || name == nme.erased && erasedEnabled
         || name == nme.tracked && trackedEnabled
-        || name == nme.mut && Feature.ccEnabled)
+        || name == nme.update && Feature.ccEnabled
+        || name == nme.consume && Feature.ccEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && !lookahead.isColon
-
-    def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3

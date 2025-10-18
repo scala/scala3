@@ -77,7 +77,8 @@ case class State(objectIndex: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
-                 classLoader: Option[ClassLoader] = None) extends Driver:
+                 classLoader: Option[ClassLoader] = None,
+                 extraPredef: String = "") extends Driver:
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -122,9 +123,10 @@ class ReplDriver(settings: Array[String],
   final def initialState: State =
     val emptyState = State(0, 0, Map.empty, Set.empty, false, rootCtx)
     val initScript = rootCtx.settings.replInitScript.value(using rootCtx)
-    initScript.trim() match
-      case "" => emptyState
-      case script => run(script)(using emptyState)
+    val combinedScript = initScript.trim() match
+      case "" => extraPredef
+      case script => s"$extraPredef\n$script"
+    run(combinedScript)(using emptyState)
 
   /** Reset state of repl to the initial state
    *
@@ -209,16 +211,44 @@ class ReplDriver(settings: Array[String],
         val line = terminal.readLine(completer)
         ParseResult(line)
       } catch {
-        case _: EndOfFileException |
-            _: UserInterruptException => // Ctrl+D or Ctrl+C
+        case _: EndOfFileException => // Ctrl+D
           Quit
+        case _: UserInterruptException => // Ctrl+C at prompt - clear and continue
+          SigKill
       }
     }
 
     @tailrec def loop(using state: State)(): State = {
+
       val res = readLine()
       if (res == Quit) state
-      else loop(using interpret(res))()
+      // Ctrl-C pressed at prompt - just continue with same state (line is cleared by JLine)
+      else if (res == SigKill) loop(using state)()
+      else {
+        // Set up interrupt handler for command execution
+        var firstCtrlCEntered = false
+        val thread = Thread.currentThread()
+        val previousSignalHandler = terminal.handle(
+          org.jline.terminal.Terminal.Signal.INT,
+          (sig: org.jline.terminal.Terminal.Signal) => {
+            if (!firstCtrlCEntered) {
+              firstCtrlCEntered = true
+              thread.interrupt()
+              out.println("\nInterrupting running thread, Ctrl-C again to terminate the REPL Process")
+            } else {
+              out.println("\nTerminating REPL Process...")
+              System.exit(130)  // Standard exit code for SIGINT
+            }
+          }
+        )
+
+        val newState =
+          try interpret(res)
+          // Restore previous handler
+          finally terminal.handle(org.jline.terminal.Terminal.Signal.INT, previousSignalHandler)
+
+        loop(using newState)()
+      }
     }
 
     try runBody { loop() }
@@ -638,3 +668,5 @@ class ReplDriver(settings: Array[String],
     case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
 
 end ReplDriver
+object ReplDriver:
+  def pprintImport = "import dotty.shaded.pprint.pprintln\n"

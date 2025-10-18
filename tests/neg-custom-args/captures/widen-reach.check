@@ -3,20 +3,42 @@
   |                  ^^^^^^^^
   |                  Type variable T of trait Foo cannot be instantiated to IO^ since
   |                  that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 -------------------------------------------------------
-13 |  val y2: IO^ -> IO^ = y1.foo      // error
-   |                       ^^^^^^
-   |                       Local reach capability x* leaks into capture scope of method test.
-   |                       To allow this, the parameter x should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 -------------------------------------------------------
-14 |  val y3: IO^ -> IO^{x*} = y1.foo  // error
-   |                           ^^^^^^
-   |                           Local reach capability x* leaks into capture scope of method test.
-   |                           To allow this, the parameter x should be declared with a @use annotation
--- [E164] Declaration Error: tests/neg-custom-args/captures/widen-reach.scala:9:6 --------------------------------------
+  |
+  |                  where:    ^ refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
 9 |  val foo: IO^ -> IO^ = x => x // error
-  |      ^
-  |      error overriding value foo in trait Foo of type IO^ -> box IO^;
-  |        value foo of type IO^ -> IO^ has incompatible type
+  |                        ^^^^^^
+  |                Found:    (x: IO^) ->'s1 IO^²
+  |                Required: IO^ -> IO^³
+  |
+  |                Note that capability cap is not included in capture set {cap²}
+  |                because cap is not visible from cap² in value foo.
+  |
+  |                where:    ^           refers to the universal root capability
+  |                          ^² and cap  refer to a root capability associated with the result type of (x: IO^): IO^²
+  |                          ^³ and cap² refer to a fresh root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------
+13 |  val y2: IO^ -> IO^ = y1.foo      // error
+   |                       ^^^^^^
+   |                       Found:    IO^ ->{x*} IO^{x*}
+   |                       Required: IO^ -> IO^²
+   |
+   |                       Note that capability x* is not included in capture set {}.
+   |
+   |                       where:    ^  refers to the universal root capability
+   |                                 ^² refers to a fresh root capability in the type of value y2
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 ----------------------------------
+14 |  val y3: IO^ -> IO^{x*} = y1.foo  // error
+   |                           ^^^^^^
+   |                           Found:    IO^ ->{x*} IO^{x*}
+   |                           Required: IO^ -> IO^{x*}
+   |
+   |                           Note that capability x* is not included in capture set {}.
+   |
+   |                           where:    ^ refers to the universal root capability
+   |
+   | longer explanation available when compiling with `-explain`

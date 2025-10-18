@@ -66,7 +66,7 @@ object FileWriters {
     def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
     final def exception(reason: Context ?=> Message, throwable: Throwable): Unit =
       error({
-        val trace = throwable.getStackTrace().nn.mkString("\n  ")
+        val trace = throwable.getStackTrace().mkString("\n  ")
         em"An unhandled exception was thrown in the compiler while\n  ${reason.message}.\n${throwable}\n  $trace"
       }, NoSourcePosition)
   }
@@ -189,7 +189,7 @@ object FileWriters {
     def close(): Unit
 
     protected def classToRelativePath(className: InternalName): String =
-      className.replace('.', '/').nn + ".tasty"
+      className.replace('.', '/') + ".tasty"
   }
 
   object TastyWriter {
@@ -234,7 +234,7 @@ object FileWriters {
         new JarEntryWriter(jarFile, jarManifestMainClass, jarCompressionLevel)
       }
       else if (file.isVirtual) new VirtualFileWriter(file)
-      else if (file.isDirectory) new DirEntryWriter(file.file.toPath.nn)
+      else if (file.isDirectory) new DirEntryWriter(file.file.toPath)
       else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
@@ -248,7 +248,7 @@ object FileWriters {
     val jarWriter: JarOutputStream = {
       import scala.util.Properties.*
       val manifest = new Manifest
-      val attrs = manifest.getMainAttributes.nn
+      val attrs = manifest.getMainAttributes
       attrs.put(MANIFEST_VERSION, "1.0")
       attrs.put(ScalaCompilerVersion, versionNumberString)
       mainClass.foreach(c => attrs.put(MAIN_CLASS, c))
@@ -365,8 +365,9 @@ object FileWriters {
         else throw new FileConflictException(s"${base.path}/${path}: ${dir.path} is not a directory")
       val components = path.split('/')
       var dir = base
-      for (i <- 0 until components.length - 1) dir = ensureDirectory(dir) subdirectoryNamed components(i).toString
-      ensureDirectory(dir) fileNamed components.last.toString
+      for i <- 0 until components.length - 1 do
+        dir = ensureDirectory(dir).subdirectoryNamed(components(i).toString)
+      ensureDirectory(dir).fileNamed(components.last.toString)
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {

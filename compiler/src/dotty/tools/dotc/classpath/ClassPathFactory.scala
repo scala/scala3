@@ -23,10 +23,9 @@ class ClassPathFactory {
     * Creators for sub classpaths which preserve this context.
     */
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
-    for {
+    for
       file <- expandPath(path, expandStar = false)
-      dir <- Option(AbstractFile getDirectory file)
-    }
+      dir <- Option(AbstractFile.getDirectory(file))
     yield createSourcePath(dir)
 
 
@@ -48,7 +47,8 @@ class ClassPathFactory {
   def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
 
   def classesInManifest(useManifestClassPath: Boolean)(using Context): List[ClassPath] =
-    if (useManifestClassPath) dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile getResources url))
+    if useManifestClassPath
+    then dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile.getResources(url)))
     else Nil
 
   // Internal
@@ -67,7 +67,7 @@ class ClassPathFactory {
         for
           file <- files
           a <- ClassPath.expandManifestPath(file.absolutePath)
-          path = java.nio.file.Paths.get(a.toURI()).nn
+          path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
           newClassPath(AbstractFile.getFile(path))
@@ -82,7 +82,7 @@ class ClassPathFactory {
     if (file.isJarOrZip)
       ZipAndJarSourcePathFactory.create(file)
     else if (file.isDirectory)
-      new DirectorySourcePath(file.file)
+      new DirectorySourcePath(file.file.nn)
     else
       sys.error(s"Unsupported sourcepath element: $file")
 }
@@ -94,7 +94,7 @@ object ClassPathFactory {
       if (file.isJarOrZip)
         ZipAndJarClassPathFactory.create(file)
       else if (file.isDirectory)
-        new DirectoryClassPath(file.file)
+        new DirectoryClassPath(file.file.nn)
       else
         sys.error(s"Unsupported classpath element: $file")
   }

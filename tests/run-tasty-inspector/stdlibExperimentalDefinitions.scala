@@ -30,14 +30,24 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
   "scala.annotation.retainsCap",
-  "scala.annotation.retainsArg",
-  "scala.Pure",
-  "scala.caps",
-  "scala.caps$",
-
-  //// New feature: into
-  "scala.annotation.into",
-  "scala.annotation.internal.$into",
+  "scala.caps.CapSet",
+  "scala.caps.Contains",
+  "scala.caps.Contains$",
+  "scala.caps.Contains$.containsImpl",
+  "scala.caps.Exists",
+  "scala.caps.ExclusiveCapability",
+  "scala.caps.Mutable",
+  "scala.caps.Read",
+  "scala.caps.internal",
+  "scala.caps.internal$",
+  "scala.caps.cap",
+  "scala.caps.cap$",
+  "scala.caps.unsafe",
+  "scala.caps.unsafe$",
+  "scala.caps.use",
+  "scala.caps.reserve",
+  "scala.caps.package$package$.Exclusive",
+  "scala.caps.package$package$.Shared",
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
@@ -51,14 +61,8 @@ val experimentalDefinitionInLibrary = Set(
   //// New APIs: Quotes
   // Can be stabilized in 3.5.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
-  // Cant be stabilized yet.
-  // Need newClass variant that can add constructor parameters.
-  // Need experimental annotation macros to check that design works.
-  "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
-  "scala.quoted.Quotes.reflectModule.ClassDefModule.module",
-  "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
-  "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
-  "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
+  // Would need an asSeenFrom and ClassInfo added, which we generally do not want
+  // We need to think if this is necessary, and if so, think of an replacement
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
   // Added for 3.6.0, stabilize after feedback.
   "scala.quoted.Quotes.reflectModule.SymbolModule.newBoundedType",
@@ -82,16 +86,17 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Precise",
   "scala.annotation.internal.WitnessNames",
   "scala.runtime.stdLibPatches.Predef$.is",
+  "scala.Predef$.is",
 
   // New feature: functions with erased parameters.
   // Need quotedPatternsWithPolymorphicFunctions enabled.
   "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
 
-  // New feature: SIP 57 - runtimeChecked replacement of @unchecked
-  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
-
   // New feature: SIP 61 - @unroll annotation
-  "scala.annotation.unroll"
+  "scala.annotation.unroll",
+
+  // New feature: Erased trait
+  "scala.compiletime.Erased",
 )
 
 
@@ -139,7 +144,7 @@ val experimentalDefinitionInLibrary = Set(
 
    // Artefact of the current test infrastructure
   // TODO improve infrastructure to avoid needing this code on each test
-  val libJarClasspath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(x => x.contains("scala3-library-bootstrapped") && x.endsWith(".jar")).get
+  val libJarClasspath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(x => x.contains("scala-library-bootstrapped") && x.endsWith(".jar")).get
 
   TastyInspector.inspectTastyFilesInJar(libJarClasspath)(inspector)
 }

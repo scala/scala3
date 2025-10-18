@@ -9,13 +9,13 @@ object List:
 
 def test(io: Object^, async: Object^) =
   def compose(op: List[(() ->{cap} Unit, () ->{cap} Unit)]): List[() ->{op*} Unit] =
-    List(() => op.foreach((f,g) => { f(); g() }))
+    List(() => op.foreach((f,g) => { f(); g() })) // error (???)
 
   def compose1(op: List[(() ->{async} Unit, () ->{io} Unit)]): List[() ->{op*} Unit] =
     compose(op)
 
   def foo[X](op: (xs: List[(X, () ->{io} Unit)]) => List[() ->{xs*} Unit])
-               : (xs: List[(X, () ->{io} Unit)]) => List[() ->{} Unit] = // error
+               : (xs: List[(X, () ->{io} Unit)]) => List[() ->{} Unit] =
     op // error
 
   def boom(op: List[(() ->{async} Unit, () ->{io} Unit)]): List[() ->{} Unit] =

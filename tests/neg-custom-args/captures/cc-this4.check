@@ -4,4 +4,8 @@
   |             Found:    (C.this : C^)
   |             Required: C
   |
+  |             Note that capability cap is not included in capture set {}.
+  |
+  |             where:    ^ and cap refer to the universal root capability
+  |
   | longer explanation available when compiling with `-explain`

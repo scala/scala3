@@ -13,14 +13,20 @@ class ScalaCliCompletions(
 ):
   def unapply(path: List[Tree]) =
     def scalaCliDep = CoursierComplete.isScalaCliDep(
-      pos.lineContent.take(pos.column).stripPrefix("/*<script>*/")
+      pos.lineContent.take(pos.column).stripPrefix("/*<script>*/").dropWhile(c => c == ' ' || c == '\t')
     )
+
+    lazy val supportsUsing =
+      val filename = pos.source.file.path
+      filename.endsWith(".sc.scala") ||
+      filename.endsWith(".worksheet.sc")
+
     path match
       case Nil | (_: PackageDef) :: _ => scalaCliDep
       // generated script file will end with .sc.scala
-      case (_: TypeDef) :: (_: PackageDef) :: Nil if pos.source.file.path.endsWith(".sc.scala") =>
+      case (_: TypeDef) :: (_: PackageDef) :: Nil if supportsUsing =>
         scalaCliDep
-      case (_: Template) :: (_: TypeDef) :: Nil if pos.source.file.path.endsWith(".sc.scala") =>
+      case (_: Template) :: (_: TypeDef) :: Nil if supportsUsing =>
         scalaCliDep
       case head :: next => None
 

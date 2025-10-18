@@ -166,7 +166,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       @tailrec
       def loop(acc: List[String], sym: Symbol): List[String] =
         if sym == NoSymbol || sym.isRoot || sym.isEmptyPackage then acc
-        else if sym.isPackageObject then loop(acc, sym.owner)
+        else if sym.isPackageObject || sym.isConstructor then loop(acc, sym.owner)
         else
           val v = this.nameBackticked(sym)(exclusions)
           loop(v :: acc, sym.owner)
@@ -176,6 +176,9 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
 
     def companion: Symbol =
       if sym.is(Module) then sym.companionClass else sym.companionModule
+
+    def dealiasType: Symbol =
+      if sym.isType then sym.info.deepDealiasAndSimplify.typeSymbol else sym
 
     def nameBackticked: String = nameBackticked(Set.empty[String])
 
@@ -310,7 +313,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case Select(_, name: TermName) if infixNames(name) => false
         case Select(This(_), _) => false
         // is a select statement without a dot `qual.name`
-        case sel @ Select(qual, _) if !sel.symbol.is(Synthetic) =>
+        case sel @ Select(qual, _) if !sel.symbol.is(Synthetic) && sel.nameSpan.start < tree.source.length =>
           val source = tree.source
           !(qual.span.end until sel.nameSpan.start)
             .map(source.apply)
@@ -336,7 +339,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     end enclosedChildren
   end extension
 
-  extension (imp: Import)
+  extension (imp: ImportOrExport)
     def selector(span: Span)(using Context): Option[Symbol] =
       for sel <- imp.selectors.find(_.span.contains(span))
       yield imp.expr.symbol.info.member(sel.name).symbol
@@ -399,17 +402,18 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
   end extension
 
   extension (tpe: Type)
-    def deepDealias(using Context): Type =
-      tpe.dealias match
+    def deepDealiasAndSimplify(using Context): Type =
+      val dealiased = tpe.dealias match
         case app @ AppliedType(tycon, params) =>
-          AppliedType(tycon, params.map(_.deepDealias))
+          AppliedType(tycon, params.map(_.deepDealiasAndSimplify))
         case aliasingBounds: AliasingBounds =>
-          aliasingBounds.derivedAlias(aliasingBounds.alias.dealias)
+          aliasingBounds.derivedAlias(aliasingBounds.alias.deepDealiasAndSimplify)
         case TypeBounds(lo, hi) =>
           TypeBounds(lo.dealias, hi.dealias)
         case RefinedType(parent, name, refinedInfo) =>
-          RefinedType(parent.dealias, name, refinedInfo.deepDealias)
+          RefinedType(parent.dealias, name, refinedInfo.deepDealiasAndSimplify)
         case dealised => dealised
+      dealiased.simplified
 
   extension[T] (list: List[T])
     def get(n: Int): Option[T] = if 0 <= n && n < list.size then Some(list(n)) else None

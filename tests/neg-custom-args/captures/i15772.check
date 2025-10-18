@@ -1,31 +1,35 @@
--- Error: tests/neg-custom-args/captures/i15772.scala:21:26 ------------------------------------------------------------
-21 |    val c : C^{x} = new C(x)  // error
-   |                          ^
-   |                          reference (x : C^) is not included in the allowed capture set {}
-   |                          of an enclosing function literal with expected type () -> Int
+-- Error: tests/neg-custom-args/captures/i15772.scala:44:18 ------------------------------------------------------------
+44 |  val filesList : List[File]^{io} = ??? // error
+   |                  ^^^^^^^^^^^^^^^
+   |                  List[File] is a pure type, it makes no sense to add a capture set to it
 -- Error: tests/neg-custom-args/captures/i15772.scala:22:46 ------------------------------------------------------------
 22 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
-   |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
-   |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
--- Error: tests/neg-custom-args/captures/i15772.scala:28:26 ------------------------------------------------------------
-28 |    val c : C^{x} = new C(x) // error
-   |                          ^
-   |                          reference (x : C^) is not included in the allowed capture set {}
-   |                          of an enclosing function literal with expected type () -> Int
+   |C^ => Unit cannot be box-converted to C{val arg: C^²}^{c} ->{cap, c} Unit
+   |since the additional capture set {c} resulting from box conversion is not allowed in C{val arg: C^²}^{c} => Unit
+   |
+   |where:    => and ^ and cap refer to the universal root capability
+   |          ^²               refers to a fresh root capability in the type of value arg
 -- Error: tests/neg-custom-args/captures/i15772.scala:29:35 ------------------------------------------------------------
 29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
-   |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
-   |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:34 ---------------------------------------
-35 |  val boxed2 : Observe[C]^ = box2(c) // error
-   |                                  ^
-   |                                  Found:    box C^
-   |                                  Required: box C{val arg: C^?}^?
+   |C^ => Unit cannot be box-converted to C{val arg: C^²}^{c} ->{cap, c} Unit
+   |since the additional capture set {c} resulting from box conversion is not allowed in C{val arg: C^²}^{c} => Unit
    |
-   |                                  Note that the universal capability `cap`
-   |                                  cannot be included in capture set ?
+   |where:    => and ^ and cap refer to the universal root capability
+   |          ^²               refers to a fresh root capability in the type of value arg
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:33 ---------------------------------------
+35 |  val boxed2 : Observe[C]^ = box2(c) // error
+   |                             ^^^^^^^
+   |Found:    (C{val arg: C^}^² => Unit) -> Unit
+   |Required: (C => Unit) =>² Unit
+   |
+   |Note that capability cap is not included in capture set {}.
+   |
+   |where:    =>         refers to the universal root capability
+   |          =>²        refers to a fresh root capability in the type of value boxed2
+   |          ^          refers to a fresh root capability in the type of value arg
+   |          ^² and cap refer to a fresh root capability created in value boxed2 when instantiating method c's type -> C^{cap²}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------
@@ -33,6 +37,8 @@
    |  ^
    |  Found:    (x : () ->{filesList, sayHello} Unit)
    |  Required: () -> Unit
+   |
+   |  Note that capability filesList is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:34:10 ------------------------------------------------------------

@@ -18,7 +18,7 @@ object test1:
       o.log
 
 object test2:
-  class IO extends caps.Capability
+  class IO extends caps.SharedCapability
 
   class File:
     def write(x: String): Unit = ???

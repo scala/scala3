@@ -20,13 +20,6 @@ package object tools {
       if x == null then None else Some(x.asInstanceOf[T])
   end extension
 
-  /** Nullable eq and ne. */
-  extension [T <: AnyRef](x: T | Null)
-    inline def eqn (y: T | Null) =
-      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
-
-    inline def nen(y: T | Null): Boolean = !eqn(y)
-
   object resultWrapper {
     opaque type WrappedResult[T] = T
     private[tools] def unwrap[T](x: WrappedResult[T]): T = x

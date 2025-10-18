@@ -21,6 +21,8 @@ import NameKinds.ContextBoundParamName
 import rewrites.Rewrites.patch
 import util.Spans.Span
 import rewrites.Rewrites
+import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+import dotty.tools.dotc.util.SourcePosition
 
 /** A utility trait containing source-dependent deprecation messages
  *  and migrations.
@@ -129,16 +131,100 @@ trait Migrations:
   /** Report implicit parameter lists and rewrite implicit parameter list to contextual params */
   def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
     val mversion = mv.ImplicitParamsWithoutUsing
-    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty then
-      val rewriteMsg = Message.rewriteNotice("This code", mversion.patchFrom)
-      report.errorOrMigrationWarning(
+    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty && pt.args.head.span.exists then
+      // The application can only be rewritten if it uses parentheses syntax.
+      // See issue #22927 and related tests.
+      val hasParentheses = checkParentheses(tree, pt)
+      val rewriteMsg =
+        if hasParentheses then
+          Message.rewriteNotice("This code", mversion.patchFrom)
+        else ""
+      val message =
         em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
-            |To disable the warning, please use the following option: 
+            |To disable the warning, please use the following option:
             |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
-            |""", 
-        pt.args.head.srcPos, mversion)
-      if mversion.needsPatch then
-        patch(Span(pt.args.head.span.start), "using ")
+            |"""
+      val codeAction = CodeAction(
+        title = "Add `using` clause",
+        description = None,
+        patches = List(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
+      )
+      val withActions = message.withActions(codeAction)
+      report.errorOrMigrationWarning(
+        withActions,
+        pt.args.head.srcPos,
+        mversion
+      )
+      if hasParentheses && mversion.needsPatch then
+        patchImplicitParams(tree, pt)
   end implicitParams
+
+  private def checkParentheses(tree: Tree, pt: FunProto)(using Context): Boolean =
+    val ptSpan = pt.args.head.span
+    ptSpan.exists
+    && tree.span.exists
+    && ctx.source.content
+      .slice(tree.span.end, ptSpan.start)
+      .exists(_ == '(')
+
+  private def patchImplicitParams(tree: Tree, pt: FunProto)(using Context): Unit =
+    patch(Span(pt.args.head.span.start), "using ")
+
+  object ImplicitToGiven:
+    def valDef(vdef: ValDef)(using Context): Unit =
+      if ctx.settings.YimplicitToGiven.value
+        && vdef.symbol.is(Implicit)
+        && !vdef.symbol.isParamOrAccessor
+      then
+        val implicitSpan =
+          vdef.mods.mods.collectFirst {
+            case mod: untpd.Mod.Implicit => mod.span
+          }.get
+        patch(
+          Span(implicitSpan.start, implicitSpan.end + 1),
+          ""
+        )
+        patch(
+          Span(vdef.mods.mods.last.span.end + 1, vdef.namePos.span.start), "given "
+        )
+
+    def defDef(ddef: DefDef)(using Context): Unit =
+      if
+        ctx.settings.YimplicitToGiven.value
+        && ddef.symbol.is(Implicit)
+        && !ddef.symbol.isParamOrAccessor
+        && !ddef.symbol.isOldStyleImplicitConversion()
+      then
+        val implicitSpan =
+          ddef.mods.mods.collectFirst {
+            case mod: untpd.Mod.Implicit => mod.span
+          }.get
+        patch(
+          Span(implicitSpan.start, implicitSpan.end + 1), ""
+        )
+        patch(
+          Span(ddef.mods.mods.last.span.end + 1, ddef.namePos.span.start), "given "
+        )
+        // remove empty parentheses
+        patch(
+          Span(ddef.namePos.span.end, ddef.tpt.span.start), ": "
+        )
+        ddef.tpt match
+          case refinedType: untpd.RefinedTypeTree =>
+            patch(refinedType.span.startPos, "(")
+            patch(refinedType.span.endPos, ")")
+          case _ =>
+
+    def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
+      if
+        ctx.settings.YimplicitToGiven.value
+        && !mv.ExplicitContextBoundArgument.needsPatch // let's not needlessly repeat the patch
+        && tp.companion == ImplicitMethodType
+        && pt.applyKind != ApplyKind.Using
+        && pt.args.nonEmpty
+        && checkParentheses(tree, pt)
+      then
+          patchImplicitParams(tree, pt)
+
 
 end Migrations

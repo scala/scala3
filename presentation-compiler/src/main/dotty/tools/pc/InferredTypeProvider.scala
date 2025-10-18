@@ -3,7 +3,7 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.annotation.tailrec
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -75,7 +75,7 @@ final class InferredTypeProvider(
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
     given locatedCtx: Context = driver.localContext(params)
-    val indexedCtx = IndexedContext(locatedCtx)
+    val indexedCtx = IndexedContext(pos)(using locatedCtx)
     val autoImportsGen = AutoImports.generator(
       pos,
       sourceText,
@@ -94,14 +94,14 @@ final class InferredTypeProvider(
         tpe match
           case tref: TypeRef =>
             indexedCtx.lookupSym(
-              tref.currentSymbol
+              tref.currentSymbol,
+              Some(tref.prefix)
             ) == IndexedContext.Result.InScope
           case AppliedType(tycon, args) =>
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
-      if isInScope(tpe)
-      then tpe
-      else tpe.deepDealias
+      if isInScope(tpe) then tpe
+      else tpe.deepDealiasAndSimplify
 
     val printer = ShortenedTypePrinter(
       symbolSearch,
@@ -137,7 +137,6 @@ final class InferredTypeProvider(
             findNamePos(sourceText, vl, keywordOffset).endPos.toLsp
           adjustOpt.foreach(adjust => endPos.setEnd(adjust.adjustedEndPos))
           val spaceBefore = name.isOperatorName
-
           new TextEdit(
             endPos,
             printTypeAscription(optDealias(tpt.typeOpt), spaceBefore) + {
@@ -183,8 +182,7 @@ final class InferredTypeProvider(
           typeNameEdit ::: imports
 
         rhs match
-          case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -224,8 +222,7 @@ final class InferredTypeProvider(
           while i >= 0 && sourceText(i) != ':' do i -= 1
           i
         rhs match
-          case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(

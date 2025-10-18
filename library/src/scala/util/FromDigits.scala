@@ -3,6 +3,7 @@ import scala.math.{BigInt}
 import quoted.*
 import annotation.internal.sharable
 
+import language.experimental.captureChecking
 
 /** A type class for types that admit numeric literals.
  */
@@ -135,7 +136,7 @@ object FromDigits {
         case ex: NumberFormatException => throw MalformedNumber()
       }
     if (x.isInfinite) throw NumberTooLarge()
-    if (x == 0.0f && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
+    if (x == 0.0f && !zeroFloat.pattern.matcher(digits).matches) throw NumberTooSmall()
     x
   }
 

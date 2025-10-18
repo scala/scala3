@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.annotation.{experimental, implicitNotFound, unused}
 import scala.reflect.TypeTest
 
@@ -491,7 +493,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param body List of members of the class. The members must align with the members of `cls`.
        */
       // TODO add selfOpt: Option[ValDef]?
-      @experimental def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
+      // ^ if a use-case shows up, we add this via an overloaded method
+      def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
 
@@ -516,7 +519,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @syntax markdown
        */
       // TODO add selfOpt: Option[ValDef]?
-      @experimental def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
+      // ^ if a use-case shows up, we can add this via an overloaded method
+      def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -681,6 +685,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
+
+      /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
+       *
+       *  Usage:
+       *  ```
+       *  ValDef.let(owner, "x", rhs1, Flags.Lazy) { x =>
+       *    ValDef.let(x.symbol.owner, "y", rhs2, Flags.Mutable) { y =>
+       *      // use `x` and `y`
+       *    }
+       *  }
+       *  ```
+       *
+       *  @param flags extra flags to with which the symbol should be constructed. Can be `Final | Implicit | Lazy | Mutable | Given | Synthetic`
+       */
+      // Keep: `flags` doc aligned with QuotesImpl's `validValInLetFlags`
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
        *
@@ -3640,7 +3660,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val StringConstant` */
     trait StringConstantModule { this: StringConstant.type =>
-      /** Create a constant String value */
+      /** Create a constant String value
+       *
+       *  @throw `IllegalArgumentException` if the argument is `null`
+       */
       def apply(x: String): StringConstant
       /** Match String value constant and extract its value */
       def unapply(constant: StringConstant): Some[String]
@@ -3857,7 +3880,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
-      @experimental def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
+       def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
       /** Generates a new class symbol for a class with a public single term clause constructor.
        *
@@ -3915,7 +3938,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
-      @experimental def newClass(
+      def newClass(
         owner: Symbol,
         name: String,
         parents: Symbol => List[TypeRepr],
@@ -4017,7 +4040,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       // Keep doc aligned with QuotesImpl's validFlags: `clsFlags` with `validClassFlags`, `conFlags` with `validClassConstructorFlags`,
       // conParamFlags with `validClassTypeParamFlags` and `validClassTermParamFlags`
-      @experimental def newClass(
+      def newClass(
         owner: Symbol,
         name: String,
         parents: Symbol => List[TypeRepr],
@@ -4089,7 +4112,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @syntax markdown
        */
-      @experimental def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
+      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
 
       /** Generates a new method symbol with the given parent, name and type.
        *
@@ -4204,7 +4227,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param prefix Prefix of the fresh name
        */
-      @experimental
       def freshName(prefix: String): String
     }
 
@@ -4248,11 +4270,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Tree of this definition
          *
-         *  If this symbol `isClassDef` it will return `a `ClassDef`,
-         *  if this symbol `isTypeDef` it will return `a `TypeDef`,
-         *  if this symbol `isValDef` it will return `a `ValDef`,
-         *  if this symbol `isDefDef` it will return `a `DefDef`
-         *  if this symbol `isBind` it will return `a `Bind`,
+         *  If this symbol `isClassDef` it will return a `ClassDef`,
+         *  if this symbol `isTypeDef` it will return a `TypeDef`,
+         *  if this symbol `isDefDef` it will return a `DefDef`,
+         *  if this symbol `isBind` it will return a `Bind`,
+         *  if this symbol `isValDef` it will return a `ValDef`,
+         *     or a `DefDef` (as the compiler can replace val class members with defs during compilation),
          *  else will throw
          *
          *  **Warning**: avoid using this method in macros.
