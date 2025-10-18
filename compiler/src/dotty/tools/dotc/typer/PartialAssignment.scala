@@ -92,7 +92,7 @@ private[typer] final case class SimpleLValue(expression: tpd.Tree) extends LValu
 
 end SimpleLValue
 
-/** A lvalue represeted by the partial application a function.
+/** A lvalue represented by the partial application a function.
   *
   * @param function The partially applied function.
   * @param arguments The arguments of the partial application.
