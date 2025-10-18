@@ -1551,17 +1551,25 @@ class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion
        |are possible expansions of $tree"""
   def explain(using Context) = ""
 
-class ReassignmentToVal(name: Name)(using Context)
+class ReassignmentToVal(name: Name, pt: Type)(using Context)
   extends TypeMsg(ReassignmentToValID) {
-  def msg(using Context) = i"""Reassignment to val $name"""
+
+  def booleanExpected = pt.isRef(defn.BooleanClass)
+  def booleanNote =
+    if booleanExpected then
+      ". Maybe you meant to write an equality test using `==`?"
+    else ""
+  def msg(using Context)
+    = i"""Reassignment to val $name$booleanNote"""
+
   def explain(using Context) =
-    i"""|You can not assign a new value to $name as values can't be changed.
-        |Keep in mind that every statement has a value, so you may e.g. use
-        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
-        |In case you need a reassignable name, you can declare it as
-        |variable
-        |  ${hl("var")} $name ${hl("=")} ...
-        |"""
+    if booleanExpected then
+      i"""An equality test is written "x == y" using `==`. A single `=` stands
+         |for assigment, where a variable on the left gets a new value on the right.
+         |This is only permitted if the variable is declared with `var`."""
+    else
+      i"""You can not assign a new value to $name as values can't be changed.
+         |Reassigment is only permitted if the variable is declared with `var`."""
 }
 
 class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
