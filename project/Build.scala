@@ -3174,7 +3174,9 @@ object Build {
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,
         "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
-        "-Dplugin.scalaJSVersion=" + scalaJSVersion,
+        // Required for 3.7 because Scala.js scalalib is not published for 2.13.17+1.19.0
+        // Normally it should be set to `scalaJSVersion`
+        "-Dplugin.scalaJSVersion=1.20.1",
         "-Dsbt.boot.directory=" + ((ThisBuild / baseDirectory).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
       // Pass along ivy home and repositories settings to sbt instances run from the tests
