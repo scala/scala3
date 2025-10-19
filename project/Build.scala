@@ -3559,6 +3559,7 @@ object Build {
         (`scala3-sbt-bridge` / publishLocal).value
         (`scala3-interfaces` / publishLocal).value
         (`tasty-core-bootstrapped` / publishLocal).value
+        (`scala-library-bootstrapped` / publishLocal).value
         (`scala3-library-bootstrapped` / publishLocal).value
         (`scala3-tasty-inspector` / publishLocal).value
         (`scaladoc` / publishLocal).value
