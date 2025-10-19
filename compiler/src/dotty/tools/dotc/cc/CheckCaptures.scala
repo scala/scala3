@@ -724,13 +724,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => denot
 
       // Don't allow update methods to be called unless the qualifier captures
-      // an exclusive reference. TODO This should probably rolled into
-      // qualifier logic once we have it.
-      if tree.symbol.isUpdateMethod && !qualType.captureSet.isExclusive then
-        report.error(
-            em"""cannot call update ${tree.symbol} from $qualType,
-                |since its capture set ${qualType.captureSet} is read-only""",
-            tree.srcPos)
+      // an exclusive reference.
+      if tree.symbol.isUpdateMethod then
+        qualType.exclusivityInContext match
+          case Exclusivity.OK =>
+            capt.println(i"exclusive $qualType in ${ctx.owner}, ${qualType.derivesFrom(defn.Caps_Mutable)}")
+          case err =>
+            report.error(
+              em"""cannot call update ${tree.symbol} from $qualType,
+                  |since ${err.description(qualType)}""",
+              tree.srcPos)
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree.symbol)
@@ -1836,6 +1839,17 @@ class CheckCaptures extends Recheck, SymTransformer:
         actual
     end improveReadOnly
 
+    def adaptReadOnly(improved: Type, original: Type, expected: Type, tree: Tree)(using Context): Type = improved match
+      case improved @ CapturingType(parent, refs)
+      if parent.derivesFrom(defn.Caps_Mutable)
+          && expected.isValueType
+          && refs.isExclusive
+          && !original.exclusivityInContext.isOK =>
+        improved.derivedCapturingType(parent, refs.readOnly)
+          .showing(i"Adapted readonly $improved for $tree with original = $original in ${ctx.owner} --> $result", capt)
+      case _ =>
+        improved
+
     /* Currently not needed since it forms part of `adapt`
     private def improve(actual: Type, prefix: Type)(using Context): Type =
       val widened = actual.widen.dealiasKeepAnnots
@@ -1873,10 +1887,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
         val improvedVAR = improveCaptures(widened, actual)
         val improved = improveReadOnly(improvedVAR, expected)
+        val adaptedReadOnly = adaptReadOnly(improved, actual, expected, tree)
         val adapted = adaptBoxed(
-            improved.withReachCaptures(actual), expected, tree,
+            adaptedReadOnly.withReachCaptures(actual), expected, tree,
             covariant = true, alwaysConst = false)
-        if adapted eq improvedVAR // no .rd improvement, no box-adaptation
+        if adapted eq improvedVAR // no .rd improvement or adaptation, no box-adaptation
         then actual               // might as well use actual instead of improved widened
         else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt

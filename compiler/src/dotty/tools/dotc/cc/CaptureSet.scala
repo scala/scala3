@@ -145,6 +145,9 @@ sealed abstract class CaptureSet extends Showable:
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
+  def exclusivity(tp: Type)(using Context): Exclusivity =
+    if isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
+
   /** Similar to isExlusive, but also includes capture set variables
    *  with unknown status.
    */
@@ -1364,7 +1367,7 @@ object CaptureSet:
     def description(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
       i"""$cs is an exclusive capture set ${ofType(hi)},
-          |it cannot subsume a read-only capture set ${ofType(lo)}."""
+          |it cannot subsume a read-only capture set ${ofType(lo)}"""
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
