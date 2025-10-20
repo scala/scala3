@@ -19,9 +19,11 @@ import org.eclipse.lsp4j.CodeActionKind
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   def diagnostics(): List[lsp4j.Diagnostic] =
-    val diags = driver.run(params.uri().nn, params.text().nn)
-    given Context = driver.currentCtx
-    diags.flatMap(toLsp)
+    if params.shouldReturnDiagnostics then
+      val diags = driver.run(params.uri().nn, params.text().nn)
+      given Context = driver.currentCtx
+      diags.flatMap(toLsp)
+    else Nil
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
     Option.when(diag.pos.exists):
