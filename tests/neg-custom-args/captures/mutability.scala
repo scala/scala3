@@ -10,6 +10,16 @@ class Ref[T](init: T) extends caps.Mutable:
     val self2: Ref[T]^ = this // error
     self2.set(x)
 
+    val self3 = () => this
+    self3().set(x)  // error
+    val self4: () => Ref[T]^ = () => this // error
+    self4().set(x)
+
+    def self5() = this
+    self5().set(x)  // error
+    def self6(): Ref[T]^ = this // error
+    self6().set(x)
+
 class Ref2[T](init: T) extends caps.Mutable:
   val x = Ref[T](init)
   def set(x: T) = this.x.set(x) // error
@@ -25,5 +35,14 @@ def test =
   r2.x.set(33) // ok
   val r3: Ref2[Int] = Ref2(22)
   r3.x.set(33) // error
+
+  val r4 = () => Ref2(22)
+  r4().x.set(33) // ok
+  val ref2: Ref2[Int] = Ref2(22)
+  val r5: () => Ref2[Int]^ = () => ref2 // error
+  r5().x.set(33)
+  val r6: () => Ref2[Int] = () => ref2
+  r6().x.set(33) // error
+
 
 

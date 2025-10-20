@@ -60,8 +60,15 @@ sealed abstract class CaptureSet extends Showable:
   def mutability_=(x: Mutability): Unit =
     myMut = x
 
-  /** Mark this capture set as belonging to a Mutable type. */
-  def setMutable()(using Context): Unit
+  /** Mark this capture set as belonging to a Mutable type. Called when a new
+   *  CapturingType is formed. This is different from the setter `mutability_=`
+   *  in that it be defined with different behaviors:
+   *
+   *   - set mutability to Mutable (for normal Vars)
+   *   - take mutability from the set's sources (for DerivedVars)
+   *   - compute mutability on demand based on mutability of elements (for Consts)
+   */
+  def associateWithMutable()(using Context): Unit
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -613,7 +620,7 @@ object CaptureSet:
 
     private var isComplete = true
 
-    def setMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): Unit =
       if !elems.isEmpty then
         isComplete = false // delay computation of Mutability status
 
@@ -708,7 +715,7 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def setMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): Unit =
       mutability = Mutable
 
     def isConst(using Context) = solved >= ccState.iterationId
@@ -1030,6 +1037,9 @@ object CaptureSet:
     mutability = source.mutability
 
     addAsDependentTo(source)
+
+    /** Mutability is same as in source, except for readOnly */
+    override def associateWithMutable()(using Context): Unit = ()
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
