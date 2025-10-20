@@ -352,11 +352,14 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a type extending `Mutable` that has update methods? */
+  /** Is this a type extending `Mutable` that has update methods
+   *  or non-private mutable fields?
+   */
   def isMutableType(using Context): Boolean =
     tp.derivesFrom(defn.Caps_Mutable)
-    && tp.membersBasedOnFlags(Mutable | Method, EmptyFlags)
-      .exists(_.hasAltWith(_.symbol.isUpdateMethod))
+    && tp.membersBasedOnFlags(Mutable, EmptyFlags).exists: mbr =>
+      if mbr.symbol.is(Method) then mbr.symbol.isUpdateMethod
+      else !mbr.symbol.is(Transparent)
 
   /** Is this a reference to caps.cap? Note this is _not_ the GlobalCap capability. */
   def isCapRef(using Context): Boolean = tp match

@@ -1004,7 +1004,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       val lhsType = recheck(tree.lhs, LhsProto)
       recheck(tree.rhs, lhsType.widen)
       lhsType match
-        case lhsType @ TermRef(qualType, _) if qualType ne NoPrefix =>
+        case lhsType @ TermRef(qualType, _)
+        if (qualType ne NoPrefix) && !lhsType.symbol.is(Transparent) =>
           checkUpdate(qualType, tree.srcPos)(i"Cannot assign to field ${lhsType.name} of ${qualType.showRef}")
         case _ =>
       defn.UnitType
