@@ -726,14 +726,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       // Don't allow update methods to be called unless the qualifier captures
       // an exclusive reference.
       if tree.symbol.isUpdateMethod then
-        qualType.exclusivityInContext match
-          case Exclusivity.OK =>
-            capt.println(i"exclusive $qualType in ${ctx.owner}, ${qualType.derivesFrom(defn.Caps_Mutable)}")
-          case err =>
-            report.error(
-              em"""cannot call update ${tree.symbol} from $qualType,
-                  |since ${err.description(qualType)}""",
-              tree.srcPos)
+        checkUpdate(qualType, tree.srcPos):
+          i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree.symbol)
@@ -770,6 +764,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         else
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
+
+    def checkUpdate(qualType: Type, pos: SrcPos)(msg: => String)(using Context): Unit =
+      qualType.exclusivityInContext match
+        case Exclusivity.OK =>
+        case err =>
+          report.error(em"$msg\nsince ${err.description(qualType)}.", pos)
 
     /** Recheck applications, with special handling of unsafeAssumePure.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
@@ -999,6 +999,15 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
             report.error(em"$refArg is not a tracked capability", refArg.srcPos)
       case _ =>
+
+    override def recheckAssign(tree: Assign)(using Context): Type =
+      val lhsType = recheck(tree.lhs, LhsProto)
+      recheck(tree.rhs, lhsType.widen)
+      lhsType match
+        case lhsType @ TermRef(qualType, _) if qualType ne NoPrefix =>
+          checkUpdate(qualType, tree.srcPos)(i"Cannot assign to field ${lhsType.name} of ${qualType.showRef}")
+        case _ =>
+      defn.UnitType
 
     /** Recheck Closure node: add the captured vars of the anonymoys function
      *  to the result type. See also `recheckClosureBlock` which rechecks the

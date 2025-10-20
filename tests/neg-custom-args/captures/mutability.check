@@ -1,15 +1,13 @@
 -- Error: tests/neg-custom-args/captures/mutability.scala:4:24 ---------------------------------------------------------
 4 |  def hide(x: T) = this.set(x) // error
   |                   ^^^^^^^^
-  |                   cannot call update method set from (Ref.this : Ref[T]^),
-  |                   since the access is in method hide, which is not an update method
-  |
-  |                   where:    ^ refers to a fresh root capability classified as Mutable in the type of class Ref
+  |                   Cannot call update method set of Ref.this
+  |                   since the access is in method hide, which is not an update method.
 -- Error: tests/neg-custom-args/captures/mutability.scala:9:9 ----------------------------------------------------------
 9 |    self.set(x)  // error
   |    ^^^^^^^^
-  |    cannot call update method set from (self : Ref[T^{}]^{Ref.this.rd}),
-  |    since its capture set {self} is read-only
+  |    Cannot call update method set of self
+  |    since its capture set {self} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:10:25 -----------------------------------
 10 |    val self2: Ref[T]^ = this // error
    |                         ^^^^
@@ -27,8 +25,8 @@
 -- Error: tests/neg-custom-args/captures/mutability.scala:14:12 --------------------------------------------------------
 14 |    self3().set(x)  // error
    |    ^^^^^^^^^^^
-   |    cannot call update method set from Ref[T^{}]^{Ref.this.rd},
-   |    since its capture set {Ref.this.rd} of value self3 is read-only
+   |    Cannot call update method set of Ref[T^{}]^{Ref.this.rd}
+   |    since its capture set {Ref.this.rd} of value self3 is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:15:31 -----------------------------------
 15 |    val self4: () => Ref[T]^ = () => this // error
    |                               ^^^^^^^^^^
@@ -47,8 +45,8 @@
 -- Error: tests/neg-custom-args/captures/mutability.scala:19:12 --------------------------------------------------------
 19 |    self5().set(x)  // error
    |    ^^^^^^^^^^^
-   |    cannot call update method set from Ref[T^{}]^{Ref.this.rd},
-   |    since its capture set {Ref.this.rd} of method self5 is read-only
+   |    Cannot call update method set of Ref[T^{}]^{Ref.this.rd}
+   |    since its capture set {Ref.this.rd} of method self5 is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:20:27 -----------------------------------
 20 |    def self6(): Ref[T]^ = this // error
    |                           ^^^^
@@ -66,22 +64,18 @@
 -- Error: tests/neg-custom-args/captures/mutability.scala:25:25 --------------------------------------------------------
 25 |  def set(x: T) = this.x.set(x) // error
    |                  ^^^^^^^^^^
-   |                  cannot call update method set from (Ref2.this.x : Ref[T^{}]^),
-   |                  since the access is in method set, which is not an update method
-   |
-   |                  where:    ^ refers to a fresh root capability classified as Mutable in the type of value x
+   |                  Cannot call update method set of Ref2.this.x
+   |                  since the access is in method set, which is not an update method.
 -- Error: tests/neg-custom-args/captures/mutability.scala:32:5 ---------------------------------------------------------
 32 |  r1.set(33) // error
    |  ^^^^^^
-   |  cannot call update method set from (r1 : Ref[Int]),
-   |  since its capture set {r1} is read-only
+   |  Cannot call update method set of r1
+   |  since its capture set {r1} is read-only.
 -- Error: tests/neg-custom-args/captures/mutability.scala:37:7 ---------------------------------------------------------
 37 |  r3.x.set(33) // error
    |  ^^^^^^^^
-   |  cannot call update method set from (r3.x : Ref[Int]^),
-   |  since the capture set {r3} of its prefix (r3 : Ref2[Int]) is read-only
-   |
-   |  where:    ^ refers to a fresh root capability classified as Mutable in the type of value x
+   |  Cannot call update method set of r3.x
+   |  since the capture set {r3} of its prefix (r3 : Ref2[Int]) is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:42:29 -----------------------------------
 42 |  val r5: () => Ref2[Int]^ = () => ref2 // error
    |                             ^^^^^^^^^^
@@ -100,7 +94,5 @@
 -- Error: tests/neg-custom-args/captures/mutability.scala:45:9 ---------------------------------------------------------
 45 |  r6().x.set(33) // error
    |  ^^^^^^^^^^
-   |  cannot call update method set from Ref[Int]^{cap.rd},
-   |  since its capture set {cap.rd} is read-only
-   |
-   |  where:    cap is a fresh root capability classified as Mutable in the type of value r6
+   |  Cannot call update method set of Ref[Int]^{cap.rd}
+   |  since its capture set {cap.rd} is read-only.
