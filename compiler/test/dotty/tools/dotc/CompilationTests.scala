@@ -89,6 +89,7 @@ class CompilationTests {
       compileFile("tests/rewrites/implicit-to-given.scala", defaultOptions.and("-rewrite", "-Yimplicit-to-given")),
       compileFile("tests/rewrites/i22792.scala", defaultOptions.and("-rewrite")),
       compileFile("tests/rewrites/i23449.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
+      compileFile("tests/rewrites/i24213.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
     ).checkRewrites()
   }
 
