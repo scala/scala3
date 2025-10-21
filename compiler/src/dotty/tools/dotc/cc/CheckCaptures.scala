@@ -680,12 +680,20 @@ class CheckCaptures extends Recheck, SymTransformer:
           if pt.select.symbol.isReadOnlyMethod then
             markFree(ref.readOnly, tree)
           else
-            markPathFree(ref.select(pt.select.symbol).asInstanceOf[TermRef], pt.pt, pt.select)
+            val sel = ref.select(pt.select.symbol).asInstanceOf[TermRef]
+            sel.recomputeDenot()
+              // We need to do a recomputeDenot here since we have not yet properly
+              // computed the type of the full path. This means that we erroneously
+              // think the denotation is the same as in the previous phase so no
+              // member computation is performed. A test case where this matters is
+              // read-only-use.scala, where the error on r3 goes unreported.
+            markPathFree(sel, pt.pt, pt.select)
         case _ =>
-          if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType then
-            markFree(ref.readOnly, tree)
-          else
-            markFree(ref, tree)
+          if ref.derivesFromMutable then
+            if pt.isValueType && !pt.isMutableType || ref.exclusivityInContext != Exclusivity.OK
+            then markFree(ref.readOnly, tree)
+            else markFree(ref, tree)
+          else markFree(ref, tree)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
