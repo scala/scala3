@@ -7,12 +7,12 @@ import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
 import annotation.tailrec
 import annotation.internal.unshared
-import collection.mutable.ArrayBuffer
-import collection.mutable
+import collection.mutable, mutable.ArrayBuffer
 import reflect.ClassTag
 import scala.util.{Success, Failure}
-import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
-import dotty.tools.dotc.util.chaining.*
+
+import config.Settings.Setting.ChoiceWithHelp
+import util.chaining.*
 
 object Settings:
 
@@ -55,26 +55,36 @@ object Settings:
   case class ArgsSummary(sstate: SettingsState, arguments: List[String], errors: List[String], warnings: List[String])
 
   extension (summary: ArgsSummary)
-    /** Add an error and drop an argument. If erroring on bad `-o junk`, the next arg is collected by processArgs. */
+    /** Error and update arguments */
+    def fail(msg: String, arguments: List[String]): ArgsSummary =
+      summary.copy(arguments = arguments, errors = summary.errors :+ msg)
+    /** Error without updating arguments */
     def fail(msg: String): ArgsSummary =
-      summary.copy(arguments = summary.arguments.drop(1), errors = summary.errors :+ msg)
-    /** Warn without skipping. */
+      summary.copy(errors = summary.errors :+ msg)
+    /** Warn and update arguments */
+    def warn(msg: String, arguments: List[String]): ArgsSummary =
+      summary.copy(arguments = arguments, warnings = summary.warnings :+ msg)
+    /** Warn without updating arguments */
     def warn(msg: String): ArgsSummary =
       summary.copy(warnings = summary.warnings :+ msg)
-    /** Warn and skip. */
-    def skip(msg: String): ArgsSummary =
-      summary.copy(arguments = summary.arguments.drop(1), warnings = summary.warnings :+ msg)
-    /** Skip without warning. */
-    def skip(): ArgsSummary = summary.copy(arguments = summary.arguments.drop(1))
-    def updated(sstate: SettingsState): ArgsSummary = summary.copy(sstate = sstate)
+    /** Update state and shift arguments */
+    def updated(sstate: SettingsState, arguments: List[String]): ArgsSummary =
+      summary.copy(sstate = sstate, arguments = arguments)
+    /** Only shift arguments */
+    def shifted(arguments: List[String]): ArgsSummary =
+      summary.copy(arguments = arguments)
     /** Warn and skip, prepending the alternative arguments as substitution. */
-    def deprecated(msg: String, altArgs: List[String] = Nil): ArgsSummary =
-      summary.copy(arguments = altArgs ++ summary.arguments.drop(1), warnings = summary.warnings :+ msg)
+    def deprecated(msg: String, altArgs: List[String], args: List[String]): ArgsSummary =
+      summary.copy(arguments = altArgs ++ args, warnings = summary.warnings :+ msg)
 
   @unshared
   val settingCharacters = "[a-zA-Z0-9_\\-]*".r
   def validateSettingString(name: String): Unit =
     assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
+
+  val validTags = List(BooleanTag, IntTag, StringTag, ListTag, VersionTag, OptionTag, OutputTag)
+  def validateSettingTag(ct: ClassTag[?]): Unit =
+    assert(validTags.contains(ct), s"Unsupported option value $ct")
 
   /** List of setting-value pairs that are required for another setting to be valid.
     * For example, `s = Setting(..., depends = List(YprofileEnabled -> true))`
@@ -105,6 +115,8 @@ object Settings:
     aliases.foreach(validateSettingString)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
+    validateSettingTag(ct)
+
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
@@ -132,7 +144,7 @@ object Settings:
 
     // Updates the state from the next arg if this setting is applicable.
     def tryToSet(state: ArgsSummary): ArgsSummary =
-      val ArgsSummary(sstate, arg :: args, errors, warnings) = state: @unchecked
+      val ArgsSummary(sstate, arg :: args, _, _) = state: @unchecked
       def changed = sstate.wasChanged(idx)
 
       /** Updates the value in state.
@@ -149,42 +161,32 @@ object Settings:
           val altArg1 =
             if altArg.isEmpty then List(replacedBy)
             else List(s"$replacedBy:$altArg")
-          state.deprecated(deprecatedMsg, altArg1)
+          state.deprecated(deprecatedMsg, altArg1, args) // retry with reconstructed arg
         case Some(Deprecation(msg, _)) =>
-          state.deprecated(s"Option $name is deprecated: $msg")
+          state.updated(updateIn(sstate, value), args) // allow but warn
+            .warn(s"Option $name is deprecated: $msg")
         case None =>
-          ArgsSummary(updateIn(sstate, value), args, errors, warnings)
+          state.updated(updateIn(sstate, value), args)
       end update
-
-      def ignoreValue(args: List[String]): ArgsSummary =
-        ArgsSummary(sstate, args, errors, warnings)
-
-      def missingArg =
-        val msg = s"missing argument for option $name"
-        if ignoreInvalidArgs then state.warn(msg + ", the tag was ignored") else state.fail(msg)
-
-      def invalidChoices(invalid: List[String]) =
-        val msg = s"invalid choice(s) for $name: ${invalid.mkString(",")}"
-        if ignoreInvalidArgs then state.warn(msg + ", the tag was ignored") else state.fail(msg)
 
       def setBoolean(argValue: String, args: List[String]) =
         def checkAndSet(v: Boolean) =
           val dubious = changed && v != valueIn(sstate).asInstanceOf[Boolean]
-          def updated = update(v, argValue, args)
           if dubious then
             if preferPrevious then
-              state.warn(s"Conflicting value for Boolean flag $name")
+              state.warn(s"Ignoring conflicting value for Boolean flag $name", args)
             else
-              updated.warn(s"Conflicting value for Boolean flag $name") // error instead?
-          else updated
+              update(v, argValue, args).warn(s"Conflicting value for Boolean flag $name")
+          else
+            update(v, argValue, args)
         if argValue.isEmpty || argValue.equalsIgnoreCase("true") then checkAndSet(true)
         else if argValue.equalsIgnoreCase("false") then checkAndSet(false)
-        else state.fail(s"$argValue is not a valid choice for Boolean flag $name")
+        else state.fail(s"$argValue is not a valid choice for Boolean flag $name", args)
 
       def setString(argValue: String, args: List[String]) =
         choices match
         case Some(choices) if !choices.contains(argValue) =>
-          state.fail(s"$argValue is not a valid choice for $name")
+          state.fail(s"$argValue is not a valid choice for $name", args)
         case _ =>
           if changed && argValue != valueIn(sstate).asInstanceOf[String] then
             update(argValue, argValue, args).warn(s"Option $name was updated")
@@ -195,32 +197,35 @@ object Settings:
         argValue.toIntOption.map: intValue =>
           choices match
           case Some(r: Range) if intValue < r.head || r.last < intValue =>
-            state.fail(s"$argValue is out of legal range ${r.head}..${r.last} for $name")
+            state.fail(s"$argValue is out of legal range ${r.head}..${r.last} for $name", args)
           case Some(choices) if !choices.contains(intValue) =>
-            state.fail(s"$argValue is not a valid choice for $name")
+            state.fail(s"$argValue is not a valid choice for $name", args)
           case _ =>
             val dubious = changed && intValue != valueIn(sstate).asInstanceOf[Int]
             val updated = update(intValue, argValue, args)
             if dubious then updated.warn(s"Option $name was updated") else updated
         .getOrElse:
-          state.fail(s"$argValue is not an integer argument for $name")
+          state.fail(s"$argValue is not an integer argument for $name", args)
 
       def setOutput(arg: String, args: List[String]) =
         val path = Directory(arg)
         val isJar = path.ext.isJar
         if (!isJar && !path.isDirectory) then
-          state.fail(s"'$arg' does not exist or is not a directory or .jar file")
+          state.fail(s"'$arg' does not exist or is not a directory or .jar file", args)
         else
           /* Side effect, do not change this method to evaluate eagerly */
           def output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-          if changed && output != valueIn(sstate).asInstanceOf[AbstractFile] then
-            update(output, arg, args).skip(s"Option $name was updated")
-          else
-            update(output, arg, args)
+          val dubious = changed && output != valueIn(sstate).asInstanceOf[AbstractFile]
+          val updated = update(output, arg, args)
+          if dubious then updated.warn(s"Option $name was updated") else updated
 
       // argRest is the remainder of -foo:bar if any. This setting will receive a value from argRest or args.head.
       // useArg means use argRest even if empty.
       def doSet(argRest: String, useArg: Boolean): ArgsSummary =
+        def missingArg =
+          val msg = s"missing argument for option $name"
+          if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored", args) else state.fail(msg, args)
+
         if ct == BooleanTag then setBoolean(argRest, args)
         else if ct == OptionTag then update(Some(propertyClass.get.getConstructor().newInstance()), "", args)
         else
@@ -233,24 +238,20 @@ object Settings:
             else return missingArg
           def doSet(arg: String, args: List[String]) =
             ct match
-            case _ if preferPrevious && changed => state.skip(s"Ignoring update of option $name")
+            case _ if preferPrevious && changed => state.warn(s"Ignoring update of option $name", args)
             case ListTag => setMultivalue(arg, args)
             case StringTag => setString(arg, args)
-            case OutputTag =>
-              if changed && preferPrevious then
-                state.skip() // do not risk side effects e.g. overwriting a jar
-              else
-                setOutput(arg, args)
+            case OutputTag => setOutput(arg, args)
             case IntTag => setInt(arg, args)
             case VersionTag => setVersion(arg, args)
-            case _ => missingArg
+            case _ => state.fail(s"unknown $ct", args)
           doSet(arg1, args1)
       end doSet
 
       def setVersion(arg: String, args: List[String]) =
         ScalaVersion.parse(arg) match
         case Success(v) => update(v, arg, args)
-        case Failure(e) => state.fail(e.getMessage)
+        case Failure(e) => state.fail(e.getMessage, args)
 
       def setMultivalue(arg: String, args: List[String]) =
         val split = arg.split(",").toList
@@ -262,6 +263,10 @@ object Settings:
             else
               actual
           update(updated, arg, args)
+        def invalidChoices(invalid: List[String]) =
+          val msg = s"invalid choice(s) for $name: ${invalid.mkString(",")}"
+          if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored", args) else state.fail(msg, args)
+
         choices match
         case Some(choices) =>
           split.partition(choices.contains) match
@@ -274,6 +279,7 @@ object Settings:
               case invalid => invalidChoices(invalid)
             case none => invalidChoices(invalid)
         case none => setOrUpdate(split)
+      end setMultivalue
 
       def matches: Boolean =
         val name = arg.takeWhile(_ != ':')
@@ -282,7 +288,7 @@ object Settings:
       if matches then
         deprecation match
         case Some(Deprecation(msg, _)) if ignoreInvalidArgs => // a special case for Xlint
-          state.deprecated(s"Option $name is deprecated: $msg")
+          state.warn(s"Option $name is deprecated: $msg", args)
         case _ =>
           prefix match
           case Some(prefix) =>
@@ -298,25 +304,6 @@ object Settings:
 
     end tryToSet
   end Setting
-
-  /**
-    * Class used for deprecating purposes.
-    * It contains all necessary information to deprecate given option.
-    * Scala Settings are considered deprecated when this object is present at their creation site.
-    *
-    * @param msg           deprecation message that will be displayed in following format: s"Option $name is deprecated: $msg"
-    * @param replacedBy    option that is substituting current option
-    */
-  case class Deprecation(
-    msg: String,
-    replacedBy: Option[String] = None,
-  )
-
-  object Deprecation:
-    def renamed(replacement: String) = Some(Deprecation(s"Use $replacement instead.", Some(replacement)))
-    def removed(removedVersion: Option[String] = None) =
-      val msg = removedVersion.map(" in " + _).getOrElse(".")
-      Some(Deprecation(s"Scheduled for removal$msg", None))
 
   object Setting:
     extension [T](setting: Setting[T])
@@ -341,6 +328,25 @@ object Settings:
       Setting(RootSetting, name, "internal", default = value)(-1)
   end Setting
 
+  /**
+    * Class used for deprecating purposes.
+    * It contains all necessary information to deprecate given option.
+    * Scala Settings are considered deprecated when this object is present at their creation site.
+    *
+    * @param msg           deprecation message that will be displayed in following format: s"Option $name is deprecated: $msg"
+    * @param replacedBy    option that is substituting current option
+    */
+  case class Deprecation(
+    msg: String,
+    replacedBy: Option[String] = None,
+  )
+
+  object Deprecation:
+    def renamed(replacement: String) = Some(Deprecation(s"Use $replacement instead.", Some(replacement)))
+    def removed(removedVersion: Option[String] = None) =
+      val msg = removedVersion.map(" in " + _).getOrElse(".")
+      Some(Deprecation(s"Scheduled for removal$msg", None))
+
   class SettingGroup:
 
     @unshared
@@ -361,7 +367,7 @@ object Settings:
     private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[?]) =
       setting.depends.foldLeft(state): (s, dep) =>
         val (depSetting, reqValue) = dep
-        if (depSetting.valueIn(state.sstate) == reqValue) s
+        if (depSetting.valueIn(s.sstate) == reqValue) s
         else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")
 
     /** Iterates over the arguments applying them to settings where applicable.
@@ -381,13 +387,12 @@ object Settings:
      */
     @tailrec
     final def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary =
-      def stateWithArgs(args: List[String]) = state.copy(arguments = args)
       state.arguments match
         case Nil =>
-          checkDependencies(stateWithArgs(skipped))
+          checkDependencies(state.shifted(skipped))
         case "--" :: args =>
-          checkDependencies(stateWithArgs(skipped ++ args))
-        case arg :: _ if arg.startsWith("-") =>
+          checkDependencies(state.shifted(skipped ++ args))
+        case arg :: args if arg.startsWith("-") =>
           // find a setting to consume the next arg
           @tailrec def loop(settings: List[Setting[?]]): ArgsSummary = settings match
             case setting :: settings =>
@@ -395,12 +400,11 @@ object Settings:
               if state1 ne state then state1
               else loop(settings)
             case Nil =>
-              state.skip(s"bad option '$arg' was ignored")
+              state.warn(s"bad option '$arg' was ignored", args)
           processArguments(loop(allSettings.toList), processAll, skipped)
         case arg :: args =>
-          if processAll then processArguments(stateWithArgs(args), processAll, skipped :+ arg)
+          if processAll then processArguments(state.shifted(args), processAll, skipped :+ arg)
           else state
-    end processArguments
 
     def processArguments(arguments: List[String], processAll: Boolean, settingsState: SettingsState = defaultState): ArgsSummary =
       processArguments(ArgsSummary(settingsState, arguments, errors = Nil, warnings = Nil), processAll, skipped = Nil)
