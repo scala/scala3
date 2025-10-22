@@ -2,8 +2,9 @@ package dotty.tools.pc.tests
 
 import java.net.URI
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.EmptyCancelToken
+import scala.meta.pc.VirtualFileParams
+import scala.meta.pc.CancelToken
 
 import org.junit.Test
 import org.eclipse.lsp4j.DiagnosticSeverity
@@ -20,13 +21,18 @@ class DiagnosticProviderSuite extends PcAssertions {
 
   val pc = RawScalaPresentationCompiler().newInstance("", TestResources.classpath.asJava, Nil.asJava)
 
+  case class TestVirtualFileParams(uri: URI, text: String) extends VirtualFileParams {
+    override def shouldReturnDiagnostics: Boolean = true
+    override def token: CancelToken = EmptyCancelToken
+  }
+
   def check(
     text: String,
     expected: List[TestDiagnostic],
     additionalChecks: List[Diagnostic] => Unit = identity
   ): Unit =
     val diagnostics = pc
-      .didChange(CompilerVirtualFileParams(URI.create("file:/Diagnostic.scala"), text, EmptyCancelToken))
+      .didChange(TestVirtualFileParams(URI.create("file:/Diagnostic.scala"), text))
       .asScala
 
     val actual = diagnostics.map(d => TestDiagnostic(d.getRange().getStart().getOffset(text), d.getRange().getEnd().getOffset(text), d.getMessage(), d.getSeverity()))
