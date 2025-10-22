@@ -3477,7 +3477,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         inContext(ctx.packageContext(tree, pkg)) {
           // If it exists, complete the class containing the top-level definitions
           // before typing any statement in the package to avoid cycles as in i13669.scala
-          val packageObjectName = desugar.packageObjectName(ctx.source, tree.srcPos)
+          val packageObjectName = desugar.packageObjectName(ctx.source)
           val topLevelClassSymbol = pkg.moduleClass.info.decls.lookup(packageObjectName.moduleClassName)
           topLevelClassSymbol.ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
@@ -3890,8 +3890,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
     var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
-      // A map from `enum` symbols to the contexts enclosing their definitions
     val initialNotNullInfos = ctx.notNullInfos
+      // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(using Context): (List[Tree], Context) = stats match {
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)

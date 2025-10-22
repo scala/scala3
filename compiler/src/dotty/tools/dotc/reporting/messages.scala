@@ -3754,10 +3754,10 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
   override protected def msg(using Context): String =
     i"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour."
   override protected def explain(using Context): String =
-    i"""Tooling may not cope with directories whose names do not match their package name.
-       |For example, `p-q` is encoded as `p$$minusq` and written that way to the file system.
+    i"""Tools may not handle directories whose names differ from their corresponding package names.
+       |For example, `p-q` is encoded as `p$$minusq` when written to the file system.
        |
-       |Package objects have names derived from their file names, so that names such as
-       |`myfile.test.scala` and `myfile-test.scala` will result in encoded names for package objects.
+       |Package objects derive their names from the file names, so files such as `myfile.test.scala`
+       |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
-       |The name `$name` is encoded to `${name.encode}`."""
+       |In this case, the name `$name` is encoded as `${name.encode}`."""

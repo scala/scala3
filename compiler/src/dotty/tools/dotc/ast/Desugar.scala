@@ -1858,7 +1858,7 @@ object desugar {
   /** Assuming `src` contains top-level definition, returns the name that should
    *  be using for the package object that will wrap them.
    */
-  def packageObjectName(src: SourceFile, srcPos: SrcPos)(using Context): TermName =
+  def packageObjectName(src: SourceFile): TermName =
     val fileName = src.file.name
     val sourceName = fileName.take(fileName.lastIndexOf('.'))
     (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
@@ -1889,7 +1889,7 @@ object desugar {
     val (nestedStats, topStats) = pdef.stats.partition(inPackageObject)
     if (nestedStats.isEmpty) pdef
     else {
-      val name = packageObjectName(ctx.source, pdef.srcPos)
+      val name = packageObjectName(ctx.source)
       val grouped =
         ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
           .withMods(Modifiers(Synthetic))
