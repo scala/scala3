@@ -352,8 +352,8 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a type extending `Mutable` that has update methods
-   *  or non-private mutable fields?
+  /** Is this a type extending `Mutable` that has non-private update methods
+   *  or mutable fields?
    */
   def isMutableType(using Context): Boolean =
     tp.derivesFrom(defn.Caps_Mutable)

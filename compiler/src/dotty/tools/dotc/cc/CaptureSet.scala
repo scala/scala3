@@ -640,9 +640,9 @@ object CaptureSet:
       else ""
 
   private def capImpliedByCapability(parent: Type)(using Context): Capability =
-    if parent.derivesFromExclusive then GlobalCap.readOnly else GlobalCap
+    if parent.derivesFromMutable then GlobalCap.readOnly else GlobalCap
 
-  /* The same as {cap.rd} but generated implicitly for references of Capability subtypes.
+  /* The same as {cap} but generated implicitly for references of Capability subtypes.
    */
   class CSImpliedByCapability(parent: Type)(using @constructorOnly ctx: Context)
   extends Const(SimpleIdentitySet(capImpliedByCapability(parent)))
