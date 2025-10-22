@@ -30,17 +30,30 @@ class SettingsTests:
     assertEquals(1, summary.errors.size)
     assertEquals("'not_here' does not exist or is not a directory or .jar file", summary.errors.head)
 
-  @Test def `skip enuf args`: Unit =
+  // if -d rejects its arg, ignore it instead of keeping it as a residual arg
+  @Test def `skip failed args`: Unit =
     val args = List("-d", "not_here", "-Vprint")
     val summary = ScalaSettings.processArguments(args, processAll = true)
     assertEquals(2, summary.errors.size)
+    assertTrue(summary.arguments.isEmpty)
     assertEquals("'not_here' does not exist or is not a directory or .jar file", summary.errors.head)
+    assertEquals("missing argument for option -Vprint", summary.errors.last)
 
-  @Test def jarOutput: Unit =
+  // same as previous but for colon arg
+  @Test def `skip failed colon args`: Unit =
+    val args = List("-d:not_here", "-Vprint")
+    val summary = ScalaSettings.processArguments(args, processAll = true)
+    assertEquals(2, summary.errors.size)
+    assertTrue(summary.arguments.isEmpty)
+    assertEquals("'not_here' does not exist or is not a directory or .jar file", summary.errors.head)
+    assertEquals("missing argument for option -Vprint", summary.errors.last)
+
+  @Test def `output jar file is created eagerly`: Unit =
+    import TestConfiguration.basicClasspath
     val source = "tests/pos/Foo.scala"
     val out = Paths.get("out/jarredFoo.jar").normalize
     if Files.exists(out) then Files.delete(out)
-    val args = List("-Xmain-class", "Jarred", "-classpath", TestConfiguration.basicClasspath, "-d", out.toString, source)
+    val args = List("-Xmain-class", "Jarred", "-classpath", basicClasspath, "-d", out.toString, source)
     val summary = ScalaSettings.processArguments(args, processAll = true)
     assertEquals(0, summary.errors.size)
     assertTrue(Files.exists(out))
