@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import java.net.URLClassLoader
 import java.nio.file.Paths
 
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 
 object ClasspathFromClassloader {
 

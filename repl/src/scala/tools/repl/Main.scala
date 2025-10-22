@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package scala.tools
+package repl
 
 /** Main entry point to the REPL */
 // To test, run bin/scala

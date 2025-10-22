@@ -25,7 +25,7 @@ import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.core.CyclicReference
 
 /** Tree interpreter for metaprogramming constructs */

@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package scala.tools
+package repl
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}

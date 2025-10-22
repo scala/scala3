@@ -176,7 +176,7 @@ object MainGenericCompiler {
       case CompileMode.Repl | CompileMode.Run =>
         addJavaProps()
         val properArgs = reconstructedArgs()
-        repl.Main.main(properArgs.toArray)
+        ??? //repl.Main.main(properArgs.toArray)
       case CompileMode.Guess =>
         run(settings.withCompileMode(CompileMode.Compile))
     end run

@@ -724,9 +724,6 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.29.0",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.29.0",
-        "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
@@ -1771,6 +1768,164 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+    )
+
+  lazy val `scala3-repl-nonbootstrapped` = project.in(file("repl"))
+    .dependsOn(`scala3-compiler-nonbootstrapped` % "compile->compile;test->test")
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-repl",
+      moduleName    := "scala3-repl",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true, // org.scala-lang:scala3-tasty-inspector has a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
+      // Add the source directories for the sbt-bridge (boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of `scala3-staging`
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      publish / skip := false,
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-repl-nonbootstrapped",
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          Array.empty,
+          comp.toSeq,
+          Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value,
+        )},
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      Test / javaOptions ++= {
+        val log = streams.value.log
+        val managedSrcDir = {
+          // Populate the directory
+          (Compile / managedSources).value
+
+          (Compile / sourceManaged).value
+        }
+        val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
+        Seq(
+          s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(`scala3-compiler-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
+        )
+      },
+      Test / forkOptions := 
+        (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
+    )
+
+  lazy val `scala3-repl-bootstrapped` = project.in(file("repl"))
+    .dependsOn(`scala3-compiler-bootstrapped-new` % "compile->compile;test->test")
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-repl",
+      moduleName    := "scala3-repl",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true, // org.scala-lang:scala3-tasty-inspector has a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
+      // Add the source directories for the sbt-bridge (boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of `scala3-staging`
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      publish / skip := false,
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
+      target := target.value / "scala3-repl-bootstrapped",
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      Test / javaOptions ++= {
+        val log = streams.value.log
+        val managedSrcDir = {
+          // Populate the directory
+          (Compile / managedSources).value
+
+          (Compile / sourceManaged).value
+        }
+        val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
+        Seq(
+          s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped-new` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.jlineTerminal=${findArtifactPath(externalDeps, "jline-terminal")}",
+          s"-Ddotty.tests.classes.jlineReader=${findArtifactPath(externalDeps, "jline-reader")}",
+          s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging-new") / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector-new") / Compile / packageBin).value}",
+          s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
+        )
+      },
+      Test / forkOptions := 
+        (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
     )
 
   // ==============================================================================================

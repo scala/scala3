@@ -1,4 +1,4 @@
-package dotty.tools
+package scala.tools
 package repl
 
 import scala.language.unsafeNulls
@@ -8,9 +8,9 @@ import java.nio.file.Files
 
 import org.junit.{ After, AfterClass, BeforeClass, Test }
 import org.junit.Assert._
-import io.{ Directory, PlainDirectory }
-import dotc.core.Contexts._
-import dotc.reporting.{ ErrorMessagesTest, StoreReporter }
+import dotty.tools.io.{ Directory, PlainDirectory }
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.reporting.{ ErrorMessagesTest, StoreReporter }
 
 object ShadowingBatchTests:
   val dir = Directory(Files.createTempDirectory("batch-shadow"))
@@ -23,7 +23,7 @@ class ShadowingBatchTests extends ErrorMessagesTest:
 
   @After def testFinished: Unit = dir.list.foreach(_.deleteRecursively())
 
-  val compiler = new dotc.Compiler()
+  val compiler = new dotty.tools.dotc.Compiler()
 
   override def initializeCtx(ictx: FreshContext) = inContext(ictx) {
     super.initializeCtx(ictx)
