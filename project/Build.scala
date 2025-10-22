@@ -2888,10 +2888,9 @@ object Build {
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
-        "com.google.guava" % "guava" % "33.2.1-jre"
+        "com.google.guava" % "guava" % "33.2.1-jre",
       ),
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
-      resolvers += Resolver.sonatypeCentralSnapshots,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings

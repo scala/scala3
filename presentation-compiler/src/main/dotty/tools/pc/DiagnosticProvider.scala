@@ -1,20 +1,18 @@
 package dotty.tools.pc
 
-import org.eclipse.lsp4j
-import org.eclipse.lsp4j.DiagnosticSeverity
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.interfaces.Diagnostic as DiagnosticInterfaces
+import dotty.tools.dotc.reporting.ErrorMessageID
 import dotty.tools.dotc.reporting.Diagnostic
-import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
-
-import scala.meta.pc.VirtualFileParams
 import dotty.tools.dotc.reporting.CodeAction
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
+
+import org.eclipse.lsp4j
+
 import scala.jdk.CollectionConverters.*
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.reporting.ErrorMessageID
-import org.eclipse.lsp4j.DiagnosticTag
-import org.eclipse.lsp4j.CodeActionKind
+import scala.meta.pc.VirtualFileParams
 
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
@@ -37,16 +35,15 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
       val actions = diag.msg.actions.map(toLspScalaAction).asJava
 
-      // lspDiag.setRelatedInformation(???) Currently not emitted by the compiler
       lspDiag.setData(actions)
       if diag.msg.errorId == ErrorMessageID.UnusedSymbolID then
-        lspDiag.setTags(List(DiagnosticTag.Unnecessary).asJava)
+        lspDiag.setTags(List(lsp4j.DiagnosticTag.Unnecessary).asJava)
 
       lspDiag
 
   private def toLspScalaAction(action: CodeAction): lsp4j.CodeAction =
     val lspAction = lsp4j.CodeAction(action.title)
-    lspAction.setKind(CodeActionKind.QuickFix)
+    lspAction.setKind(lsp4j.CodeActionKind.QuickFix)
     lspAction.setIsPreferred(true)
     val edits = action.patches.groupBy(_.srcPos.source.path)
       .map((path, actions) => path -> (actions.map(toLspTextEdit).asJava))
@@ -62,9 +59,9 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
     val range = lsp4j.Range(startPos, endPos)
     lsp4j.TextEdit(range, actionPatch.replacement)
 
-  private def toDiagnosticSeverity(severity: Int): DiagnosticSeverity =
+  private def toDiagnosticSeverity(severity: Int): lsp4j.DiagnosticSeverity =
     severity match
-      case DiagnosticInterfaces.ERROR   => DiagnosticSeverity.Error
-      case DiagnosticInterfaces.WARNING => DiagnosticSeverity.Warning
-      case DiagnosticInterfaces.INFO    => DiagnosticSeverity.Information
-      case _                            => DiagnosticSeverity.Information
+      case DiagnosticInterfaces.ERROR   => lsp4j.DiagnosticSeverity.Error
+      case DiagnosticInterfaces.WARNING => lsp4j.DiagnosticSeverity.Warning
+      case DiagnosticInterfaces.INFO    => lsp4j.DiagnosticSeverity.Information
+      case _                            => lsp4j.DiagnosticSeverity.Information
