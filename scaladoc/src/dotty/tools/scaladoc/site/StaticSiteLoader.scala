@@ -116,8 +116,8 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
 
   def loadBlog(): Option[LoadedTemplate] = {
     val blogConfig = BlogParser.readYml(root)
-    val rootPath = Option(blogConfig.input).map(input => ctx.resolveNewBlogPath(input)).getOrElse(ctx.blogPath)
-    val defaultDirectory = Option(blogConfig.output).getOrElse("blog")
+    val rootPath = Option.fromNullable(blogConfig.input).map(input => ctx.resolveNewBlogPath(input)).getOrElse(ctx.blogPath)
+    val defaultDirectory = Option.fromNullable(blogConfig.output).getOrElse("blog")
 
     type Date = (String, String, String)
     if (!Files.exists(rootPath) || blogConfig.hidden) None
