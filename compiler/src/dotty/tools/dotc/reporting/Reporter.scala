@@ -30,7 +30,7 @@ object Reporter {
     override def report(dia: Diagnostic)(using Context): Unit = ()
   }
 
-  /** A reporter for -Yno-reporter [sic] */
+  /** A silent reporter for testing */
   class SilentReporter extends Reporter:
     def doReport(dia: Diagnostic)(using Context): Unit = ()
 

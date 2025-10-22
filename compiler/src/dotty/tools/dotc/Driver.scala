@@ -84,7 +84,7 @@ class Driver {
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
 
-    inContext(ictx) {
+    inContext(ictx):
       if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
@@ -92,9 +92,18 @@ class Driver {
         val files = fileNames.map(ctx.getFile)
         (files, fromTastySetup(files))
       .tap: _ =>
-        if ctx.settings.YnoReporter.value then
-          ictx.setReporter(Reporter.SilentReporter())
-    }
+        if !ctx.settings.Yreporter.isDefault then
+          ctx.settings.Yreporter.value match
+          case "help" =>
+          case reporterClassName =>
+            try
+              Class.forName(reporterClassName).getDeclaredConstructor().newInstance() match
+              case userReporter: Reporter =>
+                ictx.setReporter(userReporter)
+              case badReporter => report.error:
+                em"Not a reporter: ${ctx.settings.Yreporter.value}"
+            catch case e: ReflectiveOperationException => report.error:
+              em"Could not create reporter ${ctx.settings.Yreporter.value}: ${e}"
   }
 
   /** Setup extra classpath of tasty and jar files */
