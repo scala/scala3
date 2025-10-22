@@ -1929,15 +1929,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    pt.stripNull() match {
-      case pt: TypeVar
-      if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
-        // try to instantiate `pt` if this is possible. If it does not
-        // work the error will be reported later in `inferredParam`,
-        // when we try to infer the parameter type.
-        isFullyDefined(pt, ForceDegree.flipBottom)
-      case _ =>
-    }
+    if pt.existsPart(_.isInstanceOf[TypeVar], StopAt.Static)
+        && untpd.isFunctionWithUnknownParamType(tree)
+        && !calleeType.exists then
+      // try to instantiate `pt` if this is possible. If it does not
+      // work the error will be reported later in `inferredParam`,
+      // when we try to infer the parameter type.
+      isFullyDefined(pt, ForceDegree.flipBottom)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
