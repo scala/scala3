@@ -74,10 +74,7 @@ class Objects(using Context @constructorOnly):
   val MapNode_EmptyMapNode: Symbol = immutableMapNode.requiredValue("EmptyMapNode")
   val immutableHashMap: Symbol = requiredModule("scala.collection.immutable.HashMap")
   val HashMap_EmptyMap: Symbol = immutableHashMap.requiredValue("EmptyMap")
-  val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
-  val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
-
-  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
+  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap)
 
   // ----------------------------- abstract domain -----------------------------
 
