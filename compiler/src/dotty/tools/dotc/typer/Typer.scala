@@ -1933,8 +1933,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val firstFormal = protoFormals.head.loBound
       if ptIsCorrectProduct(firstFormal, params) then
         val isGenericTuple =
-          firstFormal.derivesFrom(defn.TupleClass)
-          && !defn.isTupleClass(firstFormal.typeSymbol)
+          firstFormal.isNamedTupleType
+          || (firstFormal.derivesFrom(defn.TupleClass)
+              && !defn.isTupleClass(firstFormal.typeSymbol))
         desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
     else if protoFormals.length > 1 && params.length == 1 then
       def isParamRef(scrut: untpd.Tree): Boolean = scrut match
