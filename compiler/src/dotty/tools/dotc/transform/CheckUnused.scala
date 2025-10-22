@@ -503,7 +503,10 @@ object CheckUnused:
           && !imp.isGeneratedByEnum
           && !ctx.owner.name.isReplWrapperName
         then
-          imps.put(imp, ())
+          if imp.isCompiletimeTesting then
+            isNullified = true
+          else
+            imps.put(imp, ())
       case tree: Bind =>
         if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) then
           if tree.hasAttachment(NoWarn) then
@@ -533,6 +536,9 @@ object CheckUnused:
         asss.addOne(sym)
       else
         refs.addOne(sym)
+
+    // currently compiletime.testing is completely erased, so ignore the unit
+    var isNullified = false
   end RefInfos
 
   // Names are resolved by definitions and imports, which have four precedence levels:
@@ -547,7 +553,7 @@ object CheckUnused:
       inline def weakerThan(q: Precedence): Boolean = p > q
       inline def isNone: Boolean = p == NoPrecedence
 
-  def reportUnused()(using Context): Unit =
+  def reportUnused()(using Context): Unit = if !refInfos.isNullified then
     for (msg, pos, origin) <- warnings do
       if origin.isEmpty then report.warning(msg, pos)
       else report.warning(msg, pos, origin)
@@ -1030,6 +1036,10 @@ object CheckUnused:
     /** Generated import of cases from enum companion. */
     def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
+
+    /** No mechanism for detection yet. */
+    def isCompiletimeTesting: Boolean =
+      imp.expr.symbol == defn.CompiletimeTestingPackage//.moduleClass
 
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
