@@ -191,6 +191,15 @@ object Completion:
           Some(qual)
         case _ => None
 
+  private object NamedTupleSelection:
+    def unapply(path: List[tpd.Tree])(using Context): Option[tpd.Tree] =
+      path match
+        case (tpd.Apply(tpd.Apply(tpd.TypeApply(fun, _), List(qual)), _)) :: _
+          if fun.symbol.exists && fun.symbol.name == nme.apply &&
+             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
+          Some(qual)
+        case _ => None
+
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(untpdPath: List[untpd.Tree]): Int =
@@ -199,7 +208,7 @@ object Completion:
       case _ => 0
 
   /** Handle case when cursor position is inside extension method construct.
-   *  The extension method construct is then desugared into methods, and consturct parameters
+   *  The extension method construct is then desugared into methods, and construct parameters
    *  are no longer a part of a typed tree, but instead are prepended to method parameters.
    *
    *  @param untpdPath The typed or untyped path to the tree that is being completed
@@ -246,6 +255,7 @@ object Completion:
         completer.scopeCompletions.names ++ completer.selectionCompletions(qual)
       case tpd.Select(qual, _) :: _                                             => completer.selectionCompletions(qual)
       case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
+      case NamedTupleSelection(qual)                                            => completer.selectionCompletions(qual)
       case _                                                                    => completer.scopeCompletions.names
 
     interactiv.println(i"""completion info with pos    = $pos,
