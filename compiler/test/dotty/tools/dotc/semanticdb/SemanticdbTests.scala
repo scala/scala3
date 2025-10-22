@@ -144,7 +144,7 @@ class SemanticdbTests:
       "-Xignore-scala2-macros",
       "-usejavacp",
       "-Wunused:all",
-      "-Yno-reporter",
+      "-Yreporter:dotty.tools.dotc.reporting.Reporter$SilentReporter",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
