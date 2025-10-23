@@ -368,7 +368,7 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
 
             if (parent ne null) { // never tomb at root
               val n = GCAS_READ(ct)
-              if (n.isInstanceOf[TNode[_, _]])
+              if (n.isInstanceOf[TNode[?, ?]])
                 cleanParent(n)
             }
 
@@ -697,10 +697,10 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     with scala.collection.MapFactoryDefaults[K, V, TrieMap, mutable.Iterable]
     with DefaultSerializable {
 
-  private[this] var hashingobj = if (hashf.isInstanceOf[Hashing.Default[_]]) new TrieMap.MangledHashing[K] else hashf
-  private[this] var equalityobj = ef
+  private var hashingobj = if (hashf.isInstanceOf[Hashing.Default[?]]) new TrieMap.MangledHashing[K] else hashf
+  private var equalityobj = ef
   @transient
-  private[this] var rootupdater: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef] | Null = rtupd
+  private var rootupdater: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef] | Null = rtupd
   def hashing = hashingobj
   def equality = equalityobj
   @volatile private var root = r
@@ -1034,7 +1034,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     else RDCSS_READ_ROOT().knownSize(this)
   override def isEmpty: Boolean =
     (if (nonReadOnly) readOnlySnapshot() else this).sizeIs == 0 // sizeIs checks knownSize
-  override protected[this] def className = "TrieMap"
+  override protected def className = "TrieMap"
 
   override def lastOption: Option[(K, V)] = if (isEmpty) None else Try(last).toOption
 }
@@ -1050,7 +1050,7 @@ object TrieMap extends MapFactory[TrieMap] {
   def newBuilder[K, V]: mutable.GrowableBuilder[(K, V), TrieMap[K, V]] = new GrowableBuilder(empty[K, V])
 
   @transient
-  val inodeupdater: AtomicReferenceFieldUpdater[INodeBase[_, _], MainNode[_, _]] = AtomicReferenceFieldUpdater.newUpdater(classOf[INodeBase[_, _]], classOf[MainNode[_, _]], "mainnode")
+  val inodeupdater: AtomicReferenceFieldUpdater[INodeBase[?, ?], MainNode[?, ?]] = AtomicReferenceFieldUpdater.newUpdater(classOf[INodeBase[?, ?]], classOf[MainNode[?, ?]], "mainnode")
 
   class MangledHashing[K] extends Hashing[K] {
     def hash(k: K): Int = scala.util.hashing.byteswap32(k.##)

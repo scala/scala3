@@ -71,7 +71,7 @@ trait Promise[T] {
    */
    def completeWith(other: Future[T]): this.type = {
     if (other ne this.future) // this tryCompleteWith this doesn't make much sense
-      other.onComplete(this tryComplete _)(ExecutionContext.parasitic)
+      other.onComplete(this tryComplete _)(using ExecutionContext.parasitic)
 
     this
   }

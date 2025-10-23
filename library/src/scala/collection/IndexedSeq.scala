@@ -26,7 +26,7 @@ trait IndexedSeq[+A] extends Seq[A]
   with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
   with IterableFactoryDefaults[A, IndexedSeq] {
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "IndexedSeq"
+  override protected def stringPrefix: String = "IndexedSeq"
 
   override def iterableFactory: SeqFactory[IndexedSeq] = IndexedSeq
 }
@@ -39,15 +39,15 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
 
   def iterator: Iterator[A]^{this} = view.iterator
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
-      case StepperShape.IntShape    => new IntIndexedSeqStepper   (this.asInstanceOf[IndexedSeqOps[Int, AnyConstr, _]],    0, length)
-      case StepperShape.LongShape   => new LongIndexedSeqStepper  (this.asInstanceOf[IndexedSeqOps[Long, AnyConstr, _]],   0, length)
-      case StepperShape.DoubleShape => new DoubleIndexedSeqStepper(this.asInstanceOf[IndexedSeqOps[Double, AnyConstr, _]], 0, length)
+      case StepperShape.IntShape    => new IntIndexedSeqStepper   (this.asInstanceOf[IndexedSeqOps[Int, AnyConstr, ?]],    0, length)
+      case StepperShape.LongShape   => new LongIndexedSeqStepper  (this.asInstanceOf[IndexedSeqOps[Long, AnyConstr, ?]],   0, length)
+      case StepperShape.DoubleShape => new DoubleIndexedSeqStepper(this.asInstanceOf[IndexedSeqOps[Double, AnyConstr, ?]], 0, length)
       case _                        => shape.parUnbox(new AnyIndexedSeqStepper[A](this, 0, length))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   override def reverseIterator: Iterator[A]^{this} = view.reverseIterator
@@ -126,20 +126,20 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
 
   override def knownSize: Int = length
 
-  override final def lengthCompare(that: Iterable[_]^): Int = {
+  override final def lengthCompare(that: Iterable[?]^): Int = {
     val res = that.sizeCompare(length)
     // can't just invert the result, because `-Int.MinValue == Int.MinValue`
     if (res == Int.MinValue) 1 else -res
   }
 
   override def search[B >: A](elem: B)(implicit ord: Ordering[B]): SearchResult =
-    binarySearch(elem, 0, length)(ord)
+    binarySearch(elem, 0, length)(using ord)
 
   override def search[B >: A](elem: B, from: Int, to: Int)(implicit ord: Ordering[B]): SearchResult =
-    binarySearch(elem, from, to)(ord)
+    binarySearch(elem, from, to)(using ord)
 
   @tailrec
-  private[this] def binarySearch[B >: A](elem: B, from: Int, to: Int)
+  private def binarySearch[B >: A](elem: B, from: Int, to: Int)
                                         (implicit ord: Ordering[B]): SearchResult = {
     if (from < 0) binarySearch(elem, 0, to)
     else if (to > length) binarySearch(elem, from, length)
@@ -147,8 +147,8 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
     else {
       val idx = from + (to - from - 1) / 2
       math.signum(ord.compare(elem, apply(idx))) match {
-        case -1 => binarySearch(elem, from, idx)(ord)
-        case  1 => binarySearch(elem, idx + 1, to)(ord)
+        case -1 => binarySearch(elem, from, idx)(using ord)
+        case  1 => binarySearch(elem, idx + 1, to)(using ord)
         case  _ => Found(idx)
       }
     }
@@ -161,8 +161,8 @@ private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, C
   // CC note: seems like the compiler cannot figure out that this class <: Iterator[C^{s}],
   // so we need a cast when upcasting is needed.
 
-  private[this] val len = s.length
-  private[this] var pos = 0
+  private val len = s.length
+  private var pos = 0
   private def chklen: Boolean = len == s.length || {
     throw new java.util.ConcurrentModificationException("collection size changed during iteration")
     false

@@ -47,7 +47,7 @@ trait Seq[+A]
   override def toString(): String = super[Iterable].toString()
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "Seq"
+  override protected def stringPrefix: String = "Seq"
 }
 
 /**
@@ -416,7 +416,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   @deprecatedOverriding("Override lastIndexWhere(p, end) instead - lastIndexWhere(p) calls lastIndexWhere(p, Int.MaxValue)", "2.13.0")
   def lastIndexWhere(p: A => Boolean): Int = lastIndexWhere(p, Int.MaxValue)
 
-  @inline private[this] def toGenericSeq: scala.collection.Seq[A] = this match {
+  @inline private def toGenericSeq: scala.collection.Seq[A] = this match {
     case s: scala.collection.Seq[A] => s
     case _ => toSeq
   }
@@ -590,8 +590,8 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     else new CombinationsItr(n)
 
   private class PermutationsItr extends AbstractIterator[C] {
-    private[this] val (elms, idxs) = init()
-    private[this] var _hasNext = true
+    private val (elms, idxs) = init()
+    private var _hasNext = true
 
     def hasNext = _hasNext
     @throws[NoSuchElementException]
@@ -630,7 +630,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
       elms(j) = tmpE
     }
 
-    private[this] def init() = {
+    private def init() = {
       val m = mutable.HashMap[A, Int]()
       val (es, is) = (self.toGenericSeq map (e => (e, m.getOrElseUpdate(e, m.size))) sortBy (_._2)).unzip
 
@@ -642,9 +642,9 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     // generating all nums such that:
     // (1) nums(0) + .. + nums(length-1) = n
     // (2) 0 <= nums(i) <= cnts(i), where 0 <= i <= cnts.length-1
-    private[this] val (elms, cnts, nums) = init()
-    private[this] val offs = cnts.scanLeft(0)(_ + _)
-    private[this] var _hasNext = true
+    private val (elms, cnts, nums) = init()
+    private val offs = cnts.scanLeft(0)(_ + _)
+    private var _hasNext = true
 
     def hasNext = _hasNext
     def next(): C = {
@@ -757,7 +757,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *    List("Bobby", "Bob", "John", "Steve", "Tom")
    *  }}}
    */
-  def sortWith(lt: (A, A) => Boolean): C^{this} = sorted(Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) => Boolean): C^{this} = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this $coll according to the Ordering which results from transforming
     * an implicitly given Ordering with a transformation function.
@@ -784,7 +784,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     *    res0: Array[String] = Array(The, dog, fox, the, lazy, over, brown, quick, jumped)
     *  }}}
     */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C^{this} = sorted(ord on f)
+  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C^{this} = sorted(using ord.on(f))
 
   /** Produces the range of all indices of this sequence.
     * $willForceEvaluation
@@ -812,7 +812,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     */
   def lengthCompare(len: Int): Int = super.sizeCompare(len)
 
-  override final def sizeCompare(that: Iterable[_]^): Int = lengthCompare(that)
+  override final def sizeCompare(that: Iterable[?]^): Int = lengthCompare(that)
 
   /** Compares the length of this $coll to the size of another `Iterable`.
     *
@@ -827,7 +827,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     *  is `O(this.length min that.size)` instead of `O(this.length + that.size)`.
     *  The method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
     */
-  def lengthCompare(that: Iterable[_]^): Int = super.sizeCompare(that)
+  def lengthCompare(that: Iterable[?]^): Int = super.sizeCompare(that)
 
   /** Returns a value class containing operations for comparing the length of this $coll to a test value.
     *
@@ -995,7 +995,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     *         the element is not in the sequence.
     */
   def search[B >: A](elem: B)(implicit ord: Ordering[B]): SearchResult =
-    linearSearch(view, elem, 0)(ord)
+    linearSearch(view, elem, 0)(using ord)
 
   /** Searches within an interval in this sorted sequence for a specific element. If this
     * sequence is an `IndexedSeq`, a binary search is used. Otherwise, a linear search
@@ -1021,9 +1021,9 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     *       is returned
     */
   def search[B >: A](elem: B, from: Int, to: Int) (implicit ord: Ordering[B]): SearchResult =
-    linearSearch(view.slice(from, to), elem, math.max(0, from))(ord)
+    linearSearch(view.slice(from, to), elem, math.max(0, from))(using ord)
 
-  private[this] def linearSearch[B >: A](c: View[A]^, elem: B, offset: Int)
+  private def linearSearch[B >: A](c: View[A]^, elem: B, offset: Int)
                                         (implicit ord: Ordering[B]): SearchResult = {
     var idx = offset
     val it = c.iterator
@@ -1152,9 +1152,9 @@ object SeqOps {
       // W is probably bad at indexing.  Pack in array (in correct orientation)
       // Would be marginally faster to special-case each direction
       new AbstractIndexedSeqView[B] {
-        private[this] val Warr = new Array[AnyRef](n1-n0)
-        private[this] val delta = if (forward) 1 else -1
-        private[this] val done = if (forward) n1-n0 else -1
+        private val Warr = new Array[AnyRef](n1-n0)
+        private val delta = if (forward) 1 else -1
+        private val done = if (forward) n1-n0 else -1
         val wit = W.iterator.drop(n0)
         var i = if (forward) 0 else (n1-n0-1)
         while (i != done) {

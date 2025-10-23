@@ -16,6 +16,7 @@ import scala.language.`2.13`
 import scala.concurrent.{Batchable, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
 import scala.concurrent.duration.Duration
 import scala.annotation.{nowarn, switch, tailrec}
+import scala.annotation.unchecked.uncheckedVariance
 import scala.util.control.{ControlThrowable, NonFatal}
 import scala.util.{Failure, Success, Try}
 import scala.runtime.NonLocalReturnControl
@@ -34,7 +35,7 @@ import java.io.{IOException, NotSerializableException, ObjectInputStream, Object
   */
 private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer with (Try[T] => Unit) {
   //@volatie not needed since we use acquire/release
-  /*@volatile*/ @annotation.stableNull private[this] var _result: Try[T] | Null = null
+  /*@volatile*/ @annotation.stableNull private var _result: Try[T] | Null = null
   final def result: Try[T] | Null = _result
   override protected def tryAcquireShared(ignored: Int): Int = if (getState != 0) 1 else -1
   override protected def tryReleaseShared(ignore: Int): Boolean = {
@@ -72,12 +73,12 @@ private[concurrent] object Promise {
     /**
      * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
      **/
-    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
+    @inline @tailrec private final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
       val value = target.get()
-      if (value.isInstanceOf[Callbacks[_]]) {
+      if (value.isInstanceOf[Callbacks[?]]) {
         if (compareAndSet(current, target)) target // Link
         else compressed(current = get(), target = target, owner = owner) // Retry
-      } else if (value.isInstanceOf[Link[_]]) compressed(current = current, target = value.asInstanceOf[Link[T]].get(), owner = owner) // Compress
+      } else if (value.isInstanceOf[Link[?]]) compressed(current = current, target = value.asInstanceOf[Link[T]].get(), owner = owner) // Compress
       else /*if (value.isInstanceOf[Try[T]])*/ {
         owner.unlink(value.asInstanceOf[Try[T]]) // Discard links
         owner
@@ -90,7 +91,7 @@ private[concurrent] object Promise {
    * those values which makes sense in the context of Futures.
    **/
   // requireNonNull is paramount to guard against null completions
-  private[this] final def resolve[T](value: Try[T]): Try[T] =
+  private final def resolve[T](value: Try[T]): Try[T] =
     if (requireNonNull(value).isInstanceOf[Success[T]]) value
     else {
       val t = value.asInstanceOf[Failure[T]].exception
@@ -103,7 +104,7 @@ private[concurrent] object Promise {
     }
 
   // Left non-final to enable addition of extra fields by Java/Scala converters in scala-java8-compat.
-  class DefaultPromise[T] private[this] (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
+  class DefaultPromise[T] private (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
     /**
      * Constructs a new, completed, Promise.
      */
@@ -134,7 +135,7 @@ private[concurrent] object Promise {
 
     override final def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
       val state = get()
-      if (state.isInstanceOf[Try[_]]) {
+      if (state.isInstanceOf[Try[?]]) {
         if (state.asInstanceOf[Try[T]].isFailure) this.asInstanceOf[Future[R]]
         else {
           val l = state.asInstanceOf[Success[T]].get
@@ -170,47 +171,47 @@ private[concurrent] object Promise {
 
     override final def foreach[U](f: T => U)(implicit executor: ExecutionContext): Unit = {
       val state = get()
-      if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, Unit](Xform_foreach, f, executor))
+      if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, Unit](Xform_foreach, f, executor))
     }
 
     override final def flatMap[S](f: T => Future[S])(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
-      if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_flatMap, f, executor))
+      if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_flatMap, f, executor))
       else this.asInstanceOf[Future[S]]
     }
 
     override final def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
-      if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_map, f, executor))
+      if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_map, f, executor))
       else this.asInstanceOf[Future[S]]
     }
 
     override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = {
       val state = get()
-      if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, T](Xform_filter, p, executor)) // Short-circuit if we get a Success
+      if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, T](Xform_filter, p, executor)) // Short-circuit if we get a Success
       else this
     }
 
     override final def collect[S](pf: PartialFunction[T, S])(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
-      if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_collect, pf, executor)) // Short-circuit if we get a Success
+      if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_collect, pf, executor)) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
     }
 
     override final def recoverWith[U >: T](pf: PartialFunction[Throwable, Future[U]])(implicit executor: ExecutionContext): Future[U] = {
       val state = get()
-      if (!state.isInstanceOf[Success[_]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recoverWith, pf, executor)) // Short-circuit if we get a Failure
+      if (!state.isInstanceOf[Success[?]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recoverWith, pf, executor)) // Short-circuit if we get a Failure
       else this.asInstanceOf[Future[U]]
     }
 
     override final def recover[U >: T](pf: PartialFunction[Throwable, U])(implicit executor: ExecutionContext): Future[U] = {
       val state = get()
-      if (!state.isInstanceOf[Success[_]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recover, pf, executor)) // Short-circuit if we get a Failure
+      if (!state.isInstanceOf[Success[?]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recover, pf, executor)) // Short-circuit if we get a Failure
       else this.asInstanceOf[Future[U]]
     }
 
     override final def mapTo[S](implicit tag: scala.reflect.ClassTag[S]): Future[S] =
-      if (!get().isInstanceOf[Failure[_]]) super[Future].mapTo[S](tag) // Short-circuit if we get a Success
+      if (!get().isInstanceOf[Failure[?]]) super[Future].mapTo[S](using tag) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
 
 
@@ -228,17 +229,17 @@ private[concurrent] object Promise {
     }
 
     override final def failed: Future[Throwable] =
-      if (!get().isInstanceOf[Success[_]]) super.failed
+      if (!get().isInstanceOf[Success[?]]) super.failed
       else Future.failedFailureFuture // Cached instance in case of already known success
 
     @tailrec override final def toString: String = {
       val state = get()
-      if (state.isInstanceOf[Try[_]]) "Future("+state+")"
-      else if (state.isInstanceOf[Link[_]]) state.asInstanceOf[Link[T]].promise(this).toString
+      if (state.isInstanceOf[Try[?]]) "Future("+state+")"
+      else if (state.isInstanceOf[Link[?]]) state.asInstanceOf[Link[T]].promise(this).toString
       else /*if (state.isInstanceOf[Callbacks[T]]) */ "Future(<not completed>)"
     }
 
-    private[this] final def tryAwait0(atMost: Duration): Try[T] | Null =
+    private final def tryAwait0(atMost: Duration): Try[T] | Null =
       if (atMost ne Duration.Undefined) {
         val v = value0
         if (v ne null) v
@@ -247,7 +248,7 @@ private[concurrent] object Promise {
             if (atMost <= Duration.Zero) null
             else {
               val l = new CompletionLatch[T]()
-              onComplete(l)(ExecutionContext.parasitic)
+              onComplete(l)(using ExecutionContext.parasitic)
 
               if (atMost.isFinite)
                 l.tryAcquireSharedNanos(1, atMost.toNanos)
@@ -279,25 +280,25 @@ private[concurrent] object Promise {
     @tailrec // returns null if not completed
     private final def value0: Try[T] | Null = {
       val state = get()
-      if (state.isInstanceOf[Try[_]]) state.asInstanceOf[Try[T]]
-      else if (state.isInstanceOf[Link[_]]) state.asInstanceOf[Link[T]].promise(this).value0
+      if (state.isInstanceOf[Try[?]]) state.asInstanceOf[Try[T]]
+      else if (state.isInstanceOf[Link[?]]) state.asInstanceOf[Link[T]].promise(this).value0
       else /*if (state.isInstanceOf[Callbacks[T]])*/ null
     }
 
     override final def tryComplete(value: Try[T]): Boolean = {
       val state = get()
-      if (state.isInstanceOf[Try[_]]) false
+      if (state.isInstanceOf[Try[?]]) false
       else tryComplete0(state, resolve(value))
     }
 
     @tailrec // WARNING: important that the supplied Try really is resolve():d
     private[Promise] final def tryComplete0(state: AnyRef, resolved: Try[T]): Boolean =
-      if (state.isInstanceOf[Callbacks[_]]) {
+      if (state.isInstanceOf[Callbacks[?]]) {
         if (compareAndSet(state, resolved)) {
           if (state ne Noop) submitWithValue(state.asInstanceOf[Callbacks[T]], resolved)
           true
         } else tryComplete0(get(), resolved)
-      } else if (state.isInstanceOf[Link[_]]) {
+      } else if (state.isInstanceOf[Link[?]]) {
         val p = state.asInstanceOf[Link[T]].promise(this) // If this returns owner/this, we are in a completed link
         (p ne this) && p.tryComplete0(p.get(), resolved) // Use this to get tailcall optimization and avoid re-resolution
       } else /* if(state.isInstanceOf[Try[T]]) */ false
@@ -305,10 +306,10 @@ private[concurrent] object Promise {
     override final def completeWith(other: Future[T]): this.type = {
       if (other ne this) {
         val state = get()
-        if (!state.isInstanceOf[Try[_]]) {
-          val resolved = if (other.isInstanceOf[DefaultPromise[_]]) other.asInstanceOf[DefaultPromise[T]].value0 else other.value.orNull
+        if (!state.isInstanceOf[Try[?]]) {
+          val resolved = if (other.isInstanceOf[DefaultPromise[?]]) other.asInstanceOf[DefaultPromise[T]].value0 else other.value.orNull
           if (resolved ne null) tryComplete0(state, resolved)
-          else other.onComplete(this)(ExecutionContext.parasitic)
+          else other.onComplete(this)(using ExecutionContext.parasitic)
         }
       }
 
@@ -320,10 +321,10 @@ private[concurrent] object Promise {
      *  to the root promise when linking two promises together.
      */
     @tailrec private final def dispatchOrAddCallbacks[C <: Callbacks[T]](state: AnyRef, callbacks: C): C =
-      if (state.isInstanceOf[Try[_]]) {
+      if (state.isInstanceOf[Try[?]]) {
         submitWithValue(callbacks, state.asInstanceOf[Try[T]]) // invariant: callbacks should never be Noop here
         callbacks
-      } else if (state.isInstanceOf[Callbacks[_]]) {
+      } else if (state.isInstanceOf[Callbacks[?]]) {
         if(compareAndSet(state, if (state ne Noop) concatCallbacks(callbacks, state.asInstanceOf[Callbacks[T]]) else callbacks)) callbacks
         else dispatchOrAddCallbacks(get(), callbacks)
       } else /*if (state.isInstanceOf[Link[T]])*/ {
@@ -331,29 +332,29 @@ private[concurrent] object Promise {
         p.dispatchOrAddCallbacks(p.get(), callbacks)
       }
 
-    @tailrec private def unregisterCallback(t: Transformation[_, _]): Unit = {
+    @tailrec private def unregisterCallback(t: Transformation[?, ?]): Unit = {
       val state = get()
       if (state eq t) {
         if (!compareAndSet(state, Noop)) unregisterCallback(t)
-      } else if (state.isInstanceOf[ManyCallbacks[_]]) {
+      } else if (state.isInstanceOf[ManyCallbacks[?]]) {
         if (!compareAndSet(state, removeCallback(state.asInstanceOf[ManyCallbacks[T]], t))) unregisterCallback(t)
       }
     }
 
     // IMPORTANT: Noop should never be passed in here, neither as left OR as right
-    @tailrec private[this] final def concatCallbacks(left: Callbacks[T], right: Callbacks[T]): Callbacks[T] =
-      if (left.isInstanceOf[Transformation[T,_]]) new ManyCallbacks[T](left.asInstanceOf[Transformation[T,_]], right)
+    @tailrec private final def concatCallbacks(left: Callbacks[T], right: Callbacks[T]): Callbacks[T] =
+      if (left.isInstanceOf[Transformation[T, ?]]) new ManyCallbacks[T](left.asInstanceOf[Transformation[T, ?]], right)
       else /*if (left.isInstanceOf[ManyCallbacks[T]) */ { // This should only happen when linking
         val m = left.asInstanceOf[ManyCallbacks[T]]
         concatCallbacks(m.rest, new ManyCallbacks(m.first, right))
       }
 
-    @tailrec private[this] final def removeCallback(cs: Callbacks[T], t: Transformation[_, _], result: Callbacks[T] | Null = null): AnyRef =
+    @tailrec private final def removeCallback(cs: Callbacks[T], t: Transformation[?, ?], result: Callbacks[T] | Null = null): AnyRef =
       if (cs eq t) {
         if (result == null) Noop
         else result
       }
-      else if (cs.isInstanceOf[ManyCallbacks[_]]) {
+      else if (cs.isInstanceOf[ManyCallbacks[?]]) {
         val m = cs.asInstanceOf[ManyCallbacks[T]]
         if (m.first eq t) {
           if (result == null) m.rest
@@ -364,13 +365,13 @@ private[concurrent] object Promise {
 
     // IMPORTANT: Noop should not be passed in here, `callbacks` cannot be null
     @tailrec
-    private[this] final def submitWithValue(callbacks: Callbacks[T], resolved: Try[T]): Unit =
+    private final def submitWithValue(callbacks: Callbacks[T], resolved: Try[T]): Unit =
       if(callbacks.isInstanceOf[ManyCallbacks[T]]) {
         val m: ManyCallbacks[T] = callbacks.asInstanceOf[ManyCallbacks[T]]
         m.first.submitWithValue(resolved)
         submitWithValue(m.rest, resolved)
       } else {
-        callbacks.asInstanceOf[Transformation[T, _]].submitWithValue(resolved)
+        callbacks.asInstanceOf[Transformation[T, ?]].submitWithValue(resolved)
       }
 
     /** Link this promise to the root of another promise.
@@ -378,10 +379,10 @@ private[concurrent] object Promise {
     @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T], link: Link[T] | Null): Unit =
       if (this ne target) {
         val state = get()
-        if (state.isInstanceOf[Try[_]]) {
+        if (state.isInstanceOf[Try[?]]) {
           if(!target.tryComplete0(target.get(), state.asInstanceOf[Try[T]]))
             throw new IllegalStateException("Cannot link completed promises together")
-        } else if (state.isInstanceOf[Callbacks[_]]) {
+        } else if (state.isInstanceOf[Callbacks[?]]) {
           val l = if (link ne null) link else new Link(target)
           val p = l.promise(this)
           if ((this ne p) && compareAndSet(state, l)) {
@@ -397,7 +398,7 @@ private[concurrent] object Promise {
      **/
     @tailrec private[concurrent] final def unlink(resolved: Try[T]): Unit = {
       val state = get()
-      if (state.isInstanceOf[Link[_]]) {
+      if (state.isInstanceOf[Link[?]]) {
         val next = if (compareAndSet(state, resolved)) state.asInstanceOf[Link[T]].get() else this
         next.unlink(resolved)
       } else tryComplete0(state, resolved)
@@ -431,11 +432,11 @@ private[concurrent] object Promise {
    */
   sealed trait Callbacks[-T]
 
-  final class ManyCallbacks[-T](final val first: Transformation[T,_], final val rest: Callbacks[T]) extends Callbacks[T] {
+  final class ManyCallbacks[-T](final val first: Transformation[T, ?], final val rest: Callbacks[T]) extends Callbacks[T] {
     override final def toString: String = "ManyCallbacks"
   }
 
-  private[this] final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null: (Any => Any) | Null, ExecutionContext.parasitic)
+  private final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null: (Any => Any) | Null, ExecutionContext.parasitic)
 
   /**
    * A Transformation[F, T] receives an F (it is a Callback[F]) and applies a transformation function to that F,
@@ -443,13 +444,13 @@ private[concurrent] object Promise {
    * In order to conserve allocations, indirections, and avoid introducing bi/mega-morphicity the transformation
    * function's type parameters are erased, and the _xform tag will be used to reify them.
    **/
-  final class Transformation[-F, T] private[this] (
-    @annotation.stableNull private[this] final var _fun: (Any => Any) | Null,
-    @annotation.stableNull private[this] final var _ec: ExecutionContext | Null,
-    @annotation.stableNull private[this] final var _arg: Try[F] | Null,
-    private[this] final val _xform: Int
+  final class Transformation[-F, T] private (
+    @annotation.stableNull private final var _fun: (Any => Any) | Null,
+    @annotation.stableNull private final var _ec: ExecutionContext | Null,
+    @annotation.stableNull private final var _arg: Try[F @uncheckedVariance] | Null,
+    private final val _xform: Int
   ) extends DefaultPromise[T]() with Callbacks[F] with Runnable with Batchable {
-    final def this(xform: Int, f: (_ => _) | Null, ec: ExecutionContext) =
+    final def this(xform: Int, f: (? => ?) | Null, ec: ExecutionContext) =
       this(f.asInstanceOf[(Any => Any) | Null], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
 
     final def benefitsFromBatching: Boolean = _xform != Xform_onComplete && _xform != Xform_foreach
@@ -473,7 +474,7 @@ private[concurrent] object Promise {
       this
     }
 
-    private[this] final def handleFailure(t: Throwable, e: ExecutionContext): Unit = {
+    private final def handleFailure(t: Throwable, e: ExecutionContext): Unit = {
       val wasInterrupted = t.isInstanceOf[InterruptedException]
       if (wasInterrupted || NonFatal(t)) {
         val completed = tryComplete0(get(), resolve(Failure(t)))
@@ -494,7 +495,7 @@ private[concurrent] object Promise {
       _arg = null // see above
       _ec  = null // see above
       try {
-        val resolvedResult: Try[_] | Null =
+        val resolvedResult: Try[?] | Null =
           (_xform: @switch) match {
             case Xform_noop          =>
               null
@@ -503,14 +504,14 @@ private[concurrent] object Promise {
             case Xform_flatMap       =>
               if (v.isInstanceOf[Success[F]]) {
                 val f = fun(v.get)
-                if (f.isInstanceOf[DefaultPromise[_]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
+                if (f.isInstanceOf[DefaultPromise[?]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
                 null
               } else v
             case Xform_transform     =>
               resolve(fun(v).asInstanceOf[Try[T]])
             case Xform_transformWith =>
               val f = fun(v)
-              if (f.isInstanceOf[DefaultPromise[_]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
+              if (f.isInstanceOf[DefaultPromise[?]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
               null
             case Xform_foreach       =>
               v.foreach(fun)
@@ -519,12 +520,12 @@ private[concurrent] object Promise {
               fun(v)
               null
             case Xform_recover       =>
-              if (v.isInstanceOf[Failure[_]]) resolve(v.recover(fun.asInstanceOf[PartialFunction[Throwable, F]])) else v //recover F=:=T
+              if (v.isInstanceOf[Failure[?]]) resolve(v.recover(fun.asInstanceOf[PartialFunction[Throwable, F]])) else v //recover F=:=T
             case Xform_recoverWith   =>
               if (v.isInstanceOf[Failure[F]]) {
                 val f = fun.asInstanceOf[PartialFunction[Throwable, Future[T]]].applyOrElse(v.asInstanceOf[Failure[F]].exception, Future.recoverWithFailed)
                 if (f ne Future.recoverWithFailedMarker) {
-                  if (f.isInstanceOf[DefaultPromise[_]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
+                  if (f.isInstanceOf[DefaultPromise[?]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
                   null
                 } else v
               } else v

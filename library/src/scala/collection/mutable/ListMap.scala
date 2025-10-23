@@ -42,8 +42,8 @@ class ListMap[K, V]
 
   override def mapFactory: MapFactory[ListMap] = ListMap
 
-  private[this] var elems: List[(K, V)] = List()
-  private[this] var siz: Int = 0
+  private var elems: List[(K, V)] = List()
+  private var siz: Int = 0
 
   def get(key: K): Option[V] = elems find (_._1 == key) map (_._2)
   def iterator: Iterator[(K, V)] = elems.iterator
@@ -68,7 +68,7 @@ class ListMap[K, V]
   final override def size: Int = siz
   override def knownSize: Int = size
   override def isEmpty: Boolean = size == 0
-  override protected[this] def stringPrefix = "ListMap"
+  override protected def stringPrefix = "ListMap"
 }
 
 /** $factoryInfo

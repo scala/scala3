@@ -66,7 +66,7 @@ trait Map[K, V]
   * @define coll mutable map
   * @define Coll `mutable.Map`
   */
-transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
+transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
     with collection.MapOps[K, V, CC, C]
     with Cloneable[C]

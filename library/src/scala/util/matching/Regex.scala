@@ -232,7 +232,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    */
   // we cannot add the alternative `def this(regex: String)` in a forward binary compatible way:
   // @deprecated("use inline group names like (?<year>X) instead", "2.13.7")
-  def this(regex: String, groupNames: String*) = this(Pattern.compile(regex), groupNames: _*)
+  def this(regex: String, groupNames: String*) = this(Pattern.compile(regex), groupNames*)
 
   /** Tries to match a [[java.lang.CharSequence]].
    *
@@ -323,9 +323,9 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  @return       The match
    */
   def unapplySeq(c: Char): Option[List[Char]] = {
-    val m = pattern matcher c.toString
+    val m = pattern.matcher(c.toString)
     if (runMatcher(m)) {
-      if (m.groupCount > 0) Some((m group 1).toList) else Some(Nil)
+      if (m.groupCount > 0) Some((m.group(1)).toList) else Some(Nil)
     } else None
   }
 
@@ -590,7 +590,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @return        The new unanchored regex
    */
-  def unanchored: UnanchoredRegex = new Regex(pattern, groupNames: _*) with UnanchoredRegex { override def anchored = outer }
+  def unanchored: UnanchoredRegex = new Regex(pattern, groupNames*) with UnanchoredRegex { override def anchored = outer }
   def anchored: Regex             = this
 
   def regex: String = pattern.pattern
@@ -695,7 +695,7 @@ object Regex {
     @scala.annotation.nowarn("msg=deprecated")
     private def groupNamesNowarn: Seq[String] = groupNames
 
-    private[this] lazy val nameToIndex: Map[String, Int] =
+    private lazy val nameToIndex: Map[String, Int] =
       Map[String, Int]() ++ ("" :: groupNamesNowarn.toList).zipWithIndex
 
     /** Returns the group with the given name.
@@ -710,11 +710,11 @@ object Regex {
      */
     def group(id: String): String | Null = (
       if (groupNamesNowarn.isEmpty)
-        matcher group id
+        matcher.group(id)
       else
         nameToIndex.get(id) match {
           case Some(index) => group(index)
-          case None        => matcher group id
+          case None        => matcher.group(id)
         }
     )
 
@@ -739,9 +739,9 @@ object Regex {
     /** The number of subgroups. */
     def groupCount: Int = matcher.groupCount
 
-    private[this] lazy val starts: Array[Int] =
+    private lazy val starts: Array[Int] =
       Array.tabulate(groupCount + 1) { matcher.start }
-    private[this] lazy val ends: Array[Int] =
+    private lazy val ends: Array[Int] =
       Array.tabulate(groupCount + 1) { matcher.end }
 
     /** The index of the first matched character in group `i`. */
@@ -812,7 +812,7 @@ object Regex {
     protected[Regex] val matcher = regex.pattern.matcher(source)
 
     // 0 = not yet matched, 1 = matched, 2 = advanced to match, 3 = no more matches
-    private[this] var nextSeen = 0
+    private var nextSeen = 0
 
     /** Return true if `next` will find a match.
      *  As a side effect, advance the underlying matcher if necessary;
@@ -845,7 +845,7 @@ object Regex {
     override def toString: String = super[AbstractIterator].toString
 
     // ensure we're at a match
-    private[this] def ensure(): Unit = nextSeen match {
+    private def ensure(): Unit = nextSeen match {
       case 0 => if (!hasNext) throw new IllegalStateException
       case 1 => ()
       case 2 => ()
@@ -886,7 +886,7 @@ object Regex {
   private[matching] trait Replacement {
     protected def matcher: Matcher
 
-    private[this] val sb = new java.lang.StringBuffer // StringBuffer for JDK 8 compatibility
+    private val sb = new java.lang.StringBuffer // StringBuffer for JDK 8 compatibility
 
     // Appends the remaining input and returns the result text.
     def replaced = {
@@ -904,7 +904,7 @@ object Regex {
    *
    *  @example {{{List("US\$", "CAN\$").map(Regex.quote).mkString("|").r}}}
    */
-  def quote(text: String): String = Pattern quote text
+  def quote(text: String): String = Pattern.quote(text)
 
   /** Quotes replacement strings to be used in replacement methods.
    *
@@ -918,5 +918,5 @@ object Regex {
    *  @return A string that can be used to replace matches with `text`.
    *  @example {{{"CURRENCY".r.replaceAllIn(input, Regex quoteReplacement "US\$")}}}
    */
-  def quoteReplacement(text: String): String = Matcher quoteReplacement text
+  def quoteReplacement(text: String): String = Matcher.quoteReplacement(text)
 }

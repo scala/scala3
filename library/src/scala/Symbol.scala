@@ -41,10 +41,10 @@ private[scala] abstract class UniquenessCache[K, V] {
   import java.util.WeakHashMap
   import java.util.concurrent.locks.ReentrantReadWriteLock
 
-  private[this] val rwl = new ReentrantReadWriteLock()
-  private[this] val rlock = rwl.readLock
-  private[this] val wlock = rwl.writeLock
-  private[this] val map = new WeakHashMap[K, WeakReference[V]]
+  private val rwl = new ReentrantReadWriteLock()
+  private val rlock = rwl.readLock
+  private val wlock = rwl.writeLock
+  private val map = new WeakHashMap[K, WeakReference[V]]
 
   protected def valueFromKey(k: K): V
   protected def keyFromValue(v: V): Option[K]
@@ -53,7 +53,7 @@ private[scala] abstract class UniquenessCache[K, V] {
     def cached(): V | Null = {
       rlock.lock
       try {
-        val reference = map get name
+        val reference = map.get(name)
         if (reference == null) null
         else reference.get  // will be null if we were gc-ed
       }
@@ -69,7 +69,7 @@ private[scala] abstract class UniquenessCache[K, V] {
           // wind up with one String as the key and a different String as
           // the name field in the Symbol, which can lead to surprising GC
           // behavior and duplicate Symbols. See scala/bug#6706.
-          map remove name
+          map.remove(name)
           val sym = valueFromKey(name)
           map.put(name, new WeakReference(sym))
           sym

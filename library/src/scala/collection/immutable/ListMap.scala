@@ -112,7 +112,7 @@ sealed class ListMap[K, +V]
   private[immutable] def next: ListMap[K, V] = throw new NoSuchElementException("next of empty map")
 
   override def foldRight[Z](z: Z)(op: ((K, V), Z) => Z): Z = ListMap.foldRightInternal(this, z, op)
-  override protected[this] def className = "ListMap"
+  override protected def className = "ListMap"
 
 }
 
@@ -144,7 +144,7 @@ object ListMap extends MapFactory[ListMap] {
 
     override def size: Int = sizeInternal(this, 0)
 
-    @tailrec private[this] def sizeInternal(cur: ListMap[K, V], acc: Int): Int =
+    @tailrec private def sizeInternal(cur: ListMap[K, V], acc: Int): Int =
       if (cur.isEmpty) acc
       else sizeInternal(cur.next, acc + 1)
 
@@ -155,21 +155,21 @@ object ListMap extends MapFactory[ListMap] {
     @throws[NoSuchElementException]
     override def apply(k: K): V = applyInternal(this, k)
 
-    @tailrec private[this] def applyInternal(cur: ListMap[K, V], k: K): V =
+    @tailrec private def applyInternal(cur: ListMap[K, V], k: K): V =
       if (cur.isEmpty) throw new NoSuchElementException("key not found: " + k)
       else if (k == cur.key) cur.value
       else applyInternal(cur.next, k)
 
     override def get(k: K): Option[V] = getInternal(this, k)
 
-    @tailrec private[this] def getInternal(cur: ListMap[K, V], k: K): Option[V] =
+    @tailrec private def getInternal(cur: ListMap[K, V], k: K): Option[V] =
       if (cur.isEmpty) None
       else if (k == cur.key) Some(cur.value)
       else getInternal(cur.next, k)
 
     override def contains(k: K): Boolean = containsInternal(this, k)
 
-    @tailrec private[this] def containsInternal(cur: ListMap[K, V], k: K): Boolean =
+    @tailrec private def containsInternal(cur: ListMap[K, V], k: K): Boolean =
       if (cur.isEmpty) false
       else if (k == cur.key) true
       else containsInternal(cur.next, k)
@@ -225,7 +225,7 @@ object ListMap extends MapFactory[ListMap] {
       }
     }
 
-    @tailrec private[this] def removeInternal(k: K, cur: ListMap[K, V], acc: List[ListMap[K, V]]): ListMap[K, V] =
+    @tailrec private def removeInternal(k: K, cur: ListMap[K, V], acc: List[ListMap[K, V]]): ListMap[K, V] =
       if (cur.isEmpty) acc.last
       else if (k == cur.key) acc.foldLeft(cur.next) { (t, h) => new Node(h.key, h.value, t) }
       else removeInternal(k, cur.next, cur :: acc)
@@ -288,8 +288,8 @@ object ListMap extends MapFactory[ListMap] {
   * $multipleResults
   */
 private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuilder[(K, V), ListMap[K, V]] {
-  private[this] var isAliased: Boolean = false
-  private[this] var underlying: ListMap[K, V] = ListMap.empty
+  private var isAliased: Boolean = false
+  private var underlying: ListMap[K, V] = ListMap.empty
 
   override def clear(): Unit = {
     underlying = ListMap.empty
@@ -305,7 +305,7 @@ private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuil
   override def addOne(elem: (K, V)): this.type = addOne(elem._1, elem._2)
 
   @tailrec
-  private[this] def insertValueAtKeyReturnFound(m: ListMap[K, V], key: K, value: V): Boolean = m match {
+  private def insertValueAtKeyReturnFound(m: ListMap[K, V], key: K, value: V): Boolean = m match {
     case n: ListMap.Node[K, V] =>
       if (n.key == key) {
         n._value = value

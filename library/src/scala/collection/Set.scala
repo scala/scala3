@@ -79,7 +79,7 @@ trait Set[A]
   override def iterableFactory: IterableFactory[Set] = Set
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "Set"
+  override protected def stringPrefix: String = "Set"
 
   override def toString(): String = super[Iterable].toString() // Because `Function1` overrides `toString` too
 }
@@ -128,9 +128,9 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     *  @return     the iterator.
     */
   def subsets(): Iterator[C] = new AbstractIterator[C] {
-    private[this] val elms = SetOps.this.to(IndexedSeq)
-    private[this] var len = 0
-    private[this] var itr: Iterator[C] = Iterator.empty
+    private val elms = SetOps.this.to(IndexedSeq)
+    private var len = 0
+    private var itr: Iterator[C] = Iterator.empty
 
     def hasNext = len <= elms.size || itr.hasNext
     def next() = {
@@ -154,8 +154,8 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     *
     */
   private class SubsetsItr(elms: IndexedSeq[A], len: Int) extends AbstractIterator[C] {
-    private[this] val idxs = Array.range(0, len+1)
-    private[this] var _hasNext = true
+    private val idxs = Array.range(0, len+1)
+    private var _hasNext = true
     idxs(len) = elms.size
 
     def hasNext = _hasNext

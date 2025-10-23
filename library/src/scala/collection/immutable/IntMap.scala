@@ -91,19 +91,19 @@ object IntMap {
   implicit def toFactory[V](dummy: IntMap.type): Factory[(Int, V), IntMap[V]] = ToFactory.asInstanceOf[Factory[(Int, V), IntMap[V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(Int, AnyRef), IntMap[AnyRef]] with Serializable {
+  private object ToFactory extends Factory[(Int, AnyRef), IntMap[AnyRef]] with Serializable {
     def fromSpecific(it: IterableOnce[(Int, AnyRef)]^): IntMap[AnyRef] = IntMap.from[AnyRef](it)
     def newBuilder: Builder[(Int, AnyRef), IntMap[AnyRef]] = IntMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: IntMap.type): BuildFrom[Any, (Int, V), IntMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Int, V), IntMap[V]]]
-  private[this] object ToBuildFrom extends BuildFrom[Any, (Int, AnyRef), IntMap[AnyRef]] {
+  private object ToBuildFrom extends BuildFrom[Any, (Int, AnyRef), IntMap[AnyRef]] {
     def fromSpecific(from: Any)(it: IterableOnce[(Int, AnyRef)]^) = IntMap.from(it)
     def newBuilder(from: Any) = IntMap.newBuilder[AnyRef]
   }
 
   implicit def iterableFactory[V]: Factory[(Int, V), IntMap[V]] = toFactory(this)
-  implicit def buildFromIntMap[V]: BuildFrom[IntMap[_], (Int, V), IntMap[V]] = toBuildFrom(this)
+  implicit def buildFromIntMap[V]: BuildFrom[IntMap[?], (Int, V), IntMap[V]] = toBuildFrom(this)
 }
 
 // Iterator over a non-empty IntMap.
@@ -263,7 +263,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case IntMap.Nil =>
   }
 
-  override protected[this] def className = "IntMap"
+  override protected def className = "IntMap"
 
   override def isEmpty = this eq IntMap.Nil
   override def knownSize: Int = if (isEmpty) 0 else super.knownSize
@@ -501,5 +501,5 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case IntMap.Nil => throw new IllegalStateException("Empty set")
   }
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(IntMap.toFactory[T](IntMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(IntMap.toFactory[T](IntMap), this)
 }

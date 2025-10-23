@@ -46,13 +46,13 @@ class ListBuffer[A]
      with ReusableBuilder[A, immutable.List[A]]
      with IterableFactoryDefaults[A, ListBuffer]
      with DefaultSerializable {
-  @transient private[this] var mutationCount: Int = 0
+  @transient private var mutationCount: Int = 0
 
   private var first: List[A] = Nil
   @annotation.stableNull
   private var last0: ::[A] | Null = null // last element (`last0` just because the name `last` is already taken)
-  private[this] var aliased = false
-  private[this] var len = 0
+  private var aliased = false
+  private var len = 0
 
   private type Predecessor = ::[A] | Null
 
@@ -409,7 +409,7 @@ class ListBuffer[A]
   override def lastOption: Option[A] = if (last0 eq null) None else Some(last0.head)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "ListBuffer"
+  override protected def stringPrefix = "ListBuffer"
 
 }
 

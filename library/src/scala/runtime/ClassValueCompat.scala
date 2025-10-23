@@ -21,27 +21,27 @@ private[scala] abstract class ClassValueCompat[T] extends ClassValueInterface[T]
     else new FallbackClassValue()
 
   private class JavaClassValue extends ClassValue[T] with ClassValueInterface[T] {
-    override def computeValue(cls: Class[_]): T = self.computeValue(cls)
+    override def computeValue(cls: Class[?]): T = self.computeValue(cls)
   }
 
   private class FallbackClassValue extends ClassValueInterface[T] {
-    override def get(cls: Class[_]): T = self.computeValue(cls)
+    override def get(cls: Class[?]): T = self.computeValue(cls)
 
-    override def remove(cls: Class[_]): Unit = {}
+    override def remove(cls: Class[?]): Unit = {}
   }
 
-  def get(cls: Class[_]): T = instance.get(cls)
+  def get(cls: Class[?]): T = instance.get(cls)
 
-  def remove(cls: Class[_]): Unit = instance.remove(cls)
+  def remove(cls: Class[?]): Unit = instance.remove(cls)
 
-  protected def computeValue(cls: Class[_]): T
+  protected def computeValue(cls: Class[?]): T
 }
 
 private[scala] object ClassValueCompat {
   trait ClassValueInterface[T] {
-    def get(cls: Class[_]): T
+    def get(cls: Class[?]): T
 
-    def remove(cls: Class[_]): Unit
+    def remove(cls: Class[?]): Unit
   }
 
   private val classValueAvailable: Boolean = try {

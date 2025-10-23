@@ -498,7 +498,7 @@ object Predef extends LowPriorityImplicits {
    *  @see [[scala.StringContext.f StringContext.f]]
    *  @group console-output
    */
-  def printf(text: String, xs: Any*): Unit = Console.print(text.format(xs: _*))
+  def printf(text: String, xs: Any*): Unit = Console.print(text.format(xs*))
 
   // views --------------------------------------------------------------
 

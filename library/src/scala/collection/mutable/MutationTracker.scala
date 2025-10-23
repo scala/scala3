@@ -69,7 +69,7 @@ private object MutationTracker {
    * @tparam A the type of the iterator's elements
    */
   final class CheckedIterator[A](underlying: Iterator[A], mutationCount: => Int) extends AbstractIterator[A] {
-    private[this] val expectedCount = mutationCount
+    private val expectedCount = mutationCount
 
     def hasNext: Boolean = {
       checkMutationsForIteration(expectedCount, mutationCount)

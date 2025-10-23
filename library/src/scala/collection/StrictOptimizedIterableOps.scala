@@ -97,7 +97,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     * @tparam C2 Type of the resulting collection (e.g. `List[String]`)
     * @return The resulting collection
     */
-  @inline protected[this] final def strictOptimizedMap[B, C2](b: mutable.Builder[B, C2], f: A => B): C2 = {
+  @inline protected final def strictOptimizedMap[B, C2](b: mutable.Builder[B, C2], f: A => B): C2 = {
     val it = iterator
     while (it.hasNext) {
       b += f(it.next())
@@ -115,7 +115,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     * @tparam C2 Type of the resulting collection (e.g. `List[String]`)
     * @return The resulting collection
     */
-  @inline protected[this] final def strictOptimizedFlatMap[B, C2](b: mutable.Builder[B, C2]^, f: A => IterableOnce[B]^): C2 = {
+  @inline protected final def strictOptimizedFlatMap[B, C2](b: mutable.Builder[B, C2]^, f: A => IterableOnce[B]^): C2 = {
     val it = iterator
     while (it.hasNext) {
       b ++= f(it.next())
@@ -130,7 +130,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     * @tparam C2 Type of the resulting collection (e.g. `List[Int]`)
     * @return The resulting collection
     */
-  @inline protected[this] final def strictOptimizedConcat[B >: A, C2](that: IterableOnce[B]^, b: mutable.Builder[B, C2]^): C2 = {
+  @inline protected final def strictOptimizedConcat[B >: A, C2](that: IterableOnce[B]^, b: mutable.Builder[B, C2]^): C2 = {
     b ++= this
     b ++= that
     b.result()
@@ -146,7 +146,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     * @tparam C2 Type of the resulting collection (e.g. `List[String]`)
     * @return The resulting collection
     */
-  @inline protected[this] final def strictOptimizedCollect[B, C2](b: mutable.Builder[B, C2]^, pf: PartialFunction[A, B]^): C2 = {
+  @inline protected final def strictOptimizedCollect[B, C2](b: mutable.Builder[B, C2]^, pf: PartialFunction[A, B]^): C2 = {
     val marker = Statics.pfMarker
     val it = iterator
     while (it.hasNext) {
@@ -167,7 +167,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     * @tparam C2 Type of the resulting collection (e.g. `List[Int]`)
     * @return The resulting collection
     */
-  @inline protected[this] final def strictOptimizedFlatten[B, C2](b: mutable.Builder[B, C2])(implicit toIterableOnce: A => IterableOnce[B]): C2 = {
+  @inline protected final def strictOptimizedFlatten[B, C2](b: mutable.Builder[B, C2])(implicit toIterableOnce: A => IterableOnce[B]): C2 = {
     val it = iterator
     while (it.hasNext) {
       b ++= toIterableOnce(it.next())
@@ -185,7 +185,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     * @tparam C2 Type of the resulting collection (e.g. `List[(Int, String)]`)
     * @return The resulting collection
     */
-  @inline protected[this] final def strictOptimizedZip[B, C2](that: IterableOnce[B]^, b: mutable.Builder[(A, B), C2]^): C2 = {
+  @inline protected final def strictOptimizedZip[B, C2](that: IterableOnce[B]^, b: mutable.Builder[(A, B), C2]^): C2 = {
     val it1 = iterator
     val it2 = that.iterator
     while (it1.hasNext && it2.hasNext) {
