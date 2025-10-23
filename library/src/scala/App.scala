@@ -73,9 +73,9 @@ trait App extends DelayedInit {
    */
   protected final def args: Array[String] = _args
 
-  private[this] var _args: Array[String] = _
+  private var _args: Array[String] = compiletime.uninitialized
 
-  private[this] val initCode = new ListBuffer[() => Unit]
+  private val initCode = new ListBuffer[() => Unit]
 
   /** The init hook. This saves all initialization code for execution within `main`.
    *  This method is normally never called directly from user code.

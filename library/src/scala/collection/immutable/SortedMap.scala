@@ -86,10 +86,10 @@ trait SortedMap[K, +V]
   override def withDefaultValue[V1 >: V](d: V1): SortedMap[K, V1] = new SortedMap.WithDefault[K, V1](this, _ => d)
 }
 
-transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
+transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?], +C <: SortedMapOps[K, V, CC, C]]
   extends MapOps[K, V, Map, C] with collection.SortedMapOps[K, V, CC, C] { self =>
 
-  protected def coll: C with CC[K, V]
+  protected def coll: C & CC[K, V]
 
   def unsorted: Map[K, V]
 
@@ -118,10 +118,10 @@ transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] with SortedMapOps[
         else coll.updated(key, nextValue)
     }
   }
-  override def transform[W](f: (K, V) => W): CC[K, W] = map({ case (k, v) => (k, f(k, v)) })(ordering)
+  override def transform[W](f: (K, V) => W): CC[K, W] = map({ case (k, v) => (k, f(k, v)) })(using ordering)
 }
 
-transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
+transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?], +C <: SortedMapOps[K, V, CC, C]]
   extends SortedMapOps[K, V, CC, C]
     with collection.StrictOptimizedSortedMapOps[K, V, CC, C]
     with StrictOptimizedMapOps[K, V, Map, C] {

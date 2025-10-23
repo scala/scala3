@@ -99,8 +99,12 @@ abstract class Enumeration (initial: Int) extends Serializable {
   /** The name of this enumeration.
    */
   override def toString: String =
-    ((getClass.getName stripSuffix MODULE_SUFFIX_STRING split '.').last split
-       Regex.quote(NAME_JOIN_STRING)).last
+    getClass.getName
+      .stripSuffix(MODULE_SUFFIX_STRING)
+      .split('.')
+      .last 
+      .split(Regex.quote(NAME_JOIN_STRING))
+      .last
 
   /** The mapping from the integer used to identify values to the actual
     * values. */
@@ -112,7 +116,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The mapping from the integer used to identify values to their
     * names. */
-  private[this] val nmap: mutable.Map[Int, String] = new mutable.HashMap
+  private val nmap: mutable.Map[Int, String] = new mutable.HashMap
 
   /** The values of this enumeration as a set.
    */
@@ -128,18 +132,18 @@ abstract class Enumeration (initial: Int) extends Serializable {
   protected var nextId: Int = initial
 
   /** The string to use to name the next created value. */
-  protected var nextName: Iterator[String] = _
+  protected var nextName: Iterator[String] = compiletime.uninitialized
 
   private def nextNameOrNull: String | Null =
     if (nextName != null && nextName.hasNext) nextName.next() else null
 
   /** The highest integer amongst those used to identify values in this
     * enumeration. */
-  private[this] var topId = initial
+  private var topId = initial
 
   /** The lowest integer amongst those used to identify values in this
     * enumeration, but no higher than 0. */
-  private[this] var bottomId = if(initial < 0) initial else 0
+  private var bottomId = if(initial < 0) initial else 0
 
   /** The one higher than the highest integer amongst those used to identify
     *  values in this enumeration. */
@@ -190,7 +194,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   protected final def Value(i: Int, name: String | Null): Value = new Val(i, name)
 
   private def populateNameMap(): Unit = {
-    @tailrec def getFields(clazz: Class[_] | Null, acc: Array[JField]): Array[JField] = {
+    @tailrec def getFields(clazz: Class[?] | Null, acc: Array[JField]): Array[JField] = {
       if (clazz == null)
         acc
       else
@@ -285,7 +289,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  @define Coll `collection.immutable.SortedSet`
    */
   @SerialVersionUID(7229671200427364242L)
-  class ValueSet private[ValueSet] (private[this] var nnIds: immutable.BitSet)
+  class ValueSet private[ValueSet] (private var nnIds: immutable.BitSet)
     extends immutable.AbstractSet[Value]
       with immutable.SortedSet[Value]
       with immutable.SortedSetOps[Value, immutable.SortedSet, ValueSet]
@@ -341,7 +345,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     def fromBitMask(elems: Array[Long]): ValueSet = new ValueSet(immutable.BitSet.fromBitMask(elems))
     /** A builder object for value sets */
     def newBuilder: mutable.Builder[Value, ValueSet] = new mutable.Builder[Value, ValueSet] {
-      private[this] val b = new mutable.BitSet
+      private val b = new mutable.BitSet
       def addOne (x: Value) = { b += (x.id - bottomId); this }
       def clear() = b.clear()
       def result() = new ValueSet(b.toImmutable)

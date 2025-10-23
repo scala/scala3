@@ -61,7 +61,7 @@ package object reflect {
     // was called before, not if the reflected object is inherently accessible.
     // TODO: replace by `canAccess` once we're on JDK 9+
     if (!m.isAccessible: @nowarn("cat=deprecation")) {
-      try m setAccessible true
+      try m.setAccessible(true)
       catch { case _: SecurityException => } // does nothing
     }
     m

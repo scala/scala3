@@ -20,7 +20,7 @@ import java.lang.reflect.Method
 final class StructuralCallSite private (callType: MethodType) {
   private var cache: SoftReference[MethodCache] =  new SoftReference(new EmptyMethodCache)
 
-  val parameterTypes: Array[Class[_]] = callType.parameterArray
+  val parameterTypes: Array[Class[?]] = callType.parameterArray
 
   def get: MethodCache = {
     var cache = this.cache.get
@@ -31,9 +31,9 @@ final class StructuralCallSite private (callType: MethodType) {
     cache
   }
 
-  def find(receiver: Class[_]): Method | Null = get.find(receiver)
+  def find(receiver: Class[?]): Method | Null = get.find(receiver)
 
-  def add(receiver: Class[_], m: Method): Method = {
+  def add(receiver: Class[?], m: Method): Method = {
     cache = new SoftReference(get.add(receiver, m))
     m
   }

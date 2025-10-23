@@ -311,7 +311,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     *  @return   the reversed priority queue.
     */
   def reverse: PriorityQueue[A] = {
-    val revq = new PriorityQueue[A]()(ord.reverse)
+    val revq = new PriorityQueue[A]()(using ord.reverse)
     // copy the existing data into the new array backwards
     // this won't put it exactly into the correct order,
     // but will require less fixing than copying it in
@@ -335,7 +335,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     *  @return  an iterator over all elements sorted in descending order.
     */
   def reverseIterator: Iterator[A] = new AbstractIterator[A] {
-    private[this] var i = resarr.p_size0 - 1
+    private var i = resarr.p_size0 - 1
     def hasNext: Boolean = i >= 1
     def next(): A = {
       val n = resarr.p_array(i)
@@ -388,9 +388,9 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   @deprecated("Use `PriorityQueue` instead", "2.13.0")
   def orderedCompanion: PriorityQueue.type = PriorityQueue
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(PriorityQueue.evidenceIterableFactory[A], this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(PriorityQueue.evidenceIterableFactory[A], this)
 
-  override protected[this] def className = "PriorityQueue"
+  override protected def className = "PriorityQueue"
 }
 
 

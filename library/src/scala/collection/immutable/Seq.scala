@@ -150,7 +150,7 @@ object LinearSeq extends SeqFactory.Delegate[LinearSeq](List) {
   }
 }
 
-transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeqOps[A, CC, C]]
+transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & LinearSeqOps[A, CC, C]]
   extends Any with SeqOps[A, CC, C]
     with collection.LinearSeqOps[A, CC, C]
 

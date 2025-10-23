@@ -145,7 +145,7 @@ object IsIterable extends IsIterableLowPriority {
   // The `BitSet` type can not be unified with the `CC0` parameter of
   // the above definition because it does not take a type parameter.
   // Hence the need for a separate case:
-  implicit def bitSetOpsIsIterable[C0 <: BitSet with BitSetOps[C0]]: IsIterable[C0] { type A = Int; type C = C0 } =
+  implicit def bitSetOpsIsIterable[C0 <: BitSet & BitSetOps[C0]]: IsIterable[C0] { type A = Int; type C = C0 } =
     new IsIterable[C0] {
       type A = Int
       type C = C0

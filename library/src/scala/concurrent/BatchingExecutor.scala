@@ -91,20 +91,20 @@ private[concurrent] object BatchingExecutorStatics {
  *
  */
 private[concurrent] trait BatchingExecutor extends Executor {
-  private[this] final val _tasksLocal = new ThreadLocal[AnyRef]()
+  private final val _tasksLocal = new ThreadLocal[AnyRef]()
 
   /*
    * Batch implements a LIFO queue (stack) and is used as a trampolining Runnable.
    * In order to conserve allocations, the first element in the batch is stored "unboxed" in
    * the `first` field. Subsequent Runnables are stored in the array called `other`.
   */
-  private[this] sealed abstract class AbstractBatch protected (
+  private sealed abstract class AbstractBatch protected (
     @annotation.stableNull protected final var first: Runnable | Null,
     protected final var other: Array[Runnable | Null],
     protected final var size: Int
   ) {
 
-    private[this] final def ensureCapacity(curSize: Int): Array[Runnable | Null] = {
+    private final def ensureCapacity(curSize: Int): Array[Runnable | Null] = {
       val curOther = this.other
       val curLen = curOther.length
       if (curSize <= curLen) curOther
@@ -148,8 +148,8 @@ private[concurrent] trait BatchingExecutor extends Executor {
           }
   }
 
-  private[this] final class AsyncBatch private(_first: Runnable | Null, _other: Array[Runnable | Null], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable | Null) {
-    private[this] final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
+  private final class AsyncBatch private(_first: Runnable | Null, _other: Array[Runnable | Null], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable | Null) {
+    private final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
 
     final def this(runnable: Runnable) = this(runnable, BatchingExecutorStatics.emptyBatchArray, 1)
 
@@ -179,7 +179,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
      * Only attempt to resubmit when there are `Runnables` left to process.
      * Note that `cause` can be `null`.
      */
-    private[this] final def resubmit(cause: Throwable | Null): Throwable | Null =
+    private final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {
           case inner: Throwable =>
@@ -191,7 +191,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
         }
       } else cause // TODO: consider if NonFatals should simply be `reportFailure`:ed rather than rethrown
 
-    private[this] final def cloneAndClear(): AsyncBatch = {
+    private final def cloneAndClear(): AsyncBatch = {
       val newBatch = new AsyncBatch(this.first, this.other, this.size)
       this.first = null
       this.other = BatchingExecutorStatics.emptyBatchArray
@@ -208,7 +208,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
   }
 
-  private[this] final class SyncBatch(runnable: Runnable) extends AbstractBatch(runnable, BatchingExecutorStatics.emptyBatchArray, 1) with Runnable {
+  private final class SyncBatch(runnable: Runnable) extends AbstractBatch(runnable, BatchingExecutorStatics.emptyBatchArray, 1) with Runnable {
     @tailrec override final def run(): Unit = {
       try runN(BatchingExecutorStatics.runLimit) catch {
         case ie: InterruptedException =>

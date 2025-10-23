@@ -52,7 +52,7 @@ object FutureConverters {
       case c: CompletionStage[T @unchecked] => c
       case _ =>
         val cf = new CF[T](f)
-        f.onComplete(cf)(ExecutionContext.parasitic)
+        f.onComplete(cf)(using ExecutionContext.parasitic)
         cf
     }
   }

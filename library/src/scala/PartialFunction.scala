@@ -341,7 +341,7 @@ object PartialFunction {
    *
    *  Here `fallback_fn` is used as both unique marker object and special fallback function that returns it.
    */
-  private[this] val fallback_fn: Any -> Any = _ => fallback_fn
+  private val fallback_fn: Any -> Any = _ => fallback_fn
   private def checkFallback[B] = fallback_fn.asInstanceOf[Any => B]
   private def fallbackOccurred[B](x: B) = fallback_fn eq x.asInstanceOf[AnyRef]
 
@@ -376,9 +376,9 @@ object PartialFunction {
    */
   def fromFunction[A, B](f: A => B): PartialFunction[A, B]^{f} = { case x => f(x) }
 
-  private[this] val constFalse: Any -> Boolean = { _ => false}
+  private val constFalse: Any -> Boolean = { _ => false}
 
-  private[this] val empty_pf: PartialFunction[Any, Nothing] = new PartialFunction[Any, Nothing] with Serializable {
+  private val empty_pf: PartialFunction[Any, Nothing] = new PartialFunction[Any, Nothing] with Serializable {
     def isDefinedAt(x: Any) = false
     def apply(x: Any) = throw new MatchError(x)
     override def orElse[A1, B1](that: PartialFunction[A1, B1]^) = that

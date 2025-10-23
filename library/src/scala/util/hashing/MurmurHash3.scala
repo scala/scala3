@@ -291,7 +291,7 @@ private[hashing] class MurmurHash3 {
   /** Compute the hash of a List. Potential range hashes are recognized to produce a
     * hash that is compatible with rangeHash.
     */
-  final def listHash(xs: scala.collection.immutable.List[_], seed: Int): Int = {
+  final def listHash(xs: scala.collection.immutable.List[?], seed: Int): Int = {
     var n = 0
     var h = seed
     var rangeState = 0 // 0 = no data, 1 = first elem read, 2 = has valid diff, 3 = invalid
@@ -402,13 +402,13 @@ object MurmurHash3 extends MurmurHash3 {
 
   /** To offer some potential for optimization.
    */
-  def seqHash(xs: scala.collection.Seq[_]): Int    = xs match {
+  def seqHash(xs: scala.collection.Seq[?]): Int    = xs match {
     case xs: scala.collection.IndexedSeq[_] => indexedSeqHash(xs, seqSeed)
     case xs: List[_] => listHash(xs, seqSeed)
     case xs => orderedHash(xs, seqSeed)
   }
 
-  def mapHash(xs: scala.collection.Map[_, _]): Int = {
+  def mapHash(xs: scala.collection.Map[?, ?]): Int = {
     if (xs.isEmpty) emptyMapHash
     else {
       class accum extends Function2[Any, Any, Unit] {
@@ -433,7 +433,7 @@ object MurmurHash3 extends MurmurHash3 {
   }
 
   private[scala] val emptyMapHash = unorderedHash(Nil, mapSeed)
-  def setHash(xs: scala.collection.Set[_]): Int    = unorderedHash(xs, setSeed)
+  def setHash(xs: scala.collection.Set[?]): Int    = unorderedHash(xs, setSeed)
 
   class ArrayHashing[@specialized T] extends Hashing[Array[T]] {
     def hash(a: Array[T]) = arrayHash(a)

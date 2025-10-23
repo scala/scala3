@@ -80,10 +80,10 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
     with SortedMapFactoryDefaults[K, V, TreeMap, Iterable, Map]
     with DefaultSerializable {
 
-  def this()(implicit ordering: Ordering[K]) = this(null)(ordering)
+  def this()(implicit ordering: Ordering[K]) = this(null)(using ordering)
   private[immutable] def tree0: RB.Tree[K, V] | Null = tree
 
-  private[this] def newMapOrSelf[V1 >: V](t: RB.Tree[K, V1] | Null): TreeMap[K, V1] = if(t eq tree) this else new TreeMap[K, V1](t)
+  private def newMapOrSelf[V1 >: V](t: RB.Tree[K, V1] | Null): TreeMap[K, V1] = if(t eq tree) this else new TreeMap[K, V1](t)
 
   override def sortedMapFactory: SortedMapFactory[TreeMap] = TreeMap
 
@@ -91,20 +91,20 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
 
   def keysIteratorFrom(start: K): Iterator[K] = RB.keysIterator(tree, Some(start))
 
-  override def keySet: TreeSet[K] = new TreeSet(tree)(ordering)
+  override def keySet: TreeSet[K] = new TreeSet(tree)(using ordering)
 
   def iteratorFrom(start: K): Iterator[(K, V)] = RB.iterator(tree, Some(start))
 
   override def valuesIteratorFrom(start: K): Iterator[V] = RB.valuesIterator(tree, Some(start))
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S with EfficientSplit =
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S & EfficientSplit =
     shape.parUnbox(
       scala.collection.convert.impl.AnyBinaryTreeStepper.from[(K, V), RB.Tree[K, V]](
         size, tree, _.left, _.right, x => (x.key, x.value)
       )
     )
 
-  override def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S with EfficientSplit = {
+  override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Tree[K, V]
     val s = shape.shape match {
@@ -113,10 +113,10 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree, _.left, _.right, _.key.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[K, T](size, tree, _.left, _.right, _.key))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
-  override def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S with EfficientSplit = {
+  override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Tree[K, V]
     val s = shape.shape match {
@@ -125,7 +125,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T] (size, tree, _.left, _.right, _.value.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[V, T] (size, tree, _.left, _.right, _.value.asInstanceOf[V]))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   def get(key: K): Option[V] = RB.get(tree, key)
@@ -253,7 +253,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
 
   override def takeRight(n: Int): TreeMap[K, V] = drop(size - math.max(n, 0))
 
-  private[this] def countWhile(p: ((K, V)) => Boolean): Int = {
+  private def countWhile(p: ((K, V)) => Boolean): Int = {
     var result = 0
     val it = iterator
     while (it.hasNext && p(it.next())) result += 1
@@ -300,7 +300,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
     case _ => super.equals(obj)
   }
 
-  override protected[this] def className = "TreeMap"
+  override protected def className = "TreeMap"
 }
 
 /** $factoryInfo
@@ -342,7 +342,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
     private object adder extends AbstractFunction2[K, V, Unit] {
       // we cache tree to avoid the outer access to tree
       // in the hot path (apply)
-      private[this] var accumulator: Tree | Null = null
+      private var accumulator: Tree | Null = null
       def addForEach(hasForEach: collection.Map[K, V]): Unit = {
         accumulator = tree
         hasForEach.foreachEntry(this)

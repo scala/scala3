@@ -36,7 +36,7 @@ extends mutable.AbstractMap[String, String | Null] {
 
   def iterator: Iterator[(String, String)] = wrapAccess {
     val ps = System.getProperties()
-    names map (k => (k, ps getProperty k)) filter (_._2 ne null)
+    names map (k => (k, ps.getProperty(k))) filter (_._2 ne null)
   } getOrElse Iterator.empty
 
   override def isEmpty: Boolean = iterator.isEmpty
@@ -68,7 +68,8 @@ object SystemProperties {
   /** An unenforceable, advisory only place to do some synchronization when
    *  mutating system properties.
    */
-  def exclusively[T](body: => T): T = this synchronized body
+  def exclusively[T](body: => T): T = this.synchronized:
+    body
 
   implicit def systemPropertiesToCompanion(p: SystemProperties): SystemProperties.type = this
 

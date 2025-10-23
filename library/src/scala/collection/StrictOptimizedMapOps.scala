@@ -23,7 +23,7 @@ import language.experimental.captureChecking
   * @tparam CC Collection type constructor
   * @tparam C  Collection type
   */
-transparent trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
+transparent trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   extends MapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {
 

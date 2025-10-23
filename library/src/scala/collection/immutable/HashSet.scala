@@ -45,7 +45,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
   // This release fence is present because rootNode may have previously been mutated during construction.
   releaseFence()
 
-  private[this] def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
+  private def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
     if (rootNode eq newRootNode) this else new HashSet(newRootNode)
 
   override def iterableFactory: IterableFactory[HashSet] = HashSet
@@ -63,7 +63,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   protected[immutable] def reverseIterator: Iterator[A] = new SetReverseIterator[A](rootNode)
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => IntChampStepper.from[   SetNode[A]](size, rootNode, (node, i) => node.getPayload(i).asInstanceOf[Int])
@@ -71,7 +71,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       case StepperShape.DoubleShape => DoubleChampStepper.from[SetNode[A]](size, rootNode, (node, i) => node.getPayload(i).asInstanceOf[Double])
       case _         => shape.parUnbox(AnyChampStepper.from[A, SetNode[A]](size, rootNode, (node, i) => node.getPayload(i)))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   def contains(element: A): Boolean = {
@@ -208,7 +208,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       case _ => super.equals(that)
     }
 
-  override protected[this] def className = "HashSet"
+  override protected def className = "HashSet"
 
   override def hashCode(): Int = {
     val it = new SetHashIterator(rootNode)
@@ -279,7 +279,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     *
     * That is, this method is safe to call on published sets because it does not mutate `this`
     */
-  private[this] def removedAllWithShallowMutations(that: IterableOnce[A]^): HashSet[A] = {
+  private def removedAllWithShallowMutations(that: IterableOnce[A]^): HashSet[A] = {
     val iter = that.iterator
     var curr = rootNode
     while (iter.hasNext) {
@@ -1319,7 +1319,7 @@ private final class BitmapIndexedSetNode[A](
     * @param newNodes  queue in order of child position, of all new nodes to include in the new SetNode
     * @param newCachedHashCode the cached java keyset hashcode of the new SetNode
     */
-  private[this] def newNodeFrom(
+  private def newNodeFrom(
     newSize: Int,
     newDataMap: Int,
     newNodeMap: Int,
@@ -1910,7 +1910,7 @@ private final class SetReverseIterator[A](rootNode: SetNode[A])
 
 private final class SetHashIterator[A](rootNode: SetNode[A])
   extends ChampBaseIterator[AnyRef, SetNode[A]](rootNode) {
-  private[this] var hash = 0
+  private var hash = 0
   override def hashCode(): Int = hash
 
   def next(): AnyRef = {
