@@ -1929,21 +1929,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    def instantiateInUnion(tp: Type): Unit = tp match
+    def tryToInstantiateInUnion(tp: Type): Unit = tp match
       case tp: OrType =>
-        instantiateInUnion(tp.tp1)
-        instantiateInUnion(tp.tp2)
+        tryToInstantiateInUnion(tp.tp1)
+        tryToInstantiateInUnion(tp.tp2)
       case tp: FlexibleType =>
-        instantiateInUnion(tp.hi)
+        tryToInstantiateInUnion(tp.hi)
       case tp: TypeVar =>
         isFullyDefined(tp, ForceDegree.flipBottom)
       case _ =>
 
     if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists then
-      // try to instantiate `pt` if this is possible. If it does not
-      // work the error will be reported later in `inferredParam`,
-      // when we try to infer the parameter type.
-      instantiateInUnion(pt)
+      // Try to instantiate `pt` when possible, including type variables in union types
+      // to help finding function types. If it does not work the error will be reported
+      // later in `inferredParam`, when we try to infer the parameter type.
+      tryToInstantiateInUnion(pt)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
