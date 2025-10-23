@@ -594,10 +594,6 @@ object Predef extends LowPriorityImplicits {
     inline infix def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
 
-  extension (opt: Option.type)
-    @experimental
-    inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
-
   /** A type supporting Self-based type classes.
    *
    *    A is TC
