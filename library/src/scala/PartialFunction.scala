@@ -16,6 +16,8 @@ import scala.language.`2.13`
 import scala.annotation.nowarn
 
 import language.experimental.captureChecking
+import scala.util.boundary
+import scala.util.boundary.break
 
 /** A partial function of type `PartialFunction[A, B]` is a unary function
  *  where the domain does not necessarily include all values of type `A`.
@@ -262,12 +264,12 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
 object PartialFunction {
 
   final class ElementWiseExtractor[-A, +B] private[PartialFunction] (private val pf: PartialFunction[A, B]^) extends AnyVal { this: ElementWiseExtractor[A, B]^ =>
-    @nowarn("cat=lint-nonlocal-return")
     def unapplySeq(seq: Seq[A]): Option[Seq[B]] = {
-      Some(seq.map {
-        case pf(b) => b
-        case _ => return None
-      })
+      boundary:
+        Some(seq.map:
+          case pf(b) => b
+          case _ => boundary.break(None)
+        )
     }
   }
 
