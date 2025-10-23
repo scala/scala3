@@ -6,6 +6,9 @@ class BadBuffer[T] extends Mutable:
   def foo =
     def bar: BadBuffer[T]^ = this // error
     bar
+  update def updateFoo =
+    def bar: BadBuffer[T]^ = this // error // error
+    bar
 
 class Buffer[T] extends Mutable:
   consume def append(x: T): Buffer[T]^ = this // ok

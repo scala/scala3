@@ -680,12 +680,20 @@ class CheckCaptures extends Recheck, SymTransformer:
           if pt.select.symbol.isReadOnlyMethod then
             markFree(ref.readOnly, tree)
           else
-            markPathFree(ref.select(pt.select.symbol).asInstanceOf[TermRef], pt.pt, pt.select)
+            val sel = ref.select(pt.select.symbol).asInstanceOf[TermRef]
+            sel.recomputeDenot()
+              // We need to do a recomputeDenot here since we have not yet properly
+              // computed the type of the full path. This means that we erroneously
+              // think the denotation is the same as in the previous phase so no
+              // member computation is performed. A test case where this matters is
+              // read-only-use.scala, where the error on r3 goes unreported.
+            markPathFree(sel, pt.pt, pt.select)
         case _ =>
-          if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType then
-            markFree(ref.readOnly, tree)
-          else
-            markFree(ref, tree)
+          if ref.derivesFromMutable then
+            if pt.isValueType && !pt.isMutableType || ref.exclusivityInContext != Exclusivity.OK
+            then markFree(ref.readOnly, tree)
+            else markFree(ref, tree)
+          else markFree(ref, tree)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
@@ -724,13 +732,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => denot
 
       // Don't allow update methods to be called unless the qualifier captures
-      // an exclusive reference. TODO This should probably rolled into
-      // qualifier logic once we have it.
-      if tree.symbol.isUpdateMethod && !qualType.captureSet.isExclusive then
-        report.error(
-            em"""cannot call update ${tree.symbol} from $qualType,
-                |since its capture set ${qualType.captureSet} is read-only""",
-            tree.srcPos)
+      // an exclusive reference.
+      if tree.symbol.isUpdateMethod then
+        checkUpdate(qualType, tree.srcPos):
+          i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree.symbol)
@@ -767,6 +772,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         else
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
+
+    def checkUpdate(qualType: Type, pos: SrcPos)(msg: => String)(using Context): Unit =
+      qualType.exclusivityInContext match
+        case Exclusivity.OK =>
+        case err =>
+          report.error(em"$msg\nsince ${err.description(qualType)}.", pos)
 
     /** Recheck applications, with special handling of unsafeAssumePure.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
@@ -996,6 +1007,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
             report.error(em"$refArg is not a tracked capability", refArg.srcPos)
       case _ =>
+
+    override def recheckAssign(tree: Assign)(using Context): Type =
+      val lhsType = recheck(tree.lhs, LhsProto)
+      recheck(tree.rhs, lhsType.widen)
+      lhsType match
+        case lhsType @ TermRef(qualType, _)
+        if (qualType ne NoPrefix) && !lhsType.symbol.is(Transparent) =>
+          checkUpdate(qualType, tree.srcPos)(i"Cannot assign to field ${lhsType.name} of ${qualType.showRef}")
+        case _ =>
+      defn.UnitType
 
     /** Recheck Closure node: add the captured vars of the anonymoys function
      *  to the result type. See also `recheckClosureBlock` which rechecks the
@@ -1836,6 +1857,17 @@ class CheckCaptures extends Recheck, SymTransformer:
         actual
     end improveReadOnly
 
+    def adaptReadOnly(improved: Type, original: Type, expected: Type, tree: Tree)(using Context): Type = improved match
+      case improved @ CapturingType(parent, refs)
+      if parent.derivesFrom(defn.Caps_Mutable)
+          && expected.isValueType
+          && refs.isExclusive
+          && !original.exclusivityInContext.isOK =>
+        improved.derivedCapturingType(parent, refs.readOnly)
+          .showing(i"Adapted readonly $improved for $tree with original = $original in ${ctx.owner} --> $result", capt)
+      case _ =>
+        improved
+
     /* Currently not needed since it forms part of `adapt`
     private def improve(actual: Type, prefix: Type)(using Context): Type =
       val widened = actual.widen.dealiasKeepAnnots
@@ -1873,10 +1905,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
         val improvedVAR = improveCaptures(widened, actual)
         val improved = improveReadOnly(improvedVAR, expected)
+        val adaptedReadOnly = adaptReadOnly(improved, actual, expected, tree)
         val adapted = adaptBoxed(
-            improved.withReachCaptures(actual), expected, tree,
+            adaptedReadOnly.withReachCaptures(actual), expected, tree,
             covariant = true, alwaysConst = false)
-        if adapted eq improvedVAR // no .rd improvement, no box-adaptation
+        if adapted eq improvedVAR // no .rd improvement or adaptation, no box-adaptation
         then actual               // might as well use actual instead of improved widened
         else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt

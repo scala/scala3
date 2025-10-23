@@ -226,7 +226,7 @@ object desugar {
           paramss = (setterParam :: Nil) :: Nil,
           tpt     = TypeTree(defn.UnitType),
           rhs     = setterRhs
-        ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+        ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy | Transparent))
         .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
     else vdef1

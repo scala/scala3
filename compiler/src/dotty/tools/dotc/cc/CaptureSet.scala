@@ -60,8 +60,15 @@ sealed abstract class CaptureSet extends Showable:
   def mutability_=(x: Mutability): Unit =
     myMut = x
 
-  /** Mark this capture set as belonging to a Mutable type. */
-  def setMutable()(using Context): Unit
+  /** Mark this capture set as belonging to a Mutable type. Called when a new
+   *  CapturingType is formed. This is different from the setter `mutability_=`
+   *  in that it be defined with different behaviors:
+   *
+   *   - set mutability to Mutable (for normal Vars)
+   *   - take mutability from the set's sources (for DerivedVars)
+   *   - compute mutability on demand based on mutability of elements (for Consts)
+   */
+  def associateWithMutable()(using Context): Unit
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -144,6 +151,9 @@ sealed abstract class CaptureSet extends Showable:
 
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
+
+  def exclusivity(tp: Type)(using Context): Exclusivity =
+    if isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
 
   /** Similar to isExlusive, but also includes capture set variables
    *  with unknown status.
@@ -610,7 +620,7 @@ object CaptureSet:
 
     private var isComplete = true
 
-    def setMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): Unit =
       if !elems.isEmpty then
         isComplete = false // delay computation of Mutability status
 
@@ -630,9 +640,9 @@ object CaptureSet:
       else ""
 
   private def capImpliedByCapability(parent: Type)(using Context): Capability =
-    if parent.derivesFromExclusive then GlobalCap.readOnly else GlobalCap
+    if parent.derivesFromMutable then GlobalCap.readOnly else GlobalCap
 
-  /* The same as {cap.rd} but generated implicitly for references of Capability subtypes.
+  /* The same as {cap} but generated implicitly for references of Capability subtypes.
    */
   class CSImpliedByCapability(parent: Type)(using @constructorOnly ctx: Context)
   extends Const(SimpleIdentitySet(capImpliedByCapability(parent)))
@@ -705,7 +715,7 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def setMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): Unit =
       mutability = Mutable
 
     def isConst(using Context) = solved >= ccState.iterationId
@@ -1027,6 +1037,9 @@ object CaptureSet:
     mutability = source.mutability
 
     addAsDependentTo(source)
+
+    /** Mutability is same as in source, except for readOnly */
+    override def associateWithMutable()(using Context): Unit = ()
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1364,7 +1377,7 @@ object CaptureSet:
     def description(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
       i"""$cs is an exclusive capture set ${ofType(hi)},
-          |it cannot subsume a read-only capture set ${ofType(lo)}."""
+          |it cannot subsume a read-only capture set ${ofType(lo)}"""
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
