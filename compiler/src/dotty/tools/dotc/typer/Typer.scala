@@ -1922,7 +1922,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    pt match {
+    pt.stripNull() match {
       case pt: TypeVar
       if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
         // try to instantiate `pt` if this is possible. If it does not

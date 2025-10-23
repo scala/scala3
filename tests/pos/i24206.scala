@@ -14,3 +14,6 @@ trait Result
 def getAll(nameFilter: Option[String => Boolean]): List[Result] = ???
 def get(collectionName: String): List[Result] =
     getAll(Option(_.startsWith(collectionName)))
+
+def f[T](x: T | Null): T = ???
+val _: Any => Any = f(x => x)
