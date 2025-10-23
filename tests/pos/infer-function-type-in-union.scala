@@ -30,3 +30,13 @@ def test =
   val o3: MyOption[(String, String) => Boolean] = MyOption {
     (x, y) => x.length > y.length
   }
+
+
+class Box[T]
+val box: Box[Unit] = ???
+def ff1[T, U](x: T | U, y: Box[U]): T = ???
+def ff2[T, U](x: T & U): T = ???
+
+def test2 =
+  val a1: Any => Any = ff1(x => x, box)
+  val a2: Any => Any = ff2(x => x)
