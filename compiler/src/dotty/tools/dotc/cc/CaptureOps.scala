@@ -352,15 +352,6 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a type extending `Mutable` that has non-private update methods
-   *  or mutable fields?
-   */
-  def isMutableType(using Context): Boolean =
-    tp.derivesFrom(defn.Caps_Mutable)
-    && tp.membersBasedOnFlags(Mutable, EmptyFlags).exists: mbr =>
-      if mbr.symbol.is(Method) then mbr.symbol.isUpdateMethod
-      else !mbr.symbol.is(Transparent)
-
   /** Is this a reference to caps.cap? Note this is _not_ the GlobalCap capability. */
   def isCapRef(using Context): Boolean = tp match
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
@@ -499,23 +490,6 @@ extension (tp: Type)
   def classifier(using Context): ClassSymbol =
     tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
-  def exclusivity(using Context): Exclusivity =
-    if tp.derivesFrom(defn.Caps_Mutable) then
-      tp match
-        case tp: Capability if tp.isExclusive => Exclusivity.OK
-        case _ => tp.captureSet.exclusivity(tp)
-    else Exclusivity.OK
-
-  def exclusivityInContext(using Context): Exclusivity = tp match
-    case tp: ThisType =>
-      if tp.derivesFrom(defn.Caps_Mutable)
-      then ctx.owner.inExclusivePartOf(tp.cls)
-      else Exclusivity.OK
-    case tp @ TermRef(prefix: Capability, _) =>
-      prefix.exclusivityInContext.andAlso(tp.exclusivity)
-    case _ =>
-      tp.exclusivity
-
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
@@ -649,30 +623,6 @@ extension (sym: Symbol)
     sym.hasAnnotation(defn.ConsumeAnnot)
     || sym.info.hasAnnotation(defn.ConsumeAnnot)
 
-  /** An update method is either a method marked with `update` or
-   *  a setter of a non-transparent var.
-   */
-  def isUpdateMethod(using Context): Boolean =
-    sym.isAllOf(Mutable | Method)
-      && (!sym.isSetter || sym.field.is(Transparent))
-
-  def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
-    import Exclusivity.*
-    val encl = sym.enclosingMethodOrClass.skipConstructor
-    if sym == cls then OK // we are directly in `cls` or in one of its constructors
-    else if encl.owner == cls then
-      if encl.isUpdateMethod then OK
-      else NotInUpdateMethod(encl, cls)
-    else if encl.isStatic then OutsideClass(cls)
-    else encl.owner.inExclusivePartOf(cls)
-
-  def isReadOnlyMethod(using Context): Boolean =
-    sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
-
-  def isInReadOnlyMethod(using Context): Boolean =
-    if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
-    else sym.owner.isInReadOnlyMethod
-
   def qualString(prefix: String)(using Context): String =
     if !sym.exists then ""
     else if sym.isAnonymousFunction then i" $prefix enclosing function"
@@ -802,36 +752,4 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
       case _ =>
         foldOver(acc, t)
 end DeepTypeAccumulator
-
-/** Either OK, or a reason why capture set cannot be exclusive */
-enum Exclusivity:
-  case OK
-
-  /** Enclosing symbol `sym` is a method of class `cls`, but not an update method */
-  case NotInUpdateMethod(sym: Symbol, cls: Symbol)
-
-  /** Access to `this` from outside its class (not sure this can happen) */
-  case OutsideClass(cls: Symbol)
-
-  /** A prefix type `tp` has a read-only capture set */
-  case ReadOnly(tp: Type)
-
-  def isOK: Boolean = this == OK
-
-  def andAlso(that: Exclusivity): Exclusivity =
-    if this == OK then that else this
-
-  /** A textual description why `qualType` is not exclusive */
-  def description(qualType: Type)(using Context): String = this.runtimeChecked match
-    case Exclusivity.ReadOnly(tp) =>
-      if qualType eq tp then
-        i"its capture set ${qualType.captureSet} is read-only"
-      else
-        i"the capture set ${tp.captureSet} of its prefix $tp is read-only"
-    case Exclusivity.NotInUpdateMethod(sym: Symbol, cls: Symbol) =>
-      i"the access is in $sym, which is not an update method"
-    case Exclusivity.OutsideClass(cls: Symbol) =>
-      i"the access from is from ouside $cls"
-
-end Exclusivity
 
