@@ -152,9 +152,6 @@ sealed abstract class CaptureSet extends Showable:
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
-  def exclusivity(tp: Type)(using Context): Exclusivity =
-    if isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
-
   /** Similar to isExlusive, but also includes capture set variables
    *  with unknown status.
    */

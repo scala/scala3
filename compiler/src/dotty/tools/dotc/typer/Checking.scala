@@ -37,7 +37,8 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
+import cc.{isCaptureChecking, isRetainsLike}
+import cc.Mutability.isUpdateMethod
 
 import collection.mutable
 import reporting.*
