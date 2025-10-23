@@ -73,9 +73,3 @@ package object reflect {
   // todo. once we have implicit macros for tag generation, we can remove this anchor
   private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
 }
-
-/** An exception that indicates an error during Scala reflection */
-case class ScalaReflectionException(msg: String) extends Exception(msg)
-
-object ScalaReflectionException extends scala.runtime.AbstractFunction1[String, ScalaReflectionException]:
-  override def toString: String = "ScalaReflectionException"
