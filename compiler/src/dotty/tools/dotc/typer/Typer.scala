@@ -1929,21 +1929,39 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    def tryToInstantiateInUnion(tp: Type): Unit = tp match
-      case tp: OrType =>
-        tryToInstantiateInUnion(tp.tp1)
-        tryToInstantiateInUnion(tp.tp2)
+    /** Try to instantiate one type variable bounded by function types that appear
+     *  deeply inside `tp`, including union or intersection types.
+     */
+    def tryToInstantiateDeeply(tp: Type): Boolean = tp match
+      case tp: AndOrType =>
+        tryToInstantiateDeeply(tp.tp1)
+        || tryToInstantiateDeeply(tp.tp2)
       case tp: FlexibleType =>
-        tryToInstantiateInUnion(tp.hi)
-      case tp: TypeVar =>
+        tryToInstantiateDeeply(tp.hi)
+      case tp: TypeVar if isConstrainedByFunctionType(tp) =>
+        // Only instantiate if the type variable is constrained by function types
         isFullyDefined(tp, ForceDegree.flipBottom)
-      case _ =>
+      case _ => false
+
+    def isConstrainedByFunctionType(tvar: TypeVar): Boolean =
+      val origin = tvar.origin
+      val bounds = ctx.typerState.constraint.bounds(origin)
+      def containsFunctionType(tp: Type): Boolean = tp.dealias match
+        case tp if defn.isFunctionType(tp) => true
+        case SAMType(_, _) => true
+        case tp: AndOrType =>
+          containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
+        case tp: FlexibleType =>
+          containsFunctionType(tp.hi)
+        case _ => false
+      containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 
     if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists then
-      // Try to instantiate `pt` when possible, including type variables in union types
-      // to help finding function types. If it does not work the error will be reported
-      // later in `inferredParam`, when we try to infer the parameter type.
-      tryToInstantiateInUnion(pt)
+      // Try to instantiate `pt` when possible, by searching a nested type variable
+      // bounded by function types to help infer parameter types.
+      // If it does not work the error will be reported later in `inferredParam`,
+      // when we try to infer the parameter type.
+      tryToInstantiateDeeply(pt)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
