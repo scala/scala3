@@ -303,10 +303,23 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     for annot <- sym.denot.annotations do
       transformAllDeep(annot.tree)
 
-  // if sym is not an enclosing element, record the reference
+  /** If sym is not an enclosing element with respect to the give context, record the reference
+   *
+   *  Also check that every enclosing element is not a synthetic member
+   *  of the sym's case class companion module.
+   */
   def refUsage(sym: Symbol)(using Context): Unit =
-    if !ctx.outersIterator.exists(cur => cur.owner eq sym) then
-      refInfos.addRef(sym)
+    if !refInfos.hasRef(sym) then
+      val isCase = sym.is(Case) && sym.isClass
+      if !ctx.outersIterator.exists: outer =>
+        val owner = outer.owner
+           owner.eq(sym)
+        || isCase
+           && owner.exists
+           && owner.is(Synthetic)
+           && owner.owner.eq(sym.companionModule.moduleClass)
+      then
+        refInfos.addRef(sym)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -422,7 +435,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     end while
     // record usage and possibly an import
     if !enclosed then
-      refInfos.addRef(sym)
+      refUsage(sym)
     if imports && candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
@@ -442,7 +455,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refInfos.addRef(found.denot.symbol)
+        refUsage(found.denot.symbol)
         if cur.isImportContext then
           cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
@@ -450,7 +463,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           case _ =>
         return
       case Some(found: RenamedImplicitRef) if cur.isImportContext =>
-        refInfos.addRef(found.underlyingRef.denot.symbol)
+        refUsage(found.underlyingRef.denot.symbol)
         cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
@@ -529,13 +542,18 @@ object CheckUnused:
 
     var inliners = 0 // depth of inline def (not inlined yet)
 
-    // instead of refs.addOne, use addRef to distinguish a read from a write to var
+    // instead of refs.addOne, use refUsage -> addRef to distinguish a read from a write to var
     var isAssignment = false
     def addRef(sym: Symbol): Unit =
       if isAssignment then
         asss.addOne(sym)
       else
         refs.addOne(sym)
+    def hasRef(sym: Symbol): Boolean =
+      if isAssignment then
+        asss(sym)
+      else
+        refs(sym)
 
     // currently compiletime.testing is completely erased, so ignore the unit
     var isNullified = false
