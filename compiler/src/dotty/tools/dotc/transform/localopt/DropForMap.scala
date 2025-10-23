@@ -59,7 +59,7 @@ class DropForMap extends MiniPhase:
             bindings.collectFirst:
               case vd: ValDef if f.sameTree(vd.rhs) =>
                 expansion.find:
-                  case Inlined(Thicket(Nil), Nil, Ident(ident)) => ident == vd.name
+                  case Inlined(Thicket(Nil), Nil, id @ Ident(vd.name)) => id.symbol eq vd.symbol
                   case _ => false
                 .getOrElse(expansion)
             .getOrElse(expansion)
@@ -75,14 +75,16 @@ class DropForMap extends MiniPhase:
 
 object DropForMap:
   val name: String = "dropForMap"
-  val description: String = "Drop unused trailing map calls in for comprehensions"
+  val description: String = "drop unused trailing map calls in for comprehensions"
 
-  // Extracts a fun from a possibly nested Apply with lambda and arbitrary implicit args.
-  // Specifically, an application `r.map(x => x)` is destructured into (r, map, args).
-  // If the receiver r was adapted, it is unwrapped.
-  // If `map` is an extension method, the nominal receiver is `args.head`.
+  /** If the tree represents the trailing or terminal `map` of a for comprehension,
+   *  extracts a fun from a possibly nested Apply with lambda and arbitrary implicit args.
+   *  Specifically, an application `r.map(x => x)` is destructured into (r, map, args).
+   *  If the receiver r was adapted, it is unwrapped.
+   *  If `map` is an extension method, the nominal receiver is `args.head`.
+   */
   private object Unmapped:
-    private def loop(tree: Tree, args: List[Tree])(using Context): Option[(Tree, Symbol, List[Tree])] = tree match
+    private def loop(tree: Tree)(using Context): Option[(Tree, Symbol, List[Tree])] = tree match
       case Apply(fun, args @ Lambda(_ :: Nil, _) :: Nil) =>
         tree.removeAttachment(TrailingForMap) match
         case Some(_) =>
@@ -92,15 +94,15 @@ object DropForMap:
         case _ => None
       case Apply(fun, _) =>
         fun.tpe match
-        case mt: MethodType if mt.isImplicitMethod => loop(fun, args)
+        case mt: MethodType if mt.isImplicitMethod => loop(fun)
         case _ => None
-      case TypeApply(fun, _) => loop(fun, args)
+      case TypeApply(fun, _) => loop(fun)
       case _ => None
     end loop
     def unapply(tree: Apply)(using Context): Option[(Tree, Symbol, List[Tree])] =
       tree.tpe match
       case _: MethodOrPoly => None
-      case _ => loop(tree, args = Nil)
+      case _ => loop(tree)
 
   private object Lambda:
     def unapply(tree: Tree)(using Context): Option[(List[ValDef], Tree)] = tree match
@@ -124,7 +126,8 @@ object DropForMap:
     def unapply(tree: Tree)(using Context): Option[Tree] = tree match
       case Apply(fn @ Apply(_, _), _) => unapply(fn)
       case Apply(fn, r :: Nil)
-      if fn.symbol.is(Implicit) || fn.symbol.name == nme.apply && fn.symbol.owner.derivesFrom(defn.ConversionClass)
+      if fn.symbol.is(Implicit)
+      || fn.symbol.name == nme.apply && fn.symbol.owner.derivesFrom(defn.ConversionClass)
       => Some(r)
       case TypeApply(fn, _) => unapply(fn)
       case _ => None
