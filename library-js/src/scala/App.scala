@@ -41,6 +41,7 @@ import scala.collection.mutable.ListBuffer
  *  @author  Martin Odersky
  *  @since   2.1
  */
+@deprecated(message = "Support for trait App is deprecated in Scala 3. Please refer to https://docs.scala-lang.org/scala3/book/methods-main-methods.html.", since = "3.8.0")
 trait App extends DelayedInit {
 
   /** The time when the execution of this program started, in milliseconds since 1
