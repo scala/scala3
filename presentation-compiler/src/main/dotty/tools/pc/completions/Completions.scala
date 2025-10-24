@@ -108,7 +108,14 @@ class Completions(
           case _ => false
       else false
 
-    if generalExclude then false
+    def isLanguageExperimental: Boolean =
+      val n = sym.fullName.show.replace("$","")
+      n.contains(".language.experimental.") || n.endsWith(".language.experimental")
+
+    val excludeLanguageExperimental =
+      !completionMode.is(Mode.ImportOrExport) && isLanguageExperimental
+
+    if generalExclude || excludeLanguageExperimental then false
     else if completionMode.is(Mode.Type) then true
     else !isWildcardParam(sym) && (sym.isTerm || sym.is(Package))
     end if
@@ -585,6 +592,13 @@ class Completions(
     if completionMode.is(Mode.Scope) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
         if Completion.isValidCompletionSymbol(sym, completionMode, isNew) &&
+          // Avoid suggesting experimental language import symbols (`scala.language.experimental.*`)
+          // as auto-import completions in regular identifier positions.
+          // They are still available in import positions.
+          {
+            val n = sym.fullName.show
+            !n.contains(".language.experimental.") && !n.endsWith(".language.experimental")
+          } &&
           !(sym.is(Flags.ExtensionMethod) || (sym.maybeOwner.is(Flags.Implicit) && sym.maybeOwner.isClass))
         then
           indexedContext.lookupSym(sym) match

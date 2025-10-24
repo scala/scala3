@@ -40,6 +40,7 @@ object Feature:
   val packageObjectValues = experimental("packageObjectValues")
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
+  val methodBlockEndMarkers = experimental("methodBlockEndMarkers")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
@@ -69,6 +70,7 @@ object Feature:
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (packageObjectValues, "Enable experimental package objects as values"),
+    (methodBlockEndMarkers, "Enable experimental end markers for method blocks"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
