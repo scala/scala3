@@ -530,6 +530,13 @@ object Trees {
      */
     def applyKind: ApplyKind =
       attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
+
+    def setEndMarker(): this.type =
+      putAttachment(untpd.HasEndMarker, ())
+      this
+
+    def hasEndMarker: Boolean =
+      hasAttachment(untpd.HasEndMarker)
   }
 
   /** fun[args] */
