@@ -1,4 +1,3 @@
-Flag -Yno-stdlib-patches set repeatedly
 -- Error: tests/neg/no-patches.scala:3:23 ------------------------------------------------------------------------------
 3 |val _ = scala.language.`3.4` // error: we do not patch `scala.language`
   |        ^^^^^^^^^^^^^^^^^^^^

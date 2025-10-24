@@ -14,7 +14,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
-import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import core.Decorators.{em, toMessage}
 import core.handleRecursive
 
@@ -235,14 +235,13 @@ abstract class Reporter extends interfaces.ReporterResult {
       report(new Error("No warnings can be incurred under -Werror (or -Xfatal-warnings)", NoSourcePosition))
 
   /** Summary of warnings and errors */
-  def summary: String = {
-    val b = new mutable.ListBuffer[String]
+  def summary: String =
+    val b = ListBuffer.empty[String]
     if (warningCount > 0)
       b += countString(warningCount, "warning") + " found"
     if (errorCount > 0)
       b += countString(errorCount, "error") + " found"
     b.mkString("\n")
-  }
 
   def summarizeUnreportedWarnings()(using Context): Unit =
     for (settingName, count) <- unreportedWarnings do
@@ -253,7 +252,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Print the summary of warnings and errors */
   def printSummary()(using Context): Unit =
     val s = summary
-    if (s != "") doReport(Warning(s.toMessage, NoSourcePosition))
+    if !s.isEmpty then doReport(Warning(s.toMessage, NoSourcePosition))
 
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {
