@@ -436,6 +436,8 @@ jobs:
   test-scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
     needs: [scala3-compiler-bootstrapped, tasty-core-bootstrapped, scala-library-bootstrapped, scala3-staging, scala3-tasty-inspector]
+    env:
+      DOTTY_DISABLE_REPL_BYTECODE_INSTRUMENTATION: true
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
@@ -550,6 +552,8 @@ jobs:
   scripted-tests:
     runs-on: ubuntu-latest
     needs: [scala3-compiler-bootstrapped, tasty-core-bootstrapped, scala3-staging, scala3-tasty-inspector, scala-library-sjs, scaladoc]
+    env:
+      DOTTY_DISABLE_REPL_BYTECODE_INSTRUMENTATION: true
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5

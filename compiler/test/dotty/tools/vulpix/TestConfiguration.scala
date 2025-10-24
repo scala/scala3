@@ -61,7 +61,16 @@ object TestConfiguration {
 
   val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
-  val defaultOptions = TestFlags(basicClasspath, commonOptions) `and` "-Yno-stdlib-patches"
+
+  // Conditionally add -Xrepl-disable-bytecode-instrumentation when running in CI environments
+  // that have classloader issues with the new bytecode instrumentation
+  private val replBytecodeInstrumentationFlag =
+    if sys.env.isDefinedAt("DOTTY_DISABLE_REPL_BYTECODE_INSTRUMENTATION") then
+      Array("-Xrepl-disable-bytecode-instrumentation")
+    else
+      Array.empty[String]
+
+  val defaultOptions = TestFlags(basicClasspath, commonOptions ++ replBytecodeInstrumentationFlag) `and` "-Yno-stdlib-patches"
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
