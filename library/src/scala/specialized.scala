@@ -14,6 +14,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.annotation.documented
+
 import Specializable._
 
 /** Annotate type parameters on which code should be automatically
@@ -30,6 +32,7 @@ import Specializable._
  */
 // class tspecialized[T](group: Group[T]) extends scala.annotation.StaticAnnotation {
 
+@documented
 final class specialized(group: SpecializedGroup) extends scala.annotation.StaticAnnotation {
   def this(types: Specializable*) = this(new Group(types.toList))
   def this() = this(Primitives)
