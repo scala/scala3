@@ -990,26 +990,17 @@ object Scanners {
         case '\'' =>
           def fetchSingleQuote(): Unit = {
             nextChar()
-            // Check for triple single quote (dedented string literal)
-            if (ch == '\'') {
+            if (ch == '\'') { // Check for triple single quote (dedented string literal)
               nextChar()
               if (ch == '\'') {
-                // We have at least '''
-                // Check if this is an interpolated dedented string
+                // We have at least ''' check if this is an interpolated dedented string
                 if (token == INTERPOLATIONID) {
-                  // For interpolation, handle as string part
                   nextRawChar()
                   val quoteCount = getDedentedString(isInterpolated = true)
                   currentRegion = InDedentedString(quoteCount, currentRegion)
-                } else {
-                  getDedentedString(isInterpolated = false)
-                  // No need to store quoteCount for non-interpolated strings
-                }
+                } else getDedentedString(isInterpolated = false)
               }
-              else {
-                // We have '' followed by something else
-                error(em"empty character literal")
-              }
+              else error(em"empty character literal") // We have '' followed by something else
             }
             else if isIdentifierStart(ch) then
               charLitOr { getIdentRest(); QUOTEID }

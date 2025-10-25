@@ -1368,11 +1368,7 @@ object Parsers {
       // APIs behaves predictably in the presence of empty leading/trailing lines
       if (closingIndent == "") str
       else {
-        // Check for mixed tabs and spaces in closing indent
-
-        val hasTabs = closingIndent.contains('\t')
-        val hasSpaces = closingIndent.contains(' ')
-        if (hasTabs && hasSpaces) {
+        if (closingIndent.contains('\t') && closingIndent.contains(' ')) {
           syntaxError(
             em"dedented string literal cannot mix tabs and spaces in indentation",
             offset
@@ -1380,9 +1376,7 @@ object Parsers {
           return str
         }
 
-        // Split into lines
         val linesAndWithSeps = (str.linesIterator.zip(str.linesWithSeparators)).toSeq
-
         var lineOffset = offset
 
         def dedentLine(line: String, lineWithSep: String) = {
@@ -1390,21 +1384,10 @@ object Parsers {
             if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
             else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
             else {
-              // Check if this line has mixed tabs/spaces that don't match closing indent
-              val lineIndent = line.takeWhile(_.isWhitespace)
-              val lineHasTabs = lineIndent.contains('\t')
-              val lineHasSpaces = lineIndent.contains(' ')
-              if ((hasTabs && lineHasSpaces && !lineHasTabs) || (hasSpaces && lineHasTabs && !lineHasSpaces)) {
-                syntaxError(
-                  em"dedented string literal cannot mix tabs and spaces in indentation",
-                  offset
-                )
-              } else {
-                syntaxError(
-                  em"line in dedented string literal must be indented at least as much as the closing delimiter",
-                  lineOffset
-                )
-              }
+              syntaxError(
+                em"line in dedented string literal must be indented at least as much as the closing delimiter with an identical prefix",
+                lineOffset
+              )
               line
             }
           lineOffset += lineWithSep.length // Make sure to include any \n, \r, \r\n, or \n\r
@@ -1551,14 +1534,15 @@ object Parsers {
         in.charOffset + 1 < in.buf.length &&
         in.buf(in.charOffset) == '"' &&
         in.buf(in.charOffset + 1) == '"'
+
       val isDedented =
         in.charOffset + 2 < in.buf.length &&
         in.buf(in.charOffset - 1) == '\'' &&
         in.buf(in.charOffset) == '\'' &&
         in.buf(in.charOffset + 1) == '\''
+
       in.nextToken()
 
-      // Collect all string parts and their offsets
       val stringParts = new ListBuffer[(String, Offset)]
       val interpolatedExprs = new ListBuffer[Tree]
 
@@ -1569,7 +1553,6 @@ object Parsers {
         offsetCorrection = 0
         in.nextToken()
 
-        // Collect the interpolated expression
         interpolatedExprs += atSpan(in.offset) {
           if (in.token == IDENTIFIER)
             termIdent()
@@ -1591,7 +1574,6 @@ object Parsers {
         }
       }
 
-      // Get the final STRINGLIT
       val finalLiteral = if (in.token == STRINGLIT) {
         val s = in.strVal
         val off = in.offset + offsetCorrection
@@ -1611,7 +1593,6 @@ object Parsers {
           }
         }
 
-      // Build the segments with dedented strings
       for ((str, expr) <- dedentedParts.zip(interpolatedExprs)) {
         val (dedentedStr, offset) = str
         segmentBuf += Thicket(
@@ -1620,8 +1601,7 @@ object Parsers {
         )
       }
 
-      // Add the final literal if present
-      if (finalLiteral) {
+      if (finalLiteral) { // Add the final literal if present
         val (dedentedStr, offset) = dedentedParts.last
         segmentBuf += atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) }
       }
