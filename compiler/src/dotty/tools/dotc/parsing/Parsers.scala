@@ -1378,8 +1378,7 @@ object Parsers {
 
         val linesAndWithSeps = (str.linesIterator.zip(str.linesWithSeparators)).toSeq
         var lineOffset = offset
-
-
+        // start counting error location offsets only after opening delimiter
         while(in.buf(lineOffset) == '\'') lineOffset += 1
 
         def dedentLine(line: String, lineWithSep: String) = {
@@ -1628,6 +1627,7 @@ object Parsers {
 
       if (closingIndent.exists(!_.isWhitespace)) {
         var lineOffset = offset
+        // start counting error location offsets only after opening delimiter
         while(in.buf(lineOffset) == '\'') lineOffset += 1
         syntaxError(
           em"last line of dedented string literal must contain only whitespace before closing delimiter",
