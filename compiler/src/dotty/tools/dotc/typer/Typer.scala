@@ -31,6 +31,7 @@ import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
+import util.chaining.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
@@ -1429,7 +1430,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def lhs1 = adapt(lhsCore, LhsProto, locked)
 
         def reassignmentToVal =
-          report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
+          report.error(ReassignmentToVal(lhsCore.symbol.name, pt), tree.srcPos)
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
@@ -1921,7 +1922,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    pt match {
+    pt.stripNull() match {
       case pt: TypeVar
       if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
         // try to instantiate `pt` if this is possible. If it does not
@@ -3476,12 +3477,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         inContext(ctx.packageContext(tree, pkg)) {
           // If it exists, complete the class containing the top-level definitions
           // before typing any statement in the package to avoid cycles as in i13669.scala
-          val topLevelClassName = desugar.packageObjectName(ctx.source).moduleClassName
-          pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
+          val packageObjectName = desugar.packageObjectName(ctx.source)
+          val topLevelClassSymbol = pkg.moduleClass.info.decls.lookup(packageObjectName.moduleClassName)
+          topLevelClassSymbol.ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
             stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
           cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
+            .tap: _ =>
+              if !ctx.isAfterTyper
+              && pkg != defn.EmptyPackageVal
+              && !topLevelClassSymbol.info.decls.filter(sym => !sym.isConstructor && !sym.is(Synthetic)).isEmpty
+              then
+                desugar.checkSimplePackageName(packageObjectName, tree.span, ctx.source, isPackageObject = true)
         }
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`

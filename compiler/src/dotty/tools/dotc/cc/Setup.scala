@@ -689,9 +689,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 // neither pure, nor are publicily extensible with an unconstrained self type.
                 val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
                 if cls.derivesFrom(defn.Caps_Capability) then
-                  // If cls is a capability class, we need to add a fresh readonly capability to
-                  // ensure we cannot treat the class as pure.
-                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  // If cls is a capability class, we need to add a fresh capability to ensure
+                  // we cannot treat the class as pure.
+                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
                 CapturingType(cinfo.selfType, cs)
 
             // Compute new parent types

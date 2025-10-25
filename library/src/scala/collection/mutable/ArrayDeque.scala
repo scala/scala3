@@ -53,7 +53,7 @@ class ArrayDeque[A] protected (
 
   reset(array, start, end)
 
-  private[this] def reset(array: Array[AnyRef | Null], start: Int, end: Int) = {
+  private def reset(array: Array[AnyRef | Null], start: Int, end: Int) = {
     assert((array.length & (array.length - 1)) == 0, s"Array.length must be power of 2")
     requireBounds(idx = start, until = array.length)
     requireBounds(idx = end, until = array.length)
@@ -67,7 +67,7 @@ class ArrayDeque[A] protected (
   override def knownSize: Int = super[IndexedSeqOps].knownSize
 
   // No-Op override to allow for more efficient stepper in a minor release.
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = super.stepper(shape)
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = super.stepper(using shape)
 
   def apply(idx: Int): A = {
     requireBounds(idx)
@@ -306,7 +306,7 @@ class ArrayDeque[A] protected (
   def removeHead(resizeInternalRepr: Boolean = false): A =
     if (isEmpty) throw new NoSuchElementException(s"empty collection") else removeHeadAssumingNonEmpty(resizeInternalRepr)
 
-  @inline private[this] def removeHeadAssumingNonEmpty(resizeInternalRepr: Boolean = false): A = {
+  @inline private def removeHeadAssumingNonEmpty(resizeInternalRepr: Boolean = false): A = {
     val elem = array(start)
     array(start) = null
     start = start_+(1)
@@ -333,7 +333,7 @@ class ArrayDeque[A] protected (
   def removeLast(resizeInternalRepr: Boolean = false): A =
     if (isEmpty) throw new NoSuchElementException(s"empty collection") else removeLastAssumingNonEmpty(resizeInternalRepr)
 
-  @`inline` private[this] def removeLastAssumingNonEmpty(resizeInternalRepr: Boolean = false): A = {
+  @`inline` private def removeLastAssumingNonEmpty(resizeInternalRepr: Boolean = false): A = {
     end = end_-(1)
     val elem = array(end)
     array(end) = null
@@ -484,41 +484,41 @@ class ArrayDeque[A] protected (
 
   // Utils for common modular arithmetic:
   @inline protected def start_+(idx: Int) = (start + idx) & (array.length - 1)
-  @inline private[this] def start_-(idx: Int) = (start - idx) & (array.length - 1)
-  @inline private[this] def end_+(idx: Int) = (end + idx) & (array.length - 1)
-  @inline private[this] def end_-(idx: Int) = (end - idx) & (array.length - 1)
+  @inline private def start_-(idx: Int) = (start - idx) & (array.length - 1)
+  @inline private def end_+(idx: Int) = (end + idx) & (array.length - 1)
+  @inline private def end_-(idx: Int) = (end - idx) & (array.length - 1)
 
   // Note: here be overflow dragons! This is used for int overflow
   // assumptions in resize(). Use caution changing.
-  @inline private[this] def mustGrow(len: Int) = {
+  @inline private def mustGrow(len: Int) = {
     len >= array.length
   }
 
   // Assumes that 0 <= len < array.length!
-  @inline private[this] def shouldShrink(len: Int) = {
+  @inline private def shouldShrink(len: Int) = {
     // To avoid allocation churn, only shrink when array is large
     // and less than 2/5 filled.
     array.length > ArrayDeque.StableSize && array.length - len - (len >> 1) > len
   }
 
   // Assumes that 0 <= len < array.length!
-  @inline private[this] def canShrink(len: Int) = {
+  @inline private def canShrink(len: Int) = {
     array.length > ArrayDeque.DefaultInitialSize && array.length - len > len
   }
 
-  @inline private[this] def _get(idx: Int): A = array(start_+(idx)).asInstanceOf[A]
+  @inline private def _get(idx: Int): A = array(start_+(idx)).asInstanceOf[A]
 
-  @inline private[this] def _set(idx: Int, elem: A) = array(start_+(idx)) = elem.asInstanceOf[AnyRef]
+  @inline private def _set(idx: Int, elem: A) = array(start_+(idx)) = elem.asInstanceOf[AnyRef]
 
   // Assumes that 0 <= len.
-  private[this] def resize(len: Int) = if (mustGrow(len) || canShrink(len)) {
+  private def resize(len: Int) = if (mustGrow(len) || canShrink(len)) {
     val n = length
     val array2 = copySliceToArray(srcStart = 0, dest = ArrayDeque.alloc(len), destStart = 0, maxItems = n)
     reset(array = array2, start = 0, end = n)
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "ArrayDeque"
+  override protected def stringPrefix = "ArrayDeque"
 }
 
 /**
@@ -595,7 +595,7 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
     * @param destStart
     * @param maxItems
     */
-  def copySliceToArray(srcStart: Int, dest: Array[_], destStart: Int, maxItems: Int): dest.type = {
+  def copySliceToArray(srcStart: Int, dest: Array[?], destStart: Int, maxItems: Int): dest.type = {
     requireBounds(destStart, dest.length+1)
     val toCopy = Math.min(maxItems, Math.min(length - srcStart, dest.length - destStart))
     if (toCopy > 0) {

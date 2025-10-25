@@ -26,8 +26,8 @@ import scala.reflect.ClassTag
 sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
-  protected[this] var capacity: Int = 0
-  protected[this] def elems: Array[T] | Null // may not be allocated at size = capacity = 0
+  protected var capacity: Int = 0
+  protected def elems: Array[T] | Null // may not be allocated at size = capacity = 0
   protected var size: Int = 0
 
   /** Current number of elements. */
@@ -36,7 +36,7 @@ sealed abstract class ArrayBuilder[T]
   /** Current number of elements. */
   override def knownSize: Int = size
 
-  protected[this] final def ensureSize(size: Int): Unit = {
+  protected final def ensureSize(size: Int): Unit = {
     val newLen = resizeUp(capacity, size)
     if (newLen > 0) resize(newLen)
   }
@@ -45,20 +45,20 @@ sealed abstract class ArrayBuilder[T]
 
   def clear(): Unit = size = 0
 
-  protected[this] def resize(size: Int): Unit
+  protected def resize(size: Int): Unit
 
   /** Add all elements of an array. */
-  def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
+  def addAll(xs: Array[? <: T]): this.type = addAll(xs, 0, xs.length)
 
   /** Add a slice of an array. */
-  def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
+  def addAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     val offset1 = offset.max(0)
     val length1 = length.max(0)
     val effectiveLength = length1.min(xs.length - offset1)
     doAddAll(xs, offset1, effectiveLength)
   }
 
-  private def doAddAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
+  private def doAddAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     if (length > 0) {
       ensureSize(this.size + length)
       Array.copy(xs, offset, elems.nn, this.size, length)
@@ -100,7 +100,7 @@ object ArrayBuilder {
       case java.lang.Double.TYPE    => new ArrayBuilder.ofDouble().asInstanceOf[ArrayBuilder[T]]
       case java.lang.Boolean.TYPE   => new ArrayBuilder.ofBoolean().asInstanceOf[ArrayBuilder[T]]
       case java.lang.Void.TYPE      => new ArrayBuilder.ofUnit().asInstanceOf[ArrayBuilder[T]]
-      case _                        => new ArrayBuilder.ofRef[T with AnyRef]()(tag.asInstanceOf[ClassTag[T with AnyRef]]).asInstanceOf[ArrayBuilder[T]]
+      case _                        => new ArrayBuilder.ofRef[T & AnyRef]()(using tag.asInstanceOf[ClassTag[T & AnyRef]]).asInstanceOf[ArrayBuilder[T]]
     }
   }
 
@@ -121,7 +121,7 @@ object ArrayBuilder {
       else java.util.Arrays.copyOf[T](elems, size)
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -168,7 +168,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -210,7 +210,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -252,7 +252,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -294,7 +294,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -336,7 +336,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -378,7 +378,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -420,7 +420,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -463,7 +463,7 @@ object ArrayBuilder {
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
@@ -513,7 +513,7 @@ object ArrayBuilder {
       this
     }
 
-    override def addAll(xs: Array[_ <: Unit], offset: Int, length: Int): this.type = {
+    override def addAll(xs: Array[? <: Unit], offset: Int, length: Int): this.type = {
       val newSize = size + length
       ensureSize(newSize)
       size = newSize
@@ -532,7 +532,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    protected[this] def resize(size: Int): Unit = capacity = size
+    protected def resize(size: Int): Unit = capacity = size
 
     override def toString = "ArrayBuilder.ofUnit"
   }

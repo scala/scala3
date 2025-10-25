@@ -313,7 +313,7 @@ object StringContext {
     s"""invalid unicode escape at index $index of $str"""
   )
 
-  private[this] def readUEscape(src: String, startindex: Int): (Char, Int) = {
+  private def readUEscape(src: String, startindex: Int): (Char, Int) = {
     val len = src.length()
     def loop(uindex: Int): (Char, Int) = {
       def loopCP(dindex: Int, codepoint: Int): (Char, Int) = {
@@ -362,19 +362,19 @@ object StringContext {
    *  @return The string with all escape sequences expanded.
    */
   def processEscapes(str: String): String =
-    str indexOf '\\' match {
+    str.indexOf('\\') match {
       case -1 => str
       case  i => replace(str, i)
     }
 
   protected[scala] def processUnicode(str: String): String =
-    str indexOf "\\u" match {
+    str.indexOf("\\u") match {
       case -1 => str
       case i  => replaceU(str, i)
     }
 
   //replace escapes with given first escape
-  private[this] def replace(str: String, first: Int): String = {
+  private def replace(str: String, first: Int): String = {
     val len = str.length()
     val b = new JLSBuilder
     // append replacement starting at index `i`, with `next` backslash
@@ -399,7 +399,7 @@ object StringContext {
           val (ch, advance) = if (c == 'u') readUEscape(str, idx)
                               else (c, 1)
           idx += advance
-          b append ch
+          b.append(ch)
           loop(idx, str.indexOf('\\', idx))
         } else {
           if (i < len) b.append(str, i, len)
@@ -423,7 +423,7 @@ object StringContext {
    * Otherwise, the backslash is not taken to introduce an escape and the
    * backslash is taken to be literal
    */
-  private[this] def replaceU(str: String, backslash: Int): String = {
+  private def replaceU(str: String, backslash: Int): String = {
     val len = str.length()
     val b = new JLSBuilder
 
@@ -458,8 +458,8 @@ object StringContext {
     val ai = args.iterator
     val bldr = new JLSBuilder(process(pi.next()))
     while (ai.hasNext) {
-      bldr append ai.next()
-      bldr append process(pi.next())
+      bldr.append(ai.next())
+      bldr.append(process(pi.next()))
     }
     bldr.toString
   }

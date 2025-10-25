@@ -273,7 +273,7 @@ object IterableFactory {
   implicit def toFactory[A, CC[_]](factory: IterableFactory[CC]): Factory[A, CC[A]] = new ToFactory[A, CC](factory)
 
   @SerialVersionUID(3L)
-  private[this] class ToFactory[A, CC[_]](factory: IterableFactory[CC]) extends Factory[A, CC[A]] with Serializable {
+  private class ToFactory[A, CC[_]](factory: IterableFactory[CC]) extends Factory[A, CC[A]] with Serializable {
     def fromSpecific(it: IterableOnce[A]^): CC[A]^{it} = factory.from[A](it)
     def newBuilder: Builder[A, CC[A]] = factory.newBuilder[A]
   }
@@ -286,7 +286,7 @@ object IterableFactory {
 
   @SerialVersionUID(3L)
   class Delegate[CC[_]](delegate: IterableFactory[CC]) extends IterableFactory[CC] {
-    override def apply[A](elems: A*): CC[A] = delegate.apply(elems: _*)
+    override def apply[A](elems: A*): CC[A] = delegate.apply(elems*)
     def empty[A]: CC[A] = delegate.empty
     def from[E](it: IterableOnce[E]^): CC[E]^{it} = delegate.from(it)
     def newBuilder[A]: Builder[A, CC[A]] = delegate.newBuilder[A]
@@ -304,7 +304,7 @@ trait SeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure] extends IterableF
 object SeqFactory {
   @SerialVersionUID(3L)
   class Delegate[CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure](delegate: SeqFactory[CC]) extends SeqFactory[CC] {
-    override def apply[A](elems: A*): CC[A] = delegate.apply(elems: _*)
+    override def apply[A](elems: A*): CC[A] = delegate.apply(elems*)
     def empty[A]: CC[A] = delegate.empty
     def from[E](it: IterableOnce[E]^): CC[E] = delegate.from(it)
     def newBuilder[A]: Builder[A, CC[A]] = delegate.newBuilder[A]
@@ -426,7 +426,7 @@ object MapFactory {
   implicit def toFactory[K, V, CC[_, _]](factory: MapFactory[CC]): Factory[(K, V), CC[K, V]] = new ToFactory[K, V, CC](factory)
 
   @SerialVersionUID(3L)
-  private[this] class ToFactory[K, V, CC[_, _]](factory: MapFactory[CC]) extends Factory[(K, V), CC[K, V]] with Serializable {
+  private class ToFactory[K, V, CC[_, _]](factory: MapFactory[CC]) extends Factory[(K, V), CC[K, V]] with Serializable {
     def fromSpecific(it: IterableOnce[(K, V)]^): CC[K, V]^{it} = factory.from[K, V](it)
     def newBuilder: Builder[(K, V), CC[K, V]] = factory.newBuilder[K, V]
   }
@@ -439,7 +439,7 @@ object MapFactory {
 
   @SerialVersionUID(3L)
   class Delegate[C[_, _] <: caps.Pure](delegate: MapFactory[C]) extends MapFactory[C] {
-    override def apply[K, V](elems: (K, V)*): C[K, V] = delegate.apply(elems: _*)
+    override def apply[K, V](elems: (K, V)*): C[K, V] = delegate.apply(elems*)
     def from[K, V](it: IterableOnce[(K, V)]^): C[K, V] = delegate.from(it)
     def empty[K, V]: C[K, V] = delegate.empty
     def newBuilder[K, V]: Builder[(K, V), C[K, V]] = delegate.newBuilder
@@ -519,7 +519,7 @@ object EvidenceIterableFactory {
   implicit def toFactory[Ev[_], A: Ev, CC[_]](factory: EvidenceIterableFactory[CC, Ev]): Factory[A, CC[A]] = new ToFactory[Ev, A, CC](factory)
 
   @SerialVersionUID(3L)
-  private[this] class ToFactory[Ev[_], A: Ev, CC[_]](factory: EvidenceIterableFactory[CC, Ev]) extends Factory[A, CC[A]] with Serializable {
+  private class ToFactory[Ev[_], A: Ev, CC[_]](factory: EvidenceIterableFactory[CC, Ev]) extends Factory[A, CC[A]] with Serializable {
     def fromSpecific(it: IterableOnce[A]^) = factory.from[A](it)
     def newBuilder: Builder[A, CC[A]] = factory.newBuilder[A]
   }
@@ -532,7 +532,7 @@ object EvidenceIterableFactory {
 
   @SerialVersionUID(3L)
   class Delegate[CC[_], Ev[_]](delegate: EvidenceIterableFactory[CC, Ev]) extends EvidenceIterableFactory[CC, Ev] {
-    override def apply[A: Ev](xs: A*): CC[A] = delegate.apply(xs: _*)
+    override def apply[A: Ev](xs: A*): CC[A] = delegate.apply(xs*)
     def empty[A : Ev]: CC[A] = delegate.empty
     def from[E : Ev](it: IterableOnce[E]^): CC[E] = delegate.from(it)
     def newBuilder[A : Ev]: Builder[A, CC[A]] = delegate.newBuilder[A]
@@ -555,7 +555,7 @@ object SortedIterableFactory {
   */
 trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassTag] {
 
-  @`inline` private[this] implicit def ccClassTag[X]: ClassTag[CC[X]] =
+  @`inline` private implicit def ccClassTag[X]: ClassTag[CC[X]] =
     ClassTag.AnyRef.asInstanceOf[ClassTag[CC[X]]] // Good enough for boxed vs primitive arrays
 
   /** Produces a $coll containing a sequence of increasing of integers.
@@ -673,7 +673,7 @@ object ClassTagIterableFactory {
     def empty[A]: CC[A] = delegate.empty(using ClassTag.Any).asInstanceOf[CC[A]]
     def from[A](it: IterableOnce[A]^): CC[A] = delegate.from[Any](it)(using ClassTag.Any).asInstanceOf[CC[A]]
     def newBuilder[A]: Builder[A, CC[A]] = delegate.newBuilder(using ClassTag.Any).asInstanceOf[Builder[A, CC[A]]]
-    override def apply[A](elems: A*): CC[A] = delegate.apply[Any](elems: _*)(using ClassTag.Any).asInstanceOf[CC[A]]
+    override def apply[A](elems: A*): CC[A] = delegate.apply[Any](elems*)(using ClassTag.Any).asInstanceOf[CC[A]]
     override def iterate[A](start: A, len: Int)(f: A => A): CC[A] = delegate.iterate[A](start, len)(f)(using ClassTag.Any.asInstanceOf[ClassTag[A]])
     override def unfold[A, S](init: S)(f: S => Option[(A, S)]): CC[A] = delegate.unfold[A, S](init)(f)(using ClassTag.Any.asInstanceOf[ClassTag[A]])
     override def range[A](start: A, end: A)(implicit i: Integral[A]): CC[A] = delegate.range[A](start, end)(using i, ClassTag.Any.asInstanceOf[ClassTag[A]])
@@ -766,7 +766,7 @@ object SortedMapFactory {
   implicit def toFactory[K : Ordering, V, CC[_, _]](factory: SortedMapFactory[CC]): Factory[(K, V), CC[K, V]] = new ToFactory[K, V, CC](factory)
 
   @SerialVersionUID(3L)
-  private[this] class ToFactory[K : Ordering, V, CC[_, _]](factory: SortedMapFactory[CC]) extends Factory[(K, V), CC[K, V]] with Serializable {
+  private class ToFactory[K : Ordering, V, CC[_, _]](factory: SortedMapFactory[CC]) extends Factory[(K, V), CC[K, V]] with Serializable {
     def fromSpecific(it: IterableOnce[(K, V)]^): CC[K, V] = factory.from[K, V](it)
     def newBuilder: Builder[(K, V), CC[K, V]] = factory.newBuilder[K, V]
   }
@@ -779,7 +779,7 @@ object SortedMapFactory {
 
   @SerialVersionUID(3L)
   class Delegate[CC[_, _]](delegate: SortedMapFactory[CC]) extends SortedMapFactory[CC] {
-    override def apply[K: Ordering, V](elems: (K, V)*): CC[K, V] = delegate.apply(elems: _*)
+    override def apply[K: Ordering, V](elems: (K, V)*): CC[K, V] = delegate.apply(elems*)
     def from[K : Ordering, V](it: IterableOnce[(K, V)]^): CC[K, V] = delegate.from(it)
     def empty[K : Ordering, V]: CC[K, V] = delegate.empty
     def newBuilder[K : Ordering, V]: Builder[(K, V), CC[K, V]] = delegate.newBuilder

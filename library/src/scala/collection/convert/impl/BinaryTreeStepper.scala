@@ -46,7 +46,7 @@ private[collection] object BinaryTreeStepper {
   * Subclasses should allow this class to do all the work of maintaining state; `next` should simply
   * reduce `maxLength` by one, and consume `myCurrent` and set it to `null` if `hasNext` is true.
   */
-private[collection] abstract class BinaryTreeStepperBase[A, T <: AnyRef, Sub, Semi <: Sub with BinaryTreeStepperBase[A, T, _, _]](
+private[collection] abstract class BinaryTreeStepperBase[A, T <: AnyRef, Sub, Semi <: Sub & BinaryTreeStepperBase[A, T, ?, ?]](
   protected var maxLength: Int, protected var myCurrent: T | Null, protected var stack: Array[AnyRef | Null], protected var index: Int,
   protected val left: T => T | Null, protected val right: T => T | Null
 )

@@ -104,7 +104,7 @@ private[process] trait ProcessBuilderImpl {
     protected def toSource: AbstractBuilder = this
     protected def toSink: AbstractBuilder = this
 
-    private[this] val defaultStreamCapacity = 4096
+    private val defaultStreamCapacity = 4096
 
     def #|(other: ProcessBuilder): ProcessBuilder  = {
       require(other.canPipeTo, "Piping to multiple processes is not supported.")
@@ -157,7 +157,7 @@ private[process] trait ProcessBuilderImpl {
      */
     def daemonized(): ProcessBuilder = new DaemonBuilder(this)
 
-    private[this] def slurp(log: Option[ProcessLogger], withIn: Boolean): String = {
+    private def slurp(log: Option[ProcessLogger], withIn: Boolean): String = {
       val buffer = new StringBuffer
       val code   = this ! BasicIO(withIn, buffer, log)
 
@@ -165,7 +165,7 @@ private[process] trait ProcessBuilderImpl {
       else scala.sys.error("Nonzero exit value: " + code)
     }
 
-    private[this] def lazyLines(
+    private def lazyLines(
       withInput: Boolean,
       nonZeroException: Boolean,
       log: Option[ProcessLogger],
@@ -189,7 +189,7 @@ private[process] trait ProcessBuilderImpl {
     }
 
     @deprecated("internal", since = "2.13.4")
-    private[this] def lineStream(
+    private def lineStream(
       withInput: Boolean,
       nonZeroException: Boolean,
       log: Option[ProcessLogger],
@@ -202,7 +202,7 @@ private[process] trait ProcessBuilderImpl {
       streamed.stream()
     }
 
-    private[this] def runBuffered(log: ProcessLogger, connectInput: Boolean) =
+    private def runBuffered(log: ProcessLogger, connectInput: Boolean) =
       log buffer run(log, connectInput).exitValue()
 
     def canPipeTo = false
@@ -223,13 +223,13 @@ private[process] trait ProcessBuilderImpl {
   }
 
   private[process] abstract class BasicBuilder extends AbstractBuilder {
-    protected[this] def checkNotThis(a: ProcessBuilder) = require(a != this, "Compound process '" + a + "' cannot contain itself.")
+    protected def checkNotThis(a: ProcessBuilder) = require(a != this, "Compound process '" + a + "' cannot contain itself.")
     final def run(io: ProcessIO): Process = {
       val p = createProcess(io)
       p.start()
       p
     }
-    protected[this] def createProcess(io: ProcessIO): BasicProcess
+    protected def createProcess(io: ProcessIO): BasicProcess
   }
 
   private[process] abstract class SequentialBuilder(

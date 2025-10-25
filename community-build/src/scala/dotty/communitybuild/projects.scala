@@ -75,7 +75,6 @@ final case class MillCommunityProject(
     // uncomment once mill is released
     // if ignoreDocs then null else s"$baseCommand.docJar"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-  override val environment = Map("MILL_VERSION" -> "0.10.5")
 
 final case class SbtCommunityProject(
     project: String,

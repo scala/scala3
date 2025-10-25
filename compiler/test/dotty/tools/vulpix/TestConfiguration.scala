@@ -25,6 +25,10 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
+  val silenceOptions = Array(
+    "-Wconf:id=E222:s", // name=EncodedPackageName don't warn about file names with hyphens
+  )
+
   val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
   val withCompilerClasspath = mkClasspath(List(
@@ -59,7 +63,7 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions) `and` "-Yno-stdlib-patches"
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)

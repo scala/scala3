@@ -397,6 +397,8 @@ private sealed trait YSettings:
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting(ForkSetting, "YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
   val YnoStdlibPatches: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-stdlib-patches", "Do not patch stdlib files (temporary and only to be used for the stdlib migration)", false)
 
+  val Yreporter: Setting[String] = StringSetting(ForkSetting, name = "Yreporter", helpArg = "<class>", descr = "Specify a dotty.tools.dotc.reporting.Reporter", default = "dotty.tools.dotc.reporting.ConsoleReporter")
+
   val Yscala2Unpickler: Setting[String] = StringSetting(ForkSetting, "Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")

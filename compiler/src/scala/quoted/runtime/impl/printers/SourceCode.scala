@@ -1,7 +1,12 @@
 package scala.quoted
 package runtime.impl.printers
 
+import dotty.tools.dotc.util.Chars
+
 import scala.annotation.switch
+import scala.collection.mutable
+
+import java.lang.StringBuilder
 
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
@@ -97,7 +102,7 @@ object SourceCode {
       this += lineBreak() += "}"
     }
 
-    def result(): String = sb.result()
+    def result(): String = sb.toString
 
     private def lineBreak(): String = "\n" + ("  " * indent)
     private def doubleLineBreak(): String = "\n\n" + ("  " * indent)
@@ -438,7 +443,7 @@ object SourceCode {
           case _ =>
             inParens {
               printTree(term)
-              this += (if (dotty.tools.dotc.util.Chars.isOperatorPart(sb.last)) " : " else ": ")
+              this += (if Chars.isOperatorPart(sb.charAt(sb.length - 1)) then " : " else ": ")
               def printTypeOrAnnots(tpe: TypeRepr): Unit = tpe match {
                 case AnnotatedType(tp, annot) if tp == term.tpe =>
                   printAnnotation(annot)
@@ -957,9 +962,6 @@ object SourceCode {
 
     }
 
-    inline private val qc  = '\''
-    inline private val qSc = '"'
-
     def printConstant(const: Constant): this.type = const match {
       case UnitConstant() => this += highlightLiteral("()")
       case NullConstant() => this += highlightLiteral("null")
@@ -970,8 +972,8 @@ object SourceCode {
       case LongConstant(v) => this += highlightLiteral(v.toString + "L")
       case FloatConstant(v) => this += highlightLiteral(v.toString + "f")
       case DoubleConstant(v) => this += highlightLiteral(v.toString)
-      case CharConstant(v) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
-      case StringConstant(v) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
+      case CharConstant(v) => this += highlightString(Chars.escapedChar(v))
+      case StringConstant(v) => this += highlightString(Chars.escapedString(v, quoted = true))
       case ClassOfConstant(v) =>
         this += "classOf"
         inSquare(printType(v))
@@ -1445,22 +1447,8 @@ object SourceCode {
     private def +=(x: Char): this.type = { sb.append(x); this }
     private def +=(x: String): this.type = { sb.append(x); this }
 
-    private def escapedChar(ch: Char): String = (ch: @switch) match {
-      case '\b' => "\\b"
-      case '\t' => "\\t"
-      case '\n' => "\\n"
-      case '\f' => "\\f"
-      case '\r' => "\\r"
-      case '"' => "\\\""
-      case '\'' => "\\\'"
-      case '\\' => "\\\\"
-      case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
-    }
-
-    private def escapedString(str: String): String = str flatMap escapedChar
-
-    private val names = collection.mutable.Map.empty[Symbol, String]
-    private val namesIndex = collection.mutable.Map.empty[String, Int]
+    private val names = mutable.Map.empty[Symbol, String]
+    private val namesIndex = mutable.Map.empty[String, Int]
 
     private def splicedName(sym: Symbol): Option[String] = {
       if sym.owner.isClassDef then None

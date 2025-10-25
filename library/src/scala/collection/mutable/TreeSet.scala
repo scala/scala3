@@ -47,7 +47,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     * @param ord the implicit ordering used to compare objects of type `A`.
     * @return an empty `TreeSet`.
     */
-  def this()(implicit ord: Ordering[A]) = this(RB.Tree.empty)(ord)
+  def this()(implicit ord: Ordering[A]) = this(RB.Tree.empty)(using ord)
 
   override def sortedIterableFactory: SortedIterableFactory[TreeSet] = TreeSet
 
@@ -55,7 +55,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
 
   def iteratorFrom(start: A): collection.Iterator[A] = RB.keysIterator(tree, Some(start))
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[A, Null]
     val s = shape.shape match {
@@ -64,7 +64,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.root, _.left, _.right, _.key.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree.root, _.left, _.right, _.key))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   def addOne(elem: A): this.type = {
@@ -85,7 +85,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
 
   def rangeImpl(from: Option[A], until: Option[A]): TreeSet[A] = new TreeSetProjection(from, until)
 
-  override protected[this] def className: String = "TreeSet"
+  override protected def className: String = "TreeSet"
 
   override def size: Int = RB.size(tree)
   override def knownSize: Int = size
@@ -115,13 +115,13 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     * @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
     *              bound.
     */
-  private[this] final class TreeSetProjection(from: Option[A], until: Option[A]) extends TreeSet[A](tree) {
+  private final class TreeSetProjection(from: Option[A], until: Option[A]) extends TreeSet[A](tree) {
     self: TreeSetProjection^{} =>
 
     /**
       * Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
       */
-    private[this] def pickLowerBound(newFrom: Option[A]): Option[A] = (from, newFrom) match {
+    private def pickLowerBound(newFrom: Option[A]): Option[A] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
       case (None, _) => newFrom
       case _ => from
@@ -130,7 +130,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     /**
       * Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
       */
-    private[this] def pickUpperBound(newUntil: Option[A]): Option[A] = (until, newUntil) match {
+    private def pickUpperBound(newUntil: Option[A]): Option[A] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
       case (None, _) => newUntil
       case _ => until
@@ -139,7 +139,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     /**
       * Returns true if the argument is inside the view bounds (between `from` and `until`).
       */
-    private[this] def isInsideViewBounds(key: A): Boolean = {
+    private def isInsideViewBounds(key: A): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0
       val beforeUntil = until.isEmpty || ordering.compare(key, until.get) < 0
       afterFrom && beforeUntil
@@ -213,7 +213,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
     }
 
   def newBuilder[A](implicit ordering: Ordering[A]): Builder[A, TreeSet[A]] = new ReusableBuilder[A, TreeSet[A]] {
-    private[this] var tree: RB.Tree[A, Null] = RB.Tree.empty
+    private var tree: RB.Tree[A, Null] = RB.Tree.empty
     def addOne(elem: A): this.type = { RB.insert(tree, elem, null); this }
     def result(): TreeSet[A] = new TreeSet[A](tree)
     def clear(): Unit = { tree = RB.Tree.empty }

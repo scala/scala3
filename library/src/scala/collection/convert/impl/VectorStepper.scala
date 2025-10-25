@@ -24,9 +24,9 @@ private[convert] abstract class VectorStepperBase[Sub, Semi <: Sub](
 )
 extends IndexedStepperBase[Sub, Semi](_i0, _iN) {
   protected var index: Int = 32  // Force an advanceData on the first element
-  protected var leaves: Array[AnyRef] = _
+  protected var leaves: Array[AnyRef] = compiletime.uninitialized
   protected var index1: Int = 32 // Force advanceData to defer to initTo on the first element
-  protected var twigs: Array[AnyRef] = _
+  protected var twigs: Array[AnyRef] = compiletime.uninitialized
 
   protected final def advanceData(iX: Int): Unit = {
     index1 += 1

@@ -72,7 +72,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     * a [[java.util.Spliterator.OfInt]] (which is a `Spliterator[Integer]`) in the subclass [[IntStepper]]
     * (which is a `Stepper[Int]`).
     */
-  def spliterator[B >: A]: Spliterator[_]^{this}
+  def spliterator[B >: A]: Spliterator[?]^{this}
 
   /** Returns a Java [[java.util.Iterator]] corresponding to this Stepper.
     *
@@ -80,7 +80,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     * a [[java.util.PrimitiveIterator.OfInt]] (which is a `Iterator[Integer]`) in the subclass
     * [[IntStepper]] (which is a `Stepper[Int]`).
     */
-  def javaIterator[B >: A]: JIterator[_]^{this}
+  def javaIterator[B >: A]: JIterator[?]^{this}
 
   /** Returns an [[Iterator]] corresponding to this Stepper. Note that Iterators corresponding to
     * primitive Steppers box the elements.
@@ -198,7 +198,7 @@ trait AnyStepper[+A] extends Stepper[A] {
 
 object AnyStepper {
   class AnyStepperSpliterator[A](s: AnyStepper[A]^) extends Spliterator[A] {
-    def tryAdvance(c: Consumer[_ >: A]): Boolean =
+    def tryAdvance(c: Consumer[? >: A]): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     def trySplit(): Spliterator[A]^{this} | Null = {
       val sp = s.trySplit()
@@ -207,18 +207,18 @@ object AnyStepper {
     def estimateSize(): Long = s.estimateSize
     def characteristics(): Int = s.characteristics
     // Override for efficiency: implement with hasStep / nextStep instead of tryAdvance
-    override def forEachRemaining(c: Consumer[_ >: A]): Unit =
+    override def forEachRemaining(c: Consumer[? >: A]): Unit =
       while (s.hasStep) { c.accept(s.nextStep()) }
   }
 
   def ofSeqDoubleStepper(st: DoubleStepper): AnyStepper[Double] = new BoxedDoubleStepper(st)
-  def ofParDoubleStepper(st: DoubleStepper with EfficientSplit): AnyStepper[Double] with EfficientSplit = new BoxedDoubleStepper(st) with EfficientSplit
+  def ofParDoubleStepper(st: DoubleStepper & EfficientSplit): AnyStepper[Double] & EfficientSplit = new BoxedDoubleStepper(st) with EfficientSplit
 
   def ofSeqIntStepper(st: IntStepper): AnyStepper[Int] = new BoxedIntStepper(st)
-  def ofParIntStepper(st: IntStepper with EfficientSplit): AnyStepper[Int] with EfficientSplit = new BoxedIntStepper(st) with EfficientSplit
+  def ofParIntStepper(st: IntStepper & EfficientSplit): AnyStepper[Int] & EfficientSplit = new BoxedIntStepper(st) with EfficientSplit
 
   def ofSeqLongStepper(st: LongStepper): AnyStepper[Long] = new BoxedLongStepper(st)
-  def ofParLongStepper(st: LongStepper with EfficientSplit): AnyStepper[Long] with EfficientSplit = new BoxedLongStepper(st) with EfficientSplit
+  def ofParLongStepper(st: LongStepper & EfficientSplit): AnyStepper[Long] & EfficientSplit = new BoxedLongStepper(st) with EfficientSplit
 
   private[collection] class BoxedDoubleStepper(st: DoubleStepper) extends AnyStepper[Double] {
     def hasStep: Boolean = st.hasStep
@@ -270,7 +270,7 @@ object IntStepper {
     def tryAdvance(c: IntConsumer): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     // Override for efficiency: don't wrap the function and call the `tryAdvance` overload
-    override def tryAdvance(c: Consumer[_ >: jl.Integer]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Integer]): Boolean = (c: AnyRef) match {
       case ic: IntConsumer => tryAdvance(ic)
       case _ => if (s.hasStep) { c.accept(jl.Integer.valueOf(s.nextStep())); true } else false
     }
@@ -285,7 +285,7 @@ object IntStepper {
     override def forEachRemaining(c: IntConsumer): Unit =
       while (s.hasStep) { c.accept(s.nextStep()) }
     // Override for efficiency: implement with hasStep / nextStep instead of tryAdvance
-    override def forEachRemaining(c: Consumer[_ >: jl.Integer]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Integer]): Unit = (c: AnyRef) match {
       case ic: IntConsumer => forEachRemaining(ic)
       case _ => while (s.hasStep) { c.accept(jl.Integer.valueOf(s.nextStep())) }
     }
@@ -309,7 +309,7 @@ object DoubleStepper {
     def tryAdvance(c: DoubleConsumer): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     // Override for efficiency: don't wrap the function and call the `tryAdvance` overload
-    override def tryAdvance(c: Consumer[_ >: jl.Double]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Double]): Boolean = (c: AnyRef) match {
       case ic: DoubleConsumer => tryAdvance(ic)
       case _ => if (s.hasStep) { c.accept(java.lang.Double.valueOf(s.nextStep())); true } else false
     }
@@ -324,7 +324,7 @@ object DoubleStepper {
     override def forEachRemaining(c: DoubleConsumer): Unit =
       while (s.hasStep) { c.accept(s.nextStep()) }
     // Override for efficiency: implement with hasStep / nextStep instead of tryAdvance
-    override def forEachRemaining(c: Consumer[_ >: jl.Double]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Double]): Unit = (c: AnyRef) match {
       case ic: DoubleConsumer => forEachRemaining(ic)
       case _ => while (s.hasStep) { c.accept(jl.Double.valueOf(s.nextStep())) }
     }
@@ -348,7 +348,7 @@ object LongStepper {
     def tryAdvance(c: LongConsumer): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     // Override for efficiency: don't wrap the function and call the `tryAdvance` overload
-    override def tryAdvance(c: Consumer[_ >: jl.Long]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Long]): Boolean = (c: AnyRef) match {
       case ic: LongConsumer => tryAdvance(ic)
       case _ => if (s.hasStep) { c.accept(java.lang.Long.valueOf(s.nextStep())); true } else false
     }
@@ -363,7 +363,7 @@ object LongStepper {
     override def forEachRemaining(c: LongConsumer): Unit =
       while (s.hasStep) { c.accept(s.nextStep()) }
     // Override for efficiency: implement with hasStep / nextStep instead of tryAdvance
-    override def forEachRemaining(c: Consumer[_ >: jl.Long]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Long]): Unit = (c: AnyRef) match {
       case ic: LongConsumer => forEachRemaining(ic)
       case _ => while (s.hasStep) { c.accept(jl.Long.valueOf(s.nextStep())) }
     }

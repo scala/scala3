@@ -1551,17 +1551,25 @@ class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion
        |are possible expansions of $tree"""
   def explain(using Context) = ""
 
-class ReassignmentToVal(name: Name)(using Context)
+class ReassignmentToVal(name: Name, pt: Type)(using Context)
   extends TypeMsg(ReassignmentToValID) {
-  def msg(using Context) = i"""Reassignment to val $name"""
+
+  def booleanExpected = pt.isRef(defn.BooleanClass)
+  def booleanNote =
+    if booleanExpected then
+      ". Maybe you meant to write an equality test using `==`?"
+    else ""
+  def msg(using Context)
+    = i"""Reassignment to val $name$booleanNote"""
+
   def explain(using Context) =
-    i"""|You can not assign a new value to $name as values can't be changed.
-        |Keep in mind that every statement has a value, so you may e.g. use
-        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
-        |In case you need a reassignable name, you can declare it as
-        |variable
-        |  ${hl("var")} $name ${hl("=")} ...
-        |"""
+    if booleanExpected then
+      i"""An equality test is written "x == y" using `==`. A single `=` stands
+         |for assigment, where a variable on the left gets a new value on the right.
+         |This is only permitted if the variable is declared with `var`."""
+    else
+      i"""You can not assign a new value to $name as values can't be changed.
+         |Reassigment is only permitted if the variable is declared with `var`."""
 }
 
 class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
@@ -3741,3 +3749,15 @@ final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(Recurs
     i"Recursive call used a default argument for parameter $name."
   override protected def explain(using Context): String =
     "It's more explicit to pass current or modified arguments in a recursion."
+
+final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(EncodedPackageNameID):
+  override protected def msg(using Context): String =
+    i"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour."
+  override protected def explain(using Context): String =
+    i"""Tools may not handle directories whose names differ from their corresponding package names.
+       |For example, `p-q` is encoded as `p$$minusq` when written to the file system.
+       |
+       |Package objects derive their names from the file names, so files such as `myfile.test.scala`
+       |or `myfile-test.scala` can produce encoded names for the generated package objects.
+       |
+       |In this case, the name `$name` is encoded as `${name.encode}`."""

@@ -60,7 +60,7 @@ trait BlockContext {
 }
 
 object BlockContext {
-  private[this] object DefaultBlockContext extends BlockContext {
+  private object DefaultBlockContext extends BlockContext {
     override final def blockOn[T](thunk: => T)(implicit permission: CanAwait): T = thunk
   }
 
@@ -70,9 +70,9 @@ object BlockContext {
     **/
   final def defaultBlockContext: BlockContext = DefaultBlockContext
 
-  private[this] final val contextLocal = new ThreadLocal[BlockContext]()
+  private final val contextLocal = new ThreadLocal[BlockContext]()
 
-  private[this] final def prefer(candidate: BlockContext): BlockContext =
+  private final def prefer(candidate: BlockContext): BlockContext =
     if (candidate ne null) candidate
     else {
       val t = Thread.currentThread

@@ -44,7 +44,7 @@ class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   override def iterableFactory: SeqFactory[Queue] = Queue
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Queue"
+  override protected def stringPrefix = "Queue"
 
   /**
     * Add elements to the end of this queue

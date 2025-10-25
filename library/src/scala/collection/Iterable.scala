@@ -58,7 +58,7 @@ trait Iterable[+A] extends IterableOnce[A]
     *           applied to this $coll. By default the string prefix is the
     *           simple name of the collection class $coll.
     */
-  protected[this] def className: String = stringPrefix
+  protected def className: String = stringPrefix
 
   /** Forwarder to `className` for use in `scala.runtime.ScalaRunTime`.
     *
@@ -70,7 +70,7 @@ trait Iterable[+A] extends IterableOnce[A]
   private[scala] final def collectionClassName: String = className
 
   @deprecatedOverriding("Override className instead", "2.13.0")
-  protected[this] def stringPrefix: String = "Iterable"
+  protected def stringPrefix: String = "Iterable"
 
   /** Converts this $coll to a string.
     *
@@ -319,7 +319,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  is `O(this.size min that.size)` instead of `O(this.size + that.size)`.
    *  The method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
    */
-  def sizeCompare(that: Iterable[_]^): Int = {
+  def sizeCompare(that: Iterable[?]^): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this sizeCompare thatKnownSize
@@ -846,7 +846,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
   override def tapEach[U](f: A => U): C^{this, f} = fromSpecific(new View.Map(this, { (a: A) => f(a); a }))
 
   // A helper for tails and inits.
-  private[this] def iterateUntilEmpty(f: Iterable[A]^{this} => Iterable[A]^{this}): Iterator[C^{this}]^{this, f} = {
+  private def iterateUntilEmpty(f: Iterable[A]^{this} => Iterable[A]^{this}): Iterator[C^{this}]^{this, f} = {
     // toIterable ties the knot between `this: IterableOnceOps[A, CC, C]` and `this.tail: C`
     // `this.tail.tail` doesn't compile as `C` is unbounded
     // `Iterable.from(this)` would eagerly copy non-immutable collections
@@ -868,7 +868,7 @@ object IterableOps {
     * These operations are implemented in terms of
     * [[scala.collection.IterableOps!.sizeCompare(Int):Int* `sizeCompare(Int)`]]
     */
-  final class SizeCompareOps private[collection](val it: IterableOps[_, AnyConstr, _]) extends AnyVal {
+  final class SizeCompareOps private[collection](val it: IterableOps[?, AnyConstr, ?]) extends AnyVal {
     // CC Problem: if we add the logically needed `^`s to the `it` parameter and the
     // self type, separation checking fails in the compiler-generated equals$extends
     // method of the value class. There seems to be something wrong how pattern
@@ -900,7 +900,7 @@ object IterableOps {
     */
   @SerialVersionUID(3L)
   class WithFilter[+A, +CC[_]](
-    self: IterableOps[A, CC, _]^,
+    self: IterableOps[A, CC, ?]^,
     p: A => Boolean
   ) extends collection.WithFilter[A, CC] with Serializable {
 
@@ -989,8 +989,8 @@ trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], E
   * same as `C`.
   */
 trait SortedSetFactoryDefaults[+A,
-    +CC[X] <: SortedSet[X] with SortedSetOps[X, CC, CC[X]],
-    +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Set[x]] extends SortedSetOps[A @uncheckedVariance, CC, CC[A @uncheckedVariance]] {
+    +CC[X] <: SortedSet[X] & SortedSetOps[X, CC, CC[X]],
+    +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] & Set[x]] extends SortedSetOps[A @uncheckedVariance, CC, CC[A @uncheckedVariance]] {
   self: IterableOps[A, WithFilterCC, CC[A @uncheckedVariance]] =>
 
   override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]    = sortedIterableFactory.from(coll)(using ordering)
@@ -1016,7 +1016,7 @@ trait SortedSetFactoryDefaults[+A,
   */
 trait MapFactoryDefaults[K, +V,
     +CC[x, y] <: IterableOps[(x, y), Iterable, Iterable[(x, y)]],
-    +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Iterable[x]] extends MapOps[K, V, CC, CC[K, V @uncheckedVariance]] with IterableOps[(K, V), WithFilterCC, CC[K, V @uncheckedVariance]] {
+    +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] & Iterable[x]] extends MapOps[K, V, CC, CC[K, V @uncheckedVariance]] with IterableOps[(K, V), WithFilterCC, CC[K, V @uncheckedVariance]] {
   this: MapFactoryDefaults[K, V, CC, WithFilterCC] =>
   override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance]^{coll} = mapFactory.from(coll)
   override protected def newSpecificBuilder: mutable.Builder[(K, V @uncheckedVariance), CC[K, V @uncheckedVariance]] = mapFactory.newBuilder[K, V]
@@ -1043,8 +1043,8 @@ trait MapFactoryDefaults[K, +V,
   * same as `C`.
   */
 trait SortedMapFactoryDefaults[K, +V,
-    +CC[x, y] <:  Map[x, y] with SortedMapOps[x, y, CC, CC[x, y]] with UnsortedCC[x, y],
-    +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Iterable[x],
+    +CC[x, y] <:  Map[x, y] & SortedMapOps[x, y, CC, CC[x, y]] & UnsortedCC[x, y],
+    +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] & Iterable[x],
     +UnsortedCC[x, y] <: Map[x, y]] extends SortedMapOps[K, V, CC, CC[K, V @uncheckedVariance]] with MapOps[K, V, UnsortedCC, CC[K, V @uncheckedVariance]] with caps.Pure {
   self: IterableOps[(K, V), WithFilterCC, CC[K, V @uncheckedVariance]] =>
 

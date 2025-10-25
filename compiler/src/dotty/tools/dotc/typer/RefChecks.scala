@@ -21,7 +21,8 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
-import cc.{stripCapturing, isUpdateMethod, CCState}
+import cc.{stripCapturing, CCState}
+import cc.Mutability.isUpdateMethod
 
 object RefChecks {
   import tpd.*

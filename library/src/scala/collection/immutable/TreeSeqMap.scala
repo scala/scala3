@@ -59,7 +59,7 @@ final class TreeSeqMap[K, +V] private (
 
   import TreeSeqMap._
 
-  override protected[this] def className: String = "TreeSeqMap"
+  override protected def className: String = "TreeSeqMap"
 
   override def mapFactory: MapFactory[TreeSeqMap] = TreeSeqMap
 
@@ -139,7 +139,7 @@ final class TreeSeqMap[K, +V] private (
   def get(key: K): Option[V] = mapping.get(key).map(value)
 
   def iterator: Iterator[(K, V)] = new AbstractIterator[(K, V)] {
-    private[this] val iter = ordering.iterator
+    private val iter = ordering.iterator
 
     override def hasNext: Boolean = iter.hasNext
 
@@ -147,7 +147,7 @@ final class TreeSeqMap[K, +V] private (
   }
 
   override def keysIterator: Iterator[K] = new AbstractIterator[K] {
-    private[this] val iter = ordering.iterator
+    private val iter = ordering.iterator
 
     override def hasNext: Boolean = iter.hasNext
 
@@ -155,7 +155,7 @@ final class TreeSeqMap[K, +V] private (
   }
 
   override def valuesIterator: Iterator[V] = new AbstractIterator[V] {
-    private[this] val iter = ordering.iterator
+    private val iter = ordering.iterator
 
     override def hasNext: Boolean = iter.hasNext
 
@@ -286,8 +286,8 @@ final class TreeSeqMap[K, +V] private (
     new TreeSeqMap[K, V2](ong, mng, ord, orderedBy)
   }
 
-  @`inline` private[this] def value(p: (_, V)) = p._2
-  @`inline` private[this] def binding(k: K) = mapping(k).copy(_1 = k)
+  @`inline` private def value(p: (?, V)) = p._2
+  @`inline` private def binding(k: K) = mapping(k).copy(_1 = k)
 }
 object TreeSeqMap extends MapFactory[TreeSeqMap] {
   sealed trait OrderBy
@@ -317,11 +317,11 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
   def newBuilder[K, V](orderedBy: OrderBy): mutable.Builder[(K, V), TreeSeqMap[K, V]] = new Builder[K, V](orderedBy)
 
   final class Builder[K, V](orderedBy: OrderBy) extends mutable.Builder[(K, V), TreeSeqMap[K, V]] {
-    private[this] val bdr = new MapBuilderImpl[K, (Int, V)]
-    private[this] var ong = Ordering.empty[K]
-    private[this] var ord = 0
+    private val bdr = new MapBuilderImpl[K, (Int, V)]
+    private var ong = Ordering.empty[K]
+    private var ord = 0
     @annotation.stableNull
-    private[this] var aliased: TreeSeqMap[K, V] | Null = null
+    private var aliased: TreeSeqMap[K, V] | Null = null
 
     override def addOne(elem: (K, V)): this.type = addOne(elem._1, elem._2)
     def addOne(key: K, value: V): this.type = {
@@ -381,15 +381,15 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       // because we know that Ints are at least 32 bits we can have at most 32 Bins and
       // one Tip sitting on the tree at any point. Therefore we know the maximum stack
       // depth is 33
-      private[this] var index = 0
-      private[this] val buffer = new Array[AnyRef](33)
+      private var index = 0
+      private val buffer = new Array[AnyRef](33)
 
-      private[this] def pop = {
+      private def pop = {
         index -= 1
         buffer(index).asInstanceOf[Ordering[V]]
       }
 
-      private[this] def push[V2 >: V](x: Ordering[V2]): Unit = {
+      private def push[V2 >: V](x: Ordering[V2]): Unit = {
         buffer(index) = x.asInstanceOf[AnyRef]
         index += 1
       }

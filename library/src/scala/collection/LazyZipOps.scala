@@ -38,8 +38,8 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
   def map[B, C](f: (El1, El2) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
         def hasNext = elems1.hasNext && elems2.hasNext
         def next() = f(elems1.next(), elems2.next())
       }
@@ -51,9 +51,9 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
   def flatMap[B, C](f: (El1, El2) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] var _current: Iterator[B]^{this, f} = Iterator.empty
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private var _current: Iterator[B]^{this, f} = Iterator.empty
         private def current = {
           while (!_current.hasNext && elems1.hasNext && elems2.hasNext)
             _current = f(elems1.next(), elems2.next()).iterator
@@ -70,9 +70,9 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
   def filter[C](p: (El1, El2) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2)] {
       def iterator: AbstractIterator[(El1, El2)]^{this, p} = new AbstractIterator[(El1, El2)] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] var _current: (El1, El2) | Null = _
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private var _current: (El1, El2) | Null = compiletime.uninitialized
         private def current = {
           while ((_current eq null) && elems1.hasNext && elems2.hasNext) {
             val e1 = elems1.next()
@@ -116,8 +116,8 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
 
   private def toIterable: View[(El1, El2)]^{this} = new AbstractView[(El1, El2)] {
     def iterator: AbstractIterator[(El1, El2)]^{this} = new AbstractIterator[(El1, El2)] {
-      private[this] val elems1 = coll1.iterator
-      private[this] val elems2 = coll2.iterator
+      private val elems1 = coll1.iterator
+      private val elems2 = coll2.iterator
       def hasNext = elems1.hasNext && elems2.hasNext
       def next() = (elems1.next(), elems2.next())
     }
@@ -137,7 +137,7 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
 }
 
 object LazyZip2 {
-  implicit def lazyZip2ToIterable[El1, El2](zipped2: LazyZip2[El1, El2, _]^): View[(El1, El2)]^{zipped2} = zipped2.toIterable
+  implicit def lazyZip2ToIterable[El1, El2](zipped2: LazyZip2[El1, El2, ?]^): View[(El1, El2)]^{zipped2} = zipped2.toIterable
 }
 
 
@@ -166,9 +166,9 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
   def map[B, C](f: (El1, El2, El3) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] val elems3 = coll3.iterator
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private val elems3 = coll3.iterator
         def hasNext = elems1.hasNext && elems2.hasNext && elems3.hasNext
         def next() = f(elems1.next(), elems2.next(), elems3.next())
       }
@@ -180,10 +180,10 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
   def flatMap[B, C](f: (El1, El2, El3) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] val elems3 = coll3.iterator
-        private[this] var _current: Iterator[B]^{this, f} = Iterator.empty
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private val elems3 = coll3.iterator
+        private var _current: Iterator[B]^{this, f} = Iterator.empty
         private def current = {
           while (!_current.hasNext && elems1.hasNext && elems2.hasNext && elems3.hasNext)
             _current = f(elems1.next(), elems2.next(), elems3.next()).iterator
@@ -200,10 +200,10 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
   def filter[C](p: (El1, El2, El3) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2, El3), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2, El3)] {
       def iterator: AbstractIterator[(El1, El2, El3)]^{this, p} = new AbstractIterator[(El1, El2, El3)] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] val elems3 = coll3.iterator
-        private[this] var _current: (El1, El2, El3) | Null = _
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private val elems3 = coll3.iterator
+        private var _current: (El1, El2, El3) | Null = compiletime.uninitialized
         private def current = {
           while ((_current eq null) && elems1.hasNext && elems2.hasNext && elems3.hasNext) {
             val e1 = elems1.next()
@@ -252,9 +252,9 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
 
   private def toIterable: View[(El1, El2, El3)]^{this} = new AbstractView[(El1, El2, El3)] {
     def iterator: AbstractIterator[(El1, El2, El3)]^{this} = new AbstractIterator[(El1, El2, El3)] {
-      private[this] val elems1 = coll1.iterator
-      private[this] val elems2 = coll2.iterator
-      private[this] val elems3 = coll3.iterator
+      private val elems1 = coll1.iterator
+      private val elems2 = coll2.iterator
+      private val elems3 = coll3.iterator
       def hasNext = elems1.hasNext && elems2.hasNext && elems3.hasNext
       def next() = (elems1.next(), elems2.next(), elems3.next())
     }
@@ -277,7 +277,7 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
 }
 
 object LazyZip3 {
-  implicit def lazyZip3ToIterable[El1, El2, El3](zipped3: LazyZip3[El1, El2, El3, _]^): View[(El1, El2, El3)]^{zipped3} = zipped3.toIterable
+  implicit def lazyZip3ToIterable[El1, El2, El3](zipped3: LazyZip3[El1, El2, El3, ?]^): View[(El1, El2, El3)]^{zipped3} = zipped3.toIterable
 }
 
 
@@ -298,10 +298,10 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
   def map[B, C](f: (El1, El2, El3, El4) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] val elems3 = coll3.iterator
-        private[this] val elems4 = coll4.iterator
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private val elems3 = coll3.iterator
+        private val elems4 = coll4.iterator
         def hasNext = elems1.hasNext && elems2.hasNext && elems3.hasNext && elems4.hasNext
         def next() = f(elems1.next(), elems2.next(), elems3.next(), elems4.next())
       }
@@ -313,11 +313,11 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
   def flatMap[B, C](f: (El1, El2, El3, El4) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] val elems3 = coll3.iterator
-        private[this] val elems4 = coll4.iterator
-        private[this] var _current: Iterator[B]^{this, f} = Iterator.empty
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private val elems3 = coll3.iterator
+        private val elems4 = coll4.iterator
+        private var _current: Iterator[B]^{this, f} = Iterator.empty
         private def current = {
           while (!_current.hasNext && elems1.hasNext && elems2.hasNext && elems3.hasNext && elems4.hasNext)
             _current = f(elems1.next(), elems2.next(), elems3.next(), elems4.next()).iterator
@@ -334,11 +334,11 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
   def filter[C](p: (El1, El2, El3, El4) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2, El3, El4), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2, El3, El4)] {
       def iterator: AbstractIterator[(El1, El2, El3, El4)]^{this, p} = new AbstractIterator[(El1, El2, El3, El4)] {
-        private[this] val elems1 = coll1.iterator
-        private[this] val elems2 = coll2.iterator
-        private[this] val elems3 = coll3.iterator
-        private[this] val elems4 = coll4.iterator
-        private[this] var _current: (El1, El2, El3, El4) | Null = _
+        private val elems1 = coll1.iterator
+        private val elems2 = coll2.iterator
+        private val elems3 = coll3.iterator
+        private val elems4 = coll4.iterator
+        private var _current: (El1, El2, El3, El4) | Null = compiletime.uninitialized
         private def current = {
           while ((_current eq null) && elems1.hasNext && elems2.hasNext && elems3.hasNext && elems4.hasNext) {
             val e1 = elems1.next()
@@ -390,10 +390,10 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
 
   private def toIterable: View[(El1, El2, El3, El4)]^{this} = new AbstractView[(El1, El2, El3, El4)] {
     def iterator: AbstractIterator[(El1, El2, El3, El4)]^{this} = new AbstractIterator[(El1, El2, El3, El4)] {
-      private[this] val elems1 = coll1.iterator
-      private[this] val elems2 = coll2.iterator
-      private[this] val elems3 = coll3.iterator
-      private[this] val elems4 = coll4.iterator
+      private val elems1 = coll1.iterator
+      private val elems2 = coll2.iterator
+      private val elems3 = coll3.iterator
+      private val elems4 = coll4.iterator
       def hasNext = elems1.hasNext && elems2.hasNext && elems3.hasNext && elems4.hasNext
       def next() = (elems1.next(), elems2.next(), elems3.next(), elems4.next())
     }
@@ -419,6 +419,6 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
 }
 
 object LazyZip4 {
-  implicit def lazyZip4ToIterable[El1, El2, El3, El4](zipped4: LazyZip4[El1, El2, El3, El4, _]^): View[(El1, El2, El3, El4)]^{zipped4} =
+  implicit def lazyZip4ToIterable[El1, El2, El3, El4](zipped4: LazyZip4[El1, El2, El3, El4, ?]^): View[(El1, El2, El3, El4)]^{zipped4} =
     zipped4.toIterable
 }

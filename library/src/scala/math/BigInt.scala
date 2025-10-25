@@ -26,11 +26,11 @@ object BigInt {
   private val longMinValueBigInteger = BigInteger.valueOf(Long.MinValue)
   private val longMinValue = new BigInt(longMinValueBigInteger, Long.MinValue)
 
-  private[this] val minCached = -1024
-  private[this] val maxCached = 1024
-  private[this] val cache = new Array[BigInt](maxCached - minCached + 1)
+  private val minCached = -1024
+  private val maxCached = 1024
+  private val cache = new Array[BigInt](maxCached - minCached + 1)
 
-  private[this] def getCached(i: Int): BigInt = {
+  private def getCached(i: Int): BigInt = {
     val offset = i - minCached
     var n = cache(offset)
     if (n eq null) {
@@ -236,7 +236,7 @@ final class BigInt private (
     else bigInteger.##
 
   /** Compares this BigInt with the specified value for equality. */
-  @nowarn("cat=other-non-cooperative-equals")
+  // @nowarn("cat=other-non-cooperative-equals") TODO: Implement the category
   override def equals(that: Any): Boolean = that match {
     case that: BigInt     => this equals that
     case that: BigDecimal => that equals this
@@ -284,7 +284,7 @@ final class BigInt private (
    */
   private def bitLengthOverflow = {
     val shifted = bigInteger.shiftRight(Int.MaxValue)
-    (shifted.signum != 0) && !(shifted equals BigInt.minusOne)
+    (shifted.signum != 0) && !(shifted.equals(BigInt.minusOne))
   }
 
   @deprecated("isWhole on an integer type is always true", "2.12.15")
@@ -434,7 +434,7 @@ final class BigInt private (
       if (that.longEncoding) {
         if (that._long == 0) return this.abs
         // if (that._long == Long.MinValue) return this gcd (-that)
-        val red = (this._bigInteger.nn mod BigInteger.valueOf(that._long.abs)).longValue()
+        val red = (this._bigInteger.nn.mod(BigInteger.valueOf(that._long.abs))).longValue()
         if (red == 0) return that.abs
         BigInt(BigInt.longGcd(that._long.abs, red))
       } else BigInt(this.bigInteger.gcd(that.bigInteger))

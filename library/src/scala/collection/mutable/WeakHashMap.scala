@@ -41,7 +41,7 @@ class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
   override def empty = new WeakHashMap[K, V]
   override def mapFactory: MapFactory[WeakHashMap] = WeakHashMap
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "WeakHashMap"
+  override protected def stringPrefix = "WeakHashMap"
 }
 
 /** $factoryInfo

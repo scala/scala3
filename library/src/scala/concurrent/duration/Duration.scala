@@ -46,7 +46,7 @@ object Duration {
   def apply(length: Long, unit: String): FiniteDuration   = new FiniteDuration(length,  Duration.timeUnit(unit))
 
   // Double stores 52 bits mantissa, but there is an implied '1' in front, making the limit 2^53
-  // private[this] final val maxPreciseDouble = 9007199254740992d // not used after https://github.com/scala/scala/pull/9233
+  // private final val maxPreciseDouble = 9007199254740992d // not used after https://github.com/scala/scala/pull/9233
 
   /**
    * Parse String into Duration.  Format is `"<length><unit>"`, where
@@ -75,12 +75,12 @@ object Duration {
   }
 
   // "ms milli millisecond" -> List("ms", "milli", "millis", "millisecond", "milliseconds")
-  private[this] def words(s: String) = (s.trim split "\\s+").toList
-  private[this] def expandLabels(labels: String): List[String] = {
+  private def words(s: String) = s.trim.split("\\s+").toList
+  private def expandLabels(labels: String): List[String] = {
     val hd :: rest = words(labels): @unchecked
     hd :: rest.flatMap(s => List(s, s + "s"))
   }
-  private[this] val timeUnitLabels = List(
+  private val timeUnitLabels = List(
     DAYS         -> "d day",
     HOURS        -> "h hr hour",
     MINUTES      -> "m min minute",
@@ -135,12 +135,12 @@ object Duration {
       fromNanos(nanos.round)
   }
 
-  private[this] final val ns_per_µs  = 1000L
-  private[this] final val ns_per_ms  = ns_per_µs  * 1000
-  private[this] final val ns_per_s   = ns_per_ms  * 1000
-  private[this] final val ns_per_min = ns_per_s   * 60
-  private[this] final val ns_per_h   = ns_per_min * 60
-  private[this] final val ns_per_d   = ns_per_h   * 24
+  private final val ns_per_µs  = 1000L
+  private final val ns_per_ms  = ns_per_µs  * 1000
+  private final val ns_per_s   = ns_per_ms  * 1000
+  private final val ns_per_min = ns_per_s   * 60
+  private final val ns_per_h   = ns_per_min * 60
+  private final val ns_per_d   = ns_per_h   * 24
 
   /**
    * Construct a finite duration from the given number of nanoseconds. The
@@ -217,7 +217,7 @@ object Duration {
 
     final def isFinite = false
 
-    private[this] def fail(what: String) = throw new IllegalArgumentException(s"$what not allowed on infinite Durations")
+    private def fail(what: String) = throw new IllegalArgumentException(s"$what not allowed on infinite Durations")
     final def length: Long    = fail("length")
     final def unit: TimeUnit  = fail("unit")
     final def toNanos: Long   = fail("toNanos")
@@ -571,7 +571,7 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   import FiniteDuration._
   import Duration._
 
-  private[this] def bounded(max: Long) = -max <= length && length <= max
+  private def bounded(max: Long) = -max <= length && length <= max
 
   require(unit match {
       /*
@@ -603,7 +603,7 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
    */
   def fromNow: Deadline = Deadline.now + this
 
-  private[this] def unitString  = timeUnitName(unit) + ( if (length == 1) "" else "s" )
+  private def unitString  = timeUnitName(unit) + ( if (length == 1) "" else "s" )
   override def toString: String     = "" + length + " " + unitString
 
   def compare(other: Duration): Int = other match {
@@ -612,12 +612,12 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   }
 
   // see https://www.securecoding.cert.org/confluence/display/java/NUM00-J.+Detect+or+prevent+integer+overflow
-  private[this] def safeAdd(a: Long, b: Long): Long = {
+  private def safeAdd(a: Long, b: Long): Long = {
     if ((b > 0) && (a > Long.MaxValue - b) ||
         (b < 0) && (a < Long.MinValue - b)) throw new IllegalArgumentException("integer overflow")
     a + b
   }
-  private[this] def add(otherLength: Long, otherUnit: TimeUnit): FiniteDuration = {
+  private def add(otherLength: Long, otherUnit: TimeUnit): FiniteDuration = {
     val commonUnit = if (otherUnit.convert(1, unit) == 0) unit else otherUnit
     val totalLength = safeAdd(commonUnit.convert(length, unit), commonUnit.convert(otherLength, otherUnit))
     new FiniteDuration(totalLength, commonUnit)
@@ -644,7 +644,7 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
     else Zero
 
   // if this is made a constant, then scalac will elide the conditional and always return +0.0, scala/bug#6331
-  private[this] def minusZero = -0d
+  private def minusZero = -0d
   def /(divisor: Duration): Double =
     if (divisor.isFinite) toNanos.toDouble / divisor.toNanos
     else if (divisor eq Undefined) Double.NaN

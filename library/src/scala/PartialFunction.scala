@@ -16,6 +16,8 @@ import scala.language.`2.13`
 import scala.annotation.nowarn
 
 import language.experimental.captureChecking
+import scala.util.boundary
+import scala.util.boundary.break
 
 /** A partial function of type `PartialFunction[A, B]` is a unary function
  *  where the domain does not necessarily include all values of type `A`.
@@ -262,12 +264,12 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
 object PartialFunction {
 
   final class ElementWiseExtractor[-A, +B] private[PartialFunction] (private val pf: PartialFunction[A, B]^) extends AnyVal { this: ElementWiseExtractor[A, B]^ =>
-    @nowarn("cat=lint-nonlocal-return")
     def unapplySeq(seq: Seq[A]): Option[Seq[B]] = {
-      Some(seq.map {
-        case pf(b) => b
-        case _ => return None
-      })
+      boundary:
+        Some(seq.map:
+          case pf(b) => b
+          case _ => boundary.break(None)
+        )
     }
   }
 
@@ -341,7 +343,7 @@ object PartialFunction {
    *
    *  Here `fallback_fn` is used as both unique marker object and special fallback function that returns it.
    */
-  private[this] val fallback_fn: Any -> Any = _ => fallback_fn
+  private val fallback_fn: Any -> Any = _ => fallback_fn
   private def checkFallback[B] = fallback_fn.asInstanceOf[Any => B]
   private def fallbackOccurred[B](x: B) = fallback_fn eq x.asInstanceOf[AnyRef]
 
@@ -376,9 +378,9 @@ object PartialFunction {
    */
   def fromFunction[A, B](f: A => B): PartialFunction[A, B]^{f} = { case x => f(x) }
 
-  private[this] val constFalse: Any -> Boolean = { _ => false}
+  private val constFalse: Any -> Boolean = { _ => false}
 
-  private[this] val empty_pf: PartialFunction[Any, Nothing] = new PartialFunction[Any, Nothing] with Serializable {
+  private val empty_pf: PartialFunction[Any, Nothing] = new PartialFunction[Any, Nothing] with Serializable {
     def isDefinedAt(x: Any) = false
     def apply(x: Any) = throw new MatchError(x)
     override def orElse[A1, B1](that: PartialFunction[A1, B1]^) = that

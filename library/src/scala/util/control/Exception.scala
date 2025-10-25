@@ -181,7 +181,7 @@ object Exception {
 
   trait Described {
     protected val name: String
-    private[this] var _desc: String = ""
+    private var _desc: String = ""
     def desc: String = _desc
     def withDesc(s: String): this.type = {
       _desc = s
@@ -301,8 +301,8 @@ object Exception {
    *  to catch exactly what you specify, use `catchingPromiscuously` instead.
    *  @group composition-catch
    */
-  def catching[T](exceptions: Class[_]*): Catch[T] =
-    new Catch(pfFromExceptions(exceptions : _*)) withDesc (exceptions map (_.getName) mkString ", ")
+  def catching[T](exceptions: Class[?]*): Catch[T] =
+    new Catch(pfFromExceptions(exceptions*)) withDesc (exceptions map (_.getName) mkString ", ")
 
   def catching[T](c: Catcher[T]): Catch[T] = new Catch(c)
 
@@ -311,26 +311,26 @@ object Exception {
    *  catch whatever you ask of it including $protectedExceptions.
    *  @group composition-catch-promiscuously
    */
-  def catchingPromiscuously[T](exceptions: Class[_]*): Catch[T] = catchingPromiscuously(pfFromExceptions(exceptions : _*))
+  def catchingPromiscuously[T](exceptions: Class[?]*): Catch[T] = catchingPromiscuously(pfFromExceptions(exceptions*))
   def catchingPromiscuously[T](c: Catcher[T]): Catch[T]         = new Catch(c, None, _ => false)
 
   /** Creates a `Catch` object which catches and ignores any of the supplied exceptions.
    *  @group composition-catch
    */
-  def ignoring(exceptions: Class[_]*): Catch[Unit] =
-    catching(exceptions: _*) withApply (_ => ())
+  def ignoring(exceptions: Class[?]*): Catch[Unit] =
+    catching(exceptions*) withApply (_ => ())
 
   /** Creates a `Catch` object which maps all the supplied exceptions to `None`.
    *  @group composition-catch
    */
-  def failing[T](exceptions: Class[_]*): Catch[Option[T]] =
-    catching(exceptions: _*) withApply (_ => None)
+  def failing[T](exceptions: Class[?]*): Catch[Option[T]] =
+    catching(exceptions*) withApply (_ => None)
 
   /** Creates a `Catch` object which maps all the supplied exceptions to the given value.
    *  @group composition-catch
    */
-  def failAsValue[T](exceptions: Class[_]*)(value: => T): Catch[T] =
-    catching(exceptions: _*) withApply (_ => value)
+  def failAsValue[T](exceptions: Class[?]*)(value: => T): Catch[T] =
+    catching(exceptions*) withApply (_ => value)
 
   class By[T,R](f: T => R) {
     def by(x: T): R = f(x)
@@ -344,8 +344,8 @@ object Exception {
     * }}}
     *  @group dsl
     */
-  def handling[T](exceptions: Class[_]*): By[Throwable => T, Catch[T]] = {
-    def fun(f: Throwable => T): Catch[T] = catching(exceptions: _*) withApply f
+  def handling[T](exceptions: Class[?]*): By[Throwable => T, Catch[T]] = {
+    def fun(f: Throwable => T): Catch[T] = catching(exceptions*) withApply f
     new By[Throwable => T, Catch[T]](fun)
   }
 
@@ -357,19 +357,19 @@ object Exception {
   /** Creates a `Catch` object which unwraps any of the supplied exceptions.
    *  @group composition-catch
    */
-  def unwrapping[T](exceptions: Class[_]*): Catch[T] = {
+  def unwrapping[T](exceptions: Class[?]*): Catch[T] = {
     @tailrec
     def unwrap(x: Throwable): Throwable =
       if (wouldMatch(x, exceptions) && x.getCause != null) unwrap(x.getCause)
       else x
 
-    catching(exceptions: _*) withApply (x => throw unwrap(x))
+    catching(exceptions*) withApply (x => throw unwrap(x))
   }
 
   /** Private **/
-  private def wouldMatch(x: Throwable, classes: scala.collection.Seq[Class[_]]): Boolean =
-    classes exists (_ isAssignableFrom x.getClass)
+  private def wouldMatch(x: Throwable, classes: scala.collection.Seq[Class[?]]): Boolean =
+    classes exists (_.isAssignableFrom(x.getClass))
 
-  private def pfFromExceptions(exceptions: Class[_]*): PartialFunction[Throwable, Nothing] =
+  private def pfFromExceptions(exceptions: Class[?]*): PartialFunction[Throwable, Nothing] =
     { case x if wouldMatch(x, exceptions) => throw x }
 }

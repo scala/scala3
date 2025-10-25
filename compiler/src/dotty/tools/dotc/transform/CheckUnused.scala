@@ -11,8 +11,8 @@ import Scopes.newScope
 import StdNames.nme
 import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import Types.*
-import reporting.{CodeAction, UnusedSymbol}
-import rewrites.Rewrites
+import reporting.{CodeAction, Diagnostic, UnusedSymbol}
+import rewrites.Rewrites.ActionPatch
 
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer}
@@ -503,7 +503,10 @@ object CheckUnused:
           && !imp.isGeneratedByEnum
           && !ctx.owner.name.isReplWrapperName
         then
-          imps.put(imp, ())
+          if imp.isCompiletimeTesting then
+            isNullified = true
+          else
+            imps.put(imp, ())
       case tree: Bind =>
         if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) then
           if tree.hasAttachment(NoWarn) then
@@ -533,6 +536,9 @@ object CheckUnused:
         asss.addOne(sym)
       else
         refs.addOne(sym)
+
+    // currently compiletime.testing is completely erased, so ignore the unit
+    var isNullified = false
   end RefInfos
 
   // Names are resolved by definitions and imports, which have four precedence levels:
@@ -547,18 +553,17 @@ object CheckUnused:
       inline def weakerThan(q: Precedence): Boolean = p > q
       inline def isNone: Boolean = p == NoPrecedence
 
-  def reportUnused()(using Context): Unit =
+  def reportUnused()(using Context): Unit = if !refInfos.isNullified then
     for (msg, pos, origin) <- warnings do
-      if origin.isEmpty then report.warning(msg, pos)
-      else report.warning(msg, pos, origin)
-      msg.actions.headOption.foreach(Rewrites.applyAction)
+      report.warning(msg, pos, origin)
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
   def warnings(using Context): Array[MessageInfo] =
-    val actionable = ctx.settings.rewrite.value.nonEmpty
+    val actionable: true = true //ctx.settings.rewrite.value.nonEmpty
     val warnings = ArrayBuilder.make[MessageInfo]
-    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
+    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = Diagnostic.OriginWarning.NoOrigin): Unit =
+      warnings.addOne((msg, pos, origin))
     val infos = refInfos
 
     // non-local sym was target of assignment or has a sibling setter that was referenced
@@ -721,7 +726,6 @@ object CheckUnused:
 
     def checkImports() =
       import scala.jdk.CollectionConverters.given
-      import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
@@ -1030,6 +1034,10 @@ object CheckUnused:
     /** Generated import of cases from enum companion. */
     def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
+
+    /** No mechanism for detection yet. */
+    def isCompiletimeTesting: Boolean =
+      imp.expr.symbol == defn.CompiletimeTestingPackage//.moduleClass
 
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent

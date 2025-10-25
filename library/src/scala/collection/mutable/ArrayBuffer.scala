@@ -52,15 +52,15 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   def this(initialSize: Int) = this(new Array[AnyRef](initialSize max 1), 0)
 
-  @transient private[this] var mutationCount: Int = 0
+  @transient private var mutationCount: Int = 0
 
   // needs to be `private[collection]` or `protected[collection]` for parallel-collections
   protected[collection] var array: Array[AnyRef] = initialElements
   protected var size0 = initialSize
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
-    shape.parUnbox(new ObjectArrayStepper(array, 0, length).asInstanceOf[AnyStepper[A] with EfficientSplit])
+    shape.parUnbox(new ObjectArrayStepper(array, 0, length).asInstanceOf[AnyStepper[A] & EfficientSplit])
   }
 
   override def knownSize: Int = super[IndexedSeqOps].knownSize
@@ -234,7 +234,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   @inline def mapResult[NewTo](f: (ArrayBuffer[A]) => NewTo): Builder[A, NewTo]^{f} = new GrowableBuilder[A, ArrayBuffer[A]](this).mapResult(f)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "ArrayBuffer"
+  override protected def stringPrefix = "ArrayBuffer"
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
@@ -293,7 +293,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 @SerialVersionUID(3L)
 object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   final val DefaultInitialSize = 16
-  private[this] val emptyArray = new Array[AnyRef](0)
+  private val emptyArray = new Array[AnyRef](0)
 
   def from[B](coll: collection.IterableOnce[B]^): ArrayBuffer[B] = {
     val k = coll.knownSize
@@ -387,7 +387,7 @@ final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], muta
   @throws[IndexOutOfBoundsException]
   def apply(n: Int): A = underlying(n)
   def length: Int = underlying.length
-  override protected[this] def className = "ArrayBufferView"
+  override protected def className = "ArrayBufferView"
 
   // we could inherit all these from `CheckedIndexedSeqView`, except this class is public
   override def iterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedIterator(this, mutationCount())

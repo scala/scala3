@@ -33,9 +33,9 @@ final class AnyAccumulator[A]
 
   private[jdk] def cumulative(i: Int): Long = cumul(i)
 
-  override protected[this] def className: String = "AnyAccumulator"
+  override protected def className: String = "AnyAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit =
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit =
     shape.parUnbox(new AnyAccumulatorStepper[A](this.asInstanceOf[AnyAccumulator[A]]))
 
   private def expand(): Unit = {
@@ -258,7 +258,7 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   def newBuilder[A]: mutable.Builder[A, AnyAccumulator[A]] = new AnyAccumulator[A]
 
   class SerializationProxy[A](@transient private val acc: AnyAccumulator[A]) extends Serializable {
-    @transient private var result: AnyAccumulator[AnyRef] = _
+    @transient private var result: AnyAccumulator[AnyRef] = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -284,7 +284,7 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   }
 }
 
-private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulator[A]) extends AnyStepper[A] with EfficientSplit {
+private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) extends AnyStepper[A] with EfficientSplit {
   import java.util.Spliterator._
 
   private var h: Int = 0
@@ -353,7 +353,7 @@ private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulato
 
   override def spliterator[B >: A]: Spliterator[B] = new AnyStepper.AnyStepperSpliterator[B](this) {
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: B]): Boolean = {
+    override def tryAdvance(c: Consumer[? >: B]): Boolean = {
       if (N <= 0) false
       else {
         if (i >= n) loadMore()
@@ -365,7 +365,7 @@ private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulato
     }
 
     // Overridden for efficiency
-    override def forEachRemaining(f: java.util.function.Consumer[_ >: B]): Unit = {
+    override def forEachRemaining(f: java.util.function.Consumer[? >: B]): Unit = {
       while (N > 0) {
         if (i >= n) loadMore()
         val i0 = i

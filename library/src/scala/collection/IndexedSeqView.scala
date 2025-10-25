@@ -46,17 +46,17 @@ trait IndexedSeqView[+A] extends IndexedSeqOps[A, View, View[A]] with SeqView[A]
   def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{this, prefix} = new IndexedSeqView.Concat(prefix, this)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "IndexedSeqView"
+  override protected def stringPrefix: String = "IndexedSeqView"
 }
 
 object IndexedSeqView {
 
   @SerialVersionUID(3L)
   private[collection] class IndexedSeqViewIterator[A](self: IndexedSeqView[A]^) extends AbstractIterator[A] with Serializable {
-    private[this] var current = 0
-    private[this] var remainder = self.length
+    private var current = 0
+    private var remainder = self.length
     override def knownSize: Int = remainder
-    @inline private[this] def _hasNext: Boolean = remainder > 0
+    @inline private def _hasNext: Boolean = remainder > 0
     def hasNext: Boolean = _hasNext
     def next(): A =
       if (_hasNext) {
@@ -87,9 +87,9 @@ object IndexedSeqView {
   }
   @SerialVersionUID(3L)
   private[collection] class IndexedSeqViewReverseIterator[A](self: IndexedSeqView[A]^) extends AbstractIterator[A] with Serializable {
-    private[this] var remainder = self.length
-    private[this] var pos = remainder - 1
-    @inline private[this] def _hasNext: Boolean = remainder > 0
+    private var remainder = self.length
+    private var pos = remainder - 1
+    @inline private def _hasNext: Boolean = remainder > 0
     def hasNext: Boolean = _hasNext
     def next(): A =
       if (_hasNext) {
@@ -121,7 +121,7 @@ object IndexedSeqView {
   }
 
   /** An `IndexedSeqOps` whose collection type and collection type constructor are unknown */
-  type SomeIndexedSeqOps[A] = IndexedSeqOps[A, AnyConstr, _]
+  type SomeIndexedSeqOps[A] = IndexedSeqOps[A, AnyConstr, ?]
 
   @SerialVersionUID(3L)
   class Id[+A](underlying: SomeIndexedSeqOps[A]^)
