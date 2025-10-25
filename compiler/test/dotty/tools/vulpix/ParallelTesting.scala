@@ -294,6 +294,7 @@ trait ParallelTesting extends RunnerOrchestration:
     /** Entry point: runs the test */
     final def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable { self =>
       def checkTestSource(): Unit = tryCompile(testSource) {
+        registerStart
         val reportersOrCrash = compileTestSource(testSource)
         onComplete(testSource, reportersOrCrash, self)
         registerCompletion()
@@ -397,8 +398,13 @@ trait ParallelTesting extends RunnerOrchestration:
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
 
+    private var testSourcesStarted = 0
+
     private var _testSourcesCompleted = 0
     private def testSourcesCompleted: Int = _testSourcesCompleted
+
+    protected final def registerStart = synchronized:
+      testSourcesStarted += 1
 
     /** Complete the current compilation with the amount of errors encountered */
     protected final def registerCompletion() = synchronized {
@@ -475,7 +481,7 @@ trait ParallelTesting extends RunnerOrchestration:
       val past = "=" * math.max(progress - 1, 0)
       val curr = if progress > 0 then ">" else ""
       val next = " " * (40 - progress)
-      s"[$past$curr$next] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)"
+      s"[$past$curr$next] completed ($tCompiled/$sourceCount, ${testSourcesStarted} started, $failureCount failed, ${timestamp}s)"
 
     /** Wrapper function to make sure that the compiler itself did not crash -
      *  if it did, the test should automatically fail.
