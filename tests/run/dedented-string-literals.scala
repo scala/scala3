@@ -8,7 +8,7 @@ object Test {
     '''
     println("Basic:")
     println(basic)
-    println()
+    println("----")
 
     val noIndent = '''
 i am cow
@@ -16,7 +16,7 @@ hear me moo
 '''
     println("No Indent:")
     println(noIndent)
-    println()
+    println("----")
 
     val withIndentPreserved = '''
       i am cow
@@ -24,20 +24,20 @@ hear me moo
     '''
     println("With indent:")
     println(withIndentPreserved)
-    println()
+    println("----")
 
     val empty = '''
     '''
     println("Empty:")
     println(s"[${empty}]")
-    println()
+    println("----")
 
     val singleLine = '''
     hello world
     '''
     println("Single line:")
     println(singleLine)
-    println()
+    println("----")
 
     val blankLines = '''
     line 1
@@ -46,7 +46,7 @@ hear me moo
     '''
     println("Blank lines:")
     println(blankLines)
-    println()
+    println("----")
 
     val deepIndent = '''
           deeply
@@ -55,7 +55,7 @@ hear me moo
     '''
     println("Deep indent:")
     println(deepIndent)
-    println()
+    println("----")
 
     val mixedIndent = '''
       first level
@@ -64,7 +64,7 @@ hear me moo
     '''
     println("Mixed indent:")
     println(mixedIndent)
-    println()
+    println("----")
 
     val withTripleQuotes = ''''
     '''
@@ -73,7 +73,7 @@ hear me moo
     ''''
     println("With triple quotes:")
     println(withTripleQuotes)
-    println()
+    println("----")
 
     val extended5 = '''''
     ''''
@@ -82,7 +82,7 @@ hear me moo
     '''''
     println("Extended 5 quotes:")
     println(extended5)
-    println()
+    println("----")
 
     val normalized = '''
     line1
@@ -90,21 +90,21 @@ hear me moo
     '''
     println("Normalized newlines:")
     println(s"Has only LF: ${!normalized.contains('\r')}")
-    println()
+    println("----")
 
     val specialChars = '''
     !"#$%&()*+,-./:;<=>?@[\]^_`{|}~
     '''
     println("Special chars:")
     println(specialChars)
-    println()
+    println("----")
 
     val unicode = '''
     Hello 世界
     '''
     println("Unicode:")
     println(unicode)
-    println()
+    println("----")
 
     val withTabs = '''
 		tab indented
@@ -112,7 +112,7 @@ hear me moo
 	'''
     println("With tabs:")
     println(withTabs)
-    println()
+    println("----")
 
     val emptyLinesAnywhere = '''
 
@@ -123,7 +123,7 @@ hear me moo
     '''
     println("Empty lines anywhere:")
     println(s"[${emptyLinesAnywhere}]")
-    println()
+    println("----")
 
     val withQuotes = '''
     "double quotes"
@@ -132,14 +132,14 @@ hear me moo
     '''
     println("With quotes:")
     println(withQuotes)
-    println()
+    println("----")
 
     val zeroIndent = '''
     content
     '''
     println("Zero indent:")
     println(zeroIndent)
-    println()
+    println("----")
 
     val precise = '''
       ab
@@ -149,7 +149,7 @@ hear me moo
     println(s"Length: ${precise.length}")
     println(s"Content: [${precise}]")
     println(s"Chars: ${precise.toList}")
-    println()
+    println("----")
 
     val name = "Alice"
     val age = 30
@@ -159,7 +159,7 @@ hear me moo
     '''
     println("Interpolated:")
     println(interpolated)
-    println()
+    println("----")
 
     val escapedInterpolated = s'''
     Hello $$name
@@ -167,7 +167,7 @@ hear me moo
     '''
     println("Escaped Interpolated:")
     println(escapedInterpolated)
-    println()
+    println("----")
 
     val value = 42
     val formatted = f'''
@@ -176,7 +176,7 @@ hear me moo
     '''
     println("Formatted:")
     println(formatted)
-    println()
+    println("----")
 
     def testPattern(s: String): String = s match {
       case '''
@@ -189,7 +189,7 @@ hear me moo
     }
     println("Pattern matching:")
     println(s"Pattern result: ${testPattern("test")}")
-    println()
+    println("----")
 
     def testInterpolatedPattern(s: String): String = s match {
       case s'''
@@ -199,7 +199,7 @@ hear me moo
     }
     println("Interpolated pattern:")
     println(s"Interpolated pattern result: ${testInterpolatedPattern("Hello World")}")
-    println()
+    println("----")
 
     def testPatternTwoLines(s: String): String = s match {
       case '''
@@ -210,7 +210,7 @@ hear me moo
     }
     println("Pattern matching (two lines):")
     println(s"Two line pattern result: ${testPatternTwoLines("line one\nline two")}")
-    println()
+    println("----")
 
     def testInterpolatedPatternTwoLines(s: String): String = s match {
       case s'''
@@ -221,7 +221,7 @@ hear me moo
     }
     println("Interpolated pattern (two lines):")
     println(s"Two line interpolated result: ${testInterpolatedPatternTwoLines("First: Alice\nSecond: Bob")}")
-    println()
+    println("----")
 
     def inFunction = '''
       function content
@@ -229,7 +229,7 @@ hear me moo
     '''
     println("In function:")
     println(inFunction)
-    println()
+    println("----")
 
     class InClass {
       val inClass = '''
@@ -240,7 +240,7 @@ hear me moo
     val classInstance = new InClass
     println("In class:")
     println(classInstance.inClass)
-    println()
+    println("----")
 
     val list = List(
       '''
@@ -257,14 +257,14 @@ hear me moo
     list.foreach { item =>
       println(s"Item: [$item]")
     }
-    println()
+    println("----")
 
     val nested = "prefix" + '''
       middle
     ''' + "suffix"
     println("Nested in expressions:")
     println(nested)
-    println()
+    println("----")
 
     val typedVal: '''
       first line
@@ -274,7 +274,7 @@ hear me moo
     println("Type ascription:")
     println(s"Value: [$typedVal]")
     println(s"Type matches: ${typedVal == "  first line\n    indented line\n  third line"}")
-    println()
+    println("----")
 
     val valueOfResult = scala.compiletime.constValue['''
       alpha

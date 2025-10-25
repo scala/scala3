@@ -1,128 +1,128 @@
 Basic:
 i am cow
 hear me moo
-
+----
 No Indent:
-
+----
 i am cow
 hear me moo
-
+----
 With indent:
   i am cow
   hear me moo
-
+----
 Empty:
 []
-
+----
 Single line:
 hello world
-
+----
 Blank lines:
 line 1
 
 line 3
-
+----
 Deep indent:
       deeply
       indented
       content
-
+----
 Mixed indent:
   first level
     second level
       third level
-
+----
 With triple quotes:
 '''
 i am cow
 '''
-
+----
 Extended 5 quotes:
 ''''
 content with four quotes
 ''''
-
+----
 Normalized newlines:
 Has only LF: true
-
+----
 Special chars:
 !"#$%&()*+,-./:;<=>?@[\]^_`{|}~
-
+----
 Unicode:
 Hello 世界
-
+----
 With tabs:
 	tab indented
 	content here
-
+----
 Empty lines anywhere:
 [
 content
 
 more content
 ]
-
+----
 With quotes:
 "double quotes"
 'single quote'
 ''
-
+----
 Zero indent:
 content
-
+----
 Precise:
 Length: 9
 Content: [  ab
   cd]
 Chars: List( ,  , a, b,
 ,  ,  , c, d)
-
+----
 Interpolated:
 Hello Alice
 You are 30 years old
-
+----
 Escaped Interpolated:
 Hello $name
 You are $age years old
-
+----
 Formatted:
 Value: 00042
 Done
-
+----
 Pattern matching:
 Pattern result: matched basic
-
+----
 Interpolated pattern:
 Interpolated pattern result: matched greeting
-
+----
 Pattern matching (two lines):
 Two line pattern result: matched two lines
-
+----
 Interpolated pattern (two lines):
 Two line interpolated result: matched two line greeting
-
+----
 In function:
   function content
   more content
-
+----
 In class:
   class member
   content
-
+----
 In list:
 Item: [  first]
 Item: [  second]
 Item: [  third]
-
+----
 Nested in expressions:
 prefix  middlesuffix
-
+----
 Type ascription:
 Value: [  first line
     indented line
   third line]
 Type matches: true
-
+----
 valueOf test:
 Value: [  alpha
     beta
