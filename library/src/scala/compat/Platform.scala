@@ -84,7 +84,7 @@ object Platform {
    */
   @inline
   @deprecated("Use `java.lang.reflect.Array#newInstance` instead.", since = "2.13.0")
-  def createArray(elemClass: Class[_], length: Int): AnyRef =
+  def createArray(elemClass: Class[?], length: Int): AnyRef =
     java.lang.reflect.Array.newInstance(elemClass, length)
 
   /** Assigns the value of 0 to each element in the array.
@@ -111,7 +111,7 @@ object Platform {
    */
   @inline
   @deprecated("Use `java.lang.Class#forName` instead.", since = "2.13.0")
-  def getClassForName(name: String): Class[_] = java.lang.Class.forName(name)
+  def getClassForName(name: String): Class[?] = java.lang.Class.forName(name)
 
   /** The default line separator.
    *

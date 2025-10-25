@@ -152,7 +152,7 @@ object Array {
     *
     * @see `java.util.Arrays#copyOf`
     */
-  def copyAs[A](original: Array[_], newLength: Int)(implicit ct: ClassTag[A]): Array[A] = {
+  def copyAs[A](original: Array[?], newLength: Int)(implicit ct: ClassTag[A]): Array[A] = {
     val runtimeClass = ct.runtimeClass
     if (runtimeClass == Void.TYPE) newUnitArray(newLength).asInstanceOf[Array[A]]
     else {

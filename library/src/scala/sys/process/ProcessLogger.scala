@@ -61,7 +61,7 @@ trait ProcessLogger {
 
 /** A [[scala.sys.process.ProcessLogger]] that writes output to a file. */
 class FileProcessLogger(file: File) extends ProcessLogger with Closeable with Flushable {
-  private[this] val writer = (
+  private val writer = (
     new PrintWriter(
       new BufferedWriter(
         new OutputStreamWriter(
@@ -70,8 +70,8 @@ class FileProcessLogger(file: File) extends ProcessLogger with Closeable with Fl
       )
     )
   )
-  def out(s: => String): Unit = writer println s
-  def err(s: => String): Unit = writer println s
+  def out(s: => String): Unit = writer.println(s)
+  def err(s: => String): Unit = writer.println(s)
   def buffer[T](f: => T): T = f
   def close(): Unit = writer.close()
   def flush(): Unit = writer.flush()

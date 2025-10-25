@@ -17,7 +17,7 @@ import scala.language.`2.13`
 import scala.collection.Stepper.EfficientSplit
 import scala.collection._
 
-private[collection] abstract class TableStepperBase[A, I <: AnyRef, Sub, Semi <: Sub with TableStepperBase[A, I, _, _]](
+private[collection] abstract class TableStepperBase[A, I <: AnyRef, Sub, Semi <: Sub & TableStepperBase[A, I, ?, ?]](
   protected var maxLength: Int, protected val table: Array[I | Null], protected var i0: Int, protected val iN: Int
 )
 extends EfficientSplit {

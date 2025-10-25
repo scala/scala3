@@ -25,7 +25,7 @@ import scala.annotation.implicitNotFound
   * @tparam CC Collection type constructor
   * @tparam C  Collection type
   */
-transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
+transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?], +C <: SortedMapOps[K, V, CC, C]]
   extends SortedMapOps[K, V, CC, C]
     with StrictOptimizedMapOps[K, V, Map, C] {
 

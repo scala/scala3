@@ -19,7 +19,7 @@ import scala.concurrent.{ BlockContext, ExecutionContext, CanAwait, ExecutionCon
 
 private[scala] class ExecutionContextImpl private[impl] (final val executor: Executor, final val reporter: Throwable => Unit) extends ExecutionContextExecutor {
   require(executor ne null, "Executor must not be null")
-  override final def execute(runnable: Runnable): Unit = executor execute runnable
+  override final def execute(runnable: Runnable): Unit = executor.execute(runnable)
   override final def reportFailure(t: Throwable): Unit = reporter(t)
 }
 
@@ -48,14 +48,14 @@ private[concurrent] object ExecutionContextImpl {
 
     def newThread(fjp: ForkJoinPool): ForkJoinWorkerThread =
       wire(new ForkJoinWorkerThread(fjp) with BlockContext {
-        private[this] final var isBlocked: Boolean = false // This is only ever read & written if this thread is the current thread
+        private final var isBlocked: Boolean = false // This is only ever read & written if this thread is the current thread
         final override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T =
           if ((Thread.currentThread eq this) && !isBlocked && blockerPermits.tryAcquire()) {
             try {
-              val b: ForkJoinPool.ManagedBlocker with (() => T) =
+              val b: (ForkJoinPool.ManagedBlocker & (() => T)) =
                 new ForkJoinPool.ManagedBlocker with (() => T) {
-                  private[this] final var result: T = null.asInstanceOf[T]
-                  private[this] final var done: Boolean = false
+                  private final var result: T = null.asInstanceOf[T]
+                  private final var done: Boolean = false
                   final override def block(): Boolean = {
                     if (!done) {
                       result = thunk // If this throws then it will stop blocking.
@@ -121,7 +121,7 @@ private[concurrent] object ExecutionContextImpl {
       case some =>
         // This is a anonymous class extending a Java class, so we left inferred flexible types in the signatures.
         new ExecutionContextImpl(some, reporter) with ExecutionContextExecutorService {
-            private[this] final def asExecutorService: ExecutorService = executor.asInstanceOf[ExecutorService]
+            private final def asExecutorService: ExecutorService = executor.asInstanceOf[ExecutorService]
             final override def shutdown() = asExecutorService.shutdown()
             final override def shutdownNow() = asExecutorService.shutdownNow()
             final override def isShutdown = asExecutorService.isShutdown
@@ -130,10 +130,10 @@ private[concurrent] object ExecutionContextImpl {
             final override def submit[T](callable: Callable[T]) = asExecutorService.submit(callable)
             final override def submit[T](runnable: Runnable, t: T) = asExecutorService.submit(runnable, t)
             final override def submit(runnable: Runnable) = asExecutorService.submit(runnable)
-            final override def invokeAll[T](callables: Collection[_ <: Callable[T]]) = asExecutorService.invokeAll(callables)
-            final override def invokeAll[T](callables: Collection[_ <: Callable[T]], l: Long, timeUnit: TimeUnit) = asExecutorService.invokeAll(callables, l, timeUnit)
-            final override def invokeAny[T](callables: Collection[_ <: Callable[T]]) = asExecutorService.invokeAny(callables)
-            final override def invokeAny[T](callables: Collection[_ <: Callable[T]], l: Long, timeUnit: TimeUnit) = asExecutorService.invokeAny(callables, l, timeUnit)
+            final override def invokeAll[T](callables: Collection[? <: Callable[T]]) = asExecutorService.invokeAll(callables)
+            final override def invokeAll[T](callables: Collection[? <: Callable[T]], l: Long, timeUnit: TimeUnit) = asExecutorService.invokeAll(callables, l, timeUnit)
+            final override def invokeAny[T](callables: Collection[? <: Callable[T]]) = asExecutorService.invokeAny(callables)
+            final override def invokeAny[T](callables: Collection[? <: Callable[T]], l: Long, timeUnit: TimeUnit) = asExecutorService.invokeAny(callables, l, timeUnit)
           }
         }
 }

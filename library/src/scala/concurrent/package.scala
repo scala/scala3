@@ -123,7 +123,7 @@ package object concurrent {
    *  @throws InterruptedException in the case that a wait within the blocking `body` was interrupted
    */
   @throws(classOf[Exception])
-  final def blocking[T](body: => T): T = BlockContext.current.blockOn(body)(scala.concurrent.AwaitPermission)
+  final def blocking[T](body: => T): T = BlockContext.current.blockOn(body)(using scala.concurrent.AwaitPermission)
 }
 
 package concurrent {
@@ -176,7 +176,7 @@ package concurrent {
         if (atMost eq Duration.Undefined) Future.waitUndefinedError() // preserve semantics, see scala/scala#10972
         else awaitable
       case _ =>
-        blocking(awaitable.ready(atMost)(AwaitPermission))
+        blocking(awaitable.ready(atMost)(using AwaitPermission))
     }
 
     /**
@@ -206,7 +206,7 @@ package concurrent {
         if (atMost eq Duration.Undefined) Future.waitUndefinedError() // preserve semantics, see scala/scala#10972
         else v.get
       case _ =>
-        blocking(awaitable.result(atMost)(AwaitPermission))
+        blocking(awaitable.result(atMost)(using AwaitPermission))
     }
 
     private object FutureValue {

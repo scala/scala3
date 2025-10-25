@@ -30,13 +30,13 @@ object NameTransformer {
   final val SETTER_SUFFIX_STRING          = "_$eq"
   final val TRAIT_SETTER_SEPARATOR_STRING = "$_setter_$"
 
-  private[this] val nops = 128
-  private[this] val ncodes = 26 * 26
+  private val nops = 128
+  private val ncodes = 26 * 26
 
   private class OpCodes(val op: Char, val code: String, val next: OpCodes | Null)
 
-  private[this] val op2code = new Array[String | Null](nops)
-  private[this] val code2op = new Array[OpCodes | Null](ncodes)
+  private val op2code = new Array[String | Null](nops)
+  private val code2op = new Array[OpCodes | Null](ncodes)
   private def enterOp(op: Char, code: String) = {
     op2code(op.toInt) = code
     val c = (code.charAt(1) - 'a') * 26 + code.charAt(2) - 'a'
@@ -73,7 +73,7 @@ object NameTransformer {
     val len = name.length()
     var i = 0
     while (i < len) {
-      val c = name charAt i
+      val c = name.charAt(i)
       if (c < nops && (op2code(c.toInt) ne null)) {
         if (buf eq null) {
           buf = new StringBuilder()
@@ -112,7 +112,7 @@ object NameTransformer {
     while (i < len) {
       var ops: OpCodes | Null = null
       var unicode = false
-      val c = name charAt i
+      val c = name.charAt(i)
       if (c == '$' && i + 2 < len) {
         val ch1 = name.charAt(i+1)
         if ('a' <= ch1 && ch1 <= 'z') {

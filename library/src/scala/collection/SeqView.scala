@@ -41,13 +41,13 @@ trait SeqView[+A] extends SeqOps[A, View, View[A]] with View[A] {
   override def sorted[B >: A](implicit ord: Ordering[B]): SeqView[A]^{this} = new SeqView.Sorted(this, ord)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "SeqView"
+  override protected def stringPrefix: String = "SeqView"
 }
 
 object SeqView {
 
   /** A `SeqOps` whose collection type and collection type constructor are unknown */
-  private type SomeSeqOps[+A] = SeqOps[A, AnyConstr, _]
+  private type SomeSeqOps[+A] = SeqOps[A, AnyConstr, ?]
 
   /** A view that doesn’t apply any transformation to an underlying sequence */
   @SerialVersionUID(3L)
@@ -110,7 +110,7 @@ object SeqView {
 
   @SerialVersionUID(3L)
   class TakeRight[+A](underlying: SomeSeqOps[A]^, n: Int) extends View.TakeRight(underlying, n) with SeqView[A] {
-    private[this] val delta = (underlying.size - (n max 0)) max 0
+    private val delta = (underlying.size - (n max 0)) max 0
     def length = underlying.size - delta
     @throws[IndexOutOfBoundsException]
     def apply(i: Int) = underlying.apply(i + delta)
@@ -126,7 +126,7 @@ object SeqView {
 
   @SerialVersionUID(3L)
   class DropRight[A](underlying: SomeSeqOps[A]^, n: Int) extends View.DropRight[A](underlying, n) with SeqView[A] {
-    private[this] val len = (underlying.size - (n max 0)) max 0
+    private val len = (underlying.size - (n max 0)) max 0
     def length = len
     @throws[IndexOutOfBoundsException]
     def apply(i: Int) = underlying.apply(i)
@@ -134,7 +134,7 @@ object SeqView {
 
   @SerialVersionUID(3L)
   class Sorted[A, B >: A] private (underlying_ : SomeSeqOps[A]^,
-                                   private[this] val len: Int,
+                                   private val len: Int,
                                    ord: Ordering[B])
     extends SeqView[A] {
     outer: Sorted[A, B]^ =>
@@ -146,8 +146,8 @@ object SeqView {
     def this(underlying: SomeSeqOps[A]^, ord: Ordering[B]) = this(underlying, underlying.length, ord)
 
     @SerialVersionUID(3L)
-    private[this] class ReverseSorted extends SeqView[A] {
-      private[this] lazy val _reversed = new SeqView.Reverse(_sorted)
+    private class ReverseSorted extends SeqView[A] {
+      private lazy val _reversed = new SeqView.Reverse(_sorted)
 
       def apply(i: Int): A = _reversed.apply(i)
       def length: Int = len
@@ -164,9 +164,9 @@ object SeqView {
         else new Sorted(elems, len, ord1)
     }
 
-    @volatile private[this] var evaluated = false
+    @volatile private var evaluated = false
 
-    private[this] lazy val _sorted: Seq[A] = {
+    private lazy val _sorted: Seq[A] = {
       val res = {
         val len = this.len
         if (len == 0) Nil
@@ -192,7 +192,7 @@ object SeqView {
       res
     }
 
-    private[this] def elems: SomeSeqOps[A]^{this} = {
+    private def elems: SomeSeqOps[A]^{this} = {
       if (evaluated) _sorted else underlying
     }
 

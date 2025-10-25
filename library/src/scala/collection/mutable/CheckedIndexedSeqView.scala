@@ -45,7 +45,7 @@ private[mutable] object CheckedIndexedSeqView {
   @SerialVersionUID(3L)
   private[mutable] class CheckedIterator[A](self: IndexedSeqView[A]^, mutationCount: => Int)
     extends IndexedSeqView.IndexedSeqViewIterator[A](self) {
-    private[this] val expectedCount = mutationCount
+    private val expectedCount = mutationCount
     override def hasNext: Boolean = {
       MutationTracker.checkMutationsForIteration(expectedCount, mutationCount)
       super.hasNext
@@ -55,7 +55,7 @@ private[mutable] object CheckedIndexedSeqView {
   @SerialVersionUID(3L)
   private[mutable] class CheckedReverseIterator[A](self: IndexedSeqView[A]^, mutationCount: => Int)
     extends IndexedSeqView.IndexedSeqViewReverseIterator[A](self) {
-    private[this] val expectedCount = mutationCount
+    private val expectedCount = mutationCount
     override def hasNext: Boolean = {
       MutationTracker.checkMutationsForIteration(expectedCount, mutationCount)
       super.hasNext

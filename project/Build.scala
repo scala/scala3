@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.4-RC1"
+  val referenceVersion = "3.7.4-RC2"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -2882,7 +2882,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.6.2"
+    val mtagsVersion = "1.6.3"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -3559,6 +3559,7 @@ object Build {
         (`scala3-sbt-bridge` / publishLocal).value
         (`scala3-interfaces` / publishLocal).value
         (`tasty-core-bootstrapped` / publishLocal).value
+        (`scala-library-bootstrapped` / publishLocal).value
         (`scala3-library-bootstrapped` / publishLocal).value
         (`scala3-tasty-inspector` / publishLocal).value
         (`scaladoc` / publishLocal).value

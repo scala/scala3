@@ -28,6 +28,7 @@ import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
 import Annotations.Annotation
 import Capabilities.*
+import Mutability.*
 import util.common.alwaysTrue
 import scala.annotation.constructorOnly
 
@@ -680,12 +681,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           if pt.select.symbol.isReadOnlyMethod then
             markFree(ref.readOnly, tree)
           else
-            markPathFree(ref.select(pt.select.symbol).asInstanceOf[TermRef], pt.pt, pt.select)
+            val sel = ref.select(pt.select.symbol).asInstanceOf[TermRef]
+            sel.recomputeDenot()
+              // We need to do a recomputeDenot here since we have not yet properly
+              // computed the type of the full path. This means that we erroneously
+              // think the denotation is the same as in the previous phase so no
+              // member computation is performed. A test case where this matters is
+              // read-only-use.scala, where the error on r3 goes unreported.
+            markPathFree(sel, pt.pt, pt.select)
         case _ =>
-          if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType then
-            markFree(ref.readOnly, tree)
-          else
-            markFree(ref, tree)
+          markFree(ref.adjustReadOnly(pt), tree)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
@@ -724,13 +729,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => denot
 
       // Don't allow update methods to be called unless the qualifier captures
-      // an exclusive reference. TODO This should probably rolled into
-      // qualifier logic once we have it.
-      if tree.symbol.isUpdateMethod && !qualType.captureSet.isExclusive then
-        report.error(
-            em"""cannot call update ${tree.symbol} from $qualType,
-                |since its capture set ${qualType.captureSet} is read-only""",
-            tree.srcPos)
+      // an exclusive reference.
+      if tree.symbol.isUpdateMethod then
+        checkUpdate(qualType, tree.srcPos):
+          i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree.symbol)
@@ -996,6 +998,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
             report.error(em"$refArg is not a tracked capability", refArg.srcPos)
       case _ =>
+
+    override def recheckAssign(tree: Assign)(using Context): Type =
+      val lhsType = recheck(tree.lhs, LhsProto)
+      recheck(tree.rhs, lhsType.widen)
+      lhsType match
+        case lhsType @ TermRef(qualType, _)
+        if (qualType ne NoPrefix) && !lhsType.symbol.is(Transparent) =>
+          checkUpdate(qualType, tree.srcPos)(i"Cannot assign to field ${lhsType.name} of ${qualType.showRef}")
+        case _ =>
+      defn.UnitType
 
     /** Recheck Closure node: add the captured vars of the anonymoys function
      *  to the result type. See also `recheckClosureBlock` which rechecks the
@@ -1752,90 +1764,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => widened
       case _ => widened
 
-    /** If actual is a capturing type T^C extending Mutable, and expected is an
-     *  unboxed non-singleton value type not extending mutable, narrow the capture
-     *  set `C` to `ro(C)`.
-     *  The unboxed condition ensures that the expected type is not a type variable
-     *  that's upper bounded by a read-only type. In this case it would not be sound
-     *  to narrow to the read-only set, since that set can be propagated
-     *  by the type variable instantiation.
-     */
-    private def improveReadOnly(actual: Type, expected: Type)(using Context): Type = reporting.trace(i"improv ro $actual vs $expected"):
-      actual.dealiasKeepAnnots match
-      case actual @ CapturingType(parent, refs) =>
-        val parent1 = improveReadOnly(parent, expected)
-        val refs1 =
-          if parent1.derivesFrom(defn.Caps_Mutable)
-              && expected.isValueType
-              && (!expected.derivesFromMutable || expected.captureSet.isAlwaysReadOnly)
-              && !expected.isSingleton
-              && actual.isBoxedCapturing == expected.isBoxedCapturing
-          then refs.readOnly
-          else refs
-        actual.derivedCapturingType(parent1, refs1)
-      case actual @ FunctionOrMethod(aargs, ares) =>
-        expected.dealias.stripCapturing match
-          case FunctionOrMethod(eargs, eres) =>
-            actual.derivedFunctionOrMethod(aargs, improveReadOnly(ares, eres))
-          case _ =>
-            actual
-      case actual @ AppliedType(atycon, aargs) =>
-        def improveArgs(aargs: List[Type], eargs: List[Type], formals: List[ParamInfo]): List[Type] =
-          aargs match
-            case aargs @ (aarg :: aargs1) =>
-              val aarg1 =
-                if formals.head.paramVariance.is(Covariant)
-                then improveReadOnly(aarg, eargs.head)
-                else aarg
-              aargs.derivedCons(aarg1, improveArgs(aargs1, eargs.tail, formals.tail))
-            case Nil =>
-              aargs
-        val expected1 = expected.dealias.stripCapturing
-        val esym = expected1.typeSymbol
-        expected1 match
-          case AppliedType(etycon, eargs) =>
-            if atycon.typeSymbol == esym then
-              actual.derivedAppliedType(atycon,
-                improveArgs(aargs, eargs, etycon.typeParams))
-            else if esym.isClass then
-              // This case is tricky: Try to lift actual to the base type with class `esym`,
-              // improve the resulting arguments, and figure out if anything can be
-              // deduced from that for the original arguments.
-              actual.baseType(esym) match
-                case base @ AppliedType(_, bargs) =>
-                  // If any of the base type arguments can be improved, check
-                  // whether they are the same as an original argument, and in this
-                  // case improve the original argument.
-                  val iargs = improveArgs(bargs, eargs, etycon.typeParams)
-                  if iargs ne bargs then
-                    val updates =
-                      for
-                        (barg, iarg) <- bargs.lazyZip(iargs)
-                        if barg ne iarg
-                        aarg <- aargs.find(_ eq barg)
-                      yield (aarg, iarg)
-                    if updates.nonEmpty then AppliedType(atycon, aargs.map(updates.toMap))
-                    else actual
-                  else actual
-                case _ => actual
-            else actual
-          case _ =>
-            actual
-      case actual @ RefinedType(aparent, aname, ainfo) =>
-        expected.dealias.stripCapturing match
-          case RefinedType(eparent, ename, einfo) if aname == ename =>
-            actual.derivedRefinedType(
-              improveReadOnly(aparent, eparent),
-              aname,
-              improveReadOnly(ainfo, einfo))
-          case _ =>
-            actual
-      case actual @ AnnotatedType(parent, ann) =>
-        actual.derivedAnnotatedType(improveReadOnly(parent, expected), ann)
-      case _ =>
-        actual
-    end improveReadOnly
-
     /* Currently not needed since it forms part of `adapt`
     private def improve(actual: Type, prefix: Type)(using Context): Type =
       val widened = actual.widen.dealiasKeepAnnots
@@ -1872,11 +1800,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         // since they obscures the capturing type.
         val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
         val improvedVAR = improveCaptures(widened, actual)
-        val improved = improveReadOnly(improvedVAR, expected)
+        val adaptedReadOnly = adaptReadOnly(improvedVAR, actual, expected, tree)
         val adapted = adaptBoxed(
-            improved.withReachCaptures(actual), expected, tree,
+            adaptedReadOnly.withReachCaptures(actual), expected, tree,
             covariant = true, alwaysConst = false)
-        if adapted eq improvedVAR // no .rd improvement, no box-adaptation
+        if adapted eq improvedVAR // no read-only-adaptation, no reaches added, no box-adaptation
         then actual               // might as well use actual instead of improved widened
         else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt

@@ -62,12 +62,12 @@ trait Map[K, +V]
   * @define coll immutable map
   * @define Coll `immutable.Map`
   */
-transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
+transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
     with collection.MapOps[K, V, CC, C]
     with caps.Pure {
 
-  protected def coll: C with CC[K, V]
+  protected def coll: C & CC[K, V]
 
   /** Removes a key from this map, returning a new map.
     *
@@ -153,7 +153,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[
 
 }
 
-transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
+transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K, V, CC, C]]
   extends MapOps[K, V, CC, C]
     with collection.StrictOptimizedMapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {
@@ -338,7 +338,7 @@ object Map extends MapFactory[Map] {
     }
 
     private abstract class Map2Iterator[A] extends AbstractIterator[A] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext: Boolean = i < 2
       override def next(): A = {
         val result = i match {
@@ -441,7 +441,7 @@ object Map extends MapFactory[Map] {
     }
 
     private abstract class Map3Iterator[A] extends AbstractIterator[A] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext: Boolean = i < 3
       override def next(): A = {
         val result = i match {
@@ -561,7 +561,7 @@ object Map extends MapFactory[Map] {
     }
 
     private abstract class Map4Iterator[A] extends AbstractIterator[A] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext: Boolean = i < 4
       override def next(): A = {
         val result = i match {
@@ -663,9 +663,9 @@ object Map extends MapFactory[Map] {
 abstract class AbstractMap[K, +V] extends scala.collection.AbstractMap[K, V] with Map[K, V]
 
 private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, V), Map[K, V]] {
-  private[this] var elems: Map[K, V] = Map.empty
-  private[this] var switchedToHashMapBuilder: Boolean = false
-  private[this] var hashMapBuilder: HashMapBuilder[K, V] = _
+  private var elems: Map[K, V] = Map.empty
+  private var switchedToHashMapBuilder: Boolean = false
+  private var hashMapBuilder: HashMapBuilder[K, V] = compiletime.uninitialized
 
   private[immutable] def getOrElse[V0 >: V](key: K, value: V0): V0 =
     if (hashMapBuilder ne null) hashMapBuilder.getOrElse(key, value)

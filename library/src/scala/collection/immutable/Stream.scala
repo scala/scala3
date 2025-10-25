@@ -49,7 +49,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
 
   override def iterableFactory: SeqFactory[Stream] = Stream
 
-  override protected[this] def className: String = "Stream"
+  override protected def className: String = "Stream"
 
   /** Apply the given function `f` to each element of this linear sequence
     * (while respecting the order of the elements).
@@ -104,7 +104,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   @deprecated("The `append` operation has been renamed `lazyAppendedAll`", "2.13.0")
   @inline final def append[B >: A](rest: => IterableOnce[B]): Stream[B] = lazyAppendedAll(rest)
 
-  protected[this] def writeReplace(): AnyRef =
+  protected def writeReplace(): AnyRef =
     if(nonEmpty && tailDefined) new Stream.SerializationProxy[A](this) else this
 
   /** Prints elements of this stream one by one, separated by commas. */
@@ -245,7 +245,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     sb
   }
 
-  private[this] def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
+  private def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
     b.append(start)
     if (nonEmpty) {
       b.append(head)
@@ -397,8 +397,8 @@ object Stream extends SeqFactory[Stream] {
   @SerialVersionUID(3L)
   final class Cons[A](override val head: A, tl: => Stream[A]) extends Stream[A] {
     override def isEmpty: Boolean = false
-    @volatile private[this] var tlVal: Stream[A] = _
-    @volatile private[this] var tlGen: (() => Stream[A]) | Null = () => tl
+    @volatile private var tlVal: Stream[A] = compiletime.uninitialized
+    @volatile private var tlGen: (() => Stream[A]) | Null = () => tl
     protected def tailDefined: Boolean = tlGen eq null
     override def tail: Stream[A] = {
       if (!tailDefined)
@@ -480,9 +480,9 @@ object Stream extends SeqFactory[Stream] {
   private[immutable] def withFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean): collection.WithFilter[A, Stream] =
     new WithFilter[A](l, p)
 
-  private[this] final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
-    private[this] var s: Stream[A] = l // set to null to allow GC after filtered
-    private[this] lazy val filtered: Stream[A] = { val f = s.filter(p); s = nullForGC[Stream[A]]; f } // don't set to null if throw during filter
+  private final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
+    private var s: Stream[A] = l // set to null to allow GC after filtered
+    private lazy val filtered: Stream[A] = { val f = s.filter(p); s = nullForGC[Stream[A]]; f } // don't set to null if throw during filter
     def map[B](f: A => B): Stream[B] = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]): Stream[B] = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
@@ -544,7 +544,7 @@ object Stream extends SeqFactory[Stream] {
   @SerialVersionUID(3L)
   class SerializationProxy[A](@transient protected var coll: Stream[A]) extends Serializable {
 
-    private[this] def writeObject(out: ObjectOutputStream): Unit = {
+    private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
       var these = coll
       while(these.nonEmpty && these.tailDefined) {
@@ -555,7 +555,7 @@ object Stream extends SeqFactory[Stream] {
       out.writeObject(these)
     }
 
-    private[this] def readObject(in: ObjectInputStream): Unit = {
+    private def readObject(in: ObjectInputStream): Unit = {
       in.defaultReadObject()
       val init = new ArrayBuffer[A]
       var initRead = false
@@ -567,6 +567,6 @@ object Stream extends SeqFactory[Stream] {
       coll = (init ++: tail)
     }
 
-    protected[this] def readResolve(): Any = coll
+    protected def readResolve(): Any = coll
   }
 }

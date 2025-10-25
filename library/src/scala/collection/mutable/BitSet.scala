@@ -268,7 +268,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
     case other => super.subtractAll(other)
   }
 
-  protected[this] def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
+  protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 
   override def diff(that: collection.Set[Int]): BitSet = that match {
     case bs: collection.BitSet =>
@@ -390,6 +390,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    protected[this] def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
+    protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

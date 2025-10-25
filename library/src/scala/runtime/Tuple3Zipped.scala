@@ -148,9 +148,9 @@ object Tuple3Zipped {
 
     @deprecated("Use xs.lazyZip(ys).lazyZip(zs)", since = "2.13.0")
     def zipped[El1, It1 <: Iterable[El1], El2, It2 <: Iterable[El2], El3, It3 <: Iterable[El3]]
-      (implicit w1: T1 => IterableOps[El1, Iterable, It1] with It1,
-                w2: T2 => IterableOps[El2, Iterable, It2] with It2,
-                w3: T3 => IterableOps[El3, Iterable, It3] with It3
+      (implicit w1: T1 => IterableOps[El1, Iterable, It1] & It1,
+                w2: T2 => IterableOps[El2, Iterable, It2] & It2,
+                w3: T3 => IterableOps[El3, Iterable, It3] & It3
       ): Tuple3Zipped[El1, It1, El2, It2, El3, It3] = new Tuple3Zipped((w1(x._1), w2(x._2), w3(x._3)))
   }
 }

@@ -248,7 +248,7 @@ trait Buffer[A]
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Buffer"
+  override protected def stringPrefix = "Buffer"
 }
 
 trait IndexedBuffer[A] extends IndexedSeq[A]

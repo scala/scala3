@@ -50,7 +50,7 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   override def iterableFactory: SeqFactory[Stack] = Stack
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Stack"
+  override protected def stringPrefix = "Stack"
 
   /**
     * Add elements to the top of this stack

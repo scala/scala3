@@ -15,7 +15,7 @@ class C extends P {
   def g4(): Int = 4
 }
 
-object Test extends App {
+object Test {
   val c = new C
   println(c.foo1) // error was omitted because of nullary fallback during ambiguous overload resolution
   println(c.foo2) // error, add parens

@@ -68,7 +68,7 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
    *  @param coll  the collection which serves as a hint for the result's size.
    *  @param delta a correction to add to the `coll.size` to produce the size hint (zero if omitted).
    */
-  final def sizeHint(coll: scala.collection.IterableOnce[_]^, delta: Int = 0): Unit =
+  final def sizeHint(coll: scala.collection.IterableOnce[?]^, delta: Int = 0): Unit =
     coll.knownSize match {
       case -1 =>
       case sz => sizeHint(0 max sz + delta)
@@ -87,7 +87,7 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
     *                       than collection's size are reduced.
     */
   // should probably be `boundingColl: IterableOnce[_]`, but binary compatibility
-  final def sizeHintBounded(size: Int, boundingColl: scala.collection.Iterable[_]^): Unit = {
+  final def sizeHintBounded(size: Int, boundingColl: scala.collection.Iterable[?]^): Unit = {
     val s = boundingColl.knownSize
     if (s != -1) {
       sizeHint(scala.math.min(s, size))

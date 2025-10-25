@@ -239,9 +239,9 @@ object SeqMap extends MapFactory[SeqMap] {
   }
 
   private final class SeqMapBuilderImpl[K, V] extends ReusableBuilder[(K, V), SeqMap[K, V]] {
-    private[this] var elems: SeqMap[K, V] = SeqMap.empty
-    private[this] var switchedToVectorMapBuilder: Boolean = false
-    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] = _
+    private var elems: SeqMap[K, V] = SeqMap.empty
+    private var switchedToVectorMapBuilder: Boolean = false
+    private var vectorMapBuilder: VectorMapBuilder[K, V] = compiletime.uninitialized
 
     override def clear(): Unit = {
       elems = SeqMap.empty

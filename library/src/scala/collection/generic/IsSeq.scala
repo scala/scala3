@@ -72,11 +72,11 @@ object IsSeq {
           def length: Int = s.length
           def apply(i: Int): Char = s.charAt(i)
           def toIterable: Iterable[Char] = new immutable.WrappedString(s)
-          protected[this] def coll: String = s
-          protected[this] def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
+          protected def coll: String = s
+          protected def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
           def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
           override def empty: String = ""
-          protected[this] def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
+          protected def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
           def iterator: Iterator[Char] = s.iterator
         }
     }

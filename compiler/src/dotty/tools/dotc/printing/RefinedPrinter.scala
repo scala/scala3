@@ -31,6 +31,7 @@ import config.SourceVersion.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 import cc.*
+import cc.Mutability.isUpdateMethod
 import dotty.tools.dotc.parsing.JavaParsers
 import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
 

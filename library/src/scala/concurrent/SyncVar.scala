@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit
  */
 @deprecated("Use `java.util.concurrent.LinkedBlockingQueue with capacity 1` instead.", since = "2.13.0")
 class SyncVar[A] {
-  private[this] var isDefined: Boolean = false
-  private[this] var value: A = _
+  private var isDefined: Boolean = false
+  private var value: A = compiletime.uninitialized
 
   /**
    * Wait for this SyncVar to become defined and then get

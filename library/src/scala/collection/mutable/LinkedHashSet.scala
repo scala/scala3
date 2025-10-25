@@ -58,11 +58,11 @@ class LinkedHashSet[A]
    * - Every bucket is sorted in ascendant hash order
    * - The sum of the lengths of all buckets is equal to contentSize.
    */
-  private[this] var table = new Array[Entry | Null](tableSizeFor(LinkedHashSet.defaultinitialSize))
+  private var table = new Array[Entry | Null](tableSizeFor(LinkedHashSet.defaultinitialSize))
 
-  private[this] var threshold: Int = newThreshold(table.length)
+  private var threshold: Int = newThreshold(table.length)
 
-  private[this] var contentSize = 0
+  private var contentSize = 0
 
   override def last: A =
     if (size > 0) lastEntry.nn.key
@@ -109,8 +109,8 @@ class LinkedHashSet[A]
 
   override def remove(elem: A): Boolean = remove0(elem, computeHash(elem))
 
-  private[this] abstract class LinkedHashSetIterator[T] extends AbstractIterator[T] {
-    private[this] var cur: Entry | Null = firstEntry
+  private abstract class LinkedHashSetIterator[T] extends AbstractIterator[T] {
+    private var cur: Entry | Null = firstEntry
     def extract(nd: Entry): T
     def hasNext: Boolean = cur ne null
     def next(): T =
@@ -141,23 +141,23 @@ class LinkedHashSet[A]
     lastEntry = null
   }
 
-  private[this] def tableSizeFor(capacity: Int) =
+  private def tableSizeFor(capacity: Int) =
     (Integer.highestOneBit((capacity - 1).max(4)) * 2).min(1 << 30)
 
-  private[this] def newThreshold(size: Int) = (size.toDouble * LinkedHashSet.defaultLoadFactor).toInt
+  private def newThreshold(size: Int) = (size.toDouble * LinkedHashSet.defaultLoadFactor).toInt
 
-  @`inline` private[this] def improveHash(originalHash: Int): Int = {
+  @`inline` private def improveHash(originalHash: Int): Int = {
     originalHash ^ (originalHash >>> 16)
   }
 
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
   /** Computes the improved hash of this key */
-  @`inline` private[this] def computeHash(o: A): Int = improveHash(o.##)
+  @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
-  @`inline` private[this] def index(hash: Int) = hash & (table.length - 1)
+  @`inline` private def index(hash: Int) = hash & (table.length - 1)
 
-  @`inline` private[this] def findEntry(key: A): Entry | Null = {
+  @`inline` private def findEntry(key: A): Entry | Null = {
     val hash = computeHash(key)
     table(index(hash)) match {
       case null => null
@@ -169,7 +169,7 @@ class LinkedHashSet[A]
   * new entry will be the firstEntry. If not, just set the new entry to
   * be the lastEntry.
   * */
-  private[this] def createNewEntry(key: A, hash: Int): Entry = {
+  private def createNewEntry(key: A, hash: Int): Entry = {
     val e = new Entry(key, hash)
     if (firstEntry eq null) firstEntry = e
     else {
@@ -181,7 +181,7 @@ class LinkedHashSet[A]
   }
 
   /** Delete the entry from the LinkedHashSet, set the `earlier` and `later` pointers correctly */
-  private[this] def deleteEntry(e: Entry): Unit = {
+  private def deleteEntry(e: Entry): Unit = {
     if (e.earlier eq null) firstEntry = e.later
     else e.earlier.later = e.later
     if (e.later eq null) lastEntry = e.earlier
@@ -191,7 +191,7 @@ class LinkedHashSet[A]
     e.next = null
   }
 
-  private[this] def put0(elem: A, hash: Int, idx: Int): Boolean = {
+  private def put0(elem: A, hash: Int, idx: Int): Boolean = {
     table(idx) match {
       case null =>
         table(idx) = createNewEntry(elem, hash)
@@ -216,7 +216,7 @@ class LinkedHashSet[A]
     true
   }
 
-  private[this] def remove0(elem: A, hash: Int): Boolean = {
+  private def remove0(elem: A, hash: Int): Boolean = {
     val idx = index(hash)
     table(idx) match {
       case null => false
@@ -244,7 +244,7 @@ class LinkedHashSet[A]
     }
   }
 
-  private[this] def growTable(newlen: Int): Unit = {
+  private def growTable(newlen: Int): Unit = {
     if (newlen < 0)
       throw new RuntimeException(s"new hash table size $newlen exceeds maximum")
     var oldlen = table.length
@@ -308,7 +308,7 @@ class LinkedHashSet[A]
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "LinkedHashSet"
+  override protected def stringPrefix: String = "LinkedHashSet"
 }
 
 /** $factoryInfo

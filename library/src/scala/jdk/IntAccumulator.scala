@@ -34,9 +34,9 @@ final class IntAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-2).toLong << 32 | (x(x.length-1)&0xFFFFFFFFL) }
 
-  override protected[this] def className: String = "IntAccumulator"
+  override protected def className: String = "IntAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = {
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = new IntAccumulatorStepper(this)
     val r =
       if (shape.shape == StepperShape.IntShape) st
@@ -44,7 +44,7 @@ final class IntAccumulator
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParIntStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   private def expand(): Unit = {
@@ -344,7 +344,7 @@ object IntAccumulator extends collection.SpecificIterableFactory[Int, IntAccumul
   override def newBuilder: IntAccumulator = new IntAccumulator
 
   class SerializationProxy[A](@transient private val acc: IntAccumulator) extends Serializable {
-    @transient private var result: IntAccumulator = _
+    @transient private var result: IntAccumulator = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -450,7 +450,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       }
 
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: jl.Integer]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Integer]): Boolean = (c: AnyRef) match {
       case ic: IntConsumer => tryAdvance(ic)
       case _ =>
         if (N <= 0) false
@@ -477,7 +477,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       }
 
     // Overridden for efficiency
-    override def forEachRemaining(c: Consumer[_ >: jl.Integer]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Integer]): Unit = (c: AnyRef) match {
       case ic: IntConsumer => forEachRemaining(ic)
       case _ =>
         while (N > 0) {

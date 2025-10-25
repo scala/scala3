@@ -75,7 +75,7 @@ sealed abstract class Range(
 
   final override def iterator: Iterator[Int] = new RangeIterator(start, step, lastElement, isEmpty)
 
-  override final def stepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = {
+  override final def stepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = new RangeStepper(start, step, 0, length)
     val r =
       if (shape.shape == StepperShape.IntShape) st
@@ -83,7 +83,7 @@ sealed abstract class Range(
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParIntStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   def isInclusive: Boolean
@@ -109,7 +109,7 @@ sealed abstract class Range(
    *  This interpretation allows to represent all values with the correct
    *  modular arithmetics, which streamlines the usage sites.
    */
-  private[this] val numRangeElements: Int = {
+  private val numRangeElements: Int = {
     val stepSign = step >> 31 // if (step >= 0) 0 else -1
     val gap = ((end - start) ^ stepSign) - stepSign // if (step >= 0) (end - start) else -(end - start)
     val absStep = (step ^ stepSign) - stepSign // if (step >= 0) step else -step
@@ -140,7 +140,7 @@ sealed abstract class Range(
    *  make sense, but won't error out.
    */
   @inline
-  private[this] def locationAfterN(n: Int): Int = {
+  private def locationAfterN(n: Int): Int = {
     /* If `step >= 0`, we interpret `step * n` as an unsigned multiplication,
      * and the addition as a mixed `(signed, unsigned) -> signed` operation.
      * With those interpretation, they do not overflow, assuming the
@@ -159,7 +159,7 @@ sealed abstract class Range(
    *
    *  For empty ranges, this value is nonsensical.
    */
-  private[this] val lastElement: Int = {
+  private val lastElement: Int = {
     /* Since we can assume the range is non-empty, `(numRangeElements - 1)`
      * is a valid unsigned value in the full int range. The general formula is
      * therefore `locationAfterN(numRangeElements - 1)`.
@@ -231,12 +231,12 @@ sealed abstract class Range(
   // should not trigger an exception. So the calculation is delayed,
   // which means it will not fail fast for those cases where failing was
   // correct.
-  private[this] def validateMaxLength(): Unit = {
+  private def validateMaxLength(): Unit = {
     if (numRangeElements <= 0 && !isEmpty)
       fail()
   }
-  private[this] def description = "%d %s %d by %s".format(start, if (isInclusive) "to" else "until", end, step)
-  private[this] def fail() = throw new IllegalArgumentException(description + ": seqs cannot contain more than Int.MaxValue elements.")
+  private def description = "%d %s %d by %s".format(start, if (isInclusive) "to" else "until", end, step)
+  private def fail() = throw new IllegalArgumentException(description + ": seqs cannot contain more than Int.MaxValue elements.")
 
   @throws[IndexOutOfBoundsException]
   final def apply(idx: Int): Int = {
@@ -279,7 +279,7 @@ sealed abstract class Range(
       case _ => super.lastIndexOf(elem, end)
     }
 
-  private[this] def posOf(i: Int): Int =
+  private def posOf(i: Int): Int =
     if (contains(i)) (i - start) / step else -1
 
   override def sameElements[B >: Int](that: IterableOnce[B]^): Boolean = that match {
@@ -300,7 +300,7 @@ sealed abstract class Range(
    *
    *  This method returns nonsensical results if `n < 0` or if `this.isEmpty`.
    */
-  @inline private[this] def greaterEqualNumRangeElements(n: Int): Boolean =
+  @inline private def greaterEqualNumRangeElements(n: Int): Boolean =
     (n ^ Int.MinValue) > ((numRangeElements - 1) ^ Int.MinValue) // unsigned comparison
 
   /** Creates a new range containing the first `n` elements of this range.
@@ -344,7 +344,7 @@ sealed abstract class Range(
   }
 
   // Advance from the start while we meet the given test
-  private[this] def argTakeWhile(p: Int => Boolean): Long = {
+  private def argTakeWhile(p: Int => Boolean): Long = {
     if (isEmpty) start
     else {
       var current = start
@@ -410,7 +410,7 @@ sealed abstract class Range(
   // like "end + 1" or "end - 1" because ranges involving Int.{ MinValue, MaxValue }
   // will overflow.  This creates an exclusive range where start == end
   // based on the given value.
-  private[this] def newEmptyRange(value: Int) = new Range.Exclusive(value, value, step)
+  private def newEmptyRange(value: Int) = new Range.Exclusive(value, value, step)
 
   /** Returns the reverse of this range.
     */
@@ -470,7 +470,7 @@ sealed abstract class Range(
     } else if (Ordering.Int isReverseOf ord) {
       if (step > 0) last
       else head
-    } else super.min(ord)
+    } else super.min(using ord)
 
   final override def max[A1 >: Int](implicit ord: Ordering[A1]): Int =
     if (ord eq Ordering.Int) {
@@ -479,11 +479,11 @@ sealed abstract class Range(
     } else if (Ordering.Int isReverseOf ord) {
       if (step > 0) head
       else last
-    } else super.max(ord)
+    } else super.max(using ord)
 
   override def tails: Iterator[Range] =
     new AbstractIterator[Range] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext = i <= Range.this.length
       override def next() = {
         if (hasNext) {
@@ -498,7 +498,7 @@ sealed abstract class Range(
 
   override def inits: Iterator[Range] =
     new AbstractIterator[Range] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext = i <= Range.this.length
       override def next() = {
         if (hasNext) {
@@ -543,7 +543,7 @@ sealed abstract class Range(
     s"${prefix}Range $start $preposition $end$stepped"
   }
 
-  override protected[this] def className = "Range"
+  override protected def className = "Range"
 
   override def distinct: Range = this
 
@@ -554,7 +554,7 @@ sealed abstract class Range(
     } else {
       val s = size
       new AbstractIterator[Range] {
-        private[this] var i = 0
+        private var i = 0
         override def hasNext = Range.this.length > i
         override def next() =
           if (hasNext) {
@@ -576,7 +576,7 @@ sealed abstract class Range(
         reverse
       }
     } else {
-      super.sorted(ord)
+      super.sorted(using ord)
     }
 }
 
@@ -701,8 +701,8 @@ private class RangeIterator(
   lastElement: Int,
   initiallyEmpty: Boolean
 ) extends AbstractIterator[Int] with Serializable { self =>
-  private[this] var _hasNext: Boolean = !initiallyEmpty
-  private[this] var _next: Int = start
+  private var _hasNext: Boolean = !initiallyEmpty
+  private var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0
   def hasNext: Boolean = _hasNext
   @throws[NoSuchElementException]

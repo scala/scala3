@@ -231,7 +231,7 @@ object ExecutionContext {
     final override def submitForExecution(runnable: Runnable): Unit = global.execute(runnable)
 
     final override def execute(runnable: Runnable): Unit =
-      if ((!runnable.isInstanceOf[impl.Promise.Transformation[_,_]] || runnable.asInstanceOf[impl.Promise.Transformation[_,_]].benefitsFromBatching) && runnable.isInstanceOf[Batchable])
+      if ((!runnable.isInstanceOf[impl.Promise.Transformation[?, ?]] || runnable.asInstanceOf[impl.Promise.Transformation[?, ?]].benefitsFromBatching) && runnable.isInstanceOf[Batchable])
         submitAsyncBatched(runnable)
       else
         submitForExecution(runnable)

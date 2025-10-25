@@ -498,7 +498,7 @@ object Predef extends LowPriorityImplicits {
    *  @see [[scala.StringContext.f StringContext.f]]
    *  @group console-output
    */
-  def printf(text: String, xs: Any*): Unit = Console.print(text.format(xs: _*))
+  def printf(text: String, xs: Any*): Unit = Console.print(text.format(xs*))
 
   // views --------------------------------------------------------------
 
@@ -593,10 +593,6 @@ object Predef extends LowPriorityImplicits {
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
     inline infix def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
-
-  extension (opt: Option.type)
-    @experimental
-    inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 
   /** A type supporting Self-based type classes.
    *
