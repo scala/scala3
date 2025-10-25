@@ -3,9 +3,10 @@ i am cow
 hear me moo
 ----
 No Indent:
-----
+
 i am cow
 hear me moo
+
 ----
 With indent:
   i am cow
@@ -74,7 +75,7 @@ Precise:
 Length: 9
 Content: [  ab
   cd]
-Chars: List( ,  , a, b,
+Chars: List( ,  , a, b, 
 ,  ,  , c, d)
 ----
 Interpolated:
