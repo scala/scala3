@@ -1353,10 +1353,6 @@ object Scanners {
       }
     end getDedentedStringPartWithDelimiter
 
-    /** Handle `$` in string interpolations. This is shared between regular strings and dedented strings.
-     *  @param escapeChar  The character that can be escaped with `$` (either `"` or `'`)
-     *  @return true if the caller should continue parsing the rest of the string, false otherwise
-     */
     private def handleStringInterpolation(escapeChar: Char): Boolean = {
       def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
         @tailrec def loopRest(): Unit =
