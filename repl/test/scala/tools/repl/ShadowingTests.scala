@@ -1,4 +1,4 @@
-package dotty.tools
+package scala.tools
 package repl
 
 import scala.language.unsafeNulls
@@ -9,10 +9,10 @@ import java.util.Comparator
 
 import org.junit.{Test, Ignore, BeforeClass, AfterClass}
 
-import dotc.Driver
-import dotc.reporting.TestReporter
-import dotc.interfaces.Diagnostic.ERROR
-import vulpix.{TestConfiguration, TestFlags}
+import dotty.tools.dotc.Driver
+import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.dotc.interfaces.Diagnostic.ERROR
+import dotty.tools.vulpix.{TestConfiguration, TestFlags}
 
 /** Test that the REPL can shadow artifacts in the local filesystem on the classpath.
  *  Since the REPL launches with the current directory on the classpath, stray .class

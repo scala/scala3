@@ -1,14 +1,14 @@
-package dotty.tools
+package scala.tools
 package repl
 
-import dotc.CompilationUnit
-import dotc.ast.untpd
-import dotc.core.Contexts.*
-import dotc.core.StdNames.str
-import dotc.parsing.Parsers.Parser
-import dotc.parsing.Tokens
-import dotc.reporting.{Diagnostic, StoreReporter}
-import dotc.util.SourceFile
+import dotty.tools.dotc.CompilationUnit
+import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.reporting.{Diagnostic, StoreReporter}
+import dotty.tools.dotc.util.SourceFile
 
 import scala.annotation.internal.sharable
 

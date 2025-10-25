@@ -188,7 +188,7 @@ object MainGenericRunner {
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
-        repl.Main.main(properArgs.toArray)
+        //repl.Main.main(properArgs.toArray)
         None
 
       case ExecuteMode.PossibleRun =>

@@ -10,12 +10,12 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools
+package scala.tools
 package repl
 
 import scala.language.unsafeNulls
 
-import io.AbstractFile
+import dotty.tools.io.AbstractFile
 
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections

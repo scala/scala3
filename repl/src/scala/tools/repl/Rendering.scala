@@ -1,9 +1,9 @@
-package dotty.tools
+package scala.tools
 package repl
 
 import scala.language.unsafeNulls
 
-import dotc.*, core.*
+import dotty.tools.dotc.*, core.*
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import reporting.Diagnostic

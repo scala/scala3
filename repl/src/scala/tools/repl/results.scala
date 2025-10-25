@@ -1,7 +1,7 @@
-package dotty.tools
+package scala.tools
 package repl
 
-import dotc.reporting.Diagnostic
+import dotty.tools.dotc.reporting.Diagnostic
 
 /** Contains the different data and type structures used to model results
  *  in the REPL

@@ -1,10 +1,13 @@
-package dotty.tools
+package scala.tools
 package repl
 
 import scala.language.unsafeNulls
 
-import vulpix.TestConfiguration
-import vulpix.FileDiff
+import dotty.tools.vulpix.TestConfiguration
+import dotty.tools.vulpix.FileDiff
+import dotty.tools.ToolName
+import dotty.tools.readLines
+import dotty.tools.toolArgsFor
 
 import java.lang.System.{lineSeparator => EOL}
 import java.io.{ByteArrayOutputStream, File => JFile, PrintStream}
@@ -98,7 +101,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         FileDiff.dump(checkFile.toPath.toString, actualOutput)
         println(s"Wrote updated script file to $checkFile")
       else
-        println(dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
+        println(dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
 
         fail(s"Error in script $name, expected output did not match actual")
     end if

@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package scala.tools
+package repl
 
 import dotty.tools.dotc.config.Properties.*
 import dotty.tools.dotc.config.CompilerCommand

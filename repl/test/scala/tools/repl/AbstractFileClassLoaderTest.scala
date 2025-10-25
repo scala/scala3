@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package scala.tools
+package repl
 
 import scala.language.unsafeNulls
 
