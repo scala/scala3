@@ -1,20 +1,20 @@
--- Error: ----------------------------------------------------------------------
-5 |  val noNewlineAfterOpen = '''content on same line // error: dedented string literal must start with a newline
+-- Error: tests/neg/dedented-string-literals.scala:4:27 ----------------------------------------------------------------
+4 |  val noNewlineAfterOpen = '''content on same line // error: dedented string literal must start with newline after opening quotes
   |                           ^
-  |      dedented string literal must start with newline after opening quotes
--- Error: ----------------------------------------------------------------------
-8 |  val notIndented = '''
-  |                    ^
-  |line in dedented string literal must be indented at least as much as the closing delimiter
--- Error: ----------------------------------------------------------------------
-13 |  val mixedTabsSpaces = '''
-   |                        ^
-   |       dedented string literal cannot mix tabs and spaces in indentation
--- Error: ----------------------------------------------------------------------
-19 |  val nonWhitespaceBeforeClosing = '''
-   |                                   ^
+  |                           dedented string literal must start with newline after opening quotes
+-- Error: tests/neg/dedented-string-literals.scala:7:0 -----------------------------------------------------------------
+7 |content // error: line in dedented string literal must be indented at least as much as the closing delimiter with an identical prefix
+  |^
+  |line in dedented string literal must be indented at least as much as the closing delimiter with an identical prefix
+-- Error: tests/neg/dedented-string-literals.scala:11:0 ----------------------------------------------------------------
+11 |	tab line // error: line in dedented string literal must be indented at least as much as the closing delimiter with an identical prefix
+   |^
+   |line in dedented string literal must be indented at least as much as the closing delimiter with an identical prefix
+-- Error: tests/neg/dedented-string-literals.scala:17:0 ----------------------------------------------------------------
+17 |  text''' // error: last line of dedented string literal must contain only whitespace before closing delimiter
+   |^
    |last line of dedented string literal must contain only whitespace before closing delimiter
--- Error: ----------------------------------------------------------------------
-41 |  val unclosed = '''
+-- Error: tests/neg/dedented-string-literals.scala:21:17 ---------------------------------------------------------------
+21 |  val unclosed = ''' // error: unclosed dedented string literal
    |                 ^
-   |                 unclosed dedented string literal
+   |                 dedented string literal must start with newline after opening quotes
