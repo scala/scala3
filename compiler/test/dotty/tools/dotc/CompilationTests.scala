@@ -170,13 +170,23 @@ class CompilationTests {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
-    aggregateTests(
+    var tests = List(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
-    ).checkRuns()
+    )
+
+    if scala.util.Properties.isJavaAtLeast("16") then
+      tests ++= List(
+        // for separate compilation
+        compileFilesInDir("tests/run-java16+", defaultOptions),
+        // for joint compilation
+        compileDir("tests/run-java16+/java-records-match", defaultOptions),
+      )
+
+    aggregateTests(tests*).checkRuns()
   }
 
   // Generic java signatures tests ---------------------------------------------

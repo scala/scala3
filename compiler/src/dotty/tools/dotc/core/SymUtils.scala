@@ -403,6 +403,8 @@ class SymUtils:
       || isDefaultArgumentOfCheckedMethod
       || (!self.is(Package) && checkOwner(self.owner))
 
+    def isJavaRecord(using Context) = self.is(JavaDefined) && self.derivesFrom(defn.JavaRecordClass)
+
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.
     */
