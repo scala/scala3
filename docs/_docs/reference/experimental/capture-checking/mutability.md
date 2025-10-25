@@ -77,11 +77,11 @@ When we create an instance of a mutable type we always add `cap` to its capture 
 
 **Restriction:** A non-mutable type cannot be downcast by a pattern match to a mutable type.
 
-**Definition:** A class is _read_only_ if the following conditions are met:
+**Definition:** A parent class constructor is _read-only_ if the following conditions are met:
 
- 1. It does not extend any exclusive capabilities from its environment.
- 2. It does not take parameters with exclusive capabilities.
- 3. It does not contain mutable fields, or fields that take exclusive capabilities.
+ 1. The class does not retain any exclusive capabilities from its environment.
+ 2. The constructor does not take arguments that retain exclusive capabilities.
+ 3. The class does not does not have fields that retain exclusive universal capabilities.
 
 **Restriction:** If a class or trait extends `Mutable` all its parent classes or traits must either extend `Mutable` or be read-only.
 
@@ -455,4 +455,3 @@ val c = b += 3
 // b cannot be used from here
 ```
 This code is equivalent to functional append with `+`, and is at the same time more efficient since it re-uses the storage of the argument buffer.
-
