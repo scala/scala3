@@ -12,7 +12,3 @@
 18 |    o.log
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg-custom-args/captures/filevar.scala:11:55 ---------------------------------------------------------
-11 |def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =
-   |                                                       ^
-   |                                        redundant capture: File already accounts for (l : scala.caps.Capability)
