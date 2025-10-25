@@ -1338,47 +1338,9 @@ object Scanners {
         }
       }
       else if (isInterpolated && ch == '$') {
-        // Handle interpolation
-        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
-          @tailrec def loopRest(): Unit =
-            if ch != SU && isUnicodeIdentifierPart(ch) then
-              putChar(ch) ; nextRawChar()
-              loopRest()
-            else if atSupplementary(ch, isUnicodeIdentifierPart) then
-              putChar(ch) ; nextRawChar()
-              putChar(ch) ; nextRawChar()
-              loopRest()
-            else
-              finishNamedToken(IDENTIFIER, target = next)
-          end loopRest
-          setStrVal()
-          token = STRINGPART
-          next.lastOffset = charOffset - 1
-          next.offset = charOffset - 1
-          putChar(ch) ; nextRawChar()
-          if hasSupplement then
-            putChar(ch) ; nextRawChar()
-          loopRest()
-        end getInterpolatedIdentRest
-
-        nextRawChar()
-        if (ch == '$' || ch == '\'') {
-          putChar(ch)
-          nextRawChar()
+        if (handleStringInterpolation('\'')) {
           getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
         }
-        else if (ch == '{') {
-          setStrVal()
-          token = STRINGPART
-        }
-        else if isUnicodeIdentifierStart(ch) || ch == '_' then
-          getInterpolatedIdentRest(hasSupplement = false)
-        else if atSupplementary(ch, isUnicodeIdentifierStart) then
-          getInterpolatedIdentRest(hasSupplement = true)
-        else
-          error("invalid string interpolation: `$$`, `$'`, `$`ident or `$`BlockExpr expected".toMessage, off = charOffset - 2)
-          putChar('$')
-          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && ch == SU
@@ -1390,6 +1352,57 @@ object Scanners {
         }
       }
     end getDedentedStringPartWithDelimiter
+
+    /** Handle `$` in string interpolations. This is shared between regular strings and dedented strings.
+     *  @param escapeChar  The character that can be escaped with `$` (either `"` or `'`)
+     *  @return true if the caller should continue parsing the rest of the string, false otherwise
+     */
+    private def handleStringInterpolation(escapeChar: Char): Boolean = {
+      def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
+        @tailrec def loopRest(): Unit =
+          if ch != SU && isUnicodeIdentifierPart(ch) then
+            putChar(ch) ; nextRawChar()
+            loopRest()
+          else if atSupplementary(ch, isUnicodeIdentifierPart) then
+            putChar(ch) ; nextRawChar()
+            putChar(ch) ; nextRawChar()
+            loopRest()
+          else
+            finishNamedToken(IDENTIFIER, target = next)
+        end loopRest
+        setStrVal()
+        token = STRINGPART
+        next.lastOffset = charOffset - 1
+        next.offset = charOffset - 1
+        putChar(ch) ; nextRawChar()
+        if hasSupplement then
+          putChar(ch) ; nextRawChar()
+        loopRest()
+      end getInterpolatedIdentRest
+
+      nextRawChar()
+      if (ch == '$' || ch == escapeChar) {
+        putChar(ch)
+        nextRawChar()
+        true  // continue parsing
+      }
+      else if (ch == '{') {
+        setStrVal()
+        token = STRINGPART
+        false  // don't continue, we're done with this string part
+      }
+      else if isUnicodeIdentifierStart(ch) || ch == '_' then
+        getInterpolatedIdentRest(hasSupplement = false)
+        false  // don't continue, identifier rest handles it
+      else if atSupplementary(ch, isUnicodeIdentifierStart) then
+        getInterpolatedIdentRest(hasSupplement = true)
+        false  // don't continue, identifier rest handles it
+      else
+        val escapeDesc = if escapeChar == '"' then "`$\"\"`, " else "`$'`, "
+        error(s"invalid string interpolation: `$$$$`, $escapeDesc`$$`ident or `$$`BlockExpr expected".toMessage, off = charOffset - 2)
+        putChar('$')
+        true  // continue parsing after error
+    }
 
     private def getRawStringLit(): Unit =
       if (ch == '\"') {
@@ -1435,46 +1448,9 @@ object Scanners {
         getStringPart(multiLine)
       }
       else if (ch == '$') {
-        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
-          @tailrec def loopRest(): Unit =
-            if ch != SU && isUnicodeIdentifierPart(ch) then
-              putChar(ch) ; nextRawChar()
-              loopRest()
-            else if atSupplementary(ch, isUnicodeIdentifierPart) then
-              putChar(ch) ; nextRawChar()
-              putChar(ch) ; nextRawChar()
-              loopRest()
-            else
-              finishNamedToken(IDENTIFIER, target = next)
-          end loopRest
-          setStrVal()
-          token = STRINGPART
-          next.lastOffset = charOffset - 1
-          next.offset = charOffset - 1
-          putChar(ch) ; nextRawChar()
-          if hasSupplement then
-            putChar(ch) ; nextRawChar()
-          loopRest()
-        end getInterpolatedIdentRest
-
-        nextRawChar()
-        if (ch == '$' || ch == '"') {
-          putChar(ch)
-          nextRawChar()
+        if (handleStringInterpolation('"')) {
           getStringPart(multiLine)
         }
-        else if (ch == '{') {
-          setStrVal()
-          token = STRINGPART
-        }
-        else if isUnicodeIdentifierStart(ch) || ch == '_' then
-          getInterpolatedIdentRest(hasSupplement = false)
-        else if atSupplementary(ch, isUnicodeIdentifierStart) then
-          getInterpolatedIdentRest(hasSupplement = true)
-        else
-          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected".toMessage, off = charOffset - 2)
-          putChar('$')
-          getStringPart(multiLine)
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
