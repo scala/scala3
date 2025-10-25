@@ -21,7 +21,7 @@ import dotty.tools.repl.ReplBytecodeInstrumentation
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, instrumentBytecode: Boolean = true) extends ClassLoader(parent):
+class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, instrumentBytecode: Boolean) extends ClassLoader(parent):
   private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
 
   // on JDK 20 the URL constructor we're using is deprecated,

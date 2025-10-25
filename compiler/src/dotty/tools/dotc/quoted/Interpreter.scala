@@ -35,7 +35,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
   val classLoader =
     if ctx.owner.topLevelClass.name.startsWith(str.REPL_SESSION_LINE) then
-        new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader0)
+        new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader0, false)
     else classLoader0
 
   /** Local variable environment */
@@ -204,7 +204,11 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
 
   private def loadReplLineClass(moduleClass: Symbol): Class[?] = {
-    val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
+    val lineClassloader = new AbstractFileClassLoader(
+      ctx.settings.outputDir.value,
+      classLoader,
+      false
+    )
     lineClassloader.loadClass(moduleClass.name.firstPart.toString)
   }
 

@@ -599,9 +599,11 @@ class ReplDriver(settings: Array[String],
             val prevClassLoader = rendering.classLoader()
             val jarClassLoader = fromURLsParallelCapable(
               jarClassPath.asURLs, prevClassLoader)
-            val instrumentBytecode = !ctx.settings.XreplDisableBytecodeInstrumentation.value
             rendering.myClassLoader = new AbstractFileClassLoader(
-              prevOutputDir, jarClassLoader, instrumentBytecode)
+              prevOutputDir,
+              jarClassLoader,
+              !ctx.settings.XreplDisableBytecodeInstrumentation.value
+            )
 
             out.println(s"Added '$path' to classpath.")
         } catch {

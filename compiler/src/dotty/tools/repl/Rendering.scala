@@ -72,8 +72,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
       }
 
-      val instrumentBytecode = !ctx.settings.XreplDisableBytecodeInstrumentation.value
-      myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent, instrumentBytecode)
+      myClassLoader = new AbstractFileClassLoader(
+        ctx.settings.outputDir.value,
+        parent,
+        !ctx.settings.XreplDisableBytecodeInstrumentation.value
+      )
       myClassLoader
     }
 
