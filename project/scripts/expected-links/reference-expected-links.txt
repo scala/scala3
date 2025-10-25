@@ -69,8 +69,18 @@
 ./enums/enums.html
 ./enums/index.html
 ./experimental/canthrow.html
-./experimental/cc-advanced.html
-./experimental/cc.html
+./experimental/capture-checking/advanced.html
+./experimental/capture-checking/basics.html
+./experimental/capture-checking/checked-exceptions.html
+./experimental/capture-checking/classes.html
+./experimental/capture-checking/classifiers.html
+./experimental/capture-checking/how-to-use.html
+./experimental/capture-checking/index.html
+./experimental/capture-checking/internals.html
+./experimental/capture-checking/mutability.html
+./experimental/capture-checking/polymorphism.html
+./experimental/capture-checking/scoped-caps.html
+./experimental/capture-checking/separation-checking.html
 ./experimental/erased-defs-spec.html
 ./experimental/erased-defs.html
 ./experimental/explicit-nulls.html
@@ -85,7 +95,7 @@
 ./experimental/overview.html
 ./experimental/package-object-values.html
 ./experimental/purefuns.html
-./experimental/runtimeChecked.html
+./experimental/quoted-patterns-with-polymorphic-functions.html
 ./experimental/tupled-function.html
 ./experimental/typeclasses.html
 ./experimental/unrolled-defs.html
@@ -116,6 +126,7 @@
 ./new-types/union-types-spec.html
 ./new-types/union-types.html
 ./other-new-features.html
+./other-new-features/better-fors.html
 ./other-new-features/binary-literals.html
 ./other-new-features/control-syntax.html
 ./other-new-features/creator-applications.html
@@ -132,6 +143,7 @@
 ./other-new-features/parameter-untupling-spec.html
 ./other-new-features/parameter-untupling.html
 ./other-new-features/preview-defs.html
+./other-new-features/runtimeChecked.html
 ./other-new-features/safe-initialization.html
 ./other-new-features/targetName.html
 ./other-new-features/threadUnsafe-annotation.html
@@ -140,7 +152,6 @@
 ./other-new-features/transparent-traits.html
 ./other-new-features/type-test.html
 ./overview.html
-./preview/better-fors.html
 ./preview/index.html
 ./preview/overview.html
 ./soft-modifier.html
