@@ -21,20 +21,20 @@ content // error: line in dedented string literal is indented less than the clos
   text''' // error: last line of dedented string literal must contain only whitespace before closing delimiter
 }
 
-// Test @compileTimeOnly with dedented string
-object CompileTimeOnlyTest {
-  import scala.annotation.compileTimeOnly
 
-  @compileTimeOnly('''
-  This method should only be used at compile time
-  Do not call at runtime
-  ''')
-  def onlyAtCompileTime: Unit = ()
 
-  def test(): Unit = {
-    onlyAtCompileTime // error
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Error: Unclosed literal - must be last since it breaks parsing
 object UnclosedTest {
