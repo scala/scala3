@@ -1385,7 +1385,7 @@ object Scanners {
         getInterpolatedIdentRest(hasSupplement = true)
         false  // don't continue, identifier rest handles it
       else
-        val escapeDesc = if escapeChar == '"' then "`$\"\"`, " else "`$'`, "
+        val escapeDesc = if escapeChar == '"' then "`$\"`, " else "`$'`, "
         error(s"invalid string interpolation: `$$$$`, $escapeDesc`$$`ident or `$$`BlockExpr expected".toMessage, off = charOffset - 2)
         putChar('$')
         true  // continue parsing after error
