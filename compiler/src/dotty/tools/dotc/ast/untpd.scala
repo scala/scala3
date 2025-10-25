@@ -391,6 +391,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   val RetainsAnnot: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Property key for marking Apply trees with end markers */
+  val HasEndMarker: Property.StickyKey[Unit] = Property.StickyKey()
+
+  /** Property key for storing method name in Apply trees for end marker matching */
+  val MethodName: Property.StickyKey[Name] = Property.StickyKey()
+
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)

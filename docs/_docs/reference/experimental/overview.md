@@ -11,6 +11,7 @@ All experimental language features can be found under the `scala.language.experi
 They are enabled by importing the feature or using the `-language` compiler flag.
 
 * [`erasedDefinitions`](./erased-defs.md): Enable support for `erased` modifier.
+* [`endMarkersForMethodBlocks`](./end-markers-method-blocks.md): Enable support for end markers for method blocks.
 * `fewerBraces`: Enable support for using indentation for arguments.
 * [`genericNumberLiterals`](./numeric-literals.md): Enable support for generic number literals.
 * [`namedTypeArguments`](./named-typeargs.md): Enable support for named type arguments
@@ -32,4 +33,4 @@ Hence, dependent projects also have to be experimental.
 Some experimental language features that are still in research and development can be enabled with special compiler options. These include
 
 * [`-Yexplicit-nulls`](./explicit-nulls.md). Enable support for tracking null references in the type system.
-* [`-Ycc`](./capture-checking/cc.md). Enable support for capture checking.
+* [`-Ycc`](./cc.md). Enable support for capture checking.

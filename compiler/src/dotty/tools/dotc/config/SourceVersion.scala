@@ -47,6 +47,7 @@ enum SourceVersion:
   def enablesBetterFors(using Context) = isAtLeast(`3.8`) || (isAtLeast(`3.7`) && isPreviewEnabled)
   /** See PR #23441 and tests/neg/i23435-min */
   def enablesDistributeAnd = !isAtLeast(`3.8`)
+  def enablesEndMarkersForMethodBlocks(using Context) = isAtLeast(`3.8`) || Feature.enabled(Feature.endMarkersForMethodBlocks)
 
   def requiresNewSyntax = isAtLeast(future)
 
