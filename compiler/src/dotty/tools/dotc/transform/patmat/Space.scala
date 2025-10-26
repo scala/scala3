@@ -382,7 +382,12 @@ object SpaceEngine {
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots, isValue = true, isTyped = true), decomposed = false)
+      val tptTpe = 
+        if isWildcardStarArg(pat) then 
+          tpt.tpe.translateFromRepeated(toArray = false)
+        else 
+          tpt.tpe
+      Typ(erase(tptTpe.stripAnnots, isValue = true, isTyped = true), decomposed = false)
 
     case This(_) =>
       Typ(pat.tpe.stripAnnots, decomposed = false)
