@@ -168,9 +168,12 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  def runUntilQuit(using initialState: State = initialState)(): State = {
+  def runUntilQuit(using initialState: State = initialState)(hardcodedInput: java.io.InputStream = null): State = {
     val terminal = new JLineTerminal
 
+    val hardcodedInputLines =
+      if (hardcodedInput == null) null
+      else new java.io.BufferedReader(new java.io.InputStreamReader(hardcodedInput))
     out.println(
       s"""Welcome to Scala $simpleVersionString ($javaVersion, Java $javaVmName).
          |Type in expressions for evaluation. Or try :help.""".stripMargin)
@@ -208,8 +211,13 @@ class ReplDriver(settings: Array[String],
       }
 
       try {
-        val line = terminal.readLine(completer)
-        ParseResult(line)
+        println("hardcodedInputLines " + hardcodedInputLines)
+        val line =
+          if (hardcodedInputLines != null) hardcodedInputLines.readLine()
+          else terminal.readLine(completer)
+        println("line " + line)
+        if (line == null) Quit
+        else ParseResult(line)
       } catch {
         case _: EndOfFileException => // Ctrl+D
           Quit
