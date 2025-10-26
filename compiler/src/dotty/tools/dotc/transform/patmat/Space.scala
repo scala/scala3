@@ -859,10 +859,10 @@ object SpaceEngine {
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
       classSym.is(Case) ||
-        (tpw.isInstanceOf[TypeRef] && {
-          val tref = tpw.asInstanceOf[TypeRef]
-          tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
-        })
+      (tpw.isInstanceOf[TypeRef] && {
+        val tref = tpw.asInstanceOf[TypeRef]
+        tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
+      })
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
