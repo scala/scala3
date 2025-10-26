@@ -332,7 +332,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
     /** If C derives from Capability and we have a C^cs in source, we leave it as is
-     *  instead of expanding it to C^{cap.rd}^cs. We do this by stripping capability-generated
+     *  instead of expanding it to C^{cap}^cs. We do this by stripping capability-generated
      *  universal capture sets from the parent of a CapturingType.
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match

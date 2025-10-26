@@ -881,16 +881,12 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  annotations avoid problematic intersections of capture sets when those
        *  parameters are selected.
        *
-       *  Second half: union of initial capture set and all capture sets of arguments
-       *  to tracked parameters. The initial capture set `initCs` is augmented with
-       *  a fresh cap if `core` extends Capability.
+       *  Second half: union of initial capture set, all capture sets of arguments
+       *  to tracked parameters, and the capture set implied by the fields of the class.
        */
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
-        var allCaptures: CaptureSet =
-          if core.derivesFromCapability
-          then initCs ++ FreshCap(Origin.NewCapability(core)).singletonCaptureSet
-          else initCs ++ impliedByFields(core)
+        var allCaptures: CaptureSet = initCs ++ impliedByFields(core)
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
@@ -917,7 +913,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       /** The additional capture set implied by the capture sets of its fields. This
        *  is either empty or, if some fields have a terminal capability in their span
        *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-       *  capabiltities. Class parameters are not counted.
+       *  capabiltities. Class parameters are not counted. If the type is a mutable type,
+       *  we add a fresh cap in any case -- this is because we can currently hide
+       *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
        */
       def impliedByFields(core: Type): CaptureSet =
         var infos: List[String] = Nil
@@ -925,20 +923,23 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ctx.settings.YccVerbose.value then infos = msg :: infos
 
         /** The classifiers of the fresh caps in the span capture sets of all fields
-         *  in the given class `cls`.
+         *  in the given class `cls`. Mutable types get at least a fresh classified
+         *  as mutable.
          */
         def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
           case cls: ClassSymbol =>
-            val fieldClassifiers =
+            val fields = cls.info.decls.toList
+            var fieldClassifiers =
               for
-                sym <- cls.info.decls.toList
-                if contributesFreshToClass(sym)
+                sym <- fields if contributesFreshToClass(sym)
                 case fresh: FreshCap <- sym.info.spanCaptureSet.elems
                   .filter(_.isTerminalCapability)
                   .map(_.stripReadOnly)
                   .toList
                 _ = pushInfo(i"Note: ${sym.showLocated} captures a $fresh")
               yield fresh.hiddenSet.classifier
+            if cls.typeRef.isMutableType then
+              fieldClassifiers = defn.Caps_Mutable :: fieldClassifiers
             val parentClassifiers =
               cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
             if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
