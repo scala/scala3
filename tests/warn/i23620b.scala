@@ -20,6 +20,19 @@ object OnlyFoo:
   p match // warn
     case _: Foo => println("foo")
 
-  p2 match { //warn
+  p2 match { // warn
     case _: Foo => println("foo")
   }
+
+sealed trait S
+trait Z
+
+case object A extends S, Z
+case object B extends S, Z
+
+trait HasT:
+  type T <: S & Z
+
+def nonExhaustive(h: HasT, x: h.T) =
+  x match // warn
+    case A => ()

@@ -709,7 +709,7 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
-      case tref: TypeRef if tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType =>
+      case tref: TypeRef if tref.isUpperBoundedAbstract =>
         rec(tref.info.hiBound, mixins)
       case _ => ListOfNoType
     end rec
@@ -725,6 +725,10 @@ object SpaceEngine {
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
+
+  extension (tref: TypeRef)
+    def isUpperBoundedAbstract(using Context): Boolean =
+      tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
@@ -857,10 +861,7 @@ object SpaceEngine {
       classSym.is(Case) ||
         (tpw.isInstanceOf[TypeRef] && {
           val tref = tpw.asInstanceOf[TypeRef]
-          if (tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType)
-            isCheckable(tref.info.hiBound)
-          else
-            false
+          tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
         })
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
