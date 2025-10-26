@@ -55,7 +55,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
-           tree.srcPos.isUserCode
+           tree.srcPos.isUserCode(using if tree.hasAttachment(InlinedParameter) then ctx.outer else ctx)
         || tree.srcPos.isZeroExtentSynthetic // take as summonInline
       if !ignoreTree(tree) then
         def loopOverPrefixes(prefix: Type, depth: Int): Unit =
@@ -156,6 +156,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case _ =>
     tree
 
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    if tree.inlinedFromOuterScope then
+      tree.expansion.putAttachment(InlinedParameter, ())
+    ctx
   override def transformInlined(tree: Inlined)(using Context): tree.type =
     transformAllDeep(tree.call)
     tree
@@ -494,6 +498,9 @@ object CheckUnused:
 
   /** Tree is LHS of Assign. */
   val AssignmentTarget = Property.StickyKey[Unit]
+
+  /** Tree is an inlined parameter. */
+  val InlinedParameter = Property.StickyKey[Unit]
 
   class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper")
 
@@ -1063,7 +1070,7 @@ object CheckUnused:
     def isUserCode(using Context): Boolean =
       val inlineds = enclosingInlineds // per current context
          inlineds.isEmpty
-      || inlineds.last.srcPos.sourcePos.contains(pos.sourcePos)
+      || inlineds.exists(_.srcPos.sourcePos.contains(pos.sourcePos)) // include intermediate inlinings or quotes
 
   extension [A <: AnyRef](arr: Array[A])
     // returns `until` if not satisfied
