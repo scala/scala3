@@ -382,7 +382,7 @@ object Types extends TypeUtils {
     /** Is this type guaranteed not to have `null` as a value? */
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
-      case tp: FlexibleType => false
+      case tp: FlexibleType => true
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
       case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.hi.isNotNull

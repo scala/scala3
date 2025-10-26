@@ -10,7 +10,7 @@ def f5a[T <: String](s: T): String = s.nn // warn
 
 // flexible types
 def f7(s: String|Null): String = "".concat(s.nn) // warn
-def f8(s: String): String = s.trim().nn // OK because the .nn could be useful as a dynamic null check
+def f8(s: String): String = s.trim().nn // warn
 
 
 def f9(s: String|Null): String =

@@ -322,7 +322,7 @@ object SymbolLoaders {
           val fullName = pkg.name
           val name =
             if (packageName.isEmpty) fullName
-            else fullName.substring(packageName.length + 1).nn
+            else fullName.substring(packageName.length + 1)
 
           enterPackage(root.symbol, name.toTermName,
             (module, modcls) => new PackageLoader(module, classPath))

@@ -949,7 +949,7 @@ object CaptureSet:
      *  is not derived from some other variable.
      */
     protected def ids(using Context): String =
-      def descr = getClass.getSimpleName.nn.take(1)
+      def descr = getClass.getSimpleName.take(1)
       val trail = this.match
         case dv: DerivedVar =>
           def summary = if ctx.settings.YccVerbose.value then dv.summarize else descr
