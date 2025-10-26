@@ -211,11 +211,10 @@ class ReplDriver(settings: Array[String],
       }
 
       try {
-        println("hardcodedInputLines " + hardcodedInputLines)
         val line =
           if (hardcodedInputLines != null) hardcodedInputLines.readLine()
           else terminal.readLine(completer)
-        println("line " + line)
+
         if (line == null) Quit
         else ParseResult(line)
       } catch {

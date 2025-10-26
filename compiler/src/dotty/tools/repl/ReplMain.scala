@@ -27,9 +27,9 @@ class ReplMain(
       val driver = new ReplDriver(settings, out, classLoader, fullPredef)
 
       if (testCode == "") driver.tryRunning
-      else {
-        driver.runUntilQuit(using driver.initialState)(new java.io.ByteArrayInputStream(testCode.getBytes()))
-      }
+      else driver.runUntilQuit(using driver.initialState)(
+        new java.io.ByteArrayInputStream(testCode.getBytes())
+      )
       ()
     finally
       ReplMain.currentBindings.set(null)
@@ -49,12 +49,12 @@ object ReplMain:
     '{TypeName[A](${Expr(Type.show[A])})}
 
 
-  case class Bind[T](name: String, value: T)(implicit val typeName: TypeName[T])
+  case class Bind[T](name: String, value: () => T)(implicit val typeName: TypeName[T])
   object Bind:
     implicit def ammoniteReplArrowBinder[T](t: (String, T))(implicit typeName: TypeName[T]): Bind[T] = {
-      Bind(t._1, t._2)(typeName)
+      Bind(t._1, () => t._2)(typeName)
     }
 
-  def currentBinding[T](s: String): T = currentBindings.get().apply(s).asInstanceOf[T]
+  def currentBinding[T](s: String): T = currentBindings.get().apply(s).apply().asInstanceOf[T]
 
-  private val currentBindings = new ThreadLocal[Map[String, Any]]()
+  private val currentBindings = new ThreadLocal[Map[String, () => Any]]()
