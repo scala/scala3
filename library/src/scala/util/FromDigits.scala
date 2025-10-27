@@ -154,7 +154,7 @@ object FromDigits {
         case ex: NumberFormatException => throw MalformedNumber()
       }
     if (x.isInfinite) throw NumberTooLarge()
-    if (x == 0.0d && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
+    if (x == 0.0d && !zeroFloat.pattern.matcher(digits).matches) throw NumberTooSmall()
     x
   }
 
