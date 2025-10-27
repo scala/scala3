@@ -20,11 +20,3 @@
    |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): Cap^{lcap} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^'s13]^'s14 of function literal
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg-custom-args/captures/i15923.scala:21:56 ----------------------------------------------------------
-21 |    def withCap[X](op: (lcap: caps.Capability) ?-> Cap^{lcap} => X): X = {
-   |                                                        ^^^^
-   |                                redundant capture: test2.Cap already accounts for (lcap : scala.caps.Capability)
--- Warning: tests/neg-custom-args/captures/i15923.scala:6:54 -----------------------------------------------------------
-6 |  def withCap[X](op: (lcap: caps.Capability) ?-> Cap^{lcap} => X): X = {
-  |                                                      ^^^^
-  |                                        redundant capture: Cap already accounts for (lcap : scala.caps.Capability)

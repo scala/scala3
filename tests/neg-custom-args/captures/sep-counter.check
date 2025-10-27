@@ -9,4 +9,4 @@
    |where:    ^    refers to a fresh root capability classified as Mutable in the result type of method mkCounter
    |          ^²   refers to a fresh root capability classified as Mutable in the result type of method mkCounter
    |          cap  is a fresh root capability classified as Mutable in the type of value c
-   |          cap² is a fresh root capability classified as Mutable created in value c when constructing mutable Ref
+   |          cap² is a fresh root capability classified as Mutable created in value c when constructing instance Ref
