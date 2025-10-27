@@ -574,7 +574,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           	// Under deferredReaches, don't propagate out of methods inside terms.
           	// The use set of these methods will be charged when that method is called.
 
-      if !cs.isAlwaysEmpty then
+      if !cs.isAlwaysEmpty && !CCState.discardUses then
         recur(cs, curEnv, null)
         if addUseInfo then useInfos += ((tree, cs, curEnv))
     end markFree
@@ -783,6 +783,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           else argType0.widen.stripCapturing
         capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
         super.recheckFinish(argType, tree, pt)
+      else if meth == defn.Caps_unsafeDiscardUses then
+        val arg :: Nil = tree.args: @unchecked
+        withDiscardedUses(recheck(arg, pt))
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)

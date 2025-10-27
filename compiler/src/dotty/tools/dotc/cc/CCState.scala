@@ -87,6 +87,8 @@ class CCState:
 
   private var collapseFresh: Boolean = false
 
+  private var discardUses: Boolean = false
+
 object CCState:
 
   /** If we are currently in capture checking or setup, and `mt` is a method
@@ -136,5 +138,17 @@ object CCState:
 
   /** Should all FreshCap instances be treated as equal to GlobalCap? */
   def collapseFresh(using Context): Boolean = ccState.collapseFresh
+
+  /** Run `op` but suppress all recording of uses in `markFree` */
+   inline def withDiscardedUses[T](op: => T)(using Context): T =
+    if isCaptureCheckingOrSetup then
+      val ccs = ccState
+      val saved = ccs.discardUses
+      ccs.discardUses = true
+      try op finally ccs.discardUses = saved
+    else op
+
+  /** Should uses not be recorded in markFree? */
+  def discardUses(using Context): Boolean = ccState.discardUses
 
 end CCState
