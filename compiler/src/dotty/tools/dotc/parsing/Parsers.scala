@@ -1461,7 +1461,7 @@ object Parsers {
               val str = in.strVal
               if (token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
                 extractClosingIndent(str, negOffset) match {
-                  case Some(closingIndent) => dedentString(str, negOffset, closingIdent, true, true)
+                  case Some(closingIndent) => dedentString(str, negOffset, closingIndent, true, true)
                   case None => str
                 }
               } else str
@@ -1595,8 +1595,13 @@ object Parsers {
         if (!isDedented || stringParts.isEmpty) stringParts
         else {
           val lastPart = stringParts.last._1
+
           extractClosingIndent(lastPart, in.offset) match {
-            case Some(closingIndent) => dedentString(str, in.offset, closingIndent, index == 0, index == stringParts.length - 1)
+            case Some(closingIndent) =>
+              stringParts.zipWithIndex.map { case ((str, offset), index) =>
+                val dedented = dedentString(str, in.offset, closingIndent, index == 0, index == stringParts.length - 1)
+                (dedented, offset)
+              }
             case None => Nil
           }
         }

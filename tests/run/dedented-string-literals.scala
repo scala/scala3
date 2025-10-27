@@ -284,5 +284,32 @@ hear me moo
     println("valueOf test:")
     println(s"Value: [$valueOfResult]")
     println(s"Type matches: ${valueOfResult == "  alpha\n    beta\n  gamma"}")
+    println("----")
+
+    val contentsWithNewline = s'''
+    ${"content with\nnewline"}
+    more text
+    '''
+    println("contentsWithNewline:")
+    println(contentsWithNewline)
+    println("----")
+
+    val nested = s'''
+    outer ${'''
+      inner
+      '''}
+    '''
+    println("nested:")
+    println(nested)
+    println("----")
+
+    val nested2 = s'''
+    outer ${s'''
+      inner with $x
+      '''}
+    '''
+    println("nested2:")
+    println(nested2)
+    println("----")
   }
 }
