@@ -28,7 +28,7 @@ object ReplBytecodeInstrumentation:
       catch {
         case _: java.lang.ClassNotFoundException => None
       }
-    for(cancelClass <- cancelClassOpt){
+    for(cancelClass <- cancelClassOpt) {
       val setAllStopMethod = cancelClass.getDeclaredMethod("setStop", classOf[Boolean])
       setAllStopMethod.invoke(null, b.asInstanceOf[AnyRef])
     }
