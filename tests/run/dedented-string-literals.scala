@@ -294,22 +294,22 @@ hear me moo
     println(contentsWithNewline)
     println("----")
 
-    val nested = s'''
+    val nestedInterpolator = s'''
     outer ${'''
       inner
       '''}
     '''
-    println("nested:")
-    println(nested)
+    println("nestedInterpolator:")
+    println(nestedInterpolator)
     println("----")
 
-    val nested2 = s'''
+    val nestedInterpolator2 = s'''
     outer ${s'''
-      inner with $x
+      inner with ${1+1}
       '''}
     '''
-    println("nested2:")
-    println(nested2)
+    println("nestedInterpolator2:")
+    println(nestedInterpolator2)
     println("----")
   }
 }

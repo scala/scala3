@@ -1427,6 +1427,15 @@ object Parsers {
       }
     }
 
+    /** Check if a string literal at the given offset is a dedented string */
+    def isDedentedStringLiteral(offset: Int): Boolean = {
+      val buf = in.buf
+      offset + 2 < buf.length &&
+        buf(offset) == '\'' &&
+        buf(offset + 1) == '\'' &&
+        buf(offset + 2) == '\''
+    }
+
     /** Literal           ::=  SimpleLiteral
      *                      |  processedStringLiteral
      *                      |  symbolLiteral
@@ -1476,15 +1485,6 @@ object Parsers {
             case ex: FromDigitsException => syntaxErrorOrIncomplete(ex.getMessage.toMessage)
           }
         Literal(Constant(value))
-      }
-
-      /** Check if a string literal at the given offset is a dedented string */
-      def isDedentedStringLiteral(offset: Int): Boolean = {
-        val buf = in.buf
-        offset + 2 < buf.length &&
-          buf(offset) == '\'' &&
-          buf(offset + 1) == '\'' &&
-          buf(offset + 2) == '\''
       }
 
       if (inStringInterpolation) {
@@ -1544,18 +1544,14 @@ object Parsers {
         in.buf(in.charOffset) == '"' &&
         in.buf(in.charOffset + 1) == '"'
 
-      val isDedented =
-        in.charOffset + 2 < in.buf.length &&
-        in.buf(in.charOffset - 1) == '\'' &&
-        in.buf(in.charOffset) == '\'' &&
-        in.buf(in.charOffset + 1) == '\''
+      val isDedented = isDedentedStringLiteral(in.charOffset)
 
       in.nextToken()
 
       val stringParts = new ListBuffer[(String, Offset)]
       val interpolatedExprs = new ListBuffer[Tree]
 
-      var offsetCorrection = if (isDedented) 3 else if (isTripleQuoted) 3 else 1
+      var offsetCorrection = if (isDedented || isTripleQuoted) 3 else 1
       while (in.token == STRINGPART) {
         val literalOffset = in.offset + offsetCorrection
         stringParts += ((in.strVal, literalOffset))
