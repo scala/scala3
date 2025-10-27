@@ -91,7 +91,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, instr
       return loaded
 
     // Don't instrument JDK classes or StopRepl
-    name match{
+    name match {
       case s"java.$_" => super.loadClass(name)
       case s"javax.$_" => super.loadClass(name)
       case s"sun.$_" => super.loadClass(name)
