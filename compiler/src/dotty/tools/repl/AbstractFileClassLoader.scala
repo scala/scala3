@@ -67,7 +67,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, instr
   private def tryInstrumentLibraryClass(name: String): Class[?] =
     try
       val resourceName = name.replace('.', '/') + ".class"
-      getParent.getResourceAsStream(resourceName) match{
+      getParent.getResourceAsStream(resourceName) match {
         case null => super.loadClass(resourceName)
         case is =>
           try
