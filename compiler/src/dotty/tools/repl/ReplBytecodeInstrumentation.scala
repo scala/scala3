@@ -25,7 +25,7 @@ object ReplBytecodeInstrumentation:
   def setStopFlag(classLoader: ClassLoader, b: Boolean): Unit =
     val cancelClassOpt =
       try Some(classLoader.loadClass(classOf[dotty.tools.repl.StopRepl].getName))
-      catch{
+      catch {
         case _: java.lang.ClassNotFoundException => None
       }
     for(cancelClass <- cancelClassOpt){
