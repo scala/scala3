@@ -21,7 +21,7 @@ import dotty.tools.repl.ReplBytecodeInstrumentation
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, instrumentBytecode: Boolean) extends ClassLoader(parent):
+class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String) extends ClassLoader(parent):
   private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
 
   // on JDK 20 the URL constructor we're using is deprecated,
@@ -46,74 +46,60 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, instr
     val pathParts = name.split("[./]").toList
     for (dirPart <- pathParts.init) {
       file = file.lookupName(dirPart, true)
-      if (file == null) {
-        throw new ClassNotFoundException(name)
-      }
+      if (file == null) throw new ClassNotFoundException(name)
     }
     file = file.lookupName(pathParts.last+".class", false)
-    if (file == null) {
-      throw new ClassNotFoundException(name)
-    }
-    val originalBytes = file.toByteArray
+    if (file == null) throw new ClassNotFoundException(name)
 
-    // Instrument bytecode for everything except StopRepl itself to avoid infinite recursion
-    val bytes =
-      if !instrumentBytecode || name == "dotty.tools.repl.StopRepl" then originalBytes
-      else ReplBytecodeInstrumentation.instrument(originalBytes)
+    val bytes = file.toByteArray
 
-    defineClass(name, bytes, 0, bytes.length)
+    if interruptInstrumentation != "false" then defineClassInstrumented(name, bytes)
+    else defineClass(name, bytes, 0, bytes.length)
   }
 
-  private def tryInstrumentLibraryClass(name: String): Class[?] =
-    try
-      val resourceName = name.replace('.', '/') + ".class"
-      getParent.getResourceAsStream(resourceName) match {
-        case null => super.loadClass(resourceName)
-        case is =>
-          try
-            val bytes = is.readAllBytes()
-            val instrumentedBytes =
-              if instrumentBytecode then ReplBytecodeInstrumentation.instrument(bytes)
-              else bytes
-            defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
-          finally is.close()
-      }
-    catch
-      case ex: Exception => super.loadClass(name)
+  def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
+    val instrumentedBytes = ReplBytecodeInstrumentation.instrument(originalBytes)
+    defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
+  }
 
   override def loadClass(name: String): Class[?] =
-    if !instrumentBytecode then
-      return super.loadClass(name)
+    if interruptInstrumentation == "false" || interruptInstrumentation == "local"
+    then return super.loadClass(name)
 
-    // Check if already loaded
-    val loaded = findLoadedClass(name)
-    if loaded != null then
-      return loaded
+    val loaded = findLoadedClass(name) // Check if already loaded
+    if loaded != null then return loaded
 
-    // Don't instrument JDK classes or StopRepl
-    name match {
+    name match { // Don't instrument JDK classes or StopRepl
       case s"java.$_" => super.loadClass(name)
       case s"javax.$_" => super.loadClass(name)
       case s"sun.$_" => super.loadClass(name)
       case s"jdk.$_" => super.loadClass(name)
       case "dotty.tools.repl.StopRepl" =>
-        // Load StopRepl from parent but ensure each classloader gets its own copy
-        val is = getParent.getResourceAsStream(name.replace('.', '/') + ".class")
-        if is != null then
-          try
-            val bytes = is.readAllBytes()
-            defineClass(name, bytes, 0, bytes.length)
-          finally
-            is.close()
-        else
+        // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
+        val is = Option(getParent.getResourceAsStream(name.replace('.', '/') + ".class"))
           // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
           // class itself, which must have access to StopRepl
-          classOf[AbstractFileClassLoader].getClassLoader.loadClass(name)
+          .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(name))
+
+        try
+          val bytes = is.readAllBytes()
+          defineClass(name, bytes, 0, bytes.length)
+        finally is.close()
+
       case _ =>
         try findClass(name)
         catch case _: ClassNotFoundException =>
           // Not in REPL output, try to load from parent and instrument it
-          tryInstrumentLibraryClass(name)
+          try
+            val resourceName = name.replace('.', '/') + ".class"
+            getParent.getResourceAsStream(resourceName) match {
+              case null => super.loadClass(resourceName)
+              case is =>
+                try defineClassInstrumented(name, is.readAllBytes())
+                finally is.close()
+            }
+          catch
+            case ex: Exception => super.loadClass(name)
     }
 
 end AbstractFileClassLoader

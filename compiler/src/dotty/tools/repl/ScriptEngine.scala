@@ -25,8 +25,10 @@ class ScriptEngine extends AbstractScriptEngine {
       "-usejavacp",
       "-color:never",
       "-Xrepl-disable-display",
-      "-Xrepl-disable-bytecode-instrumentation"
+      "-Xrepl-interrupt-instrumentation",
+      "false"
     ), Console.out, None)
+
   private val rendering = new Rendering(Some(getClass.getClassLoader))
   private var state: State = driver.initialState
 

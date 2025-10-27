@@ -242,7 +242,7 @@ class ReplDriver(settings: Array[String],
               ReplBytecodeInstrumentation.setStopFlag(rendering.classLoader()(using state.context), true)
               // Also interrupt the thread as a fallback for non-instrumented code
               thread.interrupt()
-              out.println("\nInterrupting running thread")
+              out.println("\nAttempting to interrupt running thread with `Thread.interrupt`")
             } else {
               out.println("\nTerminating REPL Process...")
               System.exit(130)  // Standard exit code for SIGINT
@@ -602,7 +602,7 @@ class ReplDriver(settings: Array[String],
             rendering.myClassLoader = new AbstractFileClassLoader(
               prevOutputDir,
               jarClassLoader,
-              !ctx.settings.XreplDisableBytecodeInstrumentation.value
+              ctx.settings.XreplInterruptInstrumentation.value
             )
 
             out.println(s"Added '$path' to classpath.")
