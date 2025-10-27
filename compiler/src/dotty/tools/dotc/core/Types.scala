@@ -5127,7 +5127,7 @@ object Types extends TypeUtils {
         assert(currentEntry.bounds.contains(tp),
           i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
 
-      if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
+      if ((ctx.typerState eq owningState.nn.get) && !TypeComparer.subtypeCheckInProgress)
         setPermanentInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
