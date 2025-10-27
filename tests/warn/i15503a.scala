@@ -39,10 +39,6 @@ object FooGiven:
 
   val foo = summon[Int]
 
-object SomeGivenImports:
-  given Int = 0
-  given String = "foo"
-
 /**
  * Import used as type name are considered
  * as used.
@@ -73,7 +69,7 @@ object InlineChecks:
   object InlinedBar:
     import collection.mutable.Set // warn (don't be fooled by inline expansion)
     import collection.mutable.Map // warn
-    val a = InlineFoo.getSet      // expansion is attributed mutable.Set.apply(1)
+    val a = InlineFoo.getSet
 
 object MacroChecks:
   object StringInterpol:
@@ -95,7 +91,12 @@ object IgnoreExclusion:
   def check =
     val a = Set(1)
     val b = Map(1 -> 2)
-    def c = Seq(42)
+/**
+  * Some given values for the test
+  */
+object SomeGivenImports:
+  given Int = 0
+  given String = "foo"
 
 /* BEGIN : Check on packages*/
 package nestedpackageimport:

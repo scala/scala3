@@ -1,26 +1,27 @@
-package dotty.tools.dotc
-package transform
+package dotty.tools.dotc.transform
 
-import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
-import config.ScalaSettings
-import core.*, Contexts.*, Flags.*
-import Names.{Name, SimpleName, DerivedName, TermName, termName}
-import NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
-import Scopes.newScope
-import StdNames.nme
-import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
-import Types.*
-import reporting.{CodeAction, UnusedSymbol}
-import rewrites.Rewrites
-
-import MegaPhase.MiniPhase
-import typer.{ImportInfo, Typer}
-import typer.Deriving.OriginalTypeClass
-import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
-import util.{Property, Spans, SrcPos}, Spans.Span
-import util.Chars.{isLineBreakChar, isWhitespace}
-import util.chaining.*
+import dotty.tools.dotc.ast.desugar.{ForArtifact, PatternVar}
+import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.untpd, untpd.ImportSelector
+import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
+import dotty.tools.dotc.core.NameKinds.{
+  BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.report
+import dotty.tools.dotc.reporting.{CodeAction, UnusedSymbol}
+import dotty.tools.dotc.rewrites.Rewrites
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import dotty.tools.dotc.typer.{ImportInfo, Typer}
+import dotty.tools.dotc.typer.Deriving.OriginalTypeClass
+import dotty.tools.dotc.util.{Property, Spans, SrcPos}, Spans.Span
+import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
+import dotty.tools.dotc.util.chaining.*
 
 import java.util.IdentityHashMap
 
@@ -55,16 +56,17 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
-           tree.srcPos.isUserCode
-        || tree.srcPos.isZeroExtentSynthetic // take as summonInline
-      if !ignoreTree(tree) then
+           refInfos.inlined.isEmpty
+        || tree.srcPos.isZeroExtentSynthetic
+        || refInfos.inlined.exists(_.sourcePos.contains(tree.srcPos.sourcePos))
+      if resolving && !ignoreTree(tree) then
         def loopOverPrefixes(prefix: Type, depth: Int): Unit =
           if depth < 10 && prefix.exists && !prefix.classSymbol.isEffectiveRoot then
-            resolveUsage(prefix.classSymbol, nme.NO_NAME, NoPrefix, imports = resolving)
+            resolveUsage(prefix.classSymbol, nme.NO_NAME, NoPrefix)
             loopOverPrefixes(prefix.normalizedPrefix, depth + 1)
         if tree.srcPos.isZeroExtentSynthetic then
           loopOverPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, imports = resolving)
+        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject)
     else if tree.hasType then
       resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject)
     refInfos.isAssignment = false
@@ -140,8 +142,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case _ =>
     tree
 
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    refInfos.inlined.push(tree.call.srcPos)
+    ctx
   override def transformInlined(tree: Inlined)(using Context): tree.type =
-    transformAllDeep(tree.call)
+    //transformAllDeep(tree.expansion) // traverse expansion with nonempty inlined stack to avoid registering defs
+    val _ = refInfos.inlined.pop()
+    if !tree.call.isEmpty && phaseMode.eq(PhaseMode.Aggregate) then
+      transformAllDeep(tree.call)
     tree
 
   override def prepareForBind(tree: Bind)(using Context): Context =
@@ -289,11 +297,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  e.g., in `scala.Int`, `scala` is in scope for typer, but here we reverse-engineer the attribution.
    *  For Select, lint does not look up `<empty>.scala` (so top-level syms look like magic) but records `scala.Int`.
    *  For Ident, look-up finds the root import as usual. A competing import is OK because higher precedence.
-   *
-   *  The `imports` flag is whether an identifier can mark an import as used: the flag is false
-   *  for inlined code, except for `summonInline` (and related constructs) which are resolved at inlining.
    */
-  def resolveUsage(sym0: Symbol, name: Name, prefix: Type, imports: Boolean = true)(using Context): Unit =
+  def resolveUsage(sym0: Symbol, name: Name, prefix: Type)(using Context): Unit =
     import PrecedenceLevels.*
     val sym = sym0.userSymbol
 
@@ -387,7 +392,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     // record usage and possibly an import
     if !enclosed then
       refInfos.addRef(sym)
-    if imports && candidate != NoContext && candidate.isImportContext && importer != null then
+    if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
 end CheckUnused
@@ -427,7 +432,7 @@ object CheckUnused:
     val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
-    def register(tree: Tree)(using Context): Unit = if tree.srcPos.isUserCode then
+    def register(tree: Tree)(using Context): Unit = if inlined.isEmpty then
       tree match
       case imp: Import =>
         if inliners == 0
@@ -457,6 +462,7 @@ object CheckUnused:
         if tree.symbol ne NoSymbol then
           defs.addOne((tree.symbol, tree.srcPos)) // TODO is this a code path
 
+    val inlined = Stack.empty[SrcPos] // enclosing call.srcPos of inlined code (expansions)
     var inliners = 0 // depth of inline def (not inlined yet)
 
     // instead of refs.addOne, use addRef to distinguish a read from a write to var
@@ -998,10 +1004,6 @@ object CheckUnused:
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
     def isSynthetic: Boolean = pos.span.isSynthetic && pos.span.exists
-    def isUserCode(using Context): Boolean =
-      val inlineds = enclosingInlineds // per current context
-         inlineds.isEmpty
-      || inlineds.last.srcPos.sourcePos.contains(pos.sourcePos)
 
   extension [A <: AnyRef](arr: Array[A])
     // returns `until` if not satisfied
