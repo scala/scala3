@@ -1129,6 +1129,8 @@ trait Checking {
       !sourceVersion.isAtLeast(`3.2`)
       || pt.hasAnnotation(defn.UncheckedAnnot)
       || pt.hasAnnotation(defn.RuntimeCheckedAnnot)
+      || pat.tpe.isErroneous // avoid spurious warning
+      || pt.isErroneous
       || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match
