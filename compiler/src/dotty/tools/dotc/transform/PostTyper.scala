@@ -523,7 +523,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case UnApply(fun, implicits, patterns) =>
           // Reverse transform order for the same reason as in `app1` above.
           val patterns1 = transform(patterns)
-          cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+          val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+          // The pickling of UnApply trees uses the tpe of the tree,
+          // so we need to clean retains from it here
+          tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
