@@ -1400,6 +1400,18 @@ object Types extends TypeUtils {
       case _ => this
     }
 
+    /** Widen singleton types that are safe to widen (not parameters)
+     *  to allow matching against abstract type constructors.
+     *  See issue #20453
+     */
+    final def widenSingletonNonParamRefs(using Context): Type = stripped match {
+      case tp: TermRef if !tp.symbol.is(TypeParam) =>
+        val denot = tp.denot
+        if denot.isOverloaded then this else denot.info.widenSingletonNonParamRefs
+      case tp: SingletonType => tp.underlying.widenSingletonNonParamRefs
+      case _ => this
+    }
+
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
      */
