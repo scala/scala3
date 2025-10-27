@@ -249,7 +249,7 @@ object CompletionValue:
       tpe: Type,
       denotation: Denotation
   ) extends Symbolic:
-    override def insertText: Option[String] = Some(label.replace("$", "$$").nn)
+    override def insertText: Option[String] = Some(label.replace("$", "$$"))
     override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Field

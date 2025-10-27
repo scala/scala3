@@ -19,7 +19,7 @@ class CompilerSearchVisitor(
 )(using ctx: Context, reports: ReportContext)
     extends SymbolSearchVisitor:
 
-  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName()).nn
+  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName())
 
   private def isAccessibleImplicitClass(sym: Symbol) =
     val owner = sym.maybeOwner
@@ -77,7 +77,7 @@ class CompilerSearchVisitor(
       .split("\\$")
 
     val added =
-      try toSymbols(pkg, innerPath.nn.toList.map(_.nn)).filter(visitSymbol)
+      try toSymbols(pkg, innerPath.toList).filter(visitSymbol)
       catch
         case NonFatal(e) =>
           logger.log(Level.WARNING, e.getMessage(), e)

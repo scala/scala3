@@ -42,7 +42,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         isZeroExtent: Boolean = true
     ): SourcePosition =
       val uri = params.uri()
-      val source = driver.openedFiles(uri.nn)
+      val source = driver.openedFiles(uri)
       val span = params match
         case p: RangeParams if p.offset() != p.endOffset() =>
           p.trimWhitespaceInRange.fold {
@@ -285,7 +285,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
             () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
             contentType,
           )
-      documentation.nn.toScala
+      documentation.toScala
     end symbolDocumentation
   end extension
 

@@ -330,7 +330,7 @@ class Completions(
   ): (List[CompletionValue], Boolean) =
     val pos = completionPos.originalCursorPosition
     lazy val rawPath = Paths
-      .get(pos.source.path).nn
+      .get(pos.source.path)
     lazy val rawFileName = rawPath
       .getFileName()
       .toString()
@@ -478,7 +478,7 @@ class Completions(
       // class Fo@@
       case (td: TypeDef) :: _
           if CompletionFuzzy.matches(
-            td.symbol.name.decoded.replace(Cursor.value, "").nn,
+            td.symbol.name.decoded.replace(Cursor.value, ""),
             filename
           ) =>
         val values = FilenameCompletions.contribute(filename, td)
@@ -607,7 +607,7 @@ class Completions(
               ).map(visit).forall(_ == true)
         else false,
       )
-      Some(search.search(query, buildTargetIdentifier, visitor).nn)
+      Some(search.search(query, buildTargetIdentifier, visitor))
     else if completionMode.is(Mode.Member) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
         def isExtensionMethod = sym.is(ExtensionMethod) &&
@@ -646,7 +646,7 @@ class Completions(
           ).map(visit).forall(_ == true)
         else false,
       )
-      Some(search.searchMethods(query, buildTargetIdentifier, visitor).nn)
+      Some(search.searchMethods(query, buildTargetIdentifier, visitor))
     else Some(SymbolSearch.Result.INCOMPLETE)
 
   end enrichWithSymbolSearch
@@ -793,7 +793,7 @@ class Completions(
     catch case _ => false
 
     def isInheritedFromScalaLibrary(sym: Symbol) =
-      sym.owner == defn.AnyClass || 
+      sym.owner == defn.AnyClass ||
         sym.owner == defn.ObjectClass ||
         sym.owner == defn.ProductClass ||
         sym.owner == EqualsClass ||
@@ -960,7 +960,7 @@ class Completions(
       def fuzzyScore(o: CompletionValue.Symbolic): Int =
         fuzzyCache.getOrElseUpdate(
           o, {
-            val name = o.label.toLowerCase().nn
+            val name = o.label.toLowerCase()
             if name.startsWith(queryLower) then 0
             else if name.contains(queryLower) then 1
             else 2

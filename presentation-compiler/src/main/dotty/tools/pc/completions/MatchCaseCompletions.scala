@@ -340,7 +340,7 @@ object CaseKeywordCompletion:
       syms.sortBy(_._1.sym.sourcePos.point)
     else
       val defnSymbols = search
-        .definitionSourceToplevels(SemanticdbSymbols.symbolName(tpe.typeSymbol), uri).nn
+        .definitionSourceToplevels(SemanticdbSymbols.symbolName(tpe.typeSymbol), uri)
         .asScala
         .zipWithIndex
         .toMap
@@ -410,7 +410,7 @@ class CompletionValueGenerator(
       case None => true
       case Some("") => true
       case Some(Cursor.value) => true
-      case Some(query) => CompletionFuzzy.matches(query.replace(Cursor.value, "").nn, name)
+      case Some(query) => CompletionFuzzy.matches(query.replace(Cursor.value, ""), name)
 
   def labelForCaseMember(sym: Symbol, name: String)(using
       Context

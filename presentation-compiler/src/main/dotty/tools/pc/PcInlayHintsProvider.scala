@@ -228,7 +228,7 @@ class PcInlayHintsProvider(
     if symbol.source == pos.source then
       LabelPart(
         label,
-        pos = Some(symbol.sourcePos.toLsp.getStart().nn),
+        pos = Some(symbol.sourcePos.toLsp.getStart()),
       )
     else
       LabelPart(

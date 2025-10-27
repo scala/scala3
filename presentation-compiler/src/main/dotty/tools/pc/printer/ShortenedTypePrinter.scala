@@ -315,7 +315,7 @@ class ShortenedTypePrinter(
     lazy val paramsDocs =
       symbolSearch.symbolDocumentation(gsym) match
         case Some(info) =>
-          (info.typeParameters().nn.asScala ++ info.parameters().nn.asScala).toSeq
+          (info.typeParameters().asScala ++ info.parameters().asScala).toSeq
         case _ =>
           Seq.empty
 
@@ -527,7 +527,7 @@ class ShortenedTypePrinter(
         if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.Include && isDefaultParam
         then
           val defaultValue = docInfo match
-            case Some(value) if !value.defaultValue().nn.isEmpty() =>
+            case Some(value) if !value.defaultValue().isEmpty() =>
               value.defaultValue()
             case _ => "..."
           s" = $defaultValue"

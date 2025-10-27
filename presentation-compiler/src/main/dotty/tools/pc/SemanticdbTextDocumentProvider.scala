@@ -25,7 +25,7 @@ class SemanticdbTextDocumentProvider(
       uri: URI,
       sourceCode: String
   ): Array[Byte] =
-    val filePath = Paths.get(uri).nn
+    val filePath = Paths.get(uri)
     val validCode = removeMagicImports(sourceCode, filePath)
     driver.run(
       uri,
@@ -47,7 +47,7 @@ class SemanticdbTextDocumentProvider(
     val document = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = path.nn,
+      uri = path,
       text = sourceCode,
       md5 = MD5.compute(sourceCode),
       symbols = extractor.symbolInfos.toList,
@@ -57,7 +57,7 @@ class SemanticdbTextDocumentProvider(
     val out = SemanticdbOutputStream.newInstance(byteStream)
     document.writeTo(out)
     out.flush()
-    byteStream.toByteArray().nn
+    byteStream.toByteArray()
   end textDocument
 
 end SemanticdbTextDocumentProvider

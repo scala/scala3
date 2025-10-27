@@ -18,7 +18,7 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   def diagnostics(): List[lsp4j.Diagnostic] =
     if params.shouldReturnDiagnostics then
-      val diags = driver.run(params.uri().nn, params.text().nn)
+      val diags = driver.run(params.uri(), params.text())
       given Context = driver.currentCtx
       diags.flatMap(toLsp)
     else Nil

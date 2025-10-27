@@ -62,10 +62,10 @@ final class InferredTypeProvider(
       adjustOpt: Option[AdjustTypeOpts] = None
   ): List[TextEdit] =
     val retryType = adjustOpt.isEmpty
-    val uri = params.uri().nn
-    val filePath = Paths.get(uri).nn
+    val uri = params.uri()
+    val filePath = Paths.get(uri)
 
-    val sourceText = adjustOpt.map(_.text).getOrElse(params.text().nn)
+    val sourceText = adjustOpt.map(_.text).getOrElse(params.text())
     val source =
       SourceFile.virtual(filePath.toString(), sourceText)
     driver.run(uri, source)
@@ -86,7 +86,7 @@ final class InferredTypeProvider(
     )
 
     def removeType(nameEnd: Int, tptEnd: Int) =
-      sourceText.substring(0, nameEnd).nn +
+      sourceText.substring(0, nameEnd) +
         sourceText.substring(tptEnd + 1, sourceText.length())
 
     def optDealias(tpe: Type): Type =
@@ -187,7 +187,7 @@ final class InferredTypeProvider(
               Some(
                 AdjustTypeOpts(
                   removeType(vl.namePos.end, tpt.sourcePos.end - 1),
-                  tpt.sourcePos.toLsp.getEnd().nn
+                  tpt.sourcePos.toLsp.getEnd()
                 )
               )
             )
@@ -227,7 +227,7 @@ final class InferredTypeProvider(
               Some(
                 AdjustTypeOpts(
                   removeType(lastColon, tpt.sourcePos.end - 1),
-                  tpt.sourcePos.toLsp.getEnd().nn
+                  tpt.sourcePos.toLsp.getEnd()
                 )
               )
             )
@@ -257,8 +257,8 @@ final class InferredTypeProvider(
             val firstEnd = patterns(0).endPos.end
             val secondStart = patterns(1).startPos.start
             val hasDot = params
-              .text().nn
-              .substring(firstEnd, secondStart).nn
+              .text()
+              .substring(firstEnd, secondStart)
               .exists(_ == ',')
             if !hasDot then
               val leftParen = new TextEdit(body.startPos.toLsp, "(")

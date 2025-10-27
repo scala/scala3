@@ -89,7 +89,7 @@ object OverrideCompletions:
     val name =
       completing
         .fold(fallbackName)(sym => Some(sym.name.show))
-        .map(_.replace(Cursor.value, "").nn)
+        .map(_.replace(Cursor.value, ""))
         .filter(!_.isEmpty())
 
     // not using `td.tpe.abstractTermMembers` because those members includes
@@ -173,9 +173,9 @@ object OverrideCompletions:
         case _ => None
     end FindTypeDef
 
-    val uri = params.uri().nn
-    val text = params.text().nn
-    driver.run(uri, SourceFile.virtual(uri.toASCIIString().nn, text))
+    val uri = params.uri()
+    val text = params.text()
+    driver.run(uri, SourceFile.virtual(uri.toASCIIString(), text))
 
     val unit = driver.currentCtx.run.nn.units.headOption
     unit match

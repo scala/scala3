@@ -25,10 +25,10 @@ object SignatureHelpProvider:
       params: OffsetParams,
       search: SymbolSearch
   )(using ReportContext): l.SignatureHelp =
-    val uri = params.uri().nn
-    val text = params.text().nn
+    val uri = params.uri()
+    val text = params.text()
     val sourceFile = SourceFile.virtual(uri, text)
-    driver.run(uri.nn, sourceFile)
+    driver.run(uri, sourceFile)
 
     driver.compilationUnits.get(uri) match
       case Some(unit) =>
@@ -73,8 +73,8 @@ object SignatureHelpProvider:
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
   ): Option[Signatures.Signature] =
-    val methodParams = info.parameters().nn.asScala
-    val typeParams = info.typeParameters().nn.asScala
+    val methodParams = info.parameters().asScala
+    val typeParams = info.typeParameters().asScala
 
     def updateParams(params: List[Signatures.Param], typeParamIndex: Int, methodParamIndex: Int): List[Signatures.Param] =
       params match
@@ -86,13 +86,13 @@ object SignatureHelpProvider:
                 if isJavaSymbol && head.name.startsWith("x$") then
                   paramDoc.displayName()
                 else head.name
-              head.copy(name = newName.nn, doc = Some(paramDoc.docstring.nn)) :: rest
+              head.copy(name = newName, doc = Some(paramDoc.docstring)) :: rest
             case _ => head :: rest
         case (head: Signatures.TypeParam) :: tail =>
           val rest = updateParams(tail, typeParamIndex + 1, methodParamIndex)
           typeParams.lift(typeParamIndex) match
             case Some(paramDoc) =>
-              head.copy(doc = Some(paramDoc.docstring.nn)) :: rest
+              head.copy(doc = Some(paramDoc.docstring)) :: rest
             case _ => head :: rest
         case _ => Nil
 
@@ -111,7 +111,7 @@ object SignatureHelpProvider:
             case _ => (typeParamIndex, methodParamIndex)
           updated :: updateParamss(tail, nextTypeParamIndex, nextMethodParamIndex)
     val updatedParams = updateParamss(signature.paramss, 0, 0)
-    Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
+    Some(signature.copy(doc = Some(info.docstring()), paramss = updatedParams))
   end withDocumentation
 
   private def signatureToSignatureInformation(

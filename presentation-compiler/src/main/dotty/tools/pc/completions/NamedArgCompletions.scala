@@ -118,7 +118,6 @@ object NamedArgCompletions:
     val prefix =
       ident.name.toString
       .replace(Cursor.value, "")
-      .nn
 
     val params: List[ParamSymbol] =
       allParams
