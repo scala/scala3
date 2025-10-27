@@ -87,6 +87,20 @@ object MainGenericCompiler {
 
   val classpathSeparator: String = File.pathSeparator
 
+  def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
+    val cpEntries = cp.split(classpathSeparator).toList
+    val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
+    val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
+    def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
+    if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
+      // reassemble globbed wildcard classpath
+      // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
+      val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
+      val remainingArgs = tail.drop(cpJars.size)
+      (remainingArgs, cpEntries ++ cpJars)
+    else
+      (tail, cpEntries)
+
   @sharable val javaOption = raw"""-J(.*)""".r
   @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
   @tailrec
@@ -122,11 +136,10 @@ object MainGenericCompiler {
     case "-with-compiler" :: tail =>
       process(tail, settings.withCompiler)
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val (tailargs, newEntries) = MainGenericRunner.processClasspath(cp, tail)
+      val (tailargs, newEntries) = processClasspath(cp, tail)
       process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
     case "-Oshort" :: tail =>
       // Nothing is to be done here. Request that the user adds the relevant flags manually.
-      // i.e this has no effect when MainGenericRunner is invoked programatically.
       val addTC="-XX:+TieredCompilation"
       val tStopAtLvl="-XX:TieredStopAtLevel=1"
       println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
