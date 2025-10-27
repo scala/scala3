@@ -289,20 +289,23 @@ object ScalaRunTime {
   // Use `null` in places where we want to make sure the reference is cleared.
   private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
 
-  // Convert arrays to immutable.ArraySeq for use with Scala varargs.
-  // By construction, calls to these methods always receive a fresh (and non-null), non-empty array.
-  // In cases where an empty array would appear, the compiler uses a direct reference to Nil instead.
-  // Synthetic Java varargs forwarders (@annotation.varargs or varargs bridges when overriding) may pass
-  // `null` to these methods; but returning `null` or `ArraySeq(null)` makes little difference in practice.
-  def genericWrapArray[T](xs: Array[T]): ArraySeq[T] = ArraySeq.unsafeWrapArray(xs)
-  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
-  def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = new ArraySeq.ofInt(xs)
-  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = new ArraySeq.ofDouble(xs)
-  def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = new ArraySeq.ofLong(xs)
-  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float] = new ArraySeq.ofFloat(xs)
-  def wrapCharArray(xs: Array[Char]): ArraySeq[Char] = new ArraySeq.ofChar(xs)
-  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte] = new ArraySeq.ofByte(xs)
-  def wrapShortArray(xs: Array[Short]): ArraySeq[Short] = new ArraySeq.ofShort(xs)
-  def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean] = new ArraySeq.ofBoolean(xs)
-  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit] = new ArraySeq.ofUnit(xs)
+  // Convert an array to an immutable.ArraySeq for use with Scala varargs.
+  // `foo(x, y)` is compiled to `foo(wrapXArray(Array(x, y))).
+  // For `foo()`, the Scala 2 compiler uses a reference to `Nil` instead; Scala 3 doesn't have this special case.
+  //
+  // The `null` checks are there for backwards compatibility. They were removed in 2.13.17 (scala/scala#11021)
+  // which led to a ticket in Scala 3 (scala/scala3#24204). The argument may be null:
+  //   - When calling a Scala `@varargs` method from Java
+  //   - When using an array as sequence argument in Scala 3: `foo((null: Array[X])*)`
+  def genericWrapArray[T](xs: Array[T]): ArraySeq[T]                 = if (xs ne null) ArraySeq.unsafeWrapArray(xs) else null.asInstanceOf[ArraySeq[T]]
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T]    = if (xs ne null) new ArraySeq.ofRef[T](xs) else null.asInstanceOf[ArraySeq[T]]
+  def wrapIntArray(xs: Array[Int]): ArraySeq[Int]                    = if (xs ne null) new ArraySeq.ofInt(xs) else null.asInstanceOf[ArraySeq[Int]]
+  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double]           = if (xs ne null) new ArraySeq.ofDouble(xs) else null.asInstanceOf[ArraySeq[Double]]
+  def wrapLongArray(xs: Array[Long]): ArraySeq[Long]                 = if (xs ne null) new ArraySeq.ofLong(xs) else null.asInstanceOf[ArraySeq[Long]]
+  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float]              = if (xs ne null) new ArraySeq.ofFloat(xs) else null.asInstanceOf[ArraySeq[Float]]
+  def wrapCharArray(xs: Array[Char]): ArraySeq[Char]                 = if (xs ne null) new ArraySeq.ofChar(xs) else null.asInstanceOf[ArraySeq[Char]]
+  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte]                 = if (xs ne null) new ArraySeq.ofByte(xs) else null.asInstanceOf[ArraySeq[Byte]]
+  def wrapShortArray(xs: Array[Short]): ArraySeq[Short]              = if (xs ne null) new ArraySeq.ofShort(xs) else null.asInstanceOf[ArraySeq[Short]]
+  def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean]        = if (xs ne null) new ArraySeq.ofBoolean(xs) else null.asInstanceOf[ArraySeq[Boolean]]
+  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit]                 = if (xs ne null) new ArraySeq.ofUnit(xs) else null.asInstanceOf[ArraySeq[Unit]]
 }
