@@ -642,7 +642,7 @@ object CheckUnused:
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       if ctx.settings.WunusedHas.locals
-        && !sym.is(InlineProxy)
+        && !sym.isOneOf(InlineProxy | Synthetic)
         && !sym.isCanEqual
       then
         if sym.is(Mutable) && infos.asss(sym) then
