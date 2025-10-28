@@ -523,7 +523,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
   def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala), name)
   def scalaAnnotationDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.annotation), name)
+  def scalaAnnotationInternalDot(name: Name)(using SourceFile): Select = Select(scalaAnnotationDot(nme.internal), name)
   def scalaRuntimeDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.runtime), name)
+  def scalaCapsDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.caps), name)
+  def scalaCapsInternalDot(name: Name)(using SourceFile): Select = Select(scalaCapsDot(nme.internal), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
 
@@ -553,16 +556,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     Annotated(parent, annot)
 
   def makeReachAnnot()(using Context): Tree =
-    New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil)
+    New(scalaAnnotationInternalDot(tpnme.reachCapability), Nil :: Nil)
 
   def makeReadOnlyAnnot()(using Context): Tree =
-    New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil)
+    New(scalaAnnotationInternalDot(tpnme.readOnlyCapability), Nil :: Nil)
 
   def makeOnlyAnnot(qid: Tree)(using Context) =
-    New(AppliedTypeTree(ref(defn.OnlyCapabilityAnnot.typeRef), qid :: Nil), Nil :: Nil)
+    New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.onlyCapability), qid :: Nil), Nil :: Nil)
 
   def makeConsumeAnnot()(using Context): Tree =
-    New(ref(defn.ConsumeAnnot.typeRef), Nil :: Nil)
+    New(scalaCapsInternalDot(tpnme.consume), Nil :: Nil)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
