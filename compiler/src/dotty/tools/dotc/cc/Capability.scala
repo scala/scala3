@@ -376,9 +376,9 @@ object Capabilities:
       case tp: SetCapability => tp.captureSetOfInfo.isReadOnly
       case _ => this ne stripReadOnly
 
+    /** The restriction of this capability or NoSymbol if there is none */
     final def restriction(using Context): Symbol = this match
       case Restricted(_, cls) => cls
-      case ReadOnly(ref1) => ref1.restriction
       case Maybe(ref1) => ref1.restriction
       case _ => NoSymbol
 
@@ -396,10 +396,9 @@ object Capabilities:
       case Maybe(ref1) => ref1.stripReadOnly.maybe
       case _ => this
 
-    /** Drop restrictions with clss `cls` or a superclass of `cls` */
+    /** Drop restrictions with class `cls` or a superclass of `cls` */
     final def stripRestricted(cls: ClassSymbol)(using Context): Capability = this match
       case Restricted(ref1, cls1) if cls.isSubClass(cls1) => ref1
-      case ReadOnly(ref1) => ref1.stripRestricted(cls).readOnly
       case Maybe(ref1) => ref1.stripRestricted(cls).maybe
       case _ => this
 
@@ -408,7 +407,6 @@ object Capabilities:
 
     final def stripReach(using Context): Capability = this match
       case Reach(ref1) => ref1
-      case ReadOnly(ref1) => ref1.stripReach.readOnly
       case Restricted(ref1, cls) => ref1.stripReach.restrict(cls)
       case Maybe(ref1) => ref1.stripReach.maybe
       case _ => this
@@ -590,7 +588,6 @@ object Capabilities:
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: FreshCap => f(self.hiddenSet.elems)
       case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
-      case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
     /** The transitive classifiers of this capability. */
@@ -608,8 +605,6 @@ object Capabilities:
             assert(cls != defn.AnyClass)
             if cls == defn.NothingClass then ClassifiedAs(Nil)
             else ClassifiedAs(cls :: Nil)
-          case ReadOnly(ref1) =>
-            ref1.transClassifiers
           case Maybe(ref1) =>
             ref1.transClassifiers
           case Reach(_) =>
@@ -633,8 +628,6 @@ object Capabilities:
         case Restricted(_, cls1) =>
           assert(cls != defn.AnyClass)
           cls1.isSubClass(cls)
-        case ReadOnly(ref1) =>
-          ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
           ref1.tryClassifyAs(cls)
         case Reach(_) =>
@@ -655,7 +648,6 @@ object Capabilities:
             cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
           case _ => false
         isEmpty || ref1.isKnownEmpty
-      case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
       case _ => false
 
@@ -716,7 +708,6 @@ object Capabilities:
               case _ => false
           || viaInfo(y.info)(subsumingRefs(this, _))
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
-        case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
         case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
@@ -803,7 +794,6 @@ object Capabilities:
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
           y match
-            case ReadOnly(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case Restricted(y1, cls) => this.stripRestricted(cls).maxSubsumes(y1, canAddHidden)
             case _ => false
 
@@ -891,7 +881,6 @@ object Capabilities:
       case c: DerivedCapability =>
         val c1 = c.underlying.toType
         c match
-          case ReadOnly(_) => ReadOnlyCapability(c1)
           case Restricted(_, cls) => OnlyCapability(c1, cls)
           case _: Reach => ReachCapability(c1)
           case _: Maybe => MaybeCapability(c1)
