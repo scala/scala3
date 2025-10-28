@@ -130,8 +130,8 @@ object CheckCaptures:
                 |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
             ann.srcPos)
         check(ref)
-      case tpe =>
-        report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
+      case elem =>
+        report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
     ann.retainedSet.retainedElementsRaw.foreach(check)
 
   /** Disallow bad roots anywhere in type `tp``.
@@ -840,6 +840,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
+            && !qualType.isBoxedCapturing
+            && !resultType.isBoxedCapturing
             && !tree.fun.symbol.isConstructor
             && !resultType.captureSet.containsResultCapability
             && qualCaptures.mightSubcapture(refs)
