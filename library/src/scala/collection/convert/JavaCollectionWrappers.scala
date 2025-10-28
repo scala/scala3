@@ -279,7 +279,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
           new ju.Map.Entry[K, V] {
             def getKey = k
             def getValue = v
-            def setValue(v1 : V) = self.put(k, v1)
+            def setValue(v1 : V): V = self.put(k, v1)
 
             // It's important that this implementation conform to the contract
             // specified in the javadocs of java.util.Map.Entry.hashCode
@@ -421,7 +421,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     }
 
     def iterator: Iterator[(K, V)] = new AbstractIterator[(K, V)] {
-      val ui = underlying.entrySet.iterator
+      val ui: java.util.Iterator[java.util.Map.Entry[K, V]] = underlying.entrySet.iterator
       def hasNext = ui.hasNext
       def next() = { val e = ui.next(); (e.getKey, e.getValue) }
     }
@@ -610,7 +610,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     }
 
     def iterator: Iterator[(String, String)] = new AbstractIterator[(String, String)] {
-      val ui = underlying.entrySet.iterator
+      val ui: java.util.Iterator[java.util.Map.Entry[Object, Object]] = underlying.entrySet.iterator
       def hasNext = ui.hasNext
       def next() = {
         val e = ui.next()
