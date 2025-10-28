@@ -97,7 +97,7 @@ private[process] trait ProcessImpl {
     def exitValue() = futureValue() getOrElse scala.sys.error("No exit code: process destroyed.")
     def start()     = { futureThread ;() }
 
-    protected lazy val (processThread, (futureThread, futureValue), destroyer) = {
+    protected lazy val (processThread, (futureThread, futureValue: (() => Option[Int])), destroyer) = {
       val code = new LinkedBlockingQueue[Option[Int]](1)
       val thread = Spawn("CompoundProcess") {
         var value: Option[Int] = None

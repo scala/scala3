@@ -123,17 +123,17 @@ private[concurrent] object ExecutionContextImpl {
         new ExecutionContextImpl(some, reporter) with ExecutionContextExecutorService {
             private final def asExecutorService: ExecutorService = executor.asInstanceOf[ExecutorService]
             final override def shutdown() = asExecutorService.shutdown()
-            final override def shutdownNow() = asExecutorService.shutdownNow()
+            final override def shutdownNow(): java.util.List[Runnable] = asExecutorService.shutdownNow()
             final override def isShutdown = asExecutorService.isShutdown
             final override def isTerminated = asExecutorService.isTerminated
             final override def awaitTermination(l: Long, timeUnit: TimeUnit) = asExecutorService.awaitTermination(l, timeUnit)
-            final override def submit[T](callable: Callable[T]) = asExecutorService.submit(callable)
-            final override def submit[T](runnable: Runnable, t: T) = asExecutorService.submit(runnable, t)
-            final override def submit(runnable: Runnable) = asExecutorService.submit(runnable)
-            final override def invokeAll[T](callables: Collection[? <: Callable[T]]) = asExecutorService.invokeAll(callables)
-            final override def invokeAll[T](callables: Collection[? <: Callable[T]], l: Long, timeUnit: TimeUnit) = asExecutorService.invokeAll(callables, l, timeUnit)
-            final override def invokeAny[T](callables: Collection[? <: Callable[T]]) = asExecutorService.invokeAny(callables)
-            final override def invokeAny[T](callables: Collection[? <: Callable[T]], l: Long, timeUnit: TimeUnit) = asExecutorService.invokeAny(callables, l, timeUnit)
+            final override def submit[T](callable: Callable[T]): java.util.concurrent.Future[T] = asExecutorService.submit(callable)
+            final override def submit[T](runnable: Runnable, t: T): java.util.concurrent.Future[T] = asExecutorService.submit(runnable, t)
+            final override def submit(runnable: Runnable): java.util.concurrent.Future[?] = asExecutorService.submit(runnable)
+            final override def invokeAll[T](callables: Collection[? <: Callable[T]]): java.util.List[java.util.concurrent.Future[T]] = asExecutorService.invokeAll(callables)
+            final override def invokeAll[T](callables: Collection[? <: Callable[T]], l: Long, timeUnit: TimeUnit): java.util.List[java.util.concurrent.Future[T]] = asExecutorService.invokeAll(callables, l, timeUnit)
+            final override def invokeAny[T](callables: Collection[? <: Callable[T]]): T = asExecutorService.invokeAny(callables)
+            final override def invokeAny[T](callables: Collection[? <: Callable[T]], l: Long, timeUnit: TimeUnit): T = asExecutorService.invokeAny(callables, l, timeUnit)
           }
         }
 }
