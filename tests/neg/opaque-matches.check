@@ -1,0 +1,15 @@
+-- [E191] Type Error: tests/neg/opaque-matches.scala:4:18 --------------------------------------------------------------
+4 |  type Fst[X] = X match   // error
+  |                ^
+  |                The match type contains an illegal case:
+  |                    case NT.NT[a, b] => a
+  |                The pattern contains a type alias `NT`.
+  |                (this error can be ignored for now with `-source:3.3`)
+5 |    case NT[a, b] => a
+-- [E191] Type Error: tests/neg/opaque-matches.scala:10:30 -------------------------------------------------------------
+10 |  inline def snd[NT](nt: NT): NTDecomposition.Snd[NT] = // error
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^
+   |                           The match type contains an illegal case:
+   |                               case NT.NT[a, b] => b
+   |                           The pattern contains an opaque type alias `NT` in the scope where its alias is known.
+   |                           (this error can be ignored for now with `-source:3.3`)
