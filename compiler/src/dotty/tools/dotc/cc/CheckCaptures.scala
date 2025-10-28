@@ -886,7 +886,7 @@ class CheckCaptures extends Recheck, SymTransformer:
        */
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
-        var allCaptures: CaptureSet = initCs ++ impliedByFields(core)
+        var allCaptures: CaptureSet = initCs ++ captureSetImpliedByFields(cls, core)
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
@@ -910,61 +910,60 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
 
-      /** The additional capture set implied by the capture sets of its fields. This
-       *  is either empty or, if some fields have a terminal capability in their span
-       *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-       *  capabiltities. Class parameters are not counted. If the type is a mutable type,
-       *  we add a fresh cap in any case -- this is because we can currently hide
-       *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
-       */
-      def impliedByFields(core: Type): CaptureSet =
-        var infos: List[String] = Nil
-        def pushInfo(msg: => String) =
-          if ctx.settings.YccVerbose.value then infos = msg :: infos
-
-        /** The classifiers of the fresh caps in the span capture sets of all fields
-         *  in the given class `cls`. Mutable types get at least a fresh classified
-         *  as mutable.
-         */
-        def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
-          case cls: ClassSymbol =>
-            val fields = cls.info.decls.toList
-            var fieldClassifiers =
-              for
-                sym <- fields if contributesFreshToClass(sym)
-                case fresh: FreshCap <- sym.info.spanCaptureSet.elems
-                  .filter(_.isTerminalCapability)
-                  .map(_.stripReadOnly)
-                  .toList
-                _ = pushInfo(i"Note: ${sym.showLocated} captures a $fresh")
-              yield fresh.hiddenSet.classifier
-            if cls.typeRef.isMutableType then
-              fieldClassifiers = defn.Caps_Mutable :: fieldClassifiers
-            val parentClassifiers =
-              cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
-            if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
-            then Nil
-            else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
-          case _ => Nil
-
-        def fresh =
-          FreshCap(Origin.NewInstance(core)).tap: fresh =>
-            if ctx.settings.YccVerbose.value then
-              pushInfo(i"Note: instance of $cls captures a $fresh that comes from a field")
-              report.echo(infos.mkString("\n"), ctx.owner.srcPos)
-
-        knownFresh.getOrElseUpdate(cls, impliedClassifiers(cls)) match
-          case Nil => CaptureSet.empty
-          case cl :: Nil =>
-            val result = fresh
-            result.hiddenSet.adoptClassifier(cl)
-            result.singletonCaptureSet
-          case _ => fresh.singletonCaptureSet
-      end impliedByFields
-
       augmentConstructorType(resType, capturedVars(cls))
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
+
+    /** The additional capture set implied by the capture sets of its fields. This
+     *  is either empty or, if some fields have a terminal capability in their span
+     *  capture sets, it consists of a single fresh cap that subsumes all these terminal
+     *  capabiltities. Class parameters are not counted. If the type is a mutable type,
+     *  we add a fresh cap in any case -- this is because we can currently hide
+     *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
+     */
+    def captureSetImpliedByFields(cls: ClassSymbol, core: Type)(using Context): CaptureSet =
+      var infos: List[String] = Nil
+      def pushInfo(msg: => String) =
+        if ctx.settings.YccVerbose.value then infos = msg :: infos
+
+      /** The classifiers of the fresh caps in the span capture sets of all fields
+       *  in the given class `cls`.
+       */
+      def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
+        case cls: ClassSymbol =>
+          var fieldClassifiers =
+            for
+              sym <- cls.info.decls.toList
+              if contributesFreshToClass(sym)
+              case fresh: FreshCap <- sym.info.spanCaptureSet.elems
+                .filter(_.isTerminalCapability)
+                .map(_.stripReadOnly)
+                .toList
+              _ = pushInfo(i"Note: ${sym.showLocated} captures a $fresh")
+            yield fresh.hiddenSet.classifier
+          if cls.typeRef.isMutableType then
+            fieldClassifiers = defn.Caps_Mutable :: fieldClassifiers
+          val parentClassifiers =
+            cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
+          if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
+          then Nil
+          else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
+        case _ => Nil
+
+      def fresh =
+        FreshCap(Origin.NewInstance(core)).tap: fresh =>
+          if ctx.settings.YccVerbose.value then
+            pushInfo(i"Note: instance of $cls captures a $fresh that comes from a field")
+            report.echo(infos.mkString("\n"), ctx.owner.srcPos)
+
+      knownFresh.getOrElseUpdate(cls, impliedClassifiers(cls)) match
+        case Nil => CaptureSet.empty
+        case cl :: Nil =>
+          val result = fresh
+          result.hiddenSet.adoptClassifier(cl)
+          result.singletonCaptureSet
+        case _ => fresh.singletonCaptureSet
+    end captureSetImpliedByFields
 
     /** Recheck type applications:
      *   - Map existential captures in result to `cap`
@@ -2139,7 +2138,38 @@ class CheckCaptures extends Recheck, SymTransformer:
       end for
     end checkEscapingUses
 
-    /** Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
+    /** Check all parent class constructors of classes extending Mutable
+     *  either also extend Mutable or are read-only.
+     *
+     *  A parent class constructor is _read-only_ if the following conditions are met
+     *   1. The class does not retain any exclusive capabilities from its environment.
+     *   2. The constructor does not take arguments that retain exclusive capabilities.
+     *   3. The class does not does not have fields that retain exclusive universal capabilities.
+     */
+    def checkMutableInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
+      if cls.derivesFrom(defn.Caps_Mutable) then
+        for parent <- parents do
+          if !parent.tpe.derivesFromMutable then
+            val pcls = parent.nuType.classSymbol
+            val parentIsExclusive =
+              if parent.isType then
+                capturedVars(pcls).isExclusive
+                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive
+
+              else parent.nuType.captureSet.isExclusive
+            if parentIsExclusive then
+              report.error(
+                em"""illegal inheritance: $cls which extends `Mutable` is not allowed to also extend $pcls
+                    |since $pcls retains exclusive capabilities but does not extend `Mutable`.""",
+                parent.srcPos)
+
+    /** Checks to run after the rechecking pass:
+     *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
+     *   - Check that no uses refer to reach capabilities of parameters of enclosing
+     *     methods or classes.
+     *   - Run the separation checker under language.experimental.separationChecking
+     *   - Check that classes extending Mutable do not extend other classes that do
+     *     not extend Mutable yet retain exclusive capabilities
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       val checker = new TreeTraverser:
@@ -2150,6 +2180,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           trace(i"post check $tree"):
             traverseChildren(tree)(using lctx)
             check(tree)
+
         def check(tree: Tree)(using Context) = tree match
           case TypeApply(fun, args) =>
             fun.nuType.widen match
@@ -2162,8 +2193,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                 if ccConfig.postCheckCapturesets then
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
+          case TypeDef(_, impl: Template) =>
+            checkMutableInheritance(tree.symbol.asClass, impl.parents)
           case _ =>
-        end check
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
@@ -2173,11 +2205,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           usedSet(tree) = tree.markedFree ++ cs
         ccState.inSepCheck:
           SepCheck(this).traverse(unit)
+
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
         // often worse error messages than the original errors.
-        val checkApplied = new TreeTraverser:
+        val checkAppliedTypes = new TreeTraverser:
           def traverse(t: Tree)(using Context) = t match
             case tree: InferredTypeTree =>
             case tree: New =>
@@ -2185,7 +2218,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               withCollapsedFresh:
                 checkAppliedTypesIn(tree.withType(tree.nuType))
             case _ => traverseChildren(t)
-        checkApplied.traverse(unit)
+        checkAppliedTypes.traverse(unit)
     end postCheck
 
     /** Perform the following kinds of checks:
