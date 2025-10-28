@@ -72,7 +72,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
       }
 
-      myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
+      myClassLoader = new AbstractFileClassLoader(
+        ctx.settings.outputDir.value,
+        parent,
+        ctx.settings.XreplInterruptInstrumentation.value
+      )
       myClassLoader
     }
 

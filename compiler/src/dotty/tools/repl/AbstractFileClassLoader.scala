@@ -16,11 +16,12 @@ package repl
 import scala.language.unsafeNulls
 
 import io.AbstractFile
+import dotty.tools.repl.ReplBytecodeInstrumentation
 
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) extends ClassLoader(parent):
+class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String) extends ClassLoader(parent):
   private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
 
   // on JDK 20 the URL constructor we're using is deprecated,
@@ -45,17 +46,61 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
     val pathParts = name.split("[./]").toList
     for (dirPart <- pathParts.init) {
       file = file.lookupName(dirPart, true)
-      if (file == null) {
-        throw new ClassNotFoundException(name)
-      }
+      if (file == null) throw new ClassNotFoundException(name)
     }
     file = file.lookupName(pathParts.last+".class", false)
-    if (file == null) {
-      throw new ClassNotFoundException(name)
-    }
+    if (file == null) throw new ClassNotFoundException(name)
+
     val bytes = file.toByteArray
-    defineClass(name, bytes, 0, bytes.length)
+
+    if interruptInstrumentation != "false" then defineClassInstrumented(name, bytes)
+    else defineClass(name, bytes, 0, bytes.length)
   }
 
-  override def loadClass(name: String): Class[?] = try findClass(name) catch case _: ClassNotFoundException => super.loadClass(name)
+  def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
+    val instrumentedBytes = ReplBytecodeInstrumentation.instrument(originalBytes)
+    defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
+  }
+
+  override def loadClass(name: String): Class[?] =
+    if interruptInstrumentation == "false" || interruptInstrumentation == "local"
+    then return super.loadClass(name)
+
+    val loaded = findLoadedClass(name) // Check if already loaded
+    if loaded != null then return loaded
+
+    name match { // Don't instrument JDK classes or StopRepl
+      case s"java.$_" => super.loadClass(name)
+      case s"javax.$_" => super.loadClass(name)
+      case s"sun.$_" => super.loadClass(name)
+      case s"jdk.$_" => super.loadClass(name)
+      case "dotty.tools.repl.StopRepl" =>
+        // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
+        val classFileName = name.replace('.', '/') + ".class"
+        val is = Option(getParent.getResourceAsStream(classFileName))
+          // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
+          // class itself, which must have access to StopRepl
+          .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
+
+        try
+          val bytes = is.readAllBytes()
+          defineClass(name, bytes, 0, bytes.length)
+        finally is.close()
+
+      case _ =>
+        try findClass(name)
+        catch case _: ClassNotFoundException =>
+          // Not in REPL output, try to load from parent and instrument it
+          try
+            val resourceName = name.replace('.', '/') + ".class"
+            getParent.getResourceAsStream(resourceName) match {
+              case null => super.loadClass(resourceName)
+              case is =>
+                try defineClassInstrumented(name, is.readAllBytes())
+                finally is.close()
+            }
+          catch
+            case ex: Exception => super.loadClass(name)
+    }
+
 end AbstractFileClassLoader
