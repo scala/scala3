@@ -2811,7 +2811,7 @@ object Parsers {
      *                 |  SimpleExpr1 ColonArgument
      *  ColonArgument ::= colon {LambdaStart}
      *                    indent (CaseClauses | Block) outdent
-     *                 |  colon LambdaStart expr ENDlambda        -- under experimental.relaxedLambdaSyntax
+     *                 |  colon LambdaStart {LambdaStart} expr ENDlambda -- under experimental.relaxedLambdaSyntax
      *                 |  colon ExprCaseClause                    -- under experimental.relaxedLambdaSyntax
      *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
      *                 |  TypTypeParamClause ‘=>’
