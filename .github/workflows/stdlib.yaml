@@ -10,6 +10,7 @@ permissions:
   contents: read
 
 env:
+  DOTTY_CI_RUN: true
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
