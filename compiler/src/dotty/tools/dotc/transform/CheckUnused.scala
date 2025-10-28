@@ -141,7 +141,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformInlined(tree: Inlined)(using Context): tree.type =
-    transformAllDeep(tree.call)
+    if !tree.call.isEmpty then
+      if !refInfos.calls.containsKey(tree.call) then
+        refInfos.calls.put(tree.call, ())
+        transformAllDeep(tree.call)
     tree
 
   override def prepareForBind(tree: Bind)(using Context): Context =
@@ -425,6 +428,7 @@ object CheckUnused:
     val asss = mutable.Set.empty[Symbol]              // targets of assignment
     val skip = mutable.Set.empty[Symbol]              // methods to skip (don't warn about their params)
     val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
+    val calls = new IdentityHashMap[Tree, Unit]          // inlined call already seen
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
     def register(tree: Tree)(using Context): Unit = if tree.srcPos.isUserCode then
