@@ -76,10 +76,11 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
       case s"jdk.$_" => super.loadClass(name)
       case "dotty.tools.repl.StopRepl" =>
         // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
-        val is = Option(getParent.getResourceAsStream(name.replace('.', '/') + ".class"))
+        val classFileName = name.replace('.', '/') + ".class"
+        val is = Option(getParent.getResourceAsStream(classFileName))
           // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
           // class itself, which must have access to StopRepl
-          .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(name))
+          .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
 
         try
           val bytes = is.readAllBytes()
