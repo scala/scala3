@@ -276,8 +276,9 @@ object GenericSignatures {
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
             if (unboxedVCs) {
-              val erasedUnderlying = fullErasure(tp)
-              jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = true)
+              val underlying = ValueClasses
+                .underlyingOfValueClass(sym.asClass, tp)
+              jsig(underlying, toplevel = toplevel, unboxedVCs = true)
             } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
