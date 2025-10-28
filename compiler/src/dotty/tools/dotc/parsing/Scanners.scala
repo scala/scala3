@@ -1292,6 +1292,11 @@ object Scanners {
       }
 
       // Must be followed by a newline
+      if (ch == SU) {
+        incompleteInputError(em"unclosed dedented string literal")
+        token = STRINGLIT
+        return 0
+      }
       if (ch != LF && ch != CR) {
         error(em"dedented string literal must start with newline after opening quotes")
         token = ERROR

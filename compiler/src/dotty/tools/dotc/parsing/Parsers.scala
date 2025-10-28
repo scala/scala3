@@ -1468,7 +1468,7 @@ object Parsers {
               // Check if this is a dedented string (non-interpolated)
               // For non-interpolated dedented strings, check if the token starts with '''
               val str = in.strVal
-              if (token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
+              if (str != null && token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
                 extractClosingIndent(str, negOffset) match {
                   case Some(closingIndent) => dedentString(str, negOffset, closingIndent, true, true)
                   case None => str
