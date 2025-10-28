@@ -79,34 +79,28 @@ Chars: List( ,  , a, b,
 ,  ,  , c, d)
 ----
 Interpolated:
-
-    Hello Alice
-    You are 30 years old
-    
+Hello Alice
+You are 30 years old
 ----
 Escaped Interpolated:
-
-    Hello $name
-    You are $age years old
-    
+Hello $name
+You are $age years old
 ----
 Formatted:
-
-    Value: 00042
-    Done
-    
+Value: 00042
+Done
 ----
 Pattern matching:
 Pattern result: matched basic
 ----
 Interpolated pattern:
-Interpolated pattern result: no match
+Interpolated pattern result: matched greeting
 ----
 Pattern matching (two lines):
 Two line pattern result: matched two lines
 ----
 Interpolated pattern (two lines):
-Two line interpolated result: no match
+Two line interpolated result: matched two line greeting
 ----
 In function:
   function content
@@ -137,21 +131,13 @@ Value: [  alpha
 Type matches: true
 ----
 contentsWithNewline:
-
-    content with
+content with
 newline
-    more text
-    
+more text
 ----
 nestedInterpolator:
-
-    outer inner
-    
+outer inner
 ----
 nestedInterpolator2:
-
-    outer 
-      inner with 2
-      
-    
+outer inner with 2
 ----
