@@ -1544,7 +1544,9 @@ object Parsers {
         in.buf(in.charOffset) == '"' &&
         in.buf(in.charOffset + 1) == '"'
 
-      val isDedented = isDedentedStringLiteral(in.charOffset)
+      // Check starting from `charOffset - 1` because at this point we
+      // have already consumed the first character of the string delimiter
+      val isDedented = isDedentedStringLiteral(in.charOffset - 1)
 
       in.nextToken()
 
