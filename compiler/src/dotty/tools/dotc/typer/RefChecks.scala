@@ -1180,7 +1180,7 @@ object RefChecks {
       def targetOfHiddenExtension: Symbol =
         val target =
           val target0 = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
-          target0.dealiasKeepOpaques.typeSymbol.info
+          target0.dealiasKeepOpaques.typeSymbol.info.hiBound
         val member = target.nonPrivateMember(sym.name)
           .filterWithPredicate: member =>
             member.symbol.isPublic && memberHidesMethod(member)
