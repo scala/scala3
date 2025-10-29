@@ -28,21 +28,18 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
-  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): fansi.Str = {
-    def fallback() = {
-
-      val fansiStr = pprint.PPrinter.Color
+  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
+    def fallback() =
+      dotty.shaded.pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
-      dotty.shaded.pprint.log(fansiStr.toString.toCharArray)
-      fansiStr
-    }
-
+        .render
+        .toString
     try
       val cl = classLoader()
-      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
-      val fansiStrCls = Class.forName("fansi.Str", false, cl)
-      val Color = pprintCls.getField("MODULE$").get(null)
-      val Color_apply = pprintCls.getMethod("apply",
+      val pprintColorCls = Class.forName("dotty.shaded.pprint.PPrinter$Color$", false, cl)
+      val fansiStrCls = Class.forName("dotty.shaded.fansi.Str", false, cl)
+      val Color = pprintColorCls.getField("MODULE$").get(null)
+      val Color_apply = pprintColorCls.getMethod("apply",
         classOf[Any],     // value
         classOf[Int],     // width
         classOf[Int],     // height
@@ -51,11 +48,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
       )
+      val FansiStr_render = fansiStrCls.getMethod("render")
       val fansiStr = Color_apply.invoke(
         Color, value, width, height, 2, initialOffset, false, true
       )
-      dotty.shaded.pprint.log(fansiStr.toString.toCharArray)
-      fansi.Str(fansiStr.toString)
+      FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
       case _: ClassNotFoundException => fallback()
       case _: NoSuchMethodException  => fallback()
