@@ -124,7 +124,6 @@ trait CommonScalaSettings:
 
   /* Other settings */
   val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
-  val usejavacp: Setting[Boolean] = BooleanSetting(RootSetting, "usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
   val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
   val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
   val replQuitAfterInit: Setting[Boolean] = BooleanSetting(RootSetting, "repl-quit-after-init", "Quit REPL after evaluating the init script.", aliases = List("--repl-quit-after-init"))
@@ -403,12 +402,12 @@ private sealed trait YSettings:
   val YlogClasspath: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting(ForkSetting, "YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
   val YnoStdlibPatches: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-stdlib-patches", "Do not patch stdlib files (temporary and only to be used for the stdlib migration)", false)
-
   val Yreporter: Setting[String] = StringSetting(ForkSetting, name = "Yreporter", helpArg = "<class>", descr = "Specify a dotty.tools.dotc.reporting.Reporter", default = "dotty.tools.dotc.reporting.ConsoleReporter")
 
   val Yscala2Unpickler: Setting[String] = StringSetting(ForkSetting, "Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
+
   val Yimports: Setting[List[String]] = MultiStringSetting(ForkSetting, "Yimports", helpArg="", "Custom root imports. If set, none of scala.*, java.lang.*, or Predef.* will be imported unless explicitly included.")
   val YnoPredef: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-predef", "Compile without importing Predef.")
   val Yskip: Setting[List[String]] = PhasesSetting(ForkSetting, "Yskip", "Skip")
@@ -447,8 +446,8 @@ private sealed trait YSettings:
   val YprofileExternalTool: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase.", "typer", depends = List(YprofileEnabled -> true))
   val YprofileRunGcBetweenPhases: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_", depends = List(YprofileEnabled -> true))
   val YprofileTrace: Setting[String]  = StringSetting(ForkSetting, "Yprofile-trace", "file", s"Capture trace of compilation in JSON Chrome Trace format to the specified file. This option requires ${YprofileEnabled.name}. The output file can be visualized using https://ui.perfetto.dev/.", "", depends = List(YprofileEnabled -> true))
-
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
+  val Yusejavacp: Setting[Boolean] = BooleanSetting(ForkSetting, "Yusejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path", "-usejavacp", "--usejavacp"))
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
 
   val YmagicOffsetHeader: Setting[String] = StringSetting(ForkSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START. Then, in the source, the magic comment `///SOURCE_CODE_START:<ORIGINAL_FILE_PATH>` marks the start of user code. The comment should be suffixed by `:<ORIGINAL_FILE_PATH>` to indicate the original file.", "")

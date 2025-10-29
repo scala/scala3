@@ -194,7 +194,7 @@ class PathResolver(using c: Context) {
    */
   object Calculated {
     def scalaHome: String           = Defaults.scalaHome
-    def useJavaClassPath: Boolean   = settings.usejavacp.value || Defaults.useJavaClassPath
+    def useJavaClassPath: Boolean   = settings.Yusejavacp.value || Defaults.useJavaClassPath
     def javaBootClassPath: String   = cmdLineOrElse("javabootclasspath", Defaults.javaBootClassPath)
     def javaExtDirs: String         = cmdLineOrElse("javaextdirs", Defaults.javaExtDirs)
     def javaUserClassPath: String   = if (useJavaClassPath) Defaults.javaUserClassPath else ""
