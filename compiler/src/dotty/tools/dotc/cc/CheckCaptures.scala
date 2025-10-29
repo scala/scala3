@@ -736,6 +736,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkUpdate(qualType, tree.srcPos):
           i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
 
+      // If selecting a lazy val member, charge the qualifier since accessing
+      // the lazy val can trigger initialization that uses the qualifier's capabilities
+      if tree.symbol.is(Lazy) then
+        qualType match
+          case tr: (TermRef | ThisType) =>
+            markPathFree(tr, pt, tree)
+          case _ =>
+
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree.symbol)
       val selWiden = selType.widen
