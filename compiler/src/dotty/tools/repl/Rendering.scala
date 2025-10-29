@@ -91,12 +91,13 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   /** Return a colored fansi.Str representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
     // pretty-print things with 100 cols 50 rows by default,
-    pprintRender(
+    val res = pprintRender(
       value,
       width = 100,
       height = 50,
       initialOffset = prefixLength
     )
+    if (ctx.settings.color.value == "never") fansi.Str(res).plainText else res
   }
 
   /** Load the value of the symbol using reflection.
@@ -184,7 +185,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       ste.getClassName.startsWith(REPL_WRAPPER_NAME_PREFIX)  // d.symbol.owner.name.show is simple name
       && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
 
-    infoDiagnostic(cause.formatStackTracePrefix(!isWrapperInitialization(_)), d)
+    val formatted0 = cause.formatStackTracePrefix(!isWrapperInitialization(_))
+    val formatted: fansi.Str = if (ctx.settings.color.value == "never") formatted0.plainText else formatted0
+    infoDiagnostic(formatted, d)
   end renderError
 
   private def infoDiagnostic(msg: fansi.Str, d: Denotation)(using Context): Diagnostic = {
