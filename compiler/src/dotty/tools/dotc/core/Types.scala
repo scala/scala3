@@ -2601,6 +2601,10 @@ object Types extends TypeUtils {
     def recomputeDenot()(using Context): Unit =
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
+    def safeRecomputeDenot()(using Context): Unit =
+      val newDenot = memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private))
+      if newDenot.exists then setDenot(newDenot)
+
     private def setDenot(denot: Denotation)(using Context): Unit = {
       if ctx.base.checkNoDoubleBindings then
         checkSymAssign(denot.symbol)
