@@ -2,6 +2,7 @@ package dotty.tools.dotc.printing
 
 import scala.language.unsafeNulls
 
+import dotty.shaded.fansi
 import dotty.tools.DottyTest
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
@@ -12,14 +13,15 @@ class SyntaxHighlightingTests extends DottyTest {
   import SyntaxHighlighting._
 
   private def test(source: String, expected: String): Unit = {
+
     val highlighted = SyntaxHighlighting.highlight(source)(using ctx.withColors)
-      .replace(NoColor,         ">")
-      .replace(CommentColor,    "<C|")
-      .replace(KeywordColor,    "<K|")
-      .replace(ValDefColor,     "<V|")
-      .replace(LiteralColor,    "<L|")
-      .replace(StringColor,     "<S|")
-      .replace(TypeColor,       "<T|")
+      .replace(fansi.Attrs.emitAnsiCodes(fansi.Color.Red.applyMask, NoColor.applyMask),         ">")
+      .replace(fansi.Attrs.emitAnsiCodes(NoColor.applyMask, CommentColor.applyMask),    "<C|")
+      .replace(fansi.Attrs.emitAnsiCodes(NoColor.applyMask, KeywordColor.applyMask),    "<K|")
+      .replace(fansi.Attrs.emitAnsiCodes(NoColor.applyMask, ValDefColor.applyMask),     "<V|")
+      .replace(fansi.Attrs.emitAnsiCodes(NoColor.applyMask, LiteralColor.applyMask),    "<L|")
+      .replace(fansi.Attrs.emitAnsiCodes(NoColor.applyMask, StringColor.applyMask),     "<S|")
+      .replace(fansi.Attrs.emitAnsiCodes(NoColor.applyMask, TypeColor.applyMask),       "<T|")
       // .replace(AnnotationColor, "<A|") // is the same color as type color
 
     if (expected != highlighted) {
