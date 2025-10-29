@@ -6,6 +6,8 @@ import scala.language.unsafeNulls
 import dotc.*, core.*
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
+import printing.SyntaxHighlighting
+import dotty.shaded.{fansi, pprint}
 import reporting.Diagnostic
 import util.StackTraceOps.*
 
@@ -26,17 +28,21 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
-  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
-    def fallback() =
-      dotty.shaded.pprint.PPrinter.BlackWhite
+  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): fansi.Str = {
+    def fallback() = {
+
+      val fansiStr = pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
-        .plainText
+      dotty.shaded.pprint.log(fansiStr.toString.toCharArray)
+      fansiStr
+    }
+
     try
       val cl = classLoader()
-      val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$BlackWhite$", false, cl)
-      val fansiStrCls = Class.forName("dotty.shaded.fansi.Str", false, cl)
-      val BlackWhite = pprintCls.getField("MODULE$").get(null)
-      val BlackWhite_apply = pprintCls.getMethod("apply",
+      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
+      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val Color = pprintCls.getField("MODULE$").get(null)
+      val Color_apply = pprintCls.getMethod("apply",
         classOf[Any],     // value
         classOf[Int],     // width
         classOf[Int],     // height
@@ -45,11 +51,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
       )
-      val FansiStr_plainText = fansiStrCls.getMethod("plainText")
-      val fansiStr = BlackWhite_apply.invoke(
-        BlackWhite, value, width, height, 2, initialOffset, false, true
+      val fansiStr = Color_apply.invoke(
+        Color, value, width, height, 2, initialOffset, false, true
       )
-      FansiStr_plainText.invoke(fansiStr).asInstanceOf[String]
+      dotty.shaded.pprint.log(fansiStr.toString.toCharArray)
+      fansi.Str(fansiStr.toString)
     catch
       case _: ClassNotFoundException => fallback()
       case _: NoSuchMethodException  => fallback()
@@ -85,8 +91,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     if ncp <= maxPrintCharacters then str
     else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
-  /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): String = {
+  /** Return a colored fansi.Str representation of a value we got from `classLoader()`. */
+  private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
     // pretty-print things with 100 cols 50 rows by default,
     pprintRender(
       value,
@@ -100,7 +106,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol, prefixLength: Int)(using Context): Option[String] =
+  private def valueOf(sym: Symbol, prefixLength: Int)(using Context): Option[fansi.Str] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
@@ -109,11 +115,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
     symValue
       .filter(_ => sym.is(Flags.Method) || sym.info != defn.UnitType)
-      .map(value => stripReplPrefix(replStringOf(value, prefixLength)))
+      .map(value => stripReplPrefixFansi(replStringOf(value, prefixLength)))
 
-  private def stripReplPrefix(s: String): String =
-    if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
-      s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
+  private def stripReplPrefixFansi(s: fansi.Str): fansi.Str =
+    val plain = s.plainText
+    if (plain.startsWith(REPL_WRAPPER_NAME_PREFIX))
+      val prefixLen = REPL_WRAPPER_NAME_PREFIX.length
+      val dropLen = prefixLen + plain.drop(prefixLen).takeWhile(c => c.isDigit || c == '$').length
+      s.substring(dropLen)
     else
       s
 
@@ -141,17 +150,17 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Render value definition result */
   def renderVal(d: Denotation)(using Context): Either[ReflectiveOperationException, Option[Diagnostic]] =
-    val dcl = d.symbol.showUser
-    def msg(s: String) = infoDiagnostic(s, d)
+    val dcl = fansi.Str(SyntaxHighlighting.highlight(d.symbol.showUser))
+    def msg(s: fansi.Str) = infoDiagnostic(s, d)
     try
       Right(
         if d.symbol.is(Flags.Lazy) then Some(msg(dcl))
         else {
-          val prefix = s"$dcl = "
+          val prefix = dcl ++ " = "
           // Prefix can have multiple lines, only consider the last one
           // when determining the initial column offset for pretty-printing
-          val prefixLength = prefix.linesIterator.toSeq.lastOption.getOrElse("").length
-          valueOf(d.symbol, prefixLength).map(value => msg(s"$prefix$value"))
+          val prefixLength = prefix.plainText.linesIterator.toSeq.lastOption.getOrElse("").length
+          valueOf(d.symbol, prefixLength).map(value => msg(prefix ++ value))
         }
       )
     catch case e: ReflectiveOperationException => Left(e)
@@ -181,8 +190,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     infoDiagnostic(cause.formatStackTracePrefix(!isWrapperInitialization(_)), d)
   end renderError
 
+  private def infoDiagnostic(msg: fansi.Str, d: Denotation)(using Context): Diagnostic = {
+    new Diagnostic.Info(msg.render, d.symbol.sourcePos)
+  }
+
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
-    new Diagnostic.Info(msg, d.symbol.sourcePos)
+    new Diagnostic.Info(SyntaxHighlighting.highlight(msg), d.symbol.sourcePos)
 
 object Rendering:
   final val REPL_WRAPPER_NAME_PREFIX = str.REPL_SESSION_LINE
