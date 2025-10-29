@@ -33,7 +33,7 @@ class JLineTerminal extends java.io.Closeable {
   private val history = new DefaultHistory
 
   private def blue(str: String)(using Context) =
-    if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
+    if (ctx.settings.color.value != "never") fansi.Color.Blue(str).render
     else str
   protected def promptStr = "scala"
   private def prompt(using Context)        = blue(s"\n$promptStr> ")
