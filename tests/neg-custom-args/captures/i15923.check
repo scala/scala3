@@ -1,22 +1,30 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:27:23 ---------------------------------------
 27 |    val leak = withCap(cap => mkId(cap))  // error (was: no error here since type aliases don't box)
    |                       ^^^^^^^^^^^^^^^^
-   |Found:    (cap: test2.Cap^'s1) ->'s2 [T] => (op: test2.Cap^'s3 ->'s4 T) ->'s5 T
-   |Required: test2.Cap^{lcap} => [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T
+   |Found:    (lcap: scala.caps.Capability^) ?->'s1 test2.Cap^{lcap} => [T] => (op: test2.Cap^{lcap} ->'s2 T) ->'s3 T
+   |Required: (lcap: scala.caps.Capability^) ?-> test2.Cap^{lcap} =>² [T] => (op: test2.Cap^{lcap²} ->'s2 T) ->'s3 T
    |
-   |Note that capability lcap cannot be included in outer capture set 's1 of parameter cap.
+   |Note that capability lcap cannot be included in outer capture set {lcap²}.
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): test2.Cap^{lcap} -> [T] => (op: test2.Cap^{lcap} => T) -> T when instantiating expected result type test2.Cap^{lcap} ->{cap²} [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T of function literal
+   |where:    =>    refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): test2.Cap^{lcap} => [T] => (op: test2.Cap^{lcap} ->'s2 T) ->'s3 T
+   |          =>²   refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): test2.Cap^{lcap} =>² [T] => (op: test2.Cap^{lcap²} ->'s2 T) ->'s3 T
+   |          ^     refers to the universal root capability
+   |          lcap  is a reference to a value parameter
+   |          lcap² is a parameter in an anonymous function in method bar
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |                     ^^^^^^^^^^^^^^^^
-   |Found:    (cap: Cap^'s9) ->'s10 Id[Cap^'s11]^'s12
-   |Required: Cap^{lcap} => Id[Cap^'s13]^'s14
+   |Found:    (lcap: scala.caps.Capability^) ?->'s4 Cap^{lcap} => Id[Cap^{lcap}]^'s5
+   |Required: (lcap: scala.caps.Capability^) ?-> Cap^{lcap} =>² Id[Cap^{lcap²}]^'s5
    |
-   |Note that capability lcap cannot be included in outer capture set 's9 of parameter cap.
+   |Note that capability lcap² is not included in capture set {lcap}.
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): Cap^{lcap} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^'s13]^'s14 of function literal
+   |where:    =>    refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): Cap^{lcap} => Id[Cap^{lcap}]^'s5
+   |          =>²   refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): Cap^{lcap} =>² Id[Cap^{lcap²}]^'s5
+   |          ^     refers to the universal root capability
+   |          lcap  is a reference to a value parameter
+   |          lcap² is a parameter in an anonymous function in method bar
    |
    | longer explanation available when compiling with `-explain`

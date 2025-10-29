@@ -1044,7 +1044,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               val localResType = pt match
                 case RefinedType(_, _, mt: MethodType) =>
                   inContext(ctx.withOwner(anonfun)):
-                    Internalize(mt)(resType)
+                    Internalize(mt)(resType.substParams(mt, params.tpes))
                 case _ => resType
               mdef.tpt.updNuType(localResType)
               // Make sure we affect the info of the anonfun by the previous updNuType
