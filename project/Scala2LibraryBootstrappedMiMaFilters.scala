@@ -138,6 +138,9 @@ object Scala2LibraryBootstrappedMiMaFilters {
         "scala.collection.mutable.ArrayBuffer.resizeUp", // private[mutable] def
         // New in 2.13.14
         "scala.util.Properties.consoleIsTerminal", // private[scala] lazy val
+        // New in 2.13.17
+        "scala.concurrent.Future.timeoutError",
+        "scala.concurrent.Future.waitUndefinedError",
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem]) ++
       Seq( // MissingFieldProblem: static field ... in object ... does not have a correspondent in other version
         "scala.Array.UnapplySeqWrapper",
