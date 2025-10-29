@@ -1041,18 +1041,28 @@ class CheckCaptures extends Recheck, SymTransformer:
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
             if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
-              val localResType = pt match
+
+              def updateTpt(localResType: Type) =
+                mdef.tpt.updNuType(localResType)
+                // Make sure we affect the info of the anonfun by the previous updNuType
+                // unless the info is already defined in a previous phase and does not change.
+                assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
+
+              pt match
                 case RefinedType(_, _, mt: MethodType) =>
-                  inContext(ctx.withOwner(anonfun)):
-                    Internalize(mt)(resType.substParams(mt, params.tpes))
-                case _ => resType
-              mdef.tpt.updNuType(localResType)
-              // Make sure we affect the info of the anonfun by the previous updNuType
-              // unless the info is already defined in a previous phase and does not change.
-              assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
-              //println(i"updating ${mdef.tpt} to $localResType/${mdef.tpt.nuType}")
+                  if !mt.isResultDependent then
+                    // If mt is result dependent we could compensate this by
+                    // internalizing `resType.substParams(mt, params.tpes)`.
+                    // But this tends to give worse error messages, so we refrain
+                    // from doing that and don't update the local result type instead.
+                    val localResType = inContext(ctx.withOwner(anonfun)):
+                      Internalize(mt)(resType)
+                    updateTpt(localResType)
+                case _ =>
+                  updateTpt(resType)
           case _ =>
         case Nil =>
+      end matchParamsAndResult
 
       openClosures = (anonfun, pt) :: openClosures
         // openClosures is needed for errors but currently makes no difference
