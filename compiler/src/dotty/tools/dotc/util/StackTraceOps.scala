@@ -37,6 +37,9 @@ object StackTraceOps:
       val Self       = ""
       val CausedBy   = "Caused by: "
       val Suppressed = "Suppressed: "
+      def renderDotDelimited(s: String ) = {
+        fansi.Str.join(s.split('.').map(fansi.Color.LightRed(_)), ".")
+      }
 
       def header(e: Throwable): fansi.Str =
         def because = e.getCause   match { case null => null    ; case c => header(c) }
@@ -45,13 +48,12 @@ object StackTraceOps:
           case null => ""
           case s => s": $s"
         }
-        fansi.Color.LightRed(e.getClass.getName) ++ txt
+        renderDotDelimited(e.getClass.getName) ++ txt
 
       val seen = mutable.Set.empty[Throwable]
       def unseen(e: Throwable): Boolean = (e != null && !seen(e)).tap(if _ then seen += e)
 
       val lines = ListBuffer.empty[fansi.Str]
-
       // format the stack trace, skipping the shared trace
       def print(e: Throwable, r: TraceRelation, share: Array[StackTraceElement], indents: Int): Unit = if unseen(e) then
         val trace  = e.getStackTrace
@@ -65,7 +67,7 @@ object StackTraceOps:
         prefix.foreach(frame =>
           lines +=
             fansi.Str(s"$margin  ") ++ fansi.Color.Red("at") ++ " " ++
-              fansi.Str.join(frame.getClassName.split('.').map(fansi.Color.LightRed(_)), ".") ++ "." ++
+              renderDotDelimited(frame.getClassName) ++ "." ++
               fansi.Color.LightRed(frame.getMethodName) ++ "(" ++
               fansi.Color.LightRed(frame.getFileName) ++ ":" ++
               fansi.Color.LightRed(frame.getLineNumber.toString) ++ ")"
