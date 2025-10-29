@@ -14,6 +14,7 @@ import Variances.varianceSign
 import util.{Chars, SourcePosition}
 import scala.util.control.NonFatal
 import scala.annotation.switch
+import dotty.shaded.fansi
 import config.{Config, Feature}
 import ast.{tpd, untpd}
 import cc.*
@@ -839,17 +840,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def plain: PlainPrinter = this
 
-  protected def keywordStr(text: String): String =
-    if (ctx.useColors) SyntaxHighlighting.KeywordColor(text).render else text
-  protected def keywordText(text: String): Text = keywordStr(text)
+  protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
+  protected def keywordText(text: String): Text = coloredStr(text, SyntaxHighlighting.KeywordColor)
   protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.ValDefColor)
   protected def typeText(text: Text): Text = coloredText(text, SyntaxHighlighting.TypeColor)
   protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
   protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
 
-  protected def coloredStr(text: String, color: String): String =
-    if (ctx.useColors) color + text + "\u001b[0m" else text
+  protected def coloredStr(text: String, color: dotty.shaded.fansi.Attrs): String =
+    if (ctx.useColors) color(text).render else text
   protected def coloredText(text: Text, color: dotty.shaded.fansi.Attrs): Text =
-    if (ctx.useColors) Str(color(text.toString).render) else text
+    if (ctx.useColors) fansi.Attrs.emitAnsiCodes(0, color.applyMask) ~ text ~ fansi.Attrs.emitAnsiCodes(color.applyMask, 0)
+    else text
 }
 

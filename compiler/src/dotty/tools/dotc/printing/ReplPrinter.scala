@@ -56,6 +56,6 @@ class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   // We don't want the colors coming from RefinedPrinter as the REPL uses its
   // own syntax coloring mechanism.
-  override def coloredStr(text: String, color: String): String = text
+  override def coloredStr(text: String, color: dotty.shaded.fansi.Attrs): String = text
   override def coloredText(text: Text, color: dotty.shaded.fansi.Attrs): Text = text
 }
