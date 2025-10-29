@@ -156,7 +156,7 @@ trait CliCommand:
     private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
       val colors: Seq[String => fansi.Str] = Seq(fansi.Color.Green(_), fansi.Color.Yellow(_), fansi.Color.Magenta(_), fansi.Color.Cyan(_), fansi.Color.Red(_))
       val nocolor = texts.length == 1
-      def color(index: Int): String => fansi.Str = if nocolor then (s => fansi.Str(s)) else colors(index % colors.length)
+      def color(index: Int): String => fansi.Str = if nocolor then fansi.Str(_) else colors(index % colors.length)
       val maxCol = ctx.settings.pageWidth.value
       val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
       val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap

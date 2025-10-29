@@ -2,6 +2,7 @@ package dotty.tools.repl
 
 import scala.language.unsafeNulls
 
+import dotty.shaded.fansi
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens.*
