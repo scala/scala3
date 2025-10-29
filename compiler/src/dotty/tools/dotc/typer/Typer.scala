@@ -1932,7 +1932,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     /** Try to instantiate one type variable bounded by function types that appear
      *  deeply inside `tp`, including union or intersection types.
      */
-    def tryToInstantiateDeeply(tp: Type): Boolean = tp match
+    def tryToInstantiateDeeply(tp: Type): Boolean = tp.dealias match
       case tp: AndOrType =>
         tryToInstantiateDeeply(tp.tp1)
         || tryToInstantiateDeeply(tp.tp2)
@@ -1946,6 +1946,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def isConstrainedByFunctionType(tvar: TypeVar): Boolean =
       val origin = tvar.origin
       val bounds = ctx.typerState.constraint.bounds(origin)
+      // The search is done by the best-effort, and we don't look into TypeVars recursively.
       def containsFunctionType(tp: Type): Boolean = tp.dealias match
         case tp if defn.isFunctionType(tp) => true
         case SAMType(_, _) => true
@@ -1957,11 +1958,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 
     if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists then
-      // Try to instantiate `pt` when possible, by searching a nested type variable
-      // bounded by function types to help infer parameter types.
+      // Try to instantiate `pt` when possible.
+      // * If `pt` is a type variable, we try to instantiate it directly.
+      // * If `pt` is a more complex type, we try to instantiate it deeply by searching
+      //   a nested type variable bounded by function types to help infer parameter types.
       // If it does not work the error will be reported later in `inferredParam`,
       // when we try to infer the parameter type.
-      tryToInstantiateDeeply(pt)
+      pt match
+        case pt: TypeVar => isFullyDefined(pt, ForceDegree.flipBottom)
+        case _ => tryToInstantiateDeeply(pt)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
