@@ -1,6 +1,8 @@
 package scala.quoted
 package runtime.impl.printers
 
+import dotty.shaded.fansi
+
 trait SyntaxHighlight {
   def highlightKeyword(str: String): String
   def highlightTypeDef(str: String): String
@@ -16,23 +18,14 @@ object SyntaxHighlight {
 
   def ANSI: SyntaxHighlight = new SyntaxHighlight {
     // Keep in sync with SyntaxHighlighting
-    private val NoColor         = Console.RESET
-    private val CommentColor    = Console.BLUE
-    private val KeywordColor    = Console.YELLOW
-    private val ValDefColor     = Console.CYAN
-    private val LiteralColor    = Console.RED
-    private val StringColor     = Console.GREEN
-    private val TypeColor       = Console.MAGENTA
-    private val AnnotationColor = Console.MAGENTA
-
-    def highlightKeyword(str: String): String = KeywordColor + str + NoColor
-    def highlightTypeDef(str: String): String = TypeColor + str + NoColor
-    def highlightLiteral(str: String): String = LiteralColor + str + NoColor
-    def highlightValDef(str: String): String = ValDefColor + str + NoColor
-    def highlightOperator(str: String): String = TypeColor + str + NoColor
-    def highlightAnnotation(str: String): String = AnnotationColor + str + NoColor
-    def highlightString(str: String): String = StringColor + str + NoColor
-    def highlightTripleQs: String = Console.RED_B + "???" + NoColor
+    def highlightKeyword(str: String): String = fansi.Color.Yellow(str).render
+    def highlightTypeDef(str: String): String = fansi.Color.Magenta(str).render
+    def highlightLiteral(str: String): String = fansi.Color.Red(str).render
+    def highlightValDef(str: String): String = fansi.Color.Cyan(str).render
+    def highlightOperator(str: String): String = fansi.Color.Magenta(str).render
+    def highlightAnnotation(str: String): String = fansi.Color.Magenta(str).render
+    def highlightString(str: String): String = fansi.Color.Green(str).render
+    def highlightTripleQs: String = fansi.Back.Red("???").render
   }
 
   def plain: SyntaxHighlight = new SyntaxHighlight {

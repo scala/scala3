@@ -11,7 +11,8 @@ import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 
-import java.util.Arrays
+import dotty.shaded.fansi
+import scala.collection.mutable.ArrayBuffer
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
@@ -23,14 +24,14 @@ object SyntaxHighlighting {
   private inline val debug = true
 
   // Keep in sync with SyntaxHighlightingTests
-  val NoColor: String         = Console.RESET
-  val CommentColor: String    = Console.BLUE
-  val KeywordColor: String    = Console.YELLOW
-  val ValDefColor: String     = Console.CYAN
-  val LiteralColor: String    = Console.GREEN
-  val StringColor: String     = Console.GREEN
-  val TypeColor: String       = Console.MAGENTA
-  val AnnotationColor: String = Console.MAGENTA
+  val NoColor: fansi.Attrs         = fansi.Attrs.Empty
+  val CommentColor: fansi.Attrs    = fansi.Color.Blue
+  val KeywordColor: fansi.Attrs    = fansi.Color.Yellow
+  val ValDefColor: fansi.Attrs     = fansi.Color.Cyan
+  val LiteralColor: fansi.Attrs    = fansi.Color.Green
+  val StringColor: fansi.Attrs     = fansi.Color.Green
+  val TypeColor: fansi.Attrs       = fansi.Color.Magenta
+  val AnnotationColor: fansi.Attrs = fansi.Color.Magenta
 
   def highlight(in: String)(using Context): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
@@ -41,18 +42,20 @@ object SyntaxHighlighting {
       given Context = freshCtx
         .setCompilationUnit(CompilationUnit(source, mustExist = false)(using freshCtx))
 
-      val colorAt = Array.fill(in.length)(NoColor)
+      // Buffer to collect all highlight ranges for fansi.Str.overlayAll
+      val ranges = ArrayBuffer[(fansi.Attrs, Int, Int)]()
 
-      def highlightRange(from: Int, to: Int, color: String) =
-        Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
+      def highlightRange(from: Int, to: Int, attrs: fansi.Attrs) =
+        if (attrs != fansi.Attrs.Empty)
+          ranges += ((attrs, from, to))
 
-      def highlightPosition(span: Span, color: String) = if (span.exists)
+      def highlightPosition(span: Span, attrs: fansi.Attrs) = if (span.exists)
         if (span.start < 0 || span.end > in.length) {
           if (debug)
             println(s"Trying to highlight erroneous position $span. Input size: ${in.length}")
         }
         else
-          highlightRange(span.start, span.end, color)
+          highlightRange(span.start, span.end, attrs)
 
       val scanner = new Scanner(source)
       while (scanner.token != EOF) {
@@ -78,7 +81,7 @@ object SyntaxHighlighting {
             highlightRange(start, end, KeywordColor)
 
           case IDENTIFIER if name == nme.??? =>
-            highlightRange(start, end, Console.RED_B)
+            highlightRange(start, end, fansi.Back.Red)
 
           case IDENTIFIER if name.head.isUpper && name.exists(!_.isUpper) =>
             highlightRange(start, end, KeywordColor)
@@ -133,21 +136,8 @@ object SyntaxHighlighting {
         val trees = parser.blockStatSeq()
         TreeHighlighter.highlight(trees)
 
-
-        val highlighted = new StringBuilder()
-
-        for (idx <- colorAt.indices) {
-          val prev = if (idx == 0) NoColor else colorAt(idx - 1)
-          val curr = colorAt(idx)
-          if (curr != prev)
-            highlighted.append(curr)
-          highlighted.append(in(idx))
-        }
-
-        if (colorAt.last != NoColor)
-          highlighted.append(NoColor)
-
-        highlighted.toString
+        // Apply all color ranges at once using fansi.Str.overlayAll
+        fansi.Str(in).overlayAll(ranges.toSeq).render
       catch
         case e: StackOverflowError =>
           in

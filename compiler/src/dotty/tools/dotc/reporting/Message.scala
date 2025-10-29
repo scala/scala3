@@ -10,6 +10,7 @@ import printing.Formatting.hl
 import config.SourceVersion
 import cc.CaptureSet
 import cc.Capabilities.*
+import dotty.shaded.fansi
 
 import scala.annotation.threadUnsafe
 
@@ -386,6 +387,10 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
 
   def withoutDisambiguation(): this.type = withDisambiguation(Disambiguation.None)
 
+  private def stripFansiColorsIfNecessary(str: String)(using Context): String =
+    if ctx.useColors then str
+    else fansi.Str(str).plainText
+
   private def inMessageContext(disambiguate: Disambiguation)(op: Context ?=> String): String =
     if ctx eq NoContext then op
     else
@@ -397,7 +402,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
           if !ctx1.property(MessageLimiter).isDefined then
             ctx1.setProperty(MessageLimiter, ErrorMessageLimiter())
           ctx1
-      op(using msgContext)
+      stripFansiColorsIfNecessary(op(using msgContext))
 
   /** The message to report. <nonsensical> tags are filtered out */
   @threadUnsafe lazy val message: String =

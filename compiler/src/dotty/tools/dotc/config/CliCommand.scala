@@ -3,7 +3,7 @@ package config
 
 import Settings.*
 import core.Contexts.*
-import printing.Highlighting
+import dotty.shaded.fansi
 
 import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
@@ -154,10 +154,9 @@ trait CliCommand:
     def apply(texts: List[List[(String, String)]])(using Context): String = StringBuilder().tap(columnate(_, texts)).toString
 
     private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
-      import Highlighting.*
-      val colors = Seq(Green(_), Yellow(_), Magenta(_), Cyan(_), Red(_))
+      val colors: Seq[String => fansi.Str] = Seq(fansi.Color.Green(_), fansi.Color.Yellow(_), fansi.Color.Magenta(_), fansi.Color.Cyan(_), fansi.Color.Red(_))
       val nocolor = texts.length == 1
-      def color(index: Int): String => Highlight = if nocolor then NoColor(_) else colors(index % colors.length)
+      def color(index: Int): String => fansi.Str = if nocolor then (s => fansi.Str(s)) else colors(index % colors.length)
       val maxCol = ctx.settings.pageWidth.value
       val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
       val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap
@@ -173,13 +172,13 @@ trait CliCommand:
               case i  => val (prefix, rest) = fld.splitAt(i) ; prefix :: loopOverField2(rest.trim)
         text.split("\n").toList.flatMap(loopOverField2).filter(_.nonEmpty).mkString(EOL + "".padLeft(field1) + separator)
       end formatField2
-      def format(first: String, second: String, index: Int, colorPicker: Int => String => Highlight) =
-        sb.append(colorPicker(index)(formatField1(first)).show)
+      def format(first: String, second: String, index: Int, colorPicker: Int => String => fansi.Str) =
+        sb.append(colorPicker(index)(formatField1(first)).render)
           .append(separator)
           .append(formatField2(second))
           .append(EOL): Unit
       def fancy(first: String, second: String, index: Int) = format(first, second, index, color)
-      def plain(first: String, second: String) = format(first, second, 0, _ => NoColor(_))
+      def plain(first: String, second: String) = format(first, second, 0, _ => fansi.Str(_))
 
       if heading1.nonEmpty then
         plain(heading1, heading2)

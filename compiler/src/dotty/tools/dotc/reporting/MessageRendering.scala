@@ -9,8 +9,8 @@ import java.lang.System.{lineSeparator => EOL}
 import core.Contexts.*
 import core.Decorators.*
 import io.AbstractFile
-import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
+import dotty.shaded.fansi
 import Diagnostic.*
 import util.{SourcePosition, NoSourcePosition}
 import util.Chars.{ LF, CR, FF, SU }
@@ -205,8 +205,8 @@ trait MessageRendering {
   def explanation(m: Message)(using Context): String = {
     val sb = new StringBuilder(
       s"""|
-          |${Blue("Explanation").show}
-          |${Blue("===========").show}""".stripMargin
+          |${fansi.Color.Blue("Explanation").render}
+          |${fansi.Color.Blue("===========").render}""".stripMargin
     )
     sb.append(EOL).append(m.explanation)
     if (!m.explanation.endsWith(EOL)) sb.append(EOL)
@@ -306,9 +306,9 @@ trait MessageRendering {
 
   private  def hl(str: String)(using Context, Level): String =
     summon[Level].value match
-      case interfaces.Diagnostic.ERROR   => Red(str).show
-      case interfaces.Diagnostic.WARNING => Yellow(str).show
-      case interfaces.Diagnostic.INFO    => Blue(str).show
+      case interfaces.Diagnostic.ERROR   => fansi.Color.Red(str).render
+      case interfaces.Diagnostic.WARNING => fansi.Color.Yellow(str).render
+      case interfaces.Diagnostic.INFO    => fansi.Color.Blue(str).render
 
   private def diagnosticLevel(dia: Diagnostic): String =
     dia match {

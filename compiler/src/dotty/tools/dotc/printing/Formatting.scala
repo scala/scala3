@@ -9,7 +9,6 @@ import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
 import reporting.Message
 import util.{DiffUtil, SimpleIdentitySet}
-import Highlighting.*
 
 object Formatting {
 
@@ -156,6 +155,8 @@ object Formatting {
       given Show[util.Spans.Span]                     = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
       given Show[typer.ForceDegree.Value]             = ShowAny
+      given Show[dotty.shaded.fansi.Str] with
+        def show(x: dotty.shaded.fansi.Str) = x.render
     end Show
   end ShownDef
   export ShownDef.{ Show, Shown }

@@ -10,7 +10,7 @@ import SymDenotations.SymDenotation
 import NameKinds.{WildcardParamName, ContextFunctionParamName}
 import parsing.Scanners.Token
 import parsing.Tokens
-import printing.Highlighting.*
+import dotty.shaded.fansi
 import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
@@ -643,9 +643,9 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
 
 class IllegalStartSimpleExpr(illegalToken: String)(using Context)
 extends SyntaxMsg(IllegalStartSimpleExprID) {
-  def msg(using Context) = i"expression expected but ${Red(illegalToken)} found"
+  def msg(using Context) = i"expression expected but ${fansi.Color.Red(illegalToken)} found"
   def explain(using Context) = {
-    i"""|An expression cannot start with ${Red(illegalToken)}."""
+    i"""|An expression cannot start with ${fansi.Color.Red(illegalToken)}."""
   }
 }
 
@@ -1583,7 +1583,7 @@ class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Conte
     val ps =
       if (params.size == 1) s"a type parameter ${params.head}"
       else s"type parameters ${params.map(_.show).mkString(", ")}"
-    i"""You specified ${NoColor(ps)} for $tpe, which is not
+    i"""You specified $ps for $tpe, which is not
         |declared to take any.
         |"""
 }
@@ -1745,7 +1745,7 @@ class CannotExtendAnyVal(sym: Symbol)(using Context)
   def explain(using Context) =
     if sym.is(Trait) then
       i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
-          |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
+          |${hl("Any")} to become ${fansi.Color.Green("\"universal traits\"")} which may only have ${hl("def")} members.
           |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
           |"""
     else if sym.is(Module) then
@@ -2192,13 +2192,13 @@ class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using Con
       if Feature.migrateTo3 && unapplyName == nme.unapplySeq
       then "\nYou might want to try to rewrite the extractor to use `unapply` instead."
       else ""
-    i"""| ${Red(i"$unapplyResult")} is not a valid result type of an $unapplyName method of an ${Magenta("extractor")}.$addendum"""
+    i"""| ${fansi.Color.Red(i"$unapplyResult")} is not a valid result type of an $unapplyName method of an ${fansi.Color.Magenta("extractor")}.$addendum"""
   def explain(using Context) = if (unapplyName.show == "unapply")
     i"""
         |To be used as an extractor, an unapply method has to return a type that either:
-        | - has members ${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} (usually an ${Green("Option[S]")})
-        | - is a ${Green("Boolean")}
-        | - is a ${Green("Product")} (like a ${Magenta("Tuple2[T1, T2]")}) of arity i with i >= 1, and has members _1 to _i
+        | - has members ${fansi.Color.Magenta("isEmpty: Boolean")} and ${fansi.Color.Magenta("get: S")} (usually an ${fansi.Color.Green("Option[S]")})
+        | - is a ${fansi.Color.Green("Boolean")}
+        | - is a ${fansi.Color.Green("Product")} (like a ${fansi.Color.Magenta("Tuple2[T1, T2]")}) of arity i with i >= 1, and has members _1 to _i
         |
         |See: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html#fixed-arity-extractors
         |
@@ -2207,35 +2207,35 @@ class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using Con
         |class A(val i: Int)
         |
         |object B {
-        |  def unapply(a: A): ${Green("Option[Int]")} = Some(a.i)
+        |  def unapply(a: A): ${fansi.Color.Green("Option[Int]")} = Some(a.i)
         |}
         |
         |object C {
-        |  def unapply(a: A): ${Green("Boolean")} = a.i == 2
+        |  def unapply(a: A): ${fansi.Color.Green("Boolean")} = a.i == 2
         |}
         |
         |object D {
-        |  def unapply(a: A): ${Green("(Int, Int)")} = (a.i, a.i)
+        |  def unapply(a: A): ${fansi.Color.Green("(Int, Int)")} = (a.i, a.i)
         |}
         |
         |object Test {
         |  def test(a: A) = a match {
-        |    ${Magenta("case B(1)")} => 1
-        |    ${Magenta("case a @ C()")} => 2
-        |    ${Magenta("case D(3, 3)")} => 3
+        |    ${fansi.Color.Magenta("case B(1)")} => 1
+        |    ${fansi.Color.Magenta("case a @ C()")} => 2
+        |    ${fansi.Color.Magenta("case D(3, 3)")} => 3
         |  }
         |}
       """
   else
     i"""
         |To be used as an extractor, an unapplySeq method has to return a type which has members
-        |${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} where ${Magenta("S <: Seq[V]")} (usually an ${Green("Option[Seq[V]]")}):
+        |${fansi.Color.Magenta("isEmpty: Boolean")} and ${fansi.Color.Magenta("get: S")} where ${fansi.Color.Magenta("S <: Seq[V]")} (usually an ${fansi.Color.Green("Option[Seq[V]]")}):
         |
         |object CharList {
-        |  def unapplySeq(s: String): ${Green("Option[Seq[Char]")} = Some(s.toList)
+        |  def unapplySeq(s: String): ${fansi.Color.Green("Option[Seq[Char]")} = Some(s.toList)
         |
         |  "example" match {
-        |    ${Magenta("case CharList(c1, c2, c3, c4, _, _, _)")} =>
+        |    ${fansi.Color.Magenta("case CharList(c1, c2, c3, c4, _, _, _)")} =>
         |      println(s"$$c1,$$c2,$$c3,$$c4")
         |    case _ =>
         |      println("Expected *exactly* 7 characters!")
