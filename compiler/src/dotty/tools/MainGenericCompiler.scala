@@ -21,8 +21,6 @@ enum CompileMode:
   case Decompile
   case PrintTasty
   case Script
-  case Repl
-  case Run
 
 case class CompileSettings(
   verbose: Boolean = false,
@@ -113,8 +111,6 @@ object MainGenericCompiler {
       process(tail, settings.withScalaArgs("-verbose"))
     case ("-q" | "-quiet") :: tail =>
       process(tail, settings.withQuiet)
-    case "-repl" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.Repl))
     case "-script" :: targetScript :: tail =>
       process(Nil, settings
         .withCompileMode(CompileMode.Script)
@@ -127,8 +123,6 @@ object MainGenericCompiler {
       process(tail, settings.withCompileMode(CompileMode.Decompile))
     case "-print-tasty" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.PrintTasty))
-    case "-run" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.Run))
     case "-colors" :: tail =>
       process(tail, settings.withColors)
     case "-no-colors" :: tail =>
@@ -186,10 +180,6 @@ object MainGenericCompiler {
           ++ List("-script", settings.targetScript)
           ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
-      case CompileMode.Repl | CompileMode.Run =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
-        repl.Main.main(properArgs.toArray)
       case CompileMode.Guess =>
         run(settings.withCompileMode(CompileMode.Compile))
     end run
