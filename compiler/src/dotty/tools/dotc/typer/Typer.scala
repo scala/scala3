@@ -1157,7 +1157,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     record("typedNumber")
     val digits = tree.digits
     val target = pt.dealias
-    def lit(value: Any) = Literal(Constant(value)).withSpan(tree.span)
+    def lit(value: Any) = Literal(Constant(value)).withSpan(tree.span).withAttachmentsFrom(tree)
     try {
       // Special case primitive numeric types
       if (target.isRef(defn.IntClass) ||
@@ -1207,7 +1207,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             }
             var app: untpd.Tree = untpd.Apply(fromDigits, firstArg :: otherArgs)
             if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Nil, app)
-            return typed(app, pt)
+            return typed(app, pt).withAttachmentsFrom(tree)
           case _ =>
         }
       // Otherwise convert to Int or Double according to digits format
@@ -3939,7 +3939,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         traverse(xtree :: rest)
       case stat :: rest =>
         val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
-        if !Linter.warnOnInterestingResultInStatement(stat1) then checkStatementPurity(stat1)(stat, exprOwner)
+        if !Linter.warnOnInterestingResultInStatement(stat1) then
+          checkStatementPurity(stat1)(stat, exprOwner, isUnitExpr = false)
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
       case nil =>
@@ -4837,15 +4838,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
-
-        if ctx.settings.Whas.valueDiscard
-           && !ctx.isAfterTyper
-           && !tree.isInstanceOf[Inlined]
-           && !isThisTypeResult(tree)
-           && !isAscribedToUnit(tree)
-        then
-          report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
-
+        checkValueDiscard(tree)
         return tpd.Block(tree1 :: Nil, unitLiteral)
       end if
 
@@ -5106,11 +5099,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedExpr(cmp, defn.BooleanType)
       case _ =>
 
-  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean = false)(using Context): Unit =
+  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean)
+      (using Context): Unit =
+    inline def isPureNotInlinedUnit = tree match
+      case Inlined(_, Nil, Literal(k)) if k.tag == UnitTag => false // assert(2 + 2 == 4)
+      case tree => isPureExpr(tree)
     if !tree.tpe.isErroneous
       && !ctx.isAfterTyper
-      && !tree.isInstanceOf[Inlined]
-      && isPureExpr(tree)
+      && isPureNotInlinedUnit
       && !isSelfOrSuperConstrCall(tree)
     then tree match
       case closureDef(meth)
@@ -5124,13 +5120,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // sometimes we do not have the original anymore and use the transformed tree instead.
         // But taken together, the two criteria are quite accurate.
         missingArgs(tree, tree.tpe.widen)
-      case _ if tree.hasAttachment(AscribedToUnit) =>
-        // The tree was ascribed to `Unit` explicitly to silence the warning.
-        ()
-      case _ if isUnitExpr =>
-        report.warning(PureUnitExpression(original, tree.tpe), original.srcPos)
-      case _ =>
-        report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
+      case tree =>
+        val warnable = tree match
+          case inlined: Inlined => inlined.expansion
+          case tree => tree
+        // Check if the tree was ascribed to `Unit` explicitly to silence the warning.
+        if !isThisTypeResult(warnable) && !isAscribedToUnit(warnable) then
+          val msg =
+            if isUnitExpr then
+              PureUnitExpression(original, warnable.tpe)
+            else
+              PureExpressionInStatementPosition(original, exprOwner)
+          report.warning(msg, original.srcPos)
+
+  private def checkValueDiscard(tree: tpd.Tree)(using Context): Unit =
+    if ctx.settings.Whas.valueDiscard && !ctx.isAfterTyper then
+      val warnable = tree match
+        case inlined: Inlined => inlined.expansion
+        case tree => tree
+      if !isThisTypeResult(warnable) && !isAscribedToUnit(warnable) then
+        report.warning(ValueDiscarding(warnable.tpe), tree.srcPos)
 
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
