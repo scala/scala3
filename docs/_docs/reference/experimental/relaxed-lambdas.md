@@ -122,7 +122,7 @@ ColonArgument ::= colon {LambdaStart} indent (CaseClauses | Block) outdent
                |  colon ExprCaseClause
 ```
 Here, ENDlambda is a token synthesized at the next end of line following the
-token that starts the production. `
+token that starts the production.
 
 `ExprCaseClause` already exists in the grammar. It is defined as follows:
 ```
