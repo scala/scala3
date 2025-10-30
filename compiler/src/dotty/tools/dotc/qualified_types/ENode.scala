@@ -461,6 +461,8 @@ object ENode:
         case tpd.Literal(_) | tpd.Ident(_) | tpd.This(_)
             if tree.tpe.isInstanceOf[SingletonType] && tpd.isIdempotentExpr(tree) =>
           Some(Atom(substParamRefs(tree.tpe, paramSyms, paramTps).asInstanceOf[SingletonType]))
+        case tpd.Literal(Constant(null)) => // null does not have a SingletonType
+          Some(Atom(ConstantType(Constant(null))))
         case tpd.Select(tpd.New(_), nme.CONSTRUCTOR) =>
           constructorNode(tree.symbol)
         case tree: tpd.Select if isCaseClassApply(tree.symbol) =>
