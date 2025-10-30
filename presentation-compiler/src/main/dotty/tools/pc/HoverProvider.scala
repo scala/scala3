@@ -37,8 +37,8 @@ object HoverProvider:
       search: SymbolSearch,
       contentType: ContentType
   )(implicit reportContext: ReportContext): ju.Optional[HoverSignature] =
-    val uri = params.uri().nn
-    val text = params.text().nn
+    val uri = params.uri()
+    val text = params.text()
     val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri, sourceFile)
     val unit = driver.compilationUnits.get(uri)
@@ -90,7 +90,7 @@ object HoverProvider:
         )
       end report
       reportContext.unsanitized.create(() => report, /*ifVerbose =*/ true)
-      ju.Optional.empty().nn
+      ju.Optional.empty()
     else
       val skipCheckOnName =
         !pos.isPoint // don't check isHoveringOnName for RangeHover
@@ -158,9 +158,9 @@ object HoverProvider:
                   contextInfo = printer.getUsedRenamesInfo,
                   contentType = contentType
                 )
-              ).nn
+              )
             case _ =>
-              ju.Optional.empty().nn
+              ju.Optional.empty()
           end match
         case (_, tpe, Some(namedTupleArg)) :: _ =>
           val exprTpw = tpe.widenTermRefExpr.deepDealiasAndSimplify
@@ -175,8 +175,8 @@ object HoverProvider:
                   contextInfo = printer.getUsedRenamesInfo,
                   contentType = contentType
                 )
-              ).nn
-            case _ => ju.Optional.empty().nn
+              )
+            case _ => ju.Optional.empty()
       end match
     end if
   end hover
@@ -238,7 +238,7 @@ object HoverProvider:
 
       refTpe.flatMap(findRefinement).headOption.asJava
     case _ =>
-      ju.Optional.empty().nn
+      ju.Optional.empty()
 
 end HoverProvider
 

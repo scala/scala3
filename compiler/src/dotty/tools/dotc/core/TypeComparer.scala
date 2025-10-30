@@ -3376,12 +3376,12 @@ object TypeComparer {
   }
 
   private[core] def show(res: Any)(using Context): String =
-    if ctx.settings.YexplainLowlevel.value then String.valueOf(res).nn
+    if ctx.settings.YexplainLowlevel.value then String.valueOf(res)
     else res match
       case ClassInfo(_, cls, _, _, _) => cls.showLocated
       case bounds: TypeBounds => i"type bounds [$bounds]"
       case res: printing.Showable => res.show
-      case _ => String.valueOf(res).nn
+      case _ => String.valueOf(res)
 
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.

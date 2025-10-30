@@ -64,7 +64,7 @@ object CompletionPos:
       identEnd,
       query,
       sourcePos,
-      offsetParams.uri.nn,
+      offsetParams.uri,
       wasCursorApplied,
       hasLeadingBacktick,
       hasTrailingBacktick

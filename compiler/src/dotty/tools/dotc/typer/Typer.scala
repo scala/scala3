@@ -1218,7 +1218,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
     catch {
       case ex: FromDigitsException =>
-        report.error(ex.getMessage.nn, tree.srcPos)
+        report.error(ex.getMessage, tree.srcPos)
         tree.kind match {
           case Whole(_) => lit(0)
           case _ => lit(0.0)

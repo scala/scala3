@@ -42,7 +42,7 @@ object AmmoniteFileCompletions:
       .flatMap(_.split("/").lastOption.map(_.stripSuffix(".amm.sc.scala")))
 
     val split: List[String] = Option(rawPath)
-      .fold(Nil)(_.split("\\$file").toList.map(_.nn))
+      .fold(Nil)(_.split("\\$file").toList)
 
     val editRange = selector.headOption.map { sel =>
       if sel.sourcePos.span.isZeroExtent then posRange
@@ -64,7 +64,7 @@ object AmmoniteFileCompletions:
 
     def matches(file: Path): Boolean =
       (Files.isDirectory(file) || file.toAbsolutePath().toString.isScalaScript) &&
-        query.exists(q => CompletionFuzzy.matches(q.nn, file.getFileName().toString))
+        query.exists(q => CompletionFuzzy.matches(q, file.getFileName().toString))
 
     (split, workspace) match
       case (_ :: script :: Nil, Some(workspace)) =>
@@ -80,8 +80,8 @@ object AmmoniteFileCompletions:
           then List(parent)
           else Nil
         Files
-          .list(currentPath).nn
-          .iterator().nn
+          .list(currentPath)
+          .iterator()
           .asScala
           .toList
           .filter(path => !fileName.contains(path.getFileName().toString.stripSuffix(".sc")))

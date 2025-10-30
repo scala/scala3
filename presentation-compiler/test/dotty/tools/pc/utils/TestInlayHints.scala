@@ -28,7 +28,7 @@ object TestInlayHints {
   def decorationString(inlayHint: InlayHint): String = {
     val buffer = ListBuffer.empty[String]
 
-    val labels = inlayHint.getLabel().nn.asScala match {
+    val labels = inlayHint.getLabel().asScala match {
       case Left(label) => List(label)
       case Right(labelParts) => labelParts.asScala.map(_.getValue()).toList
     }
@@ -64,6 +64,6 @@ object TestInlayHints {
   }
 
   def removeInlayHints(text: String): String =
-    text.replaceAll(raw"\/\*(.*?)\*\/", "").nn
+    text.replaceAll(raw"\/\*(.*?)\*\/", "")
 
 }

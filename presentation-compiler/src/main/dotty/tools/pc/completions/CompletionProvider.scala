@@ -55,8 +55,8 @@ class CompletionProvider(
     referenceCounter: CompletionItemPriority
 )(using reports: ReportContext):
   def completions(): CompletionList =
-    val uri = params.uri().nn
-    val text = params.text().nn
+    val uri = params.uri()
+    val text = params.text()
 
     val (wasCursorApplied, code) = applyCompletionCursor(params)
     val sourceFile = SourceFile.virtual(uri, code)
@@ -173,7 +173,7 @@ class CompletionProvider(
    * because scala parser trim end position to the last statement pos.
    */
   private def applyCompletionCursor(params: OffsetParams): (Boolean, String) =
-    val text = params.text().nn
+    val text = params.text()
     val offset = params.offset()
     val query = Completion.naiveCompletionPrefix(text, offset)
     def isValidLastChar =
@@ -193,9 +193,9 @@ class CompletionProvider(
       true -> (
         if isStartMultilineComment then
           // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
-          text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
+          text.substring(0, offset) + Cursor.value + "*/" + text.substring(offset)
         else
-          text.substring(0, offset).nn + Cursor.value + text.substring(offset)
+          text.substring(0, offset) + Cursor.value + text.substring(offset)
       )
   end applyCompletionCursor
 
@@ -247,7 +247,7 @@ class CompletionProvider(
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
+      val oldText = params.text().substring(completionPos.queryStart, completionPos.identEnd)
       val trimmedNewText = {
         var nt = newText
         if (completionPos.hasLeadingBacktick) nt = nt.stripPrefix("`")
@@ -304,7 +304,7 @@ class CompletionProvider(
             case Some(edits) =>
               edits match
                 case AutoImportEdits(Some(nameEdit), other) =>
-                  mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
+                  mkItem(nameEdit.getNewText(), other.toList, range = Some(nameEdit.getRange()))
                 case _ =>
                   mkItem(
                     v.insertText.getOrElse(completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix),

@@ -38,8 +38,8 @@ class PcDefinitionProvider(
     definitions(findTypeDef = true)
 
   private def definitions(findTypeDef: Boolean): DefinitionResult =
-    val uri = params.uri().nn
-    val text = params.text().nn
+    val uri = params.uri()
+    val text = params.text()
     val filePath = Paths.get(uri)
     driver.run(
       uri,
@@ -56,7 +56,7 @@ class PcDefinitionProvider(
       if findTypeDef then findTypeDefinitions(path, pos, indexedContext, uri)
       else findDefinitions(path, pos, indexedContext, uri)
 
-    if result.locations().nn.isEmpty() then fallbackToUntyped(pos, uri)(using ctx)
+    if result.locations().isEmpty() then fallbackToUntyped(pos, uri)(using ctx)
     else result
   end definitions
 

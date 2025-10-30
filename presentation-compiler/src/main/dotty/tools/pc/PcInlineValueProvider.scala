@@ -87,7 +87,7 @@ final class PcInlineValueProvider(
     new l.Range(startPos, endPos)
   }
 
-  val position: l.Position = pos.toLsp.getStart().nn
+  val position: l.Position = pos.toLsp.getStart()
 
   override def collect(parent: Option[Tree])(
       tree: Tree | EndMarker,
