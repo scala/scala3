@@ -214,7 +214,11 @@ object desugar {
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val valName = normalizeName(vdef, tpt).asTermName
-    val tpt1 = desugarQualifiedTypes(tpt, valName)
+    val tpt1 =
+      if Feature.qualifiedTypesEnabled then
+        desugarQualifiedTypes(tpt, valName)
+      else
+        tpt
     var mods1 = vdef.mods
 
     val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = tpt1).withMods(mods1)
@@ -761,7 +765,11 @@ object desugar {
         report.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toMethParam(_, KeepAnnotations.All, keepDefault = true))
+      else
+        originalVparamss.nestedMap: param =>
+          val methParam = toMethParam(param, KeepAnnotations.All, keepDefault = true)
+          valDef(methParam).asInstanceOf[ValDef] // desugar early to handle qualified types
+
     val derivedTparams =
       constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
         derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
