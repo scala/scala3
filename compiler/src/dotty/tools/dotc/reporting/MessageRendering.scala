@@ -205,8 +205,8 @@ trait MessageRendering {
   def explanation(m: Message)(using Context): String = {
     val sb = new StringBuilder(
       s"""|
-          |${fansi.Color.Blue("Explanation").render}
-          |${fansi.Color.Blue("===========").render}""".stripMargin
+          |${if ctx.useColors then fansi.Color.Blue("Explanation").render else "Explanation"}
+          |${if ctx.useColors then fansi.Color.Blue("===========").render else "==========="}""".stripMargin
     )
     sb.append(EOL).append(m.explanation)
     if (!m.explanation.endsWith(EOL)) sb.append(EOL)
@@ -305,10 +305,12 @@ trait MessageRendering {
   }
 
   private  def hl(str: String)(using Context, Level): String =
-    summon[Level].value match
-      case interfaces.Diagnostic.ERROR   => fansi.Color.Red(str).render
-      case interfaces.Diagnostic.WARNING => fansi.Color.Yellow(str).render
-      case interfaces.Diagnostic.INFO    => fansi.Color.Blue(str).render
+    if ctx.useColors then
+      summon[Level].value match
+        case interfaces.Diagnostic.ERROR   => fansi.Color.Red(str).render
+        case interfaces.Diagnostic.WARNING => fansi.Color.Yellow(str).render
+        case interfaces.Diagnostic.INFO    => fansi.Color.Blue(str).render
+    else str
 
   private def diagnosticLevel(dia: Diagnostic): String =
     dia match {
