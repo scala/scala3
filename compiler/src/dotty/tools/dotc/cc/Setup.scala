@@ -532,6 +532,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
+        case tree: Ident =>
+          val sym = tree.symbol
+          if sym.isMutableVar && sym.owner.isTerm then
+            val enclMeth = ctx.owner.enclosingMethod
+            if sym.enclosingMethod != enclMeth then
+              capturedBy(sym) = enclMeth
+
+        case Apply(fn, args) =>
+          for case closureDef(mdef) <- args do
+            anonFunCallee(mdef.symbol) = fn.symbol
+          traverseChildren(tree)
+
         case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
           val meth = tree.symbol
           if isExcluded(meth) then
@@ -581,9 +593,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             traverse(body)
           catches.foreach(traverse)
           traverse(finalizer)
+
         case tree: New =>
+
         case _ =>
           traverseChildren(tree)
+
       postProcess(tree)
       checkProperUseOrConsume(tree)
     end traverse
@@ -907,36 +922,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
 
-  /** Used for error reporting:
-   *  Populates `capturedBy` and `anonFunCallee`. Called by `checkUnit`.
-   */
-  private def collectCapturedMutVars(using Context) = new TreeTraverser:
-    def traverse(tree: Tree)(using Context) = tree match
-      case id: Ident =>
-        val sym = id.symbol
-        if sym.isMutableVar && sym.owner.isTerm then
-          val enclMeth = ctx.owner.enclosingMethod
-          if sym.enclosingMethod != enclMeth then
-            capturedBy(sym) = enclMeth
-      case Apply(fn, args) =>
-        for case closureDef(mdef) <- args do
-          anonFunCallee(mdef.symbol) = fn.symbol
-        traverseChildren(tree)
-      case Inlined(_, bindings, expansion) =>
-        traverse(bindings)
-        traverse(expansion)
-      case mdef: DefDef =>
-        if !mdef.symbol.isInlineMethod then traverseChildren(tree)
-      case _ =>
-        traverseChildren(tree)
-
   /** Run setup on a compilation unit with given `tree`.
    *  @param recheckDef   the function to run for completing a val or def
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     inContext(ctx.withPhase(thisPhase)):
       setupTraverser(checker).traverse(tree)
-      collectCapturedMutVars.traverse(tree)
 
   // ------ Checks to run at Setup ----------------------------------------
 
