@@ -458,14 +458,15 @@ class QuoteMatcher(debug: Boolean) {
                     * Implementation restriction: The current implementation matches type parameters
                     * only when they have empty bounds (>: Nothing <: Any)
                     */
-                  def matchTypeDef(sctypedef: TypeDef, pttypedef: TypeDef): MatchingExprs = sctypedef match
+                  def matchTypeDef(sctypedef: TypeDef, pttypedef: TypeDef): MatchingExprs =
+                    sctypedef match
                     case TypeDef(_, TypeBoundsTree(sclo, schi, EmptyTree))
-                      if sclo.tpe.isNothingType && schi.tpe.isAny =>
+                    if sclo.tpe.isNothingType && schi.tpe.isAny =>
                       pttypedef match
-                        case TypeDef(_, TypeBoundsTree(ptlo, pthi, EmptyTree))
-                          if ptlo.tpe.isNothingType && pthi.tpe.isAny =>
-                          matched
-                        case _ => notMatched
+                      case TypeDef(_, TypeBoundsTree(ptlo, pthi, EmptyTree))
+                      if ptlo.tpe.isNothingType && pthi.tpe.isAny =>
+                        matched
+                      case _ => notMatched
                     case _ => notMatched
 
                   def matchParamss(scparamss: List[ParamClause], ptparamss: List[ParamClause])(using Env): optional[(Env, MatchingExprs)] =
