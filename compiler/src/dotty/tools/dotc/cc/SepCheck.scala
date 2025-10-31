@@ -180,7 +180,7 @@ object SepCheck:
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
-          else newElem.stripRestricted.stripReadOnly match
+          else newElem.stripRestricted match
             case _: FreshCap if !newElem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
               val hiddens = if followHidden then newElem.hiddenSet.toList else Nil
               recur(seen + newElem, acc + newElem, hiddens ++ newElems1)
@@ -220,7 +220,7 @@ object SepCheck:
         refs1.foreach: ref =>
           if !ref.isReadOnly then
             val coreRef = ref.stripRestricted
-            if refs2.exists(_.stripRestricted.stripReadOnly.coversFresh(coreRef)) then
+            if refs2.exists(_.stripRestricted.coversFresh(coreRef)) then
               acc += coreRef
         acc
       assert(refs.forall(_.isTerminalCapability))

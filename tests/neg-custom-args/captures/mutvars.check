@@ -94,5 +94,5 @@
 -- Error: tests/neg-custom-args/captures/mutvars.scala:44:13 -----------------------------------------------------------
 44 |  r6().x.fld = 33 // error
    |  ^^^^^^^^^^^^^^^
-   |  Cannot assign to field fld of Ref[Int]^{cap.rd}
-   |  since its capture set {cap.rd} is read-only.
+   |  Cannot assign to field fld of Ref[Int]^{r6*.rd}
+   |  since its capture set {r6*.rd} is read-only.
