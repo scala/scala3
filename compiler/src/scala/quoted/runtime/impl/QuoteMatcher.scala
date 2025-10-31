@@ -463,7 +463,7 @@ class QuoteMatcher(debug: Boolean) {
                       if sclo.tpe.isNothingType && schi.tpe.isAny =>
                       pttypedef match
                         case TypeDef(_, TypeBoundsTree(ptlo, pthi, EmptyTree))
-                          if sclo.tpe.isNothingType && schi.tpe.isAny =>
+                          if ptlo.tpe.isNothingType && pthi.tpe.isAny =>
                           matched
                         case _ => notMatched
                     case _ => notMatched
