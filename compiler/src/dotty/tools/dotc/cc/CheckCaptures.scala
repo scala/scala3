@@ -261,9 +261,8 @@ class CheckCaptures extends Recheck, SymTransformer:
   override def needsRecompute(tp: NamedType, lastDenotation: SingleDenotation)(using Context): Boolean =
     tp.prefix match
       case prefix: TermRef =>
-        prefix.info match
-          case CapturingType(_, _) => true
-          case _ => !lastDenotation.isInstanceOf[SymDenotation]
+        !lastDenotation.isInstanceOf[SymDenotation]
+        || !prefix.info.captureSet.isAlwaysEmpty
       case prefix: SingletonType =>
         !lastDenotation.isInstanceOf[SymDenotation]
       case _ =>
