@@ -40,6 +40,20 @@ trait SetupAPI:
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
+  /** Used for error reporting:
+   *  Maps mutable variables to the symbols that capture them (in the
+   *  CheckCaptures sense, i.e. symbol is referred to from a different method
+   *  than the one it is defined in).
+   */
+  def capturedBy: collection.Map[Symbol, Symbol]
+
+  /** Used for error reporting:
+   *  Maps anonymous functions appearing as function arguments to
+   *  the function that is called.
+   */
+  def anonFunCallee: collection.Map[Symbol, Symbol]
+end SetupAPI
+
 object Setup:
 
   val name: String = "setupCC"
@@ -889,11 +903,40 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else t
       case _ => mapFollowingAliases(t)
 
+  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
+
+  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
+
+  /** Used for error reporting:
+   *  Populates `capturedBy` and `anonFunCallee`. Called by `checkUnit`.
+   */
+  private def collectCapturedMutVars(using Context) = new TreeTraverser:
+    def traverse(tree: Tree)(using Context) = tree match
+      case id: Ident =>
+        val sym = id.symbol
+        if sym.isMutableVar && sym.owner.isTerm then
+          val enclMeth = ctx.owner.enclosingMethod
+          if sym.enclosingMethod != enclMeth then
+            capturedBy(sym) = enclMeth
+      case Apply(fn, args) =>
+        for case closureDef(mdef) <- args do
+          anonFunCallee(mdef.symbol) = fn.symbol
+        traverseChildren(tree)
+      case Inlined(_, bindings, expansion) =>
+        traverse(bindings)
+        traverse(expansion)
+      case mdef: DefDef =>
+        if !mdef.symbol.isInlineMethod then traverseChildren(tree)
+      case _ =>
+        traverseChildren(tree)
+
   /** Run setup on a compilation unit with given `tree`.
    *  @param recheckDef   the function to run for completing a val or def
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
-    setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+    inContext(ctx.withPhase(thisPhase)):
+      setupTraverser(checker).traverse(tree)
+      collectCapturedMutVars.traverse(tree)
 
   // ------ Checks to run at Setup ----------------------------------------
 

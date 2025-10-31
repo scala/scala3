@@ -1573,10 +1573,6 @@ object CaptureSet:
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
     case Reach(c1) =>
-      c1 match
-        case c1: TermRef => c1.safeRecomputeDenot()
-          // following widen would be wrong otherwise
-        case _ =>
       c1.widen.computeDeepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
     case Restricted(c1, cls) =>

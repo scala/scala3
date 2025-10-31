@@ -246,6 +246,29 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
 
+  /** We normally need a recompute if the prefix is a SingletonType and the
+   *  last denotation is not a SymDenotation. The SingletonType requirement is
+   *  so that we don't widen TermRefs with non-path prefixes to their underlying
+   *  type when recomputing their denotations with asSeenFrom. Such widened types
+   *  would become illegal members of capture sets.
+   *
+   *  The SymDenotation requirement is so that we don't recompute termRefs of Symbols
+   *  which should be handled by SymTransformers alone. However, if the underlying type
+   *  of the prefix is a capturing type, we do need to recompute since in that case
+   *  the prefix might carry a parameter refinement created in Setup, and we need to
+   *  take these refinements into account.
+   */
+  override def needsRecompute(tp: NamedType, lastDenotation: SingleDenotation)(using Context): Boolean =
+    tp.prefix match
+      case prefix: TermRef =>
+        prefix.info match
+          case CapturingType(_, _) => true
+          case _ => !lastDenotation.isInstanceOf[SymDenotation]
+      case prefix: SingletonType =>
+        !lastDenotation.isInstanceOf[SymDenotation]
+      case _ =>
+        false
+
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
   override def run(using Context): Unit =
@@ -682,12 +705,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             markFree(ref.readOnly, tree)
           else
             val sel = ref.select(pt.select.symbol).asInstanceOf[TermRef]
-            sel.recomputeDenot()
-              // We need to do a recomputeDenot here since we have not yet properly
-              // computed the type of the full path. This means that we erroneously
-              // think the denotation is the same as in the previous phase so no
-              // member computation is performed. A test case where this matters is
-              // read-only-use.scala, where the error on r3 goes unreported.
             markPathFree(sel, pt.pt, pt.select)
         case _ =>
           markFree(ref.adjustReadOnly(pt), tree)
@@ -1087,11 +1104,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
         else
           if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
-            val addendum = capturedBy.get(sym) match
+            val addendum = setup.capturedBy.get(sym) match
               case Some(encl) =>
                 val enclStr =
                   if encl.isAnonymousFunction then
-                    val location = anonFunCallee.get(encl) match
+                    val location = setup.anonFunCallee.get(encl) match
                       case Some(meth) if meth.exists => i" argument in a call to $meth"
                       case _ => ""
                     s"an anonymous function$location"
@@ -1907,49 +1924,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         traverseChildren(t)
     end checkOverrides
 
-    /** Used for error reporting:
-     *  Maps mutable variables to the symbols that capture them (in the
-     *  CheckCaptures sense, i.e. symbol is referred to from a different method
-     *  than the one it is defined in).
-     */
-    private val capturedBy = util.HashMap[Symbol, Symbol]()
-
-    /** Used for error reporting:
-     *  Maps anonymous functions appearing as function arguments to
-     *  the function that is called.
-     */
-    private val anonFunCallee = util.HashMap[Symbol, Symbol]()
-
-    /** Used for error reporting:
-     *  Populates `capturedBy` and `anonFunCallee`. Called by `checkUnit`.
-     */
-    private def collectCapturedMutVars(using Context) = new TreeTraverser:
-      def traverse(tree: Tree)(using Context) = tree match
-        case id: Ident =>
-          val sym = id.symbol
-          if sym.isMutableVar && sym.owner.isTerm then
-            val enclMeth = ctx.owner.enclosingMethod
-            if sym.enclosingMethod != enclMeth then
-              capturedBy(sym) = enclMeth
-        case Apply(fn, args) =>
-          for case closureDef(mdef) <- args do
-            anonFunCallee(mdef.symbol) = fn.symbol
-          traverseChildren(tree)
-        case Inlined(_, bindings, expansion) =>
-          traverse(bindings)
-          traverse(expansion)
-        case mdef: DefDef =>
-          if !mdef.symbol.isInlineMethod then traverseChildren(tree)
-        case _ =>
-          traverseChildren(tree)
-
     private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       capt.println(i"cc check ${unit.source}")
       ccState.start()
       setup.setupUnit(unit.tpdTree, this)
-      collectCapturedMutVars.traverse(unit.tpdTree)
 
       if ctx.settings.YccPrintSetup.value then
         val echoHeader = "[[syntax tree at end of cc setup]]"
