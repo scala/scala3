@@ -152,7 +152,7 @@ sealed abstract class CaptureSet extends Showable:
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
-  /** Similar to isExlusive, but also includes capture set variables
+  /** Similar to isExclusive, but also includes capture set variables
    *  with unknown status.
    */
   final def maybeExclusive(using Context): Boolean = reporting.trace(i"mabe exclusive $this"):
@@ -486,6 +486,13 @@ sealed abstract class CaptureSet extends Showable:
     if elems.exists(isBadRoot(upto, _)) then handler()
     this
 
+  /** Invoke handler for each element currently in the set and each element
+   *  added to it in the future.
+   */
+  def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+    elems.foreach: elem =>
+      handler(elem)
+
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
    *  The handler might add additional elements to the capture set.
    */
@@ -734,6 +741,10 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
+    /** A handler to be invoked when a new element is added to this set */
+    var checkAddedElemHandler: Capability => Context ?=> Unit =
+      elem => ()
+
     /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
      *  @see isBadRoot for details.
      */
@@ -816,6 +827,7 @@ object CaptureSet:
         catch case ex: AssertionError =>
           println(i"error for incl $elem in $this, ${summon[VarState].toString}")
           throw ex
+        checkAddedElemHandler(elem)
         if isBadRoot(elem) then
           rootAddedHandler()
         val normElem = if isMaybeSet then elem else elem.stripMaybe
@@ -869,6 +881,14 @@ object CaptureSet:
       rootLimit = upto
       rootAddedHandler = handler
       super.disallowBadRoots(upto)(handler)
+
+    override def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+      val prevHandler = checkAddedElemHandler
+      checkAddedElemHandler =
+        elem =>
+          prevHandler(elem)
+          handler(elem)
+      super.checkAddedElems(handler)
 
     override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
       newElemAddedHandler = handler

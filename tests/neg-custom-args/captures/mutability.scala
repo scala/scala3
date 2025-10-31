@@ -8,17 +8,17 @@ class Ref[T](init: T) extends caps.Mutable:
     val self = this
     self.set(x)  // error
     val self2: Ref[T]^ = this // error
-    self2.set(x)
+    self2.set(x) // error
 
     val self3 = () => this
     self3().set(x)  // error
     val self4: () => Ref[T]^ = () => this // error
-    self4().set(x)
+    self4().set(x) // error
 
     def self5() = this
     self5().set(x)  // error
     def self6(): Ref[T]^ = this // error
-    self6().set(x)
+    self6().set(x) // error
 
 class Ref2[T](init: T) extends caps.Mutable:
   val x = Ref[T](init)
