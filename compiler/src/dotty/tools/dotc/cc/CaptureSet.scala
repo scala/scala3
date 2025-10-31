@@ -482,9 +482,9 @@ sealed abstract class CaptureSet extends Showable:
    *  Fresh instances count as good as long as their ccOwner is outside `upto`.
    *  If `upto` is NoSymbol, all Fresh instances are admitted.
    */
-  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
-    if elems.exists(isBadRoot(upto, _)) then handler()
-    this
+  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
+    checkAddedElems: elem =>
+      if isBadRoot(upto, elem) then handler()
 
   /** Invoke handler for each element currently in the set and each element
    *  added to it in the future.
@@ -738,12 +738,8 @@ object CaptureSet:
             elems -= empty
       this
 
-    /** A handler to be invoked if the root reference `cap` is added to this set */
-    var rootAddedHandler: () => Context ?=> Unit = () => ()
-
-    /** A handler to be invoked when a new element is added to this set */
-    var checkAddedElemHandler: Capability => Context ?=> Unit =
-      elem => ()
+    /** A list of handlers to be invoked when a new element is added to this set */
+    var newElemAddedHandlers: List[Capability => Context ?=> Unit] = Nil
 
     /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
      *  @see isBadRoot for details.
@@ -771,9 +767,6 @@ object CaptureSet:
       classifier.isSubClass(cls)
       || super.tryClassifyAs(cls)
           && { narrowClassifier(cls); true }
-
-    /** A handler to be invoked when new elems are added to this set */
-    var newElemAddedHandler: Capability => Context ?=> Unit = _ => ()
 
     var description: String = ""
 
@@ -827,9 +820,7 @@ object CaptureSet:
         catch case ex: AssertionError =>
           println(i"error for incl $elem in $this, ${summon[VarState].toString}")
           throw ex
-        checkAddedElemHandler(elem)
-        if isBadRoot(elem) then
-          rootAddedHandler()
+        newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = deps.forall: dep =>
@@ -877,22 +868,13 @@ object CaptureSet:
       || isConst
       || varState.canRecord && { includeDep(cs); true }
 
-    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
       rootLimit = upto
-      rootAddedHandler = handler
       super.disallowBadRoots(upto)(handler)
 
     override def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
-      val prevHandler = checkAddedElemHandler
-      checkAddedElemHandler =
-        elem =>
-          prevHandler(elem)
-          handler(elem)
+      newElemAddedHandlers = handler :: newElemAddedHandlers
       super.checkAddedElems(handler)
-
-    override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
-      newElemAddedHandler = handler
-      super.ensureWellformed(handler)
 
     private var computingApprox = false
 
@@ -1032,8 +1014,7 @@ object CaptureSet:
      *  Test case: Without that tweak, logger.scala would not compile.
      */
     override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
-      if isRefining then this
-      else super.disallowBadRoots(upto)(handler)
+      if !isRefining then super.disallowBadRoots(upto)(handler)
 
   end ProperVar
 

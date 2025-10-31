@@ -2103,9 +2103,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if !(pos.span.isSynthetic && ctx.reporter.errorsReported)
                 && !arg.typeSymbol.name.is(WildcardParamName)
               then
-                CheckCaptures.disallowBadRootsIn(arg, NoSymbol,
-                  "Array", "have element type", "",
-                  pos)
+                disallowBadRootsIn(arg, NoSymbol, "Array", "have element type", "", pos)
               traverseChildren(t)
             case defn.RefinedFunctionOf(rinfo: MethodType) =>
               traverse(rinfo)
