@@ -81,7 +81,7 @@ object CheckCaptures:
   end Env
 
   def definesEnv(sym: Symbol)(using Context): Boolean =
-    sym.is(Method) || sym.isClass
+    sym.is(Method) || sym.isClass || sym.is(Lazy)
 
   /** Similar normal substParams, but this is an approximating type map that
    *  maps parameters in contravariant capture sets to the empty set.
@@ -225,7 +225,7 @@ object CheckCaptures:
       def needsSepCheck: Boolean
 
       /** If a tree is an argument for which needsSepCheck is true,
-       *  the type of the formal paremeter corresponding to the argument.
+       *  the type of the formal parameter corresponding to the argument.
        */
       def formalType: Type
 
@@ -441,7 +441,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.isTerm || !sym.owner.isStaticOwner
+        if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy) // FIXME: are lazy vals in static owners a thing?
         then CaptureSet.Var(sym, nestedOK = false)
         else CaptureSet.empty)
 
@@ -655,8 +655,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       val sym = tree.symbol
-      if sym.is(Method) then
-        // If ident refers to a parameterless method, charge its cv to the environment
+      if sym.is(Method) || sym.is(Lazy) then
+        // If ident refers to a parameterless method or lazy val, charge its cv to the environment.
+        // Lazy vals are like parameterless methods: accessing them may trigger initialization
+        // that uses captured references.
         includeCallCaptures(sym, sym.info, tree)
       else if sym.exists && !sym.isStatic then
         markPathFree(sym.termRef, pt, tree)
@@ -733,6 +735,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.symbol.isUpdateMethod then
         checkUpdate(qualType, tree.srcPos):
           i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
+
+      // If selecting a lazy val member, charge the qualifier since accessing
+      // the lazy val can trigger initialization that uses the qualifier's capabilities
+      if tree.symbol.is(Lazy) then
+        qualType match
+          case tr: (TermRef | ThisType) =>
+            markPathFree(tr, pt, tree)
+          case _ =>
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree.symbol)
@@ -1093,6 +1103,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - for externally visible definitions: check that their inferred type
      *     does not refine what was known before capture checking.
      *   - Interpolate contravariant capture set variables in result type.
+     *   - for lazy vals: create a nested environment to track captures (similar to methods)
      */
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       val savedEnv = curEnv
@@ -1115,8 +1126,16 @@ class CheckCaptures extends Recheck, SymTransformer:
                 ""
             disallowBadRootsIn(
               tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
-          if runInConstructor then
+
+          // Lazy vals need their own environment to track captures from their RHS,
+          // similar to how methods work
+          if sym.is(Lazy) then
+            val localSet = capturedVars(sym)
+            if localSet ne CaptureSet.empty then
+              curEnv = Env(sym, EnvKind.Regular, localSet, curEnv, nestedClosure = NoSymbol)
+          else if runInConstructor then
             pushConstructorEnv()
+
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
@@ -1130,6 +1149,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         if runInConstructor && savedEnv.owner.isClass then
           curEnv = savedEnv
           markFree(declaredCaptures, tree, addUseInfo = false)
+        else if sym.is(Lazy) then
+          // Restore environment after checking lazy val
+          curEnv = savedEnv
 
         if sym.owner.isStaticOwner && !declaredCaptures.elems.isEmpty && sym != defn.captureRoot then
           def where =
