@@ -49,7 +49,7 @@ public class ConsoleInterface {
 
     state = driver.run(initialCommands, state);
     // TODO handle failure during initialisation
-    state = driver.runUntilQuit(state);
+    state = driver.runUntilQuit(state, null);
     driver.run(cleanupCommands, state);
   }
 }
