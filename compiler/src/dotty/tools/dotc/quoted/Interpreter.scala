@@ -25,7 +25,7 @@ import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.core.CyclicReference
 
 /** Tree interpreter for metaprogramming constructs */
@@ -35,7 +35,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
   val classLoader =
     if ctx.owner.topLevelClass.name.startsWith(str.REPL_SESSION_LINE) then
-        new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader0, "false")
+        new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader0)
     else classLoader0
 
   /** Local variable environment */
@@ -204,11 +204,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
 
   private def loadReplLineClass(moduleClass: Symbol): Class[?] = {
-    val lineClassloader = new AbstractFileClassLoader(
-      ctx.settings.outputDir.value,
-      classLoader,
-      "false"
-    )
+    val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
     lineClassloader.loadClass(moduleClass.name.firstPart.toString)
   }
 

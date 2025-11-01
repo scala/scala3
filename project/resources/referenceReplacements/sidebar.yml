@@ -165,6 +165,7 @@ subsection:
           - page: reference/experimental/capture-checking/how-to-use.md
           - page: reference/experimental/capture-checking/internals.md
       - page: reference/experimental/tupled-function.md
+      - page: reference/experimental/relaxed-lambdas.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md
