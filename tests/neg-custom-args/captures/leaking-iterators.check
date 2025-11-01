@@ -4,7 +4,7 @@
    |Found:    (log: java.io.FileOutputStream^'s1) ->'s2 cctest.Iterator[Int]^{log}
    |Required: java.io.FileOutputStream^ => cctest.Iterator[Int]^'s3
    |
-   |Note that capability log cannot be included in outer capture set 's3.
+   |Note that capability log cannot be included in outer capture set 's3 which is owned by method test.
    |
    |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability

@@ -4,7 +4,7 @@
    |Found:    (lcap: scala.caps.Capability^) ?->'s1 Cap^'s2 ->'s3 Id[Cap^'s4]^'s5
    |Required: (lcap: scala.caps.Capability^) ?-> Cap^{lcap} => Id[Cap^'s6]^'s7
    |
-   |Note that capability cap cannot be included in outer capture set 's6.
+   |Note that capability cap cannot be included in outer capture set 's6 which is owned by val leak.
    |
    |where:    =>  refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): Cap^{lcap} => Id[Cap^'s6]^'s7
    |          ^   refers to the universal root capability

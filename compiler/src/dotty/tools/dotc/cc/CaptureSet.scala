@@ -1338,7 +1338,9 @@ object CaptureSet:
             val levelStr = elem match
               case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}\n"
               case _ => " "
-            i"""${elem.showAsCapability}${levelStr}cannot be included in outer capture set $cs"""
+            val ownerStr =
+              if cs.owner.exists then s" which is owned by ${cs.owner}" else ""
+            i"""${elem.showAsCapability}${levelStr}cannot be included in outer capture set $cs$ownerStr"""
           else if !elem.tryClassifyAs(cs.classifier) then
             i"""${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
                 |cannot be included in capture set $cs of ${cs.classifier.name} elements"""

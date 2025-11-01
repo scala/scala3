@@ -5,7 +5,7 @@
    |                                Required: (() ->'s1 Unit) ->'s2 Unit
    |
    |                                Note that capability p1, defined in method $anonfun
-   |                                cannot be included in outer capture set 's2.
+   |                                cannot be included in outer capture set 's2 which is owned by val bar.
    |
    |                                where:    cap is the universal root capability
    |

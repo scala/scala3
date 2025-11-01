@@ -5,7 +5,7 @@
    |  Found:    scala.util.boundary.Label[Object^'s1]
    |  Required: scala.util.boundary.Label[Object^]^²
    |
-   |  Note that capability cap cannot be included in outer capture set 's1.
+   |  Note that capability cap cannot be included in outer capture set 's1 which is owned by val local.
    |
    |  where:    ^ and cap refer to the universal root capability
    |            ^²        refers to a fresh root capability classified as Control in the type of value local

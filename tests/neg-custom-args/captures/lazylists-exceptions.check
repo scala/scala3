@@ -5,7 +5,7 @@
    |    Required: LazyList[Int]^'s1
    |
    |    Note that capability canThrow$1, defined in method try$1
-   |    cannot be included in outer capture set 's1 of method problem.
+   |    cannot be included in outer capture set 's1 of method problem which is owned by method problem.
 38 |      if i > 9 then throw Ex1()
 39 |      i * i
 40 |    }
