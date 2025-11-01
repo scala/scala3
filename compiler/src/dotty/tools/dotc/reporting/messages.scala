@@ -18,7 +18,7 @@ import ast.desugar
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
-import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope, Note}
+import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
 import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
@@ -38,7 +38,7 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
-import Message.Disambiguation
+import Message.{Disambiguation, Note}
 
 /**  Messages
   *  ========

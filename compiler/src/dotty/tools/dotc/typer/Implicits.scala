@@ -31,6 +31,7 @@ import Feature.{migrateTo3, sourceVersion}
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.*
+import Message.Note
 import transform.Splicer
 import annotation.tailrec
 

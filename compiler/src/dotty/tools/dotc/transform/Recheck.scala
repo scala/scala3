@@ -15,7 +15,7 @@ import typer.ErrorReporting.err
 import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import typer.TypeAssigner.seqLitType
 import typer.ConstFold
-import typer.ErrorReporting.Note
+import reporting.Message.Note
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme

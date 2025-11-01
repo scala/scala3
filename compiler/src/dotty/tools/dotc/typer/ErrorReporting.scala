@@ -12,8 +12,8 @@ import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
 import reporting.*
+import Message.Note
 import collection.mutable
-
 
 object ErrorReporting {
 
@@ -70,14 +70,6 @@ object ErrorReporting {
           case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
           case _ => foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
-
-  /** A note can produce an added string for an error message */
-  abstract class Note(val prefix: Boolean = false):
-    def render(using Context): String
-
-  object Note:
-    def apply(msg: Context ?=> String, prefix: Boolean = false) = new Note(prefix):
-      def render(using Context) = msg
 
   class Errors(using Context) {
 

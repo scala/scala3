@@ -41,6 +41,14 @@ object Message:
       i"\n$what can be rewritten automatically under -rewrite $optionStr."
     else ""
 
+  /** A note can produce an added string for an error message */
+  abstract class Note(val prefix: Boolean = false):
+    def render(using Context): String
+
+  object Note:
+    def apply(msg: Context ?=> String, prefix: Boolean = false) = new Note(prefix):
+      def render(using Context) = msg
+
   enum Disambiguation:
     case All
     case AllExcept(strs: List[String])

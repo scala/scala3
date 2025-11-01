@@ -10,11 +10,11 @@ import annotation.threadUnsafe
 import annotation.constructorOnly
 import annotation.internal.sharable
 import reporting.trace
+import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property, EqHashMap}
 import scala.collection.{mutable, immutable}
-import TypeComparer.ErrorNote
 import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
@@ -160,8 +160,8 @@ sealed abstract class CaptureSet extends Showable:
 
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
 
-  def failWith(fail: TypeComparer.ErrorNote)(using Context): false =
-    TypeComparer.addErrorNote(fail)
+  def failWith(note: Note)(using Context): false =
+    TypeComparer.addErrorNote(note)
     false
 
   /** Try to include an element in this capture set.
@@ -1304,16 +1304,18 @@ object CaptureSet:
    *  when a subsumes check decides that an existential variable `ex` cannot be
    *  instantiated to the other capability `other`.
    */
-  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote:
-    def description(using Context): String =
+  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends Note:
+    def render(using Context): String =
       def reason =
         if other.isTerminalCapability then ""
         else " since that capability is not a `Sharable` capability"
-      i"""the existential capture root in ${ex.originalBinder.resType}
+      i"""
+         |
+         |Note that the existential capture root in ${ex.originalBinder.resType}
          |cannot subsume the capability $other$reason."""
 
   /** Failure indicating that `elem` cannot be included in `cs` */
-  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends ErrorNote, Showable:
+  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends Note, Showable:
     private var myTrace: List[CaptureSet] = cs :: Nil
 
     def trace: List[CaptureSet] = myTrace
@@ -1322,7 +1324,12 @@ object CaptureSet:
       res.myTrace = cs1 :: this.myTrace
       res
 
-    def description(using Context): String =
+    def render(using Context) =
+      i"""
+         |
+         |Note that $description."""
+
+    private def description(using Context): String =
       def why =
         val reasons = cs.elems.toList.collect:
           case c: FreshCap if !c.acceptsLevelOf(elem) =>
@@ -1371,11 +1378,13 @@ object CaptureSet:
    *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
    *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
    */
-  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends ErrorNote:
-    def description(using Context): String =
+  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note:
+    def render(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
-      i"""$cs is an exclusive capture set ${ofType(hi)},
-          |it cannot subsume a read-only capture set ${ofType(lo)}"""
+      i"""
+         |
+         |Note that $cs is an exclusive capture set ${ofType(hi)},
+         |it cannot subsume a read-only capture set ${ofType(lo)}."""
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails

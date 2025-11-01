@@ -20,7 +20,7 @@
    |    Note that capability x$0 is not included in capture set {cap}.
    |
    |    Note that the existential capture root in () =>² Unit
-   |    cannot subsume the capability (x$0 : Capp^'s4) since that capability is not a `Sharable` capability..
+   |    cannot subsume the capability (x$0 : Capp^'s4) since that capability is not a `Sharable` capability.
    |
    |    where:    =>        refers to a root capability associated with the result type of (c: Capp^): () => Unit
    |              =>² and ^ refer to the universal root capability

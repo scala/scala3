@@ -14,7 +14,7 @@ import typer.ForceDegree
 import typer.Inferencing.isFullyDefined
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
-import typer.ErrorReporting.{Note, err}
+import typer.ErrorReporting.err
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import util.chaining.tap
@@ -26,6 +26,7 @@ import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
+import reporting.Message.Note
 import Annotations.Annotation
 import Capabilities.*
 import Mutability.*
@@ -399,7 +400,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case (fail: IncludeFailure) :: _ => fail.cs
             case _ => target
           def msg(provisional: Boolean) =
-            def toAdd: String = errorNotes(otherNotes).map(_.render).mkString
+            def toAdd: String = otherNotes.map(_.render).mkString
             def descr: String =
               val d = realTarget.description
               if d.isEmpty then provenance else ""
@@ -1444,13 +1445,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
-    private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): List[Note] =
-      notes.map: note =>
-        Note:
-          i"""
-             |
-             |Note that ${note.description}."""
-
     /** Addendas for error messages that show where we have under-approximated by
      *  mapping of a capability in contravariant position to the empty set because
      *  the original result type of the map was not itself a capability.
@@ -1544,10 +1538,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
 
       TypeComparer.compareResult(tryCurrentType || tryWidenNamed) match
-        case TypeComparer.CompareResult.Fail(errNotes) =>
+        case TypeComparer.CompareResult.Fail(cmpNotes) =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
           if falseDeps then expected1 = unalignFunction(expected1)
-          val toAdd0 = notes ++ errorNotes(errNotes)
+          val toAdd0 = notes ++ cmpNotes
           val toAdd1 = addApproxAddenda(toAdd0, expected1)
           fail(tree.withType(actualBoxed), expected1, toAdd1)
           actual

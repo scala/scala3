@@ -26,6 +26,7 @@ import cc.*
 import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
+import reporting.Message.Note
 import scala.util.boundary, boundary.break
 
 /** Provides methods to compare types.
@@ -61,7 +62,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var monitored = false
 
   private var maxErrorLevel: Int = -1
-  protected var errorNotes: List[(Int, ErrorNote)] = Nil
+  protected var errorNotes: List[(Int, Note)] = Nil
 
   val undoLog = mutable.ArrayBuffer[() => Unit]()
 
@@ -3323,10 +3324,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
 
-  /** Add given ErrorNote note, provided there is not yet an error note with
+  /** Add given note, provided there is not yet an error note with
    *  the same class as `note`.
    */
-  def addErrorNote(note: ErrorNote): Unit =
+  def addErrorNote(note: Note): Unit =
     if errorNotes.forall(_._2.getClass != note.getClass) then
       errorNotes = (recCount, note) :: errorNotes
       assert(maxErrorLevel <= recCount)
@@ -3355,15 +3356,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
 object TypeComparer {
 
-  /** A base trait for data producing addenda to error messages */
-  trait ErrorNote:
-    def description(using Context): String
-  end ErrorNote
-
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
     case OK, OKwithGADTUsed, OKwithOpaquesUsed
-    case Fail(errorNotes: List[ErrorNote])
+    case Fail(errorNotes: List[Note])
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
@@ -3541,10 +3537,10 @@ object TypeComparer {
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
     currentComparer.inNestedLevel(op)
 
-  def addErrorNote(note: ErrorNote)(using Context): Unit =
+  def addErrorNote(note: Note)(using Context): Unit =
     currentComparer.addErrorNote(note)
 
-  def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
+  def updateErrorNotes(f: PartialFunction[Note, Note])(using Context): Unit =
     currentComparer.errorNotes = currentComparer.errorNotes.mapConserve: p =>
       val (level, note) = p
       if f.isDefinedAt(note) then (level, f(note)) else p
@@ -3958,7 +3954,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   private val b = new StringBuilder
   private var lastForwardGoal: String | Null = null
 
-  private def appendFailure(notes: List[ErrorNote]) =
+  private def appendFailure(notes: List[Note]) =
     if lastForwardGoal != null then  // last was deepest goal that failed
       b.append(s"  = false")
       for case note: printing.Showable <- notes do
