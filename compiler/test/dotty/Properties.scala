@@ -60,6 +60,9 @@ object Properties {
   /** dotty-compiler jar */
   def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
 
+  /** dotty-repl jar */
+  def dottyRepl: String = sys.props("dotty.tests.classes.dottyRepl")
+
   /** dotty-staging jar */
   def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
 
