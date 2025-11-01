@@ -553,6 +553,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             // fresh capabilities. We do check that they hide no parameter reach caps in checkEscapingUses
         case _ =>
 
+      def checkReadOnlyMethod(included: CaptureSet, env: Env): Unit =
+        included.checkAddedElems: elem =>
+          if elem.isExclusive then
+            report.error(
+                em"""Read-only ${env.owner} accesses exclusive capability $elem;
+                    |${env.owner} should be declared an update method to allow this.""",
+                tree.srcPos)
+
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
         if env.kind != EnvKind.Boxed && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
@@ -570,6 +578,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !isOfNestedMethod(env) then
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
+              if env.owner.isReadOnlyMethod && nextEnv.owner != env.owner then
+                checkReadOnlyMethod(included, env)
               recur(included, nextEnv, env)
           	// Under deferredReaches, don't propagate out of methods inside terms.
           	// The use set of these methods will be charged when that method is called.
@@ -2093,9 +2103,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if !(pos.span.isSynthetic && ctx.reporter.errorsReported)
                 && !arg.typeSymbol.name.is(WildcardParamName)
               then
-                CheckCaptures.disallowBadRootsIn(arg, NoSymbol,
-                  "Array", "have element type", "",
-                  pos)
+                disallowBadRootsIn(arg, NoSymbol, "Array", "have element type", "", pos)
               traverseChildren(t)
             case defn.RefinedFunctionOf(rinfo: MethodType) =>
               traverse(rinfo)

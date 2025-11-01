@@ -46,7 +46,7 @@ class Ref(init: Int) extends Mutable:
   def get: Int = current
   update def set(x: Int): Unit = current = x
 ```
-`update` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are defined locally or passed to it in parameters.
+`update` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are defined in the method itself or passed to it in parameters.
 
 In class `Ref`, the `set` method should be declared as an update method since it accesses `this` as an exclusive write capability by writing to the variable `this.current` in its environment.
 
