@@ -50,6 +50,12 @@ object Recheck:
       case None =>
         tree
 
+  /** The currently running rechecker
+   *  @pre   ctx.isRechecking
+   */
+  def currentRechecker(using Context): Recheck =
+    ctx.phase.asInstanceOf[Recheck]
+
   extension (sym: Symbol)(using Context)
 
     /** Update symbol's info to newInfo after `prevPhase`.
@@ -143,6 +149,7 @@ abstract class Recheck extends Phase, SymTransformer:
     else symd
 
   def run(using Context): Unit =
+    ctx.base.recordRecheckPhase(this)
     val rechecker = newRechecker()
     rechecker.checkUnit(ctx.compilationUnit)
     rechecker.reset()
@@ -150,6 +157,19 @@ abstract class Recheck extends Phase, SymTransformer:
   override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
     try super.runOn(units)
     finally preRecheckPhase.pastRecheck = true
+
+  /** A hook to determine whether the denotation of a NamedType should be recomputed
+   *  from its symbol and prefix, instead of just evolving the previous denotation with
+   *  `current`. This should return true if there are complex changes to types that
+   *  are not reflected in `current`.
+   */
+  def needsRecompute(tp: NamedType, lastDenotation: SingleDenotation)(using Context): Boolean =
+    false
+
+  /** A map from NamedTypes to the denotations they had before this phase.
+   *  Needed so that we can `reset` them after this phase.
+   */
+  val prevSelDenots = util.HashMap[NamedType, Denotation]()
 
   def newRechecker()(using Context): Rechecker
 
@@ -192,17 +212,13 @@ abstract class Recheck extends Phase, SymTransformer:
     def resetNuTypes()(using Context): Unit =
       nuTypes.clear(resetToInitial = false)
 
-    /** A map from NamedTypes to the denotations they had before this phase.
-     *  Needed so that we can `reset` them after this phase.
-     */
-    private val prevSelDenots = util.HashMap[NamedType, Denotation]()
-
     /** Reset all references in `prevSelDenots` to the denotations they had
      *  before this phase.
      */
     def reset()(using Context): Unit =
       for (ref, mbr) <- prevSelDenots.iterator do
         ref.withDenot(mbr)
+      prevSelDenots.clear()
 
     /** Constant-folded rechecked type `tp` of tree `tree` */
     protected def constFold(tree: Tree, tp: Type)(using Context): Type =

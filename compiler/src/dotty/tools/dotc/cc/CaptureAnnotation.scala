@@ -62,14 +62,19 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     case _ => false
 
   override def mapWith(tm: TypeMap)(using Context) =
-    val elems = refs.elems.toList
-    val elems1 = elems.mapConserve(tm.mapCapability(_))
-    if elems1 eq elems then this
-    else if elems1.forall:
-      case elem1: Capability => elem1.isWellformed
-      case _ => false
-    then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[Capability]]*), boxed)
-    else EmptyAnnotation
+    if ctx.phase.id > Phases.checkCapturesPhase.id then
+      // Annotation is no longer relevant, can be dropped.
+      // This avoids running into illegal states in mapCapability.
+      EmptyAnnotation
+    else
+      val elems = refs.elems.toList
+      val elems1 = elems.mapConserve(tm.mapCapability(_))
+      if elems1 eq elems then this
+      else if elems1.forall:
+        case elem1: Capability => elem1.isWellformed
+        case _ => false
+      then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[Capability]]*), boxed)
+      else EmptyAnnotation
 
   override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
     refs.elems.exists {
