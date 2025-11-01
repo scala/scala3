@@ -45,7 +45,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
   // This release fence is present because rootNode may have previously been mutated during construction.
   releaseFence()
 
-  private[this] def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
+  private def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
     if (rootNode eq newRootNode) this else new HashSet(newRootNode)
 
   override def iterableFactory: IterableFactory[HashSet] = HashSet
@@ -63,7 +63,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   protected[immutable] def reverseIterator: Iterator[A] = new SetReverseIterator[A](rootNode)
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => IntChampStepper.from[   SetNode[A]](size, rootNode, (node, i) => node.getPayload(i).asInstanceOf[Int])
@@ -71,7 +71,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       case StepperShape.DoubleShape => DoubleChampStepper.from[SetNode[A]](size, rootNode, (node, i) => node.getPayload(i).asInstanceOf[Double])
       case _         => shape.parUnbox(AnyChampStepper.from[A, SetNode[A]](size, rootNode, (node, i) => node.getPayload(i)))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   def contains(element: A): Boolean = {
@@ -208,7 +208,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       case _ => super.equals(that)
     }
 
-  override protected[this] def className = "HashSet"
+  override protected def className = "HashSet"
 
   override def hashCode(): Int = {
     val it = new SetHashIterator(rootNode)
@@ -279,7 +279,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     *
     * That is, this method is safe to call on published sets because it does not mutate `this`
     */
-  private[this] def removedAllWithShallowMutations(that: IterableOnce[A]^): HashSet[A] = {
+  private def removedAllWithShallowMutations(that: IterableOnce[A]^): HashSet[A] = {
     val iter = that.iterator
     var curr = rootNode
     while (iter.hasNext) {
@@ -1097,7 +1097,7 @@ private final class BitmapIndexedSetNode[A](
       //  return at runtime a SetNode[A], or a tuple of (A, Int, Int)
 
       // the queue of single-element, post-filter nodes
-      var nodesToMigrateToData: mutable.Queue[SetNode[A]] = null
+      var nodesToMigrateToData: mutable.Queue[SetNode[A]] | Null = null
 
       // bitmap of all nodes which, when filtered, returned themselves. They are passed forward to the returned node
       var nodesToPassThroughMap = 0
@@ -1107,7 +1107,7 @@ private final class BitmapIndexedSetNode[A](
       // not named `newNodesMap` (plural) to avoid confusion with `newNodeMap` (singular)
       var mapOfNewNodes = 0
       // each bit in `mapOfNewNodes` corresponds to one element in this queue
-      var newNodes: mutable.Queue[SetNode[A]] = null
+      var newNodes: mutable.Queue[SetNode[A]] | Null = null
 
       var newDataMap = 0
       var newNodeMap = 0
@@ -1199,7 +1199,7 @@ private final class BitmapIndexedSetNode[A](
         // bitmap of nodes which, when filtered, returned a single-element node. These must be migrated to data
         var nodeMigrateToDataTargetMap = 0
         // the queue of single-element, post-filter nodes
-        var nodesToMigrateToData: mutable.Queue[SetNode[A]] = null
+        var nodesToMigrateToData: mutable.Queue[SetNode[A]] | Null = null
 
         // bitmap of all nodes which, when filtered, returned themselves. They are passed forward to the returned node
         var nodesToPassThroughMap = 0
@@ -1209,7 +1209,7 @@ private final class BitmapIndexedSetNode[A](
         // not named `newNodesMap` (plural) to avoid confusion with `newNodeMap` (singular)
         var mapOfNewNodes = 0
         // each bit in `mapOfNewNodes` corresponds to one element in this queue
-        var newNodes: mutable.Queue[SetNode[A]] = null
+        var newNodes: mutable.Queue[SetNode[A]] | Null = null
 
         var newDataMap = 0
         var newNodeMap = 0
@@ -1319,7 +1319,7 @@ private final class BitmapIndexedSetNode[A](
     * @param newNodes  queue in order of child position, of all new nodes to include in the new SetNode
     * @param newCachedHashCode the cached java keyset hashcode of the new SetNode
     */
-  private[this] def newNodeFrom(
+  private def newNodeFrom(
     newSize: Int,
     newDataMap: Int,
     newNodeMap: Int,
@@ -1327,9 +1327,9 @@ private final class BitmapIndexedSetNode[A](
     oldDataPassThrough: Int,
     nodesToPassThroughMap: Int,
     nodeMigrateToDataTargetMap: Int,
-    nodesToMigrateToData: mutable.Queue[SetNode[A]],
+    nodesToMigrateToData: mutable.Queue[SetNode[A]] | Null,
     mapOfNewNodes: Int,
-    newNodes: mutable.Queue[SetNode[A]],
+    newNodes: mutable.Queue[SetNode[A]] | Null,
     newCachedHashCode: Int): BitmapIndexedSetNode[A] = {
     if (newSize == 0) {
       SetNode.empty
@@ -1368,14 +1368,14 @@ private final class BitmapIndexedSetNode[A](
           oldNodeIndex += 1
         } else if ((bitpos & nodeMigrateToDataTargetMap) != 0) {
           // we need not check for null here. If nodeMigrateToDataTargetMap != 0, then nodesMigrateToData must not be null
-          val node = nodesToMigrateToData.dequeue()
+          val node = nodesToMigrateToData.nn.dequeue()
           newContent(newDataIndex) = node.getPayload(0)
           newOriginalHashes(newDataIndex) = node.getHash(0)
           newDataIndex += 1
           oldNodeIndex += 1
         } else if ((bitpos & mapOfNewNodes) != 0) {
           // we need not check for null here. If mapOfNewNodes != 0, then newNodes must not be null
-          newContent(newContentSize - newNodeIndex - 1) = newNodes.dequeue()
+          newContent(newContentSize - newNodeIndex - 1) = newNodes.nn.dequeue()
           newNodeIndex += 1
           oldNodeIndex += 1
         } else if ((bitpos & dataMap) != 0) {
@@ -1842,7 +1842,7 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
       if (hc eq this) {
         this
       } else {
-        var newContent: VectorBuilder[A] = null
+        var newContent: VectorBuilder[A] | Null = null
         val iter = hc.content.iterator
         while (iter.hasNext) {
           val nextPayload = iter.next()
@@ -1910,7 +1910,7 @@ private final class SetReverseIterator[A](rootNode: SetNode[A])
 
 private final class SetHashIterator[A](rootNode: SetNode[A])
   extends ChampBaseIterator[AnyRef, SetNode[A]](rootNode) {
-  private[this] var hash = 0
+  private var hash = 0
   override def hashCode(): Int = hash
 
   def next(): AnyRef = {
@@ -1964,7 +1964,8 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
   /** The last given out HashSet as a return value of `result()`, if any, otherwise null.
     * Indicates that on next add, the elements should be copied to an identical structure, before continuing
     * mutations. */
-  private var aliased: HashSet[A] = _
+  @annotation.stableNull
+  private var aliased: HashSet[A] | Null = null
 
   private def isAliased: Boolean = aliased != null
 

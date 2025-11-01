@@ -23,8 +23,8 @@ class SyncChannel[A] {
 
   private final val Signal = ()
   private type Signal = Unit
-  private[this] var pendingWrites = List[(A, SyncVar[Signal])]()
-  private[this] var pendingReads  = List[SyncVar[A]]()
+  private var pendingWrites = List[(A, SyncVar[Signal])]()
+  private var pendingReads  = List[SyncVar[A]]()
 
   def write(data: A): Unit = {
     // create write request

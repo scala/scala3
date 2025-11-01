@@ -31,7 +31,7 @@ object ScalaRunTime {
   def isArray(x: Any, atLevel: Int = 1): Boolean =
     x != null && isArrayClass(x.getClass, atLevel)
 
-  private def isArrayClass(clazz: jClass[_], atLevel: Int): Boolean =
+  private def isArrayClass(clazz: jClass[?], atLevel: Int): Boolean =
     clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
 
   // A helper method to make my life in the pattern matcher a lot easier.
@@ -40,7 +40,7 @@ object ScalaRunTime {
 
   /** Return the class object representing an array with element class `clazz`.
    */
-  def arrayClass(clazz: jClass[_]): jClass[_] = {
+  def arrayClass(clazz: jClass[?]): jClass[?] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
@@ -167,8 +167,8 @@ object ScalaRunTime {
   /** A helper for case classes. */
   def typedProductIterator[T](x: Product): Iterator[T] = {
     new AbstractIterator[T] {
-      private[this] var c: Int = 0
-      private[this] val cmax = x.productArity
+      private var c: Int = 0
+      private val cmax = x.productArity
       def hasNext = c < cmax
       def next() = {
         val result = x.productElement(c)
@@ -196,14 +196,14 @@ object ScalaRunTime {
       case null   => ""
       case p      => p.getName
     }
-    def isScalaClass(x: AnyRef)         = packageOf(x) startsWith "scala."
-    def isScalaCompilerClass(x: AnyRef) = packageOf(x) startsWith "scala.tools.nsc."
+    def isScalaClass(x: AnyRef)         = packageOf(x).startsWith("scala.")
+    def isScalaCompilerClass(x: AnyRef) = packageOf(x).startsWith("scala.tools.nsc.")
 
     // includes specialized subclasses and future proofed against hypothetical TupleN (for N > 22)
     def isTuple(x: Any) = x != null && x.getClass.getName.startsWith("scala.Tuple")
 
     // We use reflection because the scala.xml package might not be available
-    def isSubClassOf(potentialSubClass: Class[_], ofClass: String) =
+    def isSubClassOf(potentialSubClass: Class[?], ofClass: String) =
       try {
         val classLoader = potentialSubClass.getClassLoader
         val clazz = Class.forName(ofClass, /*initialize =*/ false, classLoader)
@@ -211,8 +211,8 @@ object ScalaRunTime {
       } catch {
         case cnfe: ClassNotFoundException => false
       }
-    def isXmlNode(potentialSubClass: Class[_])     = isSubClassOf(potentialSubClass, "scala.xml.Node")
-    def isXmlMetaData(potentialSubClass: Class[_]) = isSubClassOf(potentialSubClass, "scala.xml.MetaData")
+    def isXmlNode(potentialSubClass: Class[?])     = isSubClassOf(potentialSubClass, "scala.xml.Node")
+    def isXmlMetaData(potentialSubClass: Class[?]) = isSubClassOf(potentialSubClass, "scala.xml.MetaData")
 
     // When doing our own iteration is dangerous
     def useOwnToString(x: Any) = x match {
@@ -229,7 +229,7 @@ object ScalaRunTime {
       // Don't want to a) traverse infinity or b) be overly helpful with peoples' custom
       // collections which may have useful toString methods - ticket #3710
       // or c) print AbstractFiles which are somehow also Iterable[AbstractFile]s.
-      case x: Iterable[_] => (!x.isInstanceOf[StrictOptimizedIterableOps[_, AnyConstr, _]]) || !isScalaClass(x) || isScalaCompilerClass(x) || isXmlNode(x.getClass) || isXmlMetaData(x.getClass)
+      case x: Iterable[_] => (!x.isInstanceOf[StrictOptimizedIterableOps[?, AnyConstr, ?]]) || !isScalaClass(x) || isScalaCompilerClass(x) || isXmlNode(x.getClass) || isXmlMetaData(x.getClass)
       // Otherwise, nothing could possibly go wrong
       case _ => false
     }
@@ -245,7 +245,7 @@ object ScalaRunTime {
       if (x.getClass.getComponentType == classOf[BoxedUnit])
         (0 until min(array_length(x), maxElements)).map(_ => "()").mkString("Array(", ", ", ")")
       else
-        x.asInstanceOf[Array[_]].iterator.take(maxElements).map(inner).mkString("Array(", ", ", ")")
+        x.asInstanceOf[Array[?]].iterator.take(maxElements).map(inner).mkString("Array(", ", ", ")")
     }
 
     // The recursively applied attempt to prettify Array printing.
@@ -281,13 +281,21 @@ object ScalaRunTime {
       case s => s + "\n"
     }
 
+  // For backward compatibility with code compiled without -Yexplicit-nulls.
+  // If `a` is null, return null; otherwise, return `f`.
+  private[scala] inline def mapNull[A, B](a: A, inline f: B): B =
+    if ((a: A | Null) == null) null.asInstanceOf[B] else f
+
+  // Use `null` in places where we want to make sure the reference is cleared.
+  private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
+
   // Convert arrays to immutable.ArraySeq for use with Scala varargs.
   // By construction, calls to these methods always receive a fresh (and non-null), non-empty array.
   // In cases where an empty array would appear, the compiler uses a direct reference to Nil instead.
   // Synthetic Java varargs forwarders (@annotation.varargs or varargs bridges when overriding) may pass
   // `null` to these methods; but returning `null` or `ArraySeq(null)` makes little difference in practice.
   def genericWrapArray[T](xs: Array[T]): ArraySeq[T] = ArraySeq.unsafeWrapArray(xs)
-  def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
   def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = new ArraySeq.ofInt(xs)
   def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = new ArraySeq.ofDouble(xs)
   def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = new ArraySeq.ofLong(xs)

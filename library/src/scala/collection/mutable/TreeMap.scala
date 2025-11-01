@@ -47,7 +47,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     * @param ord the implicit ordering used to compare objects of type `K`.
     * @return an empty `TreeMap`.
     */
-  def this()(implicit ord: Ordering[K]) = this(RB.Tree.empty)(ord)
+  def this()(implicit ord: Ordering[K]) = this(RB.Tree.empty)(using ord)
 
   def iterator: Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
@@ -79,14 +79,14 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     else RB.valuesIterator(tree, Some(start))
   }
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S with EfficientSplit =
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S & EfficientSplit =
     shape.parUnbox(
       scala.collection.convert.impl.AnyBinaryTreeStepper.from[(K, V), RB.Node[K, V]](
         size, tree.root, _.left, _.right, x => (x.key, x.value)
       )
     )
 
-  override def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S with EfficientSplit = {
+  override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[K, V]
     val s = shape.shape match {
@@ -95,10 +95,10 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.root, _.left, _.right, _.key.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[K, T](size, tree.root, _.left, _.right, _.key))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
-  override def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S with EfficientSplit = {
+  override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[K, V]
     val s = shape.shape match {
@@ -107,7 +107,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T] (size, tree.root, _.left, _.right, _.value.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[V, T] (size, tree.root, _.left, _.right, _.value))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   def addOne(elem: (K, V)): this.type = { RB.insert(tree, elem._1, elem._2); this }
@@ -151,7 +151,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 
   override def maxBefore(key: K): Option[(K, V)] = RB.maxBefore(tree, key)
 
-  override protected[this] def className: String = "TreeMap"
+  override protected def className: String = "TreeMap"
 
 
   /**
@@ -167,12 +167,12 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     * @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
     *              bound.
     */
-  private[this] final class TreeMapProjection(from: Option[K], until: Option[K]) extends TreeMap[K, V](tree) {
+  private final class TreeMapProjection(from: Option[K], until: Option[K]) extends TreeMap[K, V](tree) {
 
     /**
       * Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
       */
-    private[this] def pickLowerBound(newFrom: Option[K]): Option[K] = (from, newFrom) match {
+    private def pickLowerBound(newFrom: Option[K]): Option[K] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
       case (None, _) => newFrom
       case _ => from
@@ -181,7 +181,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     /**
       * Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
       */
-    private[this] def pickUpperBound(newUntil: Option[K]): Option[K] = (until, newUntil) match {
+    private def pickUpperBound(newUntil: Option[K]): Option[K] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
       case (None, _) => newUntil
       case _ => until
@@ -190,7 +190,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     /**
       * Returns true if the argument is inside the view bounds (between `from` and `until`).
       */
-    private[this] def isInsideViewBounds(key: K): Boolean = {
+    private def isInsideViewBounds(key: K): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0
       val beforeUntil = until.isEmpty || ordering.compare(key, until.get) < 0
       afterFrom && beforeUntil

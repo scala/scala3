@@ -26,8 +26,8 @@ import scala.reflect.ClassTag
 sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
-  protected[this] var capacity: Int = 0
-  protected[this] def elems: Array[T] // may not be allocated at size = capacity = 0
+  protected var capacity: Int = 0
+  protected def elems: Array[T] | Null // may not be allocated at size = capacity = 0
   protected var size: Int = 0
 
   /** Current number of elements. */
@@ -36,7 +36,7 @@ sealed abstract class ArrayBuilder[T]
   /** Current number of elements. */
   override def knownSize: Int = size
 
-  protected[this] final def ensureSize(size: Int): Unit = {
+  protected final def ensureSize(size: Int): Unit = {
     val newLen = resizeUp(capacity, size)
     if (newLen > 0) resize(newLen)
   }
@@ -45,23 +45,23 @@ sealed abstract class ArrayBuilder[T]
 
   def clear(): Unit = size = 0
 
-  protected[this] def resize(size: Int): Unit
+  protected def resize(size: Int): Unit
 
   /** Add all elements of an array. */
-  def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
+  def addAll(xs: Array[? <: T]): this.type = addAll(xs, 0, xs.length)
 
   /** Add a slice of an array. */
-  def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
+  def addAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     val offset1 = offset.max(0)
     val length1 = length.max(0)
     val effectiveLength = length1.min(xs.length - offset1)
     doAddAll(xs, offset1, effectiveLength)
   }
 
-  private def doAddAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
+  private def doAddAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     if (length > 0) {
       ensureSize(this.size + length)
-      Array.copy(xs, offset, elems, this.size, length)
+      Array.copy(xs, offset, elems.nn, this.size, length)
       size += length
     }
     this
@@ -71,7 +71,7 @@ sealed abstract class ArrayBuilder[T]
     val k = xs.knownSize
     if (k > 0) {
       ensureSize(this.size + k)
-      val actual = IterableOnce.copyElemsToArray(xs, elems, this.size)
+      val actual = IterableOnce.copyElemsToArray(xs, elems.nn, this.size)
       if (actual != k) throw new IllegalStateException(s"Copied $actual of $k")
       size += k
     } else if (k < 0) super.addAll(xs)
@@ -100,7 +100,7 @@ object ArrayBuilder {
       case java.lang.Double.TYPE    => new ArrayBuilder.ofDouble().asInstanceOf[ArrayBuilder[T]]
       case java.lang.Boolean.TYPE   => new ArrayBuilder.ofBoolean().asInstanceOf[ArrayBuilder[T]]
       case java.lang.Void.TYPE      => new ArrayBuilder.ofUnit().asInstanceOf[ArrayBuilder[T]]
-      case _                        => new ArrayBuilder.ofRef[T with AnyRef]()(tag.asInstanceOf[ClassTag[T with AnyRef]]).asInstanceOf[ArrayBuilder[T]]
+      case _                        => new ArrayBuilder.ofRef[T & AnyRef]()(using tag.asInstanceOf[ClassTag[T & AnyRef]]).asInstanceOf[ArrayBuilder[T]]
     }
   }
 
@@ -111,24 +111,24 @@ object ArrayBuilder {
    *  @tparam T     type of elements for the array builder, subtype of `AnyRef` with a `ClassTag` context bound.
    */
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
+  final class ofRef[T <: AnyRef | Null](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
 
-    protected var elems: Array[T] = _
+    protected var elems: Array[T] | Null = null
 
     private def mkArray(size: Int): Array[T] = {
-      if (capacity == size && capacity > 0) elems
+      if (capacity == size && capacity > 0) elems.nn
       else if (elems eq null) new Array[T](size)
       else java.util.Arrays.copyOf[T](elems, size)
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: T): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -136,7 +136,7 @@ object ArrayBuilder {
     def result(): Array[T] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -160,22 +160,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofByte extends ArrayBuilder[Byte] {
 
-    protected var elems: Array[Byte] = _
+    protected var elems: Array[Byte] | Null = null
 
     private def mkArray(size: Int): Array[Byte] = {
       val newelems = new Array[Byte](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Byte): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -183,7 +183,7 @@ object ArrayBuilder {
     def result(): Array[Byte] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -202,22 +202,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofShort extends ArrayBuilder[Short] {
 
-    protected var elems: Array[Short] = _
+    protected var elems: Array[Short] | Null = null
 
     private def mkArray(size: Int): Array[Short] = {
       val newelems = new Array[Short](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Short): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -225,7 +225,7 @@ object ArrayBuilder {
     def result(): Array[Short] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -244,22 +244,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofChar extends ArrayBuilder[Char] {
 
-    protected var elems: Array[Char] = _
+    protected var elems: Array[Char] | Null = null
 
     private def mkArray(size: Int): Array[Char] = {
       val newelems = new Array[Char](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Char): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -267,7 +267,7 @@ object ArrayBuilder {
     def result(): Array[Char] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -286,22 +286,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofInt extends ArrayBuilder[Int] {
 
-    protected var elems: Array[Int] = _
+    protected var elems: Array[Int] | Null = null
 
     private def mkArray(size: Int): Array[Int] = {
       val newelems = new Array[Int](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Int): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -309,7 +309,7 @@ object ArrayBuilder {
     def result(): Array[Int] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -328,22 +328,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofLong extends ArrayBuilder[Long] {
 
-    protected var elems: Array[Long] = _
+    protected var elems: Array[Long] | Null = null
 
     private def mkArray(size: Int): Array[Long] = {
       val newelems = new Array[Long](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Long): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -351,7 +351,7 @@ object ArrayBuilder {
     def result(): Array[Long] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -370,22 +370,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofFloat extends ArrayBuilder[Float] {
 
-    protected var elems: Array[Float] = _
+    protected var elems: Array[Float] | Null = null
 
     private def mkArray(size: Int): Array[Float] = {
       val newelems = new Array[Float](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Float): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -393,7 +393,7 @@ object ArrayBuilder {
     def result(): Array[Float] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -412,22 +412,22 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofDouble extends ArrayBuilder[Double] {
 
-    protected var elems: Array[Double] = _
+    protected var elems: Array[Double] | Null = null
 
     private def mkArray(size: Int): Array[Double] = {
       val newelems = new Array[Double](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Double): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -435,7 +435,7 @@ object ArrayBuilder {
     def result(): Array[Double] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -455,22 +455,22 @@ object ArrayBuilder {
   class ofBoolean extends ArrayBuilder[Boolean] {
     this: ofBoolean^{} =>
 
-    protected var elems: Array[Boolean] = _
+    protected var elems: Array[Boolean] | Null = null
 
     private def mkArray(size: Int): Array[Boolean] = {
       val newelems = new Array[Boolean](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
+      if (this.size > 0) Array.copy(elems.nn, 0, newelems, 0, this.size)
       newelems
     }
 
-    protected[this] def resize(size: Int): Unit = {
+    protected def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
     def addOne(elem: Boolean): this.type = {
       ensureSize(size + 1)
-      elems(size) = elem
+      elems.nn(size) = elem
       size += 1
       this
     }
@@ -478,7 +478,7 @@ object ArrayBuilder {
     def result(): Array[Boolean] = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        val res = elems
+        val res = elems.nn
         elems = null
         res
       }
@@ -497,7 +497,7 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofUnit extends ArrayBuilder[Unit] {
 
-    protected def elems: Array[Unit] = throw new UnsupportedOperationException()
+    protected def elems: Array[Unit] | Null = throw new UnsupportedOperationException()
 
     def addOne(elem: Unit): this.type = {
       val newSize = size + 1
@@ -513,7 +513,7 @@ object ArrayBuilder {
       this
     }
 
-    override def addAll(xs: Array[_ <: Unit], offset: Int, length: Int): this.type = {
+    override def addAll(xs: Array[? <: Unit], offset: Int, length: Int): this.type = {
       val newSize = size + length
       ensureSize(newSize)
       size = newSize
@@ -532,7 +532,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    protected[this] def resize(size: Int): Unit = capacity = size
+    protected def resize(size: Int): Unit = capacity = size
 
     override def toString = "ArrayBuilder.ofUnit"
   }

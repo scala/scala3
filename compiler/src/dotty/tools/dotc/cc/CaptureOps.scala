@@ -151,21 +151,37 @@ extension (tp: Type)
     case tp: ObjectCapability => tp.captureSetOfInfo
     case _ => CaptureSet.ofType(tp, followResult = false)
 
+  /** Compute a captureset by traversing parts of this type. This is by default the union of all
+   *  covariant capture sets embedded in the widened type, as computed by
+   *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
+   *  a singleton capability `x` or a reach capability `x*`, the deep capture
+   *  set can be narrowed to`{x*}`.
+   *  @param includeTypevars  if true, return a new FreshCap for every type parameter
+   *                          or abstract type with an Any upper bound. Types with
+   *                          defined upper bound are always mapped to the dcs of their bound
+   *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
+   */
+  def computeDeepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
+    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
+    if dcs.isAlwaysEmpty then tp.captureSet
+    else tp match
+      case tp: ObjectCapability if tp.isTrackableRef => tp.reach.singletonCaptureSet
+      case _ => tp.captureSet ++ dcs
+
   /** The deep capture set of a type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by
    *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
    *  set can be narrowed to`{x*}`.
    */
-  def deepCaptureSet(includeTypevars: Boolean)(using Context): CaptureSet =
-    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars)
-    if dcs.isAlwaysEmpty then tp.captureSet
-    else tp match
-      case tp: ObjectCapability if tp.isTrackableRef => tp.reach.singletonCaptureSet
-      case _ => tp.captureSet ++ dcs
-
   def deepCaptureSet(using Context): CaptureSet =
-    deepCaptureSet(includeTypevars = false)
+    computeDeepCaptureSet(includeTypevars = false)
+
+  /** The span capture set of a type. This is analogous to deepCaptureSet but ignoring
+   *  capture sets in boxed parts.
+   */
+  def spanCaptureSet(using Context): CaptureSet =
+    computeDeepCaptureSet(includeTypevars = false, includeBoxed = false)
 
   /** A type capturing `ref` */
   def capturing(ref: Capability)(using Context): Type =
@@ -336,12 +352,6 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a type extending `Mutable` that has update methods? */
-  def isMutableType(using Context): Boolean =
-    tp.derivesFrom(defn.Caps_Mutable)
-    && tp.membersBasedOnFlags(Mutable | Method, EmptyFlags)
-      .exists(_.hasAltWith(_.symbol.isUpdateMethod))
-
   /** Is this a reference to caps.cap? Note this is _not_ the GlobalCap capability. */
   def isCapRef(using Context): Boolean = tp match
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
@@ -362,7 +372,7 @@ extension (tp: Type)
    */
   def derivesFromCapTraitDeeply(cls: ClassSymbol)(using Context): Boolean =
     val accumulate = new DeepTypeAccumulator[Boolean]:
-      def capturingCase(acc: Boolean, parent: Type, refs: CaptureSet) =
+      def capturingCase(acc: Boolean, parent: Type, refs: CaptureSet, boxed: Boolean) =
         this(acc, parent)
         && (parent.derivesFromCapTrait(cls)
             || refs.isConst && refs.elems.forall(_.derivesFromCapTrait(cls)))
@@ -451,8 +461,7 @@ extension (tp: Type)
     acc(false, tp)
 
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
-    RefinedType(tp, name,
-      AnnotatedType(rinfo, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan)))
+    RefinedType.precise(tp, name, rinfo)
 
   def dropUseAndConsumeAnnots(using Context): Type =
     tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)
@@ -614,16 +623,6 @@ extension (sym: Symbol)
     sym.hasAnnotation(defn.ConsumeAnnot)
     || sym.info.hasAnnotation(defn.ConsumeAnnot)
 
-  def isUpdateMethod(using Context): Boolean =
-    sym.isAllOf(Mutable | Method, butNot = Accessor)
-
-  def isReadOnlyMethod(using Context): Boolean =
-    sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
-
-  def isInReadOnlyMethod(using Context): Boolean =
-    if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
-    else sym.owner.isInReadOnlyMethod
-
   def qualString(prefix: String)(using Context): String =
     if !sym.exists then ""
     else if sym.isAnonymousFunction then i" $prefix enclosing function"
@@ -734,7 +733,7 @@ object ContainsParam:
 abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
   val seen = util.HashSet[Symbol]()
 
-  protected def capturingCase(acc: T, parent: Type, refs: CaptureSet): T
+  protected def capturingCase(acc: T, parent: Type, refs: CaptureSet, boxed: Boolean): T
 
   protected def abstractTypeCase(acc: T, t: TypeRef, upperBound: Type): T
 
@@ -742,7 +741,7 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
     if variance < 0 then acc
     else t.dealias match
       case t @ CapturingType(parent, cs) =>
-        capturingCase(acc, parent, cs)
+        capturingCase(acc, parent, cs, t.isBoxed)
       case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
         seen += t.symbol
         abstractTypeCase(acc, t, t.info.bounds.hi)

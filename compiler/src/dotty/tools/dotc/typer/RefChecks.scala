@@ -21,7 +21,8 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
-import cc.{stripCapturing, isUpdateMethod, CCState}
+import cc.{stripCapturing, CCState}
+import cc.Mutability.isUpdateMethod
 
 object RefChecks {
   import tpd.*
@@ -1135,8 +1136,8 @@ object RefChecks {
    *  This check is suppressed if the method is an override. (Because the type of the receiver
    *  may be narrower in the override.)
    *
-   *  If the extension method is nilary, it is always hidden by a member of the same name.
-   *  (Either the member is nilary, or the reference is taken as the eta-expansion of the member.)
+   *  If the extension method is parameterless, it is always hidden by a member of the same name.
+   *  (Either the member is parameterless, or the reference is taken as the eta-expansion of the member.)
    *
    *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
    *  That check would account for accessibility and opacity. As a limitation, this check considers
@@ -1156,15 +1157,15 @@ object RefChecks {
    *  parameters of the extension method must be distinguishable from the member parameters, as described above.
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
-    if sym.is(Extension) then
+    if sym.is(Extension) then atPhase(typerPhase):
       extension (tp: Type)
         def explicit = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true)
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
-        def isNilary = tp.stripPoly match { case mt: MethodType => false case _ => true }
+        def isParamLess = tp.stripPoly match { case mt: MethodType => false case _ => true }
       val explicitInfo = sym.info.explicit // consider explicit value params
       def memberHidesMethod(member: Denotation): Boolean =
         val methTp = explicitInfo.resultType // skip leading implicits and the "receiver" parameter
-        if methTp.isNilary then
+        if methTp.isParamLess then
           return true // extension without parens is always hidden by a member of same name
         val memberIsImplicit = member.info.hasImplicitParams
         inline def paramsCorrespond =
@@ -1173,7 +1174,8 @@ object RefChecks {
             else methTp.explicit.firstParamTypes
           val memberParamTps = member.info.stripPoly.firstParamTypes
           memberParamTps.corresponds(paramTps): (m, x) =>
-            m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias && (x frozen_<:< m)
+               m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias
+            && (x frozen_<:< m)
         memberIsImplicit && !methTp.hasImplicitParams || paramsCorrespond
       def targetOfHiddenExtension: Symbol =
         val target =

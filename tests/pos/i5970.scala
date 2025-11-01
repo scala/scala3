@@ -1,6 +1,6 @@
 //> using options -Xfatal-warnings -deprecation -feature
 
-object Test extends App {
+object Test {
   case class Foo[T](t: T)
 
   def foo[T](ft: Unit|Foo[T]): T = {

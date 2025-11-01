@@ -173,6 +173,7 @@ subsection:
               - page: reference/experimental/capture-checking/scoped-caps.md
               - page: reference/experimental/capture-checking/classifiers.md
               - page: reference/experimental/capture-checking/checked-exceptions.md
+              - page: reference/experimental/capture-checking/mutability.md
               - page: reference/experimental/capture-checking/separation-checking.md
               - page: reference/experimental/capture-checking/how-to-use.md
               - page: reference/experimental/capture-checking/internals.md
@@ -183,6 +184,7 @@ subsection:
           - page: reference/experimental/unrolled-defs.md
           - page: reference/experimental/package-object-values.md
           - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
+          - page: reference/experimental/relaxed-lambdas.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

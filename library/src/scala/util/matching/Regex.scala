@@ -232,7 +232,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    */
   // we cannot add the alternative `def this(regex: String)` in a forward binary compatible way:
   // @deprecated("use inline group names like (?<year>X) instead", "2.13.7")
-  def this(regex: String, groupNames: String*) = this(Pattern.compile(regex), groupNames: _*)
+  def this(regex: String, groupNames: String*) = this(Pattern.compile(regex), groupNames*)
 
   /** Tries to match a [[java.lang.CharSequence]].
    *
@@ -284,7 +284,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  @param  s     The string to match
    *  @return       The matches
    */
-  def unapplySeq(s: CharSequence): Option[List[String]] = {
+  def unapplySeq(s: CharSequence): Option[List[String | Null]] = {
     val m = pattern.matcher(s)
     if (runMatcher(m)) Some(List.tabulate(m.groupCount) { i => m.group(i + 1) })
     else None
@@ -323,9 +323,9 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  @return       The match
    */
   def unapplySeq(c: Char): Option[List[Char]] = {
-    val m = pattern matcher c.toString
+    val m = pattern.matcher(c.toString)
     if (runMatcher(m)) {
-      if (m.groupCount > 0) Some((m group 1).toList) else Some(Nil)
+      if (m.groupCount > 0) Some((m.group(1)).toList) else Some(Nil)
     } else None
   }
 
@@ -338,10 +338,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  Otherwise, this Regex is applied to the previously matched input,
    *  and the result of that match is used.
    */
-  def unapplySeq(m: Match): Option[List[String]] =
+  def unapplySeq(m: Match): Option[List[String | Null]] =
     if (m.matched == null) None
     else if (m.matcher.pattern == this.pattern) Regex.extractGroupsFromMatch(m)
-    else unapplySeq(m.matched)
+    else unapplySeq(m.matched.nn)
 
   //  @see UnanchoredRegex
   protected def runMatcher(m: Matcher): Boolean = m.matches()
@@ -590,7 +590,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @return        The new unanchored regex
    */
-  def unanchored: UnanchoredRegex = new Regex(pattern, groupNames: _*) with UnanchoredRegex { override def anchored = outer }
+  def unanchored: UnanchoredRegex = new Regex(pattern, groupNames*) with UnanchoredRegex { override def anchored = outer }
   def anchored: Regex             = this
 
   def regex: String = pattern.pattern
@@ -650,52 +650,52 @@ object Regex {
     def end(i: Int): Int
 
     /** The matched string, or `null` if nothing was matched. */
-    def matched: String =
+    def matched: String | Null =
       if (start >= 0) source.subSequence(start, end).toString
       else null
 
     /** The matched string in group `i`,
      *  or `null` if nothing was matched.
      */
-    def group(i: Int): String =
+    def group(i: Int): String | Null =
       if (start(i) >= 0) source.subSequence(start(i), end(i)).toString
       else null
 
     /** All capturing groups, i.e., not including group(0). */
-    def subgroups: List[String] = (1 to groupCount).toList map group
+    def subgroups: List[String | Null] = (1 to groupCount).toList map group
 
     /** The char sequence before first character of match,
      *  or `null` if nothing was matched.
      */
-    def before: CharSequence =
+    def before: CharSequence | Null =
       if (start >= 0) source.subSequence(0, start)
       else null
 
     /** The char sequence before first character of match in group `i`,
      *  or `null` if nothing was matched for that group.
      */
-    def before(i: Int): CharSequence =
+    def before(i: Int): CharSequence | Null =
       if (start(i) >= 0) source.subSequence(0, start(i))
       else null
 
     /** Returns char sequence after last character of match,
      *  or `null` if nothing was matched.
      */
-    def after: CharSequence =
+    def after: CharSequence | Null =
       if (end >= 0) source.subSequence(end, source.length)
       else null
 
     /** The char sequence after last character of match in group `i`,
      *  or `null` if nothing was matched for that group.
      */
-    def after(i: Int): CharSequence =
+    def after(i: Int): CharSequence | Null =
       if (end(i) >= 0) source.subSequence(end(i), source.length)
       else null
 
     @scala.annotation.nowarn("msg=deprecated")
     private def groupNamesNowarn: Seq[String] = groupNames
 
-    private[this] lazy val nameToIndex: Map[String, Int] =
+    private lazy val nameToIndex: Map[String, Int] =
       Map[String, Int]() ++ ("" :: groupNamesNowarn.toList).zipWithIndex
 
     /** Returns the group with the given name.
@@ -708,18 +708,18 @@ object Regex {
      *  @return   The requested group
      *  @throws   IllegalArgumentException if the requested group name is not defined
      */
-    def group(id: String): String = (
+    def group(id: String): String | Null = (
       if (groupNamesNowarn.isEmpty)
-        matcher group id
+        matcher.group(id)
       else
         nameToIndex.get(id) match {
           case Some(index) => group(index)
-          case None        => matcher group id
+          case None        => matcher.group(id)
         }
     )
 
     /** The matched string; equivalent to `matched.toString`. */
-    override def toString: String = matched
+    override def toString: String = matched.nn
   }
 
   /** Provides information about a successful match. */
@@ -739,9 +739,9 @@ object Regex {
     /** The number of subgroups. */
     def groupCount: Int = matcher.groupCount
 
-    private[this] lazy val starts: Array[Int] =
+    private lazy val starts: Array[Int] =
       Array.tabulate(groupCount + 1) { matcher.start }
-    private[this] lazy val ends: Array[Int] =
+    private lazy val ends: Array[Int] =
       Array.tabulate(groupCount + 1) { matcher.end }
 
     /** The index of the first matched character in group `i`. */
@@ -768,7 +768,7 @@ object Regex {
    *
    */
   object Match {
-    def unapply(m: Match): Some[String] = Some(m.matched)
+    def unapply(m: Match): Some[String] = Some(m.matched.nn)
   }
 
   /** An extractor object that yields the groups in the match. Using this extractor
@@ -783,12 +783,12 @@ object Regex {
    *  }}}
    */
   object Groups {
-    def unapplySeq(m: Match): Option[Seq[String]] = {
+    def unapplySeq(m: Match): Option[Seq[String | Null]] = {
       if (m.groupCount > 0) extractGroupsFromMatch(m) else None
     }
   }
 
-  @inline private def extractGroupsFromMatch(m: Match): Option[List[String]] =
+  @inline private def extractGroupsFromMatch(m: Match): Option[List[String | Null]] =
      Some(List.tabulate(m.groupCount) { i => m.group(i + 1) })
 
   /** A class to step through a sequence of regex matches.
@@ -812,7 +812,7 @@ object Regex {
     protected[Regex] val matcher = regex.pattern.matcher(source)
 
     // 0 = not yet matched, 1 = matched, 2 = advanced to match, 3 = no more matches
-    private[this] var nextSeen = 0
+    private var nextSeen = 0
 
     /** Return true if `next` will find a match.
      *  As a side effect, advance the underlying matcher if necessary;
@@ -845,7 +845,7 @@ object Regex {
     override def toString: String = super[AbstractIterator].toString
 
     // ensure we're at a match
-    private[this] def ensure(): Unit = nextSeen match {
+    private def ensure(): Unit = nextSeen match {
       case 0 => if (!hasNext) throw new IllegalStateException
       case 1 => ()
       case 2 => ()
@@ -886,7 +886,7 @@ object Regex {
   private[matching] trait Replacement {
     protected def matcher: Matcher
 
-    private[this] val sb = new java.lang.StringBuffer // StringBuffer for JDK 8 compatibility
+    private val sb = new java.lang.StringBuffer // StringBuffer for JDK 8 compatibility
 
     // Appends the remaining input and returns the result text.
     def replaced = {
@@ -895,7 +895,7 @@ object Regex {
     }
 
     // Appends the input prefix and the replacement text.
-    def replace(replacement: String) = matcher.appendReplacement(sb, replacement)
+    def replace(replacement: String): Matcher = matcher.appendReplacement(sb, replacement)
   }
 
   /** Quotes strings to be used literally in regex patterns.
@@ -904,7 +904,7 @@ object Regex {
    *
    *  @example {{{List("US\$", "CAN\$").map(Regex.quote).mkString("|").r}}}
    */
-  def quote(text: String): String = Pattern quote text
+  def quote(text: String): String = Pattern.quote(text)
 
   /** Quotes replacement strings to be used in replacement methods.
    *
@@ -918,5 +918,5 @@ object Regex {
    *  @return A string that can be used to replace matches with `text`.
    *  @example {{{"CURRENCY".r.replaceAllIn(input, Regex quoteReplacement "US\$")}}}
    */
-  def quoteReplacement(text: String): String = Matcher quoteReplacement text
+  def quoteReplacement(text: String): String = Matcher.quoteReplacement(text)
 }

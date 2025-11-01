@@ -57,11 +57,11 @@ object Properties {
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
 
-  /** dotty-library-js jar */
-  def dottyLibraryJS: String = sys.props("dotty.tests.classes.dottyLibraryJS")
-
   /** dotty-compiler jar */
   def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
+
+  /** dotty-repl jar */
+  def dottyRepl: String = sys.props("dotty.tests.classes.dottyRepl")
 
   /** dotty-staging jar */
   def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")

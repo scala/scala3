@@ -49,11 +49,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.package$package$.Exclusive",
   "scala.caps.package$package$.Shared",
 
-  //// New feature: into
-  "scala.Conversion$.into",
-  "scala.Conversion$.underlying",
-  "scala.annotation.internal.$into",
-
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 
@@ -66,14 +61,8 @@ val experimentalDefinitionInLibrary = Set(
   //// New APIs: Quotes
   // Can be stabilized in 3.5.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
-  // Cant be stabilized yet.
-  // Need newClass variant that can add constructor parameters.
-  // Need experimental annotation macros to check that design works.
-  "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
-  "scala.quoted.Quotes.reflectModule.ClassDefModule.module",
-  "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
-  "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
-  "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
+  // Would need an asSeenFrom and ClassInfo added, which we generally do not want
+  // We need to think if this is necessary, and if so, think of an replacement
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
   // Added for 3.6.0, stabilize after feedback.
   "scala.quoted.Quotes.reflectModule.SymbolModule.newBoundedType",
@@ -89,9 +78,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.OmitSelectorModule.apply",
   "scala.quoted.Quotes.reflectModule.RenameSelectorModule.apply",
   "scala.quoted.Quotes.reflectModule.SimpleSelectorModule.apply",
-
-  // New feature: fromNullable for explicit nulls
-  "scala.Predef$.fromNullable",
 
   // New feature: modularity
   "scala.Precise",

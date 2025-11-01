@@ -31,6 +31,7 @@ import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
+import util.chaining.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
@@ -588,11 +589,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def toNotNullTermRef(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case ref: TermRef
-    if pt != LhsProto && // Ensure it is not the lhs of Assign
-    ctx.notNullInfos.impliesNotNull(ref) &&
-    // If a reference is in the context, it is already trackable at the point we add it.
-    // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
-    !ref.usedOutOfOrder =>
+    if ctx.explicitNulls
+      && pt != LhsProto // Ensure it is not the lhs of Assign
+      && ctx.notNullInfos.impliesNotNull(ref)
+      // If a reference is in the context, it is already trackable at the point we add it.
+      // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+      && !ref.usedOutOfOrder =>
       ref match
         case OrNull(tpnn) => tree.cast(AndType(ref, tpnn))
         case _            => tree
@@ -848,11 +850,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes(true)
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
       if nameIdx >= 0 && sourceVersion.enablesNamedTuples then
-        typed(
-          untpd.Apply(
-            untpd.Select(untpd.TypedSplice(qual), nme.apply),
-            untpd.Literal(Constant(nameIdx))),
-          pt)
+        if namedTupleElems.forall(_._1 != nme.apply) then
+          typed(
+            untpd.Apply(
+              untpd.Select(untpd.TypedSplice(qual), nme.apply),
+              untpd.Literal(Constant(nameIdx))),
+            pt)
+        else
+          report.error(
+            em"""Named tuples that define an `apply` field do not allow field selection.
+                |The `apply` field should be renamed to something else.""",
+            tree0.srcPos)
+          EmptyTree
       else EmptyTree
 
     // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
@@ -1428,7 +1437,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def lhs1 = adapt(lhsCore, LhsProto, locked)
 
         def reassignmentToVal =
-          report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
+          report.error(ReassignmentToVal(lhsCore.symbol.name, pt), tree.srcPos)
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
@@ -1920,7 +1929,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    pt match {
+    pt.stripNull() match {
       case pt: TypeVar
       if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
         // try to instantiate `pt` if this is possible. If it does not
@@ -1942,8 +1951,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val firstFormal = protoFormals.head.loBound
       if ptIsCorrectProduct(firstFormal, params) then
         val isGenericTuple =
-          firstFormal.derivesFrom(defn.TupleClass)
-          && !defn.isTupleClass(firstFormal.typeSymbol)
+          firstFormal.isNamedTupleType
+          || (firstFormal.derivesFrom(defn.TupleClass)
+              && !defn.isTupleClass(firstFormal.typeSymbol))
         desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
     else if protoFormals.length > 1 && params.length == 1 then
       def isParamRef(scrut: untpd.Tree): Boolean = scrut match
@@ -2228,7 +2238,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         given Context = caseCtx
         val case1 = typedCase(cas, sel, wideSelType, tpe)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
-        if !alreadyStripped && Nullables.matchesNull(case1) then
+        if ctx.explicitNulls && !alreadyStripped && Nullables.matchesNull(case1) then
           wideSelType = wideSelType.stripNull()
           alreadyStripped = true
         case1
@@ -2261,7 +2271,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       given Context = caseCtx
       val case1 = typedCase(cas, sel, wideSelType, pt)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
-      if !alreadyStripped && Nullables.matchesNull(case1) then
+      if ctx.explicitNulls && !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull()
         alreadyStripped = true
       case1
@@ -3474,12 +3484,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         inContext(ctx.packageContext(tree, pkg)) {
           // If it exists, complete the class containing the top-level definitions
           // before typing any statement in the package to avoid cycles as in i13669.scala
-          val topLevelClassName = desugar.packageObjectName(ctx.source).moduleClassName
-          pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
+          val packageObjectName = desugar.packageObjectName(ctx.source)
+          val topLevelClassSymbol = pkg.moduleClass.info.decls.lookup(packageObjectName.moduleClassName)
+          topLevelClassSymbol.ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
             stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
           cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
+            .tap: _ =>
+              if !ctx.isAfterTyper
+              && pkg != defn.EmptyPackageVal
+              && !topLevelClassSymbol.info.decls.filter(sym => !sym.isConstructor && !sym.is(Synthetic)).isEmpty
+              then
+                desugar.checkSimplePackageName(packageObjectName, tree.span, ctx.source, isPackageObject = true)
         }
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`
@@ -4274,16 +4291,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
 
       /** Search for an alternative that does not take parameters.
-       * If there is one, return it, otherwise emit an error.
+       *  If there is one, return it, otherwise return the error tree.
        */
       def tryParameterless(alts: List[TermRef])(error: => tpd.Tree): Tree =
         alts.filter(_.info.isParameterless) match
-          case alt :: Nil => readaptSimplified(tree.withType(alt))
-          case _ =>
-            if altDenots.exists(_.info.paramInfoss == ListOfNil) then
-              typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
-            else
-              error
+        case alt :: Nil => readaptSimplified(tree.withType(alt))
+        case _ =>
+          altDenots.find(_.info.paramInfoss == ListOfNil) match
+          case Some(alt) => readaptSimplified(tree.withType(alt.symbol.denot.termRef))
+          case _ => error
 
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)
@@ -4976,6 +4992,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => NoType
       case _ => NoType
 
+    // begin adapt1
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
       case _ => tree.tpe.widen match {

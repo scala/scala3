@@ -18,6 +18,7 @@ import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.{ArrayBuffer, Builder}
 import scala.collection.immutable.LazyList
+import scala.runtime.ScalaRunTime.nullForGC
 import caps.unsafe.unsafeAssumePure
 
 /** Views are collections whose transformation operations are non strict: the resulting elements
@@ -37,7 +38,7 @@ trait View[+A] extends Iterable[A] with IterableOps[A, View, View[A]] with Itera
   override def toString: String  = className + "(<not computed>)"
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "View"
+  override protected def stringPrefix: String = "View"
 
   @deprecated("Views no longer know about their underlying collection type; .force always returns an IndexedSeq", "2.13.0")
   @`inline` def force: IndexedSeq[A] = toIndexedSeq
@@ -81,7 +82,7 @@ object View extends IterableFactory[View] {
 
   def newBuilder[A]: Builder[A, View[A]] = ArrayBuffer.newBuilder[A].mapResult(from)
 
-  override def apply[A](xs: A*): View[A] = new Elems(xs: _*)
+  override def apply[A](xs: A*): View[A] = new Elems(xs*)
 
   /** The empty view */
   @SerialVersionUID(3L)
@@ -140,7 +141,7 @@ object View extends IterableFactory[View] {
   }
 
   /** An `IterableOps` whose collection type and collection type constructor are unknown */
-  type SomeIterableOps[A] = IterableOps[A, AnyConstr, _]
+  type SomeIterableOps[A] = IterableOps[A, AnyConstr, ?]
 
   /** A view that filters an underlying collection. */
   @SerialVersionUID(3L)
@@ -173,9 +174,9 @@ object View extends IterableFactory[View] {
   @SerialVersionUID(3L)
   class LeftPartitionMapped[A, A1, A2](underlying: SomeIterableOps[A]^, f: A => Either[A1, A2]) extends AbstractView[A1] {
     def iterator: AbstractIterator[A1]^{this} = new AbstractIterator[A1] {
-      private[this] val self = underlying.iterator
-      private[this] var hd: A1 = _
-      private[this] var hdDefined: Boolean = false
+      private val self = underlying.iterator
+      private var hd: A1 = compiletime.uninitialized
+      private var hdDefined: Boolean = false
       def hasNext = hdDefined || {
         @tailrec
         def findNext(): Boolean =
@@ -198,9 +199,9 @@ object View extends IterableFactory[View] {
   @SerialVersionUID(3L)
   class RightPartitionMapped[A, A1, A2](underlying: SomeIterableOps[A]^, f: A => Either[A1, A2]) extends AbstractView[A2] {
       def iterator: AbstractIterator[A2]^{this} = new AbstractIterator[A2] {
-        private[this] val self = underlying.iterator
-        private[this] var hd: A2 = _
-        private[this] var hdDefined: Boolean = false
+        private val self = underlying.iterator
+        private var hd: A2 = compiletime.uninitialized
+        private var hdDefined: Boolean = false
         def hasNext = hdDefined || {
           @tailrec
           def findNext(): Boolean =
@@ -394,8 +395,8 @@ object View extends IterableFactory[View] {
   @SerialVersionUID(3L)
   class Updated[A](underlying: SomeIterableOps[A]^, index: Int, elem: A) extends AbstractView[A] {
     def iterator: Iterator[A]^{underlying} = new AbstractIterator[A] {
-      private[this] val it = underlying.iterator
-      private[this] var i = 0
+      private val it = underlying.iterator
+      private var i = 0
       def next(): A = {
         val value = if (i == index) { it.next(); elem } else it.next()
         i += 1
@@ -449,10 +450,11 @@ object View extends IterableFactory[View] {
     else new TakeRightIterator[A](it, n)
   }
 
-  private final class TakeRightIterator[A](private[this] var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
-    private[this] var len: Int = -1
-    private[this] var pos: Int = 0
-    private[this] var buf: ArrayBuffer[AnyRef] = _
+  private final class TakeRightIterator[A](private var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
+    private var len: Int = -1
+    private var pos: Int = 0
+    @annotation.stableNull
+    private var buf: ArrayBuffer[AnyRef] | Null = compiletime.uninitialized
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       len = 0
@@ -464,7 +466,7 @@ object View extends IterableFactory[View] {
         if(pos == maxlen) pos = 0
         len += 1
       }
-      underlying = null
+      underlying = nullForGC[Iterator[A]]
       if(len > maxlen) len = maxlen
       pos = pos - len
       if(pos < 0) pos += maxlen
@@ -478,7 +480,7 @@ object View extends IterableFactory[View] {
       init()
       if(len == 0) Iterator.empty.next()
       else {
-        val x = buf(pos).asInstanceOf[A]
+        val x = buf.nn(pos).asInstanceOf[A]
         pos += 1
         if(pos == maxlen) pos = 0
         len -= 1
@@ -504,10 +506,11 @@ object View extends IterableFactory[View] {
     }
   }
 
-  private final class DropRightIterator[A](private[this] var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
-    private[this] var len: Int = -1 // known size or -1 if the end of `underlying` has not been seen yet
-    private[this] var pos: Int = 0
-    private[this] var buf: ArrayBuffer[AnyRef] = _
+  private final class DropRightIterator[A](private var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
+    private var len: Int = -1 // known size or -1 if the end of `underlying` has not been seen yet
+    private var pos: Int = 0
+    @annotation.stableNull
+    private var buf: ArrayBuffer[AnyRef] | Null = compiletime.uninitialized
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       while(pos < maxlen && underlying.hasNext) {
@@ -525,9 +528,9 @@ object View extends IterableFactory[View] {
     def next(): A = {
       if(!hasNext) Iterator.empty.next()
       else {
-        val x = buf(pos).asInstanceOf[A]
+        val x = buf.nn(pos).asInstanceOf[A]
         if(len == -1) {
-          buf(pos) = underlying.next().asInstanceOf[AnyRef]
+          buf.nn(pos) = underlying.next().asInstanceOf[AnyRef]
           if(!underlying.hasNext) len = 0
         } else len -= 1
         pos += 1

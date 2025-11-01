@@ -37,8 +37,7 @@ import scala.collection.mutable.{Builder, StringBuilder}
 @SerialVersionUID(3L)
 final class WrappedString(private val self: String) extends AbstractSeq[Char] with IndexedSeq[Char]
   with IndexedSeqOps[Char, IndexedSeq, WrappedString]
-  with Serializable
-  with caps.Pure {
+  with Serializable {
 
   def apply(i: Int): Char = self.charAt(i)
 
@@ -58,7 +57,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
   override def toString = self
   override def view: StringView = new StringView(self)
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Char, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Char, S]): S & EfficientSplit = {
     val st = new CharStringStepper(self, 0, self.length)
     val r =
       if (shape.shape == StepperShape.CharShape) st
@@ -66,7 +65,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParIntStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   override def startsWith[B >: Char](that: IterableOnce[B]^, offset: Int = 0): Boolean =
@@ -103,7 +102,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
 
   override def appendedAll[B >: Char](suffix: IterableOnce[B]^): IndexedSeq[B] =
     suffix match {
-      case s: WrappedString => new WrappedString(self concat s.self)
+      case s: WrappedString => new WrappedString(self.concat(s.self))
       case _                => super.appendedAll(suffix)
     }
 
@@ -112,7 +111,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
     case _                => super.sameElements(o)
   }
 
-  override protected[this] def className = "WrappedString"
+  override protected def className = "WrappedString"
 
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
   override def equals(other: Any): Boolean = other match {

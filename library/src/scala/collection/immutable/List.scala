@@ -254,7 +254,7 @@ sealed abstract class List[+A]
   final override def collect[B](pf: PartialFunction[A, B]^): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
-      var h: ::[B] = null
+      var h: ::[B] | Null = null
       var x: Any = null
       // Special case for first element
       while (h eq null) {
@@ -281,8 +281,8 @@ sealed abstract class List[+A]
 
   final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
     var rest = this
-    var h: ::[B] = null
-    var t: ::[B] = null
+    var h: ::[B] | Null = null
+    var t: ::[B] | Null = null
     while (rest ne Nil) {
       val it = f(rest.head).iterator
       while (it.hasNext) {
@@ -438,7 +438,7 @@ sealed abstract class List[+A]
       super.corresponds(that)(p)
   }
 
-  override protected[this] def className = "List"
+  override protected def className = "List"
 
   /** Builds a new list by applying a function to all elements of this list.
     *  Like `xs map f`, but returns `xs` unchanged if function
@@ -453,11 +453,11 @@ sealed abstract class List[+A]
     // Note to developers: there exists a duplication between this function and `reflect.internal.util.Collections#map2Conserve`.
     // If any successful optimization attempts or other changes are made, please rehash them there too.
     @tailrec
-    def loop(mappedHead: List[B], mappedLast: ::[B], unchanged: List[A], pending: List[A]): List[B] = {
+    def loop(mappedHead: List[B] | Null, mappedLast: ::[B] | Null, unchanged: List[A], pending: List[A]): List[B] = {
       if (pending.isEmpty) {
         if (mappedHead eq null) unchanged
         else {
-          mappedLast.next = (unchanged: List[B])
+          mappedLast.nn.next = (unchanged: List[B])
           mappedHead
         }
       }
@@ -469,8 +469,8 @@ sealed abstract class List[+A]
           loop(mappedHead, mappedLast, unchanged, pending.tail)
         else {
           var xc = unchanged
-          var mappedHead1: List[B] = mappedHead
-          var mappedLast1: ::[B] = mappedLast
+          var mappedHead1: List[B] | Null = mappedHead
+          var mappedLast1: ::[B] | Null = mappedLast
           while (xc ne pending) {
             val next = new ::[B](xc.head, Nil)
             if (mappedHead1 eq null) mappedHead1 = next
@@ -497,7 +497,7 @@ sealed abstract class List[+A]
 
   override def filterNot(p: A => Boolean): List[A] = filterCommon(p, isFlipped = true)
 
-  private[this] def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
+  private def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
 
     // everything seen so far so far is not included
     @tailrec def noneIn(l: List[A]): List[A] = {
@@ -590,7 +590,7 @@ sealed abstract class List[+A]
 
   // Override for performance
   override def equals(o: scala.Any): Boolean = {
-    @tailrec def listEq(a: List[_], b: List[_]): Boolean =
+    @tailrec def listEq(a: List[?], b: List[?]): Boolean =
       (a eq b) || {
         val aEmpty = a.isEmpty
         val bEmpty = b.isEmpty
@@ -667,7 +667,7 @@ case object Nil extends List[Nothing] {
   override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
-  private[this] val EmptyUnzip = (Nil, Nil)
+  private val EmptyUnzip = (Nil, Nil)
 }
 
 /**

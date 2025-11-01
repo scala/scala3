@@ -165,7 +165,7 @@ trait Future[+T] extends Awaitable[T] {
    * @return a failed projection of this `Future`.
    * @group Transformations
    */
-  def failed: Future[Throwable] = transform(Future.failedFun)(parasitic)
+  def failed: Future[Throwable] = transform(Future.failedFun)(using parasitic)
 
 
   /* Monadic operations */
@@ -271,7 +271,7 @@ trait Future[+T] extends Awaitable[T] {
    * @tparam S  the type of the returned `Future`
    * @group Transformations
    */
-  def flatten[S](implicit ev: T <:< Future[S]): Future[S] = flatMap(ev)(parasitic)
+  def flatten[S](implicit ev: T <:< Future[S]): Future[S] = flatMap(ev)(using parasitic)
 
   /** Creates a new future by filtering the value of the current future with a predicate.
    *
@@ -305,7 +305,7 @@ trait Future[+T] extends Awaitable[T] {
   /** Used by for-comprehensions.
    * @group Transformations
    */
-  final def withFilter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = filter(p)(executor)
+  final def withFilter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = filter(p)(using executor)
 
   /** Creates a new future by mapping the value of the current future, if the given partial function is defined at that value.
    *
@@ -403,7 +403,7 @@ trait Future[+T] extends Awaitable[T] {
    * @group Transformations
    */
   def zip[U](that: Future[U]): Future[(T, U)] =
-    zipWith(that)(Future.zipWithTuple2Fun)(parasitic)
+    zipWith(that)(Future.zipWithTuple2Fun)(using parasitic)
 
   /** Zips the values of `this` and `that` future using a function `f`,
    *  and creates a new future holding the result.
@@ -427,7 +427,7 @@ trait Future[+T] extends Awaitable[T] {
     //
     // TODO: remove this implementation and make Future#zipWith abstract
     //  when we're next willing to make a binary incompatible change
-    flatMap(r1 => that.map(r2 => f(r1, r2)))(if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
+    flatMap(r1 => that.map(r2 => f(r1, r2)))(using if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
   }
 
   /** Creates a new future which holds the result of this future if it was completed successfully, or, if not,
@@ -531,7 +531,7 @@ object Future {
    * Utilities, hoisted functions, etc.
    */
 
-  private[concurrent] final val toBoxed = Map[Class[_], Class[_]](
+  private[concurrent] final val toBoxed = Map[Class[?], Class[?]](
     classOf[Boolean] -> classOf[java.lang.Boolean],
     classOf[Byte]    -> classOf[java.lang.Byte],
     classOf[Char]    -> classOf[java.lang.Character],
@@ -543,7 +543,7 @@ object Future {
     classOf[Unit]    -> classOf[scala.runtime.BoxedUnit]
   )
 
-  private[this] final val _cachedId: AnyRef => AnyRef = Predef.identity _
+  private final val _cachedId: AnyRef => AnyRef = Predef.identity
 
   private[concurrent] final def id[T]: T => T = _cachedId.asInstanceOf[T => T]
 
@@ -553,13 +553,13 @@ object Future {
   private[concurrent] final val filterFailure =
     Failure[Nothing](new NoSuchElementException("Future.filter predicate is not satisfied") with NoStackTrace)
 
-  private[this] final val failedFailure =
+  private final val failedFailure =
     Failure[Nothing](new NoSuchElementException("Future.failed not completed with a throwable.") with NoStackTrace)
 
   private[concurrent] final val failedFailureFuture: Future[Nothing] =
     scala.concurrent.Future.fromTry(failedFailure)
 
-  private[this] final val _failedFun: Try[Any] => Try[Throwable] =
+  private final val _failedFun: Try[Any] => Try[Throwable] =
     v => if (v.isInstanceOf[Failure[Any]]) Success(v.asInstanceOf[Failure[Any]].exception) else failedFailure
 
   private[concurrent] final def failedFun[T]: Try[T] => Try[Throwable] = _failedFun.asInstanceOf[Try[T] => Try[Throwable]]
@@ -569,10 +569,10 @@ object Future {
 
   private[concurrent] final val recoverWithFailed = (t: Throwable) => recoverWithFailedMarker
 
-  private[this] final val _zipWithTuple2: (Any, Any) => (Any, Any) = Tuple2.apply _
+  private final val _zipWithTuple2: (Any, Any) => (Any, Any) = Tuple2.apply
   private[concurrent] final def zipWithTuple2Fun[T,U] = _zipWithTuple2.asInstanceOf[(T,U) => (T,U)]
 
-  private[this] final val _addToBuilderFun: (Builder[Any, Nothing], Any) => Builder[Any, Nothing] = (b: Builder[Any, Nothing], e: Any) => b += e
+  private final val _addToBuilderFun: (Builder[Any, Nothing], Any) => Builder[Any, Nothing] = (b: Builder[Any, Nothing], e: Any) => b += e
   private[concurrent] final def addToBuilderFun[A, M] =  _addToBuilderFun.asInstanceOf[Function2[Builder[A, M], A, Builder[A, M]]]
 
   private[concurrent] def waitUndefinedError(): Nothing =
@@ -723,7 +723,7 @@ object Future {
   final def sequence[A, CC[X] <: IterableOnce[X], To](in: CC[Future[A]])(implicit bf: BuildFrom[CC[Future[A]], A, To], executor: ExecutionContext): Future[To] =
     in.iterator.foldLeft(successful(bf.newBuilder(in))) {
       (fr, fa) => fr.zipWith(fa)(Future.addToBuilderFun)
-    }.map(_.result())(if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
+    }.map(_.result())(using if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
 
   /** Asynchronously and non-blockingly returns a new `Future` to the result of the first future
    *  in the list that is completed. This means no matter if it is completed as a success or as a failure.
@@ -803,7 +803,7 @@ object Future {
   final def foldLeft[T, R](futures: scala.collection.immutable.Iterable[Future[T]])(zero: R)(op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] =
     foldNext(futures.iterator, zero, op)
 
-  private[this] final def foldNext[T, R](i: Iterator[Future[T]], prevValue: R, op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] =
+  private final def foldNext[T, R](i: Iterator[Future[T]], prevValue: R, op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] =
     if (!i.hasNext) successful(prevValue)
     else i.next().flatMap { value => foldNext(i, op(prevValue, value), op) }
 
@@ -828,7 +828,7 @@ object Future {
   // not removed in 2.13, to facilitate 2.11/2.12/2.13 cross-building; remove further down the line (see scala/scala#6319)
   def fold[T, R](futures: IterableOnce[Future[T]])(zero: R)(@deprecatedName("foldFun") op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] =
     if (futures.isEmpty) successful(zero)
-    else sequence(futures)(ArrayBuffer, executor).map(_.foldLeft(zero)(op))
+    else sequence(futures)(using ArrayBuffer, executor).map(_.foldLeft(zero)(op))
 
   /** Initiates a non-blocking, asynchronous, fold over the supplied futures
    *  where the fold-zero is the result value of the first `Future` in the collection.
@@ -847,7 +847,7 @@ object Future {
   // not removed in 2.13, to facilitate 2.11/2.12/2.13 cross-building; remove further down the line (see scala/scala#6319)
   final def reduce[T, R >: T](futures: IterableOnce[Future[T]])(op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] =
     if (futures.isEmpty) failed(new NoSuchElementException("reduce attempted on empty collection"))
-    else sequence(futures)(ArrayBuffer, executor).map(_ reduceLeft op)
+    else sequence(futures)(using ArrayBuffer, executor).map(_ reduceLeft op)
 
   /** Initiates a non-blocking, asynchronous, left reduction over the supplied futures
    *  where the zero is the result value of the first `Future`.
@@ -886,7 +886,7 @@ object Future {
   final def traverse[A, B, M[X] <: IterableOnce[X]](in: M[A])(fn: A => Future[B])(implicit bf: BuildFrom[M[A], B, M[B]], executor: ExecutionContext): Future[M[B]] =
     in.iterator.foldLeft(successful(bf.newBuilder(in))) {
       (fr, a) => fr.zipWith(fn(a))(Future.addToBuilderFun)
-    }.map(_.result())(if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
+    }.map(_.result())(using if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
 }
 
 @deprecated("Superseded by `scala.concurrent.Batchable`", "2.13.0")

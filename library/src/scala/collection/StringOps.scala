@@ -31,8 +31,8 @@ object StringOps {
   private final val LF = 0x0A
   private final val CR = 0x0D
 
-  private class StringIterator(private[this] val s: String) extends AbstractIterator[Char] {
-    private[this] var pos = 0
+  private class StringIterator(private val s: String) extends AbstractIterator[Char] {
+    private var pos = 0
     def hasNext: Boolean = pos < s.length
     def next(): Char = {
       if (pos >= s.length) Iterator.empty.next()
@@ -42,8 +42,8 @@ object StringOps {
     }
   }
 
-  private class ReverseIterator(private[this] val s: String) extends AbstractIterator[Char] {
-    private[this] var pos = s.length-1
+  private class ReverseIterator(private val s: String) extends AbstractIterator[Char] {
+    private var pos = s.length-1
     def hasNext: Boolean = pos >= 0
     def next(): Char = {
       if (pos < 0) Iterator.empty.next()
@@ -54,7 +54,7 @@ object StringOps {
   }
 
   private class GroupedIterator(s: String, groupSize: Int) extends AbstractIterator[String] {
-    private[this] var pos = 0
+    private var pos = 0
     def hasNext: Boolean = pos < s.length
     def next(): String = {
       if(pos >= s.length) Iterator.empty.next()
@@ -209,7 +209,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     val dst = new Array[AnyRef](len)
     var i = 0
     while (i < len) {
-      dst(i) = f(s charAt i).asInstanceOf[AnyRef]
+      dst(i) = f(s.charAt(i)).asInstanceOf[AnyRef]
       i += 1
     }
     new ArraySeq.ofRef(dst).asInstanceOf[immutable.IndexedSeq[B]]
@@ -226,7 +226,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     val dst = new Array[Char](len)
     var i = 0
     while (i < len) {
-      dst(i) = f(s charAt i)
+      dst(i) = f(s.charAt(i))
       i += 1
     }
     new String(dst)
@@ -262,7 +262,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     val sb = new JStringBuilder
     var i = 0
     while (i < len) {
-      sb append f(s.charAt(i))
+      sb.append(f(s.charAt(i)))
       i += 1
     }
     sb.toString
@@ -696,8 +696,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     def hasNext: Boolean = !done
     def next(): String = if (done) Iterator.empty.next() else advance()
 
-    private[this] val len = s.length
-    private[this] var index = 0
+    private val len = s.length
+    private var index = 0
     @inline private def done = index >= len
     private def advance(): String = {
       val start = index
@@ -731,15 +731,15 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   /** Returns this string with the given `prefix` stripped. If this string does not
     *  start with `prefix`, it is returned unchanged.
     */
-  def stripPrefix(prefix: String) =
-    if (s startsWith prefix) s.substring(prefix.length)
+  def stripPrefix(prefix: String): String =
+    if (s.startsWith(prefix)) s.substring(prefix.length)
     else s
 
   /** Returns this string with the given `suffix` stripped. If this string does not
     *  end with `suffix`, it is returned unchanged.
     */
-  def stripSuffix(suffix: String) =
-    if (s endsWith suffix) s.substring(0, s.length - suffix.length)
+  def stripSuffix(suffix: String): String =
+    if (s.endsWith(suffix)) s.substring(0, s.length - suffix.length)
     else s
 
   /** Replace all literal occurrences of `literal` with the literal string `replacement`.
@@ -778,7 +778,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     */
   def stripMargin: String = stripMargin('|')
 
-  private[this] def escape(ch: Char): String = if (
+  private def escape(ch: Char): String = if (
     (ch >= 'a') && (ch <= 'z') ||
       (ch >= 'A') && (ch <= 'Z') ||
       (ch >= '0' && ch <= '9')) ch.toString
@@ -861,7 +861,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     *  @param groupNames The names of the groups in the pattern, in the order they appear.
     */
   @deprecated("use inline group names like (?<year>X) instead", "2.13.7")
-  def r(groupNames: String*): Regex = new Regex(s, groupNames: _*)
+  def r(groupNames: String*): Regex = new Regex(s, groupNames*)
 
   /**
    * @throws java.lang.IllegalArgumentException  If the string does not contain a parsable `Boolean`.
@@ -957,7 +957,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    */
   def toDoubleOption: Option[Double]   = StringParsers.parseDouble(s)
 
-  private[this] def toBooleanImpl(s: String): Boolean =
+  private def toBooleanImpl(s: String): Boolean =
     if (s == null) throw new IllegalArgumentException("For input string: \"null\"")
     else if (s.equalsIgnoreCase("true")) true
     else if (s.equalsIgnoreCase("false")) false
@@ -967,7 +967,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     if (tag == ClassTag.Char) s.toCharArray.asInstanceOf[Array[B]]
     else new WrappedString(s).toArray[B]
 
-  private[this] def unwrapArg(arg: Any): AnyRef = arg match {
+  private def unwrapArg(arg: Any): AnyRef = arg match {
     case x: ScalaNumber => x.underlying()
     case x              => x.asInstanceOf[AnyRef]
   }
@@ -988,7 +988,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @throws java.util.IllegalFormatException if the format contains syntax or conversion errors
    */
   def format(args: Any*): String =
-    java.lang.String.format(s, args.map(unwrapArg): _*)
+    java.lang.String.format(s, args.map(unwrapArg)*)
 
   /** Like `format(args*)` but takes an initial `Locale` parameter
    *  which influences formatting as in `java.lang.String`'s format.
@@ -1004,7 +1004,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @throws java.util.IllegalFormatException if the format contains syntax or conversion errors
    */
   def formatLocal(l: java.util.Locale, args: Any*): String =
-    java.lang.String.format(l, s, args.map(unwrapArg): _*)
+    java.lang.String.format(l, s, args.map(unwrapArg)*)
 
   def compare(that: String): Int = s.compareTo(that)
 
@@ -1158,16 +1158,16 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   /** Stepper can be used with Java 8 Streams. This method is equivalent to a call to
     * [[charStepper]]. See also [[codePointStepper]].
     */
-  @inline def stepper: IntStepper with EfficientSplit = charStepper
+  @inline def stepper: IntStepper & EfficientSplit = charStepper
 
   /** Steps over characters in this string. Values are packed in `Int` for efficiency
     * and compatibility with Java 8 Streams which have an efficient specialization for `Int`.
     */
-  @inline def charStepper: IntStepper with EfficientSplit = new CharStringStepper(s, 0, s.length)
+  @inline def charStepper: IntStepper & EfficientSplit = new CharStringStepper(s, 0, s.length)
 
   /** Steps over code points in this string.
     */
-  @inline def codePointStepper: IntStepper with EfficientSplit = new CodePointStringStepper(s, 0, s.length)
+  @inline def codePointStepper: IntStepper & EfficientSplit = new CodePointStringStepper(s, 0, s.length)
 
   /** Tests whether the string is not empty. */
   @inline def nonEmpty: Boolean = !s.isEmpty
@@ -1251,7 +1251,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   def inits: Iterator[String] = iterateUntilEmpty(_.init)
 
   // A helper for tails and inits.
-  private[this] def iterateUntilEmpty(f: String => String): Iterator[String]^{f} =
+  private def iterateUntilEmpty(f: String => String): Iterator[String]^{f} =
     Iterator.iterate(s)(f).takeWhile(x => !x.isEmpty) ++ Iterator.single("")
 
   /** Selects all chars of this string which satisfy a predicate. */
@@ -1531,7 +1531,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     *              sorted according to the ordering `ord`.
     *  @note       $unicodeunaware
     */
-  def sorted[B >: Char](implicit ord: Ordering[B]): String = new WrappedString(s).sorted(ord).unwrap
+  def sorted[B >: Char](implicit ord: Ordering[B]): String = new WrappedString(s).sorted(using ord).unwrap
 
   /** Sorts this string according to a comparison function.
     *
@@ -1564,7 +1564,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     *           `ord.lt(f(x), f(y))`.
     *  @note    $unicodeunaware
     */
-  def sortBy[B](f: Char => B)(implicit ord: Ordering[B]): String = new WrappedString(s).sortBy(f)(ord).unwrap
+  def sortBy[B](f: Char => B)(implicit ord: Ordering[B]): String = new WrappedString(s).sortBy(f)(using ord).unwrap
 
   /** Partitions this string into a map of strings according to some discriminator function.
     *
@@ -1651,3 +1651,6 @@ final case class StringView(s: String) extends AbstractIndexedSeqView[Char] {
   def apply(n: Int) = s.charAt(n)
   override def toString: String = s"StringView($s)"
 }
+
+object StringView extends scala.runtime.AbstractFunction1[String, StringView]:
+  override def toString: String = "StringView"

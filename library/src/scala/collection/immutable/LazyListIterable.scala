@@ -25,6 +25,7 @@ import scala.collection.generic.SerializeEnd
 import scala.collection.mutable.{Builder, ReusableBuilder, StringBuilder}
 import scala.language.implicitConversions
 import scala.runtime.Statics
+import caps.unsafe.untrackedCaptures
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -285,7 +286,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
   // after initialization (`_head ne Uninitialized`)
   //   - `null` if this is an empty lazy list
   //   - `head: A` otherwise (can be `null`, `_tail == null` is used to test emptiness)
-  @volatile private[this] var _head: Any /* Uninitialized | A */ =
+  @volatile private var _head: Any /* Uninitialized | A */ =
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
@@ -294,11 +295,11 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyListIterable[A]` otherwise
-  private[this] var _tail: AnyRef^{this} /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] */ =
+  private var _tail: AnyRef^{this} | Null /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] | Null */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
-  private def rawTail: AnyRef^{this} = _tail
+  private def rawTail: AnyRef^{this} | Null = _tail
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
@@ -310,7 +311,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
         throw new RuntimeException(
           "LazyListIterable evaluation depends on its own result (self-reference); see docs for more info")
 
-      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^]
+      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^{this}]
       _tail = MidEvaluation
       val l =
         // `fun` returns a LazyListIterable that represents the state (head/tail) of `this`. We call `l.evaluated` to ensure
@@ -378,7 +379,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     skipped.head
   }
 
-  @inline private[this] def knownIsEmpty: Boolean = isEvaluated && isEmpty
+  @inline private def knownIsEmpty: Boolean = isEvaluated && isEmpty
   @inline private def knownNonEmpty: Boolean = isEvaluated && !isEmpty
 
   /** Evaluates all undefined elements of the lazy list.
@@ -459,10 +460,10 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     else tail.foldLeft(op(z, head))(op)
 
   // LazyListIterable.Empty doesn't use the SerializationProxy
-  protected[this] def writeReplace(): AnyRef^{this} =
+  protected def writeReplace(): AnyRef^{this} =
     if (knownNonEmpty) new SerializationProxy[A](this) else this
 
-  override protected[this] def className = "LazyListIterable"
+  override protected def className = "LazyListIterable"
 
   /** The lazy list resulting from the concatenation of this lazy list with the argument lazy list.
     *
@@ -552,7 +553,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     */
   override def partitionMap[A1, A2](f: A => Either[A1, A2]): (LazyListIterable[A1]^{this, f}, LazyListIterable[A2]^{this, f}) = {
     val p: (LazyListIterable[Either[A1, A2]]^{this, f}, LazyListIterable[Either[A1, A2]]^{this, f}) = map(f).partition(_.isLeft)
-    (p._1.map(_.asInstanceOf[Left[A1, _]].value), p._2.map(_.asInstanceOf[Right[_, A2]].value))
+    (p._1.map(_.asInstanceOf[Left[A1, ?]].value), p._2.map(_.asInstanceOf[Right[?, A2]].value))
   }
 
   /** @inheritdoc
@@ -775,7 +776,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     }
   }
 
-  private def eagerHeadDropRightImpl(scout: LazyListIterable[_]^): LazyListIterable[A]^{this, scout} =
+  private def eagerHeadDropRightImpl(scout: LazyListIterable[?]^): LazyListIterable[A]^{this, scout} =
     if (scout.isEmpty) Empty
     else eagerCons(head, newLL(tail.eagerHeadDropRightImpl(scout.tail)))
 
@@ -953,7 +954,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     sb
   }
 
-  private[this] def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
+  private def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
     b.append(start)
     if (!isEvaluated) b.append("<not computed>")
     else if (!isEmpty) {
@@ -1134,7 +1135,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
     var restRef: LazyListIterable[A]^{ll} = ll                          // val restRef = new ObjectRef(ll)
     newLL {
-      var it: Iterator[B]^{f} = null
+      var it: Iterator[B]^{f} | Null = null
       var itHasNext = false
       var rest: LazyListIterable[A]^{ll} = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
@@ -1146,10 +1147,10 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         }
       }
       if (itHasNext) {
-        val head = it.next()
+        val head = it.nn.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        eagerCons(head, newLL(eagerHeadPrependIterator(it)(flatMapImpl(rest, f))))
+        eagerCons(head, newLL(eagerHeadPrependIterator(it.nn)(flatMapImpl(rest, f))))
       } else Empty
     }
   }
@@ -1263,13 +1264,26 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     if (it.hasNext) eagerCons(it.next(), newLL(eagerHeadFromIterator(it)))
     else Empty
 
+  // TODO This should be (xss: (collection.Iterable[A]^)*)
   override def concat[A](xss: collection.Iterable[A]*): LazyListIterable[A] =
     if (xss.knownSize == 0) empty
     else newLL(eagerHeadConcatIterators(xss.iterator))
 
-  private def eagerHeadConcatIterators[A](it: Iterator[collection.Iterable[A]^]^): LazyListIterable[A]^{it} =
-    if (!it.hasNext) Empty
-    else eagerHeadPrependIterator(it.next().iterator)(eagerHeadConcatIterators(it))
+  /* TODO This should be:
+  private def eagerHeadConcatIterators[A](it: Iterator[collection.Iterable[A]^]^): LazyListIterable[A]^{it*} =
+    if !it.hasNext then Empty
+    else
+      eagerHeadPrependIterator
+          (caps.unsafe.unsafeDiscardUses(it.next()).iterator)
+          (eagerHeadConcatIterators(it))
+  */
+
+  private def eagerHeadConcatIterators[A](it: Iterator[collection.Iterable[A]]^): LazyListIterable[A]^{it} =
+    if !it.hasNext then Empty
+    else
+      eagerHeadPrependIterator
+          (it.next().iterator)
+          (eagerHeadConcatIterators(it))
 
   /** An infinite LazyListIterable that repeatedly applies a given function to a start value.
     *
@@ -1339,7 +1353,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     */
   def newBuilder[A]: Builder[A, LazyListIterable[A]] = (new collection.mutable.ListBuffer[A]).mapResult(from)
 
-  private class LazyIterator[+A](private[this] var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
+  private class LazyIterator[+A](private var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
     override def hasNext: Boolean = !lazyList.isEmpty
 
     override def next(): A =
@@ -1353,7 +1367,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private class SlidingIterator[A](l: LazyListIterable[A]^, size: Int, step: Int)
     extends AbstractIterator[LazyListIterable[A]^{l}] {
-    private[this] var lazyList: LazyListIterable[A]^{l} = l
+    private var lazyList: LazyListIterable[A]^{l} = l
     private val minLen = size - step max 0
     private var first = true
 
@@ -1374,7 +1388,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private final class WithFilter[A] private[LazyListIterable](lazyList: LazyListIterable[A]^, p: A => Boolean)
     extends collection.WithFilter[A, LazyListIterable] {
-    private[this] val filtered = lazyList.filter(p)
+    @untrackedCaptures private val filtered = lazyList.filter(p)
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
@@ -1447,7 +1461,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   final class SerializationProxy[A](of: LazyListIterable[A]^) extends Serializable {
     @transient protected var coll: LazyListIterable[A]^{this} = of
 
-    private[this] def writeObject(out: ObjectOutputStream): Unit = {
+    private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
       var these: LazyListIterable[A]^{this} = coll
       while (these.knownNonEmpty) {
@@ -1458,7 +1472,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
       out.writeObject(these)
     }
 
-    private[this] def readObject(in: ObjectInputStream): Unit = {
+    private def readObject(in: ObjectInputStream): Unit = {
       in.defaultReadObject()
       val init = new mutable.ListBuffer[A]
       var initRead = false
@@ -1473,6 +1487,6 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
       coll = newLL(eagerHeadPrependIterator(it)(tail))
     }
 
-    private[this] def readResolve(): Any = coll
+    private def readResolve(): Any = coll
   }
 }

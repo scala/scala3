@@ -67,26 +67,26 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   /** Creates a new `AnyRefMap` with specified default values and initial buffer size. */
   def this(defaultEntry: K -> V, initialBufferSize: Int) = this(defaultEntry, initialBufferSize, initBlank = true)
 
-  private[this] var mask = 0
-  private[this] var _size = 0
-  private[this] var _vacant = 0
-  private[this] var _hashes: Array[Int] = null
-  private[this] var _keys: Array[AnyRef] = null
-  private[this] var _values: Array[AnyRef] = null
+  private var mask = 0
+  private var _size = 0
+  private var _vacant = 0
+  private var _hashes: Array[Int] = compiletime.uninitialized
+  private var _keys: Array[AnyRef | Null] = compiletime.uninitialized
+  private var _values: Array[AnyRef | Null] = compiletime.uninitialized
 
   if (initBlank) defaultInitialize(initialBufferSize)
 
-  private[this] def defaultInitialize(n: Int): Unit = {
+  private def defaultInitialize(n: Int): Unit = {
     mask =
       if (n<0) 0x7
       else (((1 << (32 - java.lang.Integer.numberOfLeadingZeros(n-1))) - 1) & 0x3FFFFFFF) | 0x7
     _hashes = new Array[Int](mask+1)
-    _keys = new Array[AnyRef](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _keys = new Array[AnyRef | Null](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
   }
 
   private[collection] def initializeTo(
-    m: Int, sz: Int, vc: Int, hz: Array[Int], kz: Array[AnyRef], vz: Array[AnyRef]
+    m: Int, sz: Int, vc: Int, hz: Array[Int], kz: Array[AnyRef | Null], vz: Array[AnyRef | Null]
   ): Unit = {
     mask = m; _size = sz; _vacant = vc; _hashes = hz; _keys = kz; _values = vz
   }
@@ -128,7 +128,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     val hashes = _hashes
     val keys = _keys
     while ({ g = hashes(e); g != 0}) {
-      if (g == h && { val q = keys(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
+      if (g == h && { val q = keys(e); (q eq k) || ((q ne null) && (q.equals(k))) }) return e
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
     }
@@ -141,7 +141,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     var g = 0
     var o = -1
     while ({ g = _hashes(e); g != 0}) {
-      if (g == h && { val q = _keys(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
+      if (g == h && { val q = _keys(e); (q eq k) || ((q ne null) && (q.equals(k))) }) return e
       else if (o == -1 && g+g == 0) o = e
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
@@ -200,9 +200,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  may not exist, if the default null/zero is acceptable.  For key/value
    *  pairs that do exist, `apply` (i.e. `map(key)`) is equally fast.
    */
-  def getOrNull(key: K): V = {
+  def getOrNull(key: K): V | Null = {
     val i = seekEntry(hashOf(key), key)
-    (if (i < 0) null else _values(i)).asInstanceOf[V]
+    if (i < 0) null else _values(i).asInstanceOf[V]
   }
 
   /** Retrieves the value associated with a key.
@@ -226,8 +226,8 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     val ov = _values
     mask = newMask
     _hashes = new Array[Int](mask+1)
-    _keys = new Array[AnyRef](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _keys = new Array[AnyRef | Null](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
     _vacant = 0
     var i = 0
     while (i < oh.length) {
@@ -334,13 +334,13 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   }
 
   private abstract class AnyRefMapIterator[A] extends AbstractIterator[A] {
-    private[this] val hz = _hashes
-    private[this] val kz = _keys
-    private[this] val vz = _values
+    private val hz = _hashes
+    private val kz = _keys
+    private val vz = _values
 
-    private[this] var index = 0
+    private var index = 0
 
-    def hasNext: Boolean = index<hz.length && {
+    def hasNext: Boolean = index < hz.length && {
       var h = hz(index)
       while (h+h == 0) {
         index += 1
@@ -394,9 +394,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   override def clone(): AnyRefMap[K, V] = {
     val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
     val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = java.util.Arrays.copyOf(_values,  _values.length)
+    val vz = java.util.Arrays.copyOf(_values, _values.length)
     val arm = new AnyRefMap[K, V](defaultEntry, 1, initBlank = false)
-    arm.initializeTo(mask, _size, _vacant, hz, kz,  vz)
+    arm.initializeTo(mask, _size, _vacant, hz, kz, vz)
     arm
   }
 
@@ -422,7 +422,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   override def updated[V1 >: V](key: K, value: V1): AnyRefMap[K, V1] =
     clone().asInstanceOf[AnyRefMap[K, V1]].addOne(key, value)
 
-  private[this] def foreachElement[A,B](elems: Array[AnyRef], f: A => B): Unit = {
+  private def foreachElement[A,B](elems: Array[AnyRef | Null], f: A => B): Unit = {
     var i,j = 0
     while (i < _hashes.length & j < _size) {
       val h = _hashes(i)
@@ -445,10 +445,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  collection immediately.
    */
   def mapValuesNow[V1](f: V => V1): AnyRefMap[K, V1] = {
-    val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault,  1,  initBlank = false)
+    val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault, 1, initBlank = false)
     val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
     val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = new Array[AnyRef](_values.length)
+    val vz = new Array[AnyRef | Null](_values.length)
     var i,j = 0
     while (i < _hashes.length & j < _size) {
       val h = _hashes(i)
@@ -520,10 +520,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     _vacant = 0
   }
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(AnyRefMap.toFactory[K, V](AnyRefMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(AnyRefMap.toFactory[K, V](AnyRefMap), this)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "AnyRefMap"
+  override protected def stringPrefix = "AnyRefMap"
 }
 
 @deprecated("Use `scala.collection.mutable.HashMap` instead for better performance.", since = "2.13.16")
@@ -614,17 +614,18 @@ object AnyRefMap {
   implicit def toFactory[K <: AnyRef, V](dummy: AnyRefMap.type): Factory[(K, V), AnyRefMap[K, V]] = ToFactory.asInstanceOf[Factory[(K, V), AnyRefMap[K, V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
+  private object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
     def fromSpecific(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from[AnyRef, AnyRef](it)
     def newBuilder: Builder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
   implicit def toBuildFrom[K <: AnyRef, V](factory: AnyRefMap.type): BuildFrom[Any, (K, V), AnyRefMap[K, V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (K, V), AnyRefMap[K, V]]]
-  private[this] object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
+  private object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
     def fromSpecific(from: Any)(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from(it)
     def newBuilder(from: Any): ReusableBuilder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
   implicit def iterableFactory[K <: AnyRef, V]: Factory[(K, V), AnyRefMap[K, V]] = toFactory[K, V](this)
-  implicit def buildFromAnyRefMap[K <: AnyRef, V]: BuildFrom[AnyRefMap[_, _], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
+  implicit def buildFromAnyRefMap[K <: AnyRef, V]: BuildFrom[AnyRefMap[?, ?], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
 }
+

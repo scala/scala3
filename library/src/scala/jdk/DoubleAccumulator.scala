@@ -33,9 +33,9 @@ final class DoubleAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-1).toLong }
 
-  override protected[this] def className: String = "DoubleAccumulator"
+  override protected def className: String = "DoubleAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[Double, S]): S with EfficientSplit = {
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Double, S]): S & EfficientSplit = {
     val st = new DoubleAccumulatorStepper(this)
     val r =
       if (shape.shape == StepperShape.DoubleShape) st
@@ -43,7 +43,7 @@ final class DoubleAccumulator
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParDoubleStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   private def expand(): Unit = {
@@ -338,7 +338,7 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
   override def newBuilder: DoubleAccumulator = new DoubleAccumulator
 
   class SerializationProxy[A](@transient private val acc: DoubleAccumulator) extends Serializable {
-    @transient private var result: DoubleAccumulator = _
+    @transient private var result: DoubleAccumulator = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -406,7 +406,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
-  def trySplit(): DoubleStepper =
+  def trySplit(): DoubleStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1
@@ -444,7 +444,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       }
 
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: jl.Double]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Double]): Boolean = (c: AnyRef) match {
       case ic: DoubleConsumer => tryAdvance(ic)
       case _ =>
         if (N <= 0) false
@@ -471,7 +471,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       }
 
     // Overridden for efficiency
-    override def forEachRemaining(c: Consumer[_ >: jl.Double]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Double]): Unit = (c: AnyRef) match {
       case ic: DoubleConsumer => forEachRemaining(ic)
       case _ =>
         while (N > 0) {

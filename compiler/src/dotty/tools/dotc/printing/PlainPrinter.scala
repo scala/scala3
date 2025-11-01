@@ -11,7 +11,7 @@ import ast.Trees.*
 import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
-import util.SourcePosition
+import util.{Chars, SourcePosition}
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
@@ -491,8 +491,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
       def classified =
         if c.hiddenSet.classifier == defn.AnyClass then ""
         else s" classified as ${c.hiddenSet.classifier.name.show}"
-      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
-      else "cap"
+      def prefixTxt: Text = c.prefix match
+        case NoPrefix => ""
+        case _: ThisType if !ccVerbose => ""
+        case pre: TermRef if !ccVerbose && pre.name == nme.SKOLEM => ""
+        case pre: SingletonType => toTextRef(pre) ~ "."
+        case pre => toText(pre) ~ "."
+      def core: Text =
+        if ccVerbose then s"<fresh$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
+        else "cap"
+      prefixTxt ~ core
     case tp: TypeProxy =>
       homogenize(tp) match
         case tp: SingletonType => toTextRef(tp)
@@ -696,22 +704,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
-  private def escapedChar(ch: Char): String = (ch: @switch) match {
-    case '\b' => "\\b"
-    case '\t' => "\\t"
-    case '\n' => "\\n"
-    case '\f' => "\\f"
-    case '\r' => "\\r"
-    case '"' => "\\\""
-    case '\'' => "\\\'"
-    case '\\' => "\\\\"
-    case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
-  }
-
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
+    case StringTag => stringText(Chars.escapedString(const.value.toString, quoted = true))
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
-    case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
+    case CharTag => literalText(Chars.escapedChar(const.charValue))
     case LongTag => literalText(const.longValue.toString + "L")
     case DoubleTag => literalText(const.doubleValue.toString + "d")
     case FloatTag => literalText(const.floatValue.toString + "f")
@@ -733,7 +729,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ~ (if param.isTypeParam then "" else ": ")
     ~ toText(param.paramInfo)
 
-  protected def escapedString(str: String): String = str flatMap escapedChar
+  protected final def escapedString(str: String): String = Chars.escapedString(str, quoted = false)
 
   def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
 

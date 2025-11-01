@@ -1,6 +1,5 @@
-//> using options -Xfatal-warnings
+//> using options -Xfatal-warnings -preview
 
-import language.experimental.into
 import Conversion.into
 
 class Text(val str: String)

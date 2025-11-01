@@ -25,13 +25,15 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
+  val silenceOptions = Array(
+    "-Wconf:id=E222:s", // name=EncodedPackageName don't warn about file names with hyphens
+  )
+
   val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
   val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
-    Properties.jlineTerminal,
-    Properties.jlineReader,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
     Properties.tastyCore,
@@ -48,8 +50,17 @@ object TestConfiguration {
     Properties.scalaJSJavalib,
     Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
-    Properties.dottyLibraryJS
   ))
+
+  lazy val replClassPath =
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(
+      Properties.dottyRepl,
+      Properties.jlineTerminal,
+      Properties.jlineReader,
+  ))
+
+  lazy val replWithStagingClasspath = 
+    replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
@@ -60,7 +71,7 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions) `and` "-Yno-stdlib-patches"
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
@@ -68,6 +79,8 @@ object TestConfiguration {
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val withReplOptions =
+    defaultOptions.withRunClasspath(replClassPath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =

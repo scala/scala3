@@ -29,8 +29,7 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](ArrayBuffer)
 
 transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   extends scala.collection.IndexedSeqOps[A, CC, C]
-    with SeqOps[A, CC, C]
-    with caps.Pure {
+    with SeqOps[A, CC, C] {
 
   /** Modifies this $coll by applying a function to all elements of this $coll.
     *
@@ -75,13 +74,13 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
     *
     * @see [[scala.collection.SeqOps.sortWith]]
     */
-  def sortInPlaceWith(lt: (A, A) => Boolean): this.type = sortInPlace()(Ordering.fromLessThan(lt))
+  def sortInPlaceWith(lt: (A, A) => Boolean): this.type = sortInPlace()(using Ordering.fromLessThan(lt))
 
   /** Sorts this $coll in place according to the Ordering which results from transforming
     * an implicitly given Ordering with a transformation function.
     *
     * @see [[scala.collection.SeqOps.sortBy]]
     */
-  def sortInPlaceBy[B](f: A => B)(implicit ord: Ordering[B]): this.type = sortInPlace()(ord on f)
+  def sortInPlaceBy[B](f: A => B)(implicit ord: Ordering[B]): this.type = sortInPlace()(using ord.on(f))
 
 }

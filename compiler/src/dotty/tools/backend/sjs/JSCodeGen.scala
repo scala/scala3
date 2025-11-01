@@ -13,7 +13,7 @@ import Contexts.*
 import Decorators.*
 import Flags.*
 import Names.*
-import NameKinds.DefaultGetterName
+import NameKinds.{AdaptedClosureName, DefaultGetterName, UniqueName}
 import Types.*
 import Symbols.*
 import Phases.*
@@ -70,11 +70,14 @@ class JSCodeGen()(using genCtx: Context) {
 
   // Some state --------------------------------------------------------------
 
+  private val anonFunctionsAccessedFromAnonFunClasses = mutable.Set.empty[Symbol]
   private val lazilyGeneratedAnonClasses = new MutableSymbolMap[TypeDef]
   private val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
   private val generatedStaticForwarderClasses = mutable.ListBuffer.empty[(Symbol, js.ClassDef)]
 
   val currentClassSym = new ScopedVar[Symbol]
+  private val delambdafyTargetDefDefs = new ScopedVar[MutableSymbolMap[DefDef]]
+  private val methodsAllowingJSAwait = new ScopedVar[mutable.Set[Symbol]]
   private val currentMethodSym = new ScopedVar[Symbol]
   private val localNames = new ScopedVar[LocalNameGenerator]
   private val thisLocalVarName = new ScopedVar[Option[LocalName]]
@@ -88,6 +91,8 @@ class JSCodeGen()(using genCtx: Context) {
   private def resetAllScopedVars[T](body: => T): T = {
     withScopedVars(
         currentClassSym := null,
+        delambdafyTargetDefDefs := null,
+        methodsAllowingJSAwait := null,
         currentMethodSym := null,
         localNames := null,
         thisLocalVarName := null,
@@ -98,10 +103,12 @@ class JSCodeGen()(using genCtx: Context) {
     }
   }
 
-  private def withPerMethodBodyState[A](methodSym: Symbol)(body: => A): A = {
+  private def withPerMethodBodyState[A](methodSym: Symbol,
+      initThisLocalVarName: Option[LocalName] = None)(
+      body: => A): A = {
     withScopedVars(
         currentMethodSym := methodSym,
-        thisLocalVarName := None,
+        thisLocalVarName := initThisLocalVarName,
         isModuleInitialized := new ScopedVar.VarBox(false),
         undefinedDefaultParams := mutable.Set.empty,
     ) {
@@ -171,6 +178,7 @@ class JSCodeGen()(using genCtx: Context) {
     try {
       genCompilationUnit(ctx.compilationUnit)
     } finally {
+      anonFunctionsAccessedFromAnonFunClasses.clear()
       generatedClasses.clear()
       generatedStaticForwarderClasses.clear()
     }
@@ -223,6 +231,24 @@ class JSCodeGen()(using genCtx: Context) {
       }
     }
 
+    /* Record all the anonfun functions that are called from anon classes.
+     * These are the bodies of SAM-expanded classes. They must not be treated
+     * as delambdafy targets
+     */
+    for typeDef <- allTypeDefs if typeDef.symbol.isAnonymousClass do
+      new TreeTraverser {
+        def traverse(tree: Tree)(using Context): Unit =
+          traverseChildren(tree)
+          tree match
+            case tree @ Apply(fun, _) =>
+              val sym = fun.symbol
+              if isDelambdafyTargetCandidate(sym) && sym.owner != typeDef.symbol then
+                anonFunctionsAccessedFromAnonFunClasses += sym
+            case _ =>
+              ()
+      }.traverse(typeDef)
+    end for
+
     val (anonJSClassTypeDefs, otherTypeDefs) =
       allTypeDefs.partition(td => td.symbol.isAnonymousClass && td.symbol.isJSType)
 
@@ -241,7 +267,9 @@ class JSCodeGen()(using genCtx: Context) {
 
       if (!isPrimitive) {
         withScopedVars(
-            currentClassSym := sym
+            currentClassSym := sym,
+            delambdafyTargetDefDefs := MutableSymbolMap(),
+            methodsAllowingJSAwait := mutable.Set.empty,
         ) {
           val tree = if (sym.isJSType) {
             if (!sym.is(Trait) && sym.isNonNativeJSClass)
@@ -315,6 +343,52 @@ class JSCodeGen()(using genCtx: Context) {
     dir.fileNamed(filename + suffix)
   }
 
+  private def isDelambdafyTargetCandidate(sym: Symbol): Boolean =
+    def isAdaptedAnonFunName(name: Name): Boolean = name match
+      case UniqueName(underlying, _) => isAdaptedAnonFunName(underlying)
+      case _                         => name.is(AdaptedClosureName)
+
+    sym.isAnonymousFunction || isAdaptedAnonFunName(sym.name)
+  end isDelambdafyTargetCandidate
+
+  private def isDelambdafyTarget(sym: Symbol): Boolean =
+    isDelambdafyTargetCandidate(sym) && !anonFunctionsAccessedFromAnonFunClasses.contains(sym)
+
+  private def collectValOrDefDefs(impl: Template): List[ValOrDefDef] = {
+    val b = List.newBuilder[ValOrDefDef]
+
+    for (stat <- (impl.constr :: impl.body)) {
+      stat match {
+        case stat: ValDef =>
+          b += stat
+
+        case stat: DefDef =>
+          val sym = stat.symbol
+          if isDelambdafyTarget(sym) then
+            delambdafyTargetDefDefs(sym) = stat
+          else
+            b += stat
+
+        case EmptyTree =>
+          ()
+
+        case _ =>
+          throw new FatalError(i"Unexpected tree in template: $stat at ${stat.sourcePos}")
+      }
+    }
+
+    b.result()
+  }
+
+  private def consumeDelambdafyTarget(sym: Symbol): DefDef = {
+    delambdafyTargetDefDefs.remove(sym) match {
+      case null =>
+        throw new FatalError(i"Cannot resolve delambdafy target $sym at ${sym.sourcePos}")
+      case defDef =>
+        defDef
+    }
+  }
+
   // Generate a class --------------------------------------------------------
 
   /** Gen the IR ClassDef for a Scala class definition (maybe a module class).
@@ -365,11 +439,8 @@ class JSCodeGen()(using genCtx: Context) {
     val methodsBuilder = List.newBuilder[js.MethodDef]
     val jsNativeMembersBuilder = List.newBuilder[js.JSNativeMemberDef]
 
-    val tpl = td.rhs.asInstanceOf[Template]
-    for (tree <- tpl.constr :: tpl.body) {
+    for (tree <- collectValOrDefDefs(td.rhs.asInstanceOf[Template])) {
       tree match {
-        case EmptyTree => ()
-
         case vd: ValDef =>
           // fields are added via genClassFields(), but we need to generate the JS native members
           val sym = vd.symbol
@@ -383,9 +454,6 @@ class JSCodeGen()(using genCtx: Context) {
               jsNativeMembersBuilder += genJSNativeMemberDef(dd)
           else
             methodsBuilder ++= genMethod(dd)
-
-        case _ =>
-          throw new FatalError("Illegal tree in body of genScalaClass(): " + tree)
       }
     }
 
@@ -526,11 +594,8 @@ class JSCodeGen()(using genCtx: Context) {
     val generatedMethods = new mutable.ListBuffer[js.MethodDef]
     val dispatchMethodNames = new mutable.ListBuffer[JSName]
 
-    val tpl = td.rhs.asInstanceOf[Template]
-    for (tree <- tpl.constr :: tpl.body) {
+    for (tree <- collectValOrDefDefs(td.rhs.asInstanceOf[Template])) {
       tree match {
-        case EmptyTree => ()
-
         case _: ValDef =>
           () // fields are added via genClassFields()
 
@@ -555,9 +620,6 @@ class JSCodeGen()(using genCtx: Context) {
               dispatchMethodNames += sym.jsName
             }
           }
-
-        case _ =>
-          throw new FatalError("Illegal tree in gen of genNonNativeJSClass(): " + tree)
       }
     }
 
@@ -680,12 +742,11 @@ class JSCodeGen()(using genCtx: Context) {
 
     val generatedMethods = new mutable.ListBuffer[js.MethodDef]
 
-    val tpl = td.rhs.asInstanceOf[Template]
-    for (tree <- tpl.constr :: tpl.body) {
+    for (tree <- collectValOrDefDefs(td.rhs.asInstanceOf[Template])) {
       tree match {
-        case EmptyTree  => ()
-        case dd: DefDef => generatedMethods ++= genMethod(dd)
-        case _ =>
+        case dd: DefDef =>
+          generatedMethods ++= genMethod(dd)
+        case tree: ValDef =>
           throw new FatalError(
             i"""Illegal tree in gen of genInterface(): $tree
                |class = $td
@@ -1494,7 +1555,9 @@ class JSCodeGen()(using genCtx: Context) {
    *
    *  Other (normal) methods are emitted with `genMethodBody()`.
    */
-  private def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
+  private def genMethodWithCurrentLocalNameScope(dd: DefDef,
+      initThisLocalVarName: Option[LocalName] = None): Option[js.MethodDef] = {
+
     implicit val pos = dd.span
     val sym = dd.symbol
     val vparamss = dd.termParamss
@@ -1547,7 +1610,7 @@ class JSCodeGen()(using genCtx: Context) {
       }
     }
 
-    withPerMethodBodyState(sym) {
+    withPerMethodBodyState(sym, initThisLocalVarName) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
       val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
@@ -2362,7 +2425,9 @@ class JSCodeGen()(using genCtx: Context) {
     val typeDef = consumeLazilyGeneratedAnonClass(sym)
     val originalClassDef = resetAllScopedVars {
       withScopedVars(
-          currentClassSym := sym
+          currentClassSym := sym,
+          delambdafyTargetDefDefs := MutableSymbolMap(),
+          methodsAllowingJSAwait := mutable.Set.empty,
       ) {
         genNonNativeJSClass(typeDef)
       }
@@ -3084,7 +3149,10 @@ class JSCodeGen()(using genCtx: Context) {
       case _                                           => false
     }
 
-    if (isMethodStaticInIR(sym)) {
+    if (isDelambdafyTarget(sym)) {
+      // Force inlining at compile-time
+      genApplyInline(consumeDelambdafyTarget(sym), receiver, args)
+    } else if (isMethodStaticInIR(sym)) {
       genApplyStatic(sym, genActualArgs(sym, args))
     } else if (sym.owner.isJSType) {
       if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
@@ -3096,6 +3164,48 @@ class JSCodeGen()(using genCtx: Context) {
     } else {
       genApplyMethodMaybeStatically(genExpr(receiver), sym, genActualArgs(sym, args))
     }
+  }
+
+  private def genApplyInline(targetDefDef: DefDef, receiver: Tree, args: List[Tree])(using Position): js.Tree = {
+    val target = targetDefDef.symbol
+    val isTargetStatic = isMethodStaticInIR(target)
+
+    // Gen the receiver and arguments
+    val genReceiver =
+      if isTargetStatic then None
+      else Some(genExpr(receiver))
+    val genArgs = args.map(genExpr(_))
+    val allActualArgs = genReceiver.toList ::: genArgs
+
+    // Generate the inlined method body
+    val initThisLocalVarName =
+      if isTargetStatic then None
+      else Some(freshLocalIdent("this").name)
+    val genMethodDef = genMethodWithCurrentLocalNameScope(targetDefDef, initThisLocalVarName).get
+
+    val js.MethodDef(methodFlags, _, _, methodParams, _, methodBody) = genMethodDef
+
+    /* Add the receiver in the param defs, if the generated method is not static.
+     * This happens when isTargetStatic is false *and* the method is not a
+     * non-exposed method of a JS class. Since isTargetStatic must be false in
+     * that situation, we know `genReceiver` and `initThisLocalVarName` are defined.
+     */
+    val allParamDefs =
+      if methodFlags.namespace.isStatic then
+        methodParams
+      else
+        val receiverParamDef = js.ParamDef(js.LocalIdent(initThisLocalVarName.get),
+            thisOriginalName, encodeClassType(target.owner), mutable = false)
+        receiverParamDef :: methodParams
+
+    /* Generate bindings for the params.
+     */
+    val paramVarDefs =
+      for (paramDef, actualArg) <- allParamDefs.zip(allActualArgs) yield
+        js.VarDef(paramDef.name, paramDef.originalName, paramDef.ptpe, paramDef.mutable, actualArg)
+
+    // Put everything together
+    js.Block(paramVarDefs, methodBody.get)
   }
 
   /** Gen JS code for a call to a JS method (of a subclass of `js.Any`).
@@ -3459,13 +3569,13 @@ class JSCodeGen()(using genCtx: Context) {
    *
    *  Input: a `Closure` tree of the form
    *  {{{
-   *  Closure(env, call, functionalInterface)
+   *  Closure(env, targetTree, functionalInterface)
    *  }}}
    *  representing the pseudo-syntax
    *  {{{
-   *  { (p1, ..., pm) => call(env1, ..., envn, p1, ..., pm) }: functionInterface
+   *  { (p1, ..., pm) => targetTree(env1, ..., envn, p1, ..., pm) }: functionInterface
    *  }}}
-   *  where `envi` are identifiers in the local scope. The qualifier of `call`
+   *  where `envi` are identifiers in the local scope. The qualifier of `targetTree`
    *  is also implicitly captured.
    *
    *  Output: a `js.Closure` tree of the form
@@ -3474,16 +3584,16 @@ class JSCodeGen()(using genCtx: Context) {
    *  }}}
    *  representing the pseudo-syntax
    *  {{{
-   *  lambda<formalCapture1 = actualCapture1, ..., formalCaptureN = actualCaptureN>(
-   *      formalParam1, ..., formalParamM) = body
+   *  arrow-lambda<_this = this, formalCapture1 = actualCapture1, ..., formalCaptureN = actualCaptureN>(
+   *      formalParam1: any, ..., formalParamM: any): any = {
+   *    val formalParam1Unboxed: T1 = formalParam1.asInstanceOf[T1];
+   *    ...
+   *    val formapParamNUnboxed: TN = formalParamM.asInstanceOf[TN];
+   *    // inlined body of `targetTree`, boxed
+   *  }
    *  }}}
-   *  where the `actualCaptures` and `body` are, in general, arbitrary
-   *  expressions. But in this case, `actualCaptures` will be identifiers from
-   *  `env`, and the `body` will be of the form
-   *  {{{
-   *  call(formalCapture1.ref, ..., formalCaptureN.ref,
-   *      formalParam1.ref, ...formalParamM.ref)
-   *  }}}
+   *  where the `actualCaptures` are, in general, arbitrary expressions.
+   *  But in this case, `actualCaptures` will be identifiers from `env`.
    *
    *  When the `js.Closure` node is evaluated, i.e., when the closure value is
    *  created, the expressions of the `actualCaptures` are evaluated, and the
@@ -3498,37 +3608,11 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genClosure(tree: Closure): js.Tree = {
     implicit val pos = tree.span
-    val Closure(env, call, functionalInterface) = tree
+    val Closure(env, targetTree, functionalInterface) = tree
 
     val envSize = env.size
 
-    val (fun, args) = call match {
-      // case Apply(fun, args) => (fun, args) // Conjectured not to happen
-      case t @ Select(_, _) => (t, Nil)
-      case t @ Ident(_) => (t, Nil)
-    }
-    val sym = fun.symbol
-    val isStaticCall = isMethodStaticInIR(sym)
-
-    val qualifier = qualifierOf(fun)
-    val allCaptureValues =
-      if (isStaticCall) env
-      else qualifier :: env
-
-    val formalAndActualCaptures = allCaptureValues.map { value =>
-      implicit val pos = value.span
-      val (formalIdent, originalName) = value match {
-        case Ident(name) => (freshLocalIdent(name.toTermName), OriginalName(name.toString))
-        case This(_)     => (freshLocalIdent("this"), thisOriginalName)
-        case _           => (freshLocalIdent(), NoOriginalName)
-      }
-      val formalCapture = js.ParamDef(formalIdent, originalName,
-          toIRType(value.tpe), mutable = false)
-      val actualCapture = genExpr(value)
-      (formalCapture, actualCapture)
-    }
-    val (formalCaptures, actualCaptures) = formalAndActualCaptures.unzip
-
+    // Extract information about the SAM type we are implementing
     val funInterfaceSym = functionalInterface.tpe.typeSymbol
     val hasRepeatedParam = {
       funInterfaceSym.exists && {
@@ -3540,70 +3624,114 @@ class JSCodeGen()(using genCtx: Context) {
     val isFunctionXXL =
       funInterfaceSym.name == tpnme.FunctionXXL && funInterfaceSym.owner == defn.ScalaRuntimePackageClass
 
-    val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
-    val formalParamTypes = sym.info.paramInfoss.flatten.drop(envSize)
-    val formalParamRepeateds =
-      if (hasRepeatedParam) (0 until (formalParamTypes.size - 1)).map(_ => false) :+ true
-      else (0 until formalParamTypes.size).map(_ => false)
+    val target = targetTree.symbol
+    val isTargetStatic = isMethodStaticInIR(target)
 
-    val formalAndActualParams = formalParamNames.lazyZip(formalParamTypes).lazyZip(formalParamRepeateds).map {
-      (name, tpe, repeated) =>
-        val formalTpe =
-          if (isFunctionXXL) jstpe.ArrayType(ObjectArrayTypeRef, nullable = true)
-          else jstpe.AnyType
-        val formalParam = js.ParamDef(freshLocalIdent(name),
-            OriginalName(name.toString), formalTpe, mutable = false)
-        val actualParam =
-          if (repeated) genJSArrayToVarArgs(formalParam.ref)(using tree.sourcePos)
-          else unbox(formalParam.ref, tpe)
-        (formalParam, actualParam)
-    }
-    val (formalAndRestParams, actualParams) = formalAndActualParams.unzip
+    val allCaptureValues =
+      if (isTargetStatic) env
+      else qualifierOf(targetTree) :: env
 
-    val (formalParams, restParam) =
-      if (hasRepeatedParam) (formalAndRestParams.init, Some(formalAndRestParams.last))
-      else (formalAndRestParams, None)
+    // Gen actual captures in the local name scope of the enclosing method
+    val actualCaptures: List[js.Tree] = allCaptureValues.map(genExpr(_))
 
-    val genBody = {
-      val call = if (isStaticCall) {
-        genApplyStatic(sym, formalCaptures.map(_.ref) ::: actualParams)
-      } else {
-        val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref): @unchecked
-        if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
-          genApplyMethodMaybeStatically(thisCaptureRef, sym, argCaptureRefs ::: actualParams)
+    val closure: js.Closure = withNewLocalNameScope {
+      // Gen the inlined target method body
+      val initThisLocalVarName =
+        if isTargetStatic then None
+        else Some(freshLocalIdent("this").name)
+      val genMethodDef: js.MethodDef =
+        genMethodWithCurrentLocalNameScope(consumeDelambdafyTarget(target), initThisLocalVarName).get
+      val js.MethodDef(methodFlags, _, _, allMethodParams, _, methodBody) = genMethodDef
+
+      // Add a ParamDef for the receiver, if the generated method is not static
+      val allMethodParamsWithReceiver =
+        if methodFlags.namespace.isStatic then
+          allMethodParams
         else
-          genApplyJSClassMethod(thisCaptureRef, sym, argCaptureRefs ::: actualParams)
+          val receiverParamDef = js.ParamDef(js.LocalIdent(initThisLocalVarName.get),
+              thisOriginalName, encodeClassType(target.owner), mutable = false)
+          receiverParamDef :: allMethodParams
+
+      // Extract capture params
+      val (formalCaptures, methodParams) =
+        allMethodParamsWithReceiver.splitAt(if isTargetStatic then envSize else envSize + 1)
+
+      // Construct the ParamDefs of the js.Closure, and adapt their references to the target's param types
+
+      val formalParamNames = target.info.paramNamess.flatten.drop(envSize)
+      val formalParamTypes = target.info.paramInfoss.flatten.drop(envSize)
+      val formalParamRepeateds =
+        if (hasRepeatedParam) (0 until (formalParamTypes.size - 1)).map(_ => false) :+ true
+        else (0 until formalParamTypes.size).map(_ => false)
+
+      val formalAndActualParams = formalParamNames.lazyZip(formalParamTypes).lazyZip(formalParamRepeateds).map {
+        (name, tpe, repeated) =>
+          val formalTpe =
+            if (isFunctionXXL) jstpe.ArrayType(ObjectArrayTypeRef, nullable = true)
+            else jstpe.AnyType
+          val formalParam = js.ParamDef(freshLocalIdent(name),
+              OriginalName(name.toString), formalTpe, mutable = false)
+          val actualParam =
+            if (repeated) genJSArrayToVarArgs(formalParam.ref)(using tree.sourcePos)
+            else unbox(formalParam.ref, tpe)
+          (formalParam, actualParam)
       }
-      box(call, sym.info.finalResultType)
+      val (formalAndRestParams, adaptedParamValues) = formalAndActualParams.unzip
+
+      val (formalParams, restParam) =
+        if (hasRepeatedParam) (formalAndRestParams.init, Some(formalAndRestParams.last))
+        else (formalAndRestParams, None)
+
+      // At this point, the adapted args had better match the method params
+      assert(methodParams.size == adaptedParamValues.size,
+          s"Arity mismatch: $methodParams <-> $adaptedParamValues at $pos")
+
+      // Declare each method param as a VarDef, initialized to the corresponding adapted arg
+      val methodParamsAsVarDefs = for ((methodParam, adaptedParamValue) <- methodParams.zip(adaptedParamValues)) yield {
+        js.VarDef(methodParam.name, methodParam.originalName, methodParam.ptpe,
+            methodParam.mutable, adaptedParamValue)
+      }
+
+      // Adapt the body's result
+      val patchedBodyWithBox = box(methodBody.get, target.info.finalResultType)
+
+      // Finally, assemble all the pieces
+      val fullClosureBody = js.Block(methodParamsAsVarDefs, patchedBodyWithBox)
+      js.Closure(
+        js.ClosureFlags.typed,
+        formalCaptures,
+        formalParams,
+        restParam,
+        resultType = jstpe.AnyType,
+        fullClosureBody,
+        actualCaptures
+      )
     }
 
     val isThisFunction = funInterfaceSym.isSubClass(jsdefn.JSThisFunctionClass) && {
-      val ok = formalParams.nonEmpty
+      val ok = closure.params.nonEmpty
       if (!ok)
         report.error("The SAM or apply method for a js.ThisFunction must have a leading non-varargs parameter", tree)
       ok
     }
 
     if (isThisFunction) {
-      val thisParam :: otherParams = formalParams: @unchecked
+      val thisParam :: otherParams = closure.params: @unchecked
       js.Closure(
           js.ClosureFlags.function,
-          formalCaptures,
+          closure.captureParams,
           otherParams,
-          restParam,
-          jstpe.AnyType,
+          closure.restParam,
+          closure.resultType,
           js.Block(
               js.VarDef(thisParam.name, thisParam.originalName,
                   thisParam.ptpe, mutable = false,
                   js.This()(thisParam.ptpe)(using thisParam.pos))(using thisParam.pos),
-              genBody),
-          actualCaptures)
+              closure.body),
+          closure.captureValues)
     } else {
-      val closure = js.Closure(js.ClosureFlags.typed, formalCaptures,
-          formalParams, restParam, jstpe.AnyType, genBody, actualCaptures)
-
       if (!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym)) {
-        val formalCount = formalParams.size
+        val formalCount = closure.params.size
         val descriptor = js.NewLambda.Descriptor(
           superClass = encodeClassName(defn.AbstractFunctionClass(formalCount)),
           interfaces = Nil,
@@ -3970,6 +4098,54 @@ class JSCodeGen()(using genCtx: Context) {
       case JS_IMPORT_META =>
         // js.import.meta
         js.JSImportMeta()
+
+      case JS_ASYNC =>
+        // js.async(arg)
+        assert(args.size == 1,
+            s"Expected exactly 1 argument for JS primitive $code but got " +
+            s"${args.size} at $pos")
+
+        def extractStatsAndClosure(arg: Tree): (List[Tree], Closure) = (arg: @unchecked) match
+          case arg: Closure =>
+            (Nil, arg)
+          case Block(outerStats, expr) =>
+            val (innerStats, closure) = extractStatsAndClosure(expr)
+            (outerStats ::: innerStats, closure)
+
+        val (stats, fun @ Closure(_, target, _)) = extractStatsAndClosure(args.head)
+        methodsAllowingJSAwait += target.symbol
+        val genStats = stats.map(genStat(_))
+        val asyncExpr = genClosure(fun) match {
+          case js.NewLambda(_, closure: js.Closure)
+              if closure.params.isEmpty && closure.resultType == jstpe.AnyType =>
+            val newFlags = closure.flags.withTyped(false).withAsync(true)
+            js.JSFunctionApply(closure.copy(flags = newFlags), Nil)
+          case other =>
+            throw FatalError(
+                s"Unexpected tree generated for the Function0 argument to js.async at ${tree.sourcePos}: $other")
+        }
+        js.Block(genStats, asyncExpr)
+
+      case JS_AWAIT =>
+        // js.await(arg)
+        val (arg, permitValue) = genArgs2
+        if (!methodsAllowingJSAwait.contains(currentMethodSym)) {
+          // This is an orphan await
+          if (!(args(1).tpe <:< jsdefn.WasmJSPI_allowOrphanJSAwaitModuleClassRef)) {
+            report.error(
+                "Illegal use of js.await().\n" +
+                "It can only be used inside a js.async {...} block, without any lambda,\n" +
+                "by-name argument or nested method in-between.\n" +
+                "If you compile for WebAssembly, you can allow arbitrary js.await()\n" +
+                "calls by adding the following import:\n" +
+                "import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait",
+                tree.sourcePos)
+          }
+        }
+        /* In theory we should evaluate `permit` after `arg` but before the `JSAwait`.
+         * It *should* always be side-effect-free, though, so we just discard it.
+         */
+        js.JSAwait(arg)
 
       case DYNAMIC_IMPORT =>
         // runtime.dynamicImport

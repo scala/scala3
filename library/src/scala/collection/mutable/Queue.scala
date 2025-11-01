@@ -29,7 +29,7 @@ import scala.collection.generic.DefaultSerializable
   *  @define mayNotTerminateInf
   *  @define willNotTerminateInf
   */
-class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
+class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   extends ArrayDeque[A](array, start, end)
     with IndexedSeqOps[A, Queue, Queue[A]]
     with StrictOptimizedSeqOps[A, Queue, Queue[A]]
@@ -44,7 +44,7 @@ class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
   override def iterableFactory: SeqFactory[Queue] = Queue
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Queue"
+  override protected def stringPrefix = "Queue"
 
   /**
     * Add elements to the end of this queue
@@ -118,7 +118,7 @@ class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
     bf.result()
   }
 
-  override protected def ofArray(array: Array[AnyRef], end: Int): Queue[A] =
+  override protected def ofArray(array: Array[AnyRef | Null], end: Int): Queue[A] =
     new Queue(array, start = 0, end)
 
 }

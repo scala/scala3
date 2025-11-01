@@ -1,0 +1,8 @@
+[[syntax trees at end of                    parser]] // tests/printing/untyped/strings.scala
+package <empty> {
+  class C {
+    def chars = "\b\t\n\f\r\"\'\\a\u0003"
+    def greeting = "hello, world"
+  }
+}
+

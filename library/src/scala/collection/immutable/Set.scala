@@ -141,8 +141,8 @@ object Set extends IterableFactory[Set] {
 
   @SerialVersionUID(3L)
   private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A] with Serializable {
-    private[this] var current = 0
-    private[this] var remainder = n
+    private var current = 0
+    private var remainder = n
     override def knownSize: Int = remainder
     def hasNext = remainder > 0
     def apply(i: Int): A
@@ -363,9 +363,9 @@ abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A
   * $multipleResults
   */
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
-  private[this] var elems: Set[A] = Set.empty
-  private[this] var switchedToHashSetBuilder: Boolean = false
-  private[this] var hashSetBuilder: HashSetBuilder[A] = _
+  private var elems: Set[A] = Set.empty
+  private var switchedToHashSetBuilder: Boolean = false
+  private var hashSetBuilder: HashSetBuilder[A] = compiletime.uninitialized
 
   override def clear(): Unit = {
     elems = Set.empty

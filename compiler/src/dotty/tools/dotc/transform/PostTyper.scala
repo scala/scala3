@@ -371,11 +371,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  clean retains annotations from such types. But for an overriding symbol the
      *  retains annotations come from the explicitly declared parent types, so should
      *  be kept.
+     *  TODO: If the overriden type is an InferredType, we should probably clean retains
+     *  from both types as well.
      */
     private def makeOverrideTypeDeclared(symbol: Symbol, tpt: Tree)(using Context): Tree =
       tpt match
         case tpt: InferredTypeTree
-        if symbol.allOverriddenSymbols.hasNext =>
+        if Feature.ccEnabled && symbol.allOverriddenSymbols.hasNext =>
           TypeTree(tpt.tpe, inferred = false).withSpan(tpt.span).withAttachmentsFrom(tpt)
         case _ =>
           tpt
@@ -521,7 +523,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case UnApply(fun, implicits, patterns) =>
           // Reverse transform order for the same reason as in `app1` above.
           val patterns1 = transform(patterns)
-          cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+          val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+          // The pickling of UnApply trees uses the tpe of the tree,
+          // so we need to clean retains from it here
+          tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true

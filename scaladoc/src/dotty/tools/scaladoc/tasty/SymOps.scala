@@ -214,7 +214,7 @@ end SymOps
 class SymOpsWithLinkCache:
   import SymOps.*
 
-  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
+  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile | Null, Option[ExternalDocLink]] = MMap()
 
   extension (using Quotes)(sym: reflect.Symbol)
 

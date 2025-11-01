@@ -268,7 +268,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
     case other => super.subtractAll(other)
   }
 
-  protected[this] def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
+  protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 
   override def diff(that: collection.Set[Int]): BitSet = that match {
     case bs: collection.BitSet =>
@@ -329,7 +329,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
     // * over-allocating -- the resulting array will be exactly the right size
     // * multiple resizing allocations -- the array is allocated one time, not log(n) times.
     var i = nwords - 1
-    var newArray: Array[Long] = null
+    var newArray: Array[Long] | Null = null
     while (i >= 0) {
       val w = BitSetOps.computeWordForFilter(pred, isFlipped, word(i), i)
       if (w != 0L) {
@@ -390,6 +390,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    protected[this] def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
+    protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

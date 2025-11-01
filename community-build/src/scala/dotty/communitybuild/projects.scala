@@ -75,7 +75,6 @@ final case class MillCommunityProject(
     // uncomment once mill is released
     // if ignoreDocs then null else s"$baseCommand.docJar"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
-  override val environment = Map("MILL_VERSION" -> "0.10.5")
 
 final case class SbtCommunityProject(
     project: String,
@@ -126,6 +125,11 @@ object projects:
     projects.map(project =>
       s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
     ).mkString(" ")
+
+  private def removeRelease8(projects: String*): String =
+    projects.map(project =>
+      s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "8")"""
+    ).mkString("; ")
 
   private def aggregateDoc(in: String)(projects: String*) =
     val tastyFiles =
@@ -445,7 +449,10 @@ object projects:
 
   lazy val discipline = SbtCommunityProject(
     project = "discipline",
-    sbtTestCommand = "coreJVM/test;coreJS/test",
+    sbtTestCommand = List(
+      removeRelease8("core.jvm", "core.js"),
+      "coreJVM/test;coreJS/test"
+    ).mkString("; "),
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
   )
@@ -544,7 +551,12 @@ object projects:
 
   lazy val scissLucre = SbtCommunityProject(
     project           = "Lucre",
-    sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
+    sbtTestCommand    =
+      val subprojects = List("adjunct.jvm", "base.jvm", "confluent.jvm", "core.jvm", "data.jvm", "expr.jvm", "geom.jvm", "bdb", "tests.jvm")
+      List(
+        subprojects.map(name => s"""set ($name/Compile/compile/scalacOptions) := ($name/Compile/compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "8")"""),
+        List("adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test")
+      ).flatten.mkString("; "),
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
   )
@@ -615,7 +627,11 @@ object projects:
 
   lazy val fs2 = SbtCommunityProject(
     project = "fs2",
-    sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
+    sbtTestCommand =
+      List(
+        removeRelease8("coreJVM", "coreJS"), // io/test currently fails JDK9+
+        "coreJVM/test; coreJS/test;"
+      ).mkString("; "),
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
   )

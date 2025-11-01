@@ -50,6 +50,13 @@ object language:
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    /** Experimental support for relaxed CanEqual checks for ADT pattern matching
+     *
+     * @see [[https://github.com/scala/improvement-proposals/pull/97]]
+     */
+    @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    object strictEqualityPatternMatching
+
     /** Experimental support for using indentation for arguments
      */
     @compileTimeOnly("`fewerBraces` can only be used at compile time in import statements")
@@ -99,6 +106,7 @@ object language:
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
+    @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
     object into
 
     /** Experimental support for named tuples.
@@ -166,6 +174,11 @@ object language:
      */
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
+
+    /** Experimental support for single-line lambdas and case clause expressions after `:`
+     */
+    @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
+    object relaxedLambdaSyntax
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

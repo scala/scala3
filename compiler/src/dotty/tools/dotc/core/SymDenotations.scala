@@ -1248,10 +1248,12 @@ object SymDenotations {
       || isClass
         && (!isOneOf(EffectivelyOpenFlags) || isLocalToCompilationUnit)
 
-    final def isLocalToCompilationUnit(using Context): Boolean =
-      is(Private)
-      || owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
+    final def isLocalToCompilationUnitIgnoringPrivate(using Context): Boolean =
+      owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
       || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
+
+    final def isLocalToCompilationUnit(using Context): Boolean =
+      is(Private) || isLocalToCompilationUnitIgnoringPrivate
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType) || defn.isAssumedTransparent(symbol)
@@ -2798,9 +2800,6 @@ object SymDenotations {
 
     /** Sets all missing fields of given denotation */
     def complete(denot: SymDenotation)(using Context): Unit
-
-    /** Is this a completer for an explicit type tree */
-    def isExplicit: Boolean = false
 
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this

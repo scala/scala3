@@ -246,6 +246,12 @@ object GenericSignatures {
             jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
           else typeParamSig(ref.paramName.lastPart)
 
+        case ref: SingletonType =>
+          // Singleton types like `x.type` need to be widened to their underlying type
+          // For example, `def identity[A](x: A): x.type` should have signature 
+          // with return type `A` (not `java.lang.Object`)
+          jsig(ref.underlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
+
         case defn.ArrayOf(elemtp) =>
           if (isGenericArrayElement(elemtp, isScala2 = false))
             jsig1(defn.ObjectType)
@@ -303,6 +309,12 @@ object GenericSignatures {
           for vparam <- vparams do jsig1(vparam)
           builder.append(')')
           methodResultSig(rte)
+
+        case OrNull(tp1) if !tp1.derivesFrom(defn.AnyValClass) =>
+          // Special case for nullable union types whose underlying type is not a value class.
+          // For example, `T | Null` where `T` is a type parameter becomes `T` in the signature;
+          // `Int | Null` still becomes `Object`.
+          jsig1(tp1)
 
         case tp: AndType =>
           // Only intersections appearing as the upper-bound of a type parameter
@@ -455,7 +467,7 @@ object GenericSignatures {
       else x
   }
 
-  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) = 
+  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) =
     val tparams = ListBuffer.empty[TypeParamInfo]
     val vparams = ListBuffer.empty[Type]
 
@@ -463,7 +475,7 @@ object GenericSignatures {
       case mtd: MethodType =>
         vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
         recur(mtd.resType)
-      case PolyType(tps, tpe) => 
+      case PolyType(tps, tpe) =>
         tparams ++= tps
         recur(tpe)
       case _ =>

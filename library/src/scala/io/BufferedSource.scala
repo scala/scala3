@@ -22,7 +22,7 @@ import scala.collection.mutable.StringBuilder
  *  representation of a source file.
  */
 class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val codec: Codec) extends Source {
-  def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(codec)
+  def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(using codec)
   def reader() = new InputStreamReader(inputStream, codec.decoder)
   def bufferedReader() = new BufferedReader(reader(), bufferSize)
 
@@ -31,8 +31,8 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
   // block of data to be read from the stream, which will then be lost
   // to getLines if it creates a new reader, even though next() was
   // never called on the original.
-  private[this] var charReaderCreated = false
-  private[this] lazy val charReader = {
+  private var charReaderCreated = false
+  private lazy val charReader = {
     charReaderCreated = true
     bufferedReader()
   }
@@ -58,7 +58,7 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
     // immediately on the source.
     if (charReaderCreated && iter.hasNext) {
       val pb = new PushbackReader(charReader)
-      pb unread iter.next().toInt
+      pb.unread(iter.next().toInt)
       new BufferedReader(pb, bufferSize)
     }
     else charReader
@@ -66,8 +66,8 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
 
 
   class BufferedLineIterator extends AbstractIterator[String] with Iterator[String] {
-    private[this] val lineReader = decachedReader
-    var nextLine: String = null
+    private val lineReader = decachedReader
+    @annotation.stableNull var nextLine: String | Null = null
 
     override def hasNext = {
       if (nextLine == null)

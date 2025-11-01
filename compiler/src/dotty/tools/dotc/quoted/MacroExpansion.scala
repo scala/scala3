@@ -13,6 +13,6 @@ object MacroExpansion {
     ctx.property(MacroExpansionPosition)
 
   def context(inlinedFrom: tpd.Tree)(using Context): Context =
-    QuotesCache.init(ctx.fresh).setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).setTypeAssigner(new Typer(ctx.nestingLevel + 1)).withSource(inlinedFrom.source)
+    QuotesCache.init(ctx.fresh).setProperty(MacroExpansionPosition, inlinedFrom.sourcePos).setTypeAssigner(new Typer(ctx.nestingLevel + 1)).withSource(inlinedFrom.source)
 }
 

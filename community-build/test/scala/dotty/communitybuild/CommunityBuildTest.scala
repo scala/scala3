@@ -58,7 +58,8 @@ end CommunityBuildTestB
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestC:
   @Test def akka = projects.akka.run()
-  @Test def betterfiles = projects.betterfiles.run()
+  // Disabled because `javax.xml.bind` is not available since java 11
+  // @Test def betterfiles = projects.betterfiles.run()
   @Test def cask = projects.cask.run()
   // Temporarily disabled until problem discovered in comments to #9449 is fixed
   // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
@@ -75,7 +76,8 @@ class CommunityBuildTestC:
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def parboiled2 = projects.parboiled2.run()
-  @Test def playJson = projects.playJson.run()
+  // Disabled because `javax.xml.bind` is not available since java 11
+  // @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
   //@Test def protoquill = projects.protoquill.run()
   @Test def requests = projects.requests.run()
@@ -89,7 +91,8 @@ class CommunityBuildTestC:
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scalaz = projects.scalaz.run()
-  @Test def scas = projects.scas.run()
+  // mill 1.0.5 fails to build, cannot find scala-library artifact on classpath
+  // @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless3 = projects.shapeless3.run()
   @Test def sourcecode = projects.sourcecode.run()

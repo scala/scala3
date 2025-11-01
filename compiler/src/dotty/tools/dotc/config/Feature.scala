@@ -28,6 +28,7 @@ object Feature:
 
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
+  val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
@@ -39,6 +40,7 @@ object Feature:
   val packageObjectValues = experimental("packageObjectValues")
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
+  val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
@@ -59,6 +61,7 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
+    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),

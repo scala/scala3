@@ -57,7 +57,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaBiFunction[T, U, R](sf: scala.Function2[T, U, R]) extends java.util.function.BiFunction[T, U, R] {
-    def apply(x1: T, x2: U) = sf.apply(x1, x2)
+    def apply(x1: T, x2: U): R = sf.apply(x1, x2)
   }
   
   class RichFunction2AsBiFunction[T, U, R](private val underlying: scala.Function2[T, U, R]) extends AnyVal {
@@ -111,7 +111,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaBinaryOperator[T](sf: scala.Function2[T, T, T]) extends java.util.function.BinaryOperator[T] {
-    def apply(x1: T, x2: T) = sf.apply(x1, x2)
+    def apply(x1: T, x2: T): T = sf.apply(x1, x2)
   }
   
   class RichFunction2AsBinaryOperator[T](private val underlying: scala.Function2[T, T, T]) extends AnyVal {
@@ -234,7 +234,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaDoubleFunction[R](sf: scala.Function1[Double, R]) extends java.util.function.DoubleFunction[R] {
-    def apply(x1: scala.Double) = sf.apply(x1)
+    def apply(x1: scala.Double): R = sf.apply(x1)
   }
   
   class RichFunction1AsDoubleFunction[R](private val underlying: scala.Function1[Double, R]) extends AnyVal {
@@ -376,7 +376,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaFunction[T, R](sf: scala.Function1[T, R]) extends java.util.function.Function[T, R] {
-    def apply(x1: T) = sf.apply(x1)
+    def apply(x1: T): R = sf.apply(x1)
   }
   
   class RichFunction1AsFunction[T, R](private val underlying: scala.Function1[T, R]) extends AnyVal {
@@ -449,7 +449,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaIntFunction[R](sf: scala.Function1[Int, R]) extends java.util.function.IntFunction[R] {
-    def apply(x1: scala.Int) = sf.apply(x1)
+    def apply(x1: scala.Int): R = sf.apply(x1)
   }
   
   class RichFunction1AsIntFunction[R](private val underlying: scala.Function1[Int, R]) extends AnyVal {
@@ -637,7 +637,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaLongFunction[R](sf: scala.Function1[Long, R]) extends java.util.function.LongFunction[R] {
-    def apply(x1: scala.Long) = sf.apply(x1)
+    def apply(x1: scala.Long): R = sf.apply(x1)
   }
   
   class RichFunction1AsLongFunction[R](private val underlying: scala.Function1[Long, R]) extends AnyVal {
@@ -887,7 +887,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaSupplier[T](sf: scala.Function0[T]) extends java.util.function.Supplier[T] {
-    def get() = sf.apply()
+    def get(): T = sf.apply()
   }
   
   class RichFunction0AsSupplier[T](private val underlying: scala.Function0[T]) extends AnyVal {
@@ -1065,7 +1065,7 @@ object FunctionWrappers {
   
   
   case class FromJavaUnaryOperator[T](jf: java.util.function.UnaryOperator[T]) extends scala.Function1[T, T] {
-    def apply(x1: T) = jf.apply(x1)
+    def apply(x1: T): T = jf.apply(x1)
   }
   
   class RichUnaryOperatorAsFunction1[T](private val underlying: java.util.function.UnaryOperator[T]) extends AnyVal {
@@ -1076,7 +1076,7 @@ object FunctionWrappers {
   }
   
   case class AsJavaUnaryOperator[T](sf: scala.Function1[T, T]) extends java.util.function.UnaryOperator[T] {
-    def apply(x1: T) = sf.apply(x1)
+    def apply(x1: T): T = sf.apply(x1)
   }
   
   class RichFunction1AsUnaryOperator[T](private val underlying: scala.Function1[T, T]) extends AnyVal {

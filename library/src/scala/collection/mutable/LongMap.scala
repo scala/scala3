@@ -70,27 +70,27 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   /** Creates a new `LongMap` with specified default values and initial buffer size. */
   def this(defaultEntry: Long -> V,  initialBufferSize: Int) = this(defaultEntry,  initialBufferSize,  initBlank = true)
 
-  private[this] var mask = 0
-  private[this] var extraKeys: Int = 0
-  private[this] var zeroValue: AnyRef = null
-  private[this] var minValue: AnyRef = null
-  private[this] var _size = 0
-  private[this] var _vacant = 0
-  private[this] var _keys: Array[Long] = null
-  private[this] var _values: Array[AnyRef] = null
+  private var mask = 0
+  private var extraKeys: Int = 0
+  @annotation.stableNull private var zeroValue: AnyRef | Null = null
+  @annotation.stableNull private var minValue: AnyRef | Null = null
+  private var _size = 0
+  private var _vacant = 0
+  private var _keys: Array[Long] = compiletime.uninitialized
+  private var _values: Array[AnyRef | Null] = compiletime.uninitialized
 
   if (initBlank) defaultInitialize(initialBufferSize)
 
-  private[this] def defaultInitialize(n: Int) = {
+  private def defaultInitialize(n: Int) = {
     mask =
       if (n<0) 0x7
       else (((1 << (32 - java.lang.Integer.numberOfLeadingZeros(n-1))) - 1) & 0x3FFFFFFF) | 0x7
     _keys = new Array[Long](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
   }
 
   private[collection] def initializeTo(
-                                        m: Int, ek: Int, zv: AnyRef, mv: AnyRef, sz: Int, vc: Int, kz: Array[Long], vz: Array[AnyRef]
+                                        m: Int, ek: Int, zv: AnyRef | Null, mv: AnyRef | Null, sz: Int, vc: Int, kz: Array[Long], vz: Array[AnyRef | Null]
                                       ): Unit = {
     mask = m; extraKeys = ek; zeroValue = zv; minValue = mv; _size = sz; _vacant = vc; _keys = kz; _values = vz
   }
@@ -222,15 +222,15 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     *  may not exist, if the default null/zero is acceptable.  For key/value
     *  pairs that do exist,  `apply` (i.e. `map(key)`) is equally fast.
     */
-  def getOrNull(key: Long): V = {
+  def getOrNull(key: Long): V | Null = {
     if (key == -key) {
-      if ((((key>>>63).toInt+1) & extraKeys) == 0) null.asInstanceOf[V]
+      if ((((key>>>63).toInt+1) & extraKeys) == 0) null
       else if (key == 0) zeroValue.asInstanceOf[V]
       else minValue.asInstanceOf[V]
     }
     else {
       val i = seekEntry(key)
-      if (i < 0) null.asInstanceOf[V] else _values(i).asInstanceOf[V]
+      if (i < 0) null else _values(i).asInstanceOf[V | Null]
     }
   }
 
@@ -260,7 +260,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     val ov = _values
     mask = newMask
     _keys = new Array[Long](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
     _vacant = 0
     var i = 0
     while (i < ok.length) {
@@ -384,19 +384,19 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   }
 
   def iterator: Iterator[(Long, V)] = new AbstractIterator[(Long, V)] {
-    private[this] val kz = _keys
-    private[this] val vz = _values
+    private val kz = _keys
+    private val vz = _values
 
-    private[this] var nextPair: (Long, V) =
+    private var nextPair: (Long, V) | Null =
       if (extraKeys==0) null
       else if ((extraKeys&1)==1) (0L, zeroValue.asInstanceOf[V])
       else (Long.MinValue, minValue.asInstanceOf[V])
 
-    private[this] var anotherPair: (Long, V) =
+    private var anotherPair: (Long, V) | Null =
       if (extraKeys==3) (Long.MinValue, minValue.asInstanceOf[V])
       else null
 
-    private[this] var index = 0
+    private var index = 0
 
     def hasNext: Boolean = nextPair != null || (index < kz.length && {
       var q = kz(index)
@@ -417,7 +417,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
         anotherPair = null
       }
       else nextPair = null
-      ans
+      ans.nn
     }
   }
 
@@ -522,17 +522,17 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     *  collection immediately.
     */
   def mapValuesNow[V1](f: V => V1): LongMap[V1] = {
-    val zv = if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef] else null
-    val mv = if ((extraKeys & 2) == 2) f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef] else null
+    val zv = if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null] else null
+    val mv = if ((extraKeys & 2) == 2) f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null] else null
     val lm = new LongMap[V1](LongMap.exceptionDefault,  1,  initBlank = false)
     val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = new Array[AnyRef](_values.length)
+    val vz = new Array[AnyRef | Null](_values.length)
     var i,j = 0
     while (i < _keys.length & j < _size) {
       val k = _keys(i)
       if (k != -k) {
         j += 1
-        vz(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef]
+        vz(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef | Null]
       }
       i += 1
     }
@@ -550,14 +550,14 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     *  Note: the default, if any,  is not transformed.
     */
   def transformValuesInPlace(f: V => V): this.type = {
-    if ((extraKeys & 1) == 1) zeroValue = f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef]
-    if ((extraKeys & 2) == 2) minValue = f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef]
+    if ((extraKeys & 1) == 1) zeroValue = f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null]
+    if ((extraKeys & 2) == 2) minValue = f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null]
     var i,j = 0
     while (i < _keys.length & j < _size) {
       val k = _keys(i)
       if (k != -k) {
         j += 1
-        _values(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef]
+        _values(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef | Null]
       }
       i += 1
     }
@@ -583,9 +583,9 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   def collect[V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[V](LongMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[V](LongMap), this)
 
-  override protected[this] def className = "LongMap"
+  override protected def className = "LongMap"
 }
 
 object LongMap {
@@ -671,7 +671,7 @@ object LongMap {
   implicit def toFactory[V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
+  private object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]], Serializable {
     def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
@@ -683,7 +683,7 @@ object LongMap {
   }
 
   implicit def iterableFactory[V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
-  implicit def buildFromLongMap[V]: BuildFrom[LongMap[_], (Long, V), LongMap[V]] = toBuildFrom(this)
+  implicit def buildFromLongMap[V]: BuildFrom[LongMap[?], (Long, V), LongMap[V]] = toBuildFrom(this)
 
   private def repackMask(mask: Int, _size: Int, _vacant: Int): Int = {
     var m = mask

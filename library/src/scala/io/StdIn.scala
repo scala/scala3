@@ -38,7 +38,7 @@ private[scala] trait StdIn {
    *  @return the string read from the default input
    */
   def readLine(text: String, args: Any*): String = {
-    printf(text, args: _*)
+    printf(text, args*)
     out.flush()
     readLine()
   }
@@ -105,7 +105,7 @@ private[scala] trait StdIn {
     if (s == null)
       throw new java.io.EOFException("Console has reached end of input")
     else
-      s charAt 0
+      s.charAt(0)
   }
 
   /** Reads an int value from an entire line of the default input.

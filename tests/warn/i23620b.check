@@ -1,0 +1,24 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i23620b.scala:20:2 --------------------------------------------
+20 |  p match // warn
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: _: Bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i23620b.scala:23:2 --------------------------------------------
+23 |  p2 match { // warn
+   |  ^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: _: Bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i23620b.scala:37:2 --------------------------------------------
+37 |  x match // warn
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: B
+   |
+   | longer explanation available when compiling with `-explain`

@@ -493,7 +493,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param body List of members of the class. The members must align with the members of `cls`.
        */
       // TODO add selfOpt: Option[ValDef]?
-      @experimental def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
+      // ^ if a use-case shows up, we add this via an overloaded method
+      def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
 
@@ -518,7 +519,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @syntax markdown
        */
       // TODO add selfOpt: Option[ValDef]?
-      @experimental def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
+      // ^ if a use-case shows up, we can add this via an overloaded method
+      def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -887,6 +889,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The current tree applied to (): `tree()` */
         def appliedToNone: Apply
+
+        /** The current tree applied to `()` unless the tree's widened type is parameterless or expects type parameters */
+        def ensureApplied: Term
 
         /** The current tree applied to given type argument: `tree[targ]` */
         def appliedToType(targ: TypeRepr): Term
@@ -3878,7 +3883,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
-      @experimental def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
+       def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
       /** Generates a new class symbol for a class with a public single term clause constructor.
        *
@@ -3936,7 +3941,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
-      @experimental def newClass(
+      def newClass(
         owner: Symbol,
         name: String,
         parents: Symbol => List[TypeRepr],
@@ -4038,7 +4043,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       // Keep doc aligned with QuotesImpl's validFlags: `clsFlags` with `validClassFlags`, `conFlags` with `validClassConstructorFlags`,
       // conParamFlags with `validClassTypeParamFlags` and `validClassTermParamFlags`
-      @experimental def newClass(
+      def newClass(
         owner: Symbol,
         name: String,
         parents: Symbol => List[TypeRepr],
@@ -4110,7 +4115,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @syntax markdown
        */
-      @experimental def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
+      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
 
       /** Generates a new method symbol with the given parent, name and type.
        *
@@ -4225,7 +4230,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param prefix Prefix of the fresh name
        */
-      @experimental
       def freshName(prefix: String): String
     }
 

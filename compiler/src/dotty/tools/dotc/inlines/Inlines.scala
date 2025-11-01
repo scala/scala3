@@ -96,7 +96,6 @@ object Inlines:
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
-   *  @param pt     The expected type of the call.
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */

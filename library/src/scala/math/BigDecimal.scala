@@ -27,12 +27,12 @@ object BigDecimal {
   private final val maximumHashScale = 4934           // Quit maintaining hash identity with BigInt beyond this scale
   private final val hashCodeNotComputed = 0x5D50690F  // Magic value (happens to be "BigDecimal" old MurmurHash3 value)
   private final val deci2binary = 3.3219280948873626  // Ratio of log(10) to log(2)
-  private[this] val minCached = -512
-  private[this] val maxCached = 512
-  val defaultMathContext = MathContext.DECIMAL128
+  private val minCached = -512
+  private val maxCached = 512
+  val defaultMathContext: MathContext = MathContext.DECIMAL128
 
   /** Cache only for defaultMathContext using BigDecimals in a small range. */
-  private[this] lazy val cache = new Array[BigDecimal](maxCached - minCached + 1)
+  private lazy val cache = new Array[BigDecimal](maxCached - minCached + 1)
 
   object RoundingMode extends Enumeration {
     // Annoying boilerplate to ensure consistency with java.math.RoundingMode
@@ -136,7 +136,7 @@ object BigDecimal {
    *  @param  d the specified double value
    *  @return the constructed `BigDecimal`
    */
-  def valueOf(d: Double): BigDecimal = apply(BigDec valueOf d)
+  def valueOf(d: Double): BigDecimal = apply(BigDec.valueOf(d))
 
   /** Constructs a `BigDecimal` using the java BigDecimal static
    *  valueOf constructor.
@@ -305,7 +305,7 @@ object BigDecimal {
   implicit def double2bigDecimal(d: Double): BigDecimal = decimal(d)
 
   /** Implicit conversion from `java.math.BigDecimal` to `scala.BigDecimal`. */
-  implicit def javaBigDecimal2bigDecimal(x: BigDec): BigDecimal = if (x == null) null else apply(x)
+  implicit def javaBigDecimal2bigDecimal(x: BigDec | Null): BigDecimal | Null = if (x == null) null else apply(x)
 }
 
 /**
@@ -476,7 +476,7 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
 
   /** Compares this BigDecimal with the specified BigDecimal
    */
-  def compare (that: BigDecimal): Int = this.bigDecimal compareTo that.bigDecimal
+  def compare (that: BigDecimal): Int = this.bigDecimal.compareTo(that.bigDecimal)
 
   /** Addition of BigDecimals
    */
@@ -563,13 +563,13 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *  preserving its own MathContext for future operations.
    */
   def round(mc: MathContext): BigDecimal = {
-    val r = this.bigDecimal round mc
+    val r = this.bigDecimal.round(mc)
     if (r eq bigDecimal) this else new BigDecimal(r, this.mc)
   }
 
   /** Returns a `BigDecimal` rounded according to its own `MathContext` */
   def rounded: BigDecimal = {
-    val r = bigDecimal round mc
+    val r = bigDecimal.round(mc)
     if (r eq bigDecimal) this else new BigDecimal(r, mc)
   }
 
@@ -583,7 +583,7 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
 
   /** Returns a new BigDecimal based on the supplied MathContext, rounded as needed.
    */
-  def apply(mc: MathContext): BigDecimal = new BigDecimal(this.bigDecimal round mc, mc)
+  def apply(mc: MathContext): BigDecimal = new BigDecimal(this.bigDecimal.round(mc), mc)
 
   /** Returns a `BigDecimal` whose scale is the specified value, and whose value is
    *  numerically equal to this BigDecimal's.

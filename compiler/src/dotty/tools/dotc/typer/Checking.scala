@@ -37,7 +37,8 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
+import cc.{isCaptureChecking, isRetainsLike}
+import cc.Mutability.isUpdateMethod
 
 import collection.mutable
 import reporting.*
@@ -630,8 +631,13 @@ object Checking {
     if sym.is(Transparent) then
       if sym.isType then
         if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits")
+      else if sym.isMutableVar && sym.owner.isClass && Feature.ccEnabled
+          || sym.isInlineMethod
+      then
+        () // ok
       else
-        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
+        def ccAdd = if Feature.ccEnabled then i" and mutable fields" else ""
+        fail(em"`transparent` can only be used for inline methods$ccAdd")
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
@@ -691,7 +697,7 @@ object Checking {
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
-      fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Mutable` trait.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)

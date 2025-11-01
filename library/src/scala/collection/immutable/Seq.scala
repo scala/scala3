@@ -122,8 +122,7 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
 /** Base trait for immutable indexed Seq operations */
 transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]
-    with collection.IndexedSeqOps[A, CC, C]
-    with caps.Pure {
+    with collection.IndexedSeqOps[A, CC, C] {
 
   override def slice(from: Int, until: Int): C = {
     // since we are immutable we can just share the same collection
@@ -151,7 +150,7 @@ object LinearSeq extends SeqFactory.Delegate[LinearSeq](List) {
   }
 }
 
-transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeqOps[A, CC, C]]
+transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & LinearSeqOps[A, CC, C]]
   extends Any with SeqOps[A, CC, C]
     with collection.LinearSeqOps[A, CC, C]
 

@@ -1,4 +1,4 @@
-object Types {
+object types {
   final case class MyClass1(
     int: Int,
     string: String,

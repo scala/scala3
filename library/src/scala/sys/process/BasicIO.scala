@@ -37,7 +37,7 @@ object BasicIO {
   final val BufferSize = 8192
 
   /** Used to separate lines in the `processFully` function that takes `Appendable`. */
-  final val Newline    = System.lineSeparator
+  final val Newline: String = System.lineSeparator
 
   private[process] final class LazilyListed[T](
     val  process:   T => Unit,
@@ -55,7 +55,7 @@ object BasicIO {
           case Right(s)   => Some((s, q))
         }
       }
-      new LazilyListed((s: T) => queue put Right(s), code => queue put Left(code), ll)
+      new LazilyListed((s: T) => queue.put(Right(s)), code => queue.put(Left(code)), ll)
     }
   }
 
@@ -75,7 +75,7 @@ object BasicIO {
         case Left(code) => if (nonzeroException) scala.sys.error("Nonzero exit code: " + code) else Stream.empty
         case Right(s)   => Stream.cons(s, next())
       }
-      new Streamed((s: T) => q put Right(s), code => q put Left(code), () => next())
+      new Streamed((s: T) => q.put(Right(s)), code => q.put(Left(code)), () => next())
     }
   }
 
@@ -253,12 +253,12 @@ object BasicIO {
     try transferFullyImpl(in, out)
     catch onIOInterrupt(())
 
-  private[this] def appendLine(buffer: Appendable): String => Unit = line => {
-    buffer append line
-    buffer append Newline
+  private def appendLine(buffer: Appendable): String => Unit = line => {
+    buffer.append(line)
+    buffer.append(Newline)
   }
 
-  private[this] def transferFullyImpl(in: InputStream, out: OutputStream): Unit = {
+  private def transferFullyImpl(in: InputStream, out: OutputStream): Unit = {
     val buffer = new Array[Byte](BufferSize)
     @tailrec def loop(): Unit = {
       val byteCount = in.read(buffer)

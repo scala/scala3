@@ -34,9 +34,9 @@ final class LongAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-1) }
 
-  override protected[this] def className: String = "LongAccumulator"
+  override protected def className: String = "LongAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[Long, S]): S with EfficientSplit = {
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Long, S]): S & EfficientSplit = {
     val st = new LongAccumulatorStepper(this)
     val r =
       if (shape.shape == StepperShape.LongShape) st
@@ -44,7 +44,7 @@ final class LongAccumulator
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParLongStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   private def expand(): Unit = {
@@ -339,7 +339,7 @@ object LongAccumulator extends collection.SpecificIterableFactory[Long, LongAccu
   override def newBuilder: LongAccumulator = new LongAccumulator
 
   class SerializationProxy[A](@transient private val acc: LongAccumulator) extends Serializable {
-    @transient private var result: LongAccumulator = _
+    @transient private var result: LongAccumulator = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -407,7 +407,7 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
-  def trySplit(): LongStepper =
+  def trySplit(): LongStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1
@@ -445,7 +445,7 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       }
 
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: jl.Long]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Long]): Boolean = (c: AnyRef) match {
       case ic: LongConsumer => tryAdvance(ic)
       case _ =>
         if (N <= 0) false
@@ -472,7 +472,7 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       }
 
     // Overridden for efficiency
-    override def forEachRemaining(c: Consumer[_ >: jl.Long]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Long]): Unit = (c: AnyRef) match {
       case ic: LongConsumer => forEachRemaining(ic)
       case _ =>
         while (N > 0) {

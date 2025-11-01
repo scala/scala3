@@ -34,14 +34,19 @@
    |                                   Note that capability ref4 is not included in capture set {cap1}.
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazyref.scala:6:14 ------------------------------------------------------------
+6 |  def get: () => T = elem  // error: separation failure
+  |           ^^^^^^^
+  |           Separation failure: method get's result type () => T hides non-local this of class class LazyRef.
+  |           The access must be in a consume method to allow this.
 -- Error: tests/neg-custom-args/captures/lazyref.scala:8:24 ------------------------------------------------------------
 8 |    new LazyRef(() => f(elem())) // error: separation failure
   |                        ^^^^
   |              Separation failure: Illegal access to {LazyRef.this.elem} which is hidden by the previous definition
-  |              of value get with type () => T.
+  |              of method get with result type () => T.
   |              This type hides capabilities  {LazyRef.this.elem}
   |
-  |              where:    => refers to a fresh root capability in the type of value get
+  |              where:    => refers to a fresh root capability in the result type of method get
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
 29 |    .map(g) // error: separation failure
    |         ^
@@ -54,7 +59,7 @@
    |  Hidden set of current argument        : {cap2}
    |  Hidden footprint of current argument  : {cap2}
    |  Capture set of function prefix        : {ref1, ref2, ref2*}
-   |  Footprint set of function prefix      : {ref1, ref2, ref2*, cap1, cap2}
+   |  Footprint set of function prefix      : {ref1, cap1, ref2, cap2, ref2*}
    |  The two sets overlap at               : {cap2}
    |
    |where:    => refers to a fresh root capability created in value ref4 when checking argument to parameter f of method map

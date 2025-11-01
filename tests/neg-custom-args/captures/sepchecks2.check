@@ -1,27 +1,3 @@
--- Error: tests/neg-custom-args/captures/sepchecks2.scala:10:10 --------------------------------------------------------
-10 |  println(c) // error
-   |          ^
-   |          Separation failure: Illegal access to {c} which is hidden by the previous definition
-   |          of value xs with type List[() => Unit].
-   |          This type hides capabilities  {c}
-   |
-   |          where:    => refers to a fresh root capability in the type of value xs
--- Error: tests/neg-custom-args/captures/sepchecks2.scala:13:7 ---------------------------------------------------------
-13 |  foo((() => println(c)) :: Nil, c) // error
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^
-   |Separation failure: argument of type  List[() ->{c} Unit]
-   |to method foo: (xs: List[() => Unit], y: Object^): Nothing
-   |corresponds to capture-polymorphic formal parameter xs of type  List[() => Unit]
-   |and hides capabilities  {c}.
-   |Some of these overlap with the captures of the second argument with type  (c : Object^).
-   |
-   |  Hidden set of current argument        : {c}
-   |  Hidden footprint of current argument  : {c}
-   |  Capture set of second argument        : {c}
-   |  Footprint set of second argument      : {c}
-   |  The two sets overlap at               : {c}
-   |
-   |where:    => refers to a fresh root capability created in method Test2 when checking argument to parameter xs of method foo
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:14:10 --------------------------------------------------------
 14 |  val x1: (Object^, Object^) = (c, c) // error
    |          ^^^^^^^^^^^^^^^^^^

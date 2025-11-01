@@ -138,6 +138,19 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ValDefModule.let"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolModule.newClass"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolModule.newModule"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TermMethods.ensureApplied"),
+
+          // Changes to lazy vals (added static constructors)
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.ArraySeq.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.ExecutionContext.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.io.Codec.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.math.BigDecimal.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.sys.SystemProperties.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.sys.process.Process.<clinit>"),
+
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
 
@@ -547,17 +560,6 @@ object MiMaFilters {
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll1$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll2$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll3$extension"),
-
-          // singleton case classes modules inherit AbstractFunction1??
-          ProblemFilters.exclude[MissingTypesProblem]("scala.ScalaReflectionException$"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.ScalaReflectionException.compose"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.ScalaReflectionException.andThen"),
-          ProblemFilters.exclude[MissingTypesProblem]("scala.UninitializedFieldError$"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.UninitializedFieldError.compose"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.UninitializedFieldError.andThen"),
-          ProblemFilters.exclude[MissingTypesProblem]("scala.collection.StringView$"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.compose"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.andThen"),
 
           // TO INVESTIGATE: This constructor changed, but it is private... why complaining?
           ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.immutable.LazyList.this"),

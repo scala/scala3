@@ -125,8 +125,8 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private[collection] final class ArrayIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
-    private[this] var pos = 0
-    private[this] val len = xs.length
+    private var pos = 0
+    private val len = xs.length
     override def knownSize: Int = len - pos
     def hasNext: Boolean = pos < len
     def next(): A = {
@@ -148,7 +148,7 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private final class ReverseIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
-    private[this] var pos = xs.length-1
+    private var pos = xs.length-1
     def hasNext: Boolean = pos >= 0
     def next(): A = {
       if (pos < 0) Iterator.empty.next()
@@ -165,7 +165,7 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private final class GroupedIterator[A](xs: Array[A], groupSize: Int) extends AbstractIterator[Array[A]] with Serializable {
-    private[this] var pos = 0
+    private var pos = 0
     def hasNext: Boolean = pos < xs.length
     def next(): Array[A] = {
       if(pos >= xs.length) throw new NoSuchElementException
@@ -202,7 +202,7 @@ object ArrayOps {
   */
 final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
 
-  @`inline` private[this] implicit def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
+  @`inline` private implicit def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
 
   /** The size of this array.
     *
@@ -331,7 +331,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     val lo = max(from, 0)
     val hi = min(until, xs.length)
     if (hi > lo) {
-      (((xs: Array[_]): @unchecked) match {
+      (((xs: Array[?]): @unchecked) match {
         case x: Array[AnyRef]     => copyOfRange(x, lo, hi)
         case x: Array[Int]        => copyOfRange(x, lo, hi)
         case x: Array[Double]     => copyOfRange(x, lo, hi)
@@ -370,7 +370,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   def inits: Iterator[Array[A]] = iterateUntilEmpty(xs => new ArrayOps(xs).init)
 
   // A helper for tails and inits.
-  private[this] def iterateUntilEmpty(f: Array[A] => Array[A]): Iterator[Array[A]]^{f} =
+  private def iterateUntilEmpty(f: Array[A] => Array[A]): Iterator[Array[A]]^{f} =
     Iterator.iterate(xs)(f).takeWhile(x => x.length != 0) ++ Iterator.single(Array.empty[A])
 
   /** An array containing the first `n` elements of this array. */
@@ -424,12 +424,12 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
       case null               => throw new NullPointerException
     }).asInstanceOf[Iterator[A]]
 
-  def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = (shape.shape: @unchecked) match {
       case StepperShape.ReferenceShape => (xs: Any) match {
         case bs: Array[Boolean] => new BoxedBooleanArrayStepper(bs, 0, xs.length)
-        case _ => new ObjectArrayStepper[AnyRef](xs.asInstanceOf[Array[AnyRef ]], 0, xs.length)
+        case _ => new ObjectArrayStepper[AnyRef](xs.asInstanceOf[Array[AnyRef]], 0, xs.length)
       }
       case StepperShape.IntShape    => new IntArrayStepper           (xs.asInstanceOf[Array[Int    ]], 0, xs.length)
       case StepperShape.LongShape   => new LongArrayStepper          (xs.asInstanceOf[Array[Long   ]], 0, xs.length)
@@ -439,7 +439,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
       case StepperShape.CharShape   => new WidenedCharArrayStepper   (xs.asInstanceOf[Array[Char   ]], 0, xs.length)
       case StepperShape.FloatShape  => new WidenedFloatArrayStepper  (xs.asInstanceOf[Array[Float  ]], 0, xs.length)
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   /** Partitions elements in fixed size arrays.
@@ -596,12 +596,12 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
       Sorting.stableSort(a)(using ord.asInstanceOf[Ordering[A]])
       a
     } else {
-      val a = Array.copyAs[AnyRef](xs, len)(ClassTag.AnyRef)
+      val a = Array.copyAs[AnyRef](xs, len)(using ClassTag.AnyRef)
       Arrays.sort(a, ord.asInstanceOf[Ordering[AnyRef]])
       Array.copyAs[A](a, len)
     }
     if(len <= 1) xs.clone()
-    else ((xs: Array[_]) match {
+    else ((xs: Array[?]) match {
       case xs: Array[AnyRef] =>
         val a = Arrays.copyOf(xs, len); Arrays.sort(a, ord.asInstanceOf[Ordering[AnyRef]]); a
       case xs: Array[Int] =>
@@ -637,7 +637,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return     an array consisting of the elements of this array
     *              sorted according to the comparison function `lt`.
     */
-  def sortWith(lt: (A, A) => Boolean): Array[A] = sorted(Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) => Boolean): Array[A] = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this array according to the Ordering which results from transforming
     *  an implicitly given Ordering with a transformation function.
@@ -652,7 +652,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *           sorted according to the ordering where `x < y` if
     *           `ord.lt(f(x), f(y))`.
     */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): Array[A] = sorted(ord on f)
+  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): Array[A] = sorted(using ord.on(f))
 
   /** Creates a non-strict filter of this array.
     *
@@ -1166,7 +1166,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   }
 
   /** A copy of this array with all elements of an array prepended. */
-  def prependedAll[B >: A : ClassTag](prefix: Array[_ <: B]): Array[B] = {
+  def prependedAll[B >: A : ClassTag](prefix: Array[? <: B]): Array[B] = {
     val dest = Array.copyAs[B](prefix, prefix.length+xs.length)
     Array.copy(xs, 0, dest, prefix.length, xs.length)
     dest
@@ -1174,7 +1174,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
 
   @`inline` final def ++: [B >: A : ClassTag](prefix: IterableOnce[B]^): Array[B] = prependedAll(prefix)
 
-  @`inline` final def ++: [B >: A : ClassTag](prefix: Array[_ <: B]): Array[B] = prependedAll(prefix)
+  @`inline` final def ++: [B >: A : ClassTag](prefix: Array[? <: B]): Array[B] = prependedAll(prefix)
 
   /** A copy of this array with all elements of a collection appended. */
   def appendedAll[B >: A : ClassTag](suffix: IterableOnce[B]^): Array[B] = {
@@ -1186,7 +1186,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   }
 
   /** A copy of this array with all elements of an array appended. */
-  def appendedAll[B >: A : ClassTag](suffix: Array[_ <: B]): Array[B] = {
+  def appendedAll[B >: A : ClassTag](suffix: Array[? <: B]): Array[B] = {
     val dest = Array.copyAs[B](xs, xs.length+suffix.length)
     Array.copy(suffix, 0, dest, xs.length, suffix.length)
     dest
@@ -1194,15 +1194,15 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
 
   @`inline` final def :++ [B >: A : ClassTag](suffix: IterableOnce[B]^): Array[B] = appendedAll(suffix)
 
-  @`inline` final def :++ [B >: A : ClassTag](suffix: Array[_ <: B]): Array[B] = appendedAll(suffix)
+  @`inline` final def :++ [B >: A : ClassTag](suffix: Array[? <: B]): Array[B] = appendedAll(suffix)
 
   @`inline` final def concat[B >: A : ClassTag](suffix: IterableOnce[B]^): Array[B] = appendedAll(suffix)
 
-  @`inline` final def concat[B >: A : ClassTag](suffix: Array[_ <: B]): Array[B] = appendedAll(suffix)
+  @`inline` final def concat[B >: A : ClassTag](suffix: Array[? <: B]): Array[B] = appendedAll(suffix)
 
   @`inline` final def ++[B >: A : ClassTag](xs: IterableOnce[B]^): Array[B] = appendedAll(xs)
 
-  @`inline` final def ++[B >: A : ClassTag](xs: Array[_ <: B]): Array[B] = appendedAll(xs)
+  @`inline` final def ++[B >: A : ClassTag](xs: Array[? <: B]): Array[B] = appendedAll(xs)
 
   /** Tests whether this array contains a given value as an element.
     *
@@ -1300,7 +1300,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     */
   def transpose[B](implicit asArray: A => Array[B]): Array[Array[B]] = {
     val aClass = xs.getClass.getComponentType
-    val bb = new ArrayBuilder.ofRef[Array[B]]()(ClassTag[Array[B]](aClass))
+    val bb = new ArrayBuilder.ofRef[Array[B]]()(using ClassTag[Array[B]](aClass))
     if (xs.length == 0) bb.result()
     else {
       def mkRowBuilder() = ArrayBuilder.make[B](using ClassTag[B](aClass.getComponentType))
