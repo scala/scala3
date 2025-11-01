@@ -5,7 +5,6 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
 import util.{SimpleIdentitySet, EqHashMap}
-import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*

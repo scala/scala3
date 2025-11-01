@@ -13,7 +13,6 @@ import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property, EqHashMap}
-import typer.ErrorReporting.Addenda
 import scala.collection.{mutable, immutable}
 import TypeComparer.ErrorNote
 import CCState.*

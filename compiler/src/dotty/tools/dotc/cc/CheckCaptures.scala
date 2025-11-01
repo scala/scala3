@@ -14,7 +14,7 @@ import typer.ForceDegree
 import typer.Inferencing.isFullyDefined
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
-import typer.ErrorReporting.{Addenda, NothingToAdd, err}
+import typer.ErrorReporting.{Note, err}
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import util.chaining.tap
@@ -399,7 +399,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case (fail: IncludeFailure) :: _ => fail.cs
             case _ => target
           def msg(provisional: Boolean) =
-            def toAdd: String = errorNotes(otherNotes).toAdd.mkString
+            def toAdd: String = errorNotes(otherNotes).map(_.render).mkString
             def descr: String =
               val d = realTarget.description
               if d.isEmpty then provenance else ""
@@ -1208,7 +1208,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // too annoying. This is a hole since a defualt getter's result type
           // might leak into a type variable.
 
-      def fail(tree: Tree, expected: Type, addenda: Addenda): Unit =
+      def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
         report.error(
           em"""$sym needs an explicit$maybeResult type because the inferred type does not conform to
@@ -1218,7 +1218,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               | Externally visible type: $expected""",
           tree.srcPos)
 
-      def addenda(expected: Type) = Addenda:
+      def addendum(expected: Type) = Note:
         def result = if tree.isInstanceOf[ValDef] then"" else " result"
         i"""
           |
@@ -1237,7 +1237,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
               withCapAsRoot:
-                testAdapted(tp, expected, tree.rhs, addenda(expected))(fail)
+                testAdapted(tp, expected, tree.rhs, addendum(expected) :: Nil)(fail)
                 // The check that inferred <: expected is done after recheck so that it
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
@@ -1444,34 +1444,34 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
-    private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
-      if notes.isEmpty then NothingToAdd
-      else new Addenda:
-        override def toAdd(using Context) = notes.map: note =>
+    private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): List[Note] =
+      notes.map: note =>
+        Note:
           i"""
              |
              |Note that ${note.description}."""
 
     /** Addendas for error messages that show where we have under-approximated by
-     *  mapping a a capability in contravariant position to the empty set because
+     *  mapping of a capability in contravariant position to the empty set because
      *  the original result type of the map was not itself a capability.
      */
-    private def addApproxAddenda(using Context) =
-      new TypeAccumulator[Addenda]:
-        def apply(add: Addenda, t: Type) = t match
+    private def addApproxAddenda(using Context): TypeAccumulator[List[Note]] =
+      new TypeAccumulator:
+        def apply(notes: List[Note], t: Type) = t match
           case CapturingType(t, CaptureSet.EmptyWithProvenance(ref, mapped)) =>
             /* val (origCore, kind) = original match
               case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>
                 (parent, " deep")
               case _ =>
                 (original, "")*/
-            add ++ Addenda:
+            Note:
                 i"""
                    |
                    |Note that a capability $ref in a capture set appearing in contravariant position
                    |was mapped to $mapped which is not a capability. Therefore, it was under-approximated to the empty set."""
+            :: notes
           case _ =>
-            foldOver(add, t)
+            foldOver(notes, t)
 
     /** Massage `actual` and `expected` types before checking conformance.
      *  Massaging is done by the methods following this one:
@@ -1480,8 +1480,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  If the resulting types are not compatible, try again with an actual type
      *  where local capture roots are instantiated to root variables.
      */
-    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
-      try testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
+    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
+      try testAdapted(actual, expected, tree, notes: List[Note])(err.typeMismatch)
       catch case ex: AssertionError =>
         println(i"error while checking $tree: $actual against $expected")
         throw ex
@@ -1496,8 +1496,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => NoType
       case _ => NoType
 
-    inline def testAdapted(actual: Type, expected: Type, tree: Tree, addenda: Addenda)
-        (fail: (Tree, Type, Addenda) => Unit)(using Context): Type =
+    inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
+        (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type =
 
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val falseDeps = expected1 ne expected
@@ -1544,11 +1544,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
 
       TypeComparer.compareResult(tryCurrentType || tryWidenNamed) match
-        case TypeComparer.CompareResult.Fail(notes) =>
+        case TypeComparer.CompareResult.Fail(errNotes) =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
           if falseDeps then expected1 = unalignFunction(expected1)
-          fail(tree.withType(actualBoxed), expected1,
-            addApproxAddenda(addenda ++ errorNotes(notes), expected1))
+          val toAdd0 = notes ++ errorNotes(errNotes)
+          val toAdd1 = addApproxAddenda(toAdd0, expected1)
+          fail(tree.withType(actualBoxed), expected1, toAdd1)
           actual
         case /*OK*/ _ =>
           if debugSuccesses then tree match

@@ -3327,7 +3327,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  the same class as `note`.
    */
   def addErrorNote(note: ErrorNote): Unit =
-    if errorNotes.forall(_._2.kind != note.kind) then
+    if errorNotes.forall(_._2.getClass != note.getClass) then
       errorNotes = (recCount, note) :: errorNotes
       assert(maxErrorLevel <= recCount)
       maxErrorLevel = recCount
@@ -3357,11 +3357,6 @@ object TypeComparer {
 
   /** A base trait for data producing addenda to error messages */
   trait ErrorNote:
-    /** A disciminating kind. An error note is not added if it has the same kind
-     *  as an already existing error note.
-     */
-    def kind: Class[?] = getClass
-
     def description(using Context): String
   end ErrorNote
 
