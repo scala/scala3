@@ -458,16 +458,16 @@ class QuoteMatcher(debug: Boolean) {
                    *  only when they have empty bounds (>: Nothing <: Any)
                    */
                   def matchTypeDef(sctypedef: TypeDef, pttypedef: TypeDef): MatchingExprs =
-                    inline def recur(tds: List[TypeDef], unwind: Int): MatchingExprs =
-                      if unwind == 0 then
+                    inline def recur(tds: Array[TypeDef], i: Int): MatchingExprs =
+                      if i == 2 then
                         matched
                       else
-                        tds.head match
-                        case TypeDef(_, TypeBoundsTree(lo, hi, EmptyTree))
-                        if lo.tpe.isNothingType && hi.tpe.isAny
-                        => recur(tds.tail, unwind - 1)
+                        tds(i).rhs match
+                        case tbt: TypeBoundsTree
+                        if tbt.lo.tpe.isNothingType && tbt.hi.tpe.isAny && tbt.alias.isEmpty
+                        => recur(tds, i + 1)
                         case _ => notMatched
-                    recur(sctypedef :: pttypedef :: Nil, unwind = 2)
+                    recur(Array(sctypedef, pttypedef), i = 0)
 
                   def matchParamss(scparamss: List[ParamClause], ptparamss: List[ParamClause])(using Env): optional[(Env, MatchingExprs)] =
                     (scparamss, ptparamss) match {
