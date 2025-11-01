@@ -4,10 +4,7 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass }
-import org.junit.Assert._
-import org.junit.Assume._
-import org.junit.Ignore
+import org.junit.{AfterClass, Ignore, Test}
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -97,7 +94,7 @@ class BootstrappedOnlyCompilationTests {
   // Negative tests ------------------------------------------------------------
 
   @Test def negMacros: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
+    given TestGroup = TestGroup("negMacros")
     compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros"))
       .checkExpectedErrors()
   }
