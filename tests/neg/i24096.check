@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg/i24096.scala:8:31 -------------------------------------------------------------
 8 |        case r: Terminal[?] => r // error
   |                               ^
-  |                     Found:    (r : Pull[F, O, Unit] & Pull.Terminal[_])
+  |                     Found:    (r : Pull.Terminal[_] & Pull[F, O, Unit])
   |                     Required: Pull[F2, O2, Unit]
   |
   |                     where:    F  is a type in class StreamPullOps with bounds <: [_²] =>> Any
