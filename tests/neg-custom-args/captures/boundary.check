@@ -2,10 +2,11 @@
  4 |  boundary[AnyRef^]:
  5 |    l1 ?=> // error // error
    |  ^
+   |  Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
+   |  The leakage occurred when trying to match the following types:
+   |
    |  Found:    scala.util.boundary.Label[Object^'s1]
    |  Required: scala.util.boundary.Label[Object^]^²
-   |
-   |  Note that capability cap cannot be included in outer capture set 's1 which is owned by val local.
    |
    |  where:    ^ and cap refer to the universal root capability
    |            ^²        refers to a fresh root capability classified as Control in the type of value local

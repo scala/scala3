@@ -1324,12 +1324,25 @@ object CaptureSet:
       res.myTrace = cs1 :: this.myTrace
       res
 
-    def render(using Context) =
+    override def prefix(using Context) = cs match
+      case cs: Var =>
+        !cs.levelOK(elem)
+        || cs.isBadRoot(elem) && elem.isInstanceOf[FreshCap]
+      case _ =>
+        false
+
+    def trailing(msg: String)(using Context): String =
       i"""
          |
-         |Note that $description."""
+         |Note that $msg."""
 
-    private def description(using Context): String =
+    def leading(msg: String)(using Context): String =
+      i"""$msg.
+         |The leakage occurred when trying to match the following types:
+         |
+         |"""
+
+    def render(using Context): String =
       def why =
         val reasons = cs.elems.toList.collect:
           case c: FreshCap if !c.acceptsLevelOf(elem) =>
@@ -1340,27 +1353,33 @@ object CaptureSet:
         else reasons.mkString("\nbecause ", "\nand ", "")
       cs match
         case cs: Var =>
+          def ownerStr =
+            if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
           if !cs.levelOK(elem) then
-            val levelStr = elem match
-              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}\n"
-              case _ => " "
-            val ownerStr =
-              if cs.owner.exists then s" which is owned by ${cs.owner}" else ""
-            i"""${elem.showAsCapability}${levelStr}cannot be included in outer capture set $cs$ownerStr"""
+            val outlivesStr = elem match
+              case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
+              case _ => " outlives its scope: "
+            leading:
+              i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
           else if !elem.tryClassifyAs(cs.classifier) then
-            i"""${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
+            trailing:
+              i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
                 |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
           else if cs.isBadRoot(elem) then
             elem match
               case elem: FreshCap =>
-                i"""local ${elem.showAsCapability} created in ${elem.ccOwner}
-                  |cannot be included in outer capture set $cs"""
+                leading:
+                  i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
+                     |It leaks into outer capture set $cs$ownerStr"""
               case _ =>
-                i"universal ${elem.showAsCapability} cannot be included in capture set $cs"
+                trailing:
+                  i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
           else
-            i"${elem.showAsCapability} cannot be included in capture set $cs"
+            trailing:
+              i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
         case _ =>
-          i"${elem.showAsCapability} is not included in capture set $cs$why"
+          trailing:
+            i"capability ${elem.showAsCapability} is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):

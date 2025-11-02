@@ -1,10 +1,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:25 -------------------------------
 10 |  val test1 = localCap { c => // error
    |                         ^
-   |Found:    (c: Capp^'s1) ->'s2 () ->{c} Unit
-   |Required: (c: Capp^) => () ->'s3 Unit
+   |Capability c outlives its scope: it leaks into outer capture set 's1 which is owned by value test1.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability c cannot be included in outer capture set 's3 which is owned by val test1.
+   |Found:    (c: Capp^'s2) ->'s3 () ->{c} Unit
+   |Required: (c: Capp^) => () ->'s1 Unit
    |
    |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability

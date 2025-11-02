@@ -19,30 +19,33 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:21:4 --------------------------------------
 21 |    () => foo(1) // error
    |    ^^^^^^^^^^^^
+   |    Capability canThrow$2 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's1 of value x.
+   |    The leakage occurred when trying to match the following types:
+   |
    |    Found:    () ->{canThrow$2} Unit
    |    Required: () ->'s1 Unit
-   |
-   |    Note that capability canThrow$2, defined in method try$2
-   |    cannot be included in outer capture set 's1 of value x which is owned by val x.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:27:4 --------------------------------------
 27 |    () => Cell(foo(1)) // error
    |    ^^^^^^^^^^^^^^^^^^
-   |    Found:    () ->{canThrow$3} Cell[Unit]^'s2
-   |    Required: () ->'s3 Cell[Unit]^'s4
+   |    Capability canThrow$3 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's2 of value y.
+   |    The leakage occurred when trying to match the following types:
    |
-   |    Note that capability canThrow$3, defined in method try$3
-   |    cannot be included in outer capture set 's3 of value y which is owned by val y.
+   |    Found:    () ->{canThrow$3} Cell[Unit]^'s3
+   |    Required: () ->'s2 Cell[Unit]^'s4
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:33:8 --------------------------------------
 33 |    Cell(() => foo(1)) // error
    |    ^^^^^^^^^^^^^^^^^^
+   |    Capability canThrow$4 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's5 of value b.
+   |    The leakage occurred when trying to match the following types:
+   |
    |    Found:    Cell[() ->{canThrow$4} Unit]
    |    Required: Cell[() ->'s5 Unit]^'s6
-   |
-   |    Note that capability canThrow$4, defined in method try$4
-   |    cannot be included in outer capture set 's5 of value b which is owned by val b.
    |
    | longer explanation available when compiling with `-explain`

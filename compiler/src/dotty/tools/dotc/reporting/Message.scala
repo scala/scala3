@@ -42,11 +42,18 @@ object Message:
     else ""
 
   /** A note can produce an added string for an error message */
-  abstract class Note(val prefix: Boolean = false):
+  abstract class Note:
+  
+  	/** Should the note be shown before the actual message or after?
+  	 *  Default is after.
+  	 */
+    def prefix(using Context): Boolean = false
+
+    /** The note rendered as part of an error message */
     def render(using Context): String
 
   object Note:
-    def apply(msg: Context ?=> String, prefix: Boolean = false) = new Note(prefix):
+    def apply(msg: Context ?=> String) = new Note:
       def render(using Context) = msg
 
   enum Disambiguation:

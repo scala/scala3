@@ -201,9 +201,6 @@ object CheckCaptures:
     && !sym.isOneOf(DeferredOrTermParamOrAccessor)
     && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
 
-  private def ownerStr(owner: Symbol)(using Context): String =
-    if owner.isAnonymousFunction then "enclosing function" else owner.show
-
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
     def completeDef(tree: ValOrDefDef, sym: Symbol, completer: LazyType)(using Context): Type

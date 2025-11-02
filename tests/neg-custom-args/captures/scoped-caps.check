@@ -85,7 +85,7 @@
    |Required: B^²
    |
    |Note that capability cap is not included in capture set {cap²}
-   |because cap in enclosing function is not visible from cap² in value _$14.
+   |because cap in an enclosing function is not visible from cap² in value _$14.
    |
    |where:    ^ and cap   refer to a fresh root capability created in anonymous function of type (x: S): B^³ when instantiating method apply's type (x: S^³): B^⁴
    |          ^² and cap² refer to a fresh root capability in the type of value _$14
