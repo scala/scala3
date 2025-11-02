@@ -786,12 +786,9 @@ object Capabilities:
               && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
-          val result = y match
+          y match
             case y: ResultCap => vs.unify(x, y)
             case _ => y.derivesFromShared
-          if !result then
-            TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
-          result
         case GlobalCap =>
           y match
             case GlobalCap => true

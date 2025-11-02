@@ -21,7 +21,7 @@ import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure, MutAdaptFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}

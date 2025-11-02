@@ -1300,20 +1300,6 @@ object CaptureSet:
   /** A TypeMap that is the identity on capabilities */
   trait IdentityCaptRefMap extends TypeMap
 
-  /** A value of this class is produced and added as a note to ccState
-   *  when a subsumes check decides that an existential variable `ex` cannot be
-   *  instantiated to the other capability `other`.
-   */
-  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends Note:
-    def render(using Context): String =
-      def reason =
-        if other.isTerminalCapability then ""
-        else " since that capability is not a `Sharable` capability"
-      i"""
-         |
-         |Note that the existential capture root in ${ex.originalBinder.resType}
-         |cannot subsume the capability $other$reason."""
-
   /** Failure indicating that `elem` cannot be included in `cs` */
   case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends Note, Showable:
     private var myTrace: List[CaptureSet] = cs :: Nil
@@ -1342,44 +1328,47 @@ object CaptureSet:
          |
          |"""
 
-    def render(using Context): String =
-      def why =
-        val reasons = cs.elems.toList.collect:
-          case c: FreshCap if !c.acceptsLevelOf(elem) =>
-            i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
-          case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
-            i"$c is classified as ${c.hiddenSet.classifier} but $elem is not"
-        if reasons.isEmpty then ""
-        else reasons.mkString("\nbecause ", "\nand ", "")
-      cs match
-        case cs: Var =>
-          def ownerStr =
-            if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
-          if !cs.levelOK(elem) then
-            val outlivesStr = elem match
-              case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
-              case _ => " outlives its scope: "
-            leading:
-              i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
-          else if !elem.tryClassifyAs(cs.classifier) then
-            trailing:
-              i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
-                |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
-          else if cs.isBadRoot(elem) then
-            elem match
-              case elem: FreshCap =>
-                leading:
-                  i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
-                     |It leaks into outer capture set $cs$ownerStr"""
-              case _ =>
-                trailing:
-                  i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
-          else
-            trailing:
-              i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
-        case _ =>
+    def render(using Context): String = cs match
+      case cs: Var =>
+        def ownerStr =
+          if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
+        if !cs.levelOK(elem) then
+          val outlivesStr = elem match
+            case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
+            case _ => " outlives its scope: "
+          leading:
+            i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+        else if !elem.tryClassifyAs(cs.classifier) then
           trailing:
-            i"capability ${elem.showAsCapability} is not included in capture set $cs$why"
+            i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
+              |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
+        else if cs.isBadRoot(elem) then
+          elem match
+            case elem: FreshCap =>
+              leading:
+                i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
+                    |It leaks into outer capture set $cs$ownerStr"""
+            case _ =>
+              trailing:
+                i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
+        else
+          trailing:
+            i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
+      case _ =>
+        def why =
+          val reasons = cs.elems.toList.collect:
+            case c: FreshCap if !c.acceptsLevelOf(elem) =>
+              i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
+            case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+              i"$c is classified as ${c.hiddenSet.classifier} but ${elem.showAsCapability} is not"
+            case c: ResultCap if !c.subsumes(elem) =>
+              val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
+              i"$c, which is existentially bound in ${c.originalBinder.resType}, cannot subsume ${elem.showAsCapability}$toAdd"
+          if reasons.isEmpty then ""
+          else reasons.mkString("\nbecause ", "\nand ", "")
+
+        trailing:
+          i"capability ${elem.showAsCapability} is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
