@@ -667,15 +667,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             //     case x: Tree[?]
             // (which translates to)
             //     case x: (_: Tree[?])
-        case m @ MatchTypeTree(bounds, selector, cases) =>
-          // Analog to the case above for match types
-          def transformIgnoringBoundsCheck(x: CaseDef): CaseDef =
-            withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
-          cpy.MatchTypeTree(tree)(
-            super.transform(bounds),
-            super.transform(selector),
-            cases.mapConserve(transformIgnoringBoundsCheck)
-          )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
         case tree: RefinedTypeTree =>
