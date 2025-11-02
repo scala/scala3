@@ -1961,7 +1961,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // Try to instantiate `pt` when possible.
       // * If `pt` is a type variable, we try to instantiate it directly.
       // * If `pt` is a more complex type, we try to instantiate it deeply by searching
-      //   a nested type variable bounded by function types to help infer parameter types.
+      //   a nested type variable bounded by a function type to help infer parameter types.
       // If it does not work the error will be reported later in `inferredParam`,
       // when we try to infer the parameter type.
       pt match
