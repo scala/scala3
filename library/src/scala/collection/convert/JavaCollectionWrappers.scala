@@ -150,8 +150,8 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def iterator: Iterator[A] = underlying.iterator.asScala
     def apply(i: Int): A = underlying.get(i)
     def update(i: Int, elem: A) = underlying.set(i, elem)
-    def prepend(elem: A) = { underlying.subList(0, 0) add elem; this }
-    def addOne(elem: A): this.type = { underlying add elem; this }
+    def prepend(elem: A) = { underlying.subList(0, 0).add(elem); this }
+    def addOne(elem: A): this.type = { underlying.add(elem); this }
     def insert(idx: Int,elem: A): Unit = underlying.subList(0, idx).add(elem)
     def insertAll(i: Int, elems: IterableOnce[A]^) = {
       val ins = underlying.subList(0, i)
@@ -228,10 +228,10 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     def contains(elem: A): Boolean = underlying.contains(elem)
 
-    def addOne(elem: A): this.type = { underlying add elem; this }
-    def subtractOne(elem: A): this.type = { underlying remove elem; this }
+    def addOne(elem: A): this.type = { underlying.add(elem); this }
+    def subtractOne(elem: A): this.type = { underlying.remove(elem); this }
 
-    override def remove(elem: A): Boolean = underlying remove elem
+    override def remove(elem: A): Boolean = underlying.remove(elem)
 
     override def clear(): Unit = {
       underlying.clear()
@@ -279,7 +279,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
           new ju.Map.Entry[K, V] {
             def getKey = k
             def getValue = v
-            def setValue(v1 : V) = self.put(k, v1)
+            def setValue(v1 : V): V = self.put(k, v1)
 
             // It's important that this implementation conform to the contract
             // specified in the javadocs of java.util.Map.Entry.hashCode
@@ -348,7 +348,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends mutable.AbstractMap[K, V]
       with JMapWrapperLike[K, V, mutable.Map, mutable.Map[K, V]] with Serializable
 
-  trait JMapWrapperLike[K, V, +CC[X, Y] <: mutable.MapOps[X, Y, CC, _], +C <: mutable.MapOps[K, V, CC, C]]
+  trait JMapWrapperLike[K, V, +CC[X, Y] <: mutable.MapOps[X, Y, CC, ?], +C <: mutable.MapOps[K, V, CC, C]]
     extends mutable.MapOps[K, V, CC, C]
       with StrictOptimizedMapOps[K, V, CC, C]
       with StrictOptimizedIterableOps[(K, V), mutable.Iterable, C] {
@@ -375,7 +375,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       }
 
     def addOne(kv: (K, V)): this.type = { underlying.put(kv._1, kv._2); this }
-    def subtractOne(key: K): this.type = { underlying remove key; this }
+    def subtractOne(key: K): this.type = { underlying.remove(key); this }
 
     // support Some(null) if currently bound to null
     override def put(k: K, v: V): Option[V] =
@@ -421,7 +421,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     }
 
     def iterator: Iterator[(K, V)] = new AbstractIterator[(K, V)] {
-      val ui = underlying.entrySet.iterator
+      val ui: java.util.Iterator[java.util.Map.Entry[K, V]] = underlying.entrySet.iterator
       def hasNext = ui.hasNext
       def next() = { val e = ui.next(); (e.getKey, e.getValue) }
     }
@@ -479,7 +479,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractJMapWrapper[K, V]
       with concurrent.Map[K, V] {
 
-    override def get(k: K) = Option(underlying get k)
+    override def get(k: K) = Option(underlying.get(k))
 
     override def getOrElseUpdate(key: K, op: => V): V =
       underlying.computeIfAbsent(key, _ => op) match {
@@ -561,17 +561,17 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
 
-    def get(k: K) = Option(underlying get k)
+    def get(k: K) = Option(underlying.get(k))
 
     def addOne(kv: (K, V)): this.type = { underlying.put(kv._1, kv._2); this }
-    def subtractOne(key: K): this.type = { underlying remove key; this }
+    def subtractOne(key: K): this.type = { underlying.remove(key); this }
 
     override def put(k: K, v: V): Option[V] = Option(underlying.put(k, v))
 
     override def update(k: K, v: V): Unit = { underlying.put(k, v) }
 
-    override def remove(k: K): Option[V] = Option(underlying remove k)
-    def iterator = underlying.keys.asScala map (k => (k, underlying get k))
+    override def remove(k: K): Option[V] = Option(underlying.remove(k))
+    def iterator = underlying.keys.asScala map (k => (k, underlying.get(k)))
 
     override def clear() = iterator.foreach(entry => underlying.remove(entry._1))
 
@@ -590,12 +590,12 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = size
     def get(k: String) = {
-      val v = underlying get k
+      val v = underlying.get(k)
       if (v != null) Some(v.asInstanceOf[String]) else None
     }
 
     def addOne(kv: (String, String)): this.type = { underlying.put(kv._1, kv._2); this }
-    def subtractOne(key: String): this.type = { underlying remove key; this }
+    def subtractOne(key: String): this.type = { underlying.remove(key); this }
 
     override def put(k: String, v: String): Option[String] = {
       val r = underlying.put(k, v)
@@ -605,12 +605,12 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def update(k: String, v: String): Unit = { underlying.put(k, v) }
 
     override def remove(k: String): Option[String] = {
-      val r = underlying remove k
+      val r = underlying.remove(k)
       if (r != null) Some(r.asInstanceOf[String]) else None
     }
 
     def iterator: Iterator[(String, String)] = new AbstractIterator[(String, String)] {
-      val ui = underlying.entrySet.iterator
+      val ui: java.util.Iterator[java.util.Map.Entry[Object, Object]] = underlying.entrySet.iterator
       def hasNext = ui.hasNext
       def next() = {
         val e = ui.next()

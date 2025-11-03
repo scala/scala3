@@ -28,7 +28,7 @@ trait SortedSet[A] extends Set[A]
   def sortedIterableFactory: SortedIterableFactory[SortedSet] = SortedSet
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "SortedSet"
+  override protected def stringPrefix: String = "SortedSet"
 
   override def equals(that: Any): Boolean = that match {
     case _ if this eq that.asInstanceOf[AnyRef] => true
@@ -172,7 +172,7 @@ object SortedSetOps {
     * @define coll sorted collection
     */
   class WithFilter[+A, +IterableCC[_], +CC[X] <: SortedSet[X]](
-    self: SortedSetOps[A, CC, _] with IterableOps[A, IterableCC, _],
+    self: SortedSetOps[A, CC, ?] & IterableOps[A, IterableCC, ?],
     p: A => Boolean
   ) extends IterableOps.WithFilter[A, IterableCC](self, p) {
 

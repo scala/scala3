@@ -70,18 +70,18 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   /** Creates a new `LongMap` with specified default values and initial buffer size. */
   def this(defaultEntry: Long -> V,  initialBufferSize: Int) = this(defaultEntry,  initialBufferSize,  initBlank = true)
 
-  private[this] var mask = 0
-  private[this] var extraKeys: Int = 0
-  @annotation.stableNull private[this] var zeroValue: AnyRef | Null = null
-  @annotation.stableNull private[this] var minValue: AnyRef | Null = null
-  private[this] var _size = 0
-  private[this] var _vacant = 0
-  private[this] var _keys: Array[Long] = _
-  private[this] var _values: Array[AnyRef | Null] = _
+  private var mask = 0
+  private var extraKeys: Int = 0
+  @annotation.stableNull private var zeroValue: AnyRef | Null = null
+  @annotation.stableNull private var minValue: AnyRef | Null = null
+  private var _size = 0
+  private var _vacant = 0
+  private var _keys: Array[Long] = compiletime.uninitialized
+  private var _values: Array[AnyRef | Null] = compiletime.uninitialized
 
   if (initBlank) defaultInitialize(initialBufferSize)
 
-  private[this] def defaultInitialize(n: Int) = {
+  private def defaultInitialize(n: Int) = {
     mask =
       if (n<0) 0x7
       else (((1 << (32 - java.lang.Integer.numberOfLeadingZeros(n-1))) - 1) & 0x3FFFFFFF) | 0x7
@@ -384,19 +384,19 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   }
 
   def iterator: Iterator[(Long, V)] = new AbstractIterator[(Long, V)] {
-    private[this] val kz = _keys
-    private[this] val vz = _values
+    private val kz = _keys
+    private val vz = _values
 
-    private[this] var nextPair: (Long, V) | Null =
+    private var nextPair: (Long, V) | Null =
       if (extraKeys==0) null
       else if ((extraKeys&1)==1) (0L, zeroValue.asInstanceOf[V])
       else (Long.MinValue, minValue.asInstanceOf[V])
 
-    private[this] var anotherPair: (Long, V) | Null =
+    private var anotherPair: (Long, V) | Null =
       if (extraKeys==3) (Long.MinValue, minValue.asInstanceOf[V])
       else null
 
-    private[this] var index = 0
+    private var index = 0
 
     def hasNext: Boolean = nextPair != null || (index < kz.length && {
       var q = kz(index)
@@ -583,9 +583,9 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   def collect[V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[V](LongMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[V](LongMap), this)
 
-  override protected[this] def className = "LongMap"
+  override protected def className = "LongMap"
 }
 
 object LongMap {
@@ -671,7 +671,7 @@ object LongMap {
   implicit def toFactory[V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
+  private object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]], Serializable {
     def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
@@ -683,7 +683,7 @@ object LongMap {
   }
 
   implicit def iterableFactory[V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
-  implicit def buildFromLongMap[V]: BuildFrom[LongMap[_], (Long, V), LongMap[V]] = toBuildFrom(this)
+  implicit def buildFromLongMap[V]: BuildFrom[LongMap[?], (Long, V), LongMap[V]] = toBuildFrom(this)
 
   private def repackMask(mask: Int, _size: Int, _vacant: Int): Int = {
     var m = mask

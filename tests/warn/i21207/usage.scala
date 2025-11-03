@@ -9,7 +9,7 @@ class C extends P {
   def g(i: Int): Int = 42 + i
 }
 
-object Test extends App {
+object Test {
   val over = Over()
   println(over.f) // nowarn Java
   val c = C()

@@ -332,7 +332,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
     /** If C derives from Capability and we have a C^cs in source, we leave it as is
-     *  instead of expanding it to C^{cap.rd}^cs. We do this by stripping capability-generated
+     *  instead of expanding it to C^{cap}^cs. We do this by stripping capability-generated
      *  universal capture sets from the parent of a CapturingType.
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
@@ -689,9 +689,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 // neither pure, nor are publicily extensible with an unconstrained self type.
                 val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
                 if cls.derivesFrom(defn.Caps_Capability) then
-                  // If cls is a capability class, we need to add a fresh readonly capability to
-                  // ensure we cannot treat the class as pure.
-                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  // If cls is a capability class, we need to add a fresh capability to ensure
+                  // we cannot treat the class as pure.
+                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
                 CapturingType(cinfo.selfType, cs)
 
             // Compute new parent types
@@ -936,21 +936,24 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if others.accountsFor(ref) then
             report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
-        if ref.captureSetOfInfo.elems.isEmpty
-            && !ref.coreType.derivesFrom(defn.Caps_Capability)
-            && !ref.coreType.derivesFrom(defn.Caps_CapSet) then
-          val deepStr = if ref.isReach then " deep" else ""
-          report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
-        check(parent.captureSet, parent)
+        if !ref.coreType.derivesFrom(defn.Caps_Capability)
+            // Capability classes don't have their implied capture set yet, so
+            // they would be seen as pure
+            && !ref.coreType.derivesFrom(defn.Caps_CapSet)
+        then
+          if ref.captureSetOfInfo.elems.isEmpty then
+            val deepStr = if ref.isReach then " deep" else ""
+            report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
+          check(parent.captureSet, parent)
 
-        val others =
-          for
-            j <- 0 until retained.length if j != i
-            r = retained(j)
-            if !r.isTerminalCapability
-          yield r
-        val remaining = CaptureSet(others*)
-        check(remaining, remaining)
+          val others =
+            for
+              j <- 0 until retained.length if j != i
+              r = retained(j)
+              if !r.isTerminalCapability
+            yield r
+          val remaining = CaptureSet(others*)
+          check(remaining, remaining)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)

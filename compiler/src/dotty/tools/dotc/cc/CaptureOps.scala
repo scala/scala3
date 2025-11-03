@@ -352,12 +352,6 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a type extending `Mutable` that has update methods? */
-  def isMutableType(using Context): Boolean =
-    tp.derivesFrom(defn.Caps_Mutable)
-    && tp.membersBasedOnFlags(Mutable | Method, EmptyFlags)
-      .exists(_.hasAltWith(_.symbol.isUpdateMethod))
-
   /** Is this a reference to caps.cap? Note this is _not_ the GlobalCap capability. */
   def isCapRef(using Context): Boolean = tp match
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
@@ -628,16 +622,6 @@ extension (sym: Symbol)
   def isConsumeParam(using Context): Boolean =
     sym.hasAnnotation(defn.ConsumeAnnot)
     || sym.info.hasAnnotation(defn.ConsumeAnnot)
-
-  def isUpdateMethod(using Context): Boolean =
-    sym.isAllOf(Mutable | Method, butNot = Accessor)
-
-  def isReadOnlyMethod(using Context): Boolean =
-    sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
-
-  def isInReadOnlyMethod(using Context): Boolean =
-    if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
-    else sym.owner.isInReadOnlyMethod
 
   def qualString(prefix: String)(using Context): String =
     if !sym.exists then ""

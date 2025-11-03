@@ -23,7 +23,7 @@ import scala.collection.immutable.Node
   * to the end of all trees.
   */
 private[collection] abstract class ChampStepperBase[
-  A, T <: Node[T], Sub, Semi <: Sub with ChampStepperBase[A, T, _, _]
+  A, T <: Node[T], Sub, Semi <: Sub & ChampStepperBase[A, T, ?, ?]
 ](protected var maxSize: Int)
 extends EfficientSplit {
   import Node.MaxDepth
@@ -32,11 +32,11 @@ extends EfficientSplit {
 
   protected var currentValueCursor: Int = 0
   protected var currentValueLength: Int = 0
-  protected var currentValueNode: T = _
+  protected var currentValueNode: T = compiletime.uninitialized
 
   private var currentStackLevel: Int = -1
-  private var nodeCursorsAndLengths: Array[Int] = _
-  private var nodes: Array[T] = _
+  private var nodeCursorsAndLengths: Array[Int] = compiletime.uninitialized
+  private var nodes: Array[T] = compiletime.uninitialized
 
   private def initNodes(): Unit = {
     if (nodeCursorsAndLengths eq null) {

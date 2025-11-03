@@ -961,7 +961,6 @@ object Capabilities:
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
     case NewInstance(tp: Type)
-    case NewCapability(tp: Type)
     case LambdaExpected(respt: Type)
     case LambdaActual(restp: Type)
     case OverriddenType(member: Symbol)
@@ -992,9 +991,6 @@ object Capabilities:
         i" when instantiating expected result type $restpe of function literal"
       case NewInstance(tp) =>
         i" when constructing instance $tp"
-      case NewCapability(tp) =>
-        val kind = if tp.derivesFromMutable then "mutable" else "Capability instance"
-        i" when constructing $kind $tp"
       case LambdaExpected(respt) =>
         i" when instantiating expected result type $respt of lambda"
       case LambdaActual(restp: Type) =>

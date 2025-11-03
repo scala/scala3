@@ -88,19 +88,19 @@ object LongMap {
   implicit def toFactory[V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
+  private object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
     def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: LongMap.type): BuildFrom[Any, (Long, V), LongMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Long, V), LongMap[V]]]
-  private[this] object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
+  private object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
     def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]^) = LongMap.from(it)
     def newBuilder(from: Any) = LongMap.newBuilder[AnyRef]
   }
 
   implicit def iterableFactory[V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
-  implicit def buildFromLongMap[V]: BuildFrom[LongMap[_], (Long, V), LongMap[V]] = toBuildFrom(this)
+  implicit def buildFromLongMap[V]: BuildFrom[LongMap[?], (Long, V), LongMap[V]] = toBuildFrom(this)
 }
 
 // Iterator over a non-empty LongMap.
@@ -258,7 +258,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case LongMap.Nil =>
   }
 
-  override protected[this] def className = "LongMap"
+  override protected def className = "LongMap"
 
   override def isEmpty = this eq LongMap.Nil
   override def knownSize: Int = if (isEmpty) 0 else super.knownSize
@@ -489,5 +489,5 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   def collect[V2](pf: PartialFunction[(Long, T), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[T](LongMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[T](LongMap), this)
 }

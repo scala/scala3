@@ -71,15 +71,15 @@ trait MapView[K, +V]
   override def toString: String = super[View].toString
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "MapView"
+  override protected def stringPrefix: String = "MapView"
 }
 
 object MapView extends MapViewFactory {
 
   /** An `IterableOps` whose collection type and collection type constructor are unknown */
-  type SomeIterableConstr[X, Y] = IterableOps[_, AnyConstr, _]
+  type SomeIterableConstr[X, Y] = IterableOps[?, AnyConstr, ?]
   /** A `MapOps` whose collection type and collection type constructor are (mostly) unknown */
-  type SomeMapOps[K, +V] = MapOps[K, V, SomeIterableConstr, _]
+  type SomeMapOps[K, +V] = MapOps[K, V, SomeIterableConstr, ?]
 
   @SerialVersionUID(3L)
   private val EmptyMapView: MapView[Any, Nothing] = new AbstractMapView[Any, Nothing] {
@@ -104,7 +104,7 @@ object MapView extends MapViewFactory {
 
   // Ideally this is public, but bincompat
   @SerialVersionUID(3L)
-  private class Keys[K](underlying: SomeMapOps[K, _]^) extends AbstractView[K] {
+  private class Keys[K](underlying: SomeMapOps[K, ?]^) extends AbstractView[K] {
     def iterator: Iterator[K]^{this} = underlying.keysIterator
     override def knownSize: Int = underlying.knownSize
     override def isEmpty: Boolean = underlying.isEmpty
@@ -112,7 +112,7 @@ object MapView extends MapViewFactory {
 
   // Ideally this is public, but bincompat
   @SerialVersionUID(3L)
-  private class Values[+V](underlying: SomeMapOps[_, V]^) extends AbstractView[V] {
+  private class Values[+V](underlying: SomeMapOps[?, V]^) extends AbstractView[V] {
     def iterator: Iterator[V]^{this} = underlying.valuesIterator
     override def knownSize: Int = underlying.knownSize
     override def isEmpty: Boolean = underlying.isEmpty

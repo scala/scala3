@@ -48,19 +48,19 @@ trait BuildFrom[-From, -A, +C] extends Any { self =>
 object BuildFrom extends BuildFromLowPriority1 {
 
   /** Build the source collection type from a MapOps */
-  implicit def buildFromMapOps[CC[X, Y] <: Map[X, Y] with MapOps[X, Y, CC, _], K0, V0, K, V]: BuildFrom[CC[K0, V0] with Map[K0, V0], (K, V), CC[K, V] with Map[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
+  implicit def buildFromMapOps[CC[X, Y] <: Map[X, Y] & MapOps[X, Y, CC, ?], K0, V0, K, V]: BuildFrom[CC[K0, V0] & Map[K0, V0], (K, V), CC[K, V] & Map[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
     //TODO: Reuse a prototype instance
-    def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: MapOps[K0, V0, CC, _]).mapFactory.newBuilder[K, V]
-    def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: MapOps[K0, V0, CC, _]).mapFactory.from(it)
+    def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: MapOps[K0, V0, CC, ?]).mapFactory.newBuilder[K, V]
+    def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: MapOps[K0, V0, CC, ?]).mapFactory.from(it)
   }
 
   /** Build the source collection type from a SortedMapOps */
-  implicit def buildFromSortedMapOps[CC[X, Y] <: SortedMap[X, Y] with SortedMapOps[X, Y, CC, _], K0, V0, K : Ordering, V]: BuildFrom[CC[K0, V0] with SortedMap[K0, V0], (K, V), CC[K, V] with SortedMap[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
-    def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: SortedMapOps[K0, V0, CC, _]).sortedMapFactory.newBuilder[K, V]
-    def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: SortedMapOps[K0, V0, CC, _]).sortedMapFactory.from(it)
+  implicit def buildFromSortedMapOps[CC[X, Y] <: SortedMap[X, Y] & SortedMapOps[X, Y, CC, ?], K0, V0, K : Ordering, V]: BuildFrom[CC[K0, V0] & SortedMap[K0, V0], (K, V), CC[K, V] & SortedMap[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
+    def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: SortedMapOps[K0, V0, CC, ?]).sortedMapFactory.newBuilder[K, V]
+    def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: SortedMapOps[K0, V0, CC, ?]).sortedMapFactory.from(it)
   }
 
-  implicit def buildFromBitSet[C <: BitSet with BitSetOps[C]]: BuildFrom[C, Int, C] =
+  implicit def buildFromBitSet[C <: BitSet & BitSetOps[C]]: BuildFrom[C, Int, C] =
     new BuildFrom[C, Int, C] {
       def fromSpecific(from: C)(it: IterableOnce[Int]^): C = from.bitSetFactory.fromSpecific(it)
       def newBuilder(from: C): Builder[Int, C] = from.bitSetFactory.newBuilder
@@ -78,10 +78,10 @@ object BuildFrom extends BuildFromLowPriority1 {
       def newBuilder(from: WrappedString): mutable.Builder[Char, WrappedString] = WrappedString.newBuilder
     }
 
-  implicit def buildFromArray[A : ClassTag]: BuildFrom[Array[_], A, Array[A]] =
-    new BuildFrom[Array[_], A, Array[A]] {
-      def fromSpecific(from: Array[_])(it: IterableOnce[A]^): Array[A] = Factory.arrayFactory[A].fromSpecific(it)
-      def newBuilder(from: Array[_]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
+  implicit def buildFromArray[A : ClassTag]: BuildFrom[Array[?], A, Array[A]] =
+    new BuildFrom[Array[?], A, Array[A]] {
+      def fromSpecific(from: Array[?])(it: IterableOnce[A]^): Array[A] = Factory.arrayFactory[A].fromSpecific(it)
+      def newBuilder(from: Array[?]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
     }
 
   implicit def buildFromView[A, B]: BuildFrom[View[A], B, View[B]] =
@@ -98,9 +98,9 @@ trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
   // Restating the upper bound of CC in the result type seems redundant, but it serves to prune the
   // implicit search space for faster compilation and reduced change of divergence. See the compilation
   // test in test/junit/scala/collection/BuildFromTest.scala and discussion in https://github.com/scala/scala/pull/10209
-  implicit def buildFromSortedSetOps[CC[X] <: SortedSet[X] with SortedSetOps[X, CC, _], A0, A : Ordering]: BuildFrom[CC[A0] with SortedSet[A0], A, CC[A] with SortedSet[A]] = new BuildFrom[CC[A0], A, CC[A]] {
-    def newBuilder(from: CC[A0]): Builder[A, CC[A]] = (from: SortedSetOps[A0, CC, _]).sortedIterableFactory.newBuilder[A]
-    def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A] = (from: SortedSetOps[A0, CC, _]).sortedIterableFactory.from(it)
+  implicit def buildFromSortedSetOps[CC[X] <: SortedSet[X] & SortedSetOps[X, CC, ?], A0, A : Ordering]: BuildFrom[CC[A0] & SortedSet[A0], A, CC[A] & SortedSet[A]] = new BuildFrom[CC[A0], A, CC[A]] {
+    def newBuilder(from: CC[A0]): Builder[A, CC[A]] = (from: SortedSetOps[A0, CC, ?]).sortedIterableFactory.newBuilder[A]
+    def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A] = (from: SortedSetOps[A0, CC, ?]).sortedIterableFactory.from(it)
   }
 
   implicit def fallbackStringCanBuildFrom[A]: BuildFrom[String, A, immutable.IndexedSeq[A]] =
@@ -112,14 +112,14 @@ trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
 
 trait BuildFromLowPriority2 {
   /** Build the source collection type from an IterableOps */
-  implicit def buildFromIterableOps[CC[X] <: Iterable[X] with IterableOps[X, CC, _], A0, A]: BuildFrom[CC[A0], A, CC[A]] = new BuildFrom[CC[A0], A, CC[A]] {
+  implicit def buildFromIterableOps[CC[X] <: Iterable[X] & IterableOps[X, CC, ?], A0, A]: BuildFrom[CC[A0], A, CC[A]] = new BuildFrom[CC[A0], A, CC[A]] {
     //TODO: Reuse a prototype instance
-    def newBuilder(from: CC[A0]): Builder[A, CC[A]] = (from: IterableOps[A0, CC, _]).iterableFactory.newBuilder[A]
-    def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A]^{it} = (from: IterableOps[A0, CC, _]).iterableFactory.from(it)
+    def newBuilder(from: CC[A0]): Builder[A, CC[A]] = (from: IterableOps[A0, CC, ?]).iterableFactory.newBuilder[A]
+    def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A]^{it} = (from: IterableOps[A0, CC, ?]).iterableFactory.from(it)
   }
 
-  implicit def buildFromIterator[A]: BuildFrom[Iterator[_], A, Iterator[A]] = new BuildFrom[Iterator[_], A, Iterator[A]] {
-    def newBuilder(from: Iterator[_]): mutable.Builder[A, Iterator[A]] = Iterator.newBuilder
-    def fromSpecific(from: Iterator[_])(it: IterableOnce[A]^): Iterator[A]^{it} = Iterator.from(it)
+  implicit def buildFromIterator[A]: BuildFrom[Iterator[?], A, Iterator[A]] = new BuildFrom[Iterator[?], A, Iterator[A]] {
+    def newBuilder(from: Iterator[?]): mutable.Builder[A, Iterator[A]] = Iterator.newBuilder
+    def fromSpecific(from: Iterator[?])(it: IterableOnce[A]^): Iterator[A]^{it} = Iterator.from(it)
   }
 }

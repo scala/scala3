@@ -1,5 +1,5 @@
--- Error: tests/neg-custom-args/captures/i23726.scala:10:5 -------------------------------------------------------------
-10 |  f1(a)  // error, as expected
+-- Error: tests/neg-custom-args/captures/i23726.scala:11:5 -------------------------------------------------------------
+11 |  f1(a)  // error, as expected
    |     ^
    |Separation failure: argument of type  (a : Ref^)
    |to a function of type (x: Ref^) -> List[() ->{a, x} Unit]
@@ -15,8 +15,8 @@
    |
    |where:    ^  refers to a fresh root capability classified as Mutable in the type of value a
    |          ^² refers to a fresh root capability classified as Mutable created in method test1 when checking argument to parameter x of method apply
--- Error: tests/neg-custom-args/captures/i23726.scala:15:5 -------------------------------------------------------------
-15 |  f3(b)  // error
+-- Error: tests/neg-custom-args/captures/i23726.scala:16:5 -------------------------------------------------------------
+16 |  f3(b)  // error
    |     ^
    |Separation failure: argument of type  (b : Ref^)
    |to a function of type (x: Ref^) -> (op: () ->{b} Unit) -> List[() ->{op} Unit]
@@ -32,8 +32,8 @@
    |
    |where:    ^  refers to a fresh root capability classified as Mutable in the type of value b
    |          ^² refers to a fresh root capability classified as Mutable created in method test1 when checking argument to parameter x of method apply
--- Error: tests/neg-custom-args/captures/i23726.scala:23:5 -------------------------------------------------------------
-23 |  f7(a)  // error
+-- Error: tests/neg-custom-args/captures/i23726.scala:24:5 -------------------------------------------------------------
+24 |  f7(a)  // error
    |     ^
    |Separation failure: argument of type  (a : Ref^)
    |to a function of type (x: Ref^) ->{a, b} (y: List[Ref^{a, b}]) ->{a, b} Unit

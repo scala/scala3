@@ -30,11 +30,6 @@ trait MessageRendering {
   def stripColor(str: String): String =
     str.replaceAll("\u001b\\[.*?m", "")
 
-  /** List of all the inline calls that surround the position */
-  def inlinePosStack(pos: SourcePosition): List[SourcePosition] =
-    if pos.outer != null && pos.outer.exists then pos :: inlinePosStack(pos.outer)
-    else Nil
-
   /** Get the sourcelines before and after the position, as well as the offset
     * for rendering line numbers
     *
@@ -236,17 +231,27 @@ trait MessageRendering {
     if origin.nonEmpty then
       addHelp("origin=")(origin)
 
-  /** The whole message rendered from `msg` */
-  def messageAndPos(dia: Diagnostic)(using Context): String = {
-    import dia.*
-    val pos1 = pos.nonInlined
-    val inlineStack = inlinePosStack(pos).filter(_ != pos1)
-    val maxLineNumber =
-      if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
-      else 0
-    given Level = Level(level)
-    given Offset = Offset(maxLineNumber.toString.length + 2)
-    val sb = StringBuilder()
+  /** The whole message rendered from `dia.msg`.
+   *
+   *  For a position in an inline expansion, choose `pos1`
+   *  which is the most specific position in the call written
+   *  by the user. For a diagnostic at EOF, where the last char
+   *  of source text is a newline, adjust the position to render
+   *  before the newline, at the end of the last line of text.
+   *
+   *  The rendering begins with a label and position (`posString`).
+   *  Then `sourceLines` with embedded caret `positionMarker`
+   *  and rendered message.
+   *
+   *  Then an `Inline stack trace` showing context for inlined code.
+   *  Inlined positions are taken which don't contain `pos1`.
+   *  (That should probably be positions not contained by outermost.)
+   *  Note that position equality includes `outer` position;
+   *  usually we intend to test `contains` or `coincidesWith`.
+   *
+   */
+  def messageAndPos(dia: Diagnostic)(using Context): String =
+    // adjust a pos at EOF if preceded by newline
     def adjust(pos: SourcePosition): SourcePosition =
       if pos.span.isSynthetic
       && pos.span.isZeroExtent
@@ -257,54 +262,57 @@ trait MessageRendering {
         pos.withSpan(pos.span.shift(-1))
       else
         pos
-    val adjusted = adjust(pos)
-    val posString = posStr(adjusted, msg, diagnosticLevel(dia))
-    if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists) {
-      val pos1 = pos.nonInlined
-      if (pos1.exists && pos1.source.file.exists) {
-        val readjusted =
-          if pos1 == pos then adjusted
-          else adjust(pos1)
-        val (srcBefore, srcAfter, offset) = sourceLines(readjusted)
-        val marker = positionMarker(readjusted)
-        val err = errorMsg(readjusted, msg.message)
-        sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+    val msg = dia.msg
+    val pos = dia.pos
+    val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
+    val outermost = pos.outermost // call.pos
+    val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
+    given Level = Level(dia.level)
+    given Offset =
+      val maxLineNumber =
+        if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
+        else 0
+      Offset(maxLineNumber.toString.length + 2)
+    val sb = StringBuilder()
+    val posString = posStr(pos1, msg, diagnosticLevel(dia))
+    if posString.nonEmpty then sb.append(posString).append(EOL)
+    if pos.exists && pos1.exists && pos1.source.file.exists then
+      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
+      val marker = positionMarker(pos1)
+      val err = errorMsg(pos1, msg.message)
+      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
-        if inlineStack.nonEmpty then
-          sb.append(EOL).append(newBox())
-          sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
-          for inlinedPos <- inlineStack if inlinedPos != pos1 do
-            sb.append(EOL).append(newBox(soft = true))
-            sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-            if inlinedPos.source.file.exists then
-              val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
-              val marker = positionMarker(inlinedPos)
-              sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
-          sb.append(EOL).append(endBox)
-      }
-      else sb.append(msg.message)
-    }
+      if inlineStack.nonEmpty then
+        sb.append(EOL).append(newBox())
+        sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
+        for inlinedPos <- inlineStack do
+          sb.append(EOL).append(newBox(soft = true))
+          sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
+          if inlinedPos.source.file.exists then
+            val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
+            val marker = positionMarker(inlinedPos)
+            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+        sb.append(EOL).append(endBox)
+      end if
     else sb.append(msg.message)
-    if (dia.isVerbose)
+    if dia.isVerbose then
       appendFilterHelp(dia, sb)
 
     if Diagnostic.shouldExplain(dia) then
       sb.append(EOL).append(newBox())
       sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
       sb.append(EOL).append(newBox(soft = true))
-      dia.msg.explanation.split(raw"\R").foreach { line =>
+      dia.msg.explanation.split(raw"\R").foreach: line =>
         sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
-      }
       sb.append(EOL).append(endBox)
     else if dia.msg.canExplain then
       sb.append(EOL).append(offsetBox)
       sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
     sb.toString
-  }
+  end messageAndPos
 
-  private  def hl(str: String)(using Context, Level): String =
+  private def hl(str: String)(using Context, Level): String =
     summon[Level].value match
       case interfaces.Diagnostic.ERROR   => Red(str).show
       case interfaces.Diagnostic.WARNING => Yellow(str).show

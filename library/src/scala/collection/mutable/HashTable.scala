@@ -416,5 +416,5 @@ private[collection] object HashTable {
   */
 private[collection] trait HashEntry[A, E <: HashEntry[A, E]] {
   val key: A
-  var next: E | Null = _
+  var next: E | Null = compiletime.uninitialized
 }

@@ -362,7 +362,7 @@ object SpaceEngine {
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
-        if fun.symbol.owner == defn.SeqFactoryClass && pat.tpe.hasClassSymbol(defn.ListClass) then
+        if fun.symbol.owner == defn.SeqFactoryClass && toUnderlying(pat.tpe).dealias.derivesFrom(defn.ListClass) then
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
@@ -709,6 +709,8 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
+      case tref: TypeRef if tref.isUpperBoundedAbstract =>
+        rec(tref.info.hiBound, mixins)
       case _ => ListOfNoType
     end rec
 
@@ -723,6 +725,10 @@ object SpaceEngine {
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
+
+  extension (tref: TypeRef)
+    def isUpperBoundedAbstract(using Context): Boolean =
+      tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
@@ -852,7 +858,11 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case)
+      classSym.is(Case) ||
+      (tpw.isInstanceOf[TypeRef] && {
+        val tref = tpw.asInstanceOf[TypeRef]
+        tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
+      })
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)

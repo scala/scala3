@@ -91,7 +91,8 @@ class CommunityBuildTestC:
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scalaz = projects.scalaz.run()
-  @Test def scas = projects.scas.run()
+  // mill 1.0.5 fails to build, cannot find scala-library artifact on classpath
+  // @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless3 = projects.shapeless3.run()
   @Test def sourcecode = projects.sourcecode.run()

@@ -178,7 +178,7 @@ object Using {
     import Manager._
 
     private var closed = false
-    private[this] var resources: List[Resource[_]] = Nil
+    private var resources: List[Resource[?]] = Nil
 
     /** Registers the specified resource with this manager, so that
       * the resource is released when the manager is closed, and then
@@ -209,7 +209,7 @@ object Using {
       } finally {
         closed = true
         var rs = resources
-        resources = nullForGC[List[Resource[_]]] // allow GC, in case something is holding a reference to `this`
+        resources = nullForGC[List[Resource[?]]] // allow GC, in case something is holding a reference to `this`
         while (rs != null && rs.nonEmpty) {
           val resource = rs.head
           rs = rs.tail

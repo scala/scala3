@@ -60,8 +60,15 @@ sealed abstract class CaptureSet extends Showable:
   def mutability_=(x: Mutability): Unit =
     myMut = x
 
-  /** Mark this capture set as belonging to a Mutable type. */
-  def setMutable()(using Context): Unit
+  /** Mark this capture set as belonging to a Mutable type. Called when a new
+   *  CapturingType is formed. This is different from the setter `mutability_=`
+   *  in that it be defined with different behaviors:
+   *
+   *   - set mutability to Mutable (for normal Vars)
+   *   - take mutability from the set's sources (for DerivedVars)
+   *   - compute mutability on demand based on mutability of elements (for Consts)
+   */
+  def associateWithMutable()(using Context): Unit
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -145,7 +152,7 @@ sealed abstract class CaptureSet extends Showable:
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
-  /** Similar to isExlusive, but also includes capture set variables
+  /** Similar to isExclusive, but also includes capture set variables
    *  with unknown status.
    */
   final def maybeExclusive(using Context): Boolean = reporting.trace(i"mabe exclusive $this"):
@@ -475,9 +482,16 @@ sealed abstract class CaptureSet extends Showable:
    *  Fresh instances count as good as long as their ccOwner is outside `upto`.
    *  If `upto` is NoSymbol, all Fresh instances are admitted.
    */
-  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
-    if elems.exists(isBadRoot(upto, _)) then handler()
-    this
+  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
+    checkAddedElems: elem =>
+      if isBadRoot(upto, elem) then handler()
+
+  /** Invoke handler for each element currently in the set and each element
+   *  added to it in the future.
+   */
+  def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+    elems.foreach: elem =>
+      handler(elem)
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
    *  The handler might add additional elements to the capture set.
@@ -610,7 +624,7 @@ object CaptureSet:
 
     private var isComplete = true
 
-    def setMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): Unit =
       if !elems.isEmpty then
         isComplete = false // delay computation of Mutability status
 
@@ -630,9 +644,9 @@ object CaptureSet:
       else ""
 
   private def capImpliedByCapability(parent: Type)(using Context): Capability =
-    if parent.derivesFromExclusive then GlobalCap.readOnly else GlobalCap
+    if parent.derivesFromMutable then GlobalCap.readOnly else GlobalCap
 
-  /* The same as {cap.rd} but generated implicitly for references of Capability subtypes.
+  /* The same as {cap} but generated implicitly for references of Capability subtypes.
    */
   class CSImpliedByCapability(parent: Type)(using @constructorOnly ctx: Context)
   extends Const(SimpleIdentitySet(capImpliedByCapability(parent)))
@@ -705,7 +719,7 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def setMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): Unit =
       mutability = Mutable
 
     def isConst(using Context) = solved >= ccState.iterationId
@@ -724,8 +738,8 @@ object CaptureSet:
             elems -= empty
       this
 
-    /** A handler to be invoked if the root reference `cap` is added to this set */
-    var rootAddedHandler: () => Context ?=> Unit = () => ()
+    /** A list of handlers to be invoked when a new element is added to this set */
+    var newElemAddedHandlers: List[Capability => Context ?=> Unit] = Nil
 
     /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
      *  @see isBadRoot for details.
@@ -753,9 +767,6 @@ object CaptureSet:
       classifier.isSubClass(cls)
       || super.tryClassifyAs(cls)
           && { narrowClassifier(cls); true }
-
-    /** A handler to be invoked when new elems are added to this set */
-    var newElemAddedHandler: Capability => Context ?=> Unit = _ => ()
 
     var description: String = ""
 
@@ -809,8 +820,7 @@ object CaptureSet:
         catch case ex: AssertionError =>
           println(i"error for incl $elem in $this, ${summon[VarState].toString}")
           throw ex
-        if isBadRoot(elem) then
-          rootAddedHandler()
+        newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = deps.forall: dep =>
@@ -858,14 +868,13 @@ object CaptureSet:
       || isConst
       || varState.canRecord && { includeDep(cs); true }
 
-    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
       rootLimit = upto
-      rootAddedHandler = handler
       super.disallowBadRoots(upto)(handler)
 
-    override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
-      newElemAddedHandler = handler
-      super.ensureWellformed(handler)
+    override def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+      newElemAddedHandlers = handler :: newElemAddedHandlers
+      super.checkAddedElems(handler)
 
     private var computingApprox = false
 
@@ -1005,8 +1014,7 @@ object CaptureSet:
      *  Test case: Without that tweak, logger.scala would not compile.
      */
     override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
-      if isRefining then this
-      else super.disallowBadRoots(upto)(handler)
+      if !isRefining then super.disallowBadRoots(upto)(handler)
 
   end ProperVar
 
@@ -1027,6 +1035,9 @@ object CaptureSet:
     mutability = source.mutability
 
     addAsDependentTo(source)
+
+    /** Mutability is same as in source, except for readOnly */
+    override def associateWithMutable()(using Context): Unit = ()
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1364,7 +1375,7 @@ object CaptureSet:
     def description(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
       i"""$cs is an exclusive capture set ${ofType(hi)},
-          |it cannot subsume a read-only capture set ${ofType(lo)}."""
+          |it cannot subsume a read-only capture set ${ofType(lo)}"""
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails

@@ -1,8 +1,8 @@
 -- Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:10:4 -------------------------------------------------
 10 |  a.set(42)  // error
    |  ^^^^^
-   |  cannot call update method set from (a : Ref),
-   |  since its capture set {a} is read-only
+   |  Cannot call update method set of a
+   |  since its capture set {a} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:12:21 ---------------------------
 12 |  val t: Ref^{cap} = a  // error
    |                     ^
@@ -12,7 +12,7 @@
    |               Note that capability a is not included in capture set {}.
    |
    |               Note that {cap} is an exclusive capture set of the mutable type Ref^,
-   |               it cannot subsume a read-only capture set of the mutable type (a : Ref)..
+   |               it cannot subsume a read-only capture set of the mutable type (a : Ref).
    |
    |               where:    ^ and cap refer to a fresh root capability classified as Mutable in the type of value t
    |

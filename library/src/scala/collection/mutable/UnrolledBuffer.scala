@@ -217,8 +217,8 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
 
   private def writeObject(out: java.io.ObjectOutputStream): Unit = {
     out.defaultWriteObject
-    out writeInt sz
-    for (elem <- this) out writeObject elem
+    out.writeInt(sz)
+    for (elem <- this) out.writeObject(elem)
   }
 
   private def readObject(in: java.io.ObjectInputStream): Unit = {
@@ -238,7 +238,7 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
 
   override def clone(): UnrolledBuffer[T] = new UnrolledBuffer[T] ++= this
 
-  override protected[this] def className = "UnrolledBuffer"
+  override protected def className = "UnrolledBuffer"
 }
 
 
@@ -444,7 +444,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
 // This is used by scala.collection.parallel.mutable.UnrolledParArrayCombiner:
 // Todo -- revisit whether inheritance is the best way to achieve this functionality
-private[collection] class DoublingUnrolledBuffer[T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(t) {
+private[collection] class DoublingUnrolledBuffer[T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(using t) {
   override def calcNextLength(sz: Int) = if (sz < 10000) sz * 2 else sz
   override protected def newUnrolled = new UnrolledBuffer.Unrolled[T](0, new Array[T](4), null, this)
 }

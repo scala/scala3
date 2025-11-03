@@ -48,12 +48,12 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
    * - The sum of the lengths of all buckets is equal to contentSize.
    */
   /** The actual hash table. */
-  private[this] var table = new Array[Node[A] | Null](tableSizeFor(initialCapacity))
+  private var table = new Array[Node[A] | Null](tableSizeFor(initialCapacity))
 
   /** The next size value at which to resize (capacity * load factor). */
-  private[this] var threshold: Int = newThreshold(table.length)
+  private var threshold: Int = newThreshold(table.length)
 
-  private[this] var contentSize = 0
+  private var contentSize = 0
 
   override def size: Int = contentSize
 
@@ -61,7 +61,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
   /** Computes the improved hash of an original (`any.##`) hash. */
-  private[this] def improveHash(originalHash: Int): Int = {
+  private def improveHash(originalHash: Int): Int = {
     // Improve the hash by xoring the high 16 bits into the low 16 bits just in case entropy is skewed towards the
     // high-value bits. We only use the lowest bits to determine the hash bucket. This is the same improvement
     // algorithm as in java.util.HashMap.
@@ -69,13 +69,13 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   }
 
   /** Computes the improved hash of this element */
-  @`inline` private[this] def computeHash(o: A): Int = improveHash(o.##)
+  @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
-  @`inline` private[this] def index(hash: Int) = hash & (table.length - 1)
+  @`inline` private def index(hash: Int) = hash & (table.length - 1)
 
   override def contains(elem: A): Boolean = findNode(elem) ne null
 
-  @`inline` private[this] def findNode(elem: A): Node[A] | Null = {
+  @`inline` private def findNode(elem: A): Node[A] | Null = {
     val hash = computeHash(elem)
     table(index(hash)) match {
       case null => null
@@ -153,7 +153,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     * @param elem element to add
     * @param hash the **improved** hash of `elem` (see computeHash)
     */
-  private[this] def addElem(elem: A, hash: Int) : Boolean = {
+  private def addElem(elem: A, hash: Int) : Boolean = {
     val idx = index(hash)
     table(idx) match {
       case null =>
@@ -175,7 +175,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     true
   }
 
-  private[this] def remove(elem: A, hash: Int): Boolean = {
+  private def remove(elem: A, hash: Int): Boolean = {
     val idx = index(hash)
     table(idx) match {
       case null => false
@@ -203,12 +203,12 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   override def remove(elem: A) : Boolean = remove(elem, computeHash(elem))
 
-  private[this] abstract class HashSetIterator[B] extends AbstractIterator[B] {
-    private[this] var i = 0
-    private[this] var node: Node[A] | Null = null
-    private[this] val len = table.length
+  private abstract class HashSetIterator[B] extends AbstractIterator[B] {
+    private var i = 0
+    private var node: Node[A] | Null = null
+    private val len = table.length
 
-    protected[this] def extract(nd: Node[A]): B
+    protected def extract(nd: Node[A]): B
 
     def hasNext: Boolean = {
       if(node ne null) true
@@ -232,15 +232,15 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   }
 
   override def iterator: Iterator[A] = new HashSetIterator[A] {
-    override protected[this] def extract(nd: Node[A]): A = nd.key
+    override protected def extract(nd: Node[A]): A = nd.key
   }
 
   /** Returns an iterator over the nodes stored in this HashSet */
   private[collection] def nodeIterator: Iterator[Node[A]] = new HashSetIterator[Node[A]] {
-    override protected[this] def extract(nd: Node[A]): Node[A] = nd
+    override protected def extract(nd: Node[A]): Node[A] = nd
   }
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntTableStepper[Node[A]]   (size, table, _.next.nn, _.key.asInstanceOf[Int],    0, table.length)
@@ -248,10 +248,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
       case StepperShape.DoubleShape => new DoubleTableStepper[Node[A]](size, table, _.next.nn, _.key.asInstanceOf[Double], 0, table.length)
       case _         => shape.parUnbox(new AnyTableStepper[A, Node[A]](size, table, _.next.nn, _.key,                      0, table.length))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
-  private[this] def growTable(newlen: Int) = {
+  private def growTable(newlen: Int) = {
     var oldlen = table.length
     threshold = newThreshold(newlen)
     if(size == 0) table = new Array[Node[A] | Null](newlen)
@@ -351,10 +351,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   }
   */
 
-  private[this] def tableSizeFor(capacity: Int) =
+  private def tableSizeFor(capacity: Int) =
     (Integer.highestOneBit((capacity-1).max(4))*2).min(1 << 30)
 
-  private[this] def newThreshold(size: Int) = (size.toDouble * loadFactor).toInt
+  private def newThreshold(size: Int) = (size.toDouble * loadFactor).toInt
 
   def clear(): Unit = {
     java.util.Arrays.fill(table.asInstanceOf[Array[AnyRef]], null)
@@ -381,9 +381,9 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(new HashSet.DeserializationFactory[A](table.length, loadFactor), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(new HashSet.DeserializationFactory[A](table.length, loadFactor), this)
 
-  override protected[this] def className = "HashSet"
+  override protected def className = "HashSet"
 
   override def hashCode: Int = {
     val setIterator = this.iterator
@@ -392,7 +392,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
       else new HashSetIterator[Any] {
         var hash: Int = 0
         override def hashCode: Int = hash
-        override protected[this] def extract(nd: Node[A]): Any = {
+        override protected def extract(nd: Node[A]): Any = {
           hash = unimproveHash(nd.hash)
           this
         }
@@ -431,12 +431,12 @@ object HashSet extends IterableFactory[HashSet] {
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
-  private final class DeserializationFactory[A](val tableLength: Int, val loadFactor: Double) extends Factory[A, HashSet[A]] with Serializable {
+  private final class DeserializationFactory[A](val tableLength: Int, val loadFactor: Double) extends Factory[A, HashSet[A]], Serializable {
     def fromSpecific(it: IterableOnce[A]^): HashSet[A] = new HashSet[A](tableLength, loadFactor) ++= it
     def newBuilder: Builder[A, HashSet[A]] = HashSet.newBuilder(tableLength, loadFactor)
   }
 
-  private[collection] final class Node[K](_key: K, _hash: Int, @annotation.stableNull private[this] var _next: Node[K] | Null) {
+  private[collection] final class Node[K](_key: K, _hash: Int, @annotation.stableNull private var _next: Node[K] | Null) {
     def key: K = _key
     def hash: Int = _hash
     def next: Node[K] | Null = _next

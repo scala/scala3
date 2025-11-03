@@ -82,6 +82,6 @@ transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
     b.result()
   }
 
-  override def sorted[B >: A](implicit ord: Ordering[B]): C = super.sorted(ord)
+  override def sorted[B >: A](implicit ord: Ordering[B]): C = super.sorted(using ord)
 
 }

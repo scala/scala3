@@ -219,9 +219,12 @@ This widening is called _avoidance_; it is not specific to capture checking but 
 
 ## Capability Classes
 
-Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `SharedCapability` class defined in object `cap`.
+Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `SharedCapability` class defined in object `caps`.
 
-The capture set of type extending `SharedCapability` is always `{cap}`. This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
+A type extending `SharedCapability` always comes with a capture set. If no capture set is given explicitly, we assume the capture set is `{cap}`.
+
+This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
+
 ```scala
 import caps.SharedCapability
 
@@ -234,9 +237,10 @@ def test(using fs: FileSystem) =
   val l: Logger^{fs} = Logger()
   ...
 ```
-In this version, `FileSystem` is a capability class, which means that the `{cap}` capture set is implied on the parameters of `Logger` and `test`.
+In this version, `FileSystem` is a capability class, which means that the occurrences of `FileSystem` in the types of the parameters of `Logger` and `test` are implicitly expanded to `FileSystem^`. On the other hand, types like `FileSystem^{f}` or
+`FileSystem^{}` are kept as written.
 
-Another, unrelated change in the version of the last example here is that the `FileSystem` capability is now passed as an implicit parameter. It is quite natural to model capabilities with implicit parameters since it greatly reduces the wiring overhead once multiple capabilities are in play.
+Another, unrelated change in the last version of the `Logger` example is that the `FileSystem` capability is now passed as an implicit parameter. It is quite natural to model capabilities with implicit parameters since it greatly reduces the wiring overhead once multiple capabilities are in play.
 
 ## Escape Checking
 

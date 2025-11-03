@@ -29,31 +29,31 @@ private[scala] object FutureConvertersImpl {
 
     // Ensure that completions of this future cannot hold the Scala Future's completer hostage
 
-    override def thenApply[U](fn: JFunction[_ >: T, _ <: U]): CompletableFuture[U] = thenApplyAsync(fn)
+    override def thenApply[U](fn: JFunction[? >: T, ? <: U]): CompletableFuture[U] = thenApplyAsync(fn)
 
-    override def thenAccept(fn: Consumer[_ >: T]): CompletableFuture[Void] = thenAcceptAsync(fn)
+    override def thenAccept(fn: Consumer[? >: T]): CompletableFuture[Void] = thenAcceptAsync(fn)
 
     override def thenRun(fn: Runnable): CompletableFuture[Void] = thenRunAsync(fn)
 
-    override def thenCombine[U, V](cs: CompletionStage[_ <: U], fn: BiFunction[_ >: T, _ >: U, _ <: V]): CompletableFuture[V] = thenCombineAsync(cs, fn)
+    override def thenCombine[U, V](cs: CompletionStage[? <: U], fn: BiFunction[? >: T, ? >: U, ? <: V]): CompletableFuture[V] = thenCombineAsync(cs, fn)
 
-    override def thenAcceptBoth[U](cs: CompletionStage[_ <: U], fn: BiConsumer[_ >: T, _ >: U]): CompletableFuture[Void] = thenAcceptBothAsync(cs, fn)
+    override def thenAcceptBoth[U](cs: CompletionStage[? <: U], fn: BiConsumer[? >: T, ? >: U]): CompletableFuture[Void] = thenAcceptBothAsync(cs, fn)
 
-    override def runAfterBoth(cs: CompletionStage[_], fn: Runnable): CompletableFuture[Void] = runAfterBothAsync(cs, fn)
+    override def runAfterBoth(cs: CompletionStage[?], fn: Runnable): CompletableFuture[Void] = runAfterBothAsync(cs, fn)
 
-    override def applyToEither[U](cs: CompletionStage[_ <: T], fn: JFunction[_ >: T, U]): CompletableFuture[U] = applyToEitherAsync(cs, fn)
+    override def applyToEither[U](cs: CompletionStage[? <: T], fn: JFunction[? >: T, U]): CompletableFuture[U] = applyToEitherAsync(cs, fn)
 
-    override def acceptEither(cs: CompletionStage[_ <: T], fn: Consumer[_ >: T]): CompletableFuture[Void] = acceptEitherAsync(cs, fn)
+    override def acceptEither(cs: CompletionStage[? <: T], fn: Consumer[? >: T]): CompletableFuture[Void] = acceptEitherAsync(cs, fn)
 
-    override def runAfterEither(cs: CompletionStage[_], fn: Runnable): CompletableFuture[Void] = runAfterEitherAsync(cs, fn)
+    override def runAfterEither(cs: CompletionStage[?], fn: Runnable): CompletableFuture[Void] = runAfterEitherAsync(cs, fn)
 
-    override def thenCompose[U](fn: JFunction[_ >: T, _ <: CompletionStage[U]]): CompletableFuture[U] = thenComposeAsync(fn)
+    override def thenCompose[U](fn: JFunction[? >: T, ? <: CompletionStage[U]]): CompletableFuture[U] = thenComposeAsync(fn)
 
-    override def whenComplete(fn: BiConsumer[_ >: T, _ >: Throwable]): CompletableFuture[T] = whenCompleteAsync(fn)
+    override def whenComplete(fn: BiConsumer[? >: T, ? >: Throwable]): CompletableFuture[T] = whenCompleteAsync(fn)
 
-    override def handle[U](fn: BiFunction[_ >: T, Throwable, _ <: U]): CompletableFuture[U] = handleAsync(fn)
+    override def handle[U](fn: BiFunction[? >: T, Throwable, ? <: U]): CompletableFuture[U] = handleAsync(fn)
 
-    override def exceptionally(fn: JFunction[Throwable, _ <: T]): CompletableFuture[T] = {
+    override def exceptionally(fn: JFunction[Throwable, ? <: T]): CompletableFuture[T] = {
       val cf = new CompletableFuture[T]
       whenCompleteAsync((t, e) => {
           if (e == null) cf.complete(t)

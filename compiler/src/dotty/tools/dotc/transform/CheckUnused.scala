@@ -3,7 +3,7 @@ package transform
 
 import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
 import config.ScalaSettings
-import core.*, Contexts.*, Flags.*
+import core.*, Contexts.*, Decorators.*, Flags.*
 import Names.{Name, SimpleName, DerivedName, TermName, termName}
 import NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
@@ -11,8 +11,8 @@ import Scopes.newScope
 import StdNames.nme
 import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import Types.*
-import reporting.{CodeAction, UnusedSymbol}
-import rewrites.Rewrites
+import reporting.{CodeAction, Diagnostic, UnusedSymbol}
+import rewrites.Rewrites.ActionPatch
 
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer}
@@ -55,7 +55,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
-           tree.srcPos.isUserCode
+           tree.srcPos.isUserCode(using if tree.hasAttachment(InlinedParameter) then ctx.outer else ctx)
         || tree.srcPos.isZeroExtentSynthetic // take as summonInline
       if !ignoreTree(tree) then
         def loopOverPrefixes(prefix: Type, depth: Int): Unit =
@@ -156,12 +156,19 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case _ =>
     tree
 
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    if tree.inlinedFromOuterScope then
+      tree.expansion.putAttachment(InlinedParameter, ())
+    ctx
   override def transformInlined(tree: Inlined)(using Context): tree.type =
-    transformAllDeep(tree.call)
+    if !tree.call.isEmpty then
+      if !refInfos.calls.containsKey(tree.call) then
+        refInfos.calls.put(tree.call, ())
+        transformAllDeep(tree.call)
     tree
 
   override def prepareForBind(tree: Bind)(using Context): Context =
-    refInfos.register(tree)
+    register(tree)
     ctx
   /* cf QuotePattern
   override def transformBind(tree: Bind)(using Context): tree.type =
@@ -179,7 +186,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
 
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
-      refInfos.register(tree)
+      register(tree)
     relax(tree.rhs, tree.tpt.tpe)
     ctx
   override def transformValDef(tree: ValDef)(using Context): tree.type =
@@ -203,7 +210,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.is(Inline) then
       refInfos.inliners += 1
     else if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
-      refInfos.register(tree)
+      register(tree)
     relax(tree.rhs, tree.tpt.tpe)
     ctx
   override def transformDefDef(tree: DefDef)(using Context): tree.type =
@@ -217,7 +224,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformTypeDef(tree: TypeDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
     if !tree.symbol.is(Param) then // type parameter to do?
-      refInfos.register(tree)
+      register(tree)
     tree
 
   override def prepareForStats(trees: List[Tree])(using Context): Context =
@@ -233,8 +240,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformOther(tree: Tree)(using Context): tree.type =
     tree match
     case imp: Import =>
-      if phaseMode eq PhaseMode.Aggregate then
-        refInfos.register(imp)
+      register(imp)
       transformAllDeep(imp.expr)
       for selector <- imp.selectors do
         if selector.isGiven then
@@ -303,10 +309,23 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     for annot <- sym.denot.annotations do
       transformAllDeep(annot.tree)
 
-  // if sym is not an enclosing element, record the reference
+  /** If sym is not an enclosing element with respect to the give context, record the reference
+   *
+   *  Also check that every enclosing element is not a synthetic member
+   *  of the sym's case class companion module.
+   */
   def refUsage(sym: Symbol)(using Context): Unit =
-    if !ctx.outersIterator.exists(cur => cur.owner eq sym) then
-      refInfos.addRef(sym)
+    if !refInfos.hasRef(sym) then
+      val isCase = sym.is(Case) && sym.isClass
+      if !ctx.outersIterator.exists: outer =>
+        val owner = outer.owner
+           owner.eq(sym)
+        || isCase
+           && owner.exists
+           && owner.is(Synthetic)
+           && owner.owner.eq(sym.companionModule.moduleClass)
+      then
+        refInfos.addRef(sym)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -386,7 +405,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
-        enclosed = true // found enclosing definition, don't register the reference
+        enclosed = true // found enclosing definition, don't record the reference
       if isLocal then
         if cur.owner eq sym.owner then
           done = true // for local def, just checking that it is not enclosing
@@ -422,7 +441,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     end while
     // record usage and possibly an import
     if !enclosed then
-      refInfos.addRef(sym)
+      refUsage(sym)
     if imports && candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
@@ -442,7 +461,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refInfos.addRef(found.denot.symbol)
+        refUsage(found.denot.symbol)
         if cur.isImportContext then
           cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
@@ -450,7 +469,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           case _ =>
         return
       case Some(found: RenamedImplicitRef) if cur.isImportContext =>
-        refInfos.addRef(found.underlyingRef.denot.symbol)
+        refUsage(found.underlyingRef.denot.symbol)
         cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
@@ -458,6 +477,12 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         return
       case _ =>
   end resolveScoped
+
+  /** Register new element for warnings only at typer */
+  def register(tree: Tree)(using Context): Unit =
+    if phaseMode eq PhaseMode.Aggregate then
+      refInfos.register(tree)
+
 end CheckUnused
 
 object CheckUnused:
@@ -482,6 +507,9 @@ object CheckUnused:
   /** Tree is LHS of Assign. */
   val AssignmentTarget = Property.StickyKey[Unit]
 
+  /** Tree is an inlined parameter. */
+  val InlinedParameter = Property.StickyKey[Unit]
+
   class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper")
 
   class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining")
@@ -493,6 +521,7 @@ object CheckUnused:
     val asss = mutable.Set.empty[Symbol]              // targets of assignment
     val skip = mutable.Set.empty[Symbol]              // methods to skip (don't warn about their params)
     val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
+    val calls = new IdentityHashMap[Tree, Unit]          // inlined call already seen
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
     def register(tree: Tree)(using Context): Unit = if tree.srcPos.isUserCode then
@@ -503,7 +532,10 @@ object CheckUnused:
           && !imp.isGeneratedByEnum
           && !ctx.owner.name.isReplWrapperName
         then
-          imps.put(imp, ())
+          if imp.isCompiletimeTesting then
+            isNullified = true
+          else
+            imps.put(imp, ())
       case tree: Bind =>
         if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) then
           if tree.hasAttachment(NoWarn) then
@@ -526,13 +558,21 @@ object CheckUnused:
 
     var inliners = 0 // depth of inline def (not inlined yet)
 
-    // instead of refs.addOne, use addRef to distinguish a read from a write to var
+    // instead of refs.addOne, use refUsage -> addRef to distinguish a read from a write to var
     var isAssignment = false
     def addRef(sym: Symbol): Unit =
       if isAssignment then
         asss.addOne(sym)
       else
         refs.addOne(sym)
+    def hasRef(sym: Symbol): Boolean =
+      if isAssignment then
+        asss(sym)
+      else
+        refs(sym)
+
+    // currently compiletime.testing is completely erased, so ignore the unit
+    var isNullified = false
   end RefInfos
 
   // Names are resolved by definitions and imports, which have four precedence levels:
@@ -547,18 +587,17 @@ object CheckUnused:
       inline def weakerThan(q: Precedence): Boolean = p > q
       inline def isNone: Boolean = p == NoPrecedence
 
-  def reportUnused()(using Context): Unit =
+  def reportUnused()(using Context): Unit = if !refInfos.isNullified then
     for (msg, pos, origin) <- warnings do
-      if origin.isEmpty then report.warning(msg, pos)
-      else report.warning(msg, pos, origin)
-      msg.actions.headOption.foreach(Rewrites.applyAction)
+      report.warning(msg, pos, origin)
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
   def warnings(using Context): Array[MessageInfo] =
-    val actionable = ctx.settings.rewrite.value.nonEmpty
+    val actionable: true = true //ctx.settings.rewrite.value.nonEmpty
     val warnings = ArrayBuilder.make[MessageInfo]
-    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
+    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = Diagnostic.OriginWarning.NoOrigin): Unit =
+      warnings.addOne((msg, pos, origin))
     val infos = refInfos
 
     // non-local sym was target of assignment or has a sibling setter that was referenced
@@ -692,7 +731,7 @@ object CheckUnused:
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       if ctx.settings.WunusedHas.locals
-        && !sym.is(InlineProxy)
+        && !sym.isOneOf(InlineProxy | Synthetic)
       then
         if sym.is(Mutable) && infos.asss(sym) then
           warnAt(pos)(UnusedSymbol.localVars)
@@ -721,7 +760,6 @@ object CheckUnused:
 
     def checkImports() =
       import scala.jdk.CollectionConverters.given
-      import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
@@ -1031,13 +1069,17 @@ object CheckUnused:
     def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
 
+    /** No mechanism for detection yet. */
+    def isCompiletimeTesting: Boolean =
+      imp.expr.symbol == defn.CompiletimeTestingPackage//.moduleClass
+
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
     def isSynthetic: Boolean = pos.span.isSynthetic && pos.span.exists
     def isUserCode(using Context): Boolean =
       val inlineds = enclosingInlineds // per current context
          inlineds.isEmpty
-      || inlineds.last.srcPos.sourcePos.contains(pos.sourcePos)
+      || inlineds.exists(_.srcPos.sourcePos.contains(pos.sourcePos)) // include intermediate inlinings or quotes
 
   extension [A <: AnyRef](arr: Array[A])
     // returns `until` if not satisfied

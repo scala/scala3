@@ -4742,6 +4742,7 @@ Text => empty
 Language => Scala
 Symbols => 7 entries
 Occurrences => 5 entries
+Diagnostics => 1 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports extends Object { self: exports.type => +4 decls }
@@ -4758,6 +4759,9 @@ Occurrences:
 [2:16..2:23): Decoder <- exports/`exports-package$package`.Decoder#
 [2:25..2:32): Encoder <- exports/`exports-package$package`.Encoder#
 [2:34..2:39): Codec <- exports/`exports-package$package`.Codec#
+
+Diagnostics:
+[0:0..2:40): [warning] The package name `exports-package$package` will be encoded on the classpath, and can lead to undefined behaviour.
 
 expect/filename with spaces.scala
 ---------------------------------
@@ -4987,8 +4991,8 @@ _empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T]
 _empty_/Txn#[T] => typeparam T  <: Txn[T]
 _empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
 local0 => val local out: Repr[Out]
-local1 => val local inObj: Repr[In] & Obj[In]
-local2 => val local outObj: Repr[Out] & Obj[Out]
+local1 => val local inObj: Obj[In] & Repr[In]
+local2 => val local outObj: Obj[Out] & Repr[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#

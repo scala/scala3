@@ -34,7 +34,8 @@ enum MessageFilter:
       pattern.findFirstIn(path).nonEmpty
     case Origin(pattern) =>
       message match
-      case message: OriginWarning => pattern.findFirstIn(message.origin).nonEmpty
+      case message: OriginWarning if message.origin != OriginWarning.NoOrigin =>
+        pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
 
@@ -150,7 +151,10 @@ class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter]
     _used = supersededState
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
-    pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+    def posMatches =
+         start <= pos.start && pos.end <= end
+      || pos.inlinePosStack.exists(p => start <= p.start && p.end <= end)
+    pos.exists && posMatches && filters.forall(_.matches(dia))
 
   override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
 end Suppression

@@ -5,8 +5,7 @@ import ast.tpd
 import collection.mutable
 
 import core.*
-import Symbols.*, Types.*, Flags.*
-import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
+import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import CaptureSet.{Refs, emptyRefs, HiddenSet}
 import config.Printers.capt
 import StdNames.nme

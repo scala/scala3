@@ -438,7 +438,7 @@ sealed abstract class List[+A]
       super.corresponds(that)(p)
   }
 
-  override protected[this] def className = "List"
+  override protected def className = "List"
 
   /** Builds a new list by applying a function to all elements of this list.
     *  Like `xs map f`, but returns `xs` unchanged if function
@@ -497,7 +497,7 @@ sealed abstract class List[+A]
 
   override def filterNot(p: A => Boolean): List[A] = filterCommon(p, isFlipped = true)
 
-  private[this] def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
+  private def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
 
     // everything seen so far so far is not included
     @tailrec def noneIn(l: List[A]): List[A] = {
@@ -590,7 +590,7 @@ sealed abstract class List[+A]
 
   // Override for performance
   override def equals(o: scala.Any): Boolean = {
-    @tailrec def listEq(a: List[_], b: List[_]): Boolean =
+    @tailrec def listEq(a: List[?], b: List[?]): Boolean =
       (a eq b) || {
         val aEmpty = a.isEmpty
         val bEmpty = b.isEmpty
@@ -667,7 +667,7 @@ case object Nil extends List[Nothing] {
   override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
-  private[this] val EmptyUnzip = (Nil, Nil)
+  private val EmptyUnzip = (Nil, Nil)
 }
 
 /**

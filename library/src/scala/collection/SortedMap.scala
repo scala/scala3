@@ -29,7 +29,7 @@ trait SortedMap[K, +V]
   def sortedMapFactory: SortedMapFactory[SortedMap] = SortedMap
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "SortedMap"
+  override protected def stringPrefix: String = "SortedMap"
 
   override def equals(that: Any): Boolean = that match {
     case _ if this eq that.asInstanceOf[AnyRef] => true
@@ -50,7 +50,7 @@ trait SortedMap[K, +V]
   }
 }
 
-transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _] with caps.Pure, +C <: SortedMapOps[K, V, CC, C]]
+transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?] & caps.Pure, +C <: SortedMapOps[K, V, CC, C]]
   extends MapOps[K, V, Map, C]
      with SortedOps[K, C]
      with caps.Pure {
@@ -202,8 +202,8 @@ object SortedMapOps {
     *
     * @define coll sorted map collection
     */
-  class WithFilter[K, +V, +IterableCC[_], +MapCC[X, Y] <: Map[X, Y], +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _]](
-    self: SortedMapOps[K, V, CC, _] with MapOps[K, V, MapCC, _] with IterableOps[(K, V), IterableCC, _],
+  class WithFilter[K, +V, +IterableCC[_], +MapCC[X, Y] <: Map[X, Y], +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?]](
+    self: SortedMapOps[K, V, CC, ?] & MapOps[K, V, MapCC, ?] & IterableOps[(K, V), IterableCC, ?],
     p: ((K, V)) => Boolean
   ) extends MapOps.WithFilter[K, V, IterableCC, MapCC](self, p) {
 

@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory = "library"
-  protected def pickJarBasedOn: Class[Option[_]] = classOf[Option[_]]
+  protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
 
   /** Scala manifest attributes.
    */
@@ -30,7 +30,7 @@ object Properties extends PropertiesTrait {
 
 private[scala] trait PropertiesTrait {
   protected def propCategory: String      // specializes the remainder of the values
-  protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
+  protected def pickJarBasedOn: Class[?]  // props file comes from jar containing this
 
   /** The name of the properties file */
   protected val propFilename = "/" + propCategory + ".properties"
@@ -38,9 +38,9 @@ private[scala] trait PropertiesTrait {
   /** The loaded properties */
   protected lazy val scalaProps: java.util.Properties = {
     val props = new java.util.Properties
-    val stream = pickJarBasedOn getResourceAsStream propFilename
+    val stream = pickJarBasedOn.getResourceAsStream(propFilename)
     if (stream ne null)
-      quietlyDispose(props load stream, stream.close)
+      quietlyDispose(props.load(stream), stream.close)
 
     props
   }
@@ -62,8 +62,8 @@ private[scala] trait PropertiesTrait {
   def setProp(name: String, value: String): String       = System.setProperty(name, value)
   def clearProp(name: String): String                    = System.clearProperty(name)
 
-  def envOrElse(name: String, alt: => String): String    = Option(System getenv name) getOrElse alt
-  def envOrNone(name: String): Option[String]            = Option(System getenv name)
+  def envOrElse(name: String, alt: => String): String    = Option(System.getenv(name)) getOrElse alt
+  def envOrNone(name: String): Option[String]            = Option(System.getenv(name))
 
   def envOrSome(name: String, alt: => Option[String])    = envOrNone(name) orElse alt
 
@@ -228,6 +228,6 @@ private[scala] trait PropertiesTrait {
   // provide a main method so version info can be obtained by running this
   def main(args: Array[String]): Unit = {
     val writer = new PrintWriter(Console.err, true)
-    writer println versionMsg
+    writer.println(versionMsg)
   }
 }
