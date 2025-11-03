@@ -1929,15 +1929,44 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    pt.stripNull() match {
-      case pt: TypeVar
-      if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
-        // try to instantiate `pt` if this is possible. If it does not
-        // work the error will be reported later in `inferredParam`,
-        // when we try to infer the parameter type.
-        isFullyDefined(pt, ForceDegree.flipBottom)
-      case _ =>
-    }
+    /** Try to instantiate one type variable bounded by function types that appear
+     *  deeply inside `tp`, including union or intersection types.
+     */
+    def tryToInstantiateDeeply(tp: Type): Boolean = tp.dealias match
+      case tp: AndOrType =>
+        tryToInstantiateDeeply(tp.tp1)
+        || tryToInstantiateDeeply(tp.tp2)
+      case tp: FlexibleType =>
+        tryToInstantiateDeeply(tp.hi)
+      case tp: TypeVar if isConstrainedByFunctionType(tp) =>
+        // Only instantiate if the type variable is constrained by function types
+        isFullyDefined(tp, ForceDegree.flipBottom)
+      case _ => false
+
+    def isConstrainedByFunctionType(tvar: TypeVar): Boolean =
+      val origin = tvar.origin
+      val bounds = ctx.typerState.constraint.bounds(origin)
+      // The search is done by the best-effort, and we don't look into TypeVars recursively.
+      def containsFunctionType(tp: Type): Boolean = tp.dealias match
+        case tp if defn.isFunctionType(tp) => true
+        case SAMType(_, _) => true
+        case tp: AndOrType =>
+          containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
+        case tp: FlexibleType =>
+          containsFunctionType(tp.hi)
+        case _ => false
+      containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
+
+    if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists then
+      // Try to instantiate `pt` when possible.
+      // * If `pt` is a type variable, we try to instantiate it directly.
+      // * If `pt` is a more complex type, we try to instantiate it deeply by searching
+      //   a nested type variable bounded by a function type to help infer parameter types.
+      // If it does not work the error will be reported later in `inferredParam`,
+      // when we try to infer the parameter type.
+      pt match
+        case pt: TypeVar => isFullyDefined(pt, ForceDegree.flipBottom)
+        case _ => tryToInstantiateDeeply(pt)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
