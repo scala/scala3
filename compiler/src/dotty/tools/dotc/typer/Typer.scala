@@ -2436,29 +2436,36 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val capabilityProof = caughtExceptions.reduce(OrType(_, _, true))
       untpd.Block(makeCanThrow(capabilityProof), expr)
 
-  /** Graphic explaination of NotNullInfo logic:
+  /** Graphic explanation of NotNullInfo logic:
    *  Leftward exit indicates exceptional case
    *  Downward exit indicates normal case
    *
-   *           ┌─────┐    α.retractedInfo
+   *           ┌─────┐
    *           │ Try ├─────┬────────┬─────┐
    *           └──┬──┘     ▼        ▼     │
    *              │    ┌───────┐┌───────┐ │
-   *           α  │    │ Catch ││ Catch ├─┤
+   *              │    │ Catch ││ Catch ├─┤
    *              │    └───┬───┘└───┬───┘ │
-   *              │     β  │        │     │
-   *              └──┬─────┴────────┘     │
-   *                 │ γ = α.alt(β)       │ ε = β.retractedInfo
-   *                 ▼                    ▼
-   *            ┌─────────┐          ┌─────────┐
-   * δ = type(ε)│ Finally ├──────┐   │ Finally ├─────────┐
-   *            └────┬────┘      │   └────┬────┘         │
-   *                 │           │        ▼              ▼
-   *                 │ γ.seq(δ)  └──────────────────────────►
-   *                 ▼                               ε.seq(δ)
-   *  We choose to use γ.seq(δ) as the NotNullInfo of the
-   *  overall tree if all the catch cases have NothingType,
-   *  otherwise we use ε.seq(δ).
+   *              └─┬──────┴────────┘     │
+   *                ▼                     ▼
+   *           ┌─────────┐           ┌─────────┐
+   *           │ Finally ├──────┐    │ Finally ├──┐
+   *           └────┬────┘      │    └────┬────┘  │
+   *                ▼           └─────────┴───────┴─►
+   *  α = tryEffect
+   *  λ = α.retracted.seq.(catchEffects.reduce.alt)
+   *  β = α.alt(λ)
+   *  finallyCtx = β.retracted
+   *  δ = finallyEffect
+   *  resultNNInfo = β.seq(δ).alt(β.retracted.seq(δ).seq(empty.terminated))
+   *
+   *  It is sufficient to type finally once provided that we type it in a context
+   *  that considers all the paths before it that reach the finally. Since the NNinfo
+   *  that we get from typing finally summarizes the effect of the finally, we can
+   *  type the finally once and use the obtained NN info twice: once sequenced
+   *  with β (normalNNInfo) and once sequenced with β.retractedInfo but post-sequenced
+   *  by empty.terminated (to indicate that this path does not reach the code after
+   *  the try-catch-finally).
    */
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try =
     val expr2 :: cases2x = harmonic(harmonize, pt) {
@@ -2478,25 +2485,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       expr1 :: cases1
     }: @unchecked
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
-    val tryNNInfo = expr2.notNullInfo
+    val exprNNInfo = expr2.notNullInfo
     // It is possible to have non-exhaustive cases, and some exceptions are thrown and not caught.
     // Therefore, the code in the finalizer and after the try block can only rely on the retracted
     // info from the cases' body.
-    val catchNNInfo = if cases2.nonEmpty then
-      tryNNInfo.seq(cases2.map(_.notNullInfo).reduce(_.alt(_)))
+    val casesNNInfo = if cases2.nonEmpty then
+      exprNNInfo.retractedInfo.seq(cases2.map(_.notNullInfo).reduce(_.alt(_)))
     else
-      NotNullInfo.empty
-    val normalResolveNNInfo = tryNNInfo.alt(catchNNInfo)
-    val exceptionalResolveNNInfo = catchNNInfo.retractedInfo
+      NotNullInfo.empty.terminatedInfo
+    val catchSuccessNNInfo = exprNNInfo.alt(casesNNInfo)
+    val catchFailNNInfo = catchSuccessNNInfo.retractedInfo
 
-    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(exceptionalResolveNNInfo))
-    val normalFinalNNInfo = normalResolveNNInfo.seq(finalizer1.notNullInfo)
-    val exceptionalFinalNNInfo = exceptionalResolveNNInfo.seq(finalizer1.notNullInfo)
-    val resNNInfo =
-      if (cases2.forall(_.tpe == defn.NothingType)) then
-        normalFinalNNInfo
-      else
-        exceptionalFinalNNInfo
+    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(catchFailNNInfo))
+    val normalFinalNNInfo = catchSuccessNNInfo.seq(finalizer1.notNullInfo)
+    val exceptionalFinalNNInfo = catchFailNNInfo.seq(finalizer1.notNullInfo)
+    val resNNInfo = normalFinalNNInfo.alt(exceptionalFinalNNInfo.seq(NotNullInfo.empty.terminatedInfo))
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(resNNInfo)
 
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =

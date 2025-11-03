@@ -23,9 +23,60 @@ def test2: String =
         throw new Exception()
     x = ""
   catch
+    case e: NoSuchMethodError =>
+      x = "e"
+  x.replace("", "") // ok
+
+// From i24296
+def test2_2: String =
+  var x: String | Null = null
+  x = ""
+  var i: Int = 1
+  try
+    i match
+      case _ =>
+        x = null
+        throw new Exception()
+    x = ""
+  catch
     case e: Exception =>
       x = "e"
+    case _ =>
   x.replace("", "") // error
+
+def test2_3: String =
+  var x: String | Null = null
+  x = ""
+  var i: Int = 1
+  try
+    i match
+      case _ =>
+        x = null
+        throw new Exception()
+    x = ""
+  catch
+    case e: NoSuchMethodError =>
+      x = "e"
+    case e: AbstractMethodError =>
+      x = "e"
+  x.replace("", "") // ok
+
+def test2_4: String =
+  var x: String | Null = null
+  x = ""
+  var i: Int = 1
+  try
+    i match
+      case _ =>
+        x = null
+        throw new Exception()
+    x = ""
+  catch
+    case e: NoSuchMethodError =>
+      x = "e"
+    case e: AbstractMethodError =>
+      throw new Exception()
+  x.replace("", "") // ok
 
 def test3: String =
   var x: String | Null = null
@@ -126,6 +177,16 @@ def test9() =
   }
   x.trim() // error
 
+def test9_2() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e: AssertionError =>
+      throw e
+  }
+  x.trim() // ok
+
 def test10() =
   var x: String | Null = null
   try {
@@ -164,3 +225,26 @@ def test12() =
     x = ""
   }
   x.trim() // ok
+
+def test12_2() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e =>
+      x = null
+      throw e
+  } finally {
+    throw new Exception
+  }
+  x.trim() // ok
+
+def test13() =
+  var x: String | Null = null
+  try {
+    x = null
+    throw new RuntimeException
+  } finally {
+    x.trim() // error
+  }
+  x.trim() // OK
