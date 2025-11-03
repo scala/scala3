@@ -2,7 +2,7 @@ import scala.collection.SortedSet
 import scala.collection.immutable.{SortedSet => ISortedSet}
 import scala.collection.mutable.{SortedSet => MSortedSet}
 
-@main def test =
+@main def test(): Unit =
   val s1: SortedSet[Int] = SortedSet(1, 2, 3)
   println(s1)
   val s2 = s1.filter(_ % 2 == 1)
