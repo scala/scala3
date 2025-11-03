@@ -1317,6 +1317,18 @@ object CaptureSet:
       case _ =>
         false
 
+    /** An include failure F1 covers another include failure F2 unless F2
+     *  strictly subsumes F1, which means they describe the same capture sets
+     *  and the element in F2 is more specific than the element in F1.
+     */
+    override def covers(other: Note)(using Context) = other match
+      case other @ IncludeFailure(cs1, elem1, _) =>
+        val strictlySubsumes =
+          cs.elems == cs1.elems
+          && elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+        !strictlySubsumes
+      case _ => false
+
     def trailing(msg: String)(using Context): String =
       i"""
          |
@@ -1387,12 +1399,18 @@ object CaptureSet:
    *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
    */
   case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note:
+
     def render(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
       i"""
          |
          |Note that $cs is an exclusive capture set ${ofType(hi)},
          |it cannot subsume a read-only capture set ${ofType(lo)}."""
+
+    // Show only one failure of this kind
+    override def covers(other: Note)(using Context) =
+      other.isInstanceOf[MutAdaptFailure]
+  end MutAdaptFailure
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails

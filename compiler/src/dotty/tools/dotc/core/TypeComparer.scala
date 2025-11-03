@@ -3324,12 +3324,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
 
-  /** Add given note, provided there is not yet an error note with
-   *  the same class as `note`.
+  /** Add given note, provided there is not yet an error note that covers `note`
+   *  If the new note is added, any existing note covered by it is removed first.
    */
-  def addErrorNote(note: Note): Unit =
-    if errorNotes.forall(_._2.getClass != note.getClass) then
-      errorNotes = (recCount, note) :: errorNotes
+  def addErrorNote(note: Note)(using Context): Unit =
+    if !errorNotes.exists(_._2.covers(note)) then
+      errorNotes = (recCount, note) :: errorNotes.filterConserve(n => !note.covers(n._2))
       assert(maxErrorLevel <= recCount)
       maxErrorLevel = recCount
 
