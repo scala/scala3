@@ -1688,7 +1688,8 @@ object CaptureSet:
         else this(acc, parent)
 
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
+        if t.derivesFrom(defn.Caps_CapSet) then t.singletonCaptureSet
+        else if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
         else this(acc, upperBound)
 
     collect(CaptureSet.empty, tp)
