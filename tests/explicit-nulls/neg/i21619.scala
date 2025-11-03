@@ -90,3 +90,77 @@ def test6 = {
   }
   x.replace("", "") // error
 }
+
+// From i24296
+def test7() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e =>
+      throw e
+  }
+  x.trim() // ok
+
+def test8() =
+  var x: String | Null = null
+  try {
+    try {
+      x = ""
+    } catch {
+      case e => throw e
+    }
+  } catch {
+    case e => throw e
+  }
+  x.trim() // ok
+
+def test9() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e: AssertionError =>
+      throw e
+    case _ =>
+  }
+  x.trim() // error
+
+def test10() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e =>
+      throw e
+  } finally {
+    x = null
+  }
+  x.trim() // error
+
+def test11() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e =>
+      x = null
+      throw e
+  } finally {
+    x = ""
+  }
+  x.trim() // ok
+
+def test12() =
+  var x: String | Null = null
+  try {
+    x = ""
+  } catch {
+    case e =>
+      x = null
+      throw e
+  } finally {
+    throw new Exception
+    x = ""
+  }
+  x.trim() // ok
