@@ -215,6 +215,50 @@ val b1: Ref^{a.rd} = a
 val b2: Ref^{cap.rd} = a
 ```
 
+## Lazy Vals and Read-Only Restrictions
+
+Lazy val initializers in `Mutable` classes are subject to read-only restrictions similar to those for normal methods. Specifically, a lazy val initializer in a `Mutable` class cannot call update methods or refer to non-local exclusive capabilities, i.e., capabilities defined outside the lazy val's scope.
+
+For example, when a lazy val is declared in a local method's scope, its initializer may freely use capabilities from the surrounding environment:
+```scala
+def example(r: Ref[Int]^) =
+  lazy val goodInit: () ->{r.rd} Int =
+    val i = r.get() // ok: read-only access
+    r.set(100 * i)  // ok: can call update method
+    () => r.get() + i
+```
+However, within a `Mutable` class, a lazy val declaration has only read access to non-local exclusive capabilities:
+```scala
+class Wrapper(val r: Ref[Int]^) extends Mutable:
+  lazy val badInit: () ->{r} Int =
+    r.set(100) // error: call to update method
+    () => r.set(r.get() * 2); r.get() // error: call to update method
+
+  lazy val goodInit: () ->{r.rd} Int =
+    val i = r.get()   // ok
+    () => r.get() * i // ok
+```
+The initializer of `badInit` attempts to call `r.set(100)`, an update method on the non-local exclusive capability `r`.
+This is rejected because initializers should not perform mutations on external state.
+
+### Local Capabilities
+
+The restriction applies only to **non-local** capabilities. A lazy val can freely call update methods on capabilities it creates locally within its initializer:
+
+```scala
+class Example:
+  lazy val localMutation: () => Int =
+    val local: Ref[Int]^ = Ref(10)  // created in initializer
+    local.set(100)             // ok: local capability
+    () => local.get()
+```
+
+Here, `local` is created within the lazy val's initializer, so it counts as a local capability. The initializer can call update methods on it.
+
+This makes lazy vals behave like normal methods in `Mutable` classes: they can read from their environment but cannot update it unless explicitly marked.
+Unlike for methods, there's currently no `update` modifier for lazy vals in `Mutable` classes, so their initialization is always read-only with respect to non-local capabilities. A future version of capture checking might
+support `update lazy val` if there are compelling use cases and there is sufficient community demand.
+
 ## Update Restrictions
 
 If a capability `r` is a read-only access, then one cannot use `r` to call an update method of `r` or to assign to a field of `r`. E.g. `r.set(22)` and `r.current = 22` are both disallowed.

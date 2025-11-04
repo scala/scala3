@@ -151,7 +151,7 @@ object SeqView {
 
       def apply(i: Int): A = _reversed.apply(i)
       def length: Int = len
-      def iterator: Iterator[A] = Iterator.empty ++ _reversed.iterator // very lazy
+      def iterator: Iterator[A]^{this} = Iterator.empty ++ _reversed.iterator // very lazy
       override def knownSize: Int = len
       override def isEmpty: Boolean = len == 0
       override def to[C1](factory: Factory[A, C1]): C1 = _reversed.to(factory)
