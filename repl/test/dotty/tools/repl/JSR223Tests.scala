@@ -21,11 +21,11 @@ final class JSR223Tests:
 end JSR223Tests
 
 object JSR223Tests extends ParallelTesting:
-  
+
   given report: SummaryReporting = new SummaryReport
 
   def maxDuration = 100.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   def safeMode = dotty.Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = dotty.Properties.testsFilter
