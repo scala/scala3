@@ -47,7 +47,7 @@ object Message:
   	/** Should the note be shown before the actual message or after?
   	 *  Default is after.
   	 */
-    def prefix(using Context): Boolean = false
+    def showAsPrefix(using Context): Boolean = false
 
     /** The note rendered as part of an error message */
     def render(using Context): String

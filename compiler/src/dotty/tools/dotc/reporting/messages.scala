@@ -343,7 +343,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
           mapOver(tp)
         case _ =>
           mapOver(tp)
-    val preface = notes.filter(_.prefix).map(_.render).mkString
+    val preface = notes.filter(_.showAsPrefix).map(_.render).mkString
     val found1 = reported(found)
     reported.setVariance(-1)
     val expected1 = reported(expected)
@@ -359,7 +359,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-    notes.filter(!_.prefix).map(_.render).mkString ++ super.msgPostscript ++ importSuggestions
+    notes.filter(!_.showAsPrefix).map(_.render).mkString ++ super.msgPostscript ++ importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
