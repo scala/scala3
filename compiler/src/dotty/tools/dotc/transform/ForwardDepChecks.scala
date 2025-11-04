@@ -122,7 +122,8 @@ class ForwardDepChecks extends MiniPhase:
   override def transformApply(tree: Apply)(using Context): Apply =
     if (isSelfConstrCall(tree))
       assert(ctx.owner.isConstructor)
-      checkSelfConstructorCall()
+      if currentLevel.isInstanceOf[LevelInfo] then // ElimRepeated can introduce RHS of ctor which is not a block
+        checkSelfConstructorCall()
     tree
 
   override def transformNew(tree: New)(using Context): New = {
