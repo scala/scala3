@@ -964,7 +964,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case cls: ClassSymbol =>
           var fieldClassifiers =
             for
-              sym <- cls.info.decls.toList
+              sym <- setup.fieldsWithExplicitTypes.getOrElse(cls, cls.info.decls.toList)
               if contributesFreshToClass(sym)
               case fresh: FreshCap <- sym.info.spanCaptureSet.elems
                 .filter(_.isTerminalCapability)

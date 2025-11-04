@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i24335.scala:7:22 ----------------------------------------
+7 |  val _: () -> Unit = l1 // error
+  |                      ^^
+  |                      Found:    (C.this.l1 : () ->{C.this.c.io} Unit)
+  |                      Required: () -> Unit
+  |
+  |                      Note that capability C.this.c.io is not included in capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
