@@ -38,9 +38,11 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
+import ContextOps.isRechecking
 import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
+import transform.Recheck.currentRechecker
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -2509,15 +2511,31 @@ object Types extends TypeUtils {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if lastd.validFor.runId == ctx.runId && checkedPeriod.code != NowhereCode then
+          var needsRecompute = false
+          if lastd.validFor.runId == ctx.runId
+              && checkedPeriod.code != NowhereCode
+              && !(ctx.isRechecking
+                    && {
+                      needsRecompute = currentRechecker.needsRecompute(this, lastd)
+                      needsRecompute
+                    }
+                  )
+          then
             finish(lastd.current)
-          else lastd match {
-            case lastd: SymDenotation =>
-              if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
-              else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
-            case _ =>
-              fromDesignator
-          }
+          else
+            val newd = lastd match
+              case lastd: SymDenotation =>
+                if stillValid(lastd) && checkedPeriod.code != NowhereCode && !needsRecompute
+                then finish(lastd.current)
+                else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
+              case _ =>
+                fromDesignator
+            if needsRecompute && (newd.info ne lastd.info) then
+              // Record the previous denotation, so that it can be reset at the end
+              // of the rechecker phase
+              currentRechecker.prevSelDenots(this) = lastd
+              //println(i"NEW PATH $this: ${newd.info} at ${ctx.phase}, prefix = $prefix")
+            newd
         case _ => fromDesignator
       }
     }

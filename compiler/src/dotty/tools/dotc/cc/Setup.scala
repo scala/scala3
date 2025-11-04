@@ -40,6 +40,20 @@ trait SetupAPI:
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
+  /** Used for error reporting:
+   *  Maps mutable variables to the symbols that capture them (in the
+   *  CheckCaptures sense, i.e. symbol is referred to from a different method
+   *  than the one it is defined in).
+   */
+  def capturedBy: collection.Map[Symbol, Symbol]
+
+  /** Used for error reporting:
+   *  Maps anonymous functions appearing as function arguments to
+   *  the function that is called.
+   */
+  def anonFunCallee: collection.Map[Symbol, Symbol]
+end SetupAPI
+
 object Setup:
 
   val name: String = "setupCC"
@@ -518,6 +532,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
+        case tree: Ident =>
+          val sym = tree.symbol
+          if sym.isMutableVar && sym.owner.isTerm then
+            val enclMeth = ctx.owner.enclosingMethod
+            if sym.enclosingMethod != enclMeth then
+              capturedBy(sym) = enclMeth
+
+        case Apply(fn, args) =>
+          for case closureDef(mdef) <- args do
+            anonFunCallee(mdef.symbol) = fn.symbol
+          traverseChildren(tree)
+
         case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
           val meth = tree.symbol
           if isExcluded(meth) then
@@ -567,9 +593,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             traverse(body)
           catches.foreach(traverse)
           traverse(finalizer)
+
         case tree: New =>
+
         case _ =>
           traverseChildren(tree)
+
       postProcess(tree)
       checkProperUseOrConsume(tree)
     end traverse
@@ -889,11 +918,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else t
       case _ => mapFollowingAliases(t)
 
+  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
+
+  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
+
   /** Run setup on a compilation unit with given `tree`.
    *  @param recheckDef   the function to run for completing a val or def
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
-    setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+    inContext(ctx.withPhase(thisPhase)):
+      setupTraverser(checker).traverse(tree)
 
   // ------ Checks to run at Setup ----------------------------------------
 

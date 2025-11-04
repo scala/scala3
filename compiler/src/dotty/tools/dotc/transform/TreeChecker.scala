@@ -412,16 +412,16 @@ object TreeChecker {
             assert(false, s"The type of a non-Super tree must not be a SuperType, but $tree has type $tp")
           case _ =>
 
-    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
-      val tpdTree = super.typed(tree, pt)
-      Typer.assertPositioned(tree)
-      checkSuper(tpdTree)
-      if (ctx.erasedTypes)
-        // Can't be checked in earlier phases since `checkValue` is only run in
-        // Erasure (because running it in Typer would force too much)
-        checkIdentNotJavaClass(tpdTree)
-      tpdTree
-    }
+    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
+      trace(i"checking $tree against $pt"):
+        val tpdTree = super.typed(tree, pt)
+        Typer.assertPositioned(tree)
+        checkSuper(tpdTree)
+        if (ctx.erasedTypes)
+          // Can't be checked in earlier phases since `checkValue` is only run in
+          // Erasure (because running it in Typer would force too much)
+          checkIdentNotJavaClass(tpdTree)
+        tpdTree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
       try
