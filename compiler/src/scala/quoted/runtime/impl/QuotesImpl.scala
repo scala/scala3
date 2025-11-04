@@ -1247,6 +1247,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeProjectionTypeTest
 
     object TypeProjection extends TypeProjectionModule:
+      def apply(qualifier: TypeTree, name: String): TypeProjection =
+        withDefaultPos(tpd.Select(qualifier, name.toTypeName))
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
       def unapply(x: TypeProjection): (TypeTree, String) =
@@ -1292,6 +1294,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RefinedTypeTest
 
     object Refined extends RefinedModule:
+      def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined = // Symbol of the class being refined, according to which the refinements are typed
+        assert(refineCls.isClass, "refineCls must be a class/trait/object")
+        withDefaultPos(tpd.RefinedTypeTree(tpt, refinements, refineCls.asClass).asInstanceOf[tpd.RefinedTypeTree])
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
       def unapply(x: Refined): (TypeTree, List[Definition]) =
