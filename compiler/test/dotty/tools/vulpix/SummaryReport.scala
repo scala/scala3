@@ -138,5 +138,5 @@ final class SummaryReport extends SummaryReporting {
 }
 
 object SummaryReport {
-  val isInteractive = Properties.testsInteractive && !Properties.isRunByCI
+  val isInteractive = true //Properties.testsInteractive && !Properties.isRunByCI
 }
