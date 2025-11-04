@@ -39,7 +39,7 @@ object ScalaJSCompilationTests extends ParallelTesting {
 
   // Test suite configuration --------------------------------------------------
   def maxDuration = 60.seconds
-  def numberOfSlaves = 5
+  def numberOfWorkers = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
