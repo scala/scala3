@@ -1916,6 +1916,19 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       // Should we also patch .sjsir files
       keepSJSIR := false,
+      Compile / resourceGenerators += Def.task {
+        val file = (Compile / resourceManaged).value / "library3.properties"
+        val contents =
+          s"""version.number=${version.value}
+             |maven.version.number=${version.value}
+             |""".stripMargin
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
+        Seq(file)
+      }.taskValue,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -2041,6 +2054,19 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       // Should we also patch .sjsir files
       keepSJSIR := false,
+      Compile / resourceGenerators += Def.task {
+        val file = (Compile / resourceManaged).value / "library3.properties"
+        val contents =
+          s"""version.number=${version.value}
+             |maven.version.number=${version.value}
+             |""".stripMargin
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
+        Seq(file)
+      }.taskValue,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */

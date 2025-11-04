@@ -34,6 +34,7 @@ private[scala] trait PropertiesTrait {
 
   /** The name of the properties file */
   protected val propFilename = "/" + propCategory + ".properties"
+  protected val lib3Filename = "/library3.properties"
 
   /** The loaded properties */
   protected lazy val scalaProps: java.util.Properties = {
@@ -41,6 +42,12 @@ private[scala] trait PropertiesTrait {
     val stream = pickJarBasedOn.getResourceAsStream(propFilename)
     if (stream ne null)
       quietlyDispose(props.load(stream), stream.close)
+
+    // If available in the same jar as the stdlib classes, overlay Scala 3
+    // runtime properties contained in `library3.properties` (e.g., version.number).
+    val lib3Stream = pickJarBasedOn.getResourceAsStream(lib3Filename)
+    if (lib3Stream ne null)
+      quietlyDispose(props.load(lib3Stream), lib3Stream.close)
 
     props
   }
