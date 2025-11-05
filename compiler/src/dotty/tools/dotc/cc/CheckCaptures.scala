@@ -945,6 +945,17 @@ class CheckCaptures extends Recheck, SymTransformer:
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
 
+    /** If `mbr` is a field that has (possibly restricted) FreshCaps in its span capture set,
+     *  their classifiers, otherwise the empty list.
+     */
+    private def classifiersOfFreshInType(mbr: Symbol)(using Context): List[ClassSymbol] =
+      if contributesFreshToClass(mbr) then
+        mbr.info.spanCaptureSet.elems
+          .filter(_.isTerminalCapability)
+          .toList
+          .map(_.classifier.asClass)
+      else Nil
+
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
      *  capture sets, it consists of a single fresh cap that subsumes all these terminal
@@ -962,16 +973,9 @@ class CheckCaptures extends Recheck, SymTransformer:
        */
       def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
         case cls: ClassSymbol =>
-          var fieldClassifiers =
-            for
-              sym <- setup.fieldsWithExplicitTypes.getOrElse(cls, cls.info.decls.toList)
-              if contributesFreshToClass(sym)
-              case fresh: FreshCap <- sym.info.spanCaptureSet.elems
-                .filter(_.isTerminalCapability)
-                .map(_.stripReadOnly)
-                .toList
-              _ = pushInfo(i"Note: ${sym.showLocated} captures a $fresh")
-            yield fresh.hiddenSet.classifier
+          var fieldClassifiers = setup.fieldsWithExplicitTypes // pick fields with explicit types for classes in this compilation unit
+              .getOrElse(cls, cls.info.decls.toList)           // pick all symbols in class scope for other classes
+              .flatMap(classifiersOfFreshInType)
           if cls.typeRef.isMutableType then
             fieldClassifiers = defn.Caps_Mutable :: fieldClassifiers
           val parentClassifiers =
@@ -1225,11 +1229,20 @@ class CheckCaptures extends Recheck, SymTransformer:
           curEnv = saved
     end recheckDefDef
 
-    /** If val or def definition with inferred (result) type is visible
-     *  in other compilation units, check that the actual inferred type
-     *  conforms to the expected type where all inferred capture sets are dropped.
-     *  This ensures that if files compile separately, they will also compile
-     *  in a joint compilation.
+    /** Two tests for member definitions with inferred types:
+     *
+     *   1. If val or def definition with inferred (result) type is visible
+     *      in other compilation units, check that the actual inferred type
+     *      conforms to the expected type where all inferred capture sets are dropped.
+     *      This ensures that if files compile separately, they will also compile
+     *      in a joint compilation.
+     *   2. If a val has an inferred type with a terminal capability in its span capset,
+     *      check that it this capability is subsumed by the capset that was inferred
+     *      for the class from its other fields via `captureSetImpliedByFields`.
+     *      That capset is defined to take into account all fields but is computed
+     *      only from fields with explicitly given types in order to avoid cycles.
+     *      See comment on Setup.fieldsWithExplicitTypes. So we have to make sure
+     *      that fields with inferred types would not change that capset.
      */
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
       val sym = tree.symbol
@@ -1264,11 +1277,17 @@ class CheckCaptures extends Recheck, SymTransformer:
           |The new inferred type $tp
           |must conform to this type."""
 
+      def covers(classCapset: CaptureSet, fieldClassifiers: List[ClassSymbol]): Boolean =
+        fieldClassifiers.forall: cls =>
+          classCapset.elems.exists:
+            case fresh: FreshCap => cls.isSubClass(fresh.hiddenSet.classifier)
+            case _ => false
+
       tree.tpt match
-        case tpt: InferredTypeTree if !isExemptFromChecks =>
-          if !sym.isLocalToCompilationUnit
-             // Symbols that can't be seen outside the compilation unit can have inferred types
-             // except for the else clause below.
+        case tpt: InferredTypeTree =>
+          // Test point (1) of doc comment above
+          if !sym.isLocalToCompilationUnit && !isExemptFromChecks
+            // Symbols that can't be seen outside the compilation unit can have inferred types
           then
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
@@ -1277,18 +1296,21 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // The check that inferred <: expected is done after recheck so that it
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
-          else if sym.is(Private)
-              && !sym.isLocalToCompilationUnitIgnoringPrivate
-              && tree.tpt.nuType.spanCaptureSet.containsTerminalCapability
+          // Test point (2) of doc comment above
+          if sym.owner.isClass && !sym.owner.isStaticOwner
               && contributesFreshToClass(sym)
-              // Private symbols capturing a root capability need explicit types
-              // so that we can compute field constributions to class instance
-              // capture sets across compilation units.
           then
-            report.error(
-              em"""$sym needs an explicit type because it captures a root capability in its type ${tree.tpt.nuType}.
-                  |Fields of publicily accessible classes that capture a root capability need to be given an explicit type.""",
-            tpt.srcPos)
+            todoAtPostCheck += { () =>
+              val cls = sym.owner.asClass
+              val fieldClassifiers = classifiersOfFreshInType(sym)
+              val classCapset = captureSetImpliedByFields(cls, cls.appliedRef)
+              if !covers(classCapset, fieldClassifiers) then
+                report.error(
+                  em"""$sym needs an explicit type because it captures a root capability in its type ${tree.tpt.nuType}.
+                      |Fields capturing a root capability need to be given an explicit type unless the capability is already
+                      |subsumed by the computed capability of the enclosing class.""",
+                tpt.srcPos)
+            }
         case _ =>
       tp
     end checkInferredResult

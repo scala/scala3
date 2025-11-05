@@ -375,10 +375,14 @@ object Capabilities:
       case tp: SetCapability => tp.captureSetOfInfo.isReadOnly
       case _ => this ne stripReadOnly
 
-    /** The restriction of this capability or NoSymbol if there is none */
-    final def restriction(using Context): Symbol = this match
+    /** The classifier, either given in an explicit `.only` or assumed for a
+     *  FreshCap. AnyRef for unclassified FreshCaps. Otherwise NoSymbol if no
+     *  classifier is given.
+     */
+    final def classifier(using Context): Symbol = this match
       case Restricted(_, cls) => cls
-      case Maybe(ref1) => ref1.restriction
+      case Maybe(ref1) => ref1.classifier
+      case self: FreshCap => self.hiddenSet.classifier
       case _ => NoSymbol
 
     /** Is this a reach reference of the form `x*` or a readOnly or maybe variant
@@ -609,7 +613,7 @@ object Capabilities:
           case Reach(_) =>
             captureSetOfInfo.transClassifiers
           case self: CoreCapability =>
-            if self.derivesFromCapability then toClassifiers(self.classifier)
+            if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
             else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
           classifiersValid == currentId
