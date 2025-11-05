@@ -84,7 +84,8 @@ final case class SbtCommunityProject(
     extraSbtArgs: List[String] = Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
+    override val environment: Map[String, String] = Map.empty,
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -637,6 +638,7 @@ object projects:
       ).mkString("; "),
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
+    environment = Map("GITHUB_ACTIONS" -> "false"),
   )
 
   lazy val libretto = SbtCommunityProject(
