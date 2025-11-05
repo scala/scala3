@@ -8,5 +8,5 @@ val foo: Generic {
 
 def x =
   42 match
-    case foo(()) => println("lol")
+    case foo(()) => println("lol") // error
 
