@@ -22,10 +22,8 @@
    |  LazyRef[B^'s19]{val elem: () => B^'s20}^{f1, ref1}
    |Required: (ref: LazyRef[A]^{io}, f: A =>² B) =>³ LazyRef[B]^
    |
-   |Note that capability f1 is not included in capture set {cap}.
-   |
-   |Note that the existential capture root in LazyRef[B]^²
-   |cannot subsume the capability (f1 : A^'s15 ->'s16 B^'s17) since that capability is not a `Sharable` capability..
+   |Note that capability f1 is not included in capture set {cap}
+   |because cap, which is existentially bound in LazyRef[B]^², cannot subsume f1 since that capability is not a SharedCapability.
    |
    |where:    => and cap refer to a root capability associated with the result type of (ref1: LazyRef[A^'s11]{val elem: () ->'s12 A^'s13}^'s14, f1: A^'s15 ->'s16 B^'s17):
    |  LazyRef[B^'s19]{val elem: () => B^'s20}^{f1, ref1}

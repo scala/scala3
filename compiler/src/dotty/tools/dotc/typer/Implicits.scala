@@ -31,6 +31,7 @@ import Feature.{migrateTo3, sourceVersion}
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.*
+import Message.Note
 import transform.Splicer
 import annotation.tailrec
 
@@ -467,7 +468,7 @@ object Implicits:
     }
   }
 
-  abstract class SearchFailureType extends ErrorType, Addenda {
+  abstract class SearchFailureType extends ErrorType {
     def expectedType: Type
     def argument: Tree
 
@@ -485,7 +486,7 @@ object Implicits:
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
 
-    def toAdd(using Context) = Nil
+    def notes(using Context): List[Note] = Nil
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
@@ -540,10 +541,12 @@ object Implicits:
   /** A failure value indicating that an implicit search for a conversion was not tried */
   case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
 
-    override def toAdd(using Context) =
-      i"""
-         |Note that implicit conversions were not tried because the result of an implicit conversion
-         |must be more specific than $target""" :: Nil
+    override def notes(using Context) =
+      Note:
+        i"""
+          |Note that implicit conversions were not tried because the result of an implicit conversion
+          |must be more specific than $target"""
+      :: Nil
 
     override def msg(using Context) =
       super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
@@ -567,14 +570,16 @@ object Implicits:
         str2 = alt2.ref.showRef
       em"both $str1 and $str2 $qualify".withoutDisambiguation()
 
-    override def toAdd(using Context) =
+    override def notes(using Context) =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
         Nil
       else
         val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
-        i"""
-           |Note that implicit $what cannot be applied because they are ambiguous;
-           |$explanation""" :: Nil
+        Note:
+          i"""
+             |Note that implicit $what cannot be applied because they are ambiguous;
+             |$explanation"""
+        :: Nil
 
     def asNested = if nested then this else AmbiguousImplicits(alt1, alt2, expectedType, argument, nested = true)
   end AmbiguousImplicits

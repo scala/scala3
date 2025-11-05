@@ -5,7 +5,6 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
 import util.{SimpleIdentitySet, EqHashMap}
-import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -787,12 +786,9 @@ object Capabilities:
               && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
-          val result = y match
+          y match
             case y: ResultCap => vs.unify(x, y)
             case _ => y.derivesFromShared
-          if !result then
-            TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
-          result
         case GlobalCap =>
           y match
             case GlobalCap => true
@@ -900,7 +896,7 @@ object Capabilities:
           case _ => c1
 
     def showAsCapability(using Context) =
-      i"capability ${ctx.printer.toTextCapability(this).show}"
+      i"${ctx.printer.toTextCapability(this).show}"
 
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability

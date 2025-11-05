@@ -19,10 +19,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:69:10 ---------------------------------
 69 |          Future: fut ?=> // error, type mismatch
    |          ^
-   |Found:    (contextual$9: boundary.Label[Result[Future[T^'s2]^'s3, E^'s4]^'s5]^'s6) ?->{fr, async} Future[T^'s7]^{fr, contextual$9}
-   |Required: (boundary.Label[Result[Future[T^'s8]^'s9, E^'s10]]^) ?=> Future[T^'s8]^'s9
+   |Capability contextual$9 outlives its scope: it leaks into outer capture set 's2 which is owned by method fail4.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability contextual$9 cannot be included in outer capture set 's9.
+   |Found:    (contextual$9: boundary.Label[Result[Future[T^'s3]^'s4, E^'s5]^'s6]^'s7) ?->{fr, async} Future[T^'s8]^{fr, contextual$9}
+   |Required: (boundary.Label[Result[Future[T^'s9]^'s2, E^'s10]]^) ?=> Future[T^'s9]^'s2
    |
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability

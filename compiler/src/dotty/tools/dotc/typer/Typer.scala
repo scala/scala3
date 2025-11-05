@@ -4247,7 +4247,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 then
                   tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, inSelect)
                 else
-                  err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
+                  err.typeMismatch(qual, selProto, failure.reason.notes) // TODO: report NotAMember instead, but need to be aware of failure
             rememberSearchFailure(qual, failure)
       catch case ex: TypeError => nestedFailure(ex)
 
@@ -4918,7 +4918,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           val tree1 = healAdapt(tree, pt)
           if tree1 ne tree then readapt(tree1)
-          else err.typeMismatch(tree, pt, failure)
+          else err.typeMismatch(tree, pt, failure.notes)
 
       pt match
         case _: SelectionProto =>

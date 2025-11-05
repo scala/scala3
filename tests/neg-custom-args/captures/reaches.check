@@ -124,7 +124,7 @@
 -- Error: tests/neg-custom-args/captures/reaches.scala:60:36 -----------------------------------------------------------
 60 |  val leaked = usingFile[File^{id*}]: f => // error: separation
    |               ^
-   |        Local cap created in type of parameter x leaks into capture scope of enclosing function
+   |        Local cap created in type of parameter x leaks into capture scope of an enclosing function
    |
    |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
 61 |    val f1: File^{id*} = id(f)

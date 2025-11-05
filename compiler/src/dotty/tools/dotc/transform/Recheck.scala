@@ -15,7 +15,7 @@ import typer.ErrorReporting.err
 import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import typer.TypeAssigner.seqLitType
 import typer.ConstFold
-import typer.ErrorReporting.{Addenda, NothingToAdd}
+import reporting.Message.Note
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
@@ -649,11 +649,11 @@ abstract class Recheck extends Phase, SymTransformer:
       println(i"fail while $actual iscompat $expected")
       throw ex
 
-    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Type =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note] = Nil)(using Context): Type =
       //println(i"check conforms $actual <:< $expected")
       if !isCompatible(actual, expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actual), expected, addenda)
+        err.typeMismatch(tree.withType(actual), expected, notes)
       actual
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
