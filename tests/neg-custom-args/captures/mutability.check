@@ -115,5 +115,5 @@
 -- Error: tests/neg-custom-args/captures/mutability.scala:45:9 ---------------------------------------------------------
 45 |  r6().x.set(33) // error
    |  ^^^^^^^^^^
-   |  Cannot call update method set of Ref[Int]^{cap.rd}
-   |  since its capture set {cap.rd} is read-only.
+   |  Cannot call update method set of Ref[Int]^{r6*.rd}
+   |  since its capture set {r6*.rd} is read-only.
