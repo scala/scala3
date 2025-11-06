@@ -516,7 +516,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
-          else transformExplicitType(tree.tpe, sym, freshen = !boxed, tptToCheck = tree)
+          else transformExplicitType(tree.tpe, sym, freshen = true, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)

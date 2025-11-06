@@ -16,8 +16,8 @@ package test1:
 
   object FooImpl1 extends Foo:
     val thunks: Collection[() => Unit] = Collection.empty // was error, now ok
-    val thunks2: Collection[() => Unit] = Collection.empty[() => Unit] // error
-    val thunks3: Collection[() => Unit] = Collection.empty[() => Unit] // error
+    val thunks2: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok
+    val thunks3: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok
 
 package test2:
 
@@ -32,5 +32,5 @@ package test2:
 
   object FooImpl1 extends Foo:
     val thunks: Collection[() => Unit] = Collection.empty // was error, now ok
-    val thunks2: Collection[() => Unit] = Collection.empty[() => Unit] // error
-    val thunks3: Collection[() => Unit] = Collection.empty[() => Unit] // error
+    val thunks2: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok
+    val thunks3: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok

@@ -1,10 +1,3 @@
--- Error: tests/neg-custom-args/captures/class-level-attack.scala:12:24 ------------------------------------------------
-12 |  val r: Ref[IO^] = Ref[IO^](io) // error:
-   |                        ^^^
-   |                        Type variable X of constructor Ref cannot be instantiated to IO^ since
-   |                        that type captures the root capability `cap`.
-   |
-   |                        where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-level-attack.scala:17:26 ---------------------------
 17 |  def set(x: IO^) = r.put(x)  // error
    |                          ^
