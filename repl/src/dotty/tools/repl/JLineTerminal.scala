@@ -38,7 +38,7 @@ class JLineTerminal extends java.io.Closeable {
     else str
   protected def promptStr = "scala"
   private def prompt(using Context)        = blue(s"\n$promptStr> ")
-  private def newLinePrompt(using Context) = blue("     | ")
+  private def newLinePrompt(using Context) = "       "
 
   /** Blockingly read line from `System.in`
    *
