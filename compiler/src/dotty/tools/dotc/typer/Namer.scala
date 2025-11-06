@@ -995,8 +995,12 @@ class Namer { typer: Typer =>
       end if
     }
 
+    /** Add an implicit Mutable flag to consume methods in Mutable classes. This
+     *  turns the method into an update method.
+     */
     private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
-      if denot.is(Method) && denot.hasAnnotation(defn.ConsumeAnnot) then
+      if denot.is(Method) && denot.hasAnnotation(defn.ConsumeAnnot)
+          && denot.owner.derivesFrom(defn.Caps_Mutable) then
         denot.setFlag(Mutable)
 
     /** Intentionally left without `using Context` parameter. We need
