@@ -12,10 +12,10 @@
    |                             Required: Foo[File^]
    |
    |                             Note that capability cap is not included in capture set {cap²}
-   |                             because cap is not visible from cap² in value backdoor.
+   |                             because cap in class Bar is not visible from cap² in value backdoor.
    |
    |                             where:    ^ and cap² refer to a fresh root capability in the type of value backdoor
-   |                                       cap        is the universal root capability
+   |                                       cap        is a fresh root capability created in class Bar
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:27:32 --------------------------------
@@ -25,9 +25,9 @@
    |                             Required: Foo2[File^]
    |
    |                             Note that capability cap is not included in capture set {cap²}
-   |                             because cap is not visible from cap² in value backdoor.
+   |                             because cap in class Bar2 is not visible from cap² in value backdoor.
    |
    |                             where:    ^ and cap² refer to a fresh root capability in the type of value backdoor
-   |                                       cap        is the universal root capability
+   |                                       cap        is a fresh root capability created in class Bar2
    |
    | longer explanation available when compiling with `-explain`
