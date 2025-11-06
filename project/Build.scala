@@ -433,6 +433,54 @@ object Build {
 
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
+  private val shellBanner: String =
+    """%n      ________ ___   / /  ___
+       |%n    / __/ __// _ | / /  / _ |
+       |%n  __\\ \\/ /__/ __ |/ /__/ __ |
+       |%n /____/\\___/_/ |_/____/_/ | |
+       |%n                          |/  %s""".stripMargin.replace("\n", "")
+
+  // Common generator for properties files
+  lazy val generatePropertiesFile = (fileName: String, contents: Def.Initialize[String]) => Def.task {
+    val file = (Compile / resourceManaged).value / fileName
+    val data = contents.value
+    if (!(file.exists && IO.read(file) == data)) {
+      IO.write(file, data)
+    }
+    Seq(file)
+  }
+
+  // Generate compiler.properties consumed by sbt
+  lazy val generateCompilerProperties: Def.Initialize[Task[Seq[File]]] = {
+    import java.util._
+    import java.text._
+    val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
+    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+    
+    val fileName = "compiler.properties"
+    val contents = Def.setting {
+      s"""version.number=${version.value}
+          |maven.version.number=${version.value}
+          |git.hash=${VersionUtil.gitHash}
+          |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
+          |""".stripMargin
+    }
+    generatePropertiesFile(fileName, contents)
+  }
+
+  // Generate library.properties consumed by scala.util.Properties
+  lazy val generateLibraryProperties: Def.Initialize[Task[Seq[File]]] = {
+    val fileName = "library.properties"
+    val contents = Def.setting {
+      s"""version.number=${version.value}
+          |maven.version.number=${version.value}
+          |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
+          |shell.banner=${shellBanner}
+          |""".stripMargin
+    }
+    generatePropertiesFile(fileName, contents)
+  }
+
   def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
     val extMap = Seq("-external-mappings:" +
         (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," else "") +
@@ -700,25 +748,7 @@ object Build {
       scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.mutable\\.AnyRefMap.*:s",
 
       // Generate compiler.properties, used by sbt
-      (Compile / resourceGenerators) += Def.task {
-        import java.util._
-        import java.text._
-        val file = (Compile / resourceManaged).value / "compiler.properties"
-        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
-          s"""version.number=${version.value}
-             |maven.version.number=${version.value}
-             |git.hash=${VersionUtil.gitHash}
-             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
-           """.stripMargin
-
-        if (!(file.exists && IO.read(file) == contents)) {
-          IO.write(file, contents)
-        }
-
-        Seq(file)
-      }.taskValue,
+      (Compile / resourceGenerators) += generateCompilerProperties.taskValue,
 
       // get libraries onboard
       libraryDependencies ++= Seq(
@@ -1916,6 +1946,8 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       // Should we also patch .sjsir files
       keepSJSIR := false,
+      // Generate library.properties, used by scala.util.Properties
+      Compile / resourceGenerators += generateLibraryProperties.taskValue
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -2041,6 +2073,8 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       // Should we also patch .sjsir files
       keepSJSIR := false,
+      // Generate Scala 3 runtime properties overlay
+      Compile / resourceGenerators += generateLibraryProperties.taskValue,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -2444,25 +2478,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-nonbootstrapped",
       // Generate compiler.properties, used by sbt
-      Compile / resourceGenerators += Def.task {
-        import java.util._
-        import java.text._
-        val file = (Compile / resourceManaged).value / "compiler.properties"
-        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
-          s"""version.number=${version.value}
-             |maven.version.number=${version.value}
-             |git.hash=${VersionUtil.gitHash}
-             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
-           """.stripMargin
-
-        if (!(file.exists && IO.read(file) == contents)) {
-          IO.write(file, contents)
-        }
-
-        Seq(file)
-      }.taskValue,
+      Compile / resourceGenerators += generateCompilerProperties.taskValue,
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       managedScalaInstance := false,
@@ -2612,25 +2628,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-bootstrapped",
       // Generate compiler.properties, used by sbt
-      Compile / resourceGenerators += Def.task {
-        import java.util._
-        import java.text._
-        val file = (Compile / resourceManaged).value / "compiler.properties"
-        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
-          s"""version.number=${version.value}
-             |maven.version.number=${version.value}
-             |git.hash=${VersionUtil.gitHash}
-             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
-           """.stripMargin
-
-        if (!(file.exists && IO.read(file) == contents)) {
-          IO.write(file, contents)
-        }
-
-        Seq(file)
-      }.taskValue,
+      Compile / resourceGenerators += generateCompilerProperties.taskValue,
       // Configure to use the non-bootstrapped compiler
       managedScalaInstance := false,
       scalaInstance := {
