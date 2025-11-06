@@ -18,10 +18,3 @@ object O {
   val c = foo2(new Y)
   val d = foo3(new Y)
 }
-
-/**
-  * Pass arg to by-name parameter: create a Fun where body is the argument expression
-  * Read value of by-name parameter: call 'apply' on every possible Fun value of the by-name parameter
-  * Solution: Add special EnvRefs for by-name params;
-  *           differentiate these EnvRefs by the arg tree passed to the by-name param
-  */

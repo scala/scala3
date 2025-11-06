@@ -144,6 +144,8 @@ class Objects(using Context @constructorOnly):
 
     def isObjectRef: Boolean = this.isInstanceOf[ObjectRef]
 
+    def asObjectRef: ObjectRef = this.asInstanceOf[ObjectRef]
+
     def valValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readVal(this, sym)
 
     def varValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readVal(this, sym)
@@ -178,6 +180,12 @@ class Objects(using Context @constructorOnly):
 
   /** A reference to a static object */
   case class ObjectRef private (klass: ClassSymbol)(using Trace) extends Ref:
+    var afterSuperCall = false
+
+    def isAfterSuperCall = afterSuperCall
+
+    def setAfterSuperCall(): Unit = afterSuperCall = true
+
     def owner = klass
 
     def show(using Context) = "ObjectRef(" + klass.show + ")"
@@ -1058,6 +1066,9 @@ class Objects(using Context @constructorOnly):
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
           UnknownValue
+        else if ref.isInstanceOf[ObjectRef] && !ref.asObjectRef.isAfterSuperCall then
+          report.warning("Calling " + target + " of object " + ref.klass + " before the super constructor of the object finishes! " + Trace.show, Trace.position)
+          Bottom
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -2110,6 +2121,10 @@ class Objects(using Context @constructorOnly):
 
       // initialize super classes after outers are set
       tasks.foreach(task => task())
+    end if
+
+    if thisV.isInstanceOf[ObjectRef] && klass == thisV.klass then
+      thisV.asObjectRef.setAfterSuperCall()
     end if
 
     // class body
