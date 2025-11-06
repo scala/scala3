@@ -47,7 +47,8 @@ object Mutability:
 
   extension (sym: Symbol)
     /** An update method is either a method marked with `update` or
-     *  a setter of a non-transparent var.
+     *  a setter of a non-transparent var. `update` is implicit for `consume` methods
+     *  of Mutable classes.
      */
     def isUpdateMethod(using Context): Boolean =
       sym.isAllOf(Mutable | Method)
@@ -63,8 +64,9 @@ object Mutability:
     private def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
       import Exclusivity.*
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
+      else if sym.isUpdateMethod then OK
       else if sym.owner == cls then
-        if sym.isUpdateMethod || sym.isConstructor then OK
+        if sym.isConstructor then OK
         else NotInUpdateMethod(sym, cls)
       else if sym.isStatic then OutsideClass(cls)
       else sym.owner.inExclusivePartOf(cls)

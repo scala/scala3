@@ -11,11 +11,12 @@ class Matrix(val f: () => Int) extends Mutable:
     update def add(): Unit = ()
 
 
-@main def test =
+def test(consume proc: () => Int) =
   val r: Ref^ = Ref()
   val m: Matrix^ = Matrix(() => 42)
   val m2: Matrix^ = Matrix(() => m.run())
   val m3: Matrix^ = Matrix(() => r.get())
+  val m4: Matrix^ = Matrix(proc)
 
   def par(f1: () => Int, f2: () => Int): Unit =
     println(s"par results: ${f1()} and ${f2()}")

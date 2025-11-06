@@ -1,9 +1,3 @@
--- Error: tests/neg-custom-args/captures/mutable-inheritance.scala:4:8 -------------------------------------------------
-4 |  class A extends E, caps.Mutable // error
-  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  reference (c : Object^) is not included in the allowed capture set {cap} of the self type of class A
-  |
-  |  where:    cap is a fresh root capability classified as Mutable in the type of class A
 -- Error: tests/neg-custom-args/captures/mutable-inheritance.scala:7:16 ------------------------------------------------
 7 |class C extends B(??? : Int => Int), caps.Mutable // error
   |                ^^^^^^^^^^^^^^^^^^^
@@ -14,3 +8,8 @@
    |                ^
    |                illegal inheritance: class H which extends `Mutable` is not allowed to also extend class G
    |                since class G retains exclusive capabilities but does not extend `Mutable`.
+-- Error: tests/neg-custom-args/captures/mutable-inheritance.scala:4:18 ------------------------------------------------
+4 |  class A extends E, caps.Mutable // error
+  |                  ^
+  |                  illegal inheritance: class A which extends `Mutable` is not allowed to also extend class E
+  |                  since class E retains exclusive capabilities but does not extend `Mutable`.

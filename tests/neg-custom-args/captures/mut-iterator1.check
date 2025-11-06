@@ -1,0 +1,5 @@
+-- [E164] Declaration Error: tests/neg-custom-args/captures/mut-iterator1.scala:9:15 -----------------------------------
+9 |    update def next() = f(Iterator.this.next()) // error
+  |               ^
+  |               error overriding method next in trait Iterator of type (): U;
+  |                 method next of type (): U is an update method, cannot override a read-only method

@@ -573,12 +573,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             // fresh capabilities. We do check that they hide no parameter reach caps in checkEscapingUses
         case _ =>
 
-      def checkReadOnlyMethod(included: CaptureSet, env: Env): Unit =
+      def checkReadOnlyMethod(included: CaptureSet, meth: Symbol): Unit =
         included.checkAddedElems: elem =>
           if elem.isExclusive then
             report.error(
-                em"""Read-only ${env.owner} accesses exclusive capability $elem;
-                    |${env.owner} should be declared an update method to allow this.""",
+                em"""Read-only $meth accesses exclusive capability $elem;
+                    |$meth should be declared an update method to allow this.""",
                 tree.srcPos)
 
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
@@ -599,7 +599,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               if env.owner.isReadOnlyMethodOrLazyVal && nextEnv.owner != env.owner then
-                checkReadOnlyMethod(included, env)
+                checkReadOnlyMethod(included, env.owner)
               recur(included, nextEnv, env)
           	// Under deferredReaches, don't propagate out of methods inside terms.
           	// The use set of these methods will be charged when that method is called.

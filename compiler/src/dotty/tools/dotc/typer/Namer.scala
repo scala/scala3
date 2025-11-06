@@ -995,7 +995,9 @@ class Namer { typer: Typer =>
       end if
     }
 
-    /** Imply `update` for consume methods in Mutable classes */
+    /** Add an implicit Mutable flag to consume methods in Mutable classes. This
+     *  turns the method into an update method.
+     */
     private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
       if denot.is(Method)
           && denot.hasAnnotation(defn.ConsumeAnnot)

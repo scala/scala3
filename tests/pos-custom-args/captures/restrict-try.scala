@@ -1,11 +1,11 @@
-import caps.{SharedCapability, Control, Mutable}
+import caps.{SharedCapability, Control, Read}
 
 class Try[+T]
 case class Ok[T](x: T) extends Try[T]
 case class Fail(ex: Exception) extends Try[Nothing]
 
-trait Matrix extends Mutable:
-  update def update(): Unit
+trait Matrix extends Read:
+  def get(): Unit
 
 trait Label extends Control:
   def break(): Unit
@@ -19,7 +19,7 @@ def Test(m: Matrix^, l: Label) =
   val x =
     Try:
       val b = () =>
-        m.update()
+        m.get()
         l.break()
       val _: () ->{m, l} Unit = b
       b
