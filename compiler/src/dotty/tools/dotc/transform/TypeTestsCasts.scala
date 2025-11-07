@@ -144,26 +144,30 @@ object TypeTestsCasts {
           case _                   => recur(defn.AnyType, tpT)
         }
       case tpe @ AppliedType(tycon, targs) if !trustTypeApplication =>
-        X.widenDealias match {
-          case OrType(tp1, tp2) =>
-            // This case is required to retrofit type inference,
-            // which cut constraints in the following two cases:
-            //   - T1 <:< T2 | T3
-            //   - T1 & T2 <:< T3
-            // See TypeComparer#either
-            recur(tp1, P) && recur(tp2, P)
-          case tpX: FlexibleType =>
-            recur(tpX.underlying, P)
-          case x =>
-            // always false test warnings are emitted elsewhere
-            // provablyDisjoint wants fully applied types as input; because we're in the middle of erasure, we sometimes get raw types here
-            val xApplied =
-              val tparams = x.typeParams
-              if tparams.isEmpty then x else x.appliedTo(tparams.map(_ => WildcardType))
-            TypeComparer.provablyDisjoint(xApplied, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
-            || typeArgsDeterminable(X, tpe)
-            ||| i"its type arguments can't be determined from $X"
-        }
+        val abstractArgs = targs.filter(isAbstract)
+        if abstractArgs.nonEmpty && !tycon.classSymbol.is(Final) then
+          i"type arguments $abstractArgs refer to abstract types,"
+        else
+          X.widenDealias match {
+            case OrType(tp1, tp2) =>
+              // This case is required to retrofit type inference,
+              // which cut constraints in the following two cases:
+              //   - T1 <:< T2 | T3
+              //   - T1 & T2 <:< T3
+              // See TypeComparer#either
+              recur(tp1, P) && recur(tp2, P)
+            case tpX: FlexibleType =>
+              recur(tpX.underlying, P)
+            case x =>
+              // always false test warnings are emitted elsewhere
+              // provablyDisjoint wants fully applied types as input; because we're in the middle of erasure, we sometimes get raw types here
+              val xApplied =
+                val tparams = x.typeParams
+                if tparams.isEmpty then x else x.appliedTo(tparams.map(_ => WildcardType))
+              TypeComparer.provablyDisjoint(xApplied, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
+              || typeArgsDeterminable(X, tpe)
+              ||| i"its type arguments can't be determined from $X"
+          }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
