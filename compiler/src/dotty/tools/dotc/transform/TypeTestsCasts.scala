@@ -144,7 +144,7 @@ object TypeTestsCasts {
           case _                   => recur(defn.AnyType, tpT)
         }
       case tpe @ AppliedType(tycon, targs) if !trustTypeApplication =>
-        val abstractArgs = targs.filter(isAbstract)
+        val abstractArgs = targs.filter(arg => isAbstract(arg) && !arg.isInstanceOf[WildcardType] )
         if abstractArgs.nonEmpty && !tycon.classSymbol.is(Final) then
           i"type arguments $abstractArgs refer to abstract types,"
         else
