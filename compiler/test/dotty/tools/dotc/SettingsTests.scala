@@ -59,9 +59,7 @@ class SettingsTests:
     assertTrue(Files.exists(out))
 
   @Test def `t8124 Don't crash on missing argument`: Unit =
-    //val outputDir = Paths.get("out/testSettings").normalize
     Using.resource(Files.createTempDirectory("testDir")): dir =>
-      //if Files.notExists(outputDir) then Files.createDirectory(outputDir)
       val source = Paths.get("tests/pos/Foo.scala").normalize
       val args  = List("-encoding", "-d", dir.toString, source.toString) // -encoding takes an arg!
       val summary = ScalaSettings.processArguments(args, processAll = true)
@@ -301,27 +299,23 @@ class SettingsTests:
       assertEquals(true, foo.value)
 
   @Test def `Output setting is overriding existing jar`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
 
-      import Settings._
-
+      import Settings.*
       Files.write(file, "test".getBytes())
       val fileStateBefore = String(Files.readAllBytes(file))
-
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
       assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
 
-    }(using Files.deleteIfExists(_))
-
   @Test def `Output setting respects previous setting`: Unit =
     val result = Using.resources(
       Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
-    ){ (file1, file2) =>
+    ): (file1, file2) =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
@@ -343,10 +337,8 @@ class SettingsTests:
       assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
       assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
 
-    }(using Files.deleteIfExists(_), Files.deleteIfExists(_))
-
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
@@ -360,8 +352,6 @@ class SettingsTests:
       val summary = processArguments(args, processAll = true)
 
       assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
-
-    }(using Files.deleteIfExists(_))
 
   @Test def `Arguments of options are correctly parsed with either ":" or " " separators`: Unit =
     val Help = "" // i.e. help = Help
@@ -380,7 +370,7 @@ class SettingsTests:
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
     import Settings._
-    Using.resource(Files.createTempDirectory("testDir")) { dir =>
+    Using.resource(Files.createTempDirectory("testDir")): dir =>
 
       val args = List(
         List("-booleanSetting", "true"), // `-b false` does not mean `-b:false`
@@ -416,8 +406,6 @@ class SettingsTests:
       val summaryWhitespace = processArguments(args.flatten, processAll = true)
       testValues(summary = summaryColon)
       testValues(summary = summaryWhitespace)
-
-    }(using Files.deleteIfExists(_))
 
   // use the supplied summary for evaluating settings
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
