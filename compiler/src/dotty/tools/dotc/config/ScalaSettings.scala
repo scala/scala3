@@ -146,8 +146,8 @@ private sealed trait PluginSettings:
 private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
-  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = List("-Xprint*"))
-  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = List("-Xshow-phases*"))
+  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", deprecatedAliases = List("-Xprint" -> Deprecation()))
+  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", deprecatedAliases = List("-Xshow-phases" -> Deprecation()))
 
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
@@ -161,7 +161,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
-  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings*"))
+  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", deprecatedAliases = List("-Xfatal-warnings" -> Deprecation()))
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")

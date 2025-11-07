@@ -311,6 +311,7 @@ class ScalaSettingsTests:
     val args = "-Xfatal-warnings" :: "-Xprint" :: "typer" :: Nil
     val result = settings.processArguments(args, processAll = true)
     assertEquals(2, result.warnings.length)
+    assertEquals("Option -Xfatal-warnings is a deprecated alias: use -Werror instead", result.warnings.head)
     assertEquals(0, result.errors.length)
 
 end ScalaSettingsTests
