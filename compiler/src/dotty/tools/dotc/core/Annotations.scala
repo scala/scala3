@@ -38,7 +38,7 @@ object Annotations {
       if (i < args.length) Some(args(i)) else None
     }
     def argumentConstant(i: Int)(using Context): Option[Constant] =
-      for (case ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
+      for case ConstantType(c) <- argument(i).map(stripCast(_).tpe.widenTermRefExpr.normalized) yield c
 
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
