@@ -1,3 +1,5 @@
+class SomeException extends Exception
+
 def test1: String =
   var x: String | Null = null
   x = ""
@@ -248,3 +250,117 @@ def test13() =
     x.trim() // error
   }
   x.trim() // OK
+
+def test14() =
+  var x: String | Null = ""
+  x = ""
+  try {
+    try {
+    } catch {
+      case e =>
+        x = null
+        throw e
+    }
+  } catch {
+    case e =>
+      x.trim() // error
+  }
+
+
+
+def test15: String =
+  var x: String | Null = ???
+  var y: String | Null = ???
+  // ...
+  try
+    x = null
+    // ...
+    x = ""
+  catch
+    case e: SomeException =>
+      x = null
+      // situation 1: don't throw or return
+      // situation 2:
+      return ""
+  finally
+    y = x
+    // should always error on y.trim
+
+  y.trim  // error (ideally, should error if situation 1, should not error if situation 2)
+
+def test16: String =
+  var x: String | Null = ???
+  x = ""
+  try
+    // call some method that throws
+    // ...
+    x = ""
+  catch
+    case e: SomeException =>
+      x = null
+      // call some method that throws
+      // ...
+      x = "<error>"
+  finally {}
+
+  x.trim() // ok
+
+def test17: String =
+  var x: String | Null = ???
+  x = ""
+  try
+    // call some method that throws
+    // ...
+    x = ""
+  catch
+    case e: SomeException =>
+      x = null
+      // call some method that throws
+      // ...
+      x = "<error>"
+  finally
+    println(x.trim()) // error
+
+  ""
+
+def test18: String =
+  var x: String | Null = ???
+  var y: String | Null = ???
+  // ...
+  try
+    x = null
+    y = null
+    // ...
+    x = ""
+    y = ""
+  catch
+    case e: SomeException =>
+      x = null
+      return ""
+  finally {}
+
+  x.trim + y.trim
+
+
+def test19: String =
+  var x: String | Null = ???
+  try
+    x = null
+  catch
+    case e: SomeException =>
+      x = null
+      throw e
+  finally
+    throw new Exception()
+  x.trim // ok
+
+def test20: String =
+  var x: String | Null = ???
+  x = ""
+  try
+    x = ""
+  catch
+    case e: SomeException =>
+      x = ""
+  finally {}
+  x.trim // ok
