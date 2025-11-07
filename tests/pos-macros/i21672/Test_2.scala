@@ -1,3 +1,3 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 object Test:
   Repro()

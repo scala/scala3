@@ -297,4 +297,4 @@
    | added to package I:
    |   @publicInBinary private[I] def inline$valBinaryAPI2: Int = foo.I.valBinaryAPI2
     --------------------------------------------------------------------------------------------------------------------
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
+No warnings can be incurred under -Werror
