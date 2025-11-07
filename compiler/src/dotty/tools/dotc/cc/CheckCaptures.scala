@@ -1039,7 +1039,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       lhsType match
         case lhsType @ TermRef(qualType, _)
-        if (qualType ne NoPrefix) && !lhsType.symbol.is(Transparent) =>
+        if (qualType ne NoPrefix) && !lhsType.symbol.hasAnnotation(defn.UntrackedCapturesAnnot) =>
           checkUpdate(qualType, tree.srcPos)(i"Cannot assign to field ${lhsType.name} of ${qualType.showRef}")
         case _ =>
       defn.UnitType

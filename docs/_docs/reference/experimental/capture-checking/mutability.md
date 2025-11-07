@@ -283,31 +283,34 @@ ro.set(22)        // disallowed, since `ro` is read-only access
 ```
 
 
-## Transparent Vars
+## Untracked Vars
 
 Sometimes, disallowing assignments to mutable fields from normal methods is too restrictive. For instance:
 ```scala
+import caps.unsafe.untrackedCaptures
+
 class Cache[T](eval: () -> T):
-  private transparent var x: T = compiletime.uninitialized
-  private transparent var known = false
+  @untrackedCaptures private var x: T = compiletime.uninitialized
+  @untrackedCaptures private var known = false
   def force: T =
     if !known then
       x = eval()
       known = true
     x
 ```
-Here, the mutable field `x` is used to store the result of a pure function `eval`. This is equivalent to just calling `eval()` directly but can be more efficient since the cached value is
-evaluated at most once. So from a semantic standpoint, it should not be necessary to make `force` an update method, even though it does assign to `x`.
+Note that, even though `Cache` has mutable variables, it is not declared as a `Mutable` class. In this case, the mutable field `x` is used to store the result of a pure function `eval` and field `known` reflects whether `eval` was called. This is equivalent to just calling `eval()` directly but can be more efficient since the cached value is evaluated at most once. So from a semantic standpoint, it should not be necessary to make `force` an update method, even though it does assign to `x`.
 
-We can avoid the need for update methods by declaring mutable fields `transparent`. Assignments to `transparent` mutable field are not checked for read-only restrictions. It is up to the developer
-to use `transparent` responsibly so that it does not hide visible side effects on mutable state.
+We can avoid the need for update methods by annotating mutable fields with `@untrackedCaptures`. Assignments to untracked mutable field are then not checked for read-only restrictions. The `@untrackedCaptures` annotation can be imported from the `scala.caps.unsafe` object. It is up to the developer
+to use `@untrackedCaptures` responsibly so that it does not hide visible side effects on mutable state.
 
-Note that an assignment to a variable is restricted only if the variable is a field of a `Mutable` class. Fields of other classes and local variables are currently not checked.
+Note that at the moment an assignment to a variable is restricted _only_ if the variable is a field of a `Mutable` class. Fields of other classes and local variables are currently not checked. So the `Cache` class above would in fact
+currently compile without the addition of `@untrackedCaptures`.
 
-It is planned to tighten the rules in the future so that non-transparent mutable fields can be declared only in  classes extending `Mutable`. This means that all assignments to mutable fields would be checked with the read-only restriction, and `transparent` would become essential as
-an escape hatch.
+But is planned to tighten the rules in the future so that mutable fields that are not annotated with `@untrackedCaptures` can be declared only in classes extending `Mutable`. This means that all assignments to mutable fields would be checked with the read-only restriction, and `@untrackedCapture`s would become essential as an escape hatch.
 
-By contrast, it is not planned to check assignments to local mutable variables, which are not fields of some class. So `transparent` is disallowed for such local variables.
+By contrast, it is not planned to check assignments to local mutable variables, which are not fields of some class. So `@untrackedCaptures` is disallowed for such local variables.
+
+The `untrackedCaptures` annotation can also be used in some other contexts unrelated to mutable variables. These are described in its [doc comment](https://www.scala-lang.org/api/current/scala/caps/unsafe$$untrackedCaptures.html).
 
 ## Read-Only Capsets
 
