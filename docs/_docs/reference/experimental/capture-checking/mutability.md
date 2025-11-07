@@ -31,9 +31,9 @@ A capability is called
 
 We introduce a new trait
 ```scala
-trait Mutable extends ExclusiveCapability, Classifier
+trait Mutable
 ```
-It is used as a [classifier](classifiers.md) trait for types that define mutable variables and/or _update methods_.
+It is used as a marker trait for types that define mutable variables and/or _update methods_.
 
 ## Update Methods
 
@@ -134,10 +134,9 @@ a method that accesses exclusive capabilities.
 
 If `x` is an exclusive capability of a type extending `Mutable`, `x.rd` is its associated _read-only_ capability. It counts as a shared capability. A read-only capability does not permit access to the mutable fields of a matrix.
 
-A read-only capability can be seen as a classified capability
-using a classifier trait `Read` that extends `Mutable`. I.e.
-`x.rd` can be seen as being essentially the same as `x.only[Read]`.
-(Currently, this precise equivalence is still waiting to be implemented.)
+A read-only capability can be seen as a [classified](classifiers.md) capability
+using a classifier trait `Read`. I.e.
+`x.rd` is a shorthand for `x.only[Read]`.
 
 **Implicitly added capture sets**
 
