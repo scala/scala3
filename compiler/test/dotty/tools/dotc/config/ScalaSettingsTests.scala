@@ -306,4 +306,11 @@ class ScalaSettingsTests:
       assertEquals(0, result.warnings.length)
       assertEquals(1, result.errors.length)
 
+  @Test def `deprecated aliases warn`: Unit =
+    val settings = ScalaSettings
+    val args = "-Xfatal-warnings" :: "-Xprint" :: "typer" :: Nil
+    val result = settings.processArguments(args, processAll = true)
+    assertEquals(2, result.warnings.length)
+    assertEquals(0, result.errors.length)
+
 end ScalaSettingsTests

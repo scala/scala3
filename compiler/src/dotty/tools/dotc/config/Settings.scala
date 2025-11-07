@@ -111,8 +111,9 @@ object Settings:
     // accept legacy choices (for example, valid in Scala 2 but no longer supported)
     legacyChoices: Option[Seq[?]] = None)(private[Settings] val idx: Int)(using ct: ClassTag[T]):
 
+    val alternatives = aliases.map(_.stripSuffix("*"))
     validateSettingString(prefix.getOrElse(name))
-    aliases.foreach(validateSettingString)
+    alternatives.foreach(validateSettingString)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     validateSettingTag(ct)
@@ -121,7 +122,7 @@ object Settings:
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
-    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases
+    val allFullNames: List[String] = s"$name" :: s"-$name" :: alternatives
 
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
@@ -143,8 +144,9 @@ object Settings:
         case None                   => ""
 
     // Updates the state from the next arg if this setting is applicable.
-    def tryToSet(state: ArgsSummary): ArgsSummary =
-      val ArgsSummary(sstate, arg :: args, _, _) = state: @unchecked
+    def tryToSet(state0: ArgsSummary): ArgsSummary =
+      val ArgsSummary(sstate, arg :: args, _, _) = state0: @unchecked
+      def state(using ArgsSummary) = summon[ArgsSummary]
       def changed = sstate.wasChanged(idx)
 
       /** Updates the value in state.
@@ -154,7 +156,7 @@ object Settings:
        *  @param args remaining arguments to process
        *  @return updated argument state
        */
-      def update(value: => Any, altArg: String, args: List[String]): ArgsSummary =
+      def update(value: => Any, altArg: String, args: List[String])(using ArgsSummary): ArgsSummary =
         deprecation match
         case Some(Deprecation(msg, Some(replacedBy))) =>
           val deprecatedMsg = s"Option $name is deprecated: $msg"
@@ -169,7 +171,7 @@ object Settings:
           state.updated(updateIn(sstate, value), args)
       end update
 
-      def setBoolean(argValue: String, args: List[String]) =
+      def setBoolean(argValue: String, args: List[String])(using ArgsSummary) =
         def checkAndSet(v: Boolean) =
           val dubious = changed && v != valueIn(sstate).asInstanceOf[Boolean]
           if dubious then
@@ -183,7 +185,7 @@ object Settings:
         else if argValue.equalsIgnoreCase("false") then checkAndSet(false)
         else state.fail(s"$argValue is not a valid choice for Boolean flag $name", args)
 
-      def setString(argValue: String, args: List[String]) =
+      def setString(argValue: String, args: List[String])(using ArgsSummary) =
         choices match
         case Some(choices) if !choices.contains(argValue) =>
           state.fail(s"$argValue is not a valid choice for $name", args)
@@ -193,7 +195,7 @@ object Settings:
           else
             update(argValue, argValue, args)
 
-      def setInt(argValue: String, args: List[String]) =
+      def setInt(argValue: String, args: List[String])(using ArgsSummary) =
         argValue.toIntOption.map: intValue =>
           choices match
           case Some(r: Range) if intValue < r.head || r.last < intValue =>
@@ -207,7 +209,7 @@ object Settings:
         .getOrElse:
           state.fail(s"$argValue is not an integer argument for $name", args)
 
-      def setOutput(arg: String, args: List[String]) =
+      def setOutput(arg: String, args: List[String])(using ArgsSummary) =
         val path = Directory(arg)
         val isJar = path.ext.isJar
         if (!isJar && !path.isDirectory) then
@@ -221,7 +223,7 @@ object Settings:
 
       // argRest is the remainder of -foo:bar if any. This setting will receive a value from argRest or args.head.
       // useArg means use argRest even if empty.
-      def doSet(argRest: String, useArg: Boolean): ArgsSummary =
+      def doSet(argRest: String, useArg: Boolean)(using ArgsSummary): ArgsSummary =
         def missingArg =
           val msg = s"missing argument for option $name"
           if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored", args) else state.fail(msg, args)
@@ -248,12 +250,12 @@ object Settings:
           doSet(arg1, args1)
       end doSet
 
-      def setVersion(arg: String, args: List[String]) =
+      def setVersion(arg: String, args: List[String])(using ArgsSummary) =
         ScalaVersion.parse(arg) match
         case Success(v) => update(v, arg, args)
         case Failure(e) => state.fail(e.getMessage, args)
 
-      def setMultivalue(arg: String, args: List[String]) =
+      def setMultivalue(arg: String, args: List[String])(using ArgsSummary) =
         val split = arg.split(",").toList
         def setOrUpdate(actual: List[String]) =
           val updated =
@@ -285,7 +287,22 @@ object Settings:
         val name = arg.takeWhile(_ != ':')
         allFullNames.exists(_ == name) || prefix.exists(arg.startsWith)
 
+      def checkDeprecatedAlias()(using ArgsSummary) =
+        val name = arg.takeWhile(_ != ':')
+        val found =
+          for
+            alt <- alternatives.find(_ == name)
+            altx = alt + "*"
+            _ <- aliases.find(_ == altx)
+          yield
+            alt
+        found.map: alt =>
+          state.warn(s"Option $alt is a deprecated alias: use ${this.name}", args)
+        .getOrElse(state)
+
       if matches then
+        val checked = checkDeprecatedAlias()(using state0)
+        given ArgsSummary = checked
         deprecation match
         case Some(Deprecation(msg, _)) if ignoreInvalidArgs => // a special case for Xlint
           state.warn(s"Option $name is deprecated: $msg", args)
@@ -300,7 +317,7 @@ object Settings:
               doSet("", useArg = false)
             else
               doSet(split(1), useArg = true)
-      else state
+      else state0
 
     end tryToSet
   end Setting
