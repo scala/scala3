@@ -46,13 +46,17 @@ object Mutability:
   end Exclusivity
 
   extension (sym: Symbol)
-    /** An update method is either a method marked with `update` or
-     *  a setter of a non-transparent var. `update` is implicit for `consume` methods
-     *  of Mutable classes.
+    /** An update method is either a method marked with `update` or a setter
+     *  of a field of a Mutable class that's not annotated with @uncheckedCaptures.
+     *  `update` is implicit for `consume` methods of Mutable classes.
      */
     def isUpdateMethod(using Context): Boolean =
       sym.isAllOf(Mutable | Method)
-        && (!sym.isSetter || sym.field.is(Transparent))
+        && (if sym.isSetter then
+              sym.owner.derivesFrom(defn.Caps_Mutable)
+              && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
+            else true
+           )
 
     /** A read-only method is a real method (not an accessor) in a type extending
      *  Mutable that is not an update method. Included are also lazy vals in such types.
@@ -79,7 +83,7 @@ object Mutability:
       tp.derivesFrom(defn.Caps_Mutable)
       && tp.membersBasedOnFlags(Mutable, EmptyFlags).exists: mbr =>
         if mbr.symbol.is(Method) then mbr.symbol.isUpdateMethod
-        else !mbr.symbol.is(Transparent)
+        else !mbr.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
 
     /** OK, except if `tp` extends `Mutable` but `tp`'s capture set is non-exclusive */
     private def exclusivity(using Context): Exclusivity =

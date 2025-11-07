@@ -1,5 +1,6 @@
+import caps.unsafe.untrackedCaptures
 class Ref[T](init: T) extends caps.Mutable:
-  transparent var fld: T = init
+  @untrackedCaptures var fld: T = init
   def hide(x: T) = this.fld = x // ok
   update def hide2(x: T) = this.fld = x // ok
 
