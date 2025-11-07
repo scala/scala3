@@ -1460,7 +1460,9 @@ class Objects(using Context @constructorOnly):
     if classSym.hasSource then
       State.checkObjectAccess(classSym)
     else
-      ObjectRef(classSym)
+      val obj = ObjectRef(classSym)
+      obj.setAfterSuperCall()
+      obj
   }
 
 

@@ -9,7 +9,7 @@ object B {
 abstract class TokensCommon {
   def maxToken: Int
 
-  val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
+  val tokenString, debugString: Array[String] = new Array[String](maxToken + 1) // warn
 }
 
 object JavaTokens extends TokensCommon {

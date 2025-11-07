@@ -1,9 +1,9 @@
-abstract class Foo[T](defaultValue: => T, arg1: Int = 1, arg2: Int = 2):
-  def getValue: T = defaultValue
+class C(i: Int = 42, j: Int = 27) {
+  val f = X.foo() // warn
+}
 
-enum Baz:
-  case E1, E2 // warn
+object X extends C(j = 5):
+  def foo() = 5
 
-object Baz extends Foo[Baz](Baz.E1, arg2 = 2) // warn
-
-@main def test = println(Baz.getValue)
+@main def test = println:
+  X
