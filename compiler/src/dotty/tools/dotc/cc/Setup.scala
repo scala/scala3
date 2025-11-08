@@ -40,6 +40,14 @@ trait SetupAPI:
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
+  /** A map from currently compiled class symbols to those of their fields
+   *  that have an explicit type given. Used in `captureSetImpliedByFields`
+   *  to avoid forcing fields with inferred types prematurely. The test file
+   *  where this matters is i24335.scala. The precise failure scenario which
+   *  this avoids is described in #24335.
+   */
+  def fieldsWithExplicitTypes: collection.Map[ClassSymbol, List[Symbol]]
+
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
    *  CheckCaptures sense, i.e. symbol is referred to from a different method
@@ -52,6 +60,7 @@ trait SetupAPI:
    *  the function that is called.
    */
   def anonFunCallee: collection.Map[Symbol, Symbol]
+
 end SetupAPI
 
 object Setup:
@@ -489,6 +498,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
+  val fieldsWithExplicitTypes: mutable.HashMap[ClassSymbol, List[Symbol]] = mutable.HashMap()
+
+  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+
+  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
     import checker.*
@@ -693,59 +708,65 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: Bind =>
         val sym = tree.symbol
         updateInfo(sym, transformInferredType(sym.info), sym.owner)
-      case tree: TypeDef =>
-        tree.symbol match
-          case cls: ClassSymbol =>
-            checkClassifiedInheritance(cls)
-            val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+      case tree @ TypeDef(_, impl: Template) =>
+        val cls: ClassSymbol = tree.symbol.asClass
 
-            // Compute new self type
-            def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
-            val selfInfo1 =
-              if (selfInfo ne NoType) && !isInnerModule then
-                // if selfInfo is explicitly given then use that one, except if
-                // self info applies to non-static modules, these still need to be inferred
-                selfInfo
-              else if cls.isPureClass then
-                // is cls is known to be pure, nothing needs to be added to self type
-                selfInfo
-              else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
-                // assume {cap} for completely unconstrained self types of publicly extensible classes
-                CapturingType(cinfo.selfType, CaptureSet.universal)
-              else
-                // Infer the self type for the rest, which is all classes without explicit
-                // self types (to which we also add nested module classes), provided they are
-                // neither pure, nor are publicily extensible with an unconstrained self type.
-                val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
-                if cls.derivesFrom(defn.Caps_Capability) then
-                  // If cls is a capability class, we need to add a fresh capability to ensure
-                  // we cannot treat the class as pure.
-                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
-                CapturingType(cinfo.selfType, cs)
+        fieldsWithExplicitTypes(cls) =
+          for
+            case vd @ ValDef(_, tpt: TypeTree, _) <- impl.body
+            if !tpt.isInferred && vd.symbol.exists && !vd.symbol.is(NonMember)
+          yield
+            vd.symbol
 
-            // Compute new parent types
-            val ps1 = inContext(ctx.withOwner(cls)):
-              ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
+        checkClassifiedInheritance(cls)
+        val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
-            // Install new types and if it is a module class also update module object
-            if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
-              val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
-              updateInfo(cls, newInfo, cls.owner)
-              capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
-              cls.thisType.asInstanceOf[ThisType].invalidateCaches()
-              if cls.is(ModuleClass) then
-                // if it's a module, the capture set of the module reference is the capture set of the self type
-                val modul = cls.sourceModule
-                val selfCaptures = selfInfo1 match
-                  case CapturingType(_, refs) => refs
-                  case _ => CaptureSet.empty
-                // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
-                // This would potentially give stackoverflows when setup is run repeatedly.
-                // One test case is pos-custom-args/captures/checkbounds.scala under
-                // ccConfig.alwaysRepeatRun = true.
-                updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
-                modul.termRef.invalidateCaches()
-          case _ =>
+        // Compute new self type
+        def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
+        val selfInfo1 =
+          if (selfInfo ne NoType) && !isInnerModule then
+            // if selfInfo is explicitly given then use that one, except if
+            // self info applies to non-static modules, these still need to be inferred
+            selfInfo
+          else if cls.isPureClass then
+            // is cls is known to be pure, nothing needs to be added to self type
+            selfInfo
+          else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
+            // assume {cap} for completely unconstrained self types of publicly extensible classes
+            CapturingType(cinfo.selfType, CaptureSet.universal)
+          else
+            // Infer the self type for the rest, which is all classes without explicit
+            // self types (to which we also add nested module classes), provided they are
+            // neither pure, nor are publicily extensible with an unconstrained self type.
+            val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
+            if cls.derivesFrom(defn.Caps_Capability) then
+              // If cls is a capability class, we need to add a fresh capability to ensure
+              // we cannot treat the class as pure.
+              CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
+            CapturingType(cinfo.selfType, cs)
+
+        // Compute new parent types
+        val ps1 = inContext(ctx.withOwner(cls)):
+          ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
+
+        // Install new types and if it is a module class also update module object
+        if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
+          val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
+          updateInfo(cls, newInfo, cls.owner)
+          capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
+          cls.thisType.asInstanceOf[ThisType].invalidateCaches()
+          if cls.is(ModuleClass) then
+            // if it's a module, the capture set of the module reference is the capture set of the self type
+            val modul = cls.sourceModule
+            val selfCaptures = selfInfo1 match
+              case CapturingType(_, refs) => refs
+              case _ => CaptureSet.empty
+            // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
+            // This would potentially give stackoverflows when setup is run repeatedly.
+            // One test case is pos-custom-args/captures/checkbounds.scala under
+            // ccConfig.alwaysRepeatRun = true.
+            updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
+            modul.termRef.invalidateCaches()
       case _ =>
     end postProcess
 
@@ -918,16 +939,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else t
       case _ => mapFollowingAliases(t)
 
-  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
-
-  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap[Symbol, Symbol]()
-
   /** Run setup on a compilation unit with given `tree`.
    *  @param recheckDef   the function to run for completing a val or def
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
-    inContext(ctx.withPhase(thisPhase)):
-      setupTraverser(checker).traverse(tree)
+    setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
 
   // ------ Checks to run at Setup ----------------------------------------
 

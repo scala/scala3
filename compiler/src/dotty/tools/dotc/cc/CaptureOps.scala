@@ -488,7 +488,7 @@ extension (tp: Type)
     case _ =>
       tp
 
-  def classifier(using Context): ClassSymbol =
+  def inheritedClassifier(using Context): ClassSymbol =
     tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
 extension (tp: MethodType)
