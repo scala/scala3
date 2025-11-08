@@ -103,9 +103,6 @@ object CheckCaptures:
     override def toString = "SubstParamsMap"
   end SubstParamsMap
 
-  /** A prototype that indicates selection with an immutable value */
-  class PathSelectionProto(val select: Select, val pt: Type)(using Context) extends WildcardSelectionProto
-
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
    */
@@ -598,7 +595,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !isOfNestedMethod(env) then
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
-              if env.owner.isReadOnlyMethodOrLazyVal && nextEnv.owner != env.owner then
+              if nextEnv.owner != env.owner
+                  && env.owner.isReadOnlyMember
+                  && env.owner.owner.derivesFrom(defn.Caps_Mutable)
+              then
                 checkReadOnlyMethod(included, env.owner)
               recur(included, nextEnv, env)
           	// Under deferredReaches, don't propagate out of methods inside terms.
@@ -705,29 +705,23 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where `b` is a read-only method, we charge `x.a.b.rd` for tree `x.a.b`
      *  instead of just charging `x`.
      */
-    private def markPathFree(ref: TermRef | ThisType, pt: Type, tree: Tree)(using Context): Unit =
-      pt match
-        case pt: PathSelectionProto if ref.isTracked =>
-          // if `ref` is not tracked then the selection could not give anything new
-          // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
-          if pt.select.symbol.isReadOnlyMethodOrLazyVal then
-            markFree(ref.readOnly, tree)
-          else
-            val sel = ref.select(pt.select.symbol).asInstanceOf[TermRef]
-            markPathFree(sel, pt.pt, pt.select)
-        case _ =>
-          markFree(ref.adjustReadOnly(pt), tree)
+    private def markPathFree(ref: TermRef | ThisType, pt: Type, tree: Tree)(using Context): Unit = pt match
+      case pt: PathSelectionProto
+      if ref.isTracked && !pt.selector.isOneOf(MethodOrLazyOrMutable) =>
+        // if `ref` is not tracked then the selection could not give anything new
+        // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+        val sel = ref.select(pt.selector).asInstanceOf[TermRef]
+        markPathFree(sel, pt.pt, pt.select)
+      case _ =>
+        markFree(ref.adjustReadOnly(pt), tree)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
      *  a PathSelectionProto.
      */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
-      val sym = tree.symbol
-      if !sym.isOneOf(MethodOrLazyOrMutable) && !sym.isStatic
-          || sym.isReadOnlyMethodOrLazyVal
-      then PathSelectionProto(tree, pt)
-      else super.selectionProto(tree, pt)
+      if tree.symbol.isStatic then super.selectionProto(tree, pt)
+      else PathSelectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
      *
@@ -1131,21 +1125,30 @@ class CheckCaptures extends Recheck, SymTransformer:
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
         else
-          if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
-            val addendum = setup.capturedBy.get(sym) match
-              case Some(encl) =>
-                val enclStr =
-                  if encl.isAnonymousFunction then
-                    val location = setup.anonFunCallee.get(encl) match
-                      case Some(meth) if meth.exists => i" argument in a call to $meth"
-                      case _ => ""
-                    s"an anonymous function$location"
-                  else encl.show
-                i"\n\nNote that $sym does not count as local since it is captured by $enclStr"
-              case _ =>
-                ""
-            disallowBadRootsIn(
-              tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
+          if sym.is(Mutable) then
+            if !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
+              val addendum = setup.capturedBy.get(sym) match
+                case Some(encl) =>
+                  val enclStr =
+                    if encl.isAnonymousFunction then
+                      val location = setup.anonFunCallee.get(encl) match
+                        case Some(meth) if meth.exists => i" argument in a call to $meth"
+                        case _ => ""
+                      s"an anonymous function$location"
+                    else encl.show
+                  i"\n\nNote that $sym does not count as local since it is captured by $enclStr"
+                case _ =>
+                  ""
+              disallowBadRootsIn(
+                tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
+            if sepChecksEnabled && false
+                && sym.owner.isClass
+                && !sym.owner.derivesFrom(defn.Caps_Mutable)
+                && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
+              report.error(
+                em"""Mutable $sym is defined in a class that does not extend `Mutable`.
+                    |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
+                tree.namePos)
 
           // Lazy vals need their own environment to track captures from their RHS,
           // similar to how methods work
@@ -1793,7 +1796,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         if needsAdaptation && !insertBox then // we are unboxing
           val criticalSet =          // the set with which we unbox
-            if covariant then captures   // covariant: we box with captures of actual type plus captures leaked by inner adapation
+            if covariant then
+              if expected.expectsReadOnly && actual.derivesFromMutable
+              then captures.readOnly
+              else captures
             else expected.captureSet     // contravarant: we unbox with captures of epected type
             //debugShowEnvs()
           markFree(criticalSet, tree)
