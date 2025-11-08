@@ -8,6 +8,7 @@ import Capabilities.*
 import util.SrcPos
 import config.Printers.capt
 import ast.tpd.Tree
+import typer.ProtoTypes.LhsProto
 
 /** Handling mutability and read-only access
  */
@@ -58,12 +59,9 @@ object Mutability:
             else true
            )
 
-    /** A read-only method is a real method (not an accessor) in a type extending
-     *  Mutable that is not an update method. Included are also lazy vals in such types.
-     */
-    def isReadOnlyMethodOrLazyVal(using Context): Boolean =
-      sym.isOneOf(MethodOrLazy, butNot = Mutable | Accessor)
-      && sym.owner.derivesFrom(defn.Caps_Mutable)
+    /** A read-only member is a lazy val or a method that is not an update method. */
+    def isReadOnlyMember(using Context): Boolean =
+      sym.isOneOf(MethodOrLazy) && !sym.isUpdateMethod
 
     private def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
       import Exclusivity.*
@@ -104,19 +102,25 @@ object Mutability:
       case _ =>
         tp.exclusivity
 
+    def expectsReadOnly(using Context): Boolean = tp match
+      case tp: PathSelectionProto =>
+        tp.selector.isReadOnlyMember || tp.selector.isMutableVar && tp.pt != LhsProto
+      case _ => tp.isValueType && !tp.isMutableType
+
   extension (cs: CaptureSet)
     private def exclusivity(tp: Type)(using Context): Exclusivity =
       if cs.isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
 
   extension (ref: TermRef | ThisType)
     /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
-     *  following is true: it appears in a non-exclusive context, or the expected
-     *  type is a value type that is not a mutable type.
+     *  following is true:
+     *    - it appears in a non-exclusive context,
+     *    - the expected type is a value type that is not a mutable type,
+     *    - the expected type is a read-only selection
      */
     def adjustReadOnly(pt: Type)(using Context): Capability =
       if ref.derivesFromMutable
-          && (pt.isValueType && !pt.isMutableType
-              || ref.exclusivityInContext != Exclusivity.OK)
+          && (pt.expectsReadOnly || ref.exclusivityInContext != Exclusivity.OK)
       then ref.readOnly
       else ref
 
@@ -148,7 +152,6 @@ object Mutability:
             && expected.isValueType
             && (!expected.derivesFromMutable || expected.captureSet.isAlwaysReadOnly)
             && !expected.isSingleton
-            && actual.isBoxedCapturing == expected.isBoxedCapturing
         then refs.readOnly
         else refs
       actual.derivedCapturingType(parent1, refs1)
