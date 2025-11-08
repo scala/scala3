@@ -638,7 +638,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- refsToCheck.deduct(explicitRefs(tpe)) do
-      if !hiddenRef.isKnownClassifiedAs(defn.Caps_SharedCapability) then
+      if !hiddenRef.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
           case ref: TermRef if ref.symbol != role.dclSym =>
             val refSym = ref.symbol
@@ -675,7 +675,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.isKnownClassifiedAs(defn.Caps_SharedCapability) then
+          if !ref.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs
