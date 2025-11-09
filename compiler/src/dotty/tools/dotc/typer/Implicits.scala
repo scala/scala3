@@ -1207,7 +1207,7 @@ trait Implicits:
 
               def tryConversionForSelection(using Context) =
                 val converted = tryConversion
-                if !ctx.reporter.hasErrors && !selProto.isMatchedBy(converted.tpe) then
+                if !ctx.reporter.hasErrors && !selProto.isMatchedBy(converted.tpe, keepConstraint = false) then
                   // this check is needed since adapting relative to a `SelectionProto` can succeed
                   // even if the term is not a subtype of the `SelectionProto`
                   err.typeMismatch(converted, selProto)
