@@ -18,3 +18,7 @@
 26 |  h(true, 1) // error
    |  ^^^^^^^^^^
    |  No given instance of type String was found
+-- [E172] Type Error: tests/neg/i19594.scala:31:11 ---------------------------------------------------------------------
+31 |  competing(true, 42) // error when the default is in the same param list as the missing implicit
+   |  ^^^^^^^^^^^^^^^^^^^
+   |  Can you see me?!

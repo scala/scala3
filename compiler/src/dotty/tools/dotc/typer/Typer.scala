@@ -4473,12 +4473,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             def argHasDefault = hasDefaultParams && !defaultArg.isEmpty
 
             def canProfitFromMoreConstraints =
+              !ctx.mode.is(Mode.ImplicitExploration)
+              && {
               arg.tpe.isInstanceOf[AmbiguousImplicits]
                     // Ambiguity could be decided by more constraints
               || !isFullyDefined(formal, ForceDegree.none) && !argHasDefault
                     // More context might constrain type variables which could make implicit scope larger.
                     // But in this case we should search with additional arguments typed only if there
                     // is no default argument.
+              }
 
             // Try to constrain the result using `pt1`, but back out if a BadTyperStateAssertion
             // is thrown. TODO Find out why the bad typer state arises and prevent it. The try-catch
@@ -4585,11 +4588,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               issueErrors(tree, args, failureType)
             else
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              // old-style implicit needs to be marked using so that implicits are searched
-              val needsUsing = wtp.isImplicitMethod || wtp.match
-                case MethodType(ContextBoundParamName(_) :: _) => sourceVersion.isAtLeast(`3.4`)
-                case _ => false
-              if needsUsing then app.setApplyKind(ApplyKind.Using)
+              // avoid warning if method is old-style implicit that context bounds will be contextual
+              // also required for correctly reporting implicit not found
+              app.setApplyKind(ApplyKind.Using)
               typr.println(i"try with default implicit args $app")
               // If the retyped tree still has an error type and is an `Apply`
               // node, we can report the errors for each argument nicely.
