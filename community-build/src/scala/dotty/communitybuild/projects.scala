@@ -66,15 +66,17 @@ end CommunityProject
 final case class MillCommunityProject(
     project: String,
     baseCommand: String,
-    ignoreDocs: Boolean = false
+    ignoreDocs: Boolean = false,
+    sourcecodeTestCommand: Boolean = false,
     ) extends CommunityProject:
   override val binaryName: String = "./mill"
-  override val testCommand = s"$baseCommand.test"
+  override val testCommand = if sourcecodeTestCommand then s"$baseCommand.test.run" else s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
   override val docCommand = null
     // uncomment once mill is released
     // if ignoreDocs then null else s"$baseCommand.docJar"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  override val environment = Map.empty
 
 final case class SbtCommunityProject(
     project: String,
@@ -82,7 +84,8 @@ final case class SbtCommunityProject(
     extraSbtArgs: List[String] = Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
+    override val environment: Map[String, String] = Map.empty,
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -145,7 +148,8 @@ object projects:
   lazy val sourcecode = MillCommunityProject(
     project = "sourcecode",
     baseCommand = s"sourcecode.jvm[$compilerVersion]",
-    ignoreDocs = true
+    ignoreDocs = true,
+    sourcecodeTestCommand = true,
   )
 
   lazy val oslib = MillCommunityProject(
@@ -202,8 +206,8 @@ object projects:
   )
 
   lazy val requests = MillCommunityProject(
-    project = "requests-scala",
-    baseCommand = s"requests[$compilerVersion]",
+    project = "requests",
+    baseCommand = s"requests.jvm[$compilerVersion]",
   )
 
   lazy val cask = MillCommunityProject(
@@ -634,6 +638,7 @@ object projects:
       ).mkString("; "),
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
+    environment = Map("GITHUB_ACTIONS" -> "false"),
   )
 
   lazy val libretto = SbtCommunityProject(

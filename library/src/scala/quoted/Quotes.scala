@@ -1974,6 +1974,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeProjection` */
     trait TypeProjectionModule { this: TypeProjection.type =>
+      def apply(qualifier: TypeTree, name: String): TypeProjection
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection
       def unapply(x: TypeProjection): (TypeTree, String)
     }
@@ -2026,6 +2027,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Refined` */
     trait RefinedModule { this: Refined.type =>
+      /** Creates and types a Refined AST node.
+        * @param tpt - parent type being refined
+        * @param refinements - List of definitions represesenting refinements
+        * @param refineCls - symbol of the class of which the refinement definitions originally come from
+        * @return
+        */
+      def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
       def unapply(x: Refined): (TypeTree, List[Definition])
     }

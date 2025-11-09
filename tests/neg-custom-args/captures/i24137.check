@@ -4,7 +4,7 @@
    |                     Found:    (b : B{val elem1: A^{a}; val elem2: A^{a}}^{cap, a})
    |                     Required: B^{async}
    |
-   |                     Note that capability cap is not included in capture set {async}.
+   |                     Note that capability b is not included in capture set {async}.
    |
    |                     where:    cap is a fresh root capability in the type of value b
    |

@@ -216,6 +216,7 @@ trait MessageRendering {
       case _: UncheckedWarning   => ("unchecked", "")
       case w: DeprecationWarning => ("deprecation", w.origin)
       case _: FeatureWarning     => ("feature", "")
+      case _: ConfigurationWarning => ("configuration", "")
       case _                     => ("", "")
     var entitled = false
     def addHelp(what: String)(value: String): Unit =

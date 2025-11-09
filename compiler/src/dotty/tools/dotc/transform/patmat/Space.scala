@@ -537,7 +537,7 @@ object SpaceEngine {
         scrutineeTp match
         case AppliedType(tycon, targs)
             if unappSym.is(Synthetic)
-            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor eq tycon) =>
+            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor =:= tycon) =>
           // Special case synthetic unapply/unapplySeq's
           // Provided the shapes of the types match:
           // the scrutinee type being unapplied and

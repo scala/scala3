@@ -10,12 +10,11 @@ import annotation.threadUnsafe
 import annotation.constructorOnly
 import annotation.internal.sharable
 import reporting.trace
+import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property, EqHashMap}
-import typer.ErrorReporting.Addenda
 import scala.collection.{mutable, immutable}
-import TypeComparer.ErrorNote
 import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
@@ -152,7 +151,7 @@ sealed abstract class CaptureSet extends Showable:
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
-  /** Similar to isExlusive, but also includes capture set variables
+  /** Similar to isExclusive, but also includes capture set variables
    *  with unknown status.
    */
   final def maybeExclusive(using Context): Boolean = reporting.trace(i"mabe exclusive $this"):
@@ -161,8 +160,8 @@ sealed abstract class CaptureSet extends Showable:
 
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
 
-  def failWith(fail: TypeComparer.ErrorNote)(using Context): false =
-    TypeComparer.addErrorNote(fail)
+  def failWith(note: Note)(using Context): false =
+    TypeComparer.addErrorNote(note)
     false
 
   /** Try to include an element in this capture set.
@@ -482,9 +481,16 @@ sealed abstract class CaptureSet extends Showable:
    *  Fresh instances count as good as long as their ccOwner is outside `upto`.
    *  If `upto` is NoSymbol, all Fresh instances are admitted.
    */
-  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
-    if elems.exists(isBadRoot(upto, _)) then handler()
-    this
+  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
+    checkAddedElems: elem =>
+      if isBadRoot(upto, elem) then handler()
+
+  /** Invoke handler for each element currently in the set and each element
+   *  added to it in the future.
+   */
+  def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+    elems.foreach: elem =>
+      handler(elem)
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
    *  The handler might add additional elements to the capture set.
@@ -731,8 +737,8 @@ object CaptureSet:
             elems -= empty
       this
 
-    /** A handler to be invoked if the root reference `cap` is added to this set */
-    var rootAddedHandler: () => Context ?=> Unit = () => ()
+    /** A list of handlers to be invoked when a new element is added to this set */
+    var newElemAddedHandlers: List[Capability => Context ?=> Unit] = Nil
 
     /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
      *  @see isBadRoot for details.
@@ -760,9 +766,6 @@ object CaptureSet:
       classifier.isSubClass(cls)
       || super.tryClassifyAs(cls)
           && { narrowClassifier(cls); true }
-
-    /** A handler to be invoked when new elems are added to this set */
-    var newElemAddedHandler: Capability => Context ?=> Unit = _ => ()
 
     var description: String = ""
 
@@ -816,8 +819,7 @@ object CaptureSet:
         catch case ex: AssertionError =>
           println(i"error for incl $elem in $this, ${summon[VarState].toString}")
           throw ex
-        if isBadRoot(elem) then
-          rootAddedHandler()
+        newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = deps.forall: dep =>
@@ -865,14 +867,13 @@ object CaptureSet:
       || isConst
       || varState.canRecord && { includeDep(cs); true }
 
-    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
       rootLimit = upto
-      rootAddedHandler = handler
       super.disallowBadRoots(upto)(handler)
 
-    override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
-      newElemAddedHandler = handler
-      super.ensureWellformed(handler)
+    override def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+      newElemAddedHandlers = handler :: newElemAddedHandlers
+      super.checkAddedElems(handler)
 
     private var computingApprox = false
 
@@ -1012,8 +1013,7 @@ object CaptureSet:
      *  Test case: Without that tweak, logger.scala would not compile.
      */
     override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
-      if isRefining then this
-      else super.disallowBadRoots(upto)(handler)
+      if !isRefining then super.disallowBadRoots(upto)(handler)
 
   end ProperVar
 
@@ -1301,20 +1301,8 @@ object CaptureSet:
   /** A TypeMap that is the identity on capabilities */
   trait IdentityCaptRefMap extends TypeMap
 
-  /** A value of this class is produced and added as a note to ccState
-   *  when a subsumes check decides that an existential variable `ex` cannot be
-   *  instantiated to the other capability `other`.
-   */
-  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote:
-    def description(using Context): String =
-      def reason =
-        if other.isTerminalCapability then ""
-        else " since that capability is not a `Sharable` capability"
-      i"""the existential capture root in ${ex.originalBinder.resType}
-         |cannot subsume the capability $other$reason."""
-
   /** Failure indicating that `elem` cannot be included in `cs` */
-  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends ErrorNote, Showable:
+  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends Note, Showable:
     private var myTrace: List[CaptureSet] = cs :: Nil
 
     def trace: List[CaptureSet] = myTrace
@@ -1323,36 +1311,77 @@ object CaptureSet:
       res.myTrace = cs1 :: this.myTrace
       res
 
-    def description(using Context): String =
-      def why =
-        val reasons = cs.elems.toList.collect:
-          case c: FreshCap if !c.acceptsLevelOf(elem) =>
-            i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
-          case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
-            i"$c is classified as ${c.hiddenSet.classifier} but $elem is not"
-        if reasons.isEmpty then ""
-        else reasons.mkString("\nbecause ", "\nand ", "")
-      cs match
-        case cs: Var =>
-          if !cs.levelOK(elem) then
-            val levelStr = elem match
-              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}\n"
-              case _ => " "
-            i"""${elem.showAsCapability}${levelStr}cannot be included in outer capture set $cs"""
-          else if !elem.tryClassifyAs(cs.classifier) then
-            i"""${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
-                |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
-          else if cs.isBadRoot(elem) then
-            elem match
-              case elem: FreshCap =>
-                i"""local ${elem.showAsCapability} created in ${elem.ccOwner}
-                  |cannot be included in outer capture set $cs"""
-              case _ =>
-                i"universal ${elem.showAsCapability} cannot be included in capture set $cs"
-          else
-            i"${elem.showAsCapability} cannot be included in capture set $cs"
-        case _ =>
-          i"${elem.showAsCapability} is not included in capture set $cs$why"
+    override def showAsPrefix(using Context) = cs match
+      case cs: Var =>
+        !cs.levelOK(elem)
+        || cs.isBadRoot(elem) && elem.isInstanceOf[FreshCap]
+      case _ =>
+        false
+
+    /** An include failure F1 covers another include failure F2 unless F2
+     *  strictly subsumes F1, which means they describe the same capture sets
+     *  and the element in F2 is more specific than the element in F1.
+     */
+    override def covers(other: Note)(using Context) = other match
+      case other @ IncludeFailure(cs1, elem1, _) =>
+        val strictlySubsumes =
+          cs.elems == cs1.elems
+          && elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+        !strictlySubsumes
+      case _ => false
+
+    def trailing(msg: String)(using Context): String =
+      i"""
+         |
+         |Note that $msg."""
+
+    def leading(msg: String)(using Context): String =
+      i"""$msg.
+         |The leakage occurred when trying to match the following types:
+         |
+         |"""
+
+    def render(using Context): String = cs match
+      case cs: Var =>
+        def ownerStr =
+          if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
+        if !cs.levelOK(elem) then
+          val outlivesStr = elem match
+            case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
+            case _ => " outlives its scope: "
+          leading:
+            i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+        else if !elem.tryClassifyAs(cs.classifier) then
+          trailing:
+            i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
+              |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
+        else if cs.isBadRoot(elem) then
+          elem match
+            case elem: FreshCap =>
+              leading:
+                i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
+                    |It leaks into outer capture set $cs$ownerStr"""
+            case _ =>
+              trailing:
+                i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
+        else
+          trailing:
+            i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
+      case _ =>
+        def why =
+          val reasons = cs.elems.toList.collect:
+            case c: FreshCap if !c.acceptsLevelOf(elem) =>
+              i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
+            case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+              i"$c is classified as ${c.hiddenSet.classifier} but ${elem.showAsCapability} is not"
+            case c: ResultCap if !c.subsumes(elem) =>
+              val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
+              i"$c, which is existentially bound in ${c.originalBinder.resType}, cannot subsume ${elem.showAsCapability}$toAdd"
+          if reasons.isEmpty then ""
+          else reasons.mkString("\nbecause ", "\nand ", "")
+
+        trailing:
+          i"capability ${elem.showAsCapability} is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
@@ -1370,11 +1399,19 @@ object CaptureSet:
    *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
    *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
    */
-  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends ErrorNote:
-    def description(using Context): String =
+  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note:
+
+    def render(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
-      i"""$cs is an exclusive capture set ${ofType(hi)},
-          |it cannot subsume a read-only capture set ${ofType(lo)}"""
+      i"""
+         |
+         |Note that $cs is an exclusive capture set ${ofType(hi)},
+         |it cannot subsume a read-only capture set ${ofType(lo)}."""
+
+    // Show only one failure of this kind
+    override def covers(other: Note)(using Context) =
+      other.isInstanceOf[MutAdaptFailure]
+  end MutAdaptFailure
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
@@ -1578,8 +1615,6 @@ object CaptureSet:
     case Restricted(c1, cls) =>
       if cls == defn.NothingClass then CaptureSet.empty
       else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
-    case ReadOnly(c1) =>
-      c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
       c1.captureSetOfInfo.maybe
     case c: RootCapability =>

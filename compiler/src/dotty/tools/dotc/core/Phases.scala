@@ -41,6 +41,18 @@ object Phases {
     // drop NoPhase at beginning
     def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
+    private var myRecheckPhaseIds: Long = 0
+
+    /** A bitset of the ids of the phases extending `transform.Recheck`.
+     *  Recheck phases must have id 63 or less.
+     */
+    def recheckPhaseIds: Long = myRecheckPhaseIds
+
+    def recordRecheckPhase(phase: Recheck): Unit =
+      val id = phase.id
+      assert(id < 64, s"Recheck phase with id $id outside permissible range 0..63")
+      myRecheckPhaseIds |= (1L << id)
+
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
       def run(using Context): Unit = unsupported("run")

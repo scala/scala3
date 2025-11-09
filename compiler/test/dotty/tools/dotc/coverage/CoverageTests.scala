@@ -132,7 +132,7 @@ object CoverageTests extends ParallelTesting:
   import scala.concurrent.duration.*
 
   def maxDuration = 30.seconds
-  def numberOfSlaves = 1
+  def numberOfWorkers = 1
 
   def safeMode = Properties.testsSafeMode
   def testFilter = Properties.testsFilter

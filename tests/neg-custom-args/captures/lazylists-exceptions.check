@@ -1,11 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:37:17 -------------------------
 37 |    tabulate(10) { i =>  // error
    |    ^
+   |    Capability canThrow$1 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's1 of method problem.
+   |    The leakage occurred when trying to match the following types:
+   |
    |    Found:    LazyList[Int]^{canThrow$1}
    |    Required: LazyList[Int]^'s1
-   |
-   |    Note that capability canThrow$1, defined in method try$1
-   |    cannot be included in outer capture set 's1 of method problem.
 38 |      if i > 9 then throw Ex1()
 39 |      i * i
 40 |    }
