@@ -14,6 +14,7 @@ import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
+import ast.desugar
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
@@ -300,6 +301,11 @@ extends NotFoundMsg(MissingIdentID) {
 class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
+  private val shouldSuggestNN =
+    if ctx.mode.is(Mode.SafeNulls) && expected.isValueType then
+      found frozen_<:< OrNull(expected)
+    else false
+
   def msg(using Context) =
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
     // and the bounds are not f-bounds.
@@ -360,6 +366,26 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
     treeStr + "\n" + super.explain
 
+  override def actions(using Context) =
+    inTree match {
+      case Some(tree) if shouldSuggestNN =>
+        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val replacement = tree match
+          case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
+            content + ".nn"
+          case _ @ (Select(_, _) | Ident(_)) => content + ".nn"
+          case _ => "(" + content + ").nn"
+        List(
+          CodeAction(title = """Add .nn""",
+            description = None,
+            patches = List(
+              ActionPatch(tree.srcPos.sourcePos, replacement)
+            )
+          )
+        )
+      case _ =>
+        List()
+    }
 end TypeMismatch
 
 class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
@@ -2099,8 +2125,27 @@ extends NamingMsg(AlreadyDefinedID):
         i" in ${conflicting.associatedFile}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
+    def print(tpe: Type): String =
+      def addParams(tpe: Type): List[String] = tpe match
+        case tpe: MethodType =>
+          val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
+          s :: addParams(tpe.resType)
+        case tpe: PolyType =>
+          i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+        case tpe =>
+          i"$tpe" :: Nil
+      addParams(tpe).mkString(" ")
     def note =
-      if owner.is(Method) || conflicting.is(Method) then
+      if conflicting.is(Given) && name.startsWith("given_") then
+        i"""|
+            |
+            |Provide an explicit, unique name to given definitions,
+            |since the names assigned to anonymous givens may clash. For example:
+            |
+            |      given myGiven: ${print(atPhase(typerPhase)(conflicting.info))}  // define an instance
+            |      given myGiven @ ${print(atPhase(typerPhase)(conflicting.info))} // as a pattern variable
+            |"""
+      else if owner.is(Method) || conflicting.is(Method) then
         "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
       else ""
     if conflicting.isTerm != name.isTermName then
@@ -2338,7 +2383,7 @@ class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsN
 }
 
 class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context)
-extends NamingMsg(DoubleDefinitionID) {
+extends NamingMsg(DoubleDefinitionID):
   import Signature.MatchDegree.*
 
   private def erasedType: Type =
@@ -2400,6 +2445,25 @@ extends NamingMsg(DoubleDefinitionID) {
     } + details
   }
   def explain(using Context) =
+    def givenAddendum =
+      def isGivenName(sym: Symbol) = sym.name.startsWith("given_") // Desugar.inventGivenName
+      def print(tpe: Type): String =
+        def addParams(tpe: Type): List[String] = tpe match
+          case tpe: MethodType =>
+            val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
+            s :: addParams(tpe.resType)
+          case tpe: PolyType =>
+            i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+          case tpe =>
+            i"$tpe" :: Nil
+        addParams(tpe).mkString(" ")
+      if decl.is(Given) && previousDecl.is(Given) && isGivenName(decl) && isGivenName(previousDecl) then
+        i"""| Provide an explicit, unique name to given definitions,
+            |   since the names assigned to anonymous givens may clash. For example:
+            |
+            |      given myGiven: ${print(atPhase(typerPhase)(decl.info))}
+            |"""
+      else ""
     decl.signature.matchDegree(previousDecl.signature) match
       case FullMatch =>
        i"""
@@ -2413,8 +2477,8 @@ extends NamingMsg(DoubleDefinitionID) {
         |
         |In your code the two declarations
         |
-        |  ${previousDecl.showDcl}
-        |  ${decl.showDcl}
+        |  ${atPhase(typerPhase)(previousDecl.showDcl)}
+        |  ${atPhase(typerPhase)(decl.showDcl)}
         |
         |erase to the identical signature
         |
@@ -2422,21 +2486,20 @@ extends NamingMsg(DoubleDefinitionID) {
         |
         |so the compiler cannot keep both: the generated bytecode symbols would collide.
         |
-        |To fix this error, you need to disambiguate the two definitions. You can either:
+        |To fix this error, you must disambiguate the two definitions by doing one of the following:
         |
-        |1. Rename one of the definitions, or
+        |1. Rename one of the definitions.$givenAddendum
         |2. Keep the same names in source but give one definition a distinct
-        |   bytecode-level name via `@targetName` for example:
+        |   bytecode-level name via `@targetName`; for example:
         |
         |      @targetName("${decl.name.show}_2")
-        |      ${decl.showDcl}
+        |      ${atPhase(typerPhase)(decl.showDcl)}
         |
         |Choose the `@targetName` argument carefully: it is the name that will be used
         |when calling the method externally, so it should be unique and descriptive.
-        """
+        |"""
       case _ => ""
-
-}
+end DoubleDefinition
 
 class ImportedTwice(sel: Name)(using Context) extends SyntaxMsg(ImportedTwiceID) {
   def msg(using Context) = s"${sel.show} is imported twice on the same import line."
@@ -3381,11 +3444,13 @@ extends Message(UnusedSymbolID):
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def localVars(using Context): UnusedSymbol = UnusedSymbol(i"local variable was mutated but not read")
   def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
   def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def privateVars(using Context): UnusedSymbol = UnusedSymbol(i"private variable was mutated but not read")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
   def unsetLocals(using Context): UnusedSymbol =
     UnusedSymbol(i"unset local variable, consider using an immutable val instead")

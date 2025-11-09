@@ -76,6 +76,23 @@ Greeting
 Object
 <empty>.Greeting
 greet
+252
+259
+8
+<none>
+Literal
+false
+0
+false
+"hello"
+
+4
+macro-suspend/Macro.scala
+<empty>
+Greeting
+Object
+<empty>.Greeting
+greet
 238
 247
 8
@@ -86,7 +103,7 @@ false
 false
 def greet
 
-4
+5
 macro-suspend/Test.scala
 <empty>
 Test
@@ -103,58 +120,7 @@ false
 false
 println(Macro.decorate(Greeting.greet()))
 
-5
-macro-suspend/Test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-65
-97
-3
-+
-Apply
-false
-0
-false
-Macro.decorate(Greeting.greet())
-
 6
-macro-suspend/Test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-65
-97
-3
-+
-Apply
-false
-0
-false
-Macro.decorate(Greeting.greet())
-
-7
-macro-suspend/Test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-80
-96
-3
-greet
-Apply
-false
-0
-false
-Greeting.greet()
-
-8
 macro-suspend/Test.scala
 <empty>
 Test

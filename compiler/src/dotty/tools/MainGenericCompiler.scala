@@ -85,7 +85,7 @@ case class CompileSettings(
 
 object MainGenericCompiler {
 
-  val classpathSeparator = File.pathSeparator
+  val classpathSeparator: String = File.pathSeparator
 
   @sharable val javaOption = raw"""-J(.*)""".r
   @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
@@ -100,6 +100,8 @@ object MainGenericCompiler {
     case ("-q" | "-quiet") :: tail =>
       process(tail, settings.withQuiet)
     case "-repl" :: tail =>
+      Console.err.println(s"[warning] The -repl command line option has been deprecated removal in Scala 3.8.0.")
+      Console.err.println(s"[warning] Please use the 'scala repl' command (Scala CLI) to run the REPL.")
       process(tail, settings.withCompileMode(CompileMode.Repl))
     case "-script" :: targetScript :: tail =>
       process(Nil, settings
@@ -114,6 +116,8 @@ object MainGenericCompiler {
     case "-print-tasty" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.PrintTasty))
     case "-run" :: tail =>
+      Console.err.println(s"[warning] The -run command line option has been deprecated removal in Scala 3.8.0.")
+      Console.err.println(s"[warning] Please use the 'scala' command (Scala CLI) instead.")
       process(tail, settings.withCompileMode(CompileMode.Run))
     case "-colors" :: tail =>
       process(tail, settings.withColors)

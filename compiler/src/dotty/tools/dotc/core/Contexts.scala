@@ -402,8 +402,8 @@ object Contexts {
      *
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
-     *  - as scope: type parameters, the parameter accessors, and
-     *    the context bound companions in the class context,
+     *  - as scope: type parameters, the parameter accessors,
+     *    the dummy capture parameters and the context bound companions in the class context,
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -420,7 +420,7 @@ object Contexts {
     def superCallContext: Context =
       val locals = owner.typeParams
           ++ owner.asClass.unforcedDecls.filter: sym =>
-              sym.is(ParamAccessor) || sym.isContextBoundCompanion
+              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.

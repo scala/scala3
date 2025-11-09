@@ -3,6 +3,8 @@ package dotty.tools.scaladoc.tasty
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
+import dotty.tools.scaladoc.cc.*
+
 import scala.quoted._
 
 import SymOps._
@@ -18,6 +20,15 @@ trait ClassLikeSupport:
   import qctx.reflect._
 
   private given qctx.type = qctx
+
+  extension (symbol: Symbol) {
+    def getExtraModifiers(): Seq[Modifier] =
+      val mods = SymOps.getExtraModifiers(symbol)()
+      if ccEnabled && symbol.flags.is(Flags.Mutable)then
+        mods :+ Modifier.Update
+      else
+        mods
+  }
 
   private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
     import reflect._
@@ -443,14 +454,15 @@ trait ClassLikeSupport:
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
+    val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
       inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
-      argument.tpt.asSignature(classDef, symbol.owner),
-      isExtendedSymbol,
-      isGrouped
+      argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,
+      isExtendedSymbol = isExtendedSymbol,
+      isGrouped = isGrouped
     )
 
   def mkTypeArgument(
@@ -465,6 +477,8 @@ trait ClassLikeSupport:
       else ""
 
     val name = symbol.normalizedName
+    val isCaptureVar = ccEnabled && argument.derivesFromCapSet
+
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
     val boundsSignature = argument.rhs.asSignature(classDef, symbol.owner)
     val signature = boundsSignature ++ contextBounds.flatMap(tr =>
@@ -479,7 +493,8 @@ trait ClassLikeSupport:
       variancePrefix,
       normalizedName,
       symbol.dri,
-      signature
+      signature,
+      isCaptureVar,
     )
 
   def parseTypeDef(typeDef: TypeDef, classDef: ClassDef): Member =
@@ -489,6 +504,9 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
+
+    val isCaptureVar = ccEnabled && typeDef.derivesFromCapSet
+
     val (generics, tpeTree) = typeDef.rhs match
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
@@ -528,7 +546,10 @@ trait ClassLikeSupport:
       case _ => symbol.getExtraModifiers()
 
     mkMember(symbol, kind, sig)(
-      modifiers = modifiers,
+      // Due to how capture checking encodes update methods (recycling the mutable flag for methods),
+      // we need to filter out the update modifier here. Otherwise, mutable fields will
+      // be documented as having the update modifier, which is not correct.
+      modifiers = modifiers.filterNot(_ == Modifier.Update),
       deprecated = symbol.isDeprecated(),
       experimental = symbol.isExperimental()
     )

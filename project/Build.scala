@@ -52,7 +52,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.2"
+  val referenceVersion = "3.7.3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -63,7 +63,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.7.3"
+  val developedVersion = "3.7.4"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -137,7 +137,7 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.9.0"
+  val scalaCliLauncherVersion = "1.9.1"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.24"
 
@@ -668,6 +668,13 @@ object Build {
       case _ => ls
     }
     recur(lines, false)
+  }
+
+    /** Replaces JDK 9+ methods with their JDK 8 alterantive */
+  def replaceJDKIncompatibilities(lines: List[String]): List[String] = {
+    lines.map(
+      _.replaceAll("""(\").repeat\((\w+)\)""", """$1 * $2""")
+    )
   }
 
   /** replace imports of `com.google.protobuf.*` with compiler implemented version */
@@ -2580,7 +2587,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.5.3"
+    val mtagsVersion = "1.6.2"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -2623,7 +2630,7 @@ object Build {
           val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
           mtagsSharedSources.foreach(f => {
             val lines = IO.readLines(f)
-            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))
+            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))  andThen (replaceJDKIncompatibilities(_))
             IO.writeLines(f, substitutions(lines))
           })
           mtagsSharedSources

@@ -140,16 +140,18 @@ object Applications {
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
     tp.widenExpr.dealias.normalized match
-    case tp: AppliedType =>
-      if defn.isTupleClass(tp.tycon.typeSymbol) then
-        tp.args
-      else if tp.tycon.derivesFrom(defn.PairClass) then
-        val List(head, tail) = tp.args
-        head :: tupleComponentTypes(tail)
-      else
+      case defn.NamedTuple(_, vals) =>
+        tupleComponentTypes(vals)
+      case tp: AppliedType =>
+        if defn.isTupleClass(tp.tycon.typeSymbol) then
+          tp.args
+        else if tp.tycon.derivesFrom(defn.PairClass) then
+          val List(head, tail) = tp.args
+          head :: tupleComponentTypes(tail)
+        else
+          Nil
+      case _ =>
         Nil
-    case _ =>
-      Nil
 
   def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
@@ -1427,14 +1429,11 @@ trait Applications extends Compatibility {
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.srcPos)
-
-      def newGenericArrayCall =
+      if TypeErasure.isGenericArrayArg(targ.tpe) then
         ref(defn.DottyArraysModule)
-          .select(defn.newGenericArrayMethod).withSpan(tree.span)
-          .appliedToTypeTrees(targs).appliedToTermArgs(args)
-
-      if (TypeErasure.isGeneric(targ.tpe))
-        newGenericArrayCall
+            .select(defn.newGenericArrayMethod).withSpan(tree.span)
+            .appliedToTypeTrees(targs)
+            .appliedToTermArgs(args)
       else tree
     case _ =>
       tree
@@ -2561,7 +2560,7 @@ trait Applications extends Compatibility {
   /** Is `formal` a product type which is elementwise compatible with `params`? */
   def ptIsCorrectProduct(formal: Type, params: List[untpd.ValDef])(using Context): Boolean =
     isFullyDefined(formal, ForceDegree.flipBottom)
-    && defn.isProductSubType(formal)
+    && (defn.isProductSubType(formal) || formal.isNamedTupleType)
     && tupleComponentTypes(formal).corresponds(params): (argType, param) =>
          param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
 

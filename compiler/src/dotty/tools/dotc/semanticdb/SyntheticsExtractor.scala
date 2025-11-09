@@ -72,11 +72,14 @@ class SyntheticsExtractor:
             range(tree.span, tree.source),
             s.ApplyTree(
               tree.fun.toSemanticOriginal,
-              tree.args.map(_.toSemanticTree)
+              tree.args.map(_.toSemanticTree),
+              SymbolInformation.Property.GIVEN.value
             )
           ).toOpt
 
-        case tree: Apply if tree.fun.symbol.is(Implicit) =>
+        case tree: Apply
+            if tree.fun.symbol.is(Implicit) ||
+              (tree.fun.symbol.name == nme.apply && tree.fun.span.isSynthetic) =>
           val pos = range(tree.span, tree.source)
           s.Synthetic(
             pos,
