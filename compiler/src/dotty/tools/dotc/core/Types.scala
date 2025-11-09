@@ -2312,7 +2312,7 @@ object Types extends TypeUtils {
 
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
-    def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
+    def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T
     def map(tm: TypeMap)(using Context): ProtoType
 

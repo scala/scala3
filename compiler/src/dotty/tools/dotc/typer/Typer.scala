@@ -4174,7 +4174,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           Some(adapt(tree, pt, locked))
         else
           val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false, tree.nameSpan)
-          if selProto.isMatchedBy(qual.tpe) || tree.hasAttachment(InsertedImplicitOnQualifier) then
+          if selProto.isMatchedBy(qual.tpe, keepConstraint = false) || tree.hasAttachment(InsertedImplicitOnQualifier)
+          then
             None
           else
             tryEither {
@@ -4491,7 +4492,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
                 val pt1 = pt.deepenProtoTrans
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
+                if (pt1 ne pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
                   return implicitArgs(formals, argIndex, pt1)
               case _ =>
 
@@ -4605,13 +4606,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // Reset context in case it was set to a supercall context before.
             // otherwise the invariant for taking another this or super call context is not met.
             // Test case is i20483.scala
-            tree match
-              case tree: Block =>
-                readaptSimplified(tpd.Block(tree.stats, tpd.Apply(tree.expr, args)))
-              case tree: NamedArg =>
-                readaptSimplified(tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args)))
-              case _ =>
-                readaptSimplified(tpd.Apply(tree, args))
+            val cpy = tree match
+              case tree: Block    => tpd.Block(tree.stats, tpd.Apply(tree.expr, args))
+              case tree: NamedArg => tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args))
+              case _              => tpd.Apply(tree, args)
+            readaptSimplified(cpy)
       end addImplicitArgs
 
       pt.revealIgnored match {
