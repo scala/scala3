@@ -1,5 +1,4 @@
 # These files are text and should be normalized (convert crlf => lf)
-
 *.c       text eol=lf
 *.check   text eol=lf
 *.css     text eol=lf
@@ -11,12 +10,10 @@
 *.sh      text eol=lf
 *.txt     text eol=lf
 *.xml     text eol=lf
-
 # Windows-specific files get windows endings
 *.bat     eol=crlf
 *.cmd     eol=crlf
 *-windows.tmpl eol=crlf
-
 # Some binary file types for completeness
 # (binary is a macro for -text -diff)
 *.dll     binary
@@ -25,3 +22,4 @@
 *.png     binary
 *.class   binary
 *.jar     binary
+*.exe filter=lfs diff=lfs merge=lfs -text
