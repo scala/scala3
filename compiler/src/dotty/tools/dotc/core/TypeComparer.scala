@@ -2913,8 +2913,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
     subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-        || refs1.subCaptures(CaptureSet.empty, makeVarState())
+    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
+        || refs1.subCaptures(CaptureSet.empty, makeVarState()))
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action

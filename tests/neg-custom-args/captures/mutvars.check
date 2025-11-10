@@ -14,8 +14,6 @@
   |                         Found:    Ref[T]^{Ref.this.rd}
   |                         Required: Ref[T]^
   |
-  |                         Note that capability Ref.this.rd is not included in capture set {}.
-  |
   |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
   |                         it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
   |
@@ -32,8 +30,6 @@
    |                               ^^^^^^^^^^
    |                         Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
    |                         Required: () => Ref[T]^
-   |
-   |                         Note that capability Ref.this.rd is not included in capture set {}.
    |
    |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
    |                         it cannot subsume a read-only capture set of the mutable type Ref[T^'s1]^{Ref.this.rd}.
@@ -52,8 +48,6 @@
    |                           ^^^^
    |                         Found:    Ref[T]^{Ref.this.rd}
    |                         Required: Ref[T]^
-   |
-   |                         Note that capability Ref.this.rd is not included in capture set {}.
    |
    |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
    |                         it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
@@ -81,8 +75,6 @@
    |                             ^^^^^^^^^^
    |                             Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
    |                             Required: () => Ref2[Int]^
-   |
-   |                             Note that capability ref2 is not included in capture set {}.
    |
    |                             Note that {cap} is an exclusive capture set of the mutable type Ref2[Int]^,
    |                             it cannot subsume a read-only capture set of the mutable type Ref2[Int]^{ref2}.
