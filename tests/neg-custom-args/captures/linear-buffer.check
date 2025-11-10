@@ -4,8 +4,6 @@
   |                   Found:    BadBuffer[T]^{BadBuffer.this.rd}
   |                   Required: BadBuffer[T]^
   |
-  |                   Note that capability BadBuffer.this.rd is not included in capture set {}.
-  |
   |                   Note that {cap} is an exclusive capture set of the mutable type BadBuffer[T]^,
   |                   it cannot subsume a read-only capture set of the mutable type BadBuffer[T]^{BadBuffer.this.rd}.
   |
