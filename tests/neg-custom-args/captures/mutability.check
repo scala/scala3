@@ -9,7 +9,7 @@
   |    Cannot call update method set of self
   |    since its capture set {self} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:10:25 -----------------------------------
-10 |    val self2: Ref[T]^ = this // error
+10 |    val self2: Ref[T]^ = this // error // error separation
    |                         ^^^^
    |                         Found:    Ref[T]^{Ref.this.rd}
    |                         Required: Ref[T]^
@@ -58,7 +58,7 @@
    |    Cannot call update method set of Ref[T^{}]^{Ref.this.rd}
    |    since its capture set {Ref.this.rd} of method self5 is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:20:27 -----------------------------------
-20 |    def self6(): Ref[T]^ = this // error
+20 |    def self6(): Ref[T]^ = this // error // error separation
    |                           ^^^^
    |                         Found:    Ref[T]^{Ref.this.rd}
    |                         Required: Ref[T]^
@@ -109,3 +109,13 @@
    |  ^^^^^^^^^^
    |  Cannot call update method set of Ref[Int]^{r6*.rd}
    |  since its capture set {r6*.rd} is read-only.
+-- Error: tests/neg-custom-args/captures/mutability.scala:10:15 --------------------------------------------------------
+10 |    val self2: Ref[T]^ = this // error // error separation
+   |               ^^^^^^^
+   |               Separation failure: value self2's type Ref[T]^ hides non-local this of class class Ref.
+   |               The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/mutability.scala:20:17 --------------------------------------------------------
+20 |    def self6(): Ref[T]^ = this // error // error separation
+   |                 ^^^^^^^
+   |                 Separation failure: method self6's result type Ref[T]^ hides non-local this of class class Ref.
+   |                 The access must be in a consume method to allow this.
