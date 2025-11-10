@@ -244,6 +244,10 @@ object Types extends TypeUtils {
     def isExactlyNothing(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
+      case AndType(tp1, tp2) =>
+        tp1.isExactlyNothing || tp2.isExactlyNothing
+      case OrType(tp1, tp2) =>
+        tp1.isExactlyNothing && tp2.isExactlyNothing
       case _ => false
     }
 
@@ -251,6 +255,10 @@ object Types extends TypeUtils {
     def isExactlyAny(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
+      case AndType(tp1, tp2) =>
+        tp1.isExactlyAny && tp2.isExactlyAny
+      case OrType(tp1, tp2) =>
+        tp1.isExactlyAny || tp2.isExactlyAny
       case _ => false
     }
 
@@ -270,7 +278,7 @@ object Types extends TypeUtils {
     /** True if this type is an instance of the given `cls` or an instance of
      *  a non-bottom subclass of `cls`.
      */
-    final def derivesFrom(cls: Symbol)(using Context): Boolean = {
+    final def derivesFrom(cls: Symbol, defaultIfUnknown: Boolean = false)(using Context): Boolean = {
       def isLowerBottomType(tp: Type) =
         tp.isBottomType
         && (tp.hasClassSymbol(defn.NothingClass)
@@ -278,7 +286,7 @@ object Types extends TypeUtils {
       def loop(tp: Type): Boolean = try tp match
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType)
+          if (sym.isClass) sym.derivesFrom(cls, defaultIfUnknown) else loop(tp.superType)
         case tp: AppliedType =>
           tp.superType.derivesFrom(cls)
         case tp: MatchType =>

@@ -33,7 +33,7 @@ def scriptsDir(path: String): File = {
   dir
 }
 
-extension (f: File) def absPath =
+extension (f: File) def absPath: String =
   f.getAbsolutePath.replace('\\', '/')
 
 extension (str: String) def dropExtension =
