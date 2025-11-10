@@ -297,7 +297,7 @@ sealed abstract class CaptureSet extends Showable:
   /** The subcapturing test, using a given VarState */
   final def subCaptures(that: CaptureSet)(using ctx: Context, vs: VarState = VarState()): Boolean =
     TypeComparer.inNestedLevel:
-      val this1 = this.adaptMutability(that)
+      val this1 = if vs.isOpen then this.adaptMutability(that) else this
       if this1 == null then false
       else if this1 ne this then
         capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
