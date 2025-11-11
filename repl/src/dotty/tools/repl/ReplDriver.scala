@@ -362,12 +362,10 @@ class ReplDriver(settings: Array[String],
                     out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
               case Left(error) =>
                 out.println(s"Error resolving dependencies: $error")
+        state
 
-        // Only compile if there are actual trees to compile
-        if parsed.trees.nonEmpty then
+      case parsed: Parsed if parsed.trees.nonEmpty =>
           compile(parsed, state)
-        else
-          state
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
