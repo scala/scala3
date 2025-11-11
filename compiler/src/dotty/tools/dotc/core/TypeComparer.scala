@@ -862,7 +862,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
-            if refs1.isAlwaysEmpty then recur(tp1, parent2)
+            if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
+              recur(tp1, parent2)
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton
               // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be

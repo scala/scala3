@@ -1484,6 +1484,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           else
             trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
               super.recheck(tree, pt)
+        catch case ex: AssertionError =>
+          println(i"error while rechecking $tree against $pt")
+          throw ex
         finally curEnv = saved
       if tree.isTerm && !pt.isBoxedCapturing && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree)
