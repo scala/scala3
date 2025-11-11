@@ -106,6 +106,10 @@ object DependencyResolver:
         SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
     // Create new classloader with previous output dir and resolved dependencies
-    new AbstractFileClassLoader(prevOutputDir, depsClassLoader)
+    new dotty.tools.repl.AbstractFileClassLoader(
+      prevOutputDir,
+      depsClassLoader,
+      ctx.settings.XreplInterruptInstrumentation.value
+    )
 
 end DependencyResolver

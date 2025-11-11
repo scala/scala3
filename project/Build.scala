@@ -754,8 +754,6 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
-        "io.get-coursier" % "interface" % "1.0.19", // used by the REPL for dependency resolution
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
 
@@ -1837,6 +1835,8 @@ object Build {
         "com.lihaoyi" %% "fansi"      % "0.5.1",
         "com.lihaoyi" %% "sourcecode" % "0.4.4",
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        "io.get-coursier" % "interface" % "1.0.19", // used by the REPL for dependency resolution
       ),
       // Configure to use the non-bootstrapped compiler
       scalaInstance := {
@@ -2456,8 +2456,6 @@ object Build {
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
         Dependencies.compilerInterface,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
-        "io.get-coursier" % "interface" % "1.0.19", // used by the REPL for dependency resolution
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
@@ -2608,8 +2606,6 @@ object Build {
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
-        "io.get-coursier" % "interface" % "1.0.19", // used by the REPL for dependency resolution
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
