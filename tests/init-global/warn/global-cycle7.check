@@ -18,13 +18,3 @@
   |               │   ^
   |               └── val m: Int = A.n // warn	[ global-cycle7.scala:6 ]
   |                                ^^^
--- Warning: /Users/enzexing/IdeaProjects/dotty-staging/dotty/tests/init-global/warn/global-cycle7.scala:12:66
-12 |  val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
-   |                                                                  ^^^^^^^^
-   |Calling method maxToken of object module class JavaTokens$ before the super constructor of the object finishes! Calling trace:
-   |├── object JavaTokens extends TokensCommon {	[ global-cycle7.scala:15 ]
-   |│   ^
-   |├── abstract class TokensCommon {	[ global-cycle7.scala:9 ]
-   |│   ^
-   |└── val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)	[ global-cycle7.scala:12 ]
-   |                                                                    ^^^^^^^^

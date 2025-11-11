@@ -1066,9 +1066,6 @@ class Objects(using Context @constructorOnly):
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
           UnknownValue
-        else if ref.isInstanceOf[ObjectRef] && !ref.asObjectRef.isAfterSuperCall then
-          report.warning("Calling " + target + " of object " + ref.klass + " before the super constructor of the object finishes! " + Trace.show, Trace.position)
-          Bottom
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -1458,7 +1455,11 @@ class Objects(using Context @constructorOnly):
   /** Check an individual object */
   private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace, Heap.MutableData, EnvMap.EnvMapMutableData): ObjectRef = log("accessing " + classSym.show, printer, (_: Value).show) {
     if classSym.hasSource then
-      State.checkObjectAccess(classSym)
+      val obj = State.checkObjectAccess(classSym)
+      if !obj.isAfterSuperCall then
+        report.warning("Accessing " + obj.klass + " before the super constructor of the object finishes! " + Trace.show, Trace.position)
+      end if
+      obj
     else
       val obj = ObjectRef(classSym)
       obj.setAfterSuperCall()
