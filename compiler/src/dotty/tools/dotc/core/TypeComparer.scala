@@ -993,7 +993,29 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
-        compareAppliedType1(tp1, tycon1, args1)
+        // Special case: Java arrays are covariant.
+        // When checking overrides (frozenConstraint), allow B[] <: A[] if B <: A
+        // for Java-defined types.
+        def checkJavaArrayCovariance: Boolean = tp2 match {
+          case AppliedType(tycon2, arg2 :: Nil)
+            if frozenConstraint // for override checking (frozen_<:)
+              && tycon1.typeSymbol == defn.ArrayClass
+              && tycon2.typeSymbol == defn.ArrayClass
+              && args1.length == 1 =>
+            // Check if element types are Java-defined to detect Java arrays
+            val elem1Sym = args1.head.typeSymbol
+            val elem2Sym = arg2.typeSymbol
+            if elem1Sym.exists && elem2Sym.exists
+              && elem1Sym.is(JavaDefined) && elem2Sym.is(JavaDefined)
+            then
+              // Arrays are covariant in Java: B[] <: A[] if B <: A
+              isSubType(args1.head, arg2)
+            else
+              false
+          case _ => false
+        }
+
+        checkJavaArrayCovariance || compareAppliedType1(tp1, tycon1, args1)
       case tp1: SingletonType =>
         def comparePaths = tp2 match
           case tp2: (TermRef | ThisType) =>
