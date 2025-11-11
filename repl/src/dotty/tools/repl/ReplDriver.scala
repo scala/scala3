@@ -345,30 +345,6 @@ class ReplDriver(settings: Array[String],
         println("Please using `:dep com.example::artifact:version` to add dependencies in the REPL")
         state
 
-      case parsed: Parsed if parsed.source.content().mkString.startsWith(":dep ") =>
-        // Check for magic command specifying dependencies
-        val sourceCode = parsed.source.content().mkString
-        val depStrings = List(parsed.source.content().mkString.stripPrefix(":dep "))
-        if depStrings.nonEmpty then
-          val deps = depStrings.flatMap(DependencyResolver.parseDependency)
-          if deps.nonEmpty then
-            DependencyResolver.resolveDependencies(deps) match
-              case Right(files) =>
-                if files.nonEmpty then
-                  inContext(state.context):
-                    // Update both compiler classpath and classloader
-                    val prevOutputDir = ctx.settings.outputDir.value
-                    val prevClassLoader = rendering.classLoader()
-                    rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-                      files,
-                      prevClassLoader,
-                      prevOutputDir
-                    )
-                    out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
-              case Left(error) =>
-                out.println(s"Error resolving dependencies: $error")
-        state
-
       case parsed: Parsed if parsed.trees.nonEmpty =>
           compile(parsed, state)
 
@@ -684,6 +660,27 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
+    case Dep(dep) =>
+      val depStrings = List(dep)
+      if depStrings.nonEmpty then
+        val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+        if deps.nonEmpty then
+          DependencyResolver.resolveDependencies(deps) match
+            case Right(files) =>
+              if files.nonEmpty then
+                inContext(state.context):
+                  // Update both compiler classpath and classloader
+                  val prevOutputDir = ctx.settings.outputDir.value
+                  val prevClassLoader = rendering.classLoader()
+                  rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                    files,
+                    prevClassLoader,
+                    prevOutputDir
+                  )
+                  out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
+            case Left(error) =>
+              out.println(s"Error resolving dependencies: $error")
+      state
 
     case Quit =>
       // end of the world!
