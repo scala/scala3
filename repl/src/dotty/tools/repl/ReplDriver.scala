@@ -348,7 +348,7 @@ class ReplDriver(settings: Array[String],
       case parsed: Parsed if parsed.source.content().mkString.startsWith(":dep ") =>
         // Check for magic command specifying dependencies
         val sourceCode = parsed.source.content().mkString
-        val depStrings = Seq(parsed.source.content().mkString.drop(":dep"))
+        val depStrings = Seq(parsed.source.content().mkString.drop(":dep "))
         resolveDepStrings(depStrings)
         if depStrings.nonEmpty then
         val deps = depStrings.flatMap(DependencyResolver.parseDependency)
