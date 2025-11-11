@@ -1,0 +1,4 @@
+Unsorted: ArraySeq(5, 3, 8, 1, 2, 7, 4, 6)
+Sorted:   ArraySeq(1, 2, 3, 4, 5, 6, 7, 8)
+Unsorted: ArraySeq(7, 4, 5, 3, 2, 6, 1)
+Sorted:   ArraySeq(1, 2, 3, 4, 5, 6, 7)
