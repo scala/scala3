@@ -753,8 +753,7 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1", // used by the backend
-        Dependencies.compilerInterface,
-        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
+        Dependencies.compilerInterface
       ),
 
       // For convenience, change the baseDirectory when running the compiler
@@ -1836,7 +1835,7 @@ object Build {
         "com.lihaoyi" %% "sourcecode" % "0.4.4",
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ("io.get-coursier" %% "coursier" % "2.0.24" % Test).cross(CrossVersion.for3Use2_13),
-        "io.get-coursier" % "interface" % "1.0.28", // used by the REPL for dependency resolution
+        "io.get-coursier" % "interface" % "1.0.29", // used by the REPL for dependency resolution
       ),
       // Configure to use the non-bootstrapped compiler
       scalaInstance := {
@@ -2456,7 +2455,6 @@ object Build {
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
         Dependencies.compilerInterface,
-        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
@@ -2606,7 +2604,6 @@ object Build {
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
