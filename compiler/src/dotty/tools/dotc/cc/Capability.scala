@@ -438,7 +438,7 @@ object Capabilities:
      */
     final def isExclusive(using Context): Boolean =
       !isReadOnly
-      && !classifier.isSubClass(defn.Caps_SharedCapability)
+      && !classifier.derivesFrom(defn.Caps_SharedCapability)
       && (isTerminalCapability || captureSetOfInfo.isExclusive)
 
     /** Similar to isExlusive, but also includes capabilties with capture

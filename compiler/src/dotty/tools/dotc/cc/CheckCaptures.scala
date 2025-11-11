@@ -702,7 +702,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  type `pt` to `ref`. Expand the marked tree accordingly to take account of
      *  the added path. Example:
      *  If we have `x` and the expected type says we select that with `.a.b`
-     *  where `b` is a read-only method, we charge `x.a.b.rd` for tree `x.a.b`
+     *  where `b` is a read-only method, we charge `x.a.rd` for tree `x.a.b`
      *  instead of just charging `x`.
      */
     private def markPathFree(ref: TermRef | ThisType, pt: Type, tree: Tree)(using Context): Unit = pt match
