@@ -1,3 +1,5 @@
+//> using options -source:future
+
 abstract class Pull[+F[_], +O, +R]
 object Pull:
   abstract class Terminal[+R] extends Pull[Nothing, Nothing, R]
