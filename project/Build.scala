@@ -753,7 +753,8 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1", // used by the backend
-        Dependencies.compilerInterface
+        Dependencies.compilerInterface,
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
