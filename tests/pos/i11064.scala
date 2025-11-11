@@ -1,12 +1,12 @@
-//> using options -source:3.8
+//> using options -source:future
 
 trait TypedArray[T, Repr]
 
-trait Ops[T <: TypedArray[_, T]] {
+trait Ops[T <: TypedArray[?, T]] {
   def typedArray(): T
 }
 
 object Test {
-  def test1(ops: Ops[_ <: TypedArray[_, _]]) = ops.typedArray()
-  def test2(ops: Ops[_ <: TypedArray[_ <: AnyRef, _]]) = ops.typedArray() // ok, was error: Recursion limit exceeded.
+  def test1(ops: Ops[? <: TypedArray[?, ?]]) = ops.typedArray()
+  def test2(ops: Ops[? <: TypedArray[? <: AnyRef, ?]]) = ops.typedArray() // ok, was error: Recursion limit exceeded.
 }
