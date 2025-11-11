@@ -2007,6 +2007,7 @@ object Build {
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
+      autoScalaLibrary     := false, // DO NOT DEPEND ON THE STDLIB, IT IS THE STDLIB
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
@@ -2031,10 +2032,8 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-bootstrapped",
-      // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
-      // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
-      // NOTE: true is the default value, just making things clearer here
-      managedScalaInstance := true,
+      // we do not need sbt to create a managed instance for us, we do it manually in the next setting
+      managedScalaInstance := false,
       // Configure the nonbootstrapped compiler
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
@@ -2192,10 +2191,7 @@ object Build {
       libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library",
-      // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
-      // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
-      // NOTE: true is the default value, just making things clearer here
-      managedScalaInstance := true,
+      managedScalaInstance := false,
       autoScalaLibrary := false,
       // Configure the nonbootstrapped compiler
       scalaInstance := {
