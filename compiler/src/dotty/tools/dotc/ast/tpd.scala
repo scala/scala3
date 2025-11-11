@@ -517,9 +517,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def singleton(tp: Type, needLoad: Boolean = true)(using Context): Tree = tp.dealias match {
     case tp: TermRef => ref(tp, needLoad)
     case tp: ThisType => This(tp.cls)
-    case tp: SkolemType => singleton(tp.narrow(), needLoad)
     case SuperType(qual, _) => singleton(qual, needLoad)
     case ConstantType(value) => Literal(value)
+    case tp: SkolemType =>
+      throw TypeError(em"cannot construct a tree referring to skolem $tp")
   }
 
   /** A tree representing a `newXYZArray` operation of the right

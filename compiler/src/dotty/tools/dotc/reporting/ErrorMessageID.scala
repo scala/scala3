@@ -155,7 +155,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnknownNamedEnclosingClassOrObjectID // errorNumber: 139
   case IllegalCyclicTypeReferenceID // errorNumber: 140
   case MissingTypeParameterInTypeAppID // errorNumber: 141
-  case SkolemInInferredID // errorNumber: 142
+  case SkolemInInferredID extends ErrorMessageID(isActive = false) // errorNumber: 142
   case ErasedTypesCanOnlyBeFunctionTypesID // errorNumber: 143
   case CaseClassMissingNonImplicitParamListID // errorNumber: 144
   case EnumerationsShouldNotBeEmptyID // errorNumber: 145
