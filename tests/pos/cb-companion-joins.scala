@@ -1,4 +1,4 @@
-//> using options -source:3.8
+//> using options -source:future
 import language.experimental.modularity
 
 trait M[Self]:
