@@ -73,6 +73,9 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
       case s"javax.$_" => super.loadClass(name)
       case s"sun.$_" => super.loadClass(name)
       case s"jdk.$_" => super.loadClass(name)
+      case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
+      case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
+      case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
       case "dotty.tools.repl.StopRepl" =>
         // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
         val classFileName = name.replace('.', '/') + ".class"
