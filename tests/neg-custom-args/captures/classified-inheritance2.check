@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/classified-inheritance2.scala:4:6 ---------------------------------------------
+4 |class Logger extends SharedCapability, Mutable:  // error (1) does this make sense?
+  |      ^
+  |      class Logger cannot inheit from both SharaedCapability and Mutable
