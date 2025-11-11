@@ -339,7 +339,7 @@ class ReplDriver(settings: Array[String],
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
-      case parsed: Parsed =>
+      case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
         // Check for magic comments specifying dependencies
         val sourceCode = parsed.source.content().mkString
         val depStrings = DependencyResolver.extractDependencies(sourceCode)
