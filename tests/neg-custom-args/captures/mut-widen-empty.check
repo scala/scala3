@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-widen-empty.scala:12:24 ------------------------------
+12 |  val c: Arr[String]^ = b  // error
+   |                        ^
+   |                        Found:    (b : Arr[String]^{})
+   |                        Required: Arr[String]^
+   |
+   |                        Note that {cap} is an exclusive capture set of the mutable type Arr[String]^,
+   |                        it cannot subsume a read-only capture set of the mutable type Arr[String]^{}.
+   |
+   |                        where:    ^ and cap refer to a fresh root capability in the type of value c
+   |
+   | longer explanation available when compiling with `-explain`
