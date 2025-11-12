@@ -617,7 +617,9 @@ object Scanners {
         && !statCtdTokens.contains(lastToken)
         && !isTrailingBlankLine
 
-      if newlineIsSeparating
+      if currentRegion.closedBy == ENDlambda then
+        insert(ENDlambda, lineOffset)
+      else if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator(nextWidth)
@@ -1599,6 +1601,8 @@ object Scanners {
    *   InParens    a pair of parentheses (...) or brackets [...]
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
+   *   InCase      a case of a match
+   *   SingleLineLambda  the rest of a line following a `:`
    */
   abstract class Region(val closedBy: Token):
 
@@ -1667,6 +1671,7 @@ object Scanners {
       case _: InBraces => "}"
       case _: InCase => "=>"
       case _: Indented => "UNDENT"
+      case _: SingleLineLambda => "end of single-line lambda"
 
     /** Show open regions as list of lines with decreasing indentations */
     def visualize: String =
@@ -1680,6 +1685,7 @@ object Scanners {
   case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
   case class InBraces(outer: Region) extends Region(RBRACE)
   case class InCase(outer: Region) extends Region(OUTDENT)
+  case class SingleLineLambda(outer: Region) extends Region(ENDlambda)
 
   /** A class describing an indentation region.
    *  @param width   The principal indentation width

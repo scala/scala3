@@ -3,4 +3,4 @@
 // does not reproduce under "vulpix" test rig, which enforces certain flag sets?
 
 def program: Int => Int =
-    {`1`: Int  =>  5} // error
+    {`1`: Int  =>  5} // error // error
