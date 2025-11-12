@@ -44,7 +44,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       // Due the possible interruption instrumentation, it is unlikely that we can get
       // rid of reflection here.
       val cl = classLoader()
-      val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$Color$", false, cl)
+      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
       val fansiStrCls = Class.forName("fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
       val Color_apply = pprintCls.getMethod("apply",
