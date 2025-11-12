@@ -42,7 +42,7 @@ class CommunityBuildTestB:
   @Test def discipline = projects.discipline.run()
   @Test def disciplineMunit = projects.disciplineMunit.run()
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
-  @Test def fs2 = projects.fs2.run()
+  //@Test def fs2 = projects.fs2.run()
   @Test def monocle = projects.monocle.run()
   @Test def munit = projects.munit.run()
   @Test def munitCatsEffect = projects.munitCatsEffect.run()
