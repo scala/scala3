@@ -1,4 +1,4 @@
-//> using options -source:3.8
+//> using options -source:future
 
 trait L[+A]{val a:A}
 trait R[+B]{val b: B}
