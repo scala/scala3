@@ -480,7 +480,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if tp.symbol.hasAnnotation(defn.ScalaStaticAnnot) then
       Ident(tp)
     else
+      // Throw an error here if we detect a skolem to improve the error message in tests/neg/i8623.scala
+      def checkNoSkolemInPrefix(pre: Type): Unit = pre.dealias match
+        case pre: SkolemType =>
+          throw TypeError(em"cannot construct a tree referring to $tp because of skolem prefix $pre")
+        case pre: TermRef => checkNoSkolemInPrefix(pre.prefix)
+        case _ =>
+
       val pre = tp.prefix
+      checkNoSkolemInPrefix(tp)
       if pre.isSingleton then followOuterLinks(singleton(pre.dealias, needLoad)).select(tp)
       else
         val res = Select(TypeTree(pre), tp)
