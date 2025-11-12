@@ -1,5 +1,5 @@
 
-package dotty.tools.dotc.util
+package dotty.tools.repl
 
 import scala.language.unsafeNulls
 
