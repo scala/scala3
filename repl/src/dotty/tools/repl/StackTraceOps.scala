@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools.dotc.util
+package dotty.tools.repl
 
 import scala.language.unsafeNulls
-import dotty.shaded.fansi
 import collection.mutable, mutable.ListBuffer
 import dotty.tools.dotc.util.chaining.*
 import java.lang.System.lineSeparator

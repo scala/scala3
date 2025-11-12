@@ -22,8 +22,8 @@ object SyntaxHighlight {
     private val ValDefColor     = Console.CYAN
     private val LiteralColor    = Console.RED
     private val StringColor     = Console.GREEN
-    private val TypeColor       = Console.MAGENTA
-    private val AnnotationColor = Console.MAGENTA
+    private val TypeColor       = Console.GREEN
+    private val AnnotationColor = Console.GREEN
 
     def highlightKeyword(str: String): String = KeywordColor + str + NoColor
     def highlightTypeDef(str: String): String = TypeColor + str + NoColor

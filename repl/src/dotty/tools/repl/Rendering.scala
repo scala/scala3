@@ -7,9 +7,8 @@ import dotc.*, core.*
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import printing.SyntaxHighlighting
-import dotty.shaded.{fansi, pprint}
 import reporting.Diagnostic
-import util.StackTraceOps.*
+import StackTraceOps.*
 
 import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
@@ -47,8 +46,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       val cl = classLoader()
       val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$Color$", false, cl)
       val fansiStrCls = Class.forName("fansi.Str", false, cl)
-      val BlackWhite = pprintCls.getField("MODULE$").get(null)
-      val BlackWhite_apply = pprintCls.getMethod("apply",
+      val Color = pprintCls.getField("MODULE$").get(null)
+      val Color_apply = pprintCls.getMethod("apply",
         classOf[Any],     // value
         classOf[Int],     // width
         classOf[Int],     // height
