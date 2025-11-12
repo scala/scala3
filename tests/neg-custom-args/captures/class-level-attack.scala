@@ -9,7 +9,7 @@ class Ref[X](init: X):
   def put(y: X): Unit = x = y
 
 class C(io: IO^):
-  val r: Ref[IO^] = Ref[IO^](io) // error:
+  val r: Ref[IO^] = Ref[IO^](io)
     //Type variable X of constructor Ref cannot be instantiated to box IO^ since
     //that type captures the root capability `cap`.
     // where: ^ refers to the universal root capability

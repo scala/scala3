@@ -167,7 +167,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym)
         then symd.info // don't transform symbols that will anyway be updated
-        else transformExplicitType(symd.info, sym, freshen = true)
+        else transformExplicitType(symd.info, sym)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -349,7 +349,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
    */
-  private def transformExplicitType(tp: Type, sym: Symbol, freshen: Boolean, tptToCheck: Tree = EmptyTree)(using Context): Type =
+  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree)(using Context): Type =
 
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
@@ -483,9 +483,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     val tp3 =
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
-    if freshen then
-      capToFresh(tp3, Origin.InDecl(sym))
-    else tp3
+    capToFresh(tp3, Origin.InDecl(sym))
   end transformExplicitType
 
   /** Update info of `sym` for CheckCaptures phase only */
@@ -516,7 +514,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
-          else transformExplicitType(tree.tpe, sym, freshen = !boxed, tptToCheck = tree)
+          else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
@@ -747,7 +745,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         // Compute new parent types
         val ps1 = inContext(ctx.withOwner(cls)):
-          ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
+          ps.mapConserve(transformExplicitType(_, NoSymbol))
 
         // Install new types and if it is a module class also update module object
         if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
