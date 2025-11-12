@@ -341,7 +341,7 @@ class ReplDriver(settings: Array[String],
     res match {
       case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
         // Check for magic comments specifying dependencies
-        println("Please using `:dep com.example::artifact:version` to add dependencies in the REPL")
+        println("Please use `:dep com.example::artifact:version` to add dependencies in the REPL")
         state
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
