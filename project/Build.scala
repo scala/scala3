@@ -3636,6 +3636,7 @@ object Build {
         (`scala3-library-bootstrapped` / publishLocal).value
         (`scala3-tasty-inspector` / publishLocal).value
         (`scaladoc` / publishLocal).value
+        (`scala3-repl` / publishLocal).value
         (`scala3-compiler-bootstrapped` / publishLocal).value
         (`scala3-bootstrapped` / publishLocal).value
         (`scala3-library-bootstrappedJS` / publishLocal).value
