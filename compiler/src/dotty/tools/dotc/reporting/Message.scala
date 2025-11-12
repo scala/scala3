@@ -132,9 +132,9 @@ object Message:
         def sameSuperscript(cur: Recorded, existing: Recorded) =
           (cur eq existing) ||
           (cur, existing).match
-            case (cur: ParamRef, existing: ParamRef) =>
-              (cur.paramName eq existing.paramName)
-              && cur.binder.paramNames == existing.binder.paramNames
+            case (cur: ParamRef, existing: ParamRef) => true
+              //(cur.paramName eq existing.paramName)
+              //&& cur.binder.paramNames == existing.binder.paramNames
             case _ =>
               false
 
