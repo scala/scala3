@@ -77,10 +77,11 @@ trait MessageRendering {
    *  -- Error: source.scala ---------------------
    *  ```
    */
-  private def boxTitle(title: String)(using Context, Level, Offset): String =
+  private def boxTitle(title: String, isSubtitle: Boolean = false)(using Context, Level, Offset): String =
     val pageWidth = ctx.settings.pageWidth.value
     val line = "-" * (pageWidth - title.length - 4)
-    hl(s"-- $title $line")
+    val starter = if isSubtitle then ".." else "--"
+    hl(s"$starter $title $line")
 
   /** The position markers aligned under the error
    *
@@ -169,7 +170,8 @@ trait MessageRendering {
   private def posStr(
     pos: SourcePosition,
     message: Message,
-    diagnosticString: String
+    diagnosticString: String,
+    isSubdiag: Boolean = false
   )(using Context, Level, Offset): String =
     assert(
       message.errorId.isActive,
@@ -191,7 +193,7 @@ trait MessageRendering {
         val title =
           if fileAndPos.isEmpty then s"$errId$kind:" // this happens in dotty.tools.repl.ScriptedTests // TODO add name of source or remove `:` (and update test files)
           else s"$errId$kind: $fileAndPos"
-        boxTitle(title)
+        boxTitle(title, isSubtitle = isSubdiag)
       })
     else ""
   end posStr
@@ -232,6 +234,18 @@ trait MessageRendering {
     if origin.nonEmpty then
       addHelp("origin=")(origin)
 
+  // adjust a pos at EOF if preceded by newline
+  private def adjust(pos: SourcePosition): SourcePosition =
+    if pos.span.isSynthetic
+    && pos.span.isZeroExtent
+    && pos.span.exists
+    && pos.span.start == pos.source.length
+    && pos.source(pos.span.start - 1) == '\n'
+    then
+    pos.withSpan(pos.span.shift(-1))
+    else
+    pos
+
   /** The whole message rendered from `dia.msg`.
    *
    *  For a position in an inline expansion, choose `pos1`
@@ -252,17 +266,6 @@ trait MessageRendering {
    *
    */
   def messageAndPos(dia: Diagnostic)(using Context): String =
-    // adjust a pos at EOF if preceded by newline
-    def adjust(pos: SourcePosition): SourcePosition =
-      if pos.span.isSynthetic
-      && pos.span.isZeroExtent
-      && pos.span.exists
-      && pos.span.start == pos.source.length
-      && pos.source(pos.span.start - 1) == '\n'
-      then
-        pos.withSpan(pos.span.shift(-1))
-      else
-        pos
     val msg = dia.msg
     val pos = dia.pos
     val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
@@ -296,6 +299,9 @@ trait MessageRendering {
         sb.append(EOL).append(endBox)
       end if
     else sb.append(msg.message)
+
+    dia.getSubdiags.foreach(addSubdiagnostic(sb, _))
+
     if dia.isVerbose then
       appendFilterHelp(dia, sb)
 
@@ -312,6 +318,20 @@ trait MessageRendering {
 
     sb.toString
   end messageAndPos
+
+  private def addSubdiagnostic(sb: StringBuilder, subdiag: Subdiagnostic)(using Context, Level, Offset): Unit =
+    val pos1 = adjust(subdiag.pos)
+    val msg = subdiag.msg
+    assert(pos1.exists && pos1.source.file.exists)
+
+    val posString = posStr(pos1, msg, "Note", isSubdiag = true)
+    val (srcBefore, srcAfter, offset) = sourceLines(pos1)
+    val marker = positionMarker(pos1)
+    val err = errorMsg(pos1, msg.message)
+
+    val diagText = (posString :: srcBefore ::: marker :: err :: srcAfter).mkString(EOL)
+    sb.append(EOL)
+    sb.append(diagText)
 
   private def hl(str: String)(using Context, Level): String =
     summon[Level].value match
