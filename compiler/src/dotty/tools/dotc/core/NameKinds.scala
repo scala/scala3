@@ -303,10 +303,12 @@ object NameKinds {
   /** The name of an inferred contextual function parameter:
    *
    *      val x: A ?=> B = b
+   *      val f: (x: A) ?=> B = b
    *
    *  becomes:
    *
    *      val x: A ?=> B = (contextual$1: A) ?=> b
+   *      val f: (x: A) ?=> B = (xcontextual$1: A) ?=> b
    */
   val ContextFunctionParamName: UniqueNameKind = new UniqueNameKind("contextual$")
 

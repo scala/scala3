@@ -1987,10 +1987,12 @@ object desugar {
       .collect:
         case vd: ValDef => vd
 
-  def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean])(using Context): Function =
+  def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean], augmenting: Boolean = false)(using Context): Function =
     val paramNames =
-      if paramNamesOrNil.nonEmpty then paramNamesOrNil
-      else formals.map(_ => ContextFunctionParamName.fresh())
+      if paramNamesOrNil.nonEmpty then
+        if augmenting then paramNamesOrNil.map(ContextFunctionParamName.fresh(_))
+        else paramNamesOrNil
+      else List.fill(formals.length)(ContextFunctionParamName.fresh())
     val params = for (tpt, pname) <- formals.zip(paramNames) yield
       ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
     FunctionWithMods(params, body, Modifiers(Given), erasedParams)
