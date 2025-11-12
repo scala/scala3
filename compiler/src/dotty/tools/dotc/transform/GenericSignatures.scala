@@ -246,6 +246,12 @@ object GenericSignatures {
             jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
           else typeParamSig(ref.paramName.lastPart)
 
+        case ref: SingletonType =>
+          // Singleton types like `x.type` need to be widened to their underlying type
+          // For example, `def identity[A](x: A): x.type` should have signature 
+          // with return type `A` (not `java.lang.Object`)
+          jsig(ref.underlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
+
         case defn.ArrayOf(elemtp) =>
           if (isGenericArrayElement(elemtp, isScala2 = false))
             jsig1(defn.ObjectType)
