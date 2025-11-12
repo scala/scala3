@@ -339,3 +339,34 @@ The subcapturing theory for sets is then as before, with the following additiona
  - `{x, ...}.RD = {x.rd, ...}.RD`
  - `{x.rd, ...} <: {x, ...}`
 
+## The `immutable` Wrapper
+
+We often want to create a mutable data structure like an array, initialize by assigning to its elements and then return the array as an immutable type that does not
+capture any capabilities. This can be achieved using the `immutable` wrapper.
+
+As an example, consider a class `Arr` which is modelled after `Array` and its immutable counterpart `IArr`:
+
+```scala
+class Arr[T: reflect.ClassTag](len: Int) extends Mutable:
+  private val arr: Array[T] = new Array[T](len)
+  def get(i: Int): T = arr(i)
+  update def update(i: Int, x: T): Unit = arr(i) = x
+type IArr[T] = Arr[T]^{}
+```
+
+The `immutable` wrapper allows us to go from an `Arr` to an `IArr`, safely:
+```scala
+import caps.immutable
+
+val f: IArr[String] = immutable:
+  val a = Arr[String](2)
+  a(0) = "hello"
+  a(1) = "world"
+  a
+```
+The `immutable` method is defined in `caps` like this:
+```scala
+def immutable[T](op: -> T): T = op
+```
+It takes a pure by-name parameter and returns its result. But the actual return type after capture checking is special. Instead of just `T` as in the declaration above suggests, it's `T` where every covariant occurrence of a `Mutable` type gets its capture set mapped to `{}`.
+
