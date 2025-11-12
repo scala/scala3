@@ -106,6 +106,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
   private lazy val filesToCopy = Set(
     "scala/Tuple1",
     "scala/Tuple2",
+    "scala/collection/Stepper",
     "scala/collection/DoubleStepper",
     "scala/collection/IntStepper",
     "scala/collection/LongStepper",

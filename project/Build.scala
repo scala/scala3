@@ -1502,7 +1502,7 @@ object Build {
     .enablePlugins(ScriptedPlugin)
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
-      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`, 
+      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`,
       `scaladoc-new`, `scala3-repl`)
     .settings(
       name          := "scala3-bootstrapped",
@@ -3725,23 +3725,22 @@ object Build {
 
   val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-injected-plugins}.")
 
-  lazy val `community-build` = project.in(file("community-build")).
-    dependsOn(dottyLibrary(Bootstrapped)).
-    settings(commonBootstrappedSettings).
-    settings(
+  lazy val `community-build` = project.in(file("community-build"))
+    .settings(commonSettings)
+    .settings(
+      scalaVersion := referenceVersion,
       prepareCommunityBuild := {
-        (`scala3-sbt-bridge` / publishLocal).value
-        (`scala3-interfaces` / publishLocal).value
-        (`tasty-core-bootstrapped` / publishLocal).value
-        (`scala-library-bootstrapped` / publishLocal).value
-        (`scala3-library-bootstrapped` / publishLocal).value
-        (`scala3-tasty-inspector` / publishLocal).value
-        (`scaladoc` / publishLocal).value
-        (`scala3-repl` / publishLocal).value
-        (`scala3-compiler-bootstrapped` / publishLocal).value
-        (`scala3-bootstrapped` / publishLocal).value
-        (`scala3-library-bootstrappedJS` / publishLocal).value
-        // (publishLocal in `scala3-staging`).value
+        (`scala3-sbt-bridge-bootstrapped` / publishLocalBin).value
+        (`scala3-interfaces` / publishLocalBin).value
+        (`tasty-core-bootstrapped-new` / publishLocalBin).value
+        (`scala3-library-bootstrapped-new` / publishLocalBin).value
+        (`scala-library-bootstrapped` / publishLocalBin).value
+        (`scala3-tasty-inspector-new` / publishLocalBin).value
+        (`scaladoc-new` / publishLocalBin).value
+        (`scala3-repl` / publishLocalBin).value
+        (`scala3-compiler-bootstrapped-new` / publishLocalBin).value
+        (`scala-library-sjs` / publishLocalBin).value
+        (`scala3-library-sjs` / publishLocalBin).value
         val pluginText =
           s"""addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")"""
         IO.write(baseDirectory.value / "sbt-injected-plugins", pluginText)
