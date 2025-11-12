@@ -1,0 +1,13 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23582.scala:27:26 ---------------------------------------
+27 |    parReduce(1 to 1000): (x, y) => // error
+   |                          ^
+   |Found:    (x: Int, y: Int) ->{write, read} Int
+   |Required: (Int, Int) ->{cap.only[Read]} Int
+   |
+   |Note that capability write is not included in capture set {cap.only[Read]}.
+   |
+   |where:    cap is a fresh root capability created in method test when checking argument to parameter op of method parReduce
+28 |      write(x)
+29 |      x + y + read()
+   |
+   | longer explanation available when compiling with `-explain`

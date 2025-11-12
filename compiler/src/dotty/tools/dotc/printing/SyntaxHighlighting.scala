@@ -29,8 +29,8 @@ object SyntaxHighlighting {
   val ValDefColor: String     = Console.CYAN
   val LiteralColor: String    = Console.GREEN
   val StringColor: String     = Console.GREEN
-  val TypeColor: String       = Console.MAGENTA
-  val AnnotationColor: String = Console.MAGENTA
+  val TypeColor: String       = Console.GREEN
+  val AnnotationColor: String = Console.GREEN
 
   def highlight(in: String)(using Context): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)

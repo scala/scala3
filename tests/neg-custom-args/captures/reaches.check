@@ -27,46 +27,20 @@
 32 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:42:16 -----------------------------------------------------------
-42 |  val cur = Ref[List[Proc]](xs) // error
-   |                ^^^^^^^^^^
-   |                Type variable T of constructor Ref cannot be instantiated to List[() => Unit] since
-   |                the part () => Unit of that type captures the root capability `cap`.
-   |
-   |                where:    => refers to the universal root capability
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:44:35 --------------------------------------
-44 |    val next: () => Unit = cur.get.head // error
-   |                           ^^^^^^^^^^^^
-   |                           Found:    () => Unit
-   |                           Required: () =>² Unit
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:52:27 --------------------------------------
+52 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           Found:    Id[() => Unit, () -> Unit]
+   |                           Required: Id[() =>² Unit, () =>³ Unit]
    |
    |                           Note that capability cap is not included in capture set {cap²}
-   |                           because cap is not visible from cap² in value next.
+   |                           because cap is not visible from cap² in value id.
    |
-   |                           where:    => and cap   refer to the universal root capability
-   |                                     =>² and cap² refer to a fresh root capability in the type of value next
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:46:20 --------------------------------------
-46 |    cur.set(cur.get.tail: List[Proc]) // error
-   |            ^^^^^^^^^^^^
-   |            Found:    List[() => Unit]
-   |            Required: List[() =>² Unit]
-   |
-   |            Note that capability cap is not included in capture set {cap²}
-   |            because cap is not visible from cap² in method runAll3.
-   |
-   |            where:    => and cap   refer to the universal root capability
-   |                      =>² and cap² refer to a fresh root capability created in method runAll3
+   |                           where:    => and cap² refer to a fresh root capability created in value id
+   |                                     =>² and cap refer to the universal root capability
+   |                                     =>³         refers to a fresh root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:52:51 -----------------------------------------------------------
-52 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
-   |                                                   ^
-   |                                    Type variable A of constructor Id cannot be instantiated to () => Unit since
-   |                                    that type captures the root capability `cap`.
-   |
-   |                                    where:    => refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:57:27 --------------------------------------
 57 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
@@ -121,11 +95,26 @@
    |                           ^^^^^^^^
    |                           Local reach capability xs* leaks into capture scope of method runAll2.
    |                           You could try to abstract the capabilities referred to by xs* in a capset variable.
+-- Error: tests/neg-custom-args/captures/reaches.scala:44:35 -----------------------------------------------------------
+44 |    val next: () => Unit = cur.get.head // error // error
+   |                           ^^^^^^^^^^^^
+   |                           Local reach capability xs* leaks into capture scope of method runAll3.
+   |                           You could try to abstract the capabilities referred to by xs* in a capset variable.
 -- Error: tests/neg-custom-args/captures/reaches.scala:60:36 -----------------------------------------------------------
 60 |  val leaked = usingFile[File^{id*}]: f => // error: separation
    |               ^
-   |        Local cap created in type of parameter x leaks into capture scope of enclosing function
+   |        Local cap created in type of parameter x leaks into capture scope of an enclosing function
    |
    |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
 61 |    val f1: File^{id*} = id(f)
 62 |    f1
+-- Error: tests/neg-custom-args/captures/reaches.scala:42:9 ------------------------------------------------------------
+42 |  val cur = Ref[List[Proc]](xs) // error
+   |         ^
+   |         Separation failure: value cur's inferred type Ref[List[() => Unit]^{}]^{} hides parameter xs.
+   |         The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/reaches.scala:44:17 -----------------------------------------------------------
+44 |    val next: () => Unit = cur.get.head // error // error
+   |              ^^^^^^^^^^
+   |              Separation failure: value next's type () => Unit hides parameter xs.
+   |              The parameter needs to be annotated with consume to allow this.

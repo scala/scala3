@@ -40,6 +40,7 @@ object Feature:
   val packageObjectValues = experimental("packageObjectValues")
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
+  val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures

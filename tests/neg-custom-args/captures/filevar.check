@@ -1,12 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/filevar.scala:15:12 --------------------------------------
 15 |  withFile: f =>       // error with level checking, was OK under both schemes before
    |            ^
-   |Found:    (f: File^'s1) ->'s2 Unit
-   |Required: (f: File^{l}) => Unit
+   |Capability l outlives its scope: it leaks into outer capture set 's1 of parameter f.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability l cannot be included in outer capture set 's1 of parameter f.
+   |Found:    (l: scala.caps.Capability^) ?->'s2 File^'s3 ->'s4 Unit
+   |Required: (l: scala.caps.Capability^) ?-> (f: File^{l}) => Unit
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using l: scala.caps.Capability): File^{l} -> Unit when instantiating expected result type (f: File^{l}) ->{cap} Unit of function literal
+   |where:    => refers to a root capability associated with the result type of (using l: scala.caps.Capability^): (f: File^{l}) => Unit
+   |          ^  refers to the universal root capability
 16 |    val o = Service()
 17 |    o.file = f
 18 |    o.log

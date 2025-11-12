@@ -19,12 +19,13 @@ enum MessageFilter:
     import Diagnostic.*
     this match
     case Any => true
+    case Configuration => message.isInstanceOf[ConfigurationWarning]
     case Deprecated => message.isInstanceOf[DeprecationWarning]
     case Feature => message.isInstanceOf[FeatureWarning]
     case Unchecked => message.isInstanceOf[UncheckedWarning]
     case MessageID(errorId) => message.msg.errorId == errorId
     case MessagePattern(pattern) =>
-      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
+      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]", "")
       pattern.findFirstIn(noHighlight).nonEmpty
     case SourcePattern(pattern) =>
       val source = message.position.orElse(NoSourcePosition).source()
@@ -39,7 +40,7 @@ enum MessageFilter:
       case _ => false
     case None => false
 
-  case Any, Deprecated, Feature, Unchecked, None
+  case Any, Configuration, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
   case MessageID(errorId: ErrorMessageID)
   case SourcePattern(pattern: Regex)
@@ -98,6 +99,7 @@ object WConf:
         catch case _: IllegalArgumentException => Left(s"unknown error message name: $conf")
 
       case "cat" => conf match
+        case "configuration" => Right(Configuration)
         case "deprecation" => Right(Deprecated)
         case "feature"     => Right(Feature)
         case "unchecked"   => Right(Unchecked)
@@ -151,7 +153,10 @@ class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter]
     _used = supersededState
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
-    pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+    def posMatches =
+         start <= pos.start && pos.end <= end
+      || pos.inlinePosStack.exists(p => start <= p.start && p.end <= end)
+    pos.exists && posMatches && filters.forall(_.matches(dia))
 
   override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
 end Suppression

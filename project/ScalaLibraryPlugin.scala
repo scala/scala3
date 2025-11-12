@@ -51,7 +51,8 @@ object ScalaLibraryPlugin extends AutoPlugin {
         (files, reference) <- patches
         file <- files
         id <- file.relativeTo(reference)
-        if filesToCopy(id.toString().replace("\\", "/")) // Only Override Some Very Specific Files
+        path = id.toString().replace("\\", "/").stripSuffix(".class").stripSuffix(".sjsir")
+        if filesToCopy.exists(s => path == s || path.startsWith(s + '$')) // Only Override Some Very Specific Files
         dest = target / (id.toString)
         ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
@@ -105,13 +106,14 @@ object ScalaLibraryPlugin extends AutoPlugin {
   private lazy val filesToCopy = Set(
     "scala/Tuple1",
     "scala/Tuple2",
+    "scala/collection/Stepper",
     "scala/collection/DoubleStepper",
     "scala/collection/IntStepper",
     "scala/collection/LongStepper",
     "scala/collection/immutable/DoubleVectorStepper",
     "scala/collection/immutable/IntVectorStepper",
     "scala/collection/immutable/LongVectorStepper",
-    "scala/collection/immutable/Range", "scala/collection/immutable/Range$",
+    "scala/collection/immutable/Range",
     "scala/jdk/DoubleAccumulator",
     "scala/jdk/IntAccumulator",
     "scala/jdk/LongAccumulator",
@@ -139,7 +141,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator",
     "scala/collection/ArrayOps$ReverseIterator",
     "scala/runtime/NonLocalReturnControl",
-    "scala/util/Sorting", "scala/util/Sorting$",
-    ).flatMap(f => Seq(s"$f.class", s"$f.sjsir"))
+    "scala/util/Sorting",
+    )
 
 }

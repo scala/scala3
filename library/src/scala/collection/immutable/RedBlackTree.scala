@@ -1201,8 +1201,8 @@ private[collection] object RedBlackTree {
       }
     }
 
-  private def splitLast[A, B](t: Tree[A, B]): (Tree[A, B], A, B) =
-    if(t.right eq null) (t.left.nn, t.key, t.value)
+  private def splitLast[A, B](t: Tree[A, B]): (Tree[A, B] | Null, A, B) =
+    if (t.right eq null) (t.left, t.key, t.value)
     else {
       val (tt, kk, vv) = splitLast(t.right.nn)
       (join(t.left, t.key, t.value, tt), kk, vv)

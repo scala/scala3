@@ -53,21 +53,21 @@ object Mutability:
       sym.isAllOf(Mutable | Method)
         && (!sym.isSetter || sym.field.is(Transparent))
 
-    /** A read-only methid is a real method (not an accessor) in a type extending
-     *  Mutable that is not an update method.
+    /** A read-only method is a real method (not an accessor) in a type extending
+     *  Mutable that is not an update method. Included are also lazy vals in such types.
      */
-    def isReadOnlyMethod(using Context): Boolean =
-      sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
+    def isReadOnlyMethodOrLazyVal(using Context): Boolean =
+      sym.isOneOf(MethodOrLazy, butNot = Mutable | Accessor)
+      && sym.owner.derivesFrom(defn.Caps_Mutable)
 
     private def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
       import Exclusivity.*
-      val encl = sym.enclosingMethodOrClass.skipConstructor
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
-      else if encl.owner == cls then
-        if encl.isUpdateMethod then OK
-        else NotInUpdateMethod(encl, cls)
-      else if encl.isStatic then OutsideClass(cls)
-      else encl.owner.inExclusivePartOf(cls)
+      else if sym.owner == cls then
+        if sym.isUpdateMethod || sym.isConstructor then OK
+        else NotInUpdateMethod(sym, cls)
+      else if sym.isStatic then OutsideClass(cls)
+      else sym.owner.inExclusivePartOf(cls)
 
   extension (tp: Type)
     /** Is this a type extending `Mutable` that has non-private update methods

@@ -1,4 +1,4 @@
-//> using options -source:3.8
+//> using options -source:future
 
 object Test extends App {
   trait A[+X](val x: X)

@@ -15,6 +15,7 @@ import CaptureSet.VarState
 import Capabilities.*
 import StdNames.nme
 import config.Feature
+import dotty.tools.dotc.core.NameKinds.TryOwnerName
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
@@ -487,7 +488,7 @@ extension (tp: Type)
     case _ =>
       tp
 
-  def classifier(using Context): ClassSymbol =
+  def inheritedClassifier(using Context): ClassSymbol =
     tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
 extension (tp: MethodType)
@@ -624,9 +625,13 @@ extension (sym: Symbol)
     || sym.info.hasAnnotation(defn.ConsumeAnnot)
 
   def qualString(prefix: String)(using Context): String =
+    if !sym.exists then "" else i" $prefix ${sym.ownerString}"
+
+  def ownerString(using Context): String =
     if !sym.exists then ""
-    else if sym.isAnonymousFunction then i" $prefix enclosing function"
-    else i" $prefix $sym"
+    else if sym.isAnonymousFunction then i"an enclosing function"
+    else if sym.name.is(TryOwnerName) then i"an enclosing try expression"
+    else sym.show
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

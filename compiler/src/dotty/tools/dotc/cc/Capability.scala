@@ -5,7 +5,6 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
 import util.{SimpleIdentitySet, EqHashMap}
-import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -91,24 +90,24 @@ object Capabilities:
    */
   case class Maybe(underlying: Capability) extends DerivedCapability
 
-  /** The readonly capability `x.rd`. We have {x.rd} <: {x}.
-   *
-   *  Read-only capabilities cannot wrap maybe capabilities
-   *  but they can wrap reach capabilities. We have
-   *      (x?).readOnly = (x.rd)?
-   */
-  case class ReadOnly(underlying: ObjectCapability | RootCapability | Reach | Restricted)
-  extends DerivedCapability
-
   /** The restricted capability `x.only[C]`. We have {x.only[C]} <: {x}.
    *
-   *  Restricted capabilities cannot wrap maybe capabilities or read-only capabilities
+   *  Restricted capabilities cannot wrap maybe capabilities
    *  but they can wrap reach capabilities. We have
    *      (x?).restrict[T] = (x.restrict[T])?
    *      (x.rd).restrict[T] = (x.restrict[T]).rd
    */
-  case class Restricted(underlying: ObjectCapability | RootCapability | Reach, cls: ClassSymbol)
+  case class Restricted(underlying: CoreCapability | RootCapability | Reach, cls: ClassSymbol)
   extends DerivedCapability
+
+  /** An extractor for the read-only capability `x.rd`. `x.rd` is represented as
+   *  `c.only[caps.Read]`.
+   */
+  object ReadOnly:
+    def apply(underlying: CoreCapability | RootCapability | Reach | Restricted)(using Context): Restricted =
+      Restricted(underlying.stripRestricted.asInstanceOf, defn.Caps_Read)
+    def unapply(ref: Restricted)(using Context): Option[CoreCapability | RootCapability | Reach] =
+      if ref.cls == defn.Caps_Read then Some(ref.underlying) else None
 
   /** If `x` is a capability, its reach capability `x*`. `x*` stands for all
    *  capabilities reachable through `x`.
@@ -117,7 +116,7 @@ object Capabilities:
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
    *
-   *  Reach capabilities cannot wrap read-only capabilities or maybe capabilities.
+   *  Reach capabilities cannot wrap restricted capabilities or maybe capabilities.
    *  We have
    *      (x?).reach        = (x.reach)?
    *      (x.rd).reach      = (x.reach).rd
@@ -133,7 +132,7 @@ object Capabilities:
   object GlobalCap extends RootCapability:
     def descr(using Context) = "the universal root capability"
     override val maybe = Maybe(this)
-    override val readOnly = ReadOnly(this)
+    override def readOnly(using Context) = ReadOnly(this)
     override def restrict(cls: ClassSymbol)(using Context) = Restricted(this, cls)
     override def reach = unsupported("cap.reach")
     override def singletonCaptureSet(using Context) = CaptureSet.universal
@@ -347,23 +346,21 @@ object Capabilities:
       case self: Maybe => self
       case _ => cached(Maybe(this))
 
-    def readOnly: ReadOnly | Maybe = this match
+    def readOnly(using Context): Restricted | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.readOnly)
-      case self: ReadOnly => self
-      case self: (ObjectCapability | RootCapability | Reach | Restricted) => cached(ReadOnly(self))
+      case self @ ReadOnly(_) => self
+      case self: (CoreCapability | RootCapability | Reach | Restricted) => cached(ReadOnly(self))
 
-    def restrict(cls: ClassSymbol)(using Context): Restricted | ReadOnly | Maybe = this match
+    def restrict(cls: ClassSymbol)(using Context): Restricted | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.restrict(cls))
-      case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[Restricted])
       case self @ Restricted(ref1, prevCls) =>
         val combinedCls = leastClassifier(prevCls, cls)
         if combinedCls == prevCls then self
         else cached(Restricted(ref1, combinedCls))
-      case self: (ObjectCapability | RootCapability | Reach) => cached(Restricted(self, cls))
+      case self: (CoreCapability | RootCapability | Reach) => cached(Restricted(self, cls))
 
-    def reach: Reach | Restricted | ReadOnly | Maybe = this match
+    def reach: Reach | Restricted | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.reach)
-      case ReadOnly(ref1) => ReadOnly(ref1.reach.asInstanceOf[Reach | Restricted])
       case Restricted(ref1, cls) => Restricted(ref1.reach.asInstanceOf[Reach], cls)
       case self: Reach => self
       case self: ObjectCapability => cached(Reach(self))
@@ -378,10 +375,14 @@ object Capabilities:
       case tp: SetCapability => tp.captureSetOfInfo.isReadOnly
       case _ => this ne stripReadOnly
 
-    final def restriction(using Context): Symbol = this match
+    /** The classifier, either given in an explicit `.only` or assumed for a
+     *  FreshCap. AnyRef for unclassified FreshCaps. Otherwise NoSymbol if no
+     *  classifier is given.
+     */
+    final def classifier(using Context): Symbol = this match
       case Restricted(_, cls) => cls
-      case ReadOnly(ref1) => ref1.restriction
-      case Maybe(ref1) => ref1.restriction
+      case Maybe(ref1) => ref1.classifier
+      case self: FreshCap => self.hiddenSet.classifier
       case _ => NoSymbol
 
     /** Is this a reach reference of the form `x*` or a readOnly or maybe variant
@@ -398,10 +399,9 @@ object Capabilities:
       case Maybe(ref1) => ref1.stripReadOnly.maybe
       case _ => this
 
-    /** Drop restrictions with clss `cls` or a superclass of `cls` */
+    /** Drop restrictions with class `cls` or a superclass of `cls` */
     final def stripRestricted(cls: ClassSymbol)(using Context): Capability = this match
       case Restricted(ref1, cls1) if cls.isSubClass(cls1) => ref1
-      case ReadOnly(ref1) => ref1.stripRestricted(cls).readOnly
       case Maybe(ref1) => ref1.stripRestricted(cls).maybe
       case _ => this
 
@@ -410,7 +410,6 @@ object Capabilities:
 
     final def stripReach(using Context): Capability = this match
       case Reach(ref1) => ref1
-      case ReadOnly(ref1) => ref1.stripReach.readOnly
       case Restricted(ref1, cls) => ref1.stripReach.restrict(cls)
       case Maybe(ref1) => ref1.stripReach.maybe
       case _ => this
@@ -592,7 +591,6 @@ object Capabilities:
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: FreshCap => f(self.hiddenSet.elems)
       case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
-      case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
     /** The transitive classifiers of this capability. */
@@ -610,14 +608,12 @@ object Capabilities:
             assert(cls != defn.AnyClass)
             if cls == defn.NothingClass then ClassifiedAs(Nil)
             else ClassifiedAs(cls :: Nil)
-          case ReadOnly(ref1) =>
-            ref1.transClassifiers
           case Maybe(ref1) =>
             ref1.transClassifiers
           case Reach(_) =>
             captureSetOfInfo.transClassifiers
           case self: CoreCapability =>
-            if self.derivesFromCapability then toClassifiers(self.classifier)
+            if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
             else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
           classifiersValid == currentId
@@ -635,8 +631,6 @@ object Capabilities:
         case Restricted(_, cls1) =>
           assert(cls != defn.AnyClass)
           cls1.isSubClass(cls)
-        case ReadOnly(ref1) =>
-          ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
           ref1.tryClassifyAs(cls)
         case Reach(_) =>
@@ -657,7 +651,6 @@ object Capabilities:
             cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
           case _ => false
         isEmpty || ref1.isKnownEmpty
-      case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
       case _ => false
 
@@ -718,7 +711,6 @@ object Capabilities:
               case _ => false
           || viaInfo(y.info)(subsumingRefs(this, _))
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
-        case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
         case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
@@ -787,12 +779,9 @@ object Capabilities:
               && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
-          val result = y match
+          y match
             case y: ResultCap => vs.unify(x, y)
             case _ => y.derivesFromShared
-          if !result then
-            TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
-          result
         case GlobalCap =>
           y match
             case GlobalCap => true
@@ -805,7 +794,6 @@ object Capabilities:
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
           y match
-            case ReadOnly(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case Restricted(y1, cls) => this.stripRestricted(cls).maxSubsumes(y1, canAddHidden)
             case _ => false
 
@@ -893,14 +881,13 @@ object Capabilities:
       case c: DerivedCapability =>
         val c1 = c.underlying.toType
         c match
-          case _: ReadOnly => ReadOnlyCapability(c1)
           case Restricted(_, cls) => OnlyCapability(c1, cls)
           case _: Reach => ReachCapability(c1)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
     def showAsCapability(using Context) =
-      i"capability ${ctx.printer.toTextCapability(this).show}"
+      i"${ctx.printer.toTextCapability(this).show}"
 
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability

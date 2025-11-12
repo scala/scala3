@@ -208,6 +208,9 @@ object unsafe:
    */
   def unsafeAssumeSeparate(op: Any): op.type = op
 
+  /** A wrapper around code for which uses go unrecorded */
+  def unsafeDiscardUses(op: Any): op.type = op
+
   /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. But there is no proof

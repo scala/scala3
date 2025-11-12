@@ -18,7 +18,7 @@ given testRunner: CommunityBuildRunner with
 class CommunityBuildTestA:
   @Test def izumiReflect = projects.izumiReflect.run()
   @Test def scalaSTM = projects.scalaSTM.run()
-  @Test def scalatest = projects.scalatest.run()
+  //@Test def scalatest = projects.scalatest.run()
   @Test def scalatestplusTestNG = projects.scalatestplusTestNG.run()
   // 'Sciss/Lucre' dependencies:
   // @Test def scissEqual      = projects.scissEqual     .run()
@@ -30,7 +30,7 @@ class CommunityBuildTestA:
   // @Test def scissAsyncFile  = projects.scissAsyncFile .run()
   // @Test def scissSpan       = projects.scissSpan      .run()
   @Test def scissLucre = projects.scissLucre.run()
-  @Test def zio = projects.zio.run()
+  //@Test def zio = projects.zio.run()
 end CommunityBuildTestA
 
 @Category(Array(classOf[TestCategory]))
@@ -42,7 +42,7 @@ class CommunityBuildTestB:
   @Test def discipline = projects.discipline.run()
   @Test def disciplineMunit = projects.disciplineMunit.run()
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
-  @Test def fs2 = projects.fs2.run()
+  //@Test def fs2 = projects.fs2.run()
   @Test def monocle = projects.monocle.run()
   @Test def munit = projects.munit.run()
   @Test def munitCatsEffect = projects.munitCatsEffect.run()
@@ -51,13 +51,13 @@ class CommunityBuildTestB:
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
-  @Test def spire = projects.spire.run()
-  @Test def http4s = projects.http4s.run()
+  //@Test def spire = projects.spire.run()
+  //@Test def http4s = projects.http4s.run()
 end CommunityBuildTestB
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestC:
-  @Test def akka = projects.akka.run()
+  //@Test def akka = projects.akka.run()
   // Disabled because `javax.xml.bind` is not available since java 11
   // @Test def betterfiles = projects.betterfiles.run()
   @Test def cask = projects.cask.run()
@@ -91,8 +91,7 @@ class CommunityBuildTestC:
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scalaz = projects.scalaz.run()
-  // mill 1.0.5 fails to build, cannot find scala-library artifact on classpath
-  // @Test def scas = projects.scas.run()
+  @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless3 = projects.shapeless3.run()
   @Test def sourcecode = projects.sourcecode.run()

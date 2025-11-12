@@ -1929,15 +1929,44 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    pt.stripNull() match {
-      case pt: TypeVar
-      if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists =>
-        // try to instantiate `pt` if this is possible. If it does not
-        // work the error will be reported later in `inferredParam`,
-        // when we try to infer the parameter type.
-        isFullyDefined(pt, ForceDegree.flipBottom)
-      case _ =>
-    }
+    /** Try to instantiate one type variable bounded by function types that appear
+     *  deeply inside `tp`, including union or intersection types.
+     */
+    def tryToInstantiateDeeply(tp: Type): Boolean = tp.dealias match
+      case tp: AndOrType =>
+        tryToInstantiateDeeply(tp.tp1)
+        || tryToInstantiateDeeply(tp.tp2)
+      case tp: FlexibleType =>
+        tryToInstantiateDeeply(tp.hi)
+      case tp: TypeVar if isConstrainedByFunctionType(tp) =>
+        // Only instantiate if the type variable is constrained by function types
+        isFullyDefined(tp, ForceDegree.flipBottom)
+      case _ => false
+
+    def isConstrainedByFunctionType(tvar: TypeVar): Boolean =
+      val origin = tvar.origin
+      val bounds = ctx.typerState.constraint.bounds(origin)
+      // The search is done by the best-effort, and we don't look into TypeVars recursively.
+      def containsFunctionType(tp: Type): Boolean = tp.dealias match
+        case tp if defn.isFunctionType(tp) => true
+        case SAMType(_, _) => true
+        case tp: AndOrType =>
+          containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
+        case tp: FlexibleType =>
+          containsFunctionType(tp.hi)
+        case _ => false
+      containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
+
+    if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists then
+      // Try to instantiate `pt` when possible.
+      // * If `pt` is a type variable, we try to instantiate it directly.
+      // * If `pt` is a more complex type, we try to instantiate it deeply by searching
+      //   a nested type variable bounded by a function type to help infer parameter types.
+      // If it does not work the error will be reported later in `inferredParam`,
+      // when we try to infer the parameter type.
+      pt match
+        case pt: TypeVar => isFullyDefined(pt, ForceDegree.flipBottom)
+        case _ => tryToInstantiateDeeply(pt)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
@@ -2443,8 +2472,35 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val capabilityProof = caughtExceptions.reduce(OrType(_, _, true))
       untpd.Block(makeCanThrow(capabilityProof), expr)
 
+  /** Graphic explanation of NotNullInfo logic:
+   *  Leftward exit indicates exceptional case
+   *  Downward exit indicates normal case
+   *
+   *           ┌─────┐
+   *           │ Try ├─────┬────────┬─────┐
+   *           └──┬──┘     ▼        ▼     │
+   *              │    ┌───────┐┌───────┐ │
+   *              │    │ Catch ││ Catch ├─┤
+   *              │    └───┬───┘└───┬───┘ │
+   *              └─┬──────┴────────┘     │
+   *                ▼                     ▼
+   *           ┌─────────┐           ┌─────────┐
+   *           │ Finally ├──────┐    │ Finally ├──┐
+   *           └────┬────┘      │    └────┬────┘  │
+   *                ▼           └─────────┴───────┴─►
+   *  exprNNInfo = Effect of the try block if completed normally
+   *  casesNNInfo = Effect of catch blocks completing normally
+   *  normalAfterCasesInfo = Exceptional try followed by normal catches
+   *  We type finalizer with normalAfterCasesInfo.retracted
+   *
+   *  Overall effect of try-catch-finally =
+   *  resNNInfo =
+   *  (exprNNInfo OR normalAfterCasesInfo) followed by normal finally block
+   *
+   *  For all nninfo, if a tree can be typed using nninfo.retractedInfo, then it can
+   *  also be typed using nninfo.
+   */
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try =
-    var nnInfo = NotNullInfo.empty
     val expr2 :: cases2x = harmonic(harmonize, pt) {
       // We want to type check tree.expr first to comput NotNullInfo, but `addCanThrowCapabilities`
       // uses the types of patterns in `tree.cases` to determine the capabilities.
@@ -2457,25 +2513,23 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val casesEmptyBody2 = typedCases(casesEmptyBody1, EmptyTree, defn.ThrowableType, WildcardType)
       val expr1 = typed(addCanThrowCapabilities(tree.expr, casesEmptyBody2), pt.dropIfProto)
 
-      // Since we don't know at which point the the exception is thrown in the body,
-      // we have to collect any reference that is once retracted.
-      nnInfo = expr1.notNullInfo.retractedInfo
-
-      val casesCtx = ctx.addNotNullInfo(nnInfo)
+      val casesCtx = ctx.addNotNullInfo(expr1.notNullInfo.retractedInfo)
       val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)(using casesCtx)
       expr1 :: cases1
     }: @unchecked
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
+    val exprNNInfo = expr2.notNullInfo
+    val casesNNInfo =
+      cases2.map(_.notNullInfo)
+        .foldLeft(NotNullInfo.empty.terminatedInfo)(_.alt(_))
+    val normalAfterCasesInfo = exprNNInfo.retractedInfo.seq(casesNNInfo)
 
     // It is possible to have non-exhaustive cases, and some exceptions are thrown and not caught.
     // Therefore, the code in the finalizer and after the try block can only rely on the retracted
     // info from the cases' body.
-    if cases2.nonEmpty then
-      nnInfo = nnInfo.seq(cases2.map(_.notNullInfo.retractedInfo).reduce(_.alt(_)))
-
-    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(nnInfo))
-    nnInfo = nnInfo.seq(finalizer1.notNullInfo)
-    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nnInfo)
+    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(normalAfterCasesInfo.retractedInfo))
+    val resNNInfo = exprNNInfo.alt(normalAfterCasesInfo).seq(finalizer1.notNullInfo)
+    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(resNNInfo)
 
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
     val cases: List[untpd.CaseDef] = tree.handler match
@@ -2875,7 +2929,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // leave the original tuple type; don't mix with & TupleXXL which would only obscure things
                 pt
               case _ =>
-                pt & body1.tpe
+                body1.tpe & pt
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
@@ -4218,7 +4272,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 then
                   tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, inSelect)
                 else
-                  err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
+                  err.typeMismatch(qual, selProto, failure.reason.notes) // TODO: report NotAMember instead, but need to be aware of failure
             rememberSearchFailure(qual, failure)
       catch case ex: TypeError => nestedFailure(ex)
 
@@ -4889,7 +4943,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           val tree1 = healAdapt(tree, pt)
           if tree1 ne tree then readapt(tree1)
-          else err.typeMismatch(tree, pt, failure)
+          else err.typeMismatch(tree, pt, failure.notes)
 
       pt match
         case _: SelectionProto =>

@@ -367,6 +367,11 @@ object language {
      */
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
+
+   /** Experimental support for single-line lambdas and case clause expressions after `:`
+     */
+    @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
+    object relaxedLambdaSyntax
   }
 
     /** The deprecated object contains features that are no longer officially suypported in Scala.

@@ -34,8 +34,6 @@ object TestConfiguration {
   val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
-    Properties.jlineTerminal,
-    Properties.jlineReader,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
     Properties.tastyCore,
@@ -54,6 +52,16 @@ object TestConfiguration {
     Properties.scalaJSLibrary,
   ))
 
+  lazy val replClassPath =
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(
+      Properties.dottyRepl,
+      Properties.jlineTerminal,
+      Properties.jlineReader,
+  ))
+
+  lazy val replWithStagingClasspath = 
+    replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
+
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
@@ -71,6 +79,8 @@ object TestConfiguration {
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val withReplOptions =
+    defaultOptions.withRunClasspath(replClassPath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =

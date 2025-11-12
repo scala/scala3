@@ -1,22 +1,14 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:27:23 ---------------------------------------
-27 |    val leak = withCap(cap => mkId(cap))  // error (was: no error here since type aliases don't box)
-   |                       ^^^^^^^^^^^^^^^^
-   |Found:    (cap: test2.Cap^'s1) ->'s2 [T] => (op: test2.Cap^'s3 ->'s4 T) ->'s5 T
-   |Required: test2.Cap^{lcap} => [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T
-   |
-   |Note that capability lcap cannot be included in outer capture set 's1 of parameter cap.
-   |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): test2.Cap^{lcap} -> [T] => (op: test2.Cap^{lcap} => T) -> T when instantiating expected result type test2.Cap^{lcap} ->{cap²} [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T of function literal
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |                     ^^^^^^^^^^^^^^^^
-   |Found:    (cap: Cap^'s9) ->'s10 Id[Cap^'s11]^'s12
-   |Required: Cap^{lcap} => Id[Cap^'s13]^'s14
+   |Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability lcap cannot be included in outer capture set 's9 of parameter cap.
+   |Found:    (lcap: scala.caps.Capability^) ?->'s2 Cap^'s3 ->'s4 Id[Cap^'s5]^'s6
+   |Required: (lcap: scala.caps.Capability^) ?-> Cap^{lcap} => Id[Cap^'s1]^'s7
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): Cap^{lcap} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^'s13]^'s14 of function literal
+   |where:    =>  refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): Cap^{lcap} => Id[Cap^'s1]^'s7
+   |          ^   refers to the universal root capability
+   |          cap is a root capability associated with the result type of (x$0: Cap^'s3): Id[Cap^'s5]^'s6
    |
    | longer explanation available when compiling with `-explain`

@@ -1,0 +1,66 @@
+-- [E040] Syntax Error: tests/neg/closure-args.scala:2:25 --------------------------------------------------------------
+2 |val x = List(1).map: (x: => Int) => // error
+  |                         ^^
+  |                         an identifier expected, but '=>' found
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/closure-args.scala:14:0 ----------------------------------------------------------------------------
+14 |    y => y > 0  // error // error
+   |^
+   |indented definitions expected, end of single-line lambda found
+-- [E103] Syntax Error: tests/neg/closure-args.scala:14:4 --------------------------------------------------------------
+14 |    y => y > 0  // error // error
+   |    ^
+   |    Illegal start of toplevel definition
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E018] Syntax Error: tests/neg/closure-args.scala:18:20 -------------------------------------------------------------
+18 |val e = xs.map: y => // error
+   |                    ^
+   |                    expression expected but [31mend of single-line lambda[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/closure-args.scala:21:41 -------------------------------------------------------------
+21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
+   |                                         ^
+   |                                         'case' expected, but identifier found
+-- [E008] Not Found Error: tests/neg/closure-args.scala:10:4 -----------------------------------------------------------
+ 8 |val b: Int = xs
+ 9 |  .map: x => x
+10 |    * x    // error
+   |             ^
+   |             value * is not a member of List[Int].
+   |             Note that `*` is treated as an infix operator in Scala 3.
+   |             If you do not want that, insert a `;` or empty line in front
+   |             or drop any spaces behind the operator.
+-- [E006] Not Found Error: tests/neg/closure-args.scala:16:21 ----------------------------------------------------------
+16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+   |                     ^
+   |                     Not found: type y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/closure-args.scala:16:28 ----------------------------------------------------------
+16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+   |                            ^
+   |                            Not found: type +
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/closure-args.scala:16:26 ----------------------------------------------------------
+16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+   |                          ^
+   |                          Not found: type y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/closure-args.scala:16:30 ----------------------------------------------------------
+16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+   |                              ^
+   |                              Not found: type y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/closure-args.scala:21:97 ------------------------------------------------------
+21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
+   |                                                                                                 ^
+   |                                                                                      Found:    Unit
+   |                                                                                      Required: List[Int] => Int
+   |
+   | longer explanation available when compiling with `-explain`

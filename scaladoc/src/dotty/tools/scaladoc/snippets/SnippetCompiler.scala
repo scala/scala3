@@ -13,7 +13,7 @@ import dotty.tools.dotc.reporting.{ Diagnostic, StoreReporter }
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.{ Compiler, Run }
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.interfaces.Diagnostic._
 import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile, NoSource }
