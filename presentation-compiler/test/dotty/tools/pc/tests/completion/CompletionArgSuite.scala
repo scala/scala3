@@ -157,7 +157,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |  Option[Int](@@)
           |}
           |""".stripMargin,
-      """|x = : A
+      """|x = : A | Null
          |Main test
          |""".stripMargin,
       topLines = Option(2)
