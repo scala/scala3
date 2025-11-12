@@ -3015,6 +3015,9 @@ object Build {
       ),
       // Work around https://github.com/eclipse/lsp4j/issues/295
       dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
+      // Exclude the dependency that is resolved transively, the stdlib
+      // is a project dependency instead
+      excludeDependencies += "org.scala-lang" %% "scala3-library",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
     ).
     settings(
