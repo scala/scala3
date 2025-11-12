@@ -454,6 +454,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             |No clashing definitions were found. This might point to an internal error.""",
         tree.srcPos)
 
+  class UseAfterConsume(ref: Capability, consumedLoc: SrcPos, useLoc: SrcPos)(using Context) extends reporting.Diagnostic.Error(
+    em"""Separation failure: Illegal access to $ref, which was consumed
+        |and therefore is no longer available.""",
+    useLoc.sourcePos
+  ):
+      addSubdiag(em"""$ref was passed to a consume parameter or
+                     |was used as a prefix of a consume method here.""", consumedLoc.sourcePos)
+
   /** Report a failure where a previously consumed capability is used again,
    *  @param ref     the capability that is used after being consumed
    *  @param loc     the position where the capability was consumed
@@ -465,6 +473,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       em"""Separation failure: Illegal access to $ref, which was ${role.howConsumed}
           |on line ${locPos.line + 1} and therefore is no longer available.""",
       pos)
+  // def consumeError(ref: Capability, loc: SrcPos, pos: SrcPos)(using Context): Unit =
+  //   ctx.reporter.report(UseAfterConsume(ref, loc, pos))
 
   /** Report a failure where a capability is consumed in a loop.
    *  @param ref     the capability
