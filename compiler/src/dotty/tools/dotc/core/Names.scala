@@ -185,7 +185,7 @@ object Names {
     def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
 
-    @sharable // because of synchronized block in `and`
+    @sharable // because of synchronized block in `add`
     private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
 
     private def add(info: NameInfo): TermName = synchronized {

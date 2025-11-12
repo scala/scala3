@@ -1,3 +1,4 @@
+//> using options -Yimports:scala,scala.Predef
 // Tests quality of error messages
 class IO extends caps.SharedCapability
 

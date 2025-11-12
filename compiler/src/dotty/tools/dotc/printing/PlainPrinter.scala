@@ -4,7 +4,6 @@ package printing
 import core.*
 import Texts.*, Types.*, Flags.*, Names.*, Symbols.*, NameOps.*, Constants.*, Denotations.*
 import StdNames.*
-import NameKinds.ContextFunctionParamName
 import Contexts.*
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
@@ -394,17 +393,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     Text(lam.paramRefs.map(paramText), ", ")
   }
 
-  protected def ParamRefNameString(name: Name): String =
-    nameString(name)
+  protected def ParamRefNameString(name: Name): String = nameString(name)
 
   protected def ParamRefNameString(param: ParamRef): String =
-    val name = param.binder.paramNames(param.paramNum)
-    ParamRefNameString:
-      if name.is(ContextFunctionParamName) then
-        name match
-        case ContextFunctionParamName(name, _) if !name.isEmpty => name
-        case name => name
-      else name
+    ParamRefNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
