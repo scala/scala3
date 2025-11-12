@@ -184,6 +184,7 @@ subsection:
           - page: reference/experimental/unrolled-defs.md
           - page: reference/experimental/package-object-values.md
           - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
+          - page: reference/experimental/relaxed-lambdas.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md
