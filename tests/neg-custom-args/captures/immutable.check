@@ -1,0 +1,22 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/immutable.scala:13:20 ------------------------------------
+13 |  val b = immutable(a) // error
+   |                    ^
+   |                    Found:    () ?->{a} Arr[String]^{a}
+   |                    Required: () ?-> <?>
+   |
+   |                    Note that capability a is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/immutable.scala:22:4 -------------------------------------
+21 |  immutable:
+22 |    mkExclusive() // error
+   |  ^
+   |  Capability cap outlives its scope: it leaks into outer capture set 's1 of method test3.
+   |  The leakage occurred when trying to match the following types:
+   |
+   |  Found:    EX^{cap}
+   |  Required: EX^'s1
+   |
+   |  where:    cap is a root capability associated with the result type of (): EX^
+   |
+   | longer explanation available when compiling with `-explain`

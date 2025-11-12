@@ -46,6 +46,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.unsafe$",
   "scala.caps.use",
   "scala.caps.reserve",
+  "scala.caps.package$package$.freeze",
   "scala.caps.package$package$.Exclusive",
   "scala.caps.package$package$.Shared",
 
