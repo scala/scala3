@@ -2141,6 +2141,7 @@ object Build {
       // because we allow cross-compilation.
       versionScheme := Some("always"),
       crossPaths    := false,
+      crossVersion  := CrossVersion.disabled,
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
