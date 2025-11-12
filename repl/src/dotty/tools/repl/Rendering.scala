@@ -27,9 +27,44 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
-    pprint.PPrinter.BlackWhite
-      .apply(value, width = width, height = height, initialOffset = initialOffset)
-      .plainText
+    def fallback() =
+      // might as well be `println` in this case, but JDK classes e.g. `Float` are correctly handled.
+      pprint.PPrinter.BlackWhite
+        .apply(value, width = width, height = height, initialOffset = initialOffset)
+        .plainText
+
+    try
+      // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
+      // however PPrint works by runtime type testing to deconstruct values. This is
+      // sensitive to which classloader instantiates the object under test, i.e.
+      // `value` is constructed inside the repl classloader. Testing for
+      // `value.isInstanceOf[scala.Product]` in this classloader fails (JDK AppClassLoader),
+      // because repl classloader has two layers where it can redefine `scala.Product`:
+      // - `new URLClassLoader` constructed with contents of the `-classpath` setting
+      // - `AbstractFileClassLoader` also might instrument the library code to support interrupt.
+      // Due the possible interruption instrumentation, it is unlikely that we can get
+      // rid of reflection here.
+      val cl = classLoader()
+      val pprintCls = Class.forName("pprint.PPrinter$BlackWhite$", false, cl)
+      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val BlackWhite = pprintCls.getField("MODULE$").get(null)
+      val BlackWhite_apply = pprintCls.getMethod("apply",
+        classOf[Any],     // value
+        classOf[Int],     // width
+        classOf[Int],     // height
+        classOf[Int],     // indentation
+        classOf[Int],     // initialOffset
+        classOf[Boolean], // escape Unicode
+        classOf[Boolean], // show field names
+      )
+      val FansiStr_plainText = fansiStrCls.getMethod("plainText")
+      val fansiStr = BlackWhite_apply.invoke(
+        BlackWhite, value, width, height, 2, initialOffset, false, true
+      )
+      FansiStr_plainText.invoke(fansiStr).asInstanceOf[String]
+    catch
+      case ex: ClassNotFoundException => fallback()
+      case ex: NoSuchMethodException  => fallback()
   }
 
 
