@@ -1,17 +1,17 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:9:8 -------------------------------
-9 |    v = x  // error
-  |        ^
-  |     Found:    (x : IO)
-  |     Required: IO^
-  |
-  |     Note that capability x is not included in capture set {cap}
-  |     because (x : IO) in method f1 is not visible from cap in variable v.
-  |
-  |     where:    ^ and cap refer to a fresh root capability classified as SharedCapability in the type of variable v
-  |
-  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:10:8 ------------------------------
-10 |    w = g  // error
+10 |    v = x  // error
+   |        ^
+   |   Found:    (x : IO)
+   |   Required: IO^
+   |
+   |   Note that capability x is not included in capture set {cap}
+   |   because (x : IO) in method f1 is not visible from cap in variable v.
+   |
+   |   where:    ^ and cap refer to a fresh root capability classified as SharedCapability in the type of variable v
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:11:8 ------------------------------
+11 |    w = g  // error
    |        ^
    |        Found:    () ->{x} Unit
    |        Required: () => Unit
@@ -22,8 +22,8 @@
    |        where:    => and cap refer to a fresh root capability in the type of variable w
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:19:11 -----------------------------
-19 |  withFile(io => io)         // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:20:11 -----------------------------
+20 |  withFile(io => io)         // error
    |           ^^^^^^^^
    |Capability io outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -35,8 +35,8 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:20:11 -----------------------------
-20 |  withFile(id)               // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:21:11 -----------------------------
+21 |  withFile(id)               // error
    |           ^^
    |Capability x outlives its scope: it leaks into outer capture set 's4 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -48,8 +48,8 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:21:11 -----------------------------
-21 |  withFile(x => id(x))       // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:22:11 -----------------------------
+22 |  withFile(x => id(x))       // error
    |           ^^^^^^^^^^
    |Capability x outlives its scope: it leaks into outer capture set 's6 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -61,8 +61,8 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:22:11 -----------------------------
-22 |  withFile(id2)              // error, note mentions cap since we never have a more specific include failure
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:23:11 -----------------------------
+23 |  withFile(id2)              // error, note mentions cap since we never have a more specific include failure
    |           ^^^
    |Capability cap outlives its scope: it leaks into outer capture set 's9 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -76,8 +76,8 @@
    |          cap is a root capability associated with the result type of (x: IO^): IO^'s9
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:23:11 -----------------------------
-23 |  withFile(x => id2(x))      // error, note mentions cap since we never have a more specific include failure
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:24:11 -----------------------------
+24 |  withFile(x => id2(x))      // error, note mentions cap since we never have a more specific include failure
    |           ^^^^^^^^^^^
    |Capability cap outlives its scope: it leaks into outer capture set 's11 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -91,8 +91,8 @@
    |          cap is a root capability associated with the result type of (x: IO^²): IO^'s11
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:24:11 -----------------------------
-24 |  withFile(identity)         // error, note mentions cap since we never have a more specific include failure
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:25:11 -----------------------------
+25 |  withFile(identity)         // error, note mentions cap since we never have a more specific include failure
    |           ^^^^^^^^
    |Capability cap outlives its scope: it leaks into outer capture set 's14 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -105,8 +105,8 @@
    |          cap is a root capability associated with the result type of (x: IO^): IO^'s14
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:25:11 -----------------------------
-25 |  withFile(x => identity(x)) // error, note mentions cap since we never have a more specific include failure
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:26:11 -----------------------------
+26 |  withFile(x => identity(x)) // error, note mentions cap since we never have a more specific include failure
    |           ^^^^^^^^^^^^^^^^
    |Capability cap outlives its scope: it leaks into outer capture set 's18 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -119,8 +119,8 @@
    |          cap is a root capability associated with the result type of (x: IO^): IO^'s18
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:27:12 -----------------------------
-27 |  withFile: io =>     // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:28:12 -----------------------------
+28 |  withFile: io =>     // error
    |            ^
    |Capability io outlives its scope: it leaks into outer capture set 's22 which is owned by method test.
    |The leakage occurred when trying to match the following types:
@@ -130,11 +130,11 @@
    |
    |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
    |          ^  refers to the universal root capability
-28 |    () => println(io)
+29 |    () => println(io)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:30:21 -----------------------------
-30 |  val f2: IO => IO = (x: IO) => x  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:31:21 -----------------------------
+31 |  val f2: IO => IO = (x: IO) => x  // error
    |                     ^^^^^^^^^^^^
    |    Found:    (x: IO^) ->'s25 IO^{x}
    |    Required: IO^ => IO^²
@@ -147,8 +147,8 @@
    |              ^² and cap refer to a fresh root capability classified as SharedCapability in the type of value f2
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:32:21 -----------------------------
-32 |  val f4: IO => IO = f3  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:33:21 -----------------------------
+33 |  val f4: IO => IO = f3  // error
    |                     ^^
    |    Found:    (f3 : (x$0: IO) ->{} IO^{x$0})
    |    Required: IO^ => IO^²
