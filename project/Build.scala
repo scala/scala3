@@ -2792,52 +2792,6 @@ object Build {
     case Bootstrapped => `scala3-library-bootstrapped`
   }
 
-  /** The dotty standard library compiled with the Scala.js back-end, to produce
-   *  the corresponding .sjsir files.
-   *
-   *  This artifact must be on the classpath on every "Dotty.js" project.
-   *
-   *  Currently, only a very small fraction of the dotty library is actually
-   *  included in this project, and hence available to Dotty.js projects. More
-   *  will be added in the future as things are confirmed to be supported.
-   */
-  lazy val `scala3-library-bootstrappedJS`: Project = project.in(file("library-js")).
-    asDottyLibrary(Bootstrapped).
-    enablePlugins(DottyJSPlugin).
-    settings(
-      commonBootstrappedSettings,
-      libraryDependencies +=
-        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
-      // NOTE: Until 3.8.0, we pin the source files to be used by the scala3 library
-      Compile / sources := (`scala3-library-bootstrapped` / Compile / sources).value,
-      Compile / sources ++= Seq(
-        file(s"${baseDirectory.value}/src/scala/scalajs/js/internal/UnitOps.scala"),
-        file(s"${baseDirectory.value}/src/scala/scalajs/runtime/AnonFunctionXXL.scala"),
-      ),
-      // NOTE: We keep this so that the mappings are correct when packaging
-      Compile / unmanagedSourceDirectories ++=
-        (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-
-      // Configure the source maps to point to GitHub for releases
-      scalacOptions ++= {
-        if (isRelease) {
-          val baseURI = (LocalRootProject / baseDirectory).value.toURI
-          val dottyVersion = version.value
-          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/$dottyVersion/")
-        } else {
-          Nil
-        }
-      },
-
-      // Make sure `scala3-bootstrapped/test` doesn't fail on this project for no reason
-      Test / test := {},
-      Test / testOnly := {},
-    )
-
-  lazy val tastyCoreSettings = Seq(
-    scalacOptions += "-source:3.0-migration"
-  )
-
   def tastyCore(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `tasty-core-nonbootstrapped`
     case Bootstrapped => `tasty-core-bootstrapped-new`
@@ -3329,7 +3283,7 @@ object Build {
    */
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scala3-library-sjs`).
     settings(
       commonBootstrappedSettings,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
@@ -3835,8 +3789,7 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore).
-      bootstrappedAggregate(`scala3-language-server`, 
-        `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
+      bootstrappedAggregate(`scala3-language-server`, scaladoc, `scala3-presentation-compiler`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
