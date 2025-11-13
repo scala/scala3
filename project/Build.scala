@@ -671,13 +671,6 @@ object Build {
     // the compiler classpath, not the JVM classpath.
     (dottyCompilerBootstrappedRef / Runtime / externalDependencyClasspath)
 
-  // The root project:
-  // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
-  // - publishes its own empty artifact "dotty" that depends on "scala3-library" and "scala3-compiler",
-  //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
-  lazy val scala3 = project.in(file(".")).asDottyRoot(NonBootstrapped)
-  lazy val `scala3-bootstrapped` = project.asDottyRoot(Bootstrapped)
-
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
     settings(commonJavaSettings).
     settings(commonMiMaSettings).
@@ -3706,46 +3699,6 @@ object Build {
   }
 
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
-
-    // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore).
-      bootstrappedAggregate(`scala3-language-server`, scaladoc, `scala3-presentation-compiler`).
-      dependsOn(tastyCore).
-      dependsOn(dottyCompiler).
-      dependsOn(dottyLibrary).
-      bootstrappedSettings(
-        addCommandAlias("clean", ";scala3-bootstrapped/clean"),
-      ).
-      nonBootstrappedSettings(
-        addCommandAlias("run", "scala3-compiler/run"),
-        // Clean everything by default
-        addCommandAlias("clean", ";scala3/clean;scala3-bootstrapped/clean"),
-        // `publishLocal` on the non-bootstrapped compiler does not produce a
-        // working distribution (it can't in general, since there's no guarantee
-        // that the non-bootstrapped library is compatible with the
-        // non-bootstrapped compiler), so publish the bootstrapped one by
-        // default.
-        addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
-        buildQuick := {
-          val _ = (`scala3-compiler` / Compile / compile).value
-          val cp = (`scala3-compiler` / Compile / fullClasspath).value.map(_.data.getAbsolutePath).mkString(File.pathSeparator)
-          IO.write(baseDirectory.value / "bin" / ".cp", cp)
-        },
-        (Compile / console) := (Compile / console).dependsOn(Def.task {
-          import _root_.scala.io.AnsiColor._
-          val msg = "`console` uses the reference Scala version. Use `repl` instead."
-          val f = "═" * (msg.length + 2)
-          val box =
-            s"""╔$f╗
-               |║ ${BOLD}$msg$RESET ║
-               |╚$f╝""".stripMargin
-          streams.value.log.warn(box)
-        }).value,
-      ).
-      settings(
-        publish / skip := true
-      )
 
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(`scala3-interfaces`).
