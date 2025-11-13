@@ -525,7 +525,7 @@ object Build {
     scalaVersion := dottyNonBootstrappedVersion,
 
     scalaCompilerBridgeBinaryJar := {
-      Some((`scala3-sbt-bridge` / Compile / packageBin).value)
+      Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
     },
 
     // Use the same name as the non-bootstrapped projects for the artifacts.
@@ -2886,39 +2886,6 @@ object Build {
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
 
-  lazy val `scala3-sbt-bridge` = project.in(file("sbt-bridge/src")).
-    // We cannot depend on any bootstrapped project to compile the bridge, since the
-    // bridge is needed to compile these projects.
-    dependsOn(`scala3-compiler` % Provided).
-    settings(commonJavaSettings).
-    settings(
-      description := "sbt compiler bridge for Dotty",
-
-      Test / sources := Seq(),
-      Compile / scalaSource := baseDirectory.value,
-      Compile / javaSource := baseDirectory.value,
-      Compile / resourceDirectory := baseDirectory.value.getParentFile / "resources",
-
-      // Referring to the other project using a string avoids an infinite loop
-      // when sbt reads the settings.
-      Test / test := (LocalProject("scala3-sbt-bridge-tests") / Test / test).value,
-
-      libraryDependencies += Dependencies.compilerInterface % Provided
-    )
-
-  // We use a separate project for the bridge tests since they can only be run
-  // with the bootstrapped library on the classpath.
-  lazy val `scala3-sbt-bridge-tests` = project.in(file("sbt-bridge/test")).
-    dependsOn(dottyCompiler(Bootstrapped) % Test).
-    dependsOn(`scala3-sbt-bridge`).
-    settings(commonBootstrappedSettings).
-    settings(
-      Compile / sources := Seq(),
-      Test / scalaSource := baseDirectory.value,
-      Test / javaSource := baseDirectory.value,
-      libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
-    )
-
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
     .withCommonSettings(Bootstrapped)
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-library-bootstrapped-new`, `scala3-presentation-compiler-testcases` % "test->test")
@@ -3910,7 +3877,7 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`).
+      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore).
       bootstrappedAggregate(`scala3-language-server`, `scala3-staging`,
         `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
       dependsOn(tastyCore).
