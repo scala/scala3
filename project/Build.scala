@@ -186,6 +186,7 @@ object Build {
    */
   val stdlibBootstrappedVersion = "2.13.16"
 
+  val homepageUrl = "https://scala-lang.org/"
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
   val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
@@ -3784,7 +3785,7 @@ object Build {
       id.withExtraAttributes(id.extraAttributes + line)
     },
     Test / publishArtifact := false,
-    homepage := Some(url(dottyGithubUrl)),
+    homepage := Some(url(homepageUrl)),
     licenses += (("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))),
     scmInfo := Some(ScmInfo(url(dottyGithubUrl), "scm:git:git@github.com:scala/scala3.git")),
     developers := List(
@@ -3792,7 +3793,7 @@ object Build {
         id = "scala",
         name = "The Scala Team",
         email = "security@scala-lang.org",
-        url = url("https://scala-lang.org")
+        url = url(homepageUrl)
       )
     ),
   )
