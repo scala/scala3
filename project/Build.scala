@@ -549,21 +549,21 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      val externalLibraryDeps = (`scala3-library` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-      val externalCompilerDeps = (`scala3-compiler` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
       // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
       // just directories containing classfiles because sbt maintains a cache of
       // compiler instances. This cache is invalidated based on timestamps
       // however this is only implemented on jars, directories are never
       // invalidated.
-      val tastyCore = (`tasty-core` / Compile / packageBin).value
-      val scala3Library = (`scala3-library` / Compile / packageBin).value
+      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+      val scala3Library = (`scala3-library-nonbootstrapped` / Compile / packageBin).value
+      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
       val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-      val scala3Compiler = (`scala3-compiler` / Compile / packageBin).value
+      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
 
-      val libraryJars = Array(scala3Library) ++ externalLibraryDeps
-      val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
+      val libraryJars = Array(scala3Library, scalaLibrary)
+      val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps
 
       Defaults.makeScalaInstance(
         scalaVersion.value,
@@ -580,8 +580,8 @@ object Build {
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
     doc / scalaInstance := {
-      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data)
-      val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value
+      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
       val docJars = Array(scalaDoc) ++ externalDeps
 
       val base = scalaInstance.value
