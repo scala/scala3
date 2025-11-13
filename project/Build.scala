@@ -3854,7 +3854,7 @@ object Build {
     ),
   )
 
-  lazy val commonDistSettings = Seq(
+  /*lazy val commonDistSettings = Seq(
     publishArtifact := false,
     republishRepo := target.value / "republish",
     Universal / packageName := packageName.value,
@@ -3879,9 +3879,9 @@ object Build {
     republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
     republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
     republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
-  )
+  )*/
 
-  lazy val dist = project.asDist(Bootstrapped)
+  /*lazy val dist = project.asDist(Bootstrapped)
     .settings(packageName := "scala3-" + dottyVersion)
     .settings(
       republishLibexecDir := baseDirectory.value / "libexec",
@@ -3889,9 +3889,9 @@ object Build {
         ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
       republishLaunchers +=
         ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
-    )
+    )*/
 
-  lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
+  /*lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-apple-darwin")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3899,9 +3899,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
-    )
+    )*/
 
-  lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+  /*lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-apple-darwin")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3909,9 +3909,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
-    )
+    )*/
 
-  lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
+  /*lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
     .enablePlugins(WindowsPlugin) // TO GENERATE THE `.msi` installer
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-win32")
     .settings(
@@ -3936,9 +3936,9 @@ object Build {
       wixProductId := "*",                                                        // Unique ID for each generated MSI; will change for each generated msi
       wixProductUpgradeId := "3E5A1A82-CA67-4353-94FE-5BDD400AF66B",              // Unique ID to identify the package; used to manage the upgrades
       wixProductLicense := Some(dist.base / "LICENSE.rtf")                        // Link to the LICENSE to show during the installation (keep in sync with ../LICENSE)
-    )
+    )*/
 
-  lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
+  /*lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3946,9 +3946,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
-    )
+    )*/
 
-  lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+  /*lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-pc-linux")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3956,7 +3956,7 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
-    )
+    )*/
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
@@ -4062,7 +4062,7 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)*/
 
-    def asDist(implicit mode: Mode): Project = project.
+    /*def asDist(implicit mode: Mode): Project = project.
       enablePlugins(UniversalPlugin, RepublishPlugin).
       withCommonSettings.
       settings(commonDistSettings).
@@ -4078,7 +4078,7 @@ object Build {
       ).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
-      )
+      )*/
 
     def withCommonSettings(implicit mode: Mode): Project = project.settings(mode match {
       case NonBootstrapped => commonNonBootstrappedSettings
