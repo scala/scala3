@@ -917,12 +917,26 @@ class CheckCaptures extends Recheck, SymTransformer:
        */
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
-        var allCaptures: CaptureSet = initCs ++ captureSetImpliedByFields(cls, core)
+        val implied = captureSetImpliedByFields(cls, core)
+        var allCaptures: CaptureSet = initCs ++ implied
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
             refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
-            allCaptures ++= argType.captureSet
+            if getter.hasAnnotation(defn.ConsumeAnnot)
+                && !implied.isAlwaysEmpty
+                && argType.captureSet.subCaptures(allCaptures)
+                // A consume parameter of a constructor will be hidden in the implied fresh of the
+                // class if there is one. Example:
+                //
+                //    class A(consume val x: B^) { val c: C^ = ... }
+                //    val a = A(b)  // a: A{...}^{cap hiding b}
+                // But
+                //    class A1(val x: B^) { val c: C^ = ... }
+                //    val a1 = A1(b)  // a1: A{...}^{cap, b}
+                // See consume-in-constructor.scala.
+            then () // force the fresh in implied to hide argType.captureSet
+            else allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
