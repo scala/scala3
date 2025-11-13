@@ -3367,13 +3367,13 @@ object Build {
       Test / forkOptions := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
     )
 
-  lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
-  lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
-  lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
+  //lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
+  //lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
+  //lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
-  lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
+  /*lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
     .asDottyBench(Bootstrapped)
-    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))
+    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))*/
 
   val testcasesOutputDir = taskKey[Seq[String]]("Root directory where tests classes are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
@@ -3997,10 +3997,10 @@ object Build {
         scalacOptions += "-Ytasty-reader" // to read scala3 library
       )
 
-    def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
+    /*def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
-      enablePlugins(JmhPlugin)
+      enablePlugins(JmhPlugin)*/
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(UniversalPlugin, RepublishPlugin).
