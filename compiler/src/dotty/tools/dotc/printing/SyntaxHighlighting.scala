@@ -26,11 +26,9 @@ object SyntaxHighlighting {
   val NoColor: String         = Console.RESET
   val CommentColor: String    = Console.BLUE
   val KeywordColor: String    = Console.YELLOW
-  val ValDefColor: String     = Console.CYAN
+  val DefinitionColor: String = Console.CYAN
   val LiteralColor: String    = Console.GREEN
-  val StringColor: String     = Console.GREEN
   val TypeColor: String       = Console.GREEN
-  val AnnotationColor: String = Console.GREEN
 
   def highlight(in: String)(using Context): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
@@ -101,7 +99,7 @@ object SyntaxHighlighting {
 
         def highlightAnnotations(tree: MemberDef): Unit =
           for (annotation <- tree.rawMods.annotations)
-            highlightPosition(annotation.span, AnnotationColor)
+            highlightPosition(annotation.span, TypeColor)
 
         def highlight(trees: List[Tree])(using Context): Unit =
           trees.foreach(traverse)
@@ -112,14 +110,16 @@ object SyntaxHighlighting {
               ()
             case tree: ValOrDefDef =>
               highlightAnnotations(tree)
-              highlightPosition(tree.nameSpan, ValDefColor)
-              highlightPosition(tree.endSpan, ValDefColor)
+              highlightPosition(tree.nameSpan, DefinitionColor)
+              highlightPosition(tree.endSpan, DefinitionColor)
             case tree: MemberDef /* ModuleDef | TypeDef */ =>
               highlightAnnotations(tree)
-              highlightPosition(tree.nameSpan, TypeColor)
-              highlightPosition(tree.endSpan, TypeColor)
+              highlightPosition(tree.nameSpan, DefinitionColor)
+              highlightPosition(tree.endSpan, DefinitionColor)
             case tree: Ident if tree.isType =>
               highlightPosition(tree.span, TypeColor)
+            case tree: Select if tree.isType =>
+              highlightPosition(tree.nameSpan, TypeColor)
             case _: TypeTree =>
               highlightPosition(tree.span, TypeColor)
             case _ =>
