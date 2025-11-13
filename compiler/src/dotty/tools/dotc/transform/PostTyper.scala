@@ -263,10 +263,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 andAlso = defn.NonBeanParamAccessorAnnots)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
-          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value &&
-             sym != defn.StringContext_raw &&
-             sym != defn.StringContext_f &&
-             sym != defn.StringContext_s then
+          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
                // This should be removed on Scala 3.x
