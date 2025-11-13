@@ -227,6 +227,7 @@ jobs:
           fi
 
       - name: Prepare the SDKs
+        if: false # TODO: Requires changes to dist targets, to be done before stable release
         shell: bash
         run : |
           prepareSDK() {
@@ -253,11 +254,13 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
+        if: false # TODO: Requires changes to dist targets, to be done before stable release
         uses: actions/download-artifact@v6
         with:
           name: scala.msi
           path: .
       - name: Prepare MSI package
+        if: false # TODO: Requires changes to dist targets, to be done before stable release
         shell: bash
         run: |
           msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
@@ -285,10 +288,11 @@ jobs:
           --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
           --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
           --verify-tag ${{ env.RELEASE_TAG }} \
-          scala3-${{ env.RELEASE_TAG }}*.zip \
-          scala3-${{ env.RELEASE_TAG }}*.tar.gz \
-          scala3-${{ env.RELEASE_TAG }}*.sha256 \
-          scala3-${{ env.RELEASE_TAG }}.msi
+          # TODO: dist packaging for 3.8.0 stable release
+          # scala3-${{ env.RELEASE_TAG }}*.zip \
+          # scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          # scala3-${{ env.RELEASE_TAG }}*.sha256 \
+          # scala3-${{ env.RELEASE_TAG }}.msi
 
       - name: Publish Release
         run: ./project/scripts/sbtPublish ";project scala3-bootstrapped-new ;publishSigned ;sonaUpload"
