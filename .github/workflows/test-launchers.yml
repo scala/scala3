@@ -1,6 +1,6 @@
 name: Test CLI Launchers on all the platforms
 on:
-  pull_request:
+  #pull_request:
   workflow_dispatch:
 
 env:

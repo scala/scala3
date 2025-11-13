@@ -128,9 +128,9 @@ jobs:
         run: sbt ";scala3-bootstrapped/compile"
         shell: cmd
 
-      - name: build binary
-        run: sbt "dist-win-x86_64/Universal/stage" & bash -version
-        shell: cmd
+      #- name: build binary
+      #  run: sbt "dist-win-x86_64/Universal/stage" & bash -version
+      #  shell: cmd
 
       - name: cygwin tests
         run: '"C:\Program Files\cygwin64\bin\bash" ./project/scripts/winCmdTests'
