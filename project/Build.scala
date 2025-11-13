@@ -784,7 +784,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
@@ -2489,7 +2489,7 @@ object Build {
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
+        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
         Dependencies.compilerInterface,
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
@@ -2638,7 +2638,7 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
+        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
