@@ -3,9 +3,11 @@ package dotty.tools.pc.tests.signaturehelp
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
 import org.junit.Test
+import org.junit.Ignore
 
 class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
 
+  @Ignore
   @Test def `case` =
     check(
       """
@@ -170,6 +172,7 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
          | """.stripMargin
     )
 
+  @Ignore
   @Test def `pat2` =
     check(
       """

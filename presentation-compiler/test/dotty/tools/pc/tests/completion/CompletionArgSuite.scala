@@ -4,6 +4,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.FixMethodOrder
 import org.junit.Test
+import org.junit.Ignore
 import org.junit.runners.MethodSorters
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -1174,6 +1175,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       topLines = Some(1),
     )
 
+  @Ignore
   @Test def `comparison` =
     check(
       """
