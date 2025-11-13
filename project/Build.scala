@@ -1009,7 +1009,6 @@ object Build {
         Map(
           "scala3-interfaces"    -> (`scala3-interfaces` / Compile / packageBin).value,
           "scala3-compiler"      -> (Compile / packageBin).value,
-          "tasty-core"          -> (`tasty-core` / Compile / packageBin).value,
 
           // NOTE: Using scala3-library-bootstrapped here is intentional: when
           // running the compiler, we should always have the bootstrapped
@@ -1046,7 +1045,6 @@ object Build {
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
-        "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
     },
 
@@ -1574,7 +1572,7 @@ object Build {
           val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath.toString
           val dottyStaging = (`scala3-staging-new` / Compile / packageBin).value.getAbsolutePath.toString
           val dottyTastyInspector = (`scala3-tasty-inspector-new` / Compile / packageBin).value.getAbsolutePath.toString
-          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath.toString
+          val tastyCore = (`tasty-core-bootstrapped-new` / Compile / packageBin).value.getAbsolutePath.toString
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
@@ -2916,12 +2914,9 @@ object Build {
     scalacOptions += "-source:3.0-migration"
   )
 
-  lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
-  lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
-
   def tastyCore(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `tasty-core`
-    case Bootstrapped => `tasty-core-bootstrapped`
+    case NonBootstrapped => `tasty-core-nonbootstrapped`
+    case Bootstrapped => `tasty-core-bootstrapped-new`
   }
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
@@ -3977,18 +3972,6 @@ object Build {
         )
       } else base
     }
-
-
-    def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyLibrary).
-      settings(tastyCoreSettings).
-      settings(disableDocSetting).
-      settings(
-        versionScheme := Some("semver-spec"),
-        Test / envVars ++= Map(
-          "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
-        ),
-      )
 
     /*def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
