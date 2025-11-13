@@ -2860,7 +2860,6 @@ object Build {
 
   lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
   lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
-  lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).asTastyCoreScala2
 
   def tastyCore(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `tasty-core`
@@ -3984,17 +3983,6 @@ object Build {
         Test / envVars ++= Map(
           "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
         ),
-      )
-
-    def asTastyCoreScala2: Project = project
-      .settings(commonScala2Settings)
-      // need to add @annotation.internal.sharable to the classpath for compiling
-      // we don't actually publish this library anywhere, so it's fine.
-      // if someone depends on the sources of tasty-core in a scala 2 project,
-      // they should strip the sharable annotation, or add -Ytasty-reader
-      .dependsOn(dottyLibrary(NonBootstrapped) % Provided)
-      .settings(
-        scalacOptions += "-Ytasty-reader" // to read scala3 library
       )
 
     /*def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
