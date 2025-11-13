@@ -418,6 +418,7 @@ class InlineReducer(inliner: Inliner)(using Context):
       // drop unusable vals and check that no referenes to unusable symbols remain
       val cleanupUnusable = new TreeMap:
         override def transform(tree: Tree)(using Context): Tree =
+          if tree.isType then return tree
           tree match
             case tree: ValDef if unusable.contains(tree.symbol) => EmptyTree
             case id: Ident if unusable.contains(id.symbol) =>
