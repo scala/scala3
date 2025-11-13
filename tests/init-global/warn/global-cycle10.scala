@@ -7,10 +7,10 @@ abstract class Base {
 object O extends Base {              // error
 
   class Inner {
-    println(msg)
+    println(msg) // warn
   }
 
-  def foo() = new Inner
+  def foo() = new Inner // warn
 }
 
 @main
