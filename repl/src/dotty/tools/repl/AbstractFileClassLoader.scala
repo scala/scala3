@@ -68,7 +68,10 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
     val loaded = findLoadedClass(name) // Check if already loaded
     if loaded != null then return loaded
 
-    name match { // Don't instrument JDK classes or StopRepl
+    name match { 
+      // Don't instrument JDK classes or StopRepl. These are often restricted to load from a single classloader
+      // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
+      // results in runtime exceptions
       case s"java.$_" => super.loadClass(name)
       case s"javax.$_" => super.loadClass(name)
       case s"sun.$_" => super.loadClass(name)
@@ -76,6 +79,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
       case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
       case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
       case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
+      // Don't instrument StopRepl, which would otherwise cause infinite recursion
       case "dotty.tools.repl.StopRepl" =>
         // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
         val classFileName = name.replace('.', '/') + ".class"
