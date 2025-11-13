@@ -455,12 +455,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         tree.srcPos)
 
   class UseAfterConsume(ref: Capability, consumedLoc: SrcPos, useLoc: SrcPos)(using Context) extends reporting.Diagnostic.Error(
-    em"""Separation failure: Illegal access to $ref, which was consumed
+    em"""Separation failure: Illegal access to $ref, which was passed to a
+        |consume parameter or was used as a prefix to a consume method
         |and therefore is no longer available.""",
     useLoc.sourcePos
   ):
-      addSubdiag(em"""$ref was passed to a consume parameter or
-                     |was used as a prefix of a consume method here.""", consumedLoc.sourcePos)
+      addSubdiag(em"... $ref was consumed here.", consumedLoc.sourcePos)
 
   /** Report a failure where a previously consumed capability is used again,
    *  @param ref     the capability that is used after being consumed
