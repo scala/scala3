@@ -457,7 +457,7 @@ object Build {
     import java.text._
     val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
     dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-    
+
     val fileName = "compiler.properties"
     val contents = Def.setting {
       s"""version.number=${version.value}
@@ -1623,7 +1623,7 @@ object Build {
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-repl`) // TODO: Would this actually evict the reference compiler in scala-tool?
     .settings(publishSettings)
     .settings(
-      name          := "scala3-sbt-bridge-bootstrapped",
+      name          := "scala3-sbt-bridge",
       moduleName    := "scala3-sbt-bridge",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
@@ -1995,7 +1995,7 @@ object Build {
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
     .settings(
-      name          := "scala-library-bootstrapped",
+      name          := "scala-library",
       moduleName    := "scala-library",
       version       := dottyVersion,
       // We mark the current library as "always" instead of "semver-spec" so that buildtools can
@@ -2082,7 +2082,7 @@ object Build {
     .dependsOn(`scala-library-bootstrapped`)
     .settings(publishSettings)
     .settings(
-      name          := "scala3-library-bootstrapped",
+      name          := "scala3-library",
       moduleName    := "scala3-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
@@ -2358,7 +2358,7 @@ object Build {
     .settings(publishSettings)
     .settings(commonMiMaSettings)
     .settings(
-      name          := "tasty-core-bootstrapped",
+      name          := "tasty-core",
       moduleName    := "tasty-core",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
@@ -2582,7 +2582,7 @@ object Build {
     .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped-new`, `scala3-library-bootstrapped-new`)
     .settings(publishSettings)
     .settings(
-      name          := "scala3-compiler-bootstrapped",
+      name          := "scala3-compiler",
       moduleName    := "scala3-compiler",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
