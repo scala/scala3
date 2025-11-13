@@ -928,7 +928,10 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       val vdef1 =
         if sym.is(Inline) then
-          val rhs = typed(vdef.rhs)
+          val rhs =
+            typed(vdef.rhs) match
+              case ConstantValue(v) => Literal(Constant(v))
+              case rhs => rhs
           sym.info = rhs.tpe
           untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(rhs.tpe), untpd.TypedSplice(rhs))
         else vdef
