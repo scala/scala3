@@ -600,7 +600,7 @@ object Build {
     Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
     // force recompilation of bootstrapped modules when the compiler changes
     Compile / extraDevelocityCacheInputFiles ++=
-      (`scala3-compiler` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
+      (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
   )
 
   /*lazy val commonBenchmarkSettings = Seq(
@@ -989,26 +989,7 @@ object Build {
     (Test / javaOptions) += "-Xss2m"
   )
 
-  lazy val bootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    javaOptions ++= {
-      val jars = packageAll.value
-      Seq(
-        "-Ddotty.tests.classes.dottyStaging=" + jars("scala3-staging"),
-        "-Ddotty.tests.classes.dottyTastyInspector=" + jars("scala3-tasty-inspector"),
-      )
-    },
-    // For compatibility at this moment, both the bootstrapped and the non-bootstrapped
-    // compilers are compiled without flexible types.
-    // We should move the flag to commonDottyCompilerSettings once the reference
-    // compiler is updated.
-    // Then, the next step is to enable flexible types by default and reduce the use of
-    // `unsafeNulls`.
-    packageAll := {
-      (`scala3-compiler` / packageAll).value ++ Seq(
-        "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
-      )
-    },
-
+  lazy val bootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(    
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
   )
@@ -1016,12 +997,10 @@ object Build {
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
     if (mode == NonBootstrapped) nonBootstrappedDottyCompilerSettings else bootstrappedDottyCompilerSettings
 
-  lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
-
   lazy val Scala3CompilerCoursierTest = config("scala3CompilerCoursierTest") extend Test
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `scala3-compiler`
+    case NonBootstrapped => `scala3-compiler-nonbootstrapped`
     case Bootstrapped => `scala3-compiler-bootstrapped-new`
   }
 
@@ -2744,7 +2723,7 @@ object Build {
       javaOptions := (`scala3-compiler-bootstrapped-new` / javaOptions).value,
     ).
     settings(
-      ideTestsCompilerVersion := (`scala3-compiler` / version).value,
+      ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
       ideTestsCompilerArguments := Seq(),
       ideTestsDependencyClasspath := {
         val scalaLib = (`scala-library-bootstrapped` / Compile / classDirectory).value
@@ -3639,12 +3618,6 @@ object Build {
   }
 
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
-
-    def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(`scala3-interfaces`).
-      dependsOn(dottyLibrary).
-      dependsOn(tastyCore).
-      settings(dottyCompilerSettings)
 
     def asDottyLibrary(implicit mode: Mode): Project = {
       val base = project
