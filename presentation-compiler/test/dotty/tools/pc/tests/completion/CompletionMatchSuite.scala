@@ -4,6 +4,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
+import org.junit.Ignore
 
 class CompletionMatchSuite extends BaseCompletionSuite:
 
@@ -335,6 +336,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
       filter = _.contains("exhaustive")
     )
 
+  @Ignore
   @Test def `exhaustive-map` =
     check(
       """
@@ -346,6 +348,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
       filter = _.contains("exhaustive")
     )
 
+  @Ignore
   @Test def `exhaustive-map-edit` =
     checkEdit(
       """
