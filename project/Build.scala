@@ -1503,7 +1503,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`,
-      `scaladoc-new`, `scala3-repl`, `scala3-presentation-compiler`)
+      `scaladoc-new`, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -3001,7 +3001,7 @@ object Build {
     .settings(commonBootstrappedSettings)
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
-    dependsOn(dottyCompiler(Bootstrapped), `scala3-repl`).
+    dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-repl`).
     settings(commonBootstrappedSettings).
     settings(
       libraryDependencies ++= Seq(
@@ -3019,14 +3019,8 @@ object Build {
       ideTestsCompilerVersion := (`scala3-compiler` / version).value,
       ideTestsCompilerArguments := Seq(),
       ideTestsDependencyClasspath := {
-        val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
-        val scalaLib =
-          (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
-            .value
-            .map(_.data)
-            .filter(_.getName.matches("scala-library.*\\.jar"))
-            .toList
-        dottyLib :: scalaLib
+        val scalaLib = (`scala-library-bootstrapped` / Compile / classDirectory).value
+        scalaLib :: Nil
       },
       Test / buildInfoKeys := Seq[BuildInfoKey](
         ideTestsCompilerVersion,
