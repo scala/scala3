@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.4-RC2"
+  val referenceVersion = "3.7.4"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -456,7 +456,7 @@ object Build {
     import java.text._
     val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
     dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-    
+
     val fileName = "compiler.properties"
     val contents = Def.setting {
       s"""version.number=${version.value}
