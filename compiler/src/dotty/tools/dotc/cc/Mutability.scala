@@ -8,6 +8,7 @@ import Capabilities.*
 import util.SrcPos
 import config.Printers.capt
 import ast.tpd.Tree
+import typer.ProtoTypes.LhsProto
 
 /** Handling mutability and read-only access
  */
@@ -46,25 +47,28 @@ object Mutability:
   end Exclusivity
 
   extension (sym: Symbol)
-    /** An update method is either a method marked with `update` or
-     *  a setter of a non-transparent var.
+    /** An update method is either a method marked with `update` or a setter
+     *  of a field of a Mutable class that's not annotated with @uncheckedCaptures.
+     *  `update` is implicit for `consume` methods of Mutable classes.
      */
     def isUpdateMethod(using Context): Boolean =
       sym.isAllOf(Mutable | Method)
-        && (!sym.isSetter || sym.field.is(Transparent))
+        && (if sym.isSetter then
+              sym.owner.derivesFrom(defn.Caps_Mutable)
+              && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
+            else true
+           )
 
-    /** A read-only method is a real method (not an accessor) in a type extending
-     *  Mutable that is not an update method. Included are also lazy vals in such types.
-     */
-    def isReadOnlyMethodOrLazyVal(using Context): Boolean =
-      sym.isOneOf(MethodOrLazy, butNot = Mutable | Accessor)
-      && sym.owner.derivesFrom(defn.Caps_Mutable)
+    /** A read-only member is a lazy val or a method that is not an update method. */
+    def isReadOnlyMember(using Context): Boolean =
+      sym.isOneOf(MethodOrLazy) && !sym.isUpdateMethod
 
     private def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
       import Exclusivity.*
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
+      else if sym.isUpdateMethod then OK
       else if sym.owner == cls then
-        if sym.isUpdateMethod || sym.isConstructor then OK
+        if sym.isConstructor then OK
         else NotInUpdateMethod(sym, cls)
       else if sym.isStatic then OutsideClass(cls)
       else sym.owner.inExclusivePartOf(cls)
@@ -77,7 +81,7 @@ object Mutability:
       tp.derivesFrom(defn.Caps_Mutable)
       && tp.membersBasedOnFlags(Mutable, EmptyFlags).exists: mbr =>
         if mbr.symbol.is(Method) then mbr.symbol.isUpdateMethod
-        else !mbr.symbol.is(Transparent)
+        else !mbr.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
 
     /** OK, except if `tp` extends `Mutable` but `tp`'s capture set is non-exclusive */
     private def exclusivity(using Context): Exclusivity =
@@ -98,21 +102,30 @@ object Mutability:
       case _ =>
         tp.exclusivity
 
+    def expectsReadOnly(using Context): Boolean = tp match
+      case tp: PathSelectionProto =>
+        tp.selector.isReadOnlyMember || tp.selector.isMutableVar && tp.pt != LhsProto
+      case _ =>
+        tp.isValueType
+        && (!tp.isMutableType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
+
   extension (cs: CaptureSet)
     private def exclusivity(tp: Type)(using Context): Exclusivity =
       if cs.isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
 
   extension (ref: TermRef | ThisType)
     /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
-     *  following is true: it appears in a non-exclusive context, or the expected
-     *  type is a value type that is not a mutable type.
+     *  following is true:
+     *    - it appears in a non-exclusive context,
+     *    - the expected type is a value type that is not a mutable type,
+     *    - the expected type is a read-only selection
      */
-    def adjustReadOnly(pt: Type)(using Context): Capability =
+    def adjustReadOnly(pt: Type)(using Context): Capability = {
       if ref.derivesFromMutable
-          && (pt.isValueType && !pt.isMutableType
-              || ref.exclusivityInContext != Exclusivity.OK)
+          && (pt.expectsReadOnly || ref.exclusivityInContext != Exclusivity.OK)
       then ref.readOnly
       else ref
+    }.showing(i"Adjust RO $ref vs $pt = $result", capt)
 
   /** Check that we can call an update method of `qualType` or perform an assignment
    *  of a field of `qualType`.
@@ -142,7 +155,6 @@ object Mutability:
             && expected.isValueType
             && (!expected.derivesFromMutable || expected.captureSet.isAlwaysReadOnly)
             && !expected.isSingleton
-            && actual.isBoxedCapturing == expected.isBoxedCapturing
         then refs.readOnly
         else refs
       actual.derivedCapturingType(parent1, refs1)

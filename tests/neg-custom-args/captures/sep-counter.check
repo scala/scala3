@@ -6,7 +6,7 @@
    |Another part,  Ref^²,  captures capabilities  {c}.
    |The two sets overlap at  {c}.
    |
-   |where:    ^    refers to a fresh root capability classified as Mutable in the result type of method mkCounter
-   |          ^²   refers to a fresh root capability classified as Mutable in the result type of method mkCounter
+   |where:    ^    refers to a fresh root capability in the result type of method mkCounter
+   |          ^²   refers to a fresh root capability in the result type of method mkCounter
    |          cap  is a fresh root capability classified as Mutable in the type of value c
    |          cap² is a fresh root capability classified as Mutable created in value c when constructing instance Ref

@@ -862,7 +862,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
-            if refs1.isAlwaysEmpty then recur(tp1, parent2)
+            if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
+              recur(tp1, parent2)
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton
               // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
@@ -2913,8 +2914,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
     subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-        || refs1.subCaptures(CaptureSet.empty, makeVarState())
+    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
+        || refs1.subCaptures(CaptureSet.empty, makeVarState()))
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action

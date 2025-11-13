@@ -950,10 +950,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case c :: cs1 =>
         for c1 <- cs1 do
           if !c.derivesFrom(c1) && !c1.derivesFrom(c) then
-            report.error(i"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
+            report.error(em"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
         recur(cs1)
       case Nil =>
     recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
+    if cls.derivesFrom(defn.Caps_SharedCapability) && cls.derivesFrom(defn.Caps_Mutable) then
+      report.error(em"$cls cannot inheit from both SharaedCapability and Mutable", cls.srcPos)
 
   // ------ Checks to run after main capture checking --------------------------
 

@@ -4,7 +4,7 @@ import language.experimental.captureChecking
 class BadBuffer[T] extends Mutable:
   update def append(x: T): BadBuffer[T]^ = this // error
   def foo =
-    def bar: BadBuffer[T]^ = this // error
+    def bar: BadBuffer[T]^ = this // error // error separation
     bar
   update def updateFoo =
     def bar: BadBuffer[T]^ = this // error // error
@@ -12,6 +12,7 @@ class BadBuffer[T] extends Mutable:
 
 class Buffer[T] extends Mutable:
   consume def append(x: T): Buffer[T]^ = this // ok
+  def apply(i: Int): T = ???
 
 def app[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
   buf.append(elem)
@@ -49,3 +50,14 @@ def Test4(consume buf: Buffer[Int]^) =
 def Test5(consume buf: Buffer[Int]^) =
   while true do
     app(buf, 1)  // error
+
+def contents[T](consume buf: Buffer[T]): Int ->{buf.rd} T =
+  i => buf(i)
+
+def Test6 =
+  val buf = Buffer[String]()
+  val buf1 = app(buf, "hi") // buf unavailable from here
+  val c1 = contents(buf1)         // only buf.rd is consumed
+  val c2 = contents(buf1)         // buf.rd can be consumed repeatedly
+  val c3 = contents(buf)  // error
+
