@@ -1353,25 +1353,6 @@ extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
         |"""
 }
 
-class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
-extends TypeMsg(SkolemInInferredID):
-  def msg(using Context) =
-    def argStr =
-      if argument.isEmpty then ""
-      else i" from argument of type ${argument.tpe.widen}"
-    i"""Failure to generate given instance for type $pt$argStr)
-        |
-        |I found: $tree
-        |But the part corresponding to `<skolem>` is not a reference that can be generated.
-        |This might be because resolution yielded as given instance a function that is not
-        |known to be total and side-effect free."""
-  def explain(using Context) =
-    i"""The part of given resolution that corresponds to `<skolem>` produced a term that
-        |is not a stable reference. Therefore a given instance could not be generated.
-        |
-        |To trouble-shoot the problem, try to supply an explicit expression instead of
-        |relying on implicit search at this point."""
-
 class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using Context)
 extends ReferenceMsg(SuperQualMustBeParentID) {
   def msg(using Context) = i"""|$qual does not name a parent of $cls"""

@@ -1082,18 +1082,6 @@ trait Implicits:
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
 
-  object hasSkolem extends TreeAccumulator[Boolean]:
-    def apply(x: Boolean, tree: Tree)(using Context): Boolean =
-      x || {
-        tree match
-          case tree: Ident => tree.symbol.isSkolem
-          case Select(qual, _) => apply(x, qual)
-          case Apply(fn, _) => apply(x, fn)
-          case TypeApply(fn, _) => apply(x, fn)
-          case _: This => false
-          case _ => foldOver(x, tree)
-      }
-
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
    *  @param argument        If an implicit conversion is searched, the argument to which
@@ -1141,8 +1129,6 @@ trait Implicits:
               result.tstate.commit()
             if result.gstate ne ctx.gadt then
               ctx.gadtState.restore(result.gstate)
-            if hasSkolem(false, result.tree) then
-              report.error(SkolemInInferred(result.tree, pt, argument), ctx.source.atSpan(span))
             implicits.println(i"success: $result")
             implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
             result
