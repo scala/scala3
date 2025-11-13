@@ -105,7 +105,9 @@ object Mutability:
     def expectsReadOnly(using Context): Boolean = tp match
       case tp: PathSelectionProto =>
         tp.selector.isReadOnlyMember || tp.selector.isMutableVar && tp.pt != LhsProto
-      case _ => tp.isValueType && !tp.isMutableType
+      case _ =>
+        tp.isValueType
+        && (!tp.isMutableType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
 
   extension (cs: CaptureSet)
     private def exclusivity(tp: Type)(using Context): Exclusivity =
@@ -118,11 +120,12 @@ object Mutability:
      *    - the expected type is a value type that is not a mutable type,
      *    - the expected type is a read-only selection
      */
-    def adjustReadOnly(pt: Type)(using Context): Capability =
+    def adjustReadOnly(pt: Type)(using Context): Capability = {
       if ref.derivesFromMutable
           && (pt.expectsReadOnly || ref.exclusivityInContext != Exclusivity.OK)
       then ref.readOnly
       else ref
+    }.showing(i"Adjust RO $ref vs $pt = $result", capt)
 
   /** Check that we can call an update method of `qualType` or perform an assignment
    *  of a field of `qualType`.

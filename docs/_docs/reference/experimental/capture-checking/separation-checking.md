@@ -188,6 +188,38 @@ def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
 ```
 `linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `consume` modifier on `buf` ensures that the argument is not used after the call.
 
+### Consume Parameters and Read Accesses
+
+A good way to conceptualize consume is to that it reserves the passed capability beyond the call with the consume parameter. In the previous `Buffer` example, if we do
+```scala
+  val buf1 = linearAdd(buf, elem)
+```
+then the exclusive `buf` capability is reserved and therefore no further accesses to `buf` are possible. This means that `linearAdd` can safely overwrite `buf` by appending `elem` to it.
+
+By the same token, when we pass a read-only capability to a consume parameter, it is
+only this capability that is reserved beyond the call. For instance, here is a
+method that consumes a read-only buffer:
+```scala
+def contents[T](consume buf: Buffer[T]): Int ->{buf.rd} T =
+  i => buf(i)
+```
+The `contents` method takes a read-only buffer and turns it into a function that
+produces for each valid index the element of the buffer at that index. Passing a
+buffer to `contents` effectively freezes it: Since `buf.rd` is reserved, we cannot
+use the exclusive `buf` capability beyond the point of call, so no further appends
+are possible. On the other hand, it is possible to read the buffer, and it is also possible
+to consume that read capability again in further calls:
+```scala
+val buf = Buffer[String]()
+val buf1 = linearAdd(buf, "hi") // buf unavailable from here
+val c1 = contents(buf1)         // only buf.rd is consumed
+val c2 = contents(buf1)         // buf.rd can be consumed repeatedly
+```
+Note that the only difference between `linearAdd` and `contents` is that `linearAdd`'s consume parameter has type `Buffer[T]^` whereas the
+corresponding parameter in `contents` has type `Buffer[T]`. The first type expands
+to `Buffer[T]^{cap}` whereas the second expands to `Buffer[T]^{cap.rd}`.
+
+
 ### Consume Methods
 
 Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `consume` modifier to the method itself.
