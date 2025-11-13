@@ -944,7 +944,7 @@ class CompletionTest {
     code"""object A {
           |  Array.concat${m1}
           |}"""
-      .completion(("concat", Method, "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"))
+      .completion(("concat", Method, "[T](xss: Array[T]*)(using evidence$1: scala.reflect.ClassTag[T]): Array[T]"))
   }
 
   @Test def i12465_hkt: Unit =
