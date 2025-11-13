@@ -1015,7 +1015,6 @@ object Build {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
         "scala3-staging"  -> (LocalProject("scala3-staging") / Compile / packageBin).value.getAbsolutePath,
-        "scala3-tasty-inspector"  -> (LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.getAbsolutePath,
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
     },
@@ -2876,16 +2875,6 @@ object Build {
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
 
-  lazy val `scala3-tasty-inspector` = project.in(file("tasty-inspector")).
-    withCommonSettings(Bootstrapped).
-    // We want the compiler to be present in the compiler classpath when compiling this project but not
-    // when compiling a project that depends on scala3-tasty-inspector (see sbt-test/sbt-dotty/tasty-inspector-example-project),
-    // but we always need it to be present on the JVM classpath at runtime.
-    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
-    )
-
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
     .withCommonSettings(Bootstrapped)
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-library-bootstrapped-new`, `scala3-presentation-compiler-testcases` % "test->test")
@@ -3440,7 +3429,7 @@ object Build {
     configs(SourceLinksIntegrationTest).
     settings(commonBootstrappedSettings).
     dependsOn(`scala3-compiler-bootstrapped`).
-    dependsOn(`scala3-tasty-inspector`).
+    dependsOn(`scala3-tasty-inspector-new`).
     settings(inConfig(SourceLinksIntegrationTest)(Defaults.testSettings)).
     settings(
       SourceLinksIntegrationTest / scalaSource := baseDirectory.value / "test-source-links",
@@ -3878,8 +3867,8 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore).
-      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`,
-        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
+      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, 
+        `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).

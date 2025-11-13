@@ -21,7 +21,6 @@ val `scala3-sbt-bridge-bootstrapped` = Build.`scala3-sbt-bridge-bootstrapped`
 val `scala3-sbt-bridge-nonbootstrapped` = Build.`scala3-sbt-bridge-nonbootstrapped`
 val `scala3-staging` = Build.`scala3-staging`
 val `scala3-staging-new` = Build.`scala3-staging-new`
-val `scala3-tasty-inspector` = Build.`scala3-tasty-inspector`
 val `scala3-tasty-inspector-new` = Build.`scala3-tasty-inspector-new`
 val `scala3-language-server` = Build.`scala3-language-server`
 //val `scala3-bench` = Build.`scala3-bench`
