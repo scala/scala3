@@ -662,7 +662,7 @@ object Build {
 
   /** Projects -------------------------------------------------------------- */
 
-  val dottyCompilerBootstrappedRef = LocalProject("scala3-compiler-bootstrapped")
+  val dottyCompilerBootstrappedRef = LocalProject("scala3-compiler-bootstrapped-new")
 
   /** External dependencies we may want to put on the compiler classpath. */
   def externalCompilerClasspathTask: Def.Initialize[Task[Def.Classpath]] =
@@ -1058,26 +1058,10 @@ object Build {
   lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
 
   lazy val Scala3CompilerCoursierTest = config("scala3CompilerCoursierTest") extend Test
-  lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
-    .configs(Scala3CompilerCoursierTest)
-    .settings(
-      inConfig(Scala3CompilerCoursierTest)(Defaults.testSettings),
-      Scala3CompilerCoursierTest / scalaSource := baseDirectory.value / "test-coursier",
-      Scala3CompilerCoursierTest / fork := true,
-      Scala3CompilerCoursierTest / envVars := Map("DOTTY_BOOTSTRAPPED_VERSION" -> dottyVersion),
-      Scala3CompilerCoursierTest / unmanagedClasspath += (Scala3CompilerCoursierTest / scalaSource).value,
-      Scala3CompilerCoursierTest / test := ((Scala3CompilerCoursierTest / test) dependsOn (
-          publishLocal, // Had to enumarate all deps since calling `scala3-bootstrap` / publishLocal will lead to recursive dependency => stack overflow
-          `scala3-interfaces` / publishLocal,
-          dottyLibrary(Bootstrapped) / publishLocal,
-          tastyCore(Bootstrapped) / publishLocal,
-        ),
-      ).value,
-    )
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-compiler`
-    case Bootstrapped => `scala3-compiler-bootstrapped`
+    case Bootstrapped => `scala3-compiler-bootstrapped-new`
   }
 
   // Settings shared between scala3-library, scala3-library-bootstrapped and scala3-library-bootstrappedJS
@@ -2993,7 +2977,7 @@ object Build {
   }
 
   lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
-    .dependsOn(`scala3-compiler-bootstrapped`)
+    .dependsOn(`scala3-compiler-bootstrapped-new`)
     .settings(commonBootstrappedSettings)
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
@@ -3009,7 +2993,7 @@ object Build {
       // Exclude the dependency that is resolved transively, the stdlib
       // is a project dependency instead
       excludeDependencies += "org.scala-lang" %% "scala3-library",
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
+      javaOptions := (`scala3-compiler-bootstrapped-new` / javaOptions).value,
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler` / version).value,
@@ -3392,7 +3376,7 @@ object Build {
   val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
-    dependsOn(`scala3-compiler-bootstrapped`).
+    dependsOn(`scala3-compiler-bootstrapped-new`).
     settings(commonBootstrappedSettings)
 
 
@@ -3472,7 +3456,7 @@ object Build {
   lazy val scaladoc = project.in(file("scaladoc")).
     configs(SourceLinksIntegrationTest).
     settings(commonBootstrappedSettings).
-    dependsOn(`scala3-compiler-bootstrapped`).
+    dependsOn(`scala3-compiler-bootstrapped-new`).
     dependsOn(`scala3-tasty-inspector-new`).
     settings(inConfig(SourceLinksIntegrationTest)(Defaults.testSettings)).
     settings(
@@ -3929,7 +3913,6 @@ object Build {
         // non-bootstrapped compiler), so publish the bootstrapped one by
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
-        repl := (`scala3-compiler-bootstrapped` / repl).value,
         buildQuick := {
           val _ = (`scala3-compiler` / Compile / compile).value
           val cp = (`scala3-compiler` / Compile / fullClasspath).value.map(_.data.getAbsolutePath).mkString(File.pathSeparator)
