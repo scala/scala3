@@ -600,11 +600,18 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           // Check if this class has any consume fields
           val hasConsumeFields = cls.info.decls.exists(m => m.isConsumeParam && m.isTerm)
           if hasConsumeFields then
+            // Use the capture set of the widened type
+            val captureSet = ref.widen.captureSet.elems
             // Use the capture set of the reference itself (e.g., {a} for holder.a : A^{a})
             // Return both the capabilities in the capture set AND what they transitively consume
-            var result = ref.widen.captureSet.elems
-            for cap <- ref.widen.captureSet.elems do
-              result = result ++ consumedByPath(cap)
+            var result = emptyRefs
+            for cap <- captureSet do
+              // Stop at cap - don't include fresh root capabilities
+              cap match
+                case _: RootCapability => // Skip
+                case _ =>
+                  result = result + cap
+                  result = result ++ consumedByPath(cap)
             result
           else
             emptyRefs
@@ -659,7 +666,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           val pathConsumed = consumedByPath(ref)
 
           // Check if any capability consumed by the path was consumed at position `pos`.
-          val shouldExempt = pathConsumed.exists(consumed.get(_) == pos)
+          // We need to check both the capability and its reach, since consumed might store the reach version.
+          val shouldExempt = pathConsumed.exists { cap =>
+            if consumed.get(cap) == pos then
+              true
+            else cap match
+              case _: RootCapability => false // RootCapability.reach is unsupported
+              case _ => consumed.get(cap.reach) == pos
+          }
 
           if !shouldExempt then
             consumeError(ref, pos, tree.srcPos)
