@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/i24309a.scala:4:34 ------------------------------------------------------------
+4 |def runOps2[C^](): Unit = runOps[{C}](???)  // error
+  |                                  ^
+  |                                  Capture set parameter C leaks into capture scope of method runOps2.
