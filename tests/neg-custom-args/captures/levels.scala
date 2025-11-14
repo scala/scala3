@@ -14,7 +14,7 @@ def test2(cap1: CC^) =
     def setV(x: T): Unit = v = x
     def getV: T = v
 
-  val _ = Ref[String => String]((x: String) => x) // error
+  val _ = Ref[String => String]((x: String) => x)
   val r = Ref((x: String) => x)
 
   def scope(cap3: CC^) =

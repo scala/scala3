@@ -144,6 +144,8 @@ class Objects(using Context @constructorOnly):
 
     def isObjectRef: Boolean = this.isInstanceOf[ObjectRef]
 
+    def asObjectRef: ObjectRef = this.asInstanceOf[ObjectRef]
+
     def valValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readVal(this, sym)
 
     def varValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readVal(this, sym)
@@ -178,6 +180,12 @@ class Objects(using Context @constructorOnly):
 
   /** A reference to a static object */
   case class ObjectRef private (klass: ClassSymbol)(using Trace) extends Ref:
+    var afterSuperCall = false
+
+    def isAfterSuperCall = afterSuperCall
+
+    def setAfterSuperCall(): Unit = afterSuperCall = true
+
     def owner = klass
 
     def show(using Context) = "ObjectRef(" + klass.show + ")"
@@ -1447,9 +1455,15 @@ class Objects(using Context @constructorOnly):
   /** Check an individual object */
   private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace, Heap.MutableData, EnvMap.EnvMapMutableData): ObjectRef = log("accessing " + classSym.show, printer, (_: Value).show) {
     if classSym.hasSource then
-      State.checkObjectAccess(classSym)
+      val obj = State.checkObjectAccess(classSym)
+      if !obj.isAfterSuperCall then
+        report.warning("Accessing " + obj.klass + " before the super constructor of the object finishes! " + Trace.show, Trace.position)
+      end if
+      obj
     else
-      ObjectRef(classSym)
+      val obj = ObjectRef(classSym)
+      obj.setAfterSuperCall()
+      obj
   }
 
 
@@ -2110,6 +2124,10 @@ class Objects(using Context @constructorOnly):
 
       // initialize super classes after outers are set
       tasks.foreach(task => task())
+    end if
+
+    if thisV.isInstanceOf[ObjectRef] && klass == thisV.klass then
+      thisV.asObjectRef.setAfterSuperCall()
     end if
 
     // class body

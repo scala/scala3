@@ -122,8 +122,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/Option.apply().
-         |apply[A](x: A): Option[A]
-         |         ^^^^
+         |apply[A](x: A | Null): Option[A]
+         |         ^^^^^^^^^^^
          |  @param x Found documentation for param x
          |""".stripMargin
     )

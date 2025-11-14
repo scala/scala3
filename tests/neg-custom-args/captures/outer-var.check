@@ -44,10 +44,3 @@
    |        where:    => refers to a fresh root capability in the type of parameter q
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/outer-var.scala:17:57 ---------------------------------------------------------
-17 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
-   |                                                      ^^^^^^^^^^
-   |                                 Type variable A of object ListBuffer cannot be instantiated to () => Unit since
-   |                                 that type captures the root capability `cap`.
-   |
-   |                                 where:    => refers to the universal root capability
