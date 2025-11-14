@@ -13,7 +13,7 @@
   |
   |Note that capability cap is not included in capture set {Iterator.this, f}.
   |
-  |where:    cap is a fresh root capability classified as Mutable created in method map when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
+  |where:    cap is a fresh root capability created in method map when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-iterator4.scala:23:34 --------------------------------
@@ -24,6 +24,6 @@
    |
    |Note that capability cap is not included in capture set {it, f}.
    |
-   |where:    cap is a fresh root capability classified as Mutable created in method mappedIterator when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
+   |where:    cap is a fresh root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
    |
    | longer explanation available when compiling with `-explain`

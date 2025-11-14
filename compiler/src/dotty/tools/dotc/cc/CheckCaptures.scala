@@ -971,7 +971,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               .getOrElse(cls, cls.info.decls.toList)           // pick all symbols in class scope for other classes
               .flatMap(classifiersOfFreshInType)
           if cls.typeRef.isMutableType then
-            fieldClassifiers = defn.Caps_Mutable :: fieldClassifiers
+            fieldClassifiers = cls.classifier :: fieldClassifiers
           val parentClassifiers =
             cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
           if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
