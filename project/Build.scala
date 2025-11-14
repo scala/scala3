@@ -516,6 +516,34 @@ object Build {
     enableBspAllProjectsFile.exists()
   }
 
+  // Setups up doc / scalaInstance to use in the bootstrapped projects instead of the default one
+  lazy val scaladocDerivedInstanceSettings = Def.settings(
+    // We cannot include scaladoc in the regular `scalaInstance` task because
+    // it's a bootstrapped-only project, so we would run into a loop since we
+    // need the output of that task to compile scaladoc. But we can include it
+    // in the `scalaInstance` of the `doc` task which allows us to run
+    // `scala3-library-bootstrapped/doc` for example.
+    doc / scalaInstance := {
+      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
+      val docJars = Array(scalaDoc) ++ externalDeps
+
+      val base = scalaInstance.value
+      val docScalaInstance = Defaults.makeScalaInstance(
+        version = base.version,
+        libraryJars = base.libraryJars,
+        allCompilerJars = base.compilerJars,
+        allDocJars = docJars,
+        state.value,
+        scalaInstanceTopLoader.value
+      )
+      // assert that sbt reuses the same compiler class loader
+      assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
+      docScalaInstance
+    },
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
+  )
+
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
     // To enable support of scaladoc and language-server projects you need to change this to true
@@ -1647,7 +1675,7 @@ object Build {
         ),
       // Packaging configuration of `scala3-sbt-bridge`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1679,6 +1707,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1709,7 +1738,7 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1737,6 +1766,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1767,7 +1797,7 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1795,6 +1825,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1823,7 +1854,7 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1860,6 +1891,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -2025,7 +2057,7 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2058,6 +2090,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -2157,7 +2190,7 @@ object Build {
       Compile / scalacOptions += "-scalajs",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2218,6 +2251,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -2381,7 +2415,7 @@ object Build {
       ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2412,6 +2446,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -2617,7 +2652,7 @@ object Build {
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2651,6 +2686,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -2771,7 +2807,7 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2784,6 +2820,7 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoDefaultSettings,
       // Configure to use the non-bootstrapped compiler
+      scaladocDerivedInstanceSettings,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
