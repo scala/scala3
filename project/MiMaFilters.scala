@@ -590,6 +590,26 @@ object MiMaFilters {
     )
   }
 
+  object ScalaLibrarySJS {
+    val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      // Additions that require a new minor version of the library
+      Build.mimaPreviousDottyVersion -> Seq(
+        // No .class files generated in the artifacts, only `scala.scalajs.*` files might be present
+        ProblemFilters.exclude[MissingClassProblem]("scala.*"),
+      ),
+      Build.mimaPreviousLTSDottyVersion -> Seq(
+        // No .class files generated in the artifacts, only `scala.scalajs.*` files might be present
+        ProblemFilters.exclude[MissingClassProblem]("scala.*"),
+      ),
+    )
+
+    val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      // We should never break backwards compatibility
+      Build.mimaPreviousDottyVersion -> Seq.empty,
+      Build.mimaPreviousLTSDottyVersion -> Seq.empty,
+    )
+  }
+
   object TastyCore {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core

@@ -2223,9 +2223,9 @@ object Build {
       },
       // Add configuration for MiMa
       commonMiMaSettings,
-      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      mimaForwardIssueFilters := MiMaFilters.ScalaLibrarySJS.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.ScalaLibrarySJS.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.ScalaLibrarySJS"),
       // Should we also patch .sjsir files
       keepSJSIR := true,
     )
