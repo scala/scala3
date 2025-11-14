@@ -1,3 +1,5 @@
+import language.experimental.captureChecking
+import language.experimental.separationChecking
 import caps.cap
 
 class B
@@ -18,6 +20,7 @@ def Test =
   println(b) // error
   println(a1) // error, since `b` was consumed before
   println(a2) // OK since b belongs to a2
+  println(a2.b) // OK since b belongs to a2
 
 def Test2 =
   val b: B^ = B()
