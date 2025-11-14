@@ -216,6 +216,9 @@ object Phases {
       else
         this.fusedPhases = this.phases
 
+      if myCheckCapturesPhase.exists then
+        myCheckCapturesPhaseId = myCheckCapturesPhase.id
+
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
@@ -257,6 +260,10 @@ object Phases {
     private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
 
+    private var myCheckCapturesPhaseId: Int = -2
+      // -1 means undefined, 0 means NoPhase, we make sure that we don't get a false hit
+      // if ctx.phaseId is either of these.
+
     final def parserPhase: Phase = myParserPhase
     final def typerPhase: Phase = myTyperPhase
     final def postTyperPhase: Phase = myPostTyperPhase
@@ -285,6 +292,7 @@ object Phases {
     final def flattenPhase: Phase = myFlattenPhase
     final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
+    final def checkCapturesPhaseId: Int = myCheckCapturesPhaseId
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -570,6 +578,7 @@ object Phases {
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
+  def checkCapturesPhaseId(using Context): Int          = ctx.base.checkCapturesPhaseId
 
   def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
 
