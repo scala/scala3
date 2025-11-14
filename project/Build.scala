@@ -1889,6 +1889,15 @@ object Build {
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
+      run / fork := true,
+      excludeDependencies += "org.scala-lang" %% "scala3-library",
+      excludeDependencies += "org.scala-lang" % "scala-library",
+      Compile / run := {
+        //val classpath = s"-classpath ${(`scala-library-bootstrapped` / Compile / packageBin).value}"
+        // TODO: We should use the val above instead of `-usejavacp` below. SBT crashes we we have a val and we call toTask
+        // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
+        (Compile / run).toTask(" -usejavacp").value
+      },
     )
 
   // ==============================================================================================
