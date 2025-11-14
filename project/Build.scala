@@ -138,7 +138,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.7.3" // for 3.8.0, we compare against 3.7.3
+  val mimaPreviousDottyVersion = "3.8.0-RC1" // temporary until 3.8.0 is released
 
   /** LTS version against which we check binary compatibility.
    *
@@ -309,7 +309,6 @@ object Build {
     Test / develocityBuildCacheClient := None,
     extraDevelocityCacheInputFiles := Seq.empty,
     extraDevelocityCacheInputFiles / outputFileStamper := FileStamper.Hash,
-    resolvers += ("Artifactory" at "https://repo.scala-lang.org/artifactory/fat-jar/"),
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -1936,12 +1935,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
       // Add configuration for MiMa
-      mimaCheckDirection := (compatMode match {
-        case CompatMode.BinaryCompatible          => "backward"
-        case CompatMode.SourceAndBinaryCompatible => "both"
-      }),
-      mimaExcludeAnnotations += "scala.annotation.experimental",
-      mimaPreviousArtifacts += ("org.scala-lang" % "fat-stdlib" % "3.7.3"),
+      commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
@@ -2063,12 +2057,7 @@ object Build {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
       // Add configuration for MiMa
-      mimaCheckDirection := (compatMode match {
-        case CompatMode.BinaryCompatible          => "backward"
-        case CompatMode.SourceAndBinaryCompatible => "both"
-      }),
-      mimaExcludeAnnotations += "scala.annotation.experimental",
-      mimaPreviousArtifacts += ("org.scala-lang" % "fat-stdlib" % "3.7.3"),
+      commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
@@ -2233,12 +2222,7 @@ object Build {
       }).transform(node).head
       },
       // Add configuration for MiMa
-      mimaCheckDirection := (compatMode match {
-        case CompatMode.BinaryCompatible          => "backward"
-        case CompatMode.SourceAndBinaryCompatible => "both"
-      }),
-      mimaExcludeAnnotations += "scala.annotation.experimental",
-      mimaPreviousArtifacts += ("org.scala-js" % "fat-stdlib_sjs1" % "3.7.3"),
+      commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
