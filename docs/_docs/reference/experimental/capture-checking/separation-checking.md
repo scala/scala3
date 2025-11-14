@@ -195,7 +195,7 @@ Buffers in Scala's standard library use a single-argument method `+=` instead of
 class Buffer[T] extends Mutable:
   consume def +=(x: T): Buffer[T]^ = this // ok
 ```
-`consume` on a method implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
+`consume` on a method in a `Mutable` class implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
 ```scala
 val b = Buffer[Int]() += 1 += 2
 val c = b += 3
