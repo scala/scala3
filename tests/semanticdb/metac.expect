@@ -3838,7 +3838,7 @@ Language => Scala
 Symbols => 62 entries
 Occurrences => 165 entries
 Diagnostics => 4 entries
-Synthetics => 48 entries
+Synthetics => 42 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
@@ -3939,23 +3939,23 @@ Occurrences:
 [17:24..17:32): LazyList -> scala/package.LazyList.
 [17:33..17:38): empty -> scala/collection/immutable/LazyList.empty().
 [19:7..19:8): x <- local0
-[19:14..19:16): to -> scala/runtime/RichInt#to().
+[19:14..19:16): to -> scala/Int.to().
 [19:21..19:22): y <- local1
-[19:28..19:33): until -> scala/runtime/RichInt#until().
+[19:28..19:33): until -> scala/Int.until().
 [19:38..19:45): println -> scala/Predef.println(+1).
 [19:46..19:47): x -> local0
 [19:48..19:50): -> -> scala/Predef.ArrowAssoc#`->`().
 [19:51..19:52): x -> local0
 [20:7..20:8): i <- local2
-[20:14..20:16): to -> scala/runtime/RichInt#to().
+[20:14..20:16): to -> scala/Int.to().
 [20:21..20:22): j <- local3
-[20:28..20:33): until -> scala/runtime/RichInt#until().
+[20:28..20:33): until -> scala/Int.until().
 [20:45..20:46): i -> local2
 [20:48..20:49): j -> local3
 [21:7..21:8): i <- local4
-[21:14..21:16): to -> scala/runtime/RichInt#to().
+[21:14..21:16): to -> scala/Int.to().
 [21:21..21:22): j <- local5
-[21:28..21:33): until -> scala/runtime/RichInt#until().
+[21:28..21:33): until -> scala/Int.until().
 [21:40..21:41): i -> local4
 [21:42..21:43): % -> scala/Int#`%`(+3).
 [21:46..21:48): == -> scala/Int#`==`(+3).
@@ -4102,15 +4102,9 @@ Synthetics:
 [17:20..17:38):#:: LazyList.empty => *[Int]
 [17:24..17:38):LazyList.empty => toDeferrer[Nothing](*)
 [17:24..17:38):LazyList.empty => *[Nothing]
-[19:12..19:13):1 => intWrapper(*)
-[19:26..19:27):0 => intWrapper(*)
 [19:46..19:50):x -> => *[Int]
 [19:46..19:47):x => ArrowAssoc[Int](*)
-[20:12..20:13):1 => intWrapper(*)
-[20:26..20:27):0 => intWrapper(*)
 [20:44..20:50):(i, j) => Tuple2.apply[Int, Int](*)
-[21:12..21:13):1 => intWrapper(*)
-[21:26..21:27):0 => intWrapper(*)
 [21:58..21:64):(i, j) => Tuple2.apply[Int, Int](*)
 [25:4..25:7):s() => apply(*)
 [28:4..28:9):Bar() => apply(*)
@@ -6004,7 +5998,7 @@ Text => empty
 Language => Scala
 Symbols => 18 entries
 Occurrences => 43 entries
-Synthetics => 2 entries
+Synthetics => 1 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
@@ -6055,7 +6049,7 @@ Occurrences:
 [5:20..5:25): times <- _empty_/toplevel$package.MyProgram().(times)
 [5:27..5:30): Int -> scala/Int#
 [5:33..5:37): Unit -> scala/Unit#
-[5:43..5:45): to -> scala/runtime/RichInt#to().
+[5:43..5:45): to -> scala/Int.to().
 [5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
 [5:67..5:74): println -> scala/Predef.println(+1).
@@ -6073,5 +6067,4 @@ Occurrences:
 
 Synthetics:
 [5:40..5:60):(1 to times) foreach => *[Unit]
-[5:41..5:42):1 => intWrapper(*)
 
