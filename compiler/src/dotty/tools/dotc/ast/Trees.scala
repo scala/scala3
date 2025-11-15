@@ -323,6 +323,8 @@ object Trees {
 
     import WithEndMarker.*
 
+    /** The span of the name in the end marker, or `NoSpan` if none.
+     */
     final def endSpan(using Context): Span =
       if hasEndMarker then
         val realName = srcName.stripModuleClassSuffix.lastPart
@@ -333,8 +335,8 @@ object Trees {
     /** The name in source code that represents this construct,
      *  and is the name that the user must write to create a valid
      *  end marker.
-     *  e.g. a constructor definition is terminated in the source
-     *  code by `end this`, so it's `srcName` should return `this`.
+     *  E.g., a constructor definition is terminated in the source
+     *  code by `end this`, so its `srcName` should return `this`.
      */
     protected def srcName(using Context): Name
 
