@@ -210,6 +210,7 @@ class TabcompleteTests extends ReplTest {
   @Test def commands = initially {
     assertEquals(
       List(
+        ":dep",
         ":doc",
         ":exit",
         ":help",
@@ -232,7 +233,7 @@ class TabcompleteTests extends ReplTest {
   @Test def commandPreface = initially {
     // This looks odd, but if we return :doc here it will result in ::doc in the REPL
     assertEquals(
-      List(":doc"),
+      List(":dep", ":doc"),
       tabComplete(":d")
     )
   }

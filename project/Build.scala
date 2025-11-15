@@ -1870,6 +1870,8 @@ object Build {
         "com.lihaoyi" %% "fansi"      % "0.5.1",
         "com.lihaoyi" %% "sourcecode" % "0.4.4",
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "io.get-coursier" % "interface" % "1.0.28", // used by the REPL for dependency resolution
+        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
       scalaInstance := {
