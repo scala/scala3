@@ -1050,6 +1050,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     private def shouldStripAscription(tree: Typed)(using Context): Boolean =
       val exprTp = tree.expr.tpe
       tree.hasAttachment(PrepareInlineable.InlineResultAscription)
+      && enclosingInlineds.size > 1
       && exprTp.exists
       && !exprTp.widen.isRef(defn.NothingClass)
       && !exprTp.widen.isRef(defn.NullClass)
