@@ -92,6 +92,12 @@ object Settings:
     */
   type SettingDependencies = List[(Setting[?], Any)]
 
+  case class SettingAlias(name: String, deprecation: Option[Deprecation])
+  object SettingAlias:
+    given Conversion[String, SettingAlias] = SettingAlias(_, None)
+    def apply(name: String): SettingAlias = SettingAlias(name, None)
+    def apply(name: String, deprecation: Deprecation): SettingAlias = SettingAlias(name, Some(deprecation))
+
   case class Setting[T] private[Settings] (
     category: SettingCategory,
     name: String,
@@ -100,21 +106,23 @@ object Settings:
     helpArg: String = "",
     choices: Option[Seq[?]] = None,
     prefix: Option[String] = None,
-    aliases: List[String] = Nil,
+    aliases: List[SettingAlias] = Nil,
     depends: SettingDependencies = Nil,
     ignoreInvalidArgs: Boolean = false,
     preferPrevious: Boolean = false,
     propertyClass: Option[Class[?]] = None,
     deprecation: Option[Deprecation] = None,
-    deprecatedAliases: List[(String, Deprecation)] = Nil,
     // kept only for -Xkind-projector option compatibility
     legacyArgs: Boolean = false,
     // accept legacy choices (for example, valid in Scala 2 but no longer supported)
     legacyChoices: Option[Seq[?]] = None)(private[Settings] val idx: Int)(using ct: ClassTag[T]):
 
     validateSettingString(prefix.getOrElse(name))
-    aliases.foreach(validateSettingString)
-    deprecatedAliases.foreach((alias, _) => validateSettingString(alias))
+    for alias <- aliases do
+      validateSettingString(alias.name)
+      val msg = "An alias is only \"replaced by\" its primary setting; its deprecation can have only a custom message."
+      for dep <- alias.deprecation do
+        assert(!dep.replacedBy.isDefined, msg)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     validateSettingTag(ct)
@@ -123,7 +131,7 @@ object Settings:
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
-    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases ::: deprecatedAliases.map(_._1)
+    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
 
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
@@ -163,18 +171,31 @@ object Settings:
        *  @return updated argument state
        */
       def update(value: => Any, altArg: String, args: List[String])(using ArgsSummary): ArgsSummary =
-        deprecation match
-        case Some(Deprecation(msg, Some(replacedBy))) =>
-          val deprecatedMsg = s"Option $name is deprecated: $msg"
-          val altArg1 =
-            if altArg.isEmpty then List(replacedBy)
-            else List(s"$replacedBy:$altArg")
-          state.deprecated(deprecatedMsg, altArg1, args) // retry with reconstructed arg
-        case Some(Deprecation(msg, _)) =>
-          state.updated(updateIn(sstate, value), args) // allow but warn
-            .warn(s"Option $name is deprecated: $msg")
-        case None =>
-          state.updated(updateIn(sstate, value), args)
+        def checkDeprecatedAlias()(using ArgsSummary) =
+          val name = arg.takeWhile(_ != ':')
+          aliases.find(alt => alt.name == name && alt.deprecation.isDefined)
+          .map:
+            case SettingAlias(alt, dep) =>
+              val msg =
+                dep.collect:
+                  case dep if dep.msg.nonEmpty => dep.msg
+                .getOrElse(s"use ${this.name} instead")
+              state.warn(s"Option $alt is a deprecated alias: $msg", args)
+          .getOrElse(state)
+        def doUpdate(using ArgsSummary) =
+          deprecation match
+          case Some(Deprecation(msg, Some(replacedBy))) =>
+            val deprecatedMsg = s"Option $name is deprecated: $msg"
+            val altArg1 =
+              if altArg.isEmpty then List(replacedBy)
+              else List(s"$replacedBy:$altArg")
+            state.deprecated(deprecatedMsg, altArg1, args) // retry with reconstructed arg
+          case Some(Deprecation(msg, _)) =>
+            state.updated(updateIn(sstate, value), args) // allow but warn
+              .warn(s"Option $name is deprecated: $msg")
+          case None =>
+            state.updated(updateIn(sstate, value), args)
+        doUpdate(using checkDeprecatedAlias())
       end update
 
       def setBoolean(argValue: String, args: List[String])(using ArgsSummary) =
@@ -293,25 +314,19 @@ object Settings:
         val name = arg.takeWhile(_ != ':')
         allFullNames.exists(_ == name) || prefix.exists(arg.startsWith)
 
-      def checkDeprecatedAlias()(using ArgsSummary) =
-        val name = arg.takeWhile(_ != ':')
-        val found = deprecatedAliases.find((alt, _) => alt == name)
-        found.map: (alt, dep) =>
-          val msg = if dep.msg.nonEmpty then dep.msg else s"use ${this.name} instead"
-          state.warn(s"Option $alt is a deprecated alias: $msg", args)
-        .getOrElse(state)
-
       if matches then
-        val checked = checkDeprecatedAlias()(using state0)
-        given ArgsSummary = checked
+        given ArgsSummary = state0
         deprecation match
         case Some(Deprecation(msg, _)) if ignoreInvalidArgs => // a special case for Xlint
           state.warn(s"Option $name is deprecated: $msg", args)
         case _ =>
           prefix match
           case Some(prefix) =>
-            // todo an error if empty suffix
-            doSet(arg.drop(prefix.length), useArg = true)
+            val value = arg.drop(prefix.length)
+            if value.isEmpty then
+              state.warn(s"Option $name requires a suffix: $arg", args)
+            else
+              doSet(value, useArg = true)
           case none =>
             val split = arg.split(":", 2)
             if split.length == 1 then
@@ -437,38 +452,38 @@ object Settings:
       assert(!name.startsWith("-"), s"Setting $name cannot start with -")
       "-" + name
 
-    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[Boolean] =
-      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs, deprecatedAliases = deprecatedAliases))
+    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
-    def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[String] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation, depends = depends, deprecatedAliases = deprecatedAliases))
+    def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation, depends = depends))
 
-    def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[String] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[SettingAlias] = Nil, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs, deprecation = deprecation))
 
-    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[List[String]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, legacyChoices: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
-    def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[Int] =
-      publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[Int] =
+      publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))
 
     def IntChoiceSetting(category: SettingCategory, name: String, descr: String, choices: Seq[Int], default: Int, deprecation: Option[Deprecation] = None): Setting[Int] =
       publish(Setting(category, prependName(name), descr, default, choices = Some(choices), deprecation = deprecation))
 
-    def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[List[String]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation))
 
-    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile, aliases: List[String] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[AbstractFile] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None): Setting[AbstractFile] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation))
 
-    def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[String] =
-      publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))
 
-    def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[List[String]] =
-      publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases, deprecation = deprecation, depends = depends, deprecatedAliases = deprecatedAliases))
+    def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases, deprecation = deprecation, depends = depends))
 
     def PrefixSetting(category: SettingCategory, name0: String, descr: String, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       val name = prependName(name0)
@@ -478,8 +493,8 @@ object Settings:
     def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[ScalaVersion] =
       publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs, deprecation = deprecation))
 
-    def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, deprecatedAliases: List[(String, Deprecation)] = Nil): Setting[Option[T]] =
-      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases, deprecation = deprecation, deprecatedAliases = deprecatedAliases))
+    def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[Option[T]] =
+      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases, deprecation = deprecation))
 
   end SettingGroup
 end Settings
