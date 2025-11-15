@@ -7,6 +7,7 @@ import collection.mutable
 import core.*
 import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import CaptureSet.{Refs, emptyRefs, HiddenSet}
+import NameKinds.WildcardParamName
 import config.Printers.capt
 import StdNames.nme
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
@@ -558,6 +559,69 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           sepApplyError(fn, parts, arg, app)
   end checkApply
 
+  /** Compute the set of capabilities that are consumed along a selection path.
+   *  For example, if we have the path `a.b` where `b` is a consume field with type `B^{x}`,
+   *  this returns the actual consumed capabilities `{x}` from the type's capture set.
+   *
+   *  This walks the path and for each consume field encountered, collects the capabilities
+   *  from that field's widened type's capture set.
+   *
+   *  @param cap  The capability to analyze (e.g., `a.b`)
+   *  @return     The set of actual consumed capabilities from all consume fields along the path
+   */
+  def consumedByPath(cap: Capability)(using Context): Refs = cap match
+    case Reach(underlying) => consumedByPath(underlying)
+    case ref: TermRef =>
+      def recur(tp: Type, acc: Refs): Refs = tp match
+        case ref: TermRef =>
+          // This is a selection like a.b, or just a reference like a
+          val fieldSym = ref.symbol
+          val accWithCurrent =
+            if fieldSym.exists && fieldSym.isConsumeParam then
+              // This field is a consume parameter. Collect capabilities from its type's capture set.
+              acc ++ ref.widen.captureSet.elems
+            else
+              acc
+          // Also check if the current reference's type has consume fields
+          val accWithConsumeFields = accWithCurrent ++ capsFromConsumeFields(ref)
+          // Recurse on the prefix if it's a selection
+          if ref.prefix ne NoPrefix then
+            recur(ref.prefix, accWithConsumeFields)
+          else
+            accWithConsumeFields
+        case _ =>
+          acc
+
+      def capsFromConsumeFields(ref: TermRef): Refs =
+        // For types with consume fields, use the capture set of the reference itself
+        // and recursively check what those capabilities consume
+        val tpe = ref.widen.dealias
+        val cls = tpe.classSymbol
+        if cls.exists then
+          // Check if this class has any consume fields
+          val hasConsumeFields = cls.info.decls.exists(m => m.isConsumeParam && m.isTerm)
+          if hasConsumeFields then
+            // Use the capture set of the widened type
+            val captureSet = ref.widen.captureSet.elems
+            // Use the capture set of the reference itself (e.g., {a} for holder.a : A^{a})
+            // Return both the capabilities in the capture set AND what they transitively consume
+            var result = emptyRefs
+            for cap <- captureSet do
+              cap match
+                case _: RootCapability => // Skip
+                case _ =>
+                  result = result + cap
+                  result = result ++ consumedByPath(cap)
+            result
+          else
+            emptyRefs
+        else
+          emptyRefs
+
+      recur(ref, emptyRefs)
+    case _ =>
+      emptyRefs
+
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
@@ -597,8 +661,18 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       for ref <- used do
         val pos = consumed.clashing(ref)
         if pos != null then
-          // println(i"consumed so far ${consumed.refs.toList} with peaks ${consumed.directPeaks.toList}, used = $used, exposed = ${ref.directPeaks }")
-          consumeError(ref, pos, tree.srcPos)
+          // Check if this reference should be exempted because consume fields along
+          // the path own the consumed capabilities.
+          val pathConsumed = consumedByPath(ref)
+
+          // Check if any capability consumed by the path was consumed at position `pos`.
+          // We need to check both the capability and its reach, since consumed might store the reach version.
+          val shouldExempt = pathConsumed.exists:
+            case _: RootCapability => false
+            case cap => consumed.get(cap) == pos || consumed.get(cap.reach) == pos
+
+          if !shouldExempt then
+            consumeError(ref, pos, tree.srcPos)
   end checkUse
 
   /** If `tp` denotes some version of a singleton capability `x.type` the set `{x, x*}`
@@ -986,7 +1060,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseSection(tree)
         case tree: ValDef =>
           traverseChildren(tree)
-          checkValOrDefDef(tree)
+          if !tree.name.is(WildcardParamName) then
+            checkValOrDefDef(tree)
         case tree: DefDef =>
           if skippable(tree.symbol) then
             capt.println(i"skipping sep check of ${tree.symbol}")
