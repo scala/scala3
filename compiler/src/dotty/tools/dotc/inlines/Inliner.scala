@@ -1056,8 +1056,20 @@ class Inliner(val call: tpd.Tree)(using Context):
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
         errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
-      else if Inlines.needsInlining(tree) then Inlines.inlineCall(simplify(tree, pt, locked))
-      else tree
+      else if Inlines.needsInlining(tree) then
+        StripInlineResultAscriptionMap().transform(Inlines.inlineCall(simplify(tree, pt, locked)))
+      else
+        tree
+
+    private class StripInlineResultAscriptionMap extends tpd.TreeMap:
+      override def transform(tree: Tree)(using Context): Tree =
+        tree match
+          case Typed(expr, _) if tree.hasAttachment(PrepareInlineable.InlineResultAscription) =>
+            expr
+          case tree: Inlined =>
+            super.transform(tree)
+          case _ =>
+            tree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       super.typedUnadapted(tree, pt, locked) match
