@@ -34,14 +34,16 @@ object CapturingType:
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
     assert(!boxed || !parent.derivesFrom(defn.Caps_CapSet))
-    if refs.isAlwaysEmpty && !refs.keepAlways then parent
+    if refs.isAlwaysEmpty && !refs.keepAlways && !parent.derivesFromCapability then
+      parent
     else parent match
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
-        if parent.derivesFromMutable then refs.associateWithMutable()
-        refs.adoptClassifier(parent.inheritedClassifier)
-        AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
+        val refs1 =
+          if parent.derivesFromMutable then refs.associateWithMutable() else refs
+        refs1.adoptClassifier(parent.inheritedClassifier)
+        AnnotatedType(parent, CaptureAnnotation(refs1, boxed)(defn.RetainsAnnot))
 
   /** An extractor for CapturingTypes. Capturing types are recognized if
    *   - the annotation is a CaptureAnnotation and we are not past CheckCapturingPhase, or

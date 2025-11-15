@@ -1,4 +1,4 @@
-class M extends caps.Mutable
+class M extends caps.Read
 
 class M1(x: Int => Int) extends M // error
 

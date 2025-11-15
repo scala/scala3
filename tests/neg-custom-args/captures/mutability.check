@@ -9,17 +9,15 @@
   |    Cannot call update method set of self
   |    since its capture set {self} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:10:25 -----------------------------------
-10 |    val self2: Ref[T]^ = this // error
+10 |    val self2: Ref[T]^ = this // error // error separation
    |                         ^^^^
-   |           Found:    Ref[T]^{Ref.this.rd}
-   |           Required: Ref[T]^
+   |                         Found:    Ref[T]^{Ref.this.rd}
+   |                         Required: Ref[T]^
    |
-   |           Note that capability Ref.this.rd is not included in capture set {}.
+   |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
+   |                         it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
    |
-   |           Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
-   |           it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
-   |
-   |           where:    ^ and cap refer to a fresh root capability classified as Mutable in the type of value self2
+   |                         where:    ^ and cap refer to a fresh root capability in the type of value self2
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:11:13 --------------------------------------------------------
@@ -28,7 +26,7 @@
    |    Read-only method sneakyHide accesses exclusive capability (Ref.this : Ref[T]^);
    |    method sneakyHide should be declared an update method to allow this.
    |
-   |    where:    ^ refers to a fresh root capability classified as Mutable in the type of class Ref
+   |    where:    ^ refers to a fresh root capability in the type of class Ref
 -- Error: tests/neg-custom-args/captures/mutability.scala:14:12 --------------------------------------------------------
 14 |    self3().set(x)  // error
    |    ^^^^^^^^^^^
@@ -37,16 +35,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:15:31 -----------------------------------
 15 |    val self4: () => Ref[T]^ = () => this // error
    |                               ^^^^^^^^^^
-   |           Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
-   |           Required: () => Ref[T]^
+   |                         Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
+   |                         Required: () => Ref[T]^
    |
-   |           Note that capability Ref.this.rd is not included in capture set {}.
+   |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
+   |                         it cannot subsume a read-only capture set of the mutable type Ref[T^'s1]^{Ref.this.rd}.
    |
-   |           Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
-   |           it cannot subsume a read-only capture set of the mutable type Ref[T^'s1]^{Ref.this.rd}.
-   |
-   |           where:    =>        refers to a fresh root capability in the type of value self4
-   |                     ^ and cap refer to a fresh root capability classified as Mutable in the type of value self4
+   |                         where:    =>        refers to a fresh root capability in the type of value self4
+   |                                   ^ and cap refer to a fresh root capability in the type of value self4
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:16:15 --------------------------------------------------------
@@ -55,24 +51,22 @@
    |    Read-only method sneakyHide accesses exclusive capability (Ref.this : Ref[T]^);
    |    method sneakyHide should be declared an update method to allow this.
    |
-   |    where:    ^ refers to a fresh root capability classified as Mutable in the type of class Ref
+   |    where:    ^ refers to a fresh root capability in the type of class Ref
 -- Error: tests/neg-custom-args/captures/mutability.scala:19:12 --------------------------------------------------------
 19 |    self5().set(x)  // error
    |    ^^^^^^^^^^^
    |    Cannot call update method set of Ref[T^{}]^{Ref.this.rd}
    |    since its capture set {Ref.this.rd} of method self5 is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:20:27 -----------------------------------
-20 |    def self6(): Ref[T]^ = this // error
+20 |    def self6(): Ref[T]^ = this // error // error separation
    |                           ^^^^
-   |   Found:    Ref[T]^{Ref.this.rd}
-   |   Required: Ref[T]^
+   |                         Found:    Ref[T]^{Ref.this.rd}
+   |                         Required: Ref[T]^
    |
-   |   Note that capability Ref.this.rd is not included in capture set {}.
+   |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
+   |                         it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
    |
-   |   Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
-   |   it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
-   |
-   |   where:    ^ and cap refer to a fresh root capability classified as Mutable in the result type of method self6
+   |                         where:    ^ and cap refer to a fresh root capability in the result type of method self6
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:21:15 --------------------------------------------------------
@@ -81,7 +75,7 @@
    |    Read-only method sneakyHide accesses exclusive capability (Ref.this : Ref[T]^);
    |    method sneakyHide should be declared an update method to allow this.
    |
-   |    where:    ^ refers to a fresh root capability classified as Mutable in the type of class Ref
+   |    where:    ^ refers to a fresh root capability in the type of class Ref
 -- Error: tests/neg-custom-args/captures/mutability.scala:25:25 --------------------------------------------------------
 25 |  def set(x: T) = this.x.set(x) // error
    |                  ^^^^^^^^^^
@@ -100,16 +94,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:42:29 -----------------------------------
 42 |  val r5: () => Ref2[Int]^ = () => ref2 // error
    |                             ^^^^^^^^^^
-   |              Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
-   |              Required: () => Ref2[Int]^
+   |                             Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
+   |                             Required: () => Ref2[Int]^
    |
-   |              Note that capability ref2 is not included in capture set {}.
+   |                             Note that {cap} is an exclusive capture set of the mutable type Ref2[Int]^,
+   |                             it cannot subsume a read-only capture set of the mutable type Ref2[Int]^{ref2}.
    |
-   |              Note that {cap} is an exclusive capture set of the mutable type Ref2[Int]^,
-   |              it cannot subsume a read-only capture set of the mutable type Ref2[Int]^{ref2}.
-   |
-   |              where:    =>        refers to a fresh root capability in the type of value r5
-   |                        ^ and cap refer to a fresh root capability classified as Mutable in the type of value r5
+   |                             where:    =>        refers to a fresh root capability in the type of value r5
+   |                                       ^ and cap refer to a fresh root capability in the type of value r5
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:45:9 ---------------------------------------------------------
@@ -117,3 +109,13 @@
    |  ^^^^^^^^^^
    |  Cannot call update method set of Ref[Int]^{r6*.rd}
    |  since its capture set {r6*.rd} is read-only.
+-- Error: tests/neg-custom-args/captures/mutability.scala:10:15 --------------------------------------------------------
+10 |    val self2: Ref[T]^ = this // error // error separation
+   |               ^^^^^^^
+   |               Separation failure: value self2's type Ref[T]^ hides non-local this of class class Ref.
+   |               The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/mutability.scala:20:17 --------------------------------------------------------
+20 |    def self6(): Ref[T]^ = this // error // error separation
+   |                 ^^^^^^^
+   |                 Separation failure: method self6's result type Ref[T]^ hides non-local this of class class Ref.
+   |                 The access must be in a consume method to allow this.
