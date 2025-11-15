@@ -106,7 +106,9 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val moduleRef = ref(clazz.companionModule)
 
     val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
-    for { enumValue <- enums }
+    val forwarderSyms = scala.collection.mutable.ListBuffer[Symbol]()
+
+    val result = for { enumValue <- enums }
     yield {
       def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =
         val sym = newSymbol(clazz, enumValue.name.asTermName, flags, info)
@@ -119,8 +121,36 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         // we achieve the right contract with static forwarders instead.
         DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
       else
-        ValDef(forwarderSym(EnumValue | JavaStatic, enumValue.info), body)
+        val sym = forwarderSym(EnumValue | JavaStatic | Mutable, enumValue.info)
+        forwarderSyms += sym
+        ValDef(sym, body)
     }
+
+    // Store forwarder symbols for later use in companion initialization
+    if forwarderSyms.nonEmpty then
+      enumForwarders(clazz) = forwarderSyms.toList
+
+    result
+  }
+
+  /** Generate assignment to initialize enum forwarders in the companion object,
+   *  so that forwarders are initialized when comapnion object is touched first.
+   *  For each enum value, generates: EnumClass.enumValue = Module.enumValue
+   *  see: https://github.com/scala/scala3/issues/12637
+   */
+  private def enumForwarderInitializers(moduleCls: Symbol)(using Context): List[Tree] = {
+    if ctx.settings.scalajs.value then
+      Nil // Scala.js uses methods, no initialization needed
+    else
+      val enumClass = moduleCls.linkedClass
+      val forwarderSyms = enumForwarders.get(enumClass).getOrElse(Nil)
+      val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue)).toList
+
+      forwarderSyms.zip(enums).map { case (forwarderSym, enumValue) =>
+        val lhs = ref(forwarderSym)
+        val rhs = ref(enumValue)
+        Assign(lhs, rhs)
+      }
   }
 
   private def isJavaEnumValueImpl(cls: Symbol)(using Context): Boolean =
@@ -129,6 +159,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     && cls.owner.owner.linkedClass.derivesFromJavaEnum
 
   private val enumCaseOrdinals = MutableSymbolMap[Int]()
+  private val enumForwarders = MutableSymbolMap[List[Symbol]]()
 
   private def registerEnumClass(cls: Symbol)(using Context): Unit =
     cls.children.zipWithIndex.foreach(enumCaseOrdinals.update)
@@ -181,10 +212,17 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       )
     else if cls.linkedClass.derivesFromJavaEnum then
       enumCaseOrdinals.clear() // remove simple cases // invariant: companion is visited after cases
-      templ
+      // Add initialization code for enum forwarders
+      val initializers = enumForwarderInitializers(cls)
+      enumForwarders.remove(cls.linkedClass) // Clear cache after use
+      if initializers.isEmpty then
+        templ
+      else
+        cpy.Template(templ)(body = templ.body ++ initializers)
     else templ
   }
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     assert(enumCaseOrdinals.isEmpty, "Java based enum ordinal cache was not cleared")
+    assert(enumForwarders.isEmpty, "Java based enum forwarder cache was not cleared")
 }
