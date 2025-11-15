@@ -86,6 +86,9 @@ object Typer {
   /** Indicates that an expression is explicitly ascribed to [[Unit]] type. */
   val AscribedToUnit = new Property.StickyKey[Unit]
 
+  /** Indicates that this ascription was inserted by `ensureNoLocalRefs`. */
+  val NoLocalRefsAscription = new Property.StickyKey[Unit]
+
   /** Tree adaptation lost fidelity; this attachment preserves the original tree. */
   val AdaptedTree = new Property.StickyKey[tpd.Tree]
 
@@ -1580,7 +1583,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         val target = pt.simplified
         val targetTpt = TypeTree(target, inferred = true)
-        if tree.tpe <:< target then Typed(tree, targetTpt)
+        if tree.tpe <:< target then Typed(tree, targetTpt).withAttachment(NoLocalRefsAscription, ())
         else
           // This case should not normally arise. It currently does arise in test cases
           // pos/t4080b.scala and pos/i7067.scala. In that case, a type ascription is wrong

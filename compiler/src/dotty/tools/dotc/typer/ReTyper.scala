@@ -58,6 +58,9 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree = {
     assertTyped(tree)
 
+    if tree.hasAttachment(Typer.NoLocalRefsAscription) then
+      return typedExpr(tree.expr, pt)
+
     val tpt1 = checkSimpleKinded(typedType(tree.tpt))
     val expr1 = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
