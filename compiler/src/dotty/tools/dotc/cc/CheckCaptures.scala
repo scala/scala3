@@ -1141,7 +1141,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   ""
               disallowBadRootsIn(
                 tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
-            if sepChecksEnabled && false
+            if ccConfig.noUnsafeMutableFields
                 && sym.owner.isClass
                 && !sym.owner.derivesFrom(defn.Caps_Mutable)
                 && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
