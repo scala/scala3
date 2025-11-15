@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools.dotc.util
+package dotty.tools.repl
 
 import scala.language.unsafeNulls
-
 import collection.mutable, mutable.ListBuffer
 import dotty.tools.dotc.util.chaining.*
 import java.lang.System.lineSeparator
@@ -31,24 +30,29 @@ object StackTraceOps:
      *  shared stack trace segments.
      *  @param p the predicate to select the prefix
      */
-    def formatStackTracePrefix(p: StackTraceElement => Boolean): String =
+    def formatStackTracePrefix(p: StackTraceElement => Boolean): fansi.Str =
 
       type TraceRelation = String
-      val Self       = new TraceRelation("")
-      val CausedBy   = new TraceRelation("Caused by: ")
-      val Suppressed = new TraceRelation("Suppressed: ")
+      val Self       = ""
+      val CausedBy   = "Caused by: "
+      val Suppressed = "Suppressed: "
+      def renderDotDelimited(s: String ) = {
+        fansi.Str.join(s.split('.').map(fansi.Color.LightRed(_)), ".")
+      }
 
-      def header(e: Throwable): String =
+      def header(e: Throwable): fansi.Str =
         def because = e.getCause   match { case null => null    ; case c => header(c) }
         def msg     = e.getMessage match { case null => because ; case s => s         }
-        def txt     = msg          match { case null => ""      ; case s => s": $s"   }
-        s"${e.getClass.getName}$txt"
+        def txt  = msg match {
+          case null => ""
+          case s => s": $s"
+        }
+        renderDotDelimited(e.getClass.getName) ++ txt
 
       val seen = mutable.Set.empty[Throwable]
       def unseen(e: Throwable): Boolean = (e != null && !seen(e)).tap(if _ then seen += e)
 
-      val lines = ListBuffer.empty[String]
-
+      val lines = ListBuffer.empty[fansi.Str]
       // format the stack trace, skipping the shared trace
       def print(e: Throwable, r: TraceRelation, share: Array[StackTraceElement], indents: Int): Unit = if unseen(e) then
         val trace  = e.getStackTrace
@@ -58,20 +62,29 @@ object StackTraceOps:
           trimmed.reverse
         val prefix = frames.takeWhile(p)
         val margin = "  " * indents
-        lines += s"${margin}${r}${header(e)}"
-        prefix.foreach(frame => lines += s"$margin  at $frame")
+        lines += fansi.Str(margin) ++ fansi.Color.Red(r) ++ header(e)
+        prefix.foreach(frame =>
+          lines +=
+            fansi.Str(s"$margin  ") ++ fansi.Color.Red("at") ++ " " ++
+              renderDotDelimited(frame.getClassName) ++ "." ++
+              fansi.Color.LightRed(frame.getMethodName) ++ "(" ++
+              fansi.Color.LightRed(frame.getFileName) ++ ":" ++
+              fansi.Color.LightRed(frame.getLineNumber.toString) ++ ")"
+        )
 
         val traceFramesLenDiff  = trace.length - frames.length
         val framesPrefixLenDiff = frames.length - prefix.length
         if traceFramesLenDiff > 0 then
-          if framesPrefixLenDiff > 0 then lines += s"$margin  ... $framesPrefixLenDiff elided and $traceFramesLenDiff more"
-          else lines += s"$margin  ... $traceFramesLenDiff more"
-        else if framesPrefixLenDiff > 0 then lines += s"$margin  ... $framesPrefixLenDiff elided"
+          if framesPrefixLenDiff > 0
+          then lines += fansi.Color.Red(s"$margin  ... $framesPrefixLenDiff elided and $traceFramesLenDiff more")
+          else lines += fansi.Color.Red(s"$margin  ... $traceFramesLenDiff more")
+        else if framesPrefixLenDiff > 0
+        then lines += fansi.Color.Red(s"$margin  ... $framesPrefixLenDiff elided")
 
         print(e.getCause, CausedBy, trace, indents)
         e.getSuppressed.foreach(print(_, Suppressed, frames, indents + 1))
       end print
 
       print(t, Self, share = Array.empty, indents = 0)
-      lines.mkString(lineSeparator)
+      fansi.Str.join(lines, lineSeparator)
     end formatStackTracePrefix

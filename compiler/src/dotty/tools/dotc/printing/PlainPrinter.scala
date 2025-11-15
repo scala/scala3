@@ -705,7 +705,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => stringText(Chars.escapedString(const.value.toString, quoted = true))
+    case StringTag => literalText(Chars.escapedString(const.value.toString, quoted = true))
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(Chars.escapedChar(const.charValue))
     case LongTag => literalText(const.longValue.toString + "L")
@@ -841,10 +841,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
   protected def keywordText(text: String): Text = coloredStr(text, SyntaxHighlighting.KeywordColor)
-  protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.ValDefColor)
+  protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.DefinitionColor)
   protected def typeText(text: Text): Text = coloredText(text, SyntaxHighlighting.TypeColor)
   protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
-  protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
 
   protected def coloredStr(text: String, color: String): String =
     if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text
