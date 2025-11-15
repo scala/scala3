@@ -30,6 +30,11 @@ object PrepareInlineable {
 
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
 
+  /** Indicates that an ascription was inserted by [[PrepareInlinable.wrapRHS]].
+   *  It is used to remove it [[Inliner.stripInlineResultAscription]].
+   */
+  val InlineResultAscription = new Property.StickyKey[Unit]
+
   def initContext(ctx: Context): Context =
     ctx.fresh.setProperty(InlineAccessorsKey, new InlineAccessors)
 
@@ -246,7 +251,10 @@ object PrepareInlineable {
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
   def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.is(Transparent) then rhs else Typed(rhs, tpt)
+    if original.mods.is(Transparent) then
+      rhs
+    else
+      Typed(rhs, tpt).withAttachment(InlineResultAscription, ())
 
   /** Return result of evaluating `op`, but drop `Inline` flag and `Body` annotation
    *  of `sym` in case that leads to errors.

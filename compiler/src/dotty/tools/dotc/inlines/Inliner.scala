@@ -1047,6 +1047,20 @@ class Inliner(val call: tpd.Tree)(using Context):
         reduceInlineMatchExpr(sel)
       }
 
+    private def shouldStripAscription(tree: Typed)(using Context): Boolean =
+      val exprTp = tree.expr.tpe
+      tree.hasAttachment(PrepareInlineable.InlineResultAscription)
+      && enclosingInlineds.size > 1
+      && exprTp.exists
+      && !exprTp.widen.isRef(defn.NothingClass)
+      && !exprTp.widen.isRef(defn.NullClass)
+      && (exprTp frozen_<:< tree.tpe)
+
+    override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
+      super.typedTyped(tree, pt) match
+        case typedTree: Typed if shouldStripAscription(typedTree) => typedTree.expr
+        case typedTree => typedTree
+
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
 
     /** True if this inline typer has already issued errors */
