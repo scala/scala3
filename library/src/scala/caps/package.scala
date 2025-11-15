@@ -3,7 +3,7 @@ package caps
 
 import language.experimental.captureChecking
 
-import annotation.{experimental, compileTimeOnly, retainsCap}
+import annotation.{experimental, documented, compileTimeOnly, retainsCap}
 
 /**
  * Base trait for classes that represent capabilities in the
@@ -119,10 +119,10 @@ final class reserve extends annotation.StaticAnnotation
 /** Allowed only for source versions up to 3.7:
  *  An annotation on parameters `x` stating that the method's body makes
  *  use of the reach capability `x*`. Consequently, when calling the method
- *  we need to charge the deep capture set of the actual argiment to the
+ *  we need to charge the deep capture set of the actual argument to the
  *  environment.
  */
-@experimental
+@experimental @documented
 final class use extends annotation.StaticAnnotation
 
 /** A trait that used to allow expressing existential types. Replaced by
