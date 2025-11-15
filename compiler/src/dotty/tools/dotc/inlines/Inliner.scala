@@ -1047,6 +1047,19 @@ class Inliner(val call: tpd.Tree)(using Context):
         reduceInlineMatchExpr(sel)
       }
 
+    private def shouldStripAscription(tree: Typed)(using Context): Boolean =
+      val exprTp = tree.expr.tpe
+      tree.hasAttachment(PrepareInlineable.InlineResultAscription)
+      && exprTp.exists
+      && !exprTp.widen.isRef(defn.NothingClass)
+      && !exprTp.widen.isRef(defn.NullClass)
+      && (exprTp frozen_<:< tree.tpe)
+
+    override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
+      super.typedTyped(tree, pt) match
+        case typedTree: Typed if shouldStripAscription(typedTree) => typedTree.expr
+        case typedTree => typedTree
+
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
 
     /** True if this inline typer has already issued errors */
@@ -1056,20 +1069,8 @@ class Inliner(val call: tpd.Tree)(using Context):
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
         errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
-      else if Inlines.needsInlining(tree) then
-        StripInlineResultAscriptionMap().transform(Inlines.inlineCall(simplify(tree, pt, locked)))
-      else
-        tree
-
-    private class StripInlineResultAscriptionMap extends tpd.TreeMap:
-      override def transform(tree: Tree)(using Context): Tree =
-        tree match
-          case Typed(expr, _) if tree.hasAttachment(PrepareInlineable.InlineResultAscription) =>
-            expr
-          case tree: Inlined =>
-            super.transform(tree)
-          case _ =>
-            tree
+      else if Inlines.needsInlining(tree) then Inlines.inlineCall(simplify(tree, pt, locked))
+      else tree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       super.typedUnadapted(tree, pt, locked) match
