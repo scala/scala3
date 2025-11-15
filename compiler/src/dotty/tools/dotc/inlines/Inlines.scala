@@ -134,9 +134,9 @@ object Inlines:
      *  inline call expansions smaller.
      */
     def liftBindings(tree: Tree, liftPos: Tree => Tree): Tree = tree match {
-      case Block(stats, expr) =>
-        bindings ++= stats.map(liftPos)
-        liftBindings(expr, liftPos)
+      //case Block(stats, expr) =>
+      //  bindings ++= stats.map(liftPos)
+      //  liftBindings(expr, liftPos)
       case tree @ Inlined(call, stats, expr) =>
         bindings ++= stats.map(liftPos)
         val lifter = liftFromInlined(call)
