@@ -16,7 +16,7 @@ public class B_2 {
 
     a.arr1(intArr);
     a.arr2(stringArr);
-    a.arr3(intArr);
+    a.arr3(intArr2);
     a.arr4(stringArr2);
 
     a.arrRef1(integerArr);
