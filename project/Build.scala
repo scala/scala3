@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.4"
+  val referenceVersion = "3.8.0-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -70,7 +70,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.8.0"
+  val developedVersion = "3.8.1"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -138,7 +138,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.7.3" // for 3.8.0, we compare against 3.7.3
+  val mimaPreviousDottyVersion = "3.8.0-RC1" // temporary until 3.8.0 is released
 
   /** LTS version against which we check binary compatibility.
    *
@@ -309,7 +309,6 @@ object Build {
     Test / develocityBuildCacheClient := None,
     extraDevelocityCacheInputFiles := Seq.empty,
     extraDevelocityCacheInputFiles / outputFileStamper := FileStamper.Hash,
-    resolvers += ("Artifactory" at "https://repo.scala-lang.org/artifactory/fat-jar/"),
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -457,7 +456,7 @@ object Build {
     import java.text._
     val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
     dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-    
+
     val fileName = "compiler.properties"
     val contents = Def.setting {
       s"""version.number=${version.value}
@@ -1945,12 +1944,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
       // Add configuration for MiMa
-      mimaCheckDirection := (compatMode match {
-        case CompatMode.BinaryCompatible          => "backward"
-        case CompatMode.SourceAndBinaryCompatible => "both"
-      }),
-      mimaExcludeAnnotations += "scala.annotation.experimental",
-      mimaPreviousArtifacts += ("org.scala-lang" % "fat-stdlib" % "3.7.3"),
+      commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
@@ -2003,6 +1997,7 @@ object Build {
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
+    .settings(disableDocSetting) // TODO now produces empty JAR to satisfy Sonatype, see https://github.com/scala/scala3/issues/24434
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -2071,12 +2066,7 @@ object Build {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
       // Add configuration for MiMa
-      mimaCheckDirection := (compatMode match {
-        case CompatMode.BinaryCompatible          => "backward"
-        case CompatMode.SourceAndBinaryCompatible => "both"
-      }),
-      mimaExcludeAnnotations += "scala.annotation.experimental",
-      mimaPreviousArtifacts += ("org.scala-lang" % "fat-stdlib" % "3.7.3"),
+      commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
@@ -2241,15 +2231,10 @@ object Build {
       }).transform(node).head
       },
       // Add configuration for MiMa
-      mimaCheckDirection := (compatMode match {
-        case CompatMode.BinaryCompatible          => "backward"
-        case CompatMode.SourceAndBinaryCompatible => "both"
-      }),
-      mimaExcludeAnnotations += "scala.annotation.experimental",
-      mimaPreviousArtifacts += ("org.scala-js" % "fat-stdlib_sjs1" % "3.7.3"),
-      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      commonMiMaSettings,
+      mimaForwardIssueFilters := MiMaFilters.ScalaLibrarySJS.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.ScalaLibrarySJS.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.ScalaLibrarySJS"),
       // Should we also patch .sjsir files
       keepSJSIR := true,
     )
