@@ -315,7 +315,7 @@ object projects:
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"), // due to -Werror
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -484,7 +484,7 @@ object projects:
     project = "cats",
     sbtTestCommand = "set Global/scalaJSStage := FastOptStage;rootJVM/test;rootJS/test",
     sbtPublishCommand = "rootJVM/publishLocal;rootJS/publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init") // disable -Ysafe-init or -Wsafe-init, due to -Xfatal-warning
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init") // turn off -Wsafe-init due to -Werror
   )
 
   lazy val catsMtl = SbtCommunityProject(
@@ -583,10 +583,10 @@ object projects:
     extraSbtArgs = List(s"-Dakka.build.scalaVersion=$compilerVersion"),
     sbtTestCommand = List(
       "set every targetSystemJdk := true",
-      // selectively disable -Xfatal-warnings due to deprecations
-      """set actor/Compile/scalacOptions -= "-Xfatal-warnings"""",
-      """set testkit/Compile/scalacOptions -= "-Xfatal-warnings"""",
-      """set actorTests/Compile/scalacOptions -= "-Xfatal-warnings"""",
+      // selectively turn off -Werror due to deprecations
+      """set actor/Compile/scalacOptions += "-Werror:false"""",
+      """set testkit/Compile/scalacOptions += "-Werror:false"""",
+      """set actorTests/Compile/scalacOptions += "-Werror:false"""",
       "akka-actor-tests/Test/compile",
     ).mkString("; "),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),

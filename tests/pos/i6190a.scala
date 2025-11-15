@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
 case class Rule(name: String)
 object Rule extends (String => Rule) {

@@ -1,5 +1,5 @@
 
-//> using options -feature -Xfatal-warnings -preview
+//> using options -feature -Werror -preview
 
 import Conversion.into
 

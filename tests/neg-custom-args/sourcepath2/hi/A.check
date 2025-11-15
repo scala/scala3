@@ -4,4 +4,4 @@
   |      class Hello is in the wrong directory.
   |      It was declared to be in package <empty>
   |      But it is found in directory     hi
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
+No warnings can be incurred under -Werror

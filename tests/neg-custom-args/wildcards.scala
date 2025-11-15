@@ -1,4 +1,4 @@
-//> using options -source future -deprecation -Xfatal-warnings
+//> using options -source future -deprecation -Werror
 
 object Test {
   val xs: List[_] = List(1, 2, 3)  // error

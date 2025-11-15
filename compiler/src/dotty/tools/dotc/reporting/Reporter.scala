@@ -232,7 +232,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   def finalizeReporting()(using Context) =
     if (hasWarnings && ctx.settings.Werror.value)
-      report(new Error("No warnings can be incurred under -Werror (or -Xfatal-warnings)", NoSourcePosition))
+      report(new Error("No warnings can be incurred under -Werror", NoSourcePosition))
 
   /** Summary of warnings and errors */
   def summary: String =

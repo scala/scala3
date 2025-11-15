@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 object Extensions:
   infix def foo(x: String): Unit = ()

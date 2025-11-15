@@ -1,4 +1,4 @@
-//> using options -no-indent -Xfatal-warnings
+//> using options -no-indent -Werror
 
 trait A
     case class B() extends A  // warn: Line is indented too far to the right

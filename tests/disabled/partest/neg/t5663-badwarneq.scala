@@ -24,7 +24,7 @@ final case class ValueClass3(val value: Int) extends AnyVal
 
 /* It's not possible to run partest without -deprecation.
  * Since detecting the warnings requires a neg test with
- * -Xfatal-warnings, and deprecation terminates the compile,
+ * -Werror and deprecation terminates the compile,
  * we'll just comment out the nasty part.  The point was
  * just to show there's nothing special about a trait
  * that extends a case class, which is only permitted

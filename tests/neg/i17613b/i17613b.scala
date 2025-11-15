@@ -1,4 +1,4 @@
-//> using options -Wshadow:type-parameter-shadow -Xfatal-warnings
+//> using options -Wshadow:type-parameter-shadow -Werror
 
 object i17613b:
 	import importTry._

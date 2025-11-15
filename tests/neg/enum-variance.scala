@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 enum View[-T]:
   case Refl(f: T => T) // error: enum case Refl requires explicit declaration of type T

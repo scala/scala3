@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -feature
+//> using options -Werror -feature
 
 package implConv
 
