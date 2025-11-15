@@ -3060,7 +3060,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val canBeInvalidated: Boolean =
       sym.is(Synthetic)
       && (desugar.isRetractableCaseClassMethodName(sym.name) ||
-         (sym.owner.is(JavaDefined) && sym.owner.derivesFrom(defn.JavaRecordClass) && sym.is(Method)))
+         (sym.owner.isJavaRecord && sym.is(Method)))
     assert(canBeInvalidated)
     sym.owner.info.decls.openForMutations.unlink(sym)
     EmptyTree

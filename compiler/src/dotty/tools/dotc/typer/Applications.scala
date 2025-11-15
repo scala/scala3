@@ -30,7 +30,7 @@ import util.chaining.tap
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications.*
-import Annotations.Annotation
+import Annotations.{Annotation, JavaRecordFieldsAnnotation}
 
 import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
@@ -187,6 +187,11 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
+  def javaRecordFields(tp: Type)(using Context): List[Name] =
+    tp.typeSymbol.getAnnotation(defn.JavaRecordFieldsAnnot) match
+      case Some(JavaRecordFieldsAnnotation(fields)) => fields.map(termName)
+      case _ => assert(false)
+
   /** A utility class that matches results of unapplys with patterns. Two queriable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
@@ -265,6 +270,10 @@ object Applications {
             case _ => None
         case _ => None
 
+    private def javaRecordTypes(tp: Type): List[Type] =
+      javaRecordFields(tp).map: name =>
+        tp.member(name).suchThat(_.paramSymss == List(Nil)).info.resultType
+
     /** The computed argument types which will be the scutinees of the sub-patterns. */
     val argTypes: List[Type] =
       if unapplyName == nme.unapplySeq then
@@ -284,6 +293,8 @@ object Applications {
             productSelectorTypes(unapplyResult, pos)
               // this will cause a "wrong number of arguments in pattern" error later on,
               // which is better than the message in `fail`.
+          else if unapplyResult.classSymbol.isJavaRecord then
+            javaRecordTypes(unapplyResult)
           else fail
 
     /** The typed pattens of this unapply */

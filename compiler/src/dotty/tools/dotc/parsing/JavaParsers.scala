@@ -905,8 +905,31 @@ object JavaParsers {
             needsDummyConstr = true
           )
         ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
+          .withAddedAnnotation(
+            New(
+              ref(defn.JavaRecordFieldsAnnot),
+              header.map(field => Literal(Constant(field.name.toString))) :: Nil,
+            ).withSpan(Span(start))
+          )
       }
-      addCompanionObject(statics, recordTypeDef)
+
+      val unapplyDef = {
+        val tparams2 = tparams.map(td => TypeDef(td.name, td.rhs).withMods(Modifiers(Flags.Param)))
+
+        val selfTpt = if tparams2.isEmpty then Ident(name) else
+          AppliedTypeTree(Ident(name), tparams2.map(tp => Ident(tp.name)))
+        val param = ValDef(nme.x_0, selfTpt, EmptyTree)
+          .withMods(Modifiers(Flags.JavaDefined | Flags.SyntheticParam))
+
+        DefDef(
+          nme.unapply,
+          joinParams(tparams2, List(List(param))),
+          selfTpt,
+          Ident(nme.x_0)
+        ).withMods(Modifiers(Flags.JavaDefined | Flags.SyntheticMethod | Flags.Inline))
+      }
+
+      addCompanionObject(unapplyDef :: statics, recordTypeDef)
     end recordDecl
 
     def interfaceDecl(start: Offset, mods: Modifiers): List[Tree] = {
