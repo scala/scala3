@@ -1,0 +1,12 @@
+-- [E197] Potential Issue Warning: tests/warn/i24093.scala:18:10 -------------------------------------------------------
+18 |      new StringConverter[T]: // warn
+   |          ^
+   |          New anonymous class definition will be duplicated at each inline site
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E197] Potential Issue Warning: tests/warn/i24093.scala:34:4 --------------------------------------------------------
+34 |    new QueryParamsConverter[T] { // warn
+   |    ^
+   |    New anonymous class definition will be duplicated at each inline site
+   |
+   | longer explanation available when compiling with `-explain`
