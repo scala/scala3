@@ -1098,6 +1098,7 @@ class Definitions {
   @tu lazy val GetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.getter")
   @tu lazy val ParamMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.param")
   @tu lazy val SetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.setter")
+  @tu lazy val ExportableAnnotation: ClassSymbol = requiredClass("scala.annotation.meta.exportable")
   @tu lazy val CompanionClassMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.companionClass")
   @tu lazy val CompanionMethodMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.companionMethod")
   @tu lazy val ShowAsInfixAnnot: ClassSymbol = requiredClass("scala.annotation.showAsInfix")

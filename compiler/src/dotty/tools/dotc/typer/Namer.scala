@@ -1351,12 +1351,7 @@ class Namer { typer: Typer =>
           forwarder.info = avoidPrivateLeaks(forwarder)
 
           // Add annotations at the member level
-          forwarder.addAnnotations(sym.annotations.filterConserve { annot =>
-            annot.symbol != defn.BodyAnnot
-            && annot.symbol != defn.TailrecAnnot
-            && annot.symbol != defn.MainAnnot
-            && !annot.symbol.derivesFrom(defn.MacroAnnotationClass)
-          })
+          forwarder.addAnnotations(sym.annotations.filterConserve(_.isExportable))
 
           if forwarder.isType then
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)

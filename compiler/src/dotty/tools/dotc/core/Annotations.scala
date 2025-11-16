@@ -109,6 +109,9 @@ object Annotations {
     /** Operations for hash-consing, can be overridden */
     def hash: Int = System.identityHashCode(this)
     def eql(that: Annotation) = this eq that
+
+    final def isExportable(using Context): Boolean =
+      symbol.hasAnnotation(defn.ExportableAnnotation)
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
