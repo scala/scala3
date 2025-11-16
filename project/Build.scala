@@ -163,6 +163,7 @@ object Build {
   val homepageUrl = "https://scala-lang.org/"
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
+  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
 
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
@@ -1457,6 +1458,16 @@ object Build {
       Compile / scalacOptions += "-Yno-stdlib-patches",
       Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions += "-scalajs",
+      // Configure the source maps to point to GitHub for releases
+      Compile / scalacOptions ++= {
+        if (isRelease) {
+          val baseURI = (LocalRootProject / baseDirectory).value.toURI
+          val dottyVersion = version.value
+          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/$dottyVersion/")
+        } else {
+          Nil
+        }
+      },
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
