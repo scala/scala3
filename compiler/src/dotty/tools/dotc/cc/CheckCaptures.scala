@@ -800,14 +800,30 @@ class CheckCaptures extends Recheck, SymTransformer:
       capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
       super.recheckFinish(argType, tree, pt)
 
-    /** Recheck `caps.freeze(...)` */
+    /** Recheck `caps.freeze(...)`.
+     *
+     *  Capture-check the body of a `freeze` operation and transforms its
+     *  result to be immutable.
+     * 
+     *  `freeze` takes an operation of type `-> T`, where `T` is generic.
+     *  It leverages the fact that the operation is pure, therefore the returned
+     *  mutable types in `T` must be freshly created. It is thus safe to freeze the
+     *  mutable parts in `T` into its immutable version. */
     def applyFreeze(tree: Apply)(using Context): Type =
       val arg :: Nil = tree.args: @unchecked
       def imm = new TypeMap:
         def apply(t: Type) = t match
-          case t @ CapturingType(parent, _)
-          if parent.derivesFromMutable && variance > 0 =>
-            t.derivedCapturingType(apply(parent), CaptureSet.emptyOfMutable)
+          case t @ CapturingType(parent, refs) =>
+            // If the capturing type is boxed, we skip it. Since it could capture
+            // existing values of a mutable type without charging anything to the
+            // operation passed to `freeze`.
+            val boxed = t.isBoxed
+            val parent1 = if boxed then parent else apply(parent)
+            val refs1 =
+              if !boxed && parent.derivesFromMutable && variance > 0 then
+                CaptureSet.emptyOfMutable
+              else refs
+            t.derivedCapturingType(parent1, refs1)
           case _ =>
             mapOver(t)
       val opProto = // () ?-> <?>

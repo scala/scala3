@@ -1,0 +1,35 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-boxes.scala:22:4 ----------------------------------
+21 |  val xs: Box[Ref^{}] = freeze:
+22 |    Box(a)  // error
+   |                        ^
+   |                        Found:    Box[Ref^{a.rd}]^'s1
+   |                        Required: Box[Ref^{}]
+   |
+   |                        Note that capability a.rd is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-boxes.scala:36:4 ----------------------------------
+36 |    a  // error, sanity check
+   |    ^
+   |    Found:    () ?->{a} Ref^{a}
+   |    Required: () ?-> <?>
+   |
+   |    Note that capability a is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/freeze-boxes.scala:31:6 -------------------------------------------------------
+31 |  par(() => a.set(42), () => println(b.get))  // error
+   |      ^^^^^^^^^^^^^^^
+   |Separation failure: argument of type  () ->{a} Unit
+   |to method par: (op1: () => Unit, op2: () => Unit): Unit
+   |corresponds to capture-polymorphic formal parameter op1 of type  () => Unit
+   |and hides capabilities  {a}.
+   |Some of these overlap with the captures of the second argument with type  () ->{b.rd} Unit.
+   |
+   |  Hidden set of current argument        : {a}
+   |  Hidden footprint of current argument  : {a}
+   |  Capture set of second argument        : {b.rd}
+   |  Footprint set of second argument      : {b.rd, a.rd}
+   |  The two sets overlap at               : {a}
+   |
+   |where:    => refers to a fresh root capability created in method test2 when checking argument to parameter op1 of method par
