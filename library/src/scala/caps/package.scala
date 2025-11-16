@@ -195,7 +195,7 @@ end internal
  *  result of pure operation `op`, turning them into immutable types.
  */
 @experimental
-def freeze[T](@internal.consume x: Mutable^): x.type = x
+def freeze(@internal.consume x: Mutable): x.type = x
 
 @experimental
 object unsafe:

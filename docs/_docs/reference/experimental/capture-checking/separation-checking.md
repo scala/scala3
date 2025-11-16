@@ -262,9 +262,9 @@ val f: IArr[String] =
 ```
 The `freeze` method is defined in `caps` like this:
 ```scala
-def freeze[T](consume x: Mutable^): x.type = x
+def freeze(consume x: Mutable): x.type = x
 ```
-It consumes a value of `Mutable` type with arbitrary capture set. The actual signature of
+It consumes a value of `Mutable` type with arbitrary capture set (since any capture set conforms to the implied `{cap.rd}`). The actual signature of
 `consume` declares that `x.type` is returned, but the actual return type after capture checking is special. Instead of `x.type` it is the underlying `Mutable` type with its top-level capture set
 mapped to `{}`. Applications of `freeze` are safe only if separation checking is enabled.
 
