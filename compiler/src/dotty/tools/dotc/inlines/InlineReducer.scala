@@ -16,7 +16,7 @@ import collection.mutable
 /** A utility class offering methods for rewriting inlined code */
 class InlineReducer(inliner: Inliner)(using Context):
   import tpd.*
-  import Inliner.{isElideableExpr, DefBuffer}
+  import Inliner.{isElideableExpr, DefBuffer, inlinedConstToLiteral}
   import inliner.{call, newSym, tryInlineArg, paramBindingDef}
 
   extension (tp: Type)
@@ -201,7 +201,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         val copied = sym.copy(info = rhs.tpe.widenInlineScrutinee, coord = sym.coord,
           flags = sym.flags &~ Case).asTerm
         adjustErased(copied, rhs)
-        caseBindingMap += ((sym, ValDef(copied, constToLiteral(rhs)).withSpan(sym.span)))
+        caseBindingMap += ((sym, ValDef(copied, inlinedConstToLiteral(rhs)).withSpan(sym.span)))
 
       def newTypeBinding(sym: TypeSymbol, alias: Type): Unit = {
         val copied = sym.copy(info = TypeAlias(alias), coord = sym.coord).asType
@@ -321,7 +321,7 @@ class InlineReducer(inliner: Inliner)(using Context):
                 case (pat :: pats1, selector :: selectors1) =>
                   val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenInlineScrutinee).asTerm
                   adjustErased(elem, selector)
-                  val rhs = constToLiteral(selector)
+                  val rhs = inlinedConstToLiteral(selector)
                   elem.defTree = rhs
                   caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
                   reducePattern(caseBindingMap, elem.termRef, pat) &&
@@ -337,7 +337,7 @@ class InlineReducer(inliner: Inliner)(using Context):
                   else paramCls.asClass.paramAccessors
                 val selectors =
                   for (accessor <- caseAccessors)
-                  yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
+                  yield inlinedConstToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
                 caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
               }
               else false
