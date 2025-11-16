@@ -813,6 +813,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       val arg :: Nil = tree.args: @unchecked
       def imm = new TypeMap:
         def apply(t: Type) = t match
+          case t if variance <= 0 =>
+            // Skip double-flip occurrences of mutable types.
+            // Example: tests/neg-custom-args/captures/freeze-double-flip.scala.
+            t
           case t @ CapturingType(parent, refs) =>
             // If the capturing type is boxed, we skip it. Since it could capture
             // existing values of a mutable type without charging anything to the

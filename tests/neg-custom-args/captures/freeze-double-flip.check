@@ -1,0 +1,13 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-double-flip.scala:16:48 ---------------------------
+16 |  val reallybad: Ref^ -> Ref^{} = x => magic(x)(x => x)  // error
+   |                                                ^^^^^^
+   |Found:    (x: Ref^'s1) ->'s2 Ref^{x.rd}
+   |Required: Ref^ => Ref^{cap.rd}
+   |
+   |Note that capability x.rd is not included in capture set {cap.rd}.
+   |
+   |where:    =>  refers to a fresh root capability created in anonymous function of type (x: Ref^): Ref^{} when checking argument to parameter x$0 of method apply
+   |          ^   refers to the universal root capability
+   |          cap is a fresh root capability created in anonymous function of type (x: Ref^): Ref^{} when checking argument to parameter x$0 of method apply
+   |
+   | longer explanation available when compiling with `-explain`
