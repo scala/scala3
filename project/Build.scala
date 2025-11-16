@@ -133,14 +133,6 @@ object Build {
    */
   val mimaPreviousDottyVersion = "3.8.0-RC1" // temporary until 3.8.0 is released
 
-  /** LTS version against which we check binary compatibility.
-   *
-   *  This must be the earliest published release in the LTS versioning line.
-   *  For example, if the latest LTS release is be 3.3.4, then this must be
-   *  set to 3.3.0.
-   */
-  val mimaPreviousLTSDottyVersion = "3.3.0"
-
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.10.1"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
