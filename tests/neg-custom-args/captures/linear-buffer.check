@@ -1,15 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/linear-buffer.scala:7:29 ---------------------------------
-7 |    def bar: BadBuffer[T]^ = this // error
+7 |    def bar: BadBuffer[T]^ = this // error // error separation
   |                             ^^^^
-  |       Found:    BadBuffer[T]^{BadBuffer.this.rd}
-  |       Required: BadBuffer[T]^
+  |                   Found:    BadBuffer[T]^{BadBuffer.this.rd}
+  |                   Required: BadBuffer[T]^
   |
-  |       Note that capability BadBuffer.this.rd is not included in capture set {}.
+  |                   Note that {cap} is an exclusive capture set of the mutable type BadBuffer[T]^,
+  |                   it cannot subsume a read-only capture set of the mutable type BadBuffer[T]^{BadBuffer.this.rd}.
   |
-  |       Note that {cap} is an exclusive capture set of the mutable type BadBuffer[T]^,
-  |       it cannot subsume a read-only capture set of the mutable type BadBuffer[T]^{BadBuffer.this.rd}.
-  |
-  |       where:    ^ and cap refer to a fresh root capability classified as Mutable in the result type of method bar
+  |                   where:    ^ and cap refer to a fresh root capability in the result type of method bar
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:5:27 ------------------------------------------------------
@@ -17,55 +15,66 @@
   |                           ^^^^^^^^^^^^^
   |      Separation failure: method append's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
   |      The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:7:13 ------------------------------------------------------
+7 |    def bar: BadBuffer[T]^ = this // error // error separation
+  |             ^^^^^^^^^^^^^
+  |         Separation failure: method bar's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
+  |         The access must be in a consume method to allow this.
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:10:29 -----------------------------------------------------
 10 |    def bar: BadBuffer[T]^ = this // error // error
    |                             ^^^^
-   |         Separation failure: Illegal access to {BadBuffer.this} which is hidden by the previous definition
-   |         of method append with result type BadBuffer[T]^.
-   |         This type hides capabilities  {BadBuffer.this}
+   |               Separation failure: Illegal access to {BadBuffer.this} which is hidden by the previous definition
+   |               of method append with result type BadBuffer[T]^.
+   |               This type hides capabilities  {BadBuffer.this}
    |
-   |         where:    ^ refers to a fresh root capability classified as Mutable in the result type of method append
+   |               where:    ^ refers to a fresh root capability in the result type of method append
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:10:13 -----------------------------------------------------
 10 |    def bar: BadBuffer[T]^ = this // error // error
    |             ^^^^^^^^^^^^^
    |       Separation failure: method bar's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
    |       The access must be in a consume method to allow this.
--- Error: tests/neg-custom-args/captures/linear-buffer.scala:22:17 -----------------------------------------------------
-22 |  val buf3 = app(buf, 3) // error
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:23:17 -----------------------------------------------------
+23 |  val buf3 = app(buf, 3) // error
    |                 ^^^
-   |                Separation failure: Illegal access to (buf : Buffer[Int]^), which was passed to a
-   |                consume parameter or was used as a prefix to a consume method on line 20
-   |                and therefore is no longer available.
-   |
-   |                where:    ^ refers to a fresh root capability classified as Mutable in the type of parameter buf
--- Error: tests/neg-custom-args/captures/linear-buffer.scala:29:17 -----------------------------------------------------
-29 |  val buf3 = app(buf1, 4) // error
-   |                 ^^^^
-   |                 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed to a
-   |                 consume parameter or was used as a prefix to a consume method on line 27
+   |                 Separation failure: Illegal access to (buf : Buffer[Int]^), which was passed to a
+   |                 consume parameter or was used as a prefix to a consume method on line 21
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability classified as Mutable in the type of value buf1
--- Error: tests/neg-custom-args/captures/linear-buffer.scala:37:17 -----------------------------------------------------
-37 |  val buf3 = app(buf1, 4) // error
+   |                 where:    ^ refers to a fresh root capability in the type of parameter buf
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:30:17 -----------------------------------------------------
+30 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
    |                 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed to a
-   |                 consume parameter or was used as a prefix to a consume method on line 34
+   |                 consume parameter or was used as a prefix to a consume method on line 28
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability classified as Mutable in the type of value buf1
--- Error: tests/neg-custom-args/captures/linear-buffer.scala:47:17 -----------------------------------------------------
-47 |  val buf3 = app(buf1, 4) // error
+   |                 where:    ^ refers to a fresh root capability in the type of value buf1
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:38:17 -----------------------------------------------------
+38 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
    |                 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed to a
-   |                 consume parameter or was used as a prefix to a consume method on line 42
+   |                 consume parameter or was used as a prefix to a consume method on line 35
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability classified as Mutable in the type of value buf1
--- Error: tests/neg-custom-args/captures/linear-buffer.scala:51:8 ------------------------------------------------------
-51 |    app(buf, 1)  // error
+   |                 where:    ^ refers to a fresh root capability in the type of value buf1
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:48:17 -----------------------------------------------------
+48 |  val buf3 = app(buf1, 4) // error
+   |                 ^^^^
+   |                 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed to a
+   |                 consume parameter or was used as a prefix to a consume method on line 43
+   |                 and therefore is no longer available.
+   |
+   |                 where:    ^ refers to a fresh root capability in the type of value buf1
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:52:8 ------------------------------------------------------
+52 |    app(buf, 1)  // error
    |        ^^^
    |        Separation failure: (buf : Buffer[Int]^) appears in a loop, therefore it cannot
    |        be passed to a consume parameter or be used as a prefix of a consume method call.
    |
-   |        where:    ^ refers to a fresh root capability classified as Mutable in the type of parameter buf
+   |        where:    ^ refers to a fresh root capability in the type of parameter buf
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:62:20 -----------------------------------------------------
+62 |  val c3 = contents(buf)  // error
+   |                    ^^^
+   |                    Separation failure: Illegal access to buf.rd, which was passed to a
+   |                    consume parameter or was used as a prefix to a consume method on line 59
+   |                    and therefore is no longer available.

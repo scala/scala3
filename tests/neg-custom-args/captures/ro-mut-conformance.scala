@@ -9,7 +9,7 @@ class Ref extends IRef, Mutable:
 def test1(a: Ref^{cap.rd}): Unit =
   a.set(42)  // error
 def test2(a: Ref^{cap.rd}): Unit =
-  val t: Ref^{cap} = a  // error
+  val t: Ref^{cap} = a  // error // error separation
   def b: Ref^{cap.rd} = ???
   val i: IRef^{cap} = b // ok, no added privilege from `cap` on an IRef
   t.set(42)

@@ -67,7 +67,7 @@ sealed abstract class CaptureSet extends Showable:
    *   - take mutability from the set's sources (for DerivedVars)
    *   - compute mutability on demand based on mutability of elements (for Consts)
    */
-  def associateWithMutable()(using Context): Unit
+  def associateWithMutable()(using Context): CaptureSet
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -297,7 +297,7 @@ sealed abstract class CaptureSet extends Showable:
   /** The subcapturing test, using a given VarState */
   final def subCaptures(that: CaptureSet)(using ctx: Context, vs: VarState = VarState()): Boolean =
     TypeComparer.inNestedLevel:
-      val this1 = this.adaptMutability(that)
+      val this1 = if vs.isOpen then this.adaptMutability(that) else this
       if this1 == null then false
       else if this1 ne this then
         capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
@@ -566,8 +566,15 @@ object CaptureSet:
   val emptyRefs: Refs = SimpleIdentitySet.empty
 
   /** The empty capture set `{}` */
-  @sharable // sharable since the set is empty, so setMutable is a no-op
+  @sharable // sharable since the set is empty, so mutability won't be set
   val empty: CaptureSet.Const = Const(emptyRefs)
+
+  /** The empty capture set `{}` of a Mutable type, with Reader status */
+  @sharable // sharable since the set is empty, so mutability won't be set
+  val emptyOfMutable: CaptureSet.Const =
+    val cs = Const(emptyRefs)
+    cs.mutability = Mutability.Reader
+    cs
 
   /** The universal capture set `{cap}` */
   def universal(using Context): Const =
@@ -623,9 +630,11 @@ object CaptureSet:
 
     private var isComplete = true
 
-    def associateWithMutable()(using Context): Unit =
-      if !elems.isEmpty then
+    def associateWithMutable()(using Context): CaptureSet =
+      if elems.isEmpty then emptyOfMutable
+      else
         isComplete = false // delay computation of Mutability status
+        this
 
     override def mutability(using Context): Mutability =
       if !isComplete then
@@ -718,8 +727,9 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def associateWithMutable()(using Context): Unit =
+    def associateWithMutable()(using Context): CaptureSet =
       mutability = Mutable
+      this
 
     def isConst(using Context) = solved >= ccState.iterationId
     def isAlwaysEmpty(using Context) = isConst && elems.isEmpty
@@ -1036,7 +1046,7 @@ object CaptureSet:
     addAsDependentTo(source)
 
     /** Mutability is same as in source, except for readOnly */
-    override def associateWithMutable()(using Context): Unit = ()
+    override def associateWithMutable()(using Context): CaptureSet = this
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)

@@ -434,10 +434,12 @@ object Capabilities:
 
     /** An exclusive capability is a capability that derives
      *  indirectly from a maximal capability without going through
-     *  a read-only capability first.
+     *  a read-only capability or a capability classified as SharedCapability first.
      */
     final def isExclusive(using Context): Boolean =
-      !isReadOnly && (isTerminalCapability || captureSetOfInfo.isExclusive)
+      !isReadOnly
+      && !classifier.derivesFrom(defn.Caps_SharedCapability)
+      && (isTerminalCapability || captureSetOfInfo.isExclusive)
 
     /** Similar to isExlusive, but also includes capabilties with capture
      *  set variables in their info whose status is still open.

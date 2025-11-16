@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/mut-iterator3.scala:31:20 -----------------------------------------------------
+31 |  val mapped = roit.map(proc) // error
+   |               ^^^^^^^^
+   |               Cannot call update method map of roit
+   |               since its capture set {roit} is read-only.
+-- Error: tests/neg-custom-args/captures/mut-iterator3.scala:32:9 ------------------------------------------------------
+32 |  mapped.next() // error
+   |  ^^^^^^^^^^^
+   |  Cannot call update method next of mapped
+   |  since its capture set {mapped} is read-only.

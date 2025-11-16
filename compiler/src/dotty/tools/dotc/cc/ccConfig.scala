@@ -48,6 +48,11 @@ object ccConfig:
    */
   inline val useSpanCapset = false
 
+  /** If true force all mutable fields to be in Mutable classes, unless they
+   *  are annotated with @untrackedCaptures
+   */
+  inline val noUnsafeMutableFields = false
+
   /** If true, do level checking for FreshCap instances */
   def useFreshLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
@@ -58,5 +63,7 @@ object ccConfig:
 
   def allowUse(using Context): Boolean =
     Feature.sourceVersion.stable.isAtMost(SourceVersion.`3.7`)
+
+
 
 end ccConfig

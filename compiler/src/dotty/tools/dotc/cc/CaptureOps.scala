@@ -15,7 +15,8 @@ import CaptureSet.VarState
 import Capabilities.*
 import StdNames.nme
 import config.Feature
-import dotty.tools.dotc.core.NameKinds.TryOwnerName
+import NameKinds.TryOwnerName
+import typer.ProtoTypes.WildcardSelectionProto
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
@@ -634,6 +635,10 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+/** A prototype that indicates selection */
+class PathSelectionProto(val select: Select, val pt: Type) extends typer.ProtoTypes.WildcardSelectionProto:
+  def selector(using Context): Symbol = select.symbol
 
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into RetainingTypes if CC is enabled.
