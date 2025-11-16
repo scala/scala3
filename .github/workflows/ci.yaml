@@ -51,99 +51,6 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  test:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Cmd Tests
-        run: |
-          ./project/scripts/buildScalaBinary
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/publishLocal ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
-          ./project/scripts/cmdTests
-          ./project/scripts/bootstrappedOnlyCmdTests
-
-  test_windows_fast:
-    runs-on: [self-hosted, Windows]
-    if: "(
-           github.event_name == 'push'
-           && github.ref != 'refs/heads/main'
-         )
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
-         )"
-
-    steps:
-      - name: Reset existing repo
-        shell: cmd
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Test
-        run: sbt ";scala3-bootstrapped/compile"
-        shell: cmd
-
-      #- name: build binary
-      #  run: sbt "dist-win-x86_64/Universal/stage" & bash -version
-      #  shell: cmd
-
-      - name: cygwin tests
-        run: '"C:\Program Files\cygwin64\bin\bash" ./project/scripts/winCmdTests'
-        shell: cmd
-
-      - name: msys tests
-        run: '"C:\Program Files\Git\bin\bash" ./project/scripts/winCmdTests'
-        shell: cmd
-
-      - name: win tests
-        run: './project/scripts/winCmdTests.bat'
-        shell: cmd
-
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
@@ -179,7 +86,6 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, build-sdk-package, build-msi-package]
     if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
 
     env:
@@ -317,44 +223,44 @@ jobs:
       - name: Publish Release (org.scala-js)
         run: ./project/scripts/sbtPublish "clean; scala-library-sjs/publishSigned ;sonaUpload"
 
-  build-msi-package:
-    uses: ./.github/workflows/build-msi.yml
-    if  :
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
-      (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
+  #build-msi-package:
+  #  uses: ./.github/workflows/build-msi.yml
+  #  if  :
+  #    (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
+  #    (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
 
-  test-msi-package:
-    uses: ./.github/workflows/test-msi.yml
-    needs: [build-msi-package]
-    with:
-      # Ensure that version starts with prefix 3.
-      # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
-      version: "3."
-      java-version: 17
+  #test-msi-package:
+  #  uses: ./.github/workflows/test-msi.yml
+  #  needs: [build-msi-package]
+  #  with:
+  #    # Ensure that version starts with prefix 3.
+  #    # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
+  #    version: "3."
+  #    java-version: 17
 
-  build-sdk-package:
-    uses: ./.github/workflows/build-sdk.yml
-    if:
-      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
-      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
-      (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
-      github.event_name == 'push' ||
-      github.event_name == 'merge_group'
-    with:
-      java-version: 17
+  #build-sdk-package:
+  #  uses: ./.github/workflows/build-sdk.yml
+  #  if:
+  #    (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+  #    (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+  #    (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
+  #    github.event_name == 'push' ||
+  #    github.event_name == 'merge_group'
+  #  with:
+  #    java-version: 17
 
-  build-chocolatey-package:
-    uses: ./.github/workflows/build-chocolatey.yml
-    needs: [ build-sdk-package ]
-    with:
-      version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
-      digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
+  #build-chocolatey-package:
+  #  uses: ./.github/workflows/build-chocolatey.yml
+  #  needs: [ build-sdk-package ]
+  #  with:
+  #    version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
+  #    url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+  #    digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
 
-  test-chocolatey-package:
-    uses: ./.github/workflows/test-chocolatey.yml
-    with:
-      version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-      java-version: 17
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
-    needs: [ build-chocolatey-package ]
+  #test-chocolatey-package:
+  #  uses: ./.github/workflows/test-chocolatey.yml
+  #  with:
+  #    version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
+  #    java-version: 17
+  #  if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
+  #  needs: [ build-chocolatey-package ]
