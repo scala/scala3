@@ -1,0 +1,33 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-tuple.scala:15:4 ----------------------------------
+14 |  val (a, b) = freeze:
+15 |    val t1 = allocRef()  // error
+   |               ^
+   |      Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value x1.
+   |      The leakage occurred when trying to match the following types:
+   |
+   |      Found:    (Ref^{cap}, Ref^{cap²})^'s2
+   |      Required: (Ref^'s1, Ref^'s3)^'s4
+   |
+   |      where:    cap and cap² refer to a root capability associated with the result type of (): (Ref^, Ref^²)^'s2
+16 |    val t2 = allocRef()
+17 |    (t1, t2)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-tuple.scala:22:16 ---------------------------------
+22 |  val (a: Ref^{}, b: Ref^{}) = freeze:  // error // error
+   |                ^
+   |                Found:    Ref^{a0.rd}
+   |                Required: Ref^{}
+   |
+   |                Note that capability a0.rd is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-tuple.scala:22:27 ---------------------------------
+22 |  val (a: Ref^{}, b: Ref^{}) = freeze:  // error // error
+   |                           ^
+   |                           Found:    Ref^{b0.rd}
+   |                           Required: Ref^{}
+   |
+   |                           Note that capability b0.rd is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,3 +1,4 @@
+import language.experimental.captureChecking
 import caps.*
 
 class Arr[T: reflect.ClassTag](len: Int) extends Mutable:
@@ -7,17 +8,19 @@ class Arr[T: reflect.ClassTag](len: Int) extends Mutable:
 
 
 def test2 =
-  val a = Arr[String](2)
-  a(0) = "1"
-  a(1) = "2"
-  val b = freeze(a) // error
-  b
+  val a = freeze:
+    val a = Arr[String](2)
+    a(0) = "1"
+    a(1) = "2"
+    a
+  val _: Arr[String]^{} = a
 
-class EX
-
-def mkExclusive(): EX^ = ???
-
-def test3 =
-  freeze:
-    mkExclusive() // error
-
+  val a2 = freeze:
+    val a = Arr[String](2)  // error
+    val b = Arr[String](2)
+    a(0) = "1"
+    a(1) = "2"
+    b(0) = "1"
+    b(1) = "2"
+    (a, b)
+  val _: (Arr[String]^{}, Arr[String]^{}) = a2

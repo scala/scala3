@@ -1,22 +1,19 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze.scala:13:17 ---------------------------------------
-13 |  val b = freeze(a) // error
-   |                 ^
-   |                 Found:    () ?->{a} Arr[String]^{a}
-   |                 Required: () ?-> <?>
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze.scala:19:4 ----------------------------------------
+18 |  val a2 = freeze:
+19 |    val a = Arr[String](2)  // error
+   |           ^
+   |Capability cap outlives its scope: it leaks into outer capture set 's1 of value a2.
+   |The leakage occurred when trying to match the following types:
    |
-   |                 Note that capability a is not included in capture set {}.
+   |Found:    (Arr[String]^{cap}, Arr[String]^{cap²})^'s2
+   |Required: (Arr[String]^'s1, Arr[String]^'s3)^'s4
    |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze.scala:22:4 ----------------------------------------
-21 |  freeze:
-22 |    mkExclusive() // error
-   |  ^
-   |  Capability cap outlives its scope: it leaks into outer capture set 's1 of method test3.
-   |  The leakage occurred when trying to match the following types:
-   |
-   |  Found:    EX^{cap}
-   |  Required: EX^'s1
-   |
-   |  where:    cap is a root capability associated with the result type of (): EX^
+   |where:    cap and cap² refer to a root capability associated with the result type of (): (Arr[String]^, Arr[String]^²)^'s2
+20 |    val b = Arr[String](2)
+21 |    a(0) = "1"
+22 |    a(1) = "2"
+23 |    b(0) = "1"
+24 |    b(1) = "2"
+25 |    (a, b)
    |
    | longer explanation available when compiling with `-explain`
