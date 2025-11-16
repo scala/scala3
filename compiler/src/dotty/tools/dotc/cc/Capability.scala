@@ -276,9 +276,10 @@ object Capabilities:
      *  if separation checks are turned off).
      *  @pre The capability's origin was not yet set.
      */
-    def setOrigin(freshOrigin: FreshCap | GlobalCap.type): Unit =
+    def setOrigin(freshOrigin: FreshCap | GlobalCap.type): this.type =
       assert(myOrigin eq GlobalCap)
       myOrigin = freshOrigin
+      this
 
     /** If the current capability was created via a chain of `derivedResult` calls
      *  from an original ResultCap `r`, that `r`. Otherwise `this`.
@@ -517,6 +518,8 @@ object Capabilities:
           case prefix: ThisType if setOwner.isTerm && setOwner.owner == prefix.cls =>
             setOwner
           case prefix: Capability => prefix.ccOwner
+          case NoPrefix if classifier.derivesFrom(defn.Caps_Unscoped) =>
+            ctx.owner.topLevelClass
           case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
@@ -1168,7 +1171,7 @@ object Capabilities:
       case _ =>
         super.mapOver(t)
 
-  class ToResult(localResType: Type, mt: MethodicType, fail: Message => Unit)(using Context) extends CapMap:
+  class ToResult(localResType: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context) extends CapMap:
 
     def apply(t: Type) = t match
       case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
@@ -1183,11 +1186,12 @@ object Capabilities:
     override def mapCapability(c: Capability, deep: Boolean) = c match
       case c: (FreshCap | GlobalCap.type) =>
         if variance > 0 then
-          val res = ResultCap(mt)
           c match
-            case c: FreshCap => res.setOrigin(c)
-            case _ =>
-          res
+            case c: FreshCap =>
+              if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped)
+              then c
+              else ResultCap(mt).setOrigin(c)
+            case _ => ResultCap(mt)
         else
           if variance == 0 then
             fail(em"""$localResType captures the root capability `cap` in invariant position.
@@ -1227,8 +1231,8 @@ object Capabilities:
    *  variable bound by `mt`.
    *  Stop at function or method types since these have been mapped before.
    */
-  def toResult(tp: Type, mt: MethodicType, fail: Message => Unit)(using Context): Type =
-    ToResult(tp, mt, fail)(tp)
+  def toResult(tp: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context): Type =
+    ToResult(tp, mt, sym, fail)(tp)
 
   /** Map global roots in function results to result roots. Also,
    *  map roots in the types of def methods that are parameterless
@@ -1244,7 +1248,7 @@ object Capabilities:
             else apply(mt))
         case t: MethodType if variance > 0 && t.marksExistentialScope =>
           val t1 = mapOver(t).asInstanceOf[MethodType]
-          t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))
+          t1.derivedLambdaType(resType = toResult(t1.resType, t1, sym, fail))
         case CapturingType(parent, refs) =>
           t.derivedCapturingType(this(parent), refs)
         case t: (LazyRef | TypeVar) =>
@@ -1259,7 +1263,7 @@ object Capabilities:
     m(tp) match
       case tp1: ExprType if sym.is(Method, butNot = Accessor) =>
         // Map the result of parameterless `def` methods.
-        tp1.derivedExprType(toResult(tp1.resType, tp1, fail))
+        tp1.derivedExprType(toResult(tp1.resType, tp1, sym, fail))
       case tp1: PolyType if !tp1.resType.isInstanceOf[MethodicType] =>
         // Map also the result type of method with only type parameters.
         // This way, the `^` in the following method will be mapped to a `ResultCap`:
@@ -1269,7 +1273,7 @@ object Capabilities:
         // ```
         // This is more desirable than interpreting `^` as a `Fresh` at the level of `Buffer.empty`
         // in most cases.
-        tp1.derivedLambdaType(resType = toResult(tp1.resType, tp1, fail))
+        tp1.derivedLambdaType(resType = toResult(tp1.resType, tp1, sym, fail))
       case tp1 => tp1
   end toResultInResults
 

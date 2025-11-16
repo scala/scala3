@@ -86,6 +86,12 @@ trait Mutable extends ExclusiveCapability
 @experimental
 trait Read extends Mutable, Classifier
 
+/** Marker trait for classes that are not subject to scoping restrictions
+ *  of captured capabilities.
+ */
+@experimental
+trait Unscoped extends ExclusiveCapability, Classifier
+
 /** Carrier trait for capture set type parameters */
 @experimental
 trait CapSet extends Any
