@@ -4,6 +4,7 @@ package printing
 import core.*
 import Texts.*, Types.*, Flags.*, Names.*, Symbols.*, NameOps.*, Constants.*, Denotations.*
 import StdNames.*
+import NameKinds.ContextFunctionParamName
 import Contexts.*
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
@@ -361,9 +362,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch {
-            case ex: Throwable => Str("...")
-          }
+          catch case _: Throwable => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
@@ -395,10 +394,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     Text(lam.paramRefs.map(paramText), ", ")
   }
 
-  protected def ParamRefNameString(name: Name): String = nameString(name)
+  protected def ParamRefNameString(name: Name): String =
+    nameString(name)
 
   protected def ParamRefNameString(param: ParamRef): String =
-    ParamRefNameString(param.binder.paramNames(param.paramNum))
+    val name = param.binder.paramNames(param.paramNum)
+    ParamRefNameString:
+      if name.is(ContextFunctionParamName) then
+        name match
+        case ContextFunctionParamName(name, _) if !name.isEmpty => name
+        case name => name
+      else name
 
   /** The name of the symbol without a unique id. */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)

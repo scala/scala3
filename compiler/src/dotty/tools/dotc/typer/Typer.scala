@@ -3912,7 +3912,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ => paramTypes.map(_ => false)
     }
 
-    val ifun = desugar.makeContextualFunction(paramTypes, paramNamesOrNil, tree, erasedParams)
+    val ifun = desugar.makeContextualFunction(paramTypes, paramNamesOrNil, tree, erasedParams, augmenting = true)
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typedFunctionValue(ifun, pt)
       .tap:
