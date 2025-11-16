@@ -8,14 +8,14 @@ class Arr[T: reflect.ClassTag](len: Int) extends Mutable:
 
 
 def test2 =
-  val a = immutable:
+  val a = freeze:
     val a = Arr[String](2)
     a(0) = "1"
     a(1) = "2"
     a
   val _: Arr[String]^{} = a
 
-  val a2 = immutable:
+  val a2 = freeze:
     val a = Arr[String](2)
     val b = Arr[String](2)
     a(0) = "1"

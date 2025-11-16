@@ -10,7 +10,7 @@ def test2 =
   val a = Arr[String](2)
   a(0) = "1"
   a(1) = "2"
-  val b = immutable(a) // error
+  val b = freeze(a) // error
   b
 
 class EX
@@ -18,6 +18,6 @@ class EX
 def mkExclusive(): EX^ = ???
 
 def test3 =
-  immutable:
+  freeze:
     mkExclusive() // error
 

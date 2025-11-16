@@ -137,7 +137,7 @@ sealed trait Exists extends Capability
  *  result of pure operation `op`, turning them into immutable types.
  */
 @experimental
-def immutable[T](op: -> T): T = op
+def freeze[T](op: -> T): T = op
 
 @experimental
 object internal:
