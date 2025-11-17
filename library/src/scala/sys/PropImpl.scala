@@ -44,7 +44,7 @@ private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends P
   protected def underlying: mutable.Map[String, String | Null] = scala.sys.props
   protected def zero: T = null.asInstanceOf[T]
   private def getString = if (isSet) "currently: " + get else "unset"
-  override def toString = "%s (%s)".format(key, getString)
+  override def toString() = "%s (%s)".format(key, getString)
 }
 
 private[sys] abstract class CreatorImpl[+T](f: String => T) extends Prop.Creator[T] {

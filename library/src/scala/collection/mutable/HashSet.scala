@@ -454,6 +454,6 @@ object HashSet extends IterableFactory[HashSet] {
       if(_next ne null) _next.foreach(f)
     }
 
-    override def toString = s"Node($key, $hash) -> $next"
+    override def toString() = s"Node($key, $hash) -> $next"
   }
 }

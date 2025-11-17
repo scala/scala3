@@ -55,6 +55,6 @@ object Unit extends AnyValCompanion {
   def unbox(x: java.lang.Object): Unit = x.asInstanceOf[scala.runtime.BoxedUnit]
 
   /** The String representation of the scala.Unit companion object. */
-  override def toString = "object scala.Unit"
+  override def toString() = "object scala.Unit"
 }
 

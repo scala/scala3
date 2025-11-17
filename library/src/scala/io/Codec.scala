@@ -46,7 +46,7 @@ class Codec(val charSet: Charset) {
   private var _onCodingException: Handler       = e => throw e
 
   /** The name of the Codec. */
-  override def toString: String = name
+  override def toString(): String = name
 
   // these methods can be chained to configure the variables above
   def onMalformedInput(newAction: Action): this.type              = { _onMalformedInput = newAction ; this }
