@@ -29,7 +29,7 @@ import scala.language.`2.13`
 trait Proxy extends Any {
   def self: Any
 
-  override def hashCode: Int = self.hashCode
+  override def hashCode(): Int = self.hashCode
   override def equals(that: Any): Boolean = that match {
     case null  => false
     case _     =>

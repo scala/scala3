@@ -385,13 +385,13 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   override protected def className = "HashSet"
 
-  override def hashCode: Int = {
+  override def hashCode(): Int = {
     val setIterator = this.iterator
     val hashIterator: Iterator[Any] =
       if (setIterator.isEmpty) setIterator
       else new HashSetIterator[Any] {
         var hash: Int = 0
-        override def hashCode: Int = hash
+        override def hashCode(): Int = hash
         override protected def extract(nd: Node[A]): Any = {
           hash = unimproveHash(nd.hash)
           this

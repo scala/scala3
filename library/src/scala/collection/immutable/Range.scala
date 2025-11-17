@@ -527,7 +527,7 @@ sealed abstract class Range(
       super.equals(other)
   }
 
-  final override def hashCode: Int =
+  final override def hashCode(): Int =
     if(length >= 2) MurmurHash3.rangeHash(start, step, lastElement)
     else super.hashCode
 

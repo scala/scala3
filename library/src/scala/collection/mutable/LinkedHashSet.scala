@@ -291,13 +291,13 @@ class LinkedHashSet[A]
     }
   }
 
-  override def hashCode: Int = {
+  override def hashCode(): Int = {
     val setHashIterator =
       if (isEmpty) this.iterator
       else {
         new LinkedHashSetIterator[Any] {
           var hash: Int = 0
-          override def hashCode: Int = hash
+          override def hashCode(): Int = hash
           override def extract(nd: Entry): Any = {
             hash = unimproveHash(nd.hash)
             this
