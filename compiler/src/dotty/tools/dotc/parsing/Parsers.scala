@@ -349,43 +349,45 @@ object Parsers {
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
     /** Parse statement separators and end markers. Ensure that there is at least
-     *  one statement separator unless the next token terminates a statement´sequence.
-     *  @param   stats      the statements parsed to far
+     *  one statement separator unless the next token terminates a statement sequence.
+     *  @param   stats      the statements parsed so far
      *  @param   noPrevStat true if there was no immediately preceding statement parsed
      *  @param   what       a string indicating what kind of statement is parsed
      *  @param   altEnd     a token that is also considered as a terminator of the statement
-     *                      sequence (the default `EOF` already assumes to terminate a statement
+     *                      sequence (the default `EOF` is already assumed to terminate a statement
      *                      sequence).
      *  @return  true if the statement sequence continues, false if it terminates.
      */
     def statSepOrEnd[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean = false, what: String = "statement", altEnd: Token = EOF): Boolean =
+      inline def stopping = false
+      inline def continuing = true
       def recur(sepSeen: Boolean, endSeen: Boolean): Boolean =
         if isStatSep then
           in.nextToken()
-          recur(true, endSeen)
+          recur(sepSeen = true, endSeen)
         else if in.token == END then
           if endSeen then syntaxError(em"duplicate end marker")
           checkEndMarker(stats)
           recur(sepSeen, endSeen = true)
         else if isStatSeqEnd || in.token == altEnd then
-          false
+          stopping
         else if sepSeen || endSeen then
-          true
+          continuing
         else
           val found = in.token
           val statFollows = mustStartStatTokens.contains(found)
           syntaxError(
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
             else em"end of $what expected but ${showToken(found)} found")
-          if mustStartStatTokens.contains(found) then
-            false // it's a statement that might be legal in an outer context
+          if statFollows then
+            stopping // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             skip()
-            true
+            continuing
 
       in.observeOutdented()
-      recur(false, false)
+      recur(sepSeen = false, endSeen = false)
     end statSepOrEnd
 
     def rewriteNotice(version: SourceVersion = `3.0-migration`, additionalOption: String = "") =
@@ -1566,15 +1568,23 @@ object Parsers {
           if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(in.offset), "  ")
 
-    def possibleTemplateStart(isNew: Boolean = false): Unit =
+    inline transparent def possibleTemplateStart(inline isNew: Boolean = false) =
+      inline if isNew then newTemplateStart() else (newTemplateStart(): Unit)
+
+    /** Return true on trivial end */
+    def newTemplateStart(): Boolean =
       in.observeColonEOL(inTemplate = true)
       if in.token == COLONeol then
-        if in.lookahead.token == END then in.token = NEWLINE
+        if in.lookahead.token == END then
+          in.token = NEWLINE
+          true
         else
           in.nextToken()
           if in.token != LBRACE then acceptIndent()
+          false
       else
         newLineOptWhenFollowedBy(LBRACE)
+        false
 
     def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
 
@@ -2915,15 +2925,22 @@ object Parsers {
       val parents =
         if in.isNestedStart then Nil
         else constrApps(exclude = COMMA)
-      possibleTemplateStart(isNew = true)
-      parents match {
-        case parent :: Nil if !in.isNestedStart =>
-          reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
-        case tkn if in.token == INDENT =>
-          New(templateBodyOpt(emptyConstructor, parents, Nil))
-        case _ =>
-          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
-      }
+      val colonized = possibleTemplateStart(isNew = true)
+      parents match
+      case parent :: Nil if !in.isNestedStart =>
+        reposition:
+          if colonized then New(Template(emptyConstructor, parents, derived = Nil, self = EmptyValDef, body = Nil))
+          else if parent.isType then ensureApplied(wrapNew(parent))
+          else parent
+      case parents =>
+        // With brace syntax, the last token consumed by a parser is }, but with indent syntax,
+        // the last token consumed by a parser is OUTDENT, which causes mismatching spans, so don't reposition.
+        val indented = in.token == INDENT
+        val body =
+          val bo = templateBodyOpt(emptyConstructor, parents, derived = Nil)
+          if !indented then reposition(bo) else bo
+        New(body)
+    end newExpr
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
      *                       |   NamedExprInParens {‘,’ NamedExprInParens}
