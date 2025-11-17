@@ -512,35 +512,42 @@ object Capabilities:
 
     final def isParamPath(using Context): Boolean = paramPathRoot.exists
 
-    final def ccOwner(using Context): Symbol = this match
+    /** Compute ccOwner or (part of level owner).
+     *  @param mapUnscoped  if true, return the nclosing toplevel class for FreshCaps
+     *                      classified as Unscoped that don't have a prefix
+     */
+    private def computeOwner(mapUnscoped: Boolean)(using Context): Symbol = this match
       case self: ThisType => self.cls
-      case TermRef(prefix: Capability, _) => prefix.ccOwner
+      case TermRef(prefix: Capability, _) => prefix.computeOwner(mapUnscoped)
       case self: NamedType => self.symbol
-      case self: DerivedCapability => self.underlying.ccOwner
+      case self: DerivedCapability => self.underlying.computeOwner(mapUnscoped)
       case self: FreshCap =>
         val setOwner = self.hiddenSet.owner
         self.prefix match
           case prefix: ThisType if setOwner.isTerm && setOwner.owner == prefix.cls =>
             setOwner
-          case prefix: Capability => prefix.ccOwner
-          case NoPrefix if classifier.derivesFrom(defn.Caps_Unscoped) =>
+          case prefix: Capability => prefix.computeOwner(mapUnscoped)
+          case NoPrefix if mapUnscoped && classifier.derivesFrom(defn.Caps_Unscoped) =>
             ctx.owner.topLevelClass
           case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
+    final def ccOwner(using Context): Symbol = computeOwner(mapUnscoped = false)
+
     final def visibility(using Context): Symbol = this match
-      case self: FreshCap => adjustOwner(ccOwner)
+      case self: FreshCap => adjustOwner(computeOwner(mapUnscoped = true))
       case _ =>
-        val vis = ccOwner
+        val vis = computeOwner(mapUnscoped = true)
         if vis.is(Param) then vis.owner else vis
 
     /** The symbol that represents the level closest-enclosing ccOwner.
      *  Symbols representing levels are
      *   - class symbols, but not inner (non-static) module classes
      *   - method symbols, but not accessors or constructors
+     *  For Unscoped FreshCaps the level owner is the top-level class.
      */
     final def levelOwner(using Context): Symbol =
-      adjustOwner(ccOwner)
+      adjustOwner(computeOwner(mapUnscoped = true))
 
     private def adjustOwner(owner: Symbol)(using Context): Symbol =
       if !owner.exists
