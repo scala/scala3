@@ -653,7 +653,7 @@ object Build {
   // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
   // ==============================================================================================
 
-  lazy val `scala3-nonbootstrapped` = project
+  lazy val `scala3-nonbootstrapped` = project.in(file("."))
     .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
       `tasty-core-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
     .settings(
@@ -815,7 +815,7 @@ object Build {
       // Nothing to be published by this project
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
-      target := target.value / "scala3-bootstrapped",
+      target := (ThisBuild / baseDirectory).value / "target" / "scala3-bootstrapped",
       scalac := Def.inputTaskDyn {
         val log = streams.value.log
         val externalDeps = (`scala3-compiler-bootstrapped-new` / Runtime / externalDependencyClasspath).value
