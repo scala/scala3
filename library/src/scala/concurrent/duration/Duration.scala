@@ -739,5 +739,5 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
     case x: FiniteDuration => toNanos == x.toNanos
     case _                 => super.equals(other)
   }
-  override def hashCode: Int = toNanos.toInt
+  override def hashCode(): Int = toNanos.toInt
 }

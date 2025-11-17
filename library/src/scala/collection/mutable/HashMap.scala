@@ -578,12 +578,12 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "HashMap"
 
-  override def hashCode: Int = {
+  override def hashCode(): Int = {
     if (isEmpty) MurmurHash3.emptyMapHash
     else {
       val tupleHashIterator = new HashMapIterator[Any] {
         var hash: Int = 0
-        override def hashCode: Int = hash
+        override def hashCode(): Int = hash
         override protected def extract(nd: Node[K, V]): Any = {
           hash = MurmurHash3.tuple2Hash(unimproveHash(nd.hash), nd.value.##)
           this

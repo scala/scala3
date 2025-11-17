@@ -455,12 +455,12 @@ class LinkedHashMap[K, V]
     }
   }
 
-  override def hashCode: Int = {
+  override def hashCode(): Int = {
     if (isEmpty) MurmurHash3.emptyMapHash
     else {
       val tupleHashIterator = new LinkedHashMapIterator[Any] {
         var hash: Int = 0
-        override def hashCode: Int = hash
+        override def hashCode(): Int = hash
         override def extract(nd: Entry): Any = {
           hash = MurmurHash3.tuple2Hash(unimproveHash(nd.hash), nd.value.##)
           this

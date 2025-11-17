@@ -65,7 +65,7 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
     case m: Manifest[_] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
     case _              => false
   }
-  override def hashCode = this.runtimeClass.##
+  override def hashCode() = this.runtimeClass.##
 }
 
 /** The object `Manifest` defines factory methods for manifests.
