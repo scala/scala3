@@ -1,9 +1,0 @@
--- [E007] Type Mismatch Error: tests/neg/i18123b.scala:8:8 -------------------------------------------------------------
-8 |def z = y.rep().toUpperCase // error
-  |        ^^^^^^^
-  |        Found:    (??? : => Nothing)
-  |        Required: ?{ toUpperCase: ? }
-  |        Note that implicit conversions were not tried because the result of an implicit conversion
-  |        must be more specific than ?{ toUpperCase: <?> }
-  |
-  | longer explanation available when compiling with `-explain`
