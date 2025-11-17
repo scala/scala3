@@ -96,7 +96,7 @@ private[process] trait ProcessBuilderImpl {
 
       new SimpleProcess(process, inThread, outThread :: errorThread)
     }
-    override def toString = p.command.toString
+    override def toString() = p.command.toString
     override def canPipeTo = true
   }
 
@@ -240,7 +240,7 @@ private[process] trait ProcessBuilderImpl {
 
     checkNotThis(a)
     checkNotThis(b)
-    override def toString = " ( " + a + " " + operatorString + " " + b + " ) "
+    override def toString() = " ( " + a + " " + operatorString + " " + b + " ) "
   }
 
   private[process] class PipedBuilder(

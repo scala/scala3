@@ -473,7 +473,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     import scala.annotation.tailrec
     import scala.collection.generic.BitOperations.Int._
 
-    override final def toString: String = format
+    override final def toString(): String = format
     final def format: String = {
       val sb = new StringBuilder
       format(sb, "", "")

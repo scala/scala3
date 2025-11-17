@@ -640,7 +640,7 @@ object Future {
     override final def fallbackTo[U >: Nothing](that: Future[U]): Future[U] = this
     override final def mapTo[S](implicit tag: ClassTag[S]): Future[S] = this
     override final def andThen[U](pf: PartialFunction[Try[Nothing], U])(implicit executor: ExecutionContext): Future[Nothing] = this
-    override final def toString: String = "Future(<never>)"
+    override final def toString(): String = "Future(<never>)"
   }
 
   /** A Future which is completed with the Unit value.

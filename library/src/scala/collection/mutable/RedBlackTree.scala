@@ -46,7 +46,7 @@ private[collection] object RedBlackTree {
       @annotation.stableNull
       var parent: Node[A, B] | Null
     ) {
-    override def toString: String = "Node(" + key + ", " + value + ", " + red + ", " + left + ", " + right + ")"
+    override def toString(): String = "Node(" + key + ", " + value + ", " + red + ", " + left + ", " + right + ")"
   }
 
   object Tree {

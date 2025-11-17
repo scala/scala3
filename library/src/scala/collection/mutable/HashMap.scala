@@ -655,7 +655,7 @@ object HashMap extends MapFactory[HashMap] {
       if(_next ne null) _next.foreachEntry(f)
     }
 
-    override def toString = s"Node($key, $value, $hash) -> $next"
+    override def toString() = s"Node($key, $value, $hash) -> $next"
   }
 }
 

@@ -412,7 +412,7 @@ object ManifestFactory {
   private class ClassTypeManifest[T](prefix: Option[Manifest[?]],
                                      val runtimeClass: Predef.Class[?],
                                      override val typeArguments: List[Manifest[?]]) extends Manifest[T] {
-    override def toString =
+    override def toString() =
       (if (prefix.isEmpty) "" else prefix.get.toString+"#") +
       (if (runtimeClass.isArray) "Array" else runtimeClass.getName) +
       argString
@@ -425,7 +425,7 @@ object ManifestFactory {
   private class AbstractTypeManifest[T](prefix: Manifest[?], name: String, upperBound: Predef.Class[?], args: scala.collection.Seq[Manifest[?]]) extends Manifest[T] {
     def runtimeClass = upperBound
     override val typeArguments = args.toList
-    override def toString = prefix.toString+"#"+name+argString
+    override def toString() = prefix.toString+"#"+name+argString
   }
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
@@ -437,7 +437,7 @@ object ManifestFactory {
   @SerialVersionUID(1L)
   private class WildcardManifest[T](lowerBound: Manifest[?], upperBound: Manifest[?]) extends Manifest[T] {
     def runtimeClass = upperBound.runtimeClass
-    override def toString =
+    override def toString() =
       "_" +
         (if (lowerBound eq Nothing) "" else " >: "+lowerBound) +
         (if (upperBound eq Nothing) "" else " <: "+upperBound)
@@ -453,7 +453,7 @@ object ManifestFactory {
     // We use an `Array` instead of a `Seq` for `parents` to avoid cyclic dependencies during deserialization
     // which can cause serialization proxies to leak and cause a ClassCastException.
     def runtimeClass = parents(0).runtimeClass
-    override def toString = parents.mkString(" with ")
+    override def toString() = parents.mkString(" with ")
   }
 
   /** Manifest for the intersection type `parents_0 with ... with parents_n`. */

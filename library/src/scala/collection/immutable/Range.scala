@@ -531,7 +531,7 @@ sealed abstract class Range(
     if(length >= 2) MurmurHash3.rangeHash(start, step, lastElement)
     else super.hashCode
 
-  final override def toString: String = {
+  final override def toString(): String = {
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"
 
@@ -674,7 +674,7 @@ object Range {
   // we offer a partially constructed object.
   class Partial[T, U](private val f: T => U) extends AnyVal { self: Partial[T, U]^ =>
     def by(x: T): U = f(x)
-    override def toString = "Range requires step"
+    override def toString() = "Range requires step"
   }
 
   // Illustrating genericity with Int Range, which should have the same behavior

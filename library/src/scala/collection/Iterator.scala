@@ -977,7 +977,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  @return `"<iterator>"`
    *  @note    Reuse: $preservesIterator
    */
-  override def toString = "<iterator>"
+  override def toString() = "<iterator>"
 
   @deprecated("Iterator.seq always returns the iterator itself", "2.13.0")
   def seq: this.type = this

@@ -596,7 +596,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
   def regex: String = pattern.pattern
 
   /** The string defining the regular expression */
-  override def toString: String = regex
+  override def toString(): String = regex
 }
 
 /** A [[Regex]] that finds the first match when used in a pattern match.
@@ -719,7 +719,7 @@ object Regex {
     )
 
     /** The matched string; equivalent to `matched.toString`. */
-    override def toString: String = matched.nn
+    override def toString(): String = matched.nn
   }
 
   /** Provides information about a successful match. */
@@ -842,7 +842,7 @@ object Regex {
     }
 
     /** Report emptiness. */
-    override def toString: String = super[AbstractIterator].toString
+    override def toString(): String = super[AbstractIterator].toString
 
     // ensure we're at a match
     private def ensure(): Unit = nextSeen match {

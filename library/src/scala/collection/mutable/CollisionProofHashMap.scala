@@ -800,7 +800,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
       @annotation.stableNull
       var parent: RBNode[K, V] | Null
     ) extends Node {
-    override def toString: String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
+    override def toString(): String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
 
     @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): RBNode[K, V] | Null = {
       val cmp = compare(k, h, this)
@@ -870,7 +870,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   /////////////////////////// Linked List Node
 
   private final class LLNode[K, V](var key: K, var hash: Int, var value: V, @annotation.stableNull var next: LLNode[K, V] | Null) extends Node {
-    override def toString = s"LLNode($key, $value, $hash) -> $next"
+    override def toString() = s"LLNode($key, $value, $hash) -> $next"
 
     private def eq(a: Any, b: Any): Boolean =
       if(a.asInstanceOf[AnyRef] eq null) b.asInstanceOf[AnyRef] eq null else a.asInstanceOf[AnyRef].equals(b)
