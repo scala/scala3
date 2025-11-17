@@ -4,4 +4,4 @@ trait InlineConstants:
   inline val myShort: Short
 
 object Constants extends InlineConstants:
-  inline val myShort/*: Short(4)*/ = 4
+  inline val myShort/*: (4 : Short)*/ = 4
