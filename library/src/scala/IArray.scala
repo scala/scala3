@@ -346,14 +346,13 @@ object IArray:
     mapNull(arr, ArraySeq.unsafeWrapArray(arr))
 
   /** Conversion from IArray to immutable.ArraySeq */
-  import scala.language.unsafeNulls // TODO!!! only for stdlib migration!
   implicit def wrapRefArray[T <: AnyRef | Null](arr: IArray[T]): ArraySeq.ofRef[T] =
     // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef | Null]
     // is as good as another for all T <: AnyRef | Null.  Instead of creating 100,000,000
     // unique ones by way of this implicit, let's share one.
     mapNull(arr,
       if (arr.length == 0) ArraySeq.empty[AnyRef | Null].asInstanceOf[ArraySeq.ofRef[T]]
-      else ArraySeq.ofRef[AnyRef](arr.asInstanceOf[Array[AnyRef]]).asInstanceOf[ArraySeq.ofRef[T]]
+      else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
     )
 
   /** Conversion from IArray to immutable.ArraySeq */
