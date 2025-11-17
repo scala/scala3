@@ -2514,10 +2514,10 @@ object Build {
         Seq(
           s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
           s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(`scala3-compiler-bootstrapped-new` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped-new` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
-          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
           "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value,
