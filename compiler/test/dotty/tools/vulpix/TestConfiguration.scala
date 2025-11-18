@@ -73,7 +73,7 @@ object TestConfiguration {
 
   val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
-  val defaultOptions = TestFlags(basicClasspath, commonOptions) `and` "-Yno-stdlib-patches"
+  val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)

@@ -1153,7 +1153,6 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
-      defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
       setSpan(start,

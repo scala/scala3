@@ -1783,7 +1783,6 @@ class Namer { typer: Typer =>
       cls.setStableConstructor()
       enterParentRefinementSyms(parentRefinements.toList)
       processExports(using localCtx)
-      defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
       cleanup()
     }
