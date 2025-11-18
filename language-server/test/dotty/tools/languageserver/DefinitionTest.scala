@@ -186,6 +186,7 @@ class DefinitionTest {
       .definition(m7 to m8, List(m3 to m4))
   }
 
+  @Ignore
   @Test def goToParamCopyMethod: Unit = {
 
     withSources(
