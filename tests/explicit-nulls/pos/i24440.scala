@@ -9,3 +9,9 @@ trait AwtComponentLogging extends java.awt.Component:
   private def superPS1 = super.getPreferredSize
 
   private val superPS2 = super.getPreferredSize
+
+class Test:
+  def getCompoment: java.awt.Component =
+    new java.awt.Component {
+      override def getPreferredSize = super.getPreferredSize
+    }
