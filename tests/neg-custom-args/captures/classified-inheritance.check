@@ -5,4 +5,4 @@
 -- Error: tests/neg-custom-args/captures/classified-inheritance.scala:10:6 ---------------------------------------------
 10 |class C3 extends Matrix, Async // error
    |      ^
-   |      class C3 inherits two unrelated classifier traits: trait Control and trait Read
+   |      class C3 inherits two unrelated classifier traits: trait Control and trait Unscoped

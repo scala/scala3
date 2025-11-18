@@ -549,7 +549,7 @@ object Capabilities:
     final def levelOwner(using Context): Symbol =
       adjustOwner(computeOwner(mapUnscoped = true))
 
-    private def adjustOwner(owner: Symbol)(using Context): Symbol =
+    final def adjustOwner(owner: Symbol)(using Context): Symbol =
       if !owner.exists
         || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
         || owner.is(Flags.Method, butNot = Flags.Accessor)
