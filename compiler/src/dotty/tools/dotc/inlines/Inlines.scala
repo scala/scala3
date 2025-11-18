@@ -619,4 +619,32 @@ object Inlines:
           // the opaque type itself. An example is in pos/opaque-inline1.scala.
     end expand
   end InlineCall
+
+  /** An inline val is refinable if it has an explicit type that is not a
+   *  singleton type.
+   */
+  def mightRefineInlineVal(mdef: untpd.ValOrDefDef, sym: Symbol)(using Context): Boolean =
+    sym.isInlineVal && !sym.is(Final)
+    && !mdef.tpt.isEmpty && !mdef.tpt.isInstanceOf[untpd.SingletonTypeTree]
+
+  /** Refine the type of an inline val to a constant type if its right hand
+   *  side is a literal. See tests/pos/i24321.scala and tests/printing/i24321.scala.
+   */
+  def refineInlineVal(mdef: untpd.ValOrDefDef, sym: Symbol, tp: Type)(using Context): Type =
+    if !Inlines.mightRefineInlineVal(mdef, sym) then
+      return tp
+
+    // Only refine if the explicit type is a primitive value types and String.
+    // We don't include opaque types. See tests/neg/i13851b.scala.
+    val tpSym = tp.dealiasKeepOpaques.typeSymbol
+    if !tpSym.isPrimitiveValueClass && tpSym != defn.StringClass then
+      return tp
+
+    untpd.stripBlock(mdef.rhs) match
+      case rhs: (untpd.Literal | untpd.Number) =>
+        ctx.typer.typedAheadExpr(rhs, tp) match
+          case tpd.ConstantValue(c) => ConstantType(Constant(c))
+          case _ => tp
+      case _ => tp
+
 end Inlines

@@ -3038,7 +3038,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         sym.resetFlag(Lazy)
       checkErasedOK(sym)
       sym.setFlag(Erased)
-    val tpt1 = checkSimpleKinded(typedType(tpt))
+
+    val isRefinedInlineVal =
+      Inlines.mightRefineInlineVal(vdef, sym)
+      && sym.info.isInstanceOf[ConstantType]
+
+    val tpt0 = checkSimpleKinded(typedType(tpt))
+    val tpt1 = if isRefinedInlineVal then TypeTree(sym.info) else tpt0
+
     val rhs1 = vdef.rhs match
       case rhs @ Ident(nme.WILDCARD) =>
         rhs.withType(tpt1.tpe)

@@ -1927,7 +1927,10 @@ class Namer { typer: Typer =>
           sym.setFlag(Deferred | HasDefault)
         case _ =>
 
-    val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val mbrTpe0 = checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe
+    val mbrTpe1 = Inlines.refineInlineVal(mdef, sym, mbrTpe0)
+    val mbrTpe = paramFn(mbrTpe1)
+
     // Add an erased to the using clause generated from a `: Singleton` context bound
     mdef.tpt match
       case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
