@@ -1634,36 +1634,39 @@ object Parsers {
     }
 
     /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
-     *  CapFilter   ::=  `.` `as` `[` QualId `]`
+     *  CapFilter   ::=  `.` `only` `[` QualId `]`
      */
     def captureRef(): Tree =
 
-      def derived(ref: Tree): Tree =
-        atSpan(startOffset(ref)):
-          if in.isIdent(nme.raw.STAR) then
+      def reachOpt(ref: Tree): Tree =
+        if in.isIdent(nme.raw.STAR) then
+          atSpan(startOffset(ref)):
             in.nextToken()
             Annotated(ref, makeReachAnnot())
-          else if in.isIdent(nme.rd) then
+        else ref
+
+      def restrictedOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.only) then
+          atSpan(startOffset(ref)):
             in.nextToken()
-            Annotated(ref, makeReadOnlyAnnot())
-          else if in.isIdent(nme.only) then
             in.nextToken()
             Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
-          else assert(false)
+        else ref
+
+      def readOnlyOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+          atSpan(startOffset(ref)):
+            in.nextToken()
+            in.nextToken()
+            Annotated(ref, makeReadOnlyAnnot())
+        else ref
 
       def recur(ref: Tree): Tree =
-        if in.token == DOT then
+        val ref1 = readOnlyOpt(restrictedOpt(reachOpt(ref)))
+        if (ref1 eq ref) && in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) || in.isIdent(nme.only) then derived(ref)
-          else recur(selector(ref))
-        else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref)
-          val next = in.lookahead
-          if in.token == DOT && (next.isIdent(nme.rd) || next.isIdent(nme.only)) then
-            in.nextToken()
-            derived(reachRef)
-          else reachRef
-        else ref
+          recur(selector(ref))
+        else ref1
 
       recur(simpleRef())
     end captureRef
