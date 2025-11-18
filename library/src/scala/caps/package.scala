@@ -84,7 +84,8 @@ trait Mutable extends ExclusiveCapability
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes */
 @experimental
-trait Read extends Mutable, Classifier
+@deprecated
+trait Read extends Mutable
 
 /** Marker trait for classes that are not subject to scoping restrictions
  *  of captured capabilities.
