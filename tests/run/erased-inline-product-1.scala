@@ -18,4 +18,4 @@ inline def size[T]: Long =
       case _ => error(s"unsupported type")
 
 @main def Test =
-  println(size[(Int, Long)])
+  assert(size[(Int, Long)] == 12)
