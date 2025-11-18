@@ -46,8 +46,9 @@ object SepCheck:
   /** The role in which a checked type appears, used for composing error messages */
   enum TypeRole:
     case Result(sym: Symbol, inferred: Boolean)
-    case Argument(arg: Tree)
+    case Argument(arg: Tree, meth: Symbol)
     case Qualifier(qual: Tree, meth: Symbol)
+    case RHS(rhs: Tree, mvar: Symbol)
 
     /** If this is a Result tole, the associated symbol, otherwise NoSymbol */
     def dclSym = this match
@@ -59,11 +60,20 @@ object SepCheck:
       case Result(sym, inferred) =>
         def inferredStr = if inferred then " inferred" else ""
         def resultStr = if sym.info.isInstanceOf[MethodicType] then " result" else ""
-        i"$sym's$inferredStr$resultStr type"
-      case TypeRole.Argument(_) =>
+        i"${sym.sanitizedDescription}'s$inferredStr$resultStr type"
+      case TypeRole.Argument(_, _) =>
         "the argument's adapted type"
       case TypeRole.Qualifier(_, meth) =>
-        i"the type of the prefix to a call of $meth"
+        i"the type of the prefix to a call of ${meth.sanitizedDescription}"
+      case RHS(rhs, lhsSym) =>
+        i"the type of the value assigned to $lhsSym"
+
+    /** A description how a reference was consumed in this role */
+    def howConsumed(using Context): String = this match
+      case TypeRole.Result(meth, _) => i"returned in the result of ${meth.sanitizedDescription}"
+      case TypeRole.Argument(_, meth) => i"passed as a consume parameter to ${meth.sanitizedDescription}"
+      case TypeRole.Qualifier(_, meth) => i"used as a prefix to consume ${meth.sanitizedDescription}"
+      case TypeRole.RHS(_, mvar) => i"consumed in an assignment to $mvar"
   end TypeRole
 
   /** A class for segmented sets of consumed references.
@@ -74,13 +84,13 @@ object SepCheck:
     /** The references in the set. The array should be treated as immutable in client code */
     def refs: Array[Capability]
 
-    /** The associated source positoons. The array should be treated as immutable in client code */
-    def locs: Array[SrcPos]
+    /** The associated source positoons and type roles. The array should be treated as immutable in client code */
+    def locs: Array[(SrcPos, TypeRole)]
 
     /** The number of references in the set */
     def size: Int
 
-    def toMap: Map[Capability, SrcPos] = refs.take(size).zip(locs).toMap
+    def toMap: Map[Capability, (SrcPos, TypeRole)] = refs.take(size).zip(locs).toMap
 
     def show(using Context) =
       s"[${toMap.map((ref, loc) => i"$ref -> $loc").toList}]"
@@ -89,13 +99,13 @@ object SepCheck:
   /** A fixed consumed set consisting of the given references `refs` and
    *  associated source positions `locs`
    */
-  class ConstConsumedSet(val refs: Array[Capability], val locs: Array[SrcPos]) extends ConsumedSet:
+  class ConstConsumedSet(val refs: Array[Capability], val locs: Array[(SrcPos, TypeRole)]) extends ConsumedSet:
     def size = refs.size
 
   /** A mutable consumed set, which is initially empty */
   class MutConsumedSet extends ConsumedSet:
     var refs: Array[Capability] = new Array(4)
-    var locs: Array[SrcPos] = new Array(4)
+    var locs: Array[(SrcPos, TypeRole)] = new Array(4)
     var size = 0
     var directPeaks : Refs = emptyRefs
 
@@ -110,12 +120,12 @@ object SepCheck:
         locs = double(locs)
 
     /** If `ref` is in the set, its associated source position, otherwise `null` */
-    def get(ref: Capability): SrcPos | Null =
+    def get(ref: Capability): (SrcPos, TypeRole) | Null =
       var i = 0
       while i < size && (refs(i) ne ref) do i += 1
       if i < size then locs(i) else null
 
-    def clashing(ref: Capability)(using Context): SrcPos | Null =
+    def clashing(ref: Capability)(using Context): (SrcPos, TypeRole) | Null =
       val refPeaks = ref.directPeaks
       if !directPeaks.sharedPeaks(refPeaks).isEmpty then
         var i = 0
@@ -126,7 +136,7 @@ object SepCheck:
       else null
 
     /** If `ref` is not yet in the set, add it with given source position */
-    def put(ref: Capability, loc: SrcPos)(using Context): Unit =
+    def put(ref: Capability, loc: (SrcPos, TypeRole))(using Context): Unit =
       if get(ref) == null then
         ensureCapacity(1)
         refs(size) = ref
@@ -448,21 +458,22 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param loc     the position where the capability was consumed
    *  @param pos     the position where the capability was used again
    */
-  def consumeError(ref: Capability, loc: SrcPos, pos: SrcPos)(using Context): Unit =
+  def consumeError(ref: Capability, loc: (SrcPos, TypeRole), pos: SrcPos)(using Context): Unit =
+    val (locPos, role) = loc
     report.error(
-      em"""Separation failure: Illegal access to $ref, which was passed to a
-          |consume parameter or was used as a prefix to a consume method on line ${loc.line + 1}
-          |and therefore is no longer available.""",
+      em"""Separation failure: Illegal access to $ref, which was ${role.howConsumed}
+          |on line ${locPos.line + 1} and therefore is no longer available.""",
       pos)
 
   /** Report a failure where a capability is consumed in a loop.
    *  @param ref     the capability
    *  @param pos     the position where the capability was consumed
    */
-  def consumeInLoopError(ref: Capability, pos: SrcPos)(using Context): Unit =
+  def consumeInLoopError(ref: Capability, loc: (SrcPos, TypeRole))(using Context): Unit =
+    val (pos, role) = loc
     report.error(
       em"""Separation failure: $ref appears in a loop, therefore it cannot
-          |be passed to a consume parameter or be used as a prefix of a consume method call.""",
+          |be ${role.howConsumed}.""",
       pos)
 
   // ------------ Checks -----------------------------------------------------
@@ -535,7 +546,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
       if arg.needsSepCheck then
         //println(i"testing $arg, formal = ${arg.formalType}, peaks = ${argPeaks.actual}/${argPeaks.hidden} against ${currentPeaks.actual}")
-        checkType(arg.formalType, arg.srcPos, TypeRole.Argument(arg))
+        checkType(arg.formalType, arg.srcPos, TypeRole.Argument(arg, fn.symbol))
         // 2. test argPeaks.hidden against previously captured actuals
         if !argPeaks.hidden.sharedPeaks(currentPeaks.actual).isEmpty then
           val clashing = clashingPart(argPeaks.hidden, _.actual)
@@ -558,6 +569,35 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           sepApplyError(fn, parts, arg, app)
   end checkApply
 
+  def checkAssign(tree: Assign)(using Context): Unit =
+    val Assign(lhs, rhs) = tree
+    lhs.nuType match
+      case lhsType: ObjectCapability if lhsType.pathOwner.exists =>
+        val lhsOwner = lhsType.pathOwner
+
+        /** A reference escapes into an outer var if it would have produced a
+         *  level error if it did not have an Unscoped, unprefixed FreshCap
+         *  in some underlying capture set.
+         */
+        def escapes(ref: Capability): Boolean = ref.pathRoot match
+          case ref @ FreshCap(NoPrefix)
+          if ref.classifier.derivesFrom(defn.Caps_Unscoped) =>
+            // we have an escaping reference if the FreshCap's adjustded owner
+            // is properly contained inside the scope of the variable.
+            ref.adjustOwner(ref.ccOwner).isProperlyContainedIn(lhsOwner)
+          case _ =>
+            ref.visibility.isProperlyContainedIn(lhsOwner) // ref itself is not levelOK
+            && !ref.isTerminalCapability                   // ... and ...
+            && ref.captureSetOfInfo.elems.exists(escapes)  // some underlying capability escapes
+
+        val escaping = spanCaptures(rhs).filter(escapes)
+        capt.println(i"check assign $tree, $lhsOwner, escaping = $escaping, ${escaping.directFootprint.nonPeaks}")
+        checkConsumedRefs(escaping.directFootprint.nonPeaks, rhs.nuType,
+          TypeRole.RHS(rhs, lhs.symbol),
+          s"the value assigned to ${lhs.symbol} refers to", tree.srcPos)
+      case _ =>
+  end checkAssign
+
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
@@ -567,7 +607,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !used.isEmpty then
       capt.println(i"check use $tree: $used")
       val usedPeaks = used.allPeaks
-      val overlap = defsShadow.allPeaks.sharedPeaks(usedPeaks)
       if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
         // Drop all Selects unless they select from a `this`
         def pathRoot(tree: Tree): Tree = tree match
@@ -595,10 +634,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       end if
 
       for ref <- used do
-        val pos = consumed.clashing(ref)
-        if pos != null then
+        val loc = consumed.clashing(ref)
+        if loc != null then
           // println(i"consumed so far ${consumed.refs.toList} with peaks ${consumed.directPeaks.toList}, used = $used, exposed = ${ref.directPeaks }")
-          consumeError(ref, pos, tree.srcPos)
+          consumeError(ref, loc, tree.srcPos)
   end checkUse
 
   /** If `tp` denotes some version of a singleton capability `x.type` the set `{x, x*}`
@@ -673,10 +712,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           pos)
 
     role match
-      case _: TypeRole.Argument | _: TypeRole.Qualifier =>
+      case _: TypeRole.Argument | _: TypeRole.Qualifier | _: TypeRole.RHS =>
         for ref <- refsToCheck do
           if !ref.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
-            consumed.put(ref, pos)
+            consumed.put(ref, (pos, role))
       case _ =>
   end checkConsumedRefs
 
@@ -696,7 +735,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
      */
     extension (refs: Refs) def pruned =
       val deductedType = role match
-        case TypeRole.Argument(arg) => arg.tpe
+        case TypeRole.Argument(arg, _) => arg.tpe
         case _ => tpe
       refs.deductSymRefs(role.dclSym).deduct(explicitRefs(deductedType))
 
@@ -809,7 +848,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           val refs = tpe.deepCaptureSet.elems
           val toCheck = refs.transHiddenSet.directFootprint.nonPeaks.deduct(refs.directFootprint.nonPeaks)
           checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
-      case TypeRole.Argument(arg) =>
+      case TypeRole.Argument(arg, _) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
           val capts = spanCaptures(arg).directFootprint.nonPeaks
           checkConsumedRefs(capts, tpe, role, i"argument to consume parameter with type ${arg.nuType} refers to", pos)
@@ -982,6 +1021,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           tree.tpe match
             case _: MethodOrPoly =>
             case _ => traverseApply(tree)
+        case tree: Assign =>
+          traverseChildren(tree)
+          checkAssign(tree)
         case _: Block | _: Template =>
           traverseSection(tree)
         case tree: ValDef =>
@@ -1029,8 +1071,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case tree: WhileDo =>
           val loopConsumed = consumed.segment(traverseChildren(tree))
           if loopConsumed.size != 0 then
-            val (ref, pos) = loopConsumed.toMap.head
-            consumeInLoopError(ref, pos)
+            val (ref, loc) = loopConsumed.toMap.head
+            consumeInLoopError(ref, loc)
         case _ =>
           traverseChildren(tree)
 end SepCheck
