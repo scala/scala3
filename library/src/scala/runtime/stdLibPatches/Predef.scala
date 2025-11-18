@@ -5,6 +5,7 @@ import scala.language.experimental.captureChecking
 import scala.annotation.experimental
 import scala.annotation.internal.RuntimeChecked
 
+@deprecated(message = "Patches to the stdlib are not applied anymore", since = "3.8.0")
 object Predef:
   import compiletime.summonFrom
 

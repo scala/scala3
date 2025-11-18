@@ -6,6 +6,7 @@ import scala.annotation.compileTimeOnly
 
 /** Scala 3 additions and replacements to the `scala.language` object.
  */
+@deprecated(message = "Patches to the stdlib are not applied anymore", since = "3.8.0")
 object language:
 
   /** The experimental object contains features that have been recently added but have not
