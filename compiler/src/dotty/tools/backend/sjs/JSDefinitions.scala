@@ -69,6 +69,8 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val PseudoUnion_fromTypeConstructorR = PseudoUnionModule.requiredMethodRef("fromTypeConstructor")
     def PseudoUnion_fromTypeConstructor(using Context) = PseudoUnion_fromTypeConstructorR.symbol
 
+  @threadUnsafe lazy val UnionOpsModuleRef = requiredModuleRef("scala.scalajs.js.internal.UnitOps")
+
   @threadUnsafe lazy val JSArrayType: TypeRef = requiredClassRef("scala.scalajs.js.Array")
   def JSArrayClass(using Context) = JSArrayType.symbol.asClass
   @threadUnsafe lazy val JSDynamicType: TypeRef = requiredClassRef("scala.scalajs.js.Dynamic")
