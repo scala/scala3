@@ -1202,8 +1202,8 @@ object RefChecks {
   /** Check that public (and protected) methods/fields do not expose flexible types. */
   def checkPublicFlexibleTypes(sym: Symbol)(using Context): Unit =
     if ctx.explicitNulls && !ctx.isJava
-        && sym.exists && !sym.is(Private) && sym.owner.isClass
-        && !sym.isOneOf(Synthetic | InlineProxy | Param | Exported) then
+        && sym.exists && sym.owner.isClass
+        && !sym.isOneOf(JavaOrPrivateOrSynthetic | InlineProxy | Param | Exported) then
       val resTp = sym.info.finalResultType
       if resTp.existsPart(_.isInstanceOf[FlexibleType], StopAt.Static) then
         report.warning(
