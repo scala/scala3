@@ -3465,13 +3465,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Turn a parent type into a constructor call where needed. This is the case where
    *   - we are in a Scala class or module (not a Java class, nor a trait), and
+   *     - the symbol is not `scala.AnyVal` (must extend `scala.Any` which doesn't have a constructor)
    *     - the parent symbol is a non-trait class, or
    *     - the parent symbol is a trait that takes at least one (explicit or implicit) parameter
    *       and the parent symbol is directly extended by the current class (i.e. not
    *       extended by the superclass).
    */
   def ensureConstrCall(cls: ClassSymbol, parent: Tree, psym: Symbol)(using Context): Tree =
-    if parent.isType && !cls.is(Trait) && !cls.is(JavaDefined) && psym.isClass
+    if parent.isType && !cls.is(Trait) && !cls.is(JavaDefined) && psym.isClass && cls != defn.AnyValClass
         // Annotations are represented as traits with constructors, but should
         // never be called as such outside of annotation trees.
         && !psym.is(JavaAnnotation)
