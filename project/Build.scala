@@ -1330,7 +1330,6 @@ object Build {
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
-      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
       Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
@@ -1464,7 +1463,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
       // Configure the source maps to point to GitHub for releases
       Compile / compile / scalacOptions ++= {
         if (isRelease) {

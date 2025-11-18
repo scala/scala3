@@ -520,14 +520,12 @@ object Symbols extends SymUtils {
         val file = associatedFile
         if file != null && !file.isScalaBinary then
           mySource = ctx.getSource(file)
-        else
-          mySource = defn.patchSource(this)
-          if !mySource.exists then
-            val compUnitInfo = compilationUnitInfo
-            if compUnitInfo != null then
-              compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
-                case Some(path) => mySource = ctx.getSource(path)
-                case _ =>
+        else if !mySource.exists then
+          val compUnitInfo = compilationUnitInfo
+          if compUnitInfo != null then
+            compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
+              case Some(path) => mySource = ctx.getSource(path)
+              case _ =>
           if !mySource.exists then
             mySource = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
