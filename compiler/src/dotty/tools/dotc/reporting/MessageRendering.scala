@@ -313,6 +313,10 @@ trait MessageRendering {
     val posString = posStr(pos1, msg, diagnosticLevel(dia))
     if posString.nonEmpty then sb.append(posString).append(EOL)
 
+    // Display primary error message before code snippet
+    sb.append(msg.message)
+    if !msg.message.endsWith(EOL) then sb.append(EOL)
+
     // Render the unified code snippet
     // Get syntax-highlighted content for the entire range
     val startOffset = source.lineToOffset(minLine)
