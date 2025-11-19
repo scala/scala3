@@ -939,16 +939,21 @@ class CheckCaptures extends Recheck, SymTransformer:
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
 
-    /** If `mbr` is a field that has (possibly restricted) FreshCaps in its span capture set,
-     *  their classifiers, otherwise the empty list.
-     */
-    private def classifiersOfFreshInType(mbr: Symbol)(using Context): List[ClassSymbol] =
+    private def memberCaps(mbr: Symbol)(using Context): List[Capability] =
       if contributesFreshToClass(mbr) then
         mbr.info.spanCaptureSet.elems
           .filter(_.isTerminalCapability)
           .toList
-          .map(_.classifier.asClass)
       else Nil
+
+    /** If `mbr` is a field that has (possibly restricted) FreshCaps in its span capture set,
+     *  their classifiers, otherwise the empty list.
+     */
+    private def classifiersOfFreshInType(mbr: Symbol)(using Context): List[ClassSymbol] =
+      memberCaps(mbr).map(_.classifier.asClass)
+
+    private def allFreshInTypeAreRO(mbr: Symbol)(using Context): Boolean =
+      memberCaps(mbr).forall(_.isReadOnly)
 
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
@@ -962,14 +967,18 @@ class CheckCaptures extends Recheck, SymTransformer:
       def pushInfo(msg: => String) =
         if ctx.settings.YccVerbose.value then infos = msg :: infos
 
+      def knownFields(cls: ClassSymbol) =
+        setup.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
+          .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
+
+      val isSeparate = cls.typeRef.isMutableType
+
       /** The classifiers of the fresh caps in the span capture sets of all fields
        *  in the given class `cls`.
        */
       def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
         case cls: ClassSymbol =>
-          var fieldClassifiers = setup.fieldsWithExplicitTypes // pick fields with explicit types for classes in this compilation unit
-              .getOrElse(cls, cls.info.decls.toList)           // pick all symbols in class scope for other classes
-              .flatMap(classifiersOfFreshInType)
+          var fieldClassifiers = knownFields(cls).flatMap(classifiersOfFreshInType)
           if cls.typeRef.isMutableType then
             fieldClassifiers = cls.classifier :: fieldClassifiers
           val parentClassifiers =
@@ -979,19 +988,32 @@ class CheckCaptures extends Recheck, SymTransformer:
           else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
         case _ => Nil
 
+      def impliedReadOnly(cls: Symbol): Boolean = cls match
+        case cls: ClassSymbol =>
+          val fieldsRO = knownFields(cls).forall(allFreshInTypeAreRO)
+          val parentsRO = cls.parentSyms.forall(impliedReadOnly)
+          fieldsRO && parentsRO
+        case _ =>
+          false
+
+      def maybeRO(ref: Capability) =
+        if !isSeparate && impliedReadOnly(cls) then ref.readOnly else ref
+
       def fresh =
         FreshCap(Origin.NewInstance(core)).tap: fresh =>
           if ctx.settings.YccVerbose.value then
             pushInfo(i"Note: instance of $cls captures a $fresh that comes from a field")
             report.echo(infos.mkString("\n"), ctx.owner.srcPos)
 
-      knownFresh.getOrElseUpdate(cls, impliedClassifiers(cls)) match
+      var implied = impliedClassifiers(cls)
+      if isSeparate then implied = cls.classifier :: implied
+      knownFresh.getOrElseUpdate(cls, implied) match
         case Nil => CaptureSet.empty
         case cl :: Nil =>
           val result = fresh
           result.hiddenSet.adoptClassifier(cl)
-          result.singletonCaptureSet
-        case _ => fresh.singletonCaptureSet
+          maybeRO(result).singletonCaptureSet
+        case _ => maybeRO(fresh).singletonCaptureSet
     end captureSetImpliedByFields
 
     /** Recheck type applications:
