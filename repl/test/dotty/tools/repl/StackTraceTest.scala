@@ -1,5 +1,5 @@
 
-package dotty.tools.dotc.util
+package dotty.tools.repl
 
 import scala.language.unsafeNulls
 
@@ -37,7 +37,7 @@ class StackTraceTest:
   // evaluating s should throw, p trims stack trace, t is the test of resulting trace string
   def probe(s: => String)(p: StackTraceElement => Boolean)(t: String => Unit): Unit =
     import StackTraceOps.formatStackTracePrefix
-    Try(s).recover { case e => e.formatStackTracePrefix(p) } match
+    Try(s).recover { case e => e.formatStackTracePrefix(p).plainText } match
       case Success(s) => t(s)
       case Failure(e) => throw e
 
