@@ -246,6 +246,127 @@ trait MessageRendering {
     else
     pos
 
+  /** Render diagnostics with positions in different files separately */
+  private def renderSeparateSpans(dia: Diagnostic)(using Context): String =
+    val msg = dia.msg
+    val pos = dia.pos
+    val pos1 = adjust(pos.nonInlined)
+    given Level = Level(dia.level)
+    given Offset =
+      val maxLineNumber = if pos.exists then pos1.endLine + 1 else 0
+      Offset(maxLineNumber.toString.length + 2)
+
+    val sb = StringBuilder()
+    val posString = posStr(pos1, msg, diagnosticLevel(dia))
+    if posString.nonEmpty then sb.append(posString).append(EOL)
+
+    if pos.exists && pos1.exists && pos1.source.file.exists then
+      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
+      val marker = positionMarker(pos1)
+      val err = errorMsg(pos1, msg.message)
+      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+    else
+      sb.append(msg.message)
+
+    dia.getSubdiags.foreach(addSubdiagnostic(sb, _))
+    sb.toString
+
+  def messageAndPosMultiSpan(dia: Diagnostic)(using Context): String =
+    val msg = dia.msg
+    val pos = dia.pos
+    val pos1 = adjust(pos.nonInlined)
+    val subdiags = dia.getSubdiags
+
+    // Collect all positions with their associated messages
+    case class PosAndMsg(pos: SourcePosition, msg: Message, isPrimary: Boolean)
+    val allPosAndMsg = PosAndMsg(pos1, msg, true) :: subdiags.map(s => PosAndMsg(adjust(s.pos), s.msg, false))
+    val validPosAndMsg = allPosAndMsg.filter(_.pos.exists)
+
+    if validPosAndMsg.isEmpty then
+      return msg.message
+
+    // Check all positions are in the same source file
+    val source = validPosAndMsg.head.pos.source
+    if !validPosAndMsg.forall(_.pos.source == source) || !source.file.exists then
+      // Cannot render multi-span if positions are in different files
+      // Fall back to showing them separately
+      return renderSeparateSpans(dia)
+
+    // Find the line range covering all positions
+    val minLine = validPosAndMsg.map(_.pos.startLine).min
+    val maxLine = validPosAndMsg.map(_.pos.endLine).max
+    val maxLineNumber = maxLine + 1
+
+    given Level = Level(dia.level)
+    given Offset = Offset(maxLineNumber.toString.length + 2)
+
+    val sb = StringBuilder()
+
+    // Title using the primary position
+    val posString = posStr(pos1, msg, diagnosticLevel(dia))
+    if posString.nonEmpty then sb.append(posString).append(EOL)
+
+    // Render the unified code snippet
+    // Get syntax-highlighted content for the entire range
+    val startOffset = source.lineToOffset(minLine)
+    val endOffset = source.nextLine(source.lineToOffset(maxLine))
+    val content = source.content.slice(startOffset, endOffset)
+    val syntax =
+      if (summon[Context].settings.color.value != "never" && !summon[Context].isJava)
+        SyntaxHighlighting.highlight(new String(content)).toCharArray
+      else content
+
+    // Split syntax-highlighted content into lines
+    def linesFrom(arr: Array[Char]): List[String] = {
+      def pred(c: Char) = (c: @switch) match {
+        case LF | CR | FF | SU => true
+        case _ => false
+      }
+      val (line, rest0) = arr.span(!pred(_))
+      val (_, rest) = rest0.span(pred)
+      new String(line) :: { if (rest.isEmpty) Nil else linesFrom(rest) }
+    }
+
+    val lines = linesFrom(syntax)
+    val lineNumberWidth = maxLineNumber.toString.length
+
+    // Render each line with its markers and messages
+    for (lineNum <- minLine to maxLine) {
+      val lineIdx = lineNum - minLine
+      if lineIdx < lines.length then
+        val lineContent = lines(lineIdx)
+        val lineNbr = (lineNum + 1).toString
+        val linePrefix = String.format(s"%${lineNumberWidth}s |", lineNbr)
+        val lnum = hl(" " * math.max(0, offset - linePrefix.length - 1) + linePrefix)
+        sb.append(lnum).append(lineContent.stripLineEnd).append(EOL)
+
+        // Find all positions that should show markers after this line
+        // A position shows its marker after its start line
+        val positionsOnLine = validPosAndMsg.filter(_.pos.startLine == lineNum)
+          .sortBy(pm => (pm.pos.startColumn, !pm.isPrimary)) // Primary positions first if same column
+
+        for posAndMsg <- positionsOnLine do
+          val marker = positionMarker(posAndMsg.pos)
+          val err = errorMsg(posAndMsg.pos, posAndMsg.msg.message)
+          sb.append(marker).append(EOL)
+          sb.append(err).append(EOL)
+    }
+
+    // Add explanation if needed
+    if Diagnostic.shouldExplain(dia) then
+      sb.append(EOL).append(newBox())
+      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
+      sb.append(EOL).append(newBox(soft = true))
+      dia.msg.explanation.split(raw"\R").foreach: line =>
+        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
+      sb.append(EOL).append(endBox)
+    else if dia.msg.canExplain then
+      sb.append(EOL).append(offsetBox)
+      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
+
+    sb.toString
+  end messageAndPosMultiSpan
+
   /** The whole message rendered from `dia.msg`.
    *
    *  For a position in an inline expansion, choose `pos1`
@@ -266,57 +387,59 @@ trait MessageRendering {
    *
    */
   def messageAndPos(dia: Diagnostic)(using Context): String =
-    val msg = dia.msg
-    val pos = dia.pos
-    val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
-    val outermost = pos.outermost // call.pos
-    val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
-    given Level = Level(dia.level)
-    given Offset =
-      val maxLineNumber =
-        if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
-        else 0
-      Offset(maxLineNumber.toString.length + 2)
-    val sb = StringBuilder()
-    val posString = posStr(pos1, msg, diagnosticLevel(dia))
-    if posString.nonEmpty then sb.append(posString).append(EOL)
-    if pos.exists && pos1.exists && pos1.source.file.exists then
-      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-      val marker = positionMarker(pos1)
-      val err = errorMsg(pos1, msg.message)
-      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+    if dia.getSubdiags.nonEmpty then messageAndPosMultiSpan(dia)
+    else
+      val msg = dia.msg
+      val pos = dia.pos
+      val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
+      val outermost = pos.outermost // call.pos
+      val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
+      given Level = Level(dia.level)
+      given Offset =
+        val maxLineNumber =
+          if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
+          else 0
+        Offset(maxLineNumber.toString.length + 2)
+      val sb = StringBuilder()
+      val posString = posStr(pos1, msg, diagnosticLevel(dia))
+      if posString.nonEmpty then sb.append(posString).append(EOL)
+      if pos.exists && pos1.exists && pos1.source.file.exists then
+        val (srcBefore, srcAfter, offset) = sourceLines(pos1)
+        val marker = positionMarker(pos1)
+        val err = errorMsg(pos1, msg.message)
+        sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
-      if inlineStack.nonEmpty then
+        if inlineStack.nonEmpty then
+          sb.append(EOL).append(newBox())
+          sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
+          for inlinedPos <- inlineStack do
+            sb.append(EOL).append(newBox(soft = true))
+            sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
+            if inlinedPos.source.file.exists then
+              val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
+              val marker = positionMarker(inlinedPos)
+              sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+          sb.append(EOL).append(endBox)
+        end if
+      else sb.append(msg.message)
+
+      dia.getSubdiags.foreach(addSubdiagnostic(sb, _))
+
+      if dia.isVerbose then
+        appendFilterHelp(dia, sb)
+
+      if Diagnostic.shouldExplain(dia) then
         sb.append(EOL).append(newBox())
-        sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
-        for inlinedPos <- inlineStack do
-          sb.append(EOL).append(newBox(soft = true))
-          sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-          if inlinedPos.source.file.exists then
-            val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
-            val marker = positionMarker(inlinedPos)
-            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+        sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
+        sb.append(EOL).append(newBox(soft = true))
+        dia.msg.explanation.split(raw"\R").foreach: line =>
+          sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
         sb.append(EOL).append(endBox)
-      end if
-    else sb.append(msg.message)
+      else if dia.msg.canExplain then
+        sb.append(EOL).append(offsetBox)
+        sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
-    dia.getSubdiags.foreach(addSubdiagnostic(sb, _))
-
-    if dia.isVerbose then
-      appendFilterHelp(dia, sb)
-
-    if Diagnostic.shouldExplain(dia) then
-      sb.append(EOL).append(newBox())
-      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
-      sb.append(EOL).append(newBox(soft = true))
-      dia.msg.explanation.split(raw"\R").foreach: line =>
-        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
-      sb.append(EOL).append(endBox)
-    else if dia.msg.canExplain then
-      sb.append(EOL).append(offsetBox)
-      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
-
-    sb.toString
+      sb.toString
   end messageAndPos
 
   private def addSubdiagnostic(sb: StringBuilder, subdiag: Subdiagnostic)(using Context, Level, Offset): Unit =
