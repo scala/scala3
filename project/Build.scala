@@ -193,15 +193,20 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Werror",
+      //"-Werror",
       //"-Wunused:all",
-      //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
       "-language:implicitConversions",
+      s"--java-output-version:${Versions.minimumJVMVersion}",
+      "-Yexplicit-nulls", 
+      "-Wsafe-init"
     ),
 
-    (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
+    (Compile / compile / javacOptions) ++= Seq(
+      "-Xlint:unchecked", 
+      "-Xlint:deprecation",
+      "--release", Versions.minimumJVMVersion
+    ),
 
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
@@ -443,15 +448,10 @@ object Build {
     ) ++ extMap
   }
 
-  val enableBspAllProjects = sys.env.get("ENABLE_BSP_ALL_PROJECTS").map(_.toBoolean).getOrElse{
-    val enableBspAllProjectsFile = file(".enable_bsp_all_projects")
-    enableBspAllProjectsFile.exists()
-  }
-
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
     // To enable support of scaladoc and language-server projects you need to change this to true
-    bspEnabled := enableBspAllProjects,
+    bspEnabled := false,
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
@@ -466,15 +466,6 @@ object Build {
     // The order of the two `stripSuffix`es is important, so that
     // scala3-library-bootstrappedjs becomes scala3-library.
     moduleName ~= { _.stripSuffix("js").stripSuffix("-bootstrapped") },
-
-    // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
-    /*
-    scalacOptions ++= {
-      val cp = (dependencyClasspath in `scala3-library` in Compile).value
-      val scalaLib = findArtifactPath(cp, "scala-library")
-      Seq("-Yscala2-unpickler", scalaLib)
-    },
-    */
 
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
@@ -734,7 +725,8 @@ object Build {
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
           (`scala3-compiler-nonbootstrapped` / Test / testOnly).toTask(cmd)
         }
-      }.evaluated
+      }.evaluated,
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
@@ -752,11 +744,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / resourceDirectory := baseDirectory.value / "resources",
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
         ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
@@ -917,6 +904,7 @@ object Build {
         (`scala3-repl` / publishLocalBin),
         publishLocalBin,
       ).evaluated,
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
@@ -936,11 +924,6 @@ object Build {
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
       Compile / resourceDirectory := baseDirectory.value / "resources",
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
         ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
@@ -983,6 +966,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-staging:*.**.**-bootstrapped project */
@@ -1003,11 +987,6 @@ object Build {
       // Add the source directories for the sbt-bridge (boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1041,6 +1020,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-tasty-inspector:*.**.**-bootstrapped project */
@@ -1061,11 +1041,7 @@ object Build {
       // Add the source directories for the sbt-bridge (boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1099,6 +1075,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      bspEnabled := false,
     )
 
   lazy val `scala3-repl` = project.in(file("repl"))
@@ -1117,11 +1094,6 @@ object Build {
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Test    / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
       Test    / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1226,17 +1198,11 @@ object Build {
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1295,6 +1261,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
@@ -1320,17 +1287,11 @@ object Build {
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1378,6 +1339,7 @@ object Build {
       keepSJSIR := false,
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1419,6 +1381,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
@@ -1453,11 +1416,7 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions += "-Yexplicit-nulls",
-      Compile / scalacOptions += "-scalajs",
       // Configure the source maps to point to GitHub for releases
       Compile / scalacOptions ++= {
         if (isRelease) {
@@ -1551,6 +1510,7 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.ScalaLibrarySJS"),
       // Should we also patch .sjsir files
       keepSJSIR := true,
+      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
@@ -1592,6 +1552,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library",
+      bspEnabled := false,
     )
 
   // ==============================================================================================
@@ -1615,11 +1576,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
@@ -1678,11 +1634,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
@@ -1730,6 +1681,7 @@ object Build {
       mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
+      bspEnabled := false,
     )
 
   // ==============================================================================================
@@ -1762,13 +1714,6 @@ object Build {
         Dependencies.compilerInterface,
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // TODO: Enable these flags when the new stdlib is explicitelly null checked
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
       // Add entry's to the MANIFEST
@@ -1912,13 +1857,6 @@ object Build {
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      // TODO: Enable these flags when the new stdlib is explicitelly null checked
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
       // Add entry's to the MANIFEST
@@ -2036,6 +1974,7 @@ object Build {
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
+      bspEnabled := false,
     )
 
   // ==============================================================================================
@@ -2069,14 +2008,7 @@ object Build {
         Dependencies.`jackson-dataformat-yaml`,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
       ),
-       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-experimental",
-      // TODO: Enable these flags when the new stdlib is explicitelly null checked
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
-      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
-      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -2117,6 +2049,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      bspEnabled := false,
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
@@ -2152,13 +2085,11 @@ object Build {
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
       publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
         `scala3-compiler-bootstrapped-new` / publishLocal,
         `scala3-library-bootstrapped-new` / publishLocal,
         `scala-library-bootstrapped` / publishLocal,
       ).value,
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -2189,6 +2120,7 @@ object Build {
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
+      bspEnabled := false,
     )
   }
 
@@ -2210,6 +2142,7 @@ object Build {
       // is a project dependency instead
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       javaOptions := (`scala3-compiler-bootstrapped-new` / javaOptions).value,
+      scalacOptions -= "-Yexplicit-nulls",
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
@@ -2225,7 +2158,8 @@ object Build {
       ),
       Test / buildInfoPackage := "dotty.tools.languageserver.util.server",
       BuildInfoPlugin.buildInfoScopedSettings(Test),
-      BuildInfoPlugin.buildInfoDefaultSettings
+      BuildInfoPlugin.buildInfoDefaultSettings,
+      bspEnabled := false,
     )
 
   /** Common settings for sjsSandbox and sjsJUnitTests */
@@ -2237,9 +2171,6 @@ object Build {
     // Add the source directories
     Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
     Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
-    // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-    Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-    Compile / scalacOptions += "-scalajs", // we really need this one for Scala.js projects
     // Don't publish
     publish / skip := false,
     // Configure to use the non-bootstrapped compiler
@@ -2303,7 +2234,7 @@ object Build {
     settings(
       regularScalaJSProjectSettings,
       bspEnabled := false,
-      scalacOptions --= Seq("-Werror", "-deprecation"),
+      scalacOptions --= Seq("-Werror", "-deprecation", "-Yexplicit-nulls"),
 
       // Required to run Scala.js tests.
       Test / fork := false,
@@ -2564,6 +2495,7 @@ object Build {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
       Test / forkOptions := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
+      bspEnabled := false,
     )
 
   //lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
@@ -2616,7 +2548,8 @@ object Build {
     settings(
       commonBootstrappedSettings,
       scalaJSUseMainModuleInitializer := true,
-      Test / fork := false
+      Test / fork := false,
+      scalacOptions -= "-Yexplicit-nulls",
     )
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
@@ -2938,6 +2871,7 @@ object Build {
       Compile/run := (Compile/run).dependsOn(prepareCommunityBuild).evaluated,
       Test / testOnly := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
       Test / test     := ((Test / test    ) dependsOn prepareCommunityBuild).value,
+      scalacOptions -= "-Yexplicit-nulls",
       javaOptions ++= {
         // Propagate the ivy cache directory setting to the tests, which will
         // then propagate it further to the sbt instances they will spawn.
