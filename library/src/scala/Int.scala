@@ -484,5 +484,101 @@ object Int extends AnyValCompanion {
   implicit def int2float(x: Int): Float = x.toFloat
   implicit def int2long(x: Int): Long = x.toLong
   implicit def int2double(x: Int): Double = x.toDouble
-}
 
+  extension (self: Int) {
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `Int`.
+      */
+    @deprecated("isWhole on Int is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self.toChar.toInt == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toInt == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toShort.toInt == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidInt on Int is always true", "3.8.0")
+    def isValidInt: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Long]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidLong on Int is always true", "3.8.0")
+    def isValidLong: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    def abs: Int = java.lang.Math.abs(self)
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Int): Int = java.lang.Math.max(self, that)
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Int): Int = java.lang.Math.min(self, that)
+
+    /** Returns the sign of `this`.
+      *
+      * `0` if `this == 0`, `-1` if `this < 0` and `1` if `this > 0`.
+      */
+    def sign: Int = java.lang.Integer.signum(self)
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign
+
+    /** There is no reason to round an `Int`, but this method is provided to avoid accidental loss of precision from a detour through `Float`. */
+    @deprecated("this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?", "2.11.0")
+    def round: Int = self
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Int): Int = java.lang.Integer.compare(self, that)
+
+    def toBinaryString: String = java.lang.Integer.toBinaryString(self)
+    def toHexString: String    = java.lang.Integer.toHexString(self)
+    def toOctalString: String  = java.lang.Integer.toOctalString(self)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Int): Range = Range(self, end)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Int, step: Int): Range = Range(self, end, step)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Int): Range.Inclusive = Range.inclusive(self, end)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self, end, step)
+  }
+}

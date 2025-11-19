@@ -15,6 +15,7 @@ package runtime
 
 import scala.language.`2.13`
 
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
 final class RichChar(val self: Char) extends AnyVal with IntegralProxy[Char] {
   protected def num: scala.math.Numeric.CharIsIntegral.type = scala.math.Numeric.CharIsIntegral
   protected def ord: scala.math.Ordering.Char.type = scala.math.Ordering.Char

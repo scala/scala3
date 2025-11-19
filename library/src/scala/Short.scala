@@ -18,6 +18,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Short`, a 16-bit signed integer (equivalent to Java's `short` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Short` are not
  *  represented by an object in the underlying runtime system.
@@ -484,5 +486,117 @@ object Short extends AnyValCompanion {
   implicit def short2long(x: Short): Long = x.toLong
   implicit def short2float(x: Short): Float = x.toFloat
   implicit def short2double(x: Short): Double = x.toDouble
-}
 
+  extension (self: Short) {
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `Short`.
+      */
+    @deprecated("isWhole on Short is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self >= 0
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toInt == self.toInt
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidShort on Short is always true", "3.8.0")
+    def isValidShort: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidInt on Short is always true", "3.8.0")
+    def isValidInt: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    def abs: Short = java.lang.Math.abs(self.toInt).toShort
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Short): Short = java.lang.Math.max(self.toInt, that.toInt).toShort
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Short): Short = java.lang.Math.min(self.toInt, that.toInt).toShort
+
+    /** Returns the sign of `this`.
+      *
+      * `0` if `this == 0`, `-1` if `this < 0` and `1` if `this > 0`.
+      */
+    def sign: Short = java.lang.Integer.signum(self.toInt).toShort
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign.toInt
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Short): Int = java.lang.Short.compare(self, that)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Short): NumericRange.Exclusive[Short] = NumericRange(self, end, 1)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Short, step: Short): NumericRange.Exclusive[Short] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Short): NumericRange.Inclusive[Short] = NumericRange.inclusive(self, end, 1)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Short, step: Short): NumericRange.Inclusive[Short] = NumericRange.inclusive(self, end, step)
+
+    // ------------------------------------
+    // For source compatibility with the previous API, when the rhs is an Int, we want an int Range
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Int): Range = Range(self.toInt, end, 1)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Int, step: Int): Range = Range(self.toInt, end, step)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Int): Range.Inclusive = Range.inclusive(self.toInt, end, 1)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self.toInt, end, step)
+  }
+}
