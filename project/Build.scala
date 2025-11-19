@@ -981,7 +981,7 @@ object Build {
       moduleName    := "scala3-staging",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-staging has a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -995,6 +995,7 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1035,7 +1036,7 @@ object Build {
       moduleName    := "scala3-tasty-inspector",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-tasty-inspector has a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -1050,6 +1051,7 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1086,7 +1088,7 @@ object Build {
       moduleName    := "scala3-repl",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true,
       autoScalaLibrary := false,
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -1113,6 +1115,7 @@ object Build {
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1283,7 +1286,7 @@ object Build {
       versionScheme := Some("always"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
       autoScalaLibrary     := false, // DO NOT DEPEND ON THE STDLIB, IT IS THE STDLIB
       // Add the source directories for the stdlib (non-boostrapped)
@@ -1355,7 +1358,7 @@ object Build {
       versionScheme := Some("semver-spec"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
       // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
       autoScalaLibrary := false,
@@ -1415,7 +1418,7 @@ object Build {
       crossVersion  := CrossVersion.disabled,
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
@@ -1528,7 +1531,7 @@ object Build {
       versionScheme := Some("semver-spec"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-library_sjs1 has a crosspath
       // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
       autoScalaLibrary := false,
@@ -1630,7 +1633,7 @@ object Build {
       moduleName    := "tasty-core",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:tasty-core has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -1653,6 +1656,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-bootstrapped",
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1700,7 +1704,7 @@ object Build {
       moduleName    := "scala3-compiler",
       version       := dottyNonBootstrappedVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := dottyNonBootstrappedVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -1843,7 +1847,7 @@ object Build {
       moduleName    := "scala3-compiler",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -1994,7 +1998,7 @@ object Build {
       moduleName    := "scaladoc",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scaladoc has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -2028,6 +2032,7 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoDefaultSettings,
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
