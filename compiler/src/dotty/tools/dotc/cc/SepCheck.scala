@@ -7,6 +7,7 @@ import collection.mutable
 import core.*
 import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import CaptureSet.{Refs, emptyRefs, HiddenSet}
+import NameKinds.WildcardParamName
 import config.Printers.capt
 import StdNames.nme
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
@@ -1028,7 +1029,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseSection(tree)
         case tree: ValDef =>
           traverseChildren(tree)
-          checkValOrDefDef(tree)
+          if !tree.name.is(WildcardParamName) then
+            checkValOrDefDef(tree)
         case tree: DefDef =>
           if skippable(tree.symbol) then
             capt.println(i"skipping sep check of ${tree.symbol}")
