@@ -634,7 +634,7 @@ object Inlines:
     if !Inlines.mightRefineInlineVal(mdef, sym) then
       return tp
 
-    // Only refine if the explicit type is a primitive value types and String.
+    // Only refine if the explicit type is a primitive value type or String.
     // We don't include opaque types. See tests/neg/i13851b.scala.
     val tpSym = tp.dealiasKeepOpaques.typeSymbol
     if !tpSym.isPrimitiveValueClass && tpSym != defn.StringClass then
