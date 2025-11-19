@@ -88,14 +88,21 @@ trait MessageRendering {
    *  ```
    *    |         ^^^^^
    *  ```
+   *  or for sub-diagnostics:
+   *  ```
+   *    |         -----
+   *  ```
+   *
+   *  @param pos the source position to mark
+   *  @param markerChar the character to use for marking ('^' for primary errors, '-' for notes)
    */
-  private def positionMarker(pos: SourcePosition)(using Context, Level, Offset): String = {
+  private def positionMarker(pos: SourcePosition, markerChar: Char = '^')(using Context, Level, Offset): String = {
     val padding = pos.startColumnPadding
-    val carets =
+    val markers =
       if (pos.startLine == pos.endLine)
-        "^" * math.max(1, pos.endColumn - pos.startColumn)
-      else "^"
-    hl(s"$offsetBox$padding$carets")
+        markerChar.toString * math.max(1, pos.endColumn - pos.startColumn)
+      else markerChar.toString
+    hl(s"$offsetBox$padding$markers")
   }
 
   /** The horizontal line with the given offset
@@ -346,7 +353,9 @@ trait MessageRendering {
           .sortBy(pm => (pm.pos.startColumn, !pm.isPrimary)) // Primary positions first if same column
 
         for posAndMsg <- positionsOnLine do
-          val marker = positionMarker(posAndMsg.pos)
+          // Use '^' for primary error, '-' for sub-diagnostics
+          val markerChar = if posAndMsg.isPrimary then '^' else '-'
+          val marker = positionMarker(posAndMsg.pos, markerChar)
           val err = errorMsg(posAndMsg.pos, posAndMsg.msg.message)
           sb.append(marker).append(EOL)
           sb.append(err).append(EOL)
@@ -449,7 +458,7 @@ trait MessageRendering {
 
     val posString = posStr(pos1, msg, "Note", isSubdiag = true)
     val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-    val marker = positionMarker(pos1)
+    val marker = positionMarker(pos1, '-')  // Use '-' for sub-diagnostics
     val err = errorMsg(pos1, msg.message)
 
     val diagText = (posString :: srcBefore ::: marker :: err :: srcAfter).mkString(EOL)
