@@ -1173,6 +1173,7 @@ object Build {
         // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
         (Compile / run).toTask(" -usejavacp").value
       },
+      bspEnabled := false,
     )
 
   // ==============================================================================================
@@ -1263,7 +1264,6 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
-      bspEnabled := false,
     )
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
@@ -2223,6 +2223,7 @@ object Build {
       Test / fork := false,
 
       scalaJSUseMainModuleInitializer := true,
+      bspEnabled := false,
     )
 
   /** Scala.js test suite.
