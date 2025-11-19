@@ -13,6 +13,7 @@ import tpd.*
 import Annotations.Annotation
 import CaptureSet.VarState
 import Capabilities.*
+import Mutability.isMutableType
 import StdNames.nme
 import config.Feature
 import NameKinds.TryOwnerName
@@ -528,6 +529,9 @@ extension (cls: ClassSymbol)
         .filter(_.parentSyms.contains(defn.Caps_Classifier))
         .foldLeft(defn.AnyClass)(leastClassifier)
     else defn.AnyClass
+
+  def isSeparate(using Context): Boolean =
+    cls.typeRef.isMutableType
 
 extension (sym: Symbol)
 

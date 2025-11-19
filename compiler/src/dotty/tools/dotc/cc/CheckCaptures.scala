@@ -21,7 +21,7 @@ import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure, VarState}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -916,7 +916,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
             refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
-            allCaptures ++= argType.captureSet
+            if getter.hasAnnotation(defn.ConsumeAnnot) then
+              () // We make sure in checkClassDef, point (6), that consume parameters don't
+                 // contribute to the class capture set
+            else allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
@@ -971,8 +974,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         setup.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
           .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
 
-      val isSeparate = cls.typeRef.isMutableType
-
       /** The classifiers of the fresh caps in the span capture sets of all fields
        *  in the given class `cls`.
        */
@@ -997,7 +998,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           false
 
       def maybeRO(ref: Capability) =
-        if !isSeparate && impliedReadOnly(cls) then ref.readOnly else ref
+        if !cls.isSeparate && impliedReadOnly(cls) then ref.readOnly else ref
 
       def fresh =
         FreshCap(Origin.NewInstance(core)).tap: fresh =>
@@ -1006,7 +1007,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             report.echo(infos.mkString("\n"), ctx.owner.srcPos)
 
       var implied = impliedClassifiers(cls)
-      if isSeparate then implied = cls.classifier :: implied
+      if cls.isSeparate then implied = dominators(cls.classifier :: Nil, implied)
       knownFresh.getOrElseUpdate(cls, implied) match
         case Nil => CaptureSet.empty
         case cl :: Nil =>
@@ -1377,29 +1378,47 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Recheck classDef by enforcing the following class-specific capture set relations:
      *   1. The capture set of a class includes the capture sets of its parents.
      *   2. The capture set of the self type of a class includes the capture set of the class.
-     *   3. The capture set of the self type of a class includes the capture set of every class parameter,
-     *      unless the parameter is marked @constructorOnly or @untrackedCaptures.
+     *   3. The capture set of the self type of a class includes the capture set of every class
+     *      parameter, unless the parameter is marked @constructorOnly or @untrackedCaptures.
      *   4. If the class extends a pure base class, the capture set of the self type must be empty.
-     *  Also, check that trait parents represented as applied types don't have cap in their
-     *  type arguments. Other generic parents are represented as TypeApplys, where the same check
-     *  is already done in the TypeApply.
+     *   5. Check that trait parents represented as applied types don't have cap in their
+     *      type arguments. Charge deep capture sets of type arguments to non-reserved typevars
+     *      to the environment. Other generic parents are represented as TypeApplys, where the
+     *      same check is already done in the TypeApply.
+     *   6. Consume parameters are only allowed for classes producing a fresh cap
+     *      for their constructor, and they don't contribute to the capture set. Example:
+     *
+     *        class A(consume val x: B^) extends caps.Separate
+     *        val a = A(b)
+     *
+     *      Here, `a` is of type A{val x: B^}^, and the outer `^` does not hide `b`.
+     *      That's necessary since we would otherwise get consume/use conflicts on `b`.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
       val localSet = capturedVars(cls)
+
+      // (1) Capture set of a class includes the capture sets of its parents
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
+
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
+        // (2) Capture set of self type includes capture set of class
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
-        checkSubset(localSet, thisSet, tree.srcPos) // (2)
+        checkSubset(localSet, thisSet, tree.srcPos)
+
+        // (3) Capture set of self type includes capture sets of parameters
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
-              && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
+              && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
+          then
             withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
-              checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
+              checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
+
+        // (4) If class extends Pure, capture set of self type is empty
         for pureBase <- cls.pureBaseClass do // (4)
           def selfTypeTree = impl.body
             .collect:
@@ -1410,15 +1429,41 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
             selfTypeTree.srcPos, cs1description = " captured by this self type")
+
+        // (5) Check AppliedType parents
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
+
+        // (6) Check that consume parameters are covered by an implied FreshCap
+        for getter <- cls.paramGetters do
+          if !getter.is(Private) // Setup makes sure that getters with capture sets are not private
+            && getter.hasAnnotation(defn.ConsumeAnnot)
+          then
+            val implied = captureSetImpliedByFields(cls, cls.appliedRef)
+            val getterCS = getter.info.captureSet
+
+            val hasCoveringFresh = implied.elems.exists:
+              case fresh: FreshCap =>
+                getterCS.elems.forall: elem =>
+                  given VarState = VarState.Unrecorded // make sure we don't add to fresh's hidden set
+                  fresh.maxSubsumes(elem, canAddHidden = true)
+              case _ =>
+                false
+
+            if !hasCoveringFresh then
+              report.error(
+                  em"""A consume parameter is only allowed for classes producing a `cap` in their constructor.
+                      |This can be achieved by having the class extend caps.Separate.""",
+                  getter.srcPos)
+
         super.recheckClassDef(tree, impl, cls)
       finally
         completed += cls
         curEnv = saved
+    end recheckClassDef
 
     /** If type is of the form `T @requiresCapability(x)`,
      *  mark `x` as free in the current environment. This is used to require the
