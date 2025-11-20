@@ -1178,24 +1178,45 @@ object Build {
       },
     )
   
-  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
+  lazy val `scala3-repl-shaded` = project.in(file("repl-embedded"))
     .dependsOn(`scala3-repl`)
-    .settings(publishSettings)
+    .enablePlugins(sbtassembly.AssemblyPlugin)
     .settings(
-      name          := "scala3-repl-embedded",
-      moduleName    := "scala3-repl-embedded",
+      name          := "scala3-repl-shaded",
+      moduleName    := "scala3-repl-shaded",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
       scalaVersion  := referenceVersion,
       crossPaths    := true,
       autoScalaLibrary := false,
+      // Expose assembly as packageBin for cross-project reference
+      Compile / packageBin := assembly.value,
       // Source directories
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      // Configure scalaInstance to use the bootstrapped compiler
+      scalaInstance := {
+        val scalaLibrary = (`scala-library-bootstrapped` / Compile / packageBin).value
+        val tastyCore = (`tasty-core-bootstrapped-new` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-bootstrapped-new` / Compile / packageBin).value
+        val externalCompilerDeps = (`scala3-compiler-bootstrapped-new` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        Defaults.makeScalaInstance(
+          dottyVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
       // Assembly configuration for shading
-      assembly / assemblyJarName := s"scala3-repl-embedded-${version.value}.jar",
+      assembly / assemblyJarName := s"scala3-repl-shaded-${version.value}.jar",
       assembly / mainClass := Some("scala.tools.repl.EmbeddedReplMain"),
       // Shading rules: relocate specific packages to dotty.tools.repl.shaded, except scala.*, java.*, javax.*
+      // Keep org.jline unshaded (needs to access native terminal libraries)
       assembly / assemblyShadeRules := Seq(
+        ShadeRule.rename("org.jline.**" -> "org.jline.@1").inAll,
         ShadeRule.rename("dotty.**" -> "dotty.tools.repl.shaded.dotty.@1").inAll,
         ShadeRule.rename("org.**" -> "dotty.tools.repl.shaded.org.@1").inAll,
         ShadeRule.rename("com.**" -> "dotty.tools.repl.shaded.com.@1").inAll,
@@ -1219,18 +1240,49 @@ object Build {
       },
       // Don't run tests for assembly
       assembly / test := {},
-      // Publishing configuration: publish the assembly jar instead of regular jar
-      Compile / packageBin := assembly.value,
+      // Exclude scala-library and jline from assembly (users provide them on classpath)
+      assembly / assemblyExcludedJars := {
+        val cp = (assembly / fullClasspath).value
+        cp.filter { jar =>
+          val name = jar.data.getName
+          name.startsWith("scala-library") || name.startsWith("scala3-library") || name.startsWith("jline")
+        }
+      },
+      // Don't publish scala3-repl-shaded - it's an internal build artifact
+      publish / skip := true,
+      publishLocal / skip := true,
+      // Make assembly jar depend on compile
+      assembly := (assembly dependsOn (Compile / compile)).value,
+    )
+
+  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded-publish"))
+    .dependsOn(`scala-library-bootstrapped`)
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-repl-embedded",
+      moduleName    := "scala3-repl-embedded",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      libraryDependencies ++= Seq(
+        "org.jline" % "jline-reader" % "3.29.0",
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0",
+      ),
+      // No source files in this project - just publishes the shaded jar
+      Compile / unmanagedSourceDirectories := Seq.empty,
+      // Use the shaded assembly jar as our packageBin
+      Compile / packageBin := (`scala3-repl-shaded` / Compile / packageBin).value,
       Compile / packageBin / artifact := {
         val art = (Compile / packageBin / artifact).value
         art.withClassifier(None)
       },
+      // Publish sources from scala3-repl-shaded
       Compile / packageDoc / publishArtifact := false,
       Compile / packageSrc / publishArtifact := true,
       Test / publishArtifact := false,
       publish / skip := false,
-      // Make assembly jar depend on packageBin in Compile scope
-      assembly := (assembly dependsOn (Compile / compile)).value,
     )
 
   // ==============================================================================================

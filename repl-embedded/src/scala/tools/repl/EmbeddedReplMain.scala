@@ -19,10 +19,15 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
   // Packages that were shaded
   private val SHADED_PACKAGES = Seq("dotty.", "org.", "com.", "io.", "coursier.", "coursierapi.", "dependency.", "pprint.", "fansi.", "sourcecode.", "xsbti.")
 
+  // Packages that are NOT shaded (even though they match SHADED_PACKAGES patterns)
+  private val UNSHADED_PACKAGES = Seq("scala.", "scala.tools.repl.", "org.jline.")
+
   override def loadClass(name: String, resolve: Boolean): Class[?] = {
     // Check if this is a class from a package we shaded (and not already in the shaded package)
+    // Also exclude packages that are explicitly not shaded
     val shouldUnshade = SHADED_PACKAGES.exists(pkg => name.startsWith(pkg)) &&
-                        !name.startsWith(SHADED_PREFIX)
+                        !name.startsWith(SHADED_PREFIX) &&
+                        !UNSHADED_PACKAGES.exists(pkg => name.startsWith(pkg))
 
     if (shouldUnshade) {
       val loaded = findLoadedClass(name)
@@ -61,13 +66,7 @@ object EmbeddedReplMain {
   def main(args: Array[String]): Unit = {
     // Get the location of the current jar to use as classpath
     val codeSource = getClass.getProtectionDomain.getCodeSource
-    val jarPath =
-      if (codeSource == null) System.getProperty("java.class.path") // Fallback: try to extract from classpath
-      else  {
-        val location = codeSource.getLocation
-        if (location.getProtocol == "file") new java.io.File(location.toURI).getAbsolutePath
-        else location.toString
-      }
+    val jarPath = System.getProperty("java.class.path")
 
     // Add -classpath argument pointing to the shaded jar itself
     // This allows the ReplDriver's compiler to find scala.* classes
