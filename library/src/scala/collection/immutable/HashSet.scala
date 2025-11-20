@@ -1424,7 +1424,7 @@ private final class BitmapIndexedSetNode[A](
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
-  override def toString: String = f"BitmapIndexedSetNode(size=$size, dataMap=$dataMap%x, nodeMap=$nodeMap%x)" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
+  override def toString(): String = f"BitmapIndexedSetNode(size=$size, dataMap=$dataMap%x, nodeMap=$nodeMap%x)" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
 
   override def copy(): BitmapIndexedSetNode[A] = {
     val contentClone = content.clone()

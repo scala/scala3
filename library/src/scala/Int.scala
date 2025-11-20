@@ -477,7 +477,7 @@ object Int extends AnyValCompanion {
   def unbox(x: java.lang.Object): Int = ???
 
   /** The String representation of the scala.Int companion object. */
-  override def toString = "object scala.Int"
+  override def toString() = "object scala.Int"
   /** Language mandated coercions from Int to "wider" types. */
   import scala.language.implicitConversions
   @deprecated("Implicit conversion from Int to Float is dangerous because it loses precision. Write `.toFloat` instead.", "2.13.1")

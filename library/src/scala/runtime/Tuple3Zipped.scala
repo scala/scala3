@@ -123,7 +123,7 @@ final class Tuple3Zipped[El1, It1 <: Iterable[El1], El2, It2 <: Iterable[El2], E
     }
   }
 
-  override def toString = s"($coll1, $coll2, $coll3).zipped"
+  override def toString() = s"($coll1, $coll2, $coll3).zipped"
 }
 
 @deprecated("Use scala.collection.LazyZip3.", since = "2.13.0")

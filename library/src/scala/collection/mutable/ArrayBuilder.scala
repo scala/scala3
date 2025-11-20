@@ -153,7 +153,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofRef"
+    override def toString() = "ArrayBuilder.ofRef"
   }
 
   /** A class for array builders for arrays of `byte`s. It can be reused. */
@@ -195,7 +195,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofByte"
+    override def toString() = "ArrayBuilder.ofByte"
   }
 
   /** A class for array builders for arrays of `short`s. It can be reused. */
@@ -237,7 +237,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofShort"
+    override def toString() = "ArrayBuilder.ofShort"
   }
 
   /** A class for array builders for arrays of `char`s. It can be reused. */
@@ -279,7 +279,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofChar"
+    override def toString() = "ArrayBuilder.ofChar"
   }
 
   /** A class for array builders for arrays of `int`s. It can be reused. */
@@ -321,7 +321,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofInt"
+    override def toString() = "ArrayBuilder.ofInt"
   }
 
   /** A class for array builders for arrays of `long`s. It can be reused. */
@@ -363,7 +363,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofLong"
+    override def toString() = "ArrayBuilder.ofLong"
   }
 
   /** A class for array builders for arrays of `float`s. It can be reused. */
@@ -405,7 +405,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofFloat"
+    override def toString() = "ArrayBuilder.ofFloat"
   }
 
   /** A class for array builders for arrays of `double`s. It can be reused. */
@@ -447,7 +447,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofDouble"
+    override def toString() = "ArrayBuilder.ofDouble"
   }
 
   /** A class for array builders for arrays of `boolean`s. It can be reused. */
@@ -490,7 +490,7 @@ object ArrayBuilder {
       case _ => false
     }
 
-    override def toString = "ArrayBuilder.ofBoolean"
+    override def toString() = "ArrayBuilder.ofBoolean"
   }
 
   /** A class for array builders for arrays of `Unit` type. It can be reused. */
@@ -534,6 +534,6 @@ object ArrayBuilder {
 
     protected def resize(size: Int): Unit = capacity = size
 
-    override def toString = "ArrayBuilder.ofUnit"
+    override def toString() = "ArrayBuilder.ofUnit"
   }
 }

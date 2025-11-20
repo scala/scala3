@@ -177,7 +177,7 @@ object Duration {
    * '''''Use [[eq]] when checking an input of a method against this value.'''''
    */
   val Undefined: Infinite = new Infinite {
-    override def toString = "Duration.Undefined"
+    override def toString() = "Duration.Undefined"
     override def equals(other: Any): Boolean  = false
     override def +(other: Duration): Duration = this
     override def -(other: Duration): Duration = this
@@ -237,7 +237,7 @@ object Duration {
    * matching its semantics in arithmetic operations.
    */
   val Inf: Infinite = new Infinite  {
-    override def toString: String      = "Duration.Inf"
+    override def toString(): String      = "Duration.Inf"
     def compare(other: Duration): Int  = other match {
       case x if x eq Undefined => -1 // Undefined != Undefined
       case x if x eq this      => 0  // `case Inf` will include null checks in the byte code
@@ -254,7 +254,7 @@ object Duration {
    * matching its semantics in arithmetic operations.
    */
   val MinusInf: Infinite = new Infinite {
-    override def toString: String      = "Duration.MinusInf"
+    override def toString(): String      = "Duration.MinusInf"
     def compare(other: Duration): Int  = if (other eq this) 0 else -1
     def unary_- : Duration = Inf
     def toUnit(unit: TimeUnit): Double = Double.NegativeInfinity
@@ -604,7 +604,7 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   def fromNow: Deadline = Deadline.now + this
 
   private def unitString  = timeUnitName(unit) + ( if (length == 1) "" else "s" )
-  override def toString: String     = "" + length + " " + unitString
+  override def toString(): String     = "" + length + " " + unitString
 
   def compare(other: Duration): Int = other match {
     case x: FiniteDuration => toNanos compare x.toNanos
@@ -739,5 +739,5 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
     case x: FiniteDuration => toNanos == x.toNanos
     case _                 => super.equals(other)
   }
-  override def hashCode: Int = toNanos.toInt
+  override def hashCode(): Int = toNanos.toInt
 }

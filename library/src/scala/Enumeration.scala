@@ -98,11 +98,11 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The name of this enumeration.
    */
-  override def toString: String =
+  override def toString(): String =
     getClass.getName
       .stripSuffix(MODULE_SUFFIX_STRING)
       .split('.')
-      .last 
+      .last
       .split(Regex.quote(NAME_JOIN_STRING))
       .last
 
@@ -241,7 +241,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
       case that: Enumeration#Value  => (outerEnum eq that.outerEnum) && (id == that.id)
       case _                        => false
     }
-    override def hashCode: Int = id.##
+    override def hashCode(): Int = id.##
 
     /** Create a ValueSet which contains this value and another one */
     def + (v: Value): ValueSet = ValueSet(this, v)

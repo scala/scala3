@@ -362,7 +362,7 @@ sealed class NumericRange[T](
       super.equals(other)
   }
 
-  override def toString: String = {
+  override def toString(): String = {
     val empty = if (isEmpty) "empty " else ""
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"

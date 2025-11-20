@@ -232,7 +232,7 @@ private[concurrent] object Promise {
       if (!get().isInstanceOf[Success[?]]) super.failed
       else Future.failedFailureFuture // Cached instance in case of already known success
 
-    @tailrec override final def toString: String = {
+    @tailrec override final def toString(): String = {
       val state = get()
       if (state.isInstanceOf[Try[?]]) "Future("+state+")"
       else if (state.isInstanceOf[Link[?]]) state.asInstanceOf[Link[T]].promise(this).toString
@@ -433,7 +433,7 @@ private[concurrent] object Promise {
   sealed trait Callbacks[-T]
 
   final class ManyCallbacks[-T](final val first: Transformation[T, ?], final val rest: Callbacks[T]) extends Callbacks[T] {
-    override final def toString: String = "ManyCallbacks"
+    override final def toString(): String = "ManyCallbacks"
   }
 
   private final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null: (Any => Any) | Null, ExecutionContext.parasitic)

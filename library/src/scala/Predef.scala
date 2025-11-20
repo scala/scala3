@@ -442,7 +442,7 @@ object Predef extends LowPriorityImplicits {
     def length: Int                                     = sequenceOfChars.length
     def charAt(index: Int): Char                        = sequenceOfChars(index)
     def subSequence(start: Int, end: Int): CharSequence = new SeqCharSequence(sequenceOfChars.slice(start, end))
-    override def toString                               = sequenceOfChars.mkString
+    override def toString()                             = sequenceOfChars.mkString
   }
 
   /** @group char-sequence-wrappers */
@@ -453,7 +453,7 @@ object Predef extends LowPriorityImplicits {
     def length: Int                                     = arrayOfChars.length
     def charAt(index: Int): Char                        = arrayOfChars(index)
     def subSequence(start: Int, end: Int): CharSequence = new runtime.ArrayCharSequence(arrayOfChars, start, end)
-    override def toString                               = arrayOfChars.mkString
+    override def toString()                             = arrayOfChars.mkString
   }
 
   /** @group char-sequence-wrappers */

@@ -252,6 +252,6 @@ object Double extends AnyValCompanion {
   def unbox(x: java.lang.Object): Double = ???
 
   /** The String representation of the scala.Double companion object. */
-  override def toString = "object scala.Double"
+  override def toString() = "object scala.Double"
 }
 
