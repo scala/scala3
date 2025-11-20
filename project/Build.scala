@@ -1193,15 +1193,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       // Assembly configuration for shading
       assembly / assemblyJarName := s"scala3-repl-shaded-${version.value}.jar",
-      // Merge strategy for assembly
-      assembly / assemblyMergeStrategy := {
-        case PathList("META-INF", xs @ _*) => xs match {
-          case "MANIFEST.MF" :: Nil => MergeStrategy.discard
-          case _ => MergeStrategy.discard
-        }
-        case x if x.endsWith(".proto") => MergeStrategy.first
-        case x => MergeStrategy.first
-      },
       // Don't run tests for assembly
       assembly / test := {},
       // Exclude scala-library and jline from assembly (users provide them on classpath)
