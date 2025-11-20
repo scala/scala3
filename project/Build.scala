@@ -1189,8 +1189,6 @@ object Build {
       scalaVersion  := referenceVersion,
       crossPaths    := true,
       autoScalaLibrary := false,
-      // Expose assembly as packageBin for cross-project reference
-      Compile / packageBin := assembly.value,
       // Source directories
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       // Assembly configuration for shading
@@ -1283,11 +1281,7 @@ object Build {
       // No source files in this project - just publishes the shaded jar
       Compile / unmanagedSourceDirectories := Seq.empty,
       // Use the shaded assembly jar as our packageBin
-      Compile / packageBin := (`scala3-repl-shaded` / Compile / packageBin).value,
-      Compile / packageBin / artifact := {
-        val art = (Compile / packageBin / artifact).value
-        art.withClassifier(None)
-      },
+      Compile / packageBin := (`scala3-repl-shaded` / Compile / assembly).value,
       // Publish sources from scala3-repl-shaded
       Compile / packageDoc / publishArtifact := false,
       Compile / packageSrc / publishArtifact := true,
