@@ -91,7 +91,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
         try
           val bytes = is.readAllBytes()
           defineClass(name, bytes, 0, bytes.length)
-        finally Option(is).foreach(_.close())
+        finally is.close()
 
       case _ =>
         try findClass(name)
