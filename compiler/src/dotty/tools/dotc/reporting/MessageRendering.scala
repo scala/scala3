@@ -313,7 +313,7 @@ trait MessageRendering {
     val posString = posStr(pos1, msg, diagnosticLevel(dia))
     if posString.nonEmpty then sb.append(posString).append(EOL)
 
-    // Display primary error message before code snippet
+    // Always display primary error message before code snippet
     sb.append(msg.message)
     if !msg.message.endsWith(EOL) then sb.append(EOL)
 
@@ -342,7 +342,7 @@ trait MessageRendering {
     val lineNumberWidth = maxLineNumber.toString.length
 
     // Render each line with its markers and messages
-    for (lineNum <- minLine to maxLine) {
+    for (lineNum <- minLine to maxLine) do
       val lineIdx = lineNum - minLine
       if lineIdx < lines.length then
         val lineContent = lines(lineIdx)
@@ -360,10 +360,13 @@ trait MessageRendering {
           // Use '^' for primary error, '-' for sub-diagnostics
           val markerChar = if posAndMsg.isPrimary then '^' else '-'
           val marker = positionMarker(posAndMsg.pos, markerChar)
-          val err = errorMsg(posAndMsg.pos, posAndMsg.msg.message)
+          // For primary position: use PrimaryNote if available, otherwise use primary message
+          val messageToShow =
+            if posAndMsg.isPrimary then dia.getPrimaryNote.map(_.message).getOrElse(posAndMsg.msg.message)
+            else posAndMsg.msg.message
+          val err = errorMsg(posAndMsg.pos, messageToShow)
           sb.append(marker).append(EOL)
           sb.append(err).append(EOL)
-    }
 
     // Add explanation if needed
     if Diagnostic.shouldExplain(dia) then
