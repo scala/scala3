@@ -123,8 +123,17 @@ class Diagnostic(
 
   private val subdiags: ArrayBuffer[Subdiagnostic] = ArrayBuffer.empty
 
+  private var primaryNote: Message | Null = null
+
   def addSubdiag(diag: Subdiagnostic): Unit =
     subdiags += diag
+
+  def addPrimaryNote(msg: Message): Unit =
+    assert(primaryNote eq null)
+    primaryNote = msg
+
+  def getPrimaryNote: Option[Message] =
+    if primaryNote eq null then None else Some(primaryNote.nn)
 
   def addSubdiag(msg: Message, pos: SourcePosition): Unit =
     addSubdiag(Subdiagnostic(msg, pos))
