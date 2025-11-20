@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 sealed trait A[T]
 class B[T] extends A[T]

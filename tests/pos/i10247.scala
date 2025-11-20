@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
 // check that deprecation warnings of Red are not caught in its enclosing scope
 enum Color(rgb: Int) {

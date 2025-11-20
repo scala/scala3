@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 class Foo {
   def test1[A]: List[Int] | A => Int = {

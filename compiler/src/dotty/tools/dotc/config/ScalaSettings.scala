@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package config
 
 import dotty.tools.dotc.config.PathResolver.Defaults
-import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory, Deprecation}
+import dotty.tools.dotc.config.Settings.{Setting, SettingAlias, SettingGroup, SettingCategory, Deprecation}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
@@ -40,7 +40,7 @@ abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
   val forkSettings: List[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
   val advancedSettings: List[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
   val verboseSettings: List[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
-  val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+  val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_.name -> s)).toMap
 
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
@@ -146,8 +146,8 @@ private sealed trait PluginSettings:
 private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
-  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = List("-Xprint"))
-  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = List("-Xshow-phases"))
+  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = SettingAlias("-Xprint", Deprecation()) :: Nil)
+  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = SettingAlias("-Xshow-phases", Deprecation()) :: Nil)
 
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
@@ -161,7 +161,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
-  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = SettingAlias("-Xfatal-warnings", Deprecation()) :: Nil)
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")

@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Xlint
+//> using options -Werror -Xlint
 package t8013
 
 // unsuspecting user of perverse macro

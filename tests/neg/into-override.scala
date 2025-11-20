@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -preview
+//> using options -Werror -preview
 
 import Conversion.into
 
