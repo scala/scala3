@@ -290,12 +290,16 @@ private sealed trait WarningSettings:
   )
 
   object WshadowHas:
-    def allOr(s: String)(using Context) =
-      Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
+    // Is any choice set for -Wshadow?
+    def any(using Context): Boolean = Wall.value || Wshadow.value.nonEmpty
+
+    def allOr(s: String)(using Context): Boolean =
+      Wall.value || Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
     def privateShadow(using Context) =
       allOr("private-shadow")
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
+  end WshadowHas
 
   val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
 
