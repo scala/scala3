@@ -295,7 +295,7 @@ object SourceFile {
         val path = refPath.relativize(sourcePath)
         path.iterator.asScala.mkString("/")
       else
-        sourcePath.toString
+        jpath.toString
   }
 
   /** Return true if file is a script:
