@@ -583,13 +583,16 @@ extension (sym: Symbol)
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
-  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures */
+  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures
+   *  and that is not a consume accessor.
+   */
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
     && {
       val param = sym.owner.primaryConstructor.paramNamed(sym.name)
       !param.hasAnnotation(defn.ConstructorOnlyAnnot)
       && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
+      && !param.hasAnnotation(defn.ConsumeAnnot)
     }
 
   def hasTrackedParts(using Context): Boolean =
