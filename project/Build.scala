@@ -26,6 +26,9 @@ import dotty.tools.sbtplugin.ScalaLibraryPlugin
 import dotty.tools.sbtplugin.ScalaLibraryPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyJSPlugin
 import dotty.tools.sbtplugin.DottyJSPlugin.autoImport._
+import sbtassembly.AssemblyPlugin.autoImport._
+import sbtassembly.{MergeStrategy, PathList}
+import com.eed3si9n.jarjarabrams.ShadeRule
 
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
@@ -1173,6 +1176,46 @@ object Build {
         // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
         (Compile / run).toTask(" -usejavacp").value
       },
+    )
+
+  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
+    .dependsOn(`scala3-repl`)
+    .settings(
+      name          := "scala3-repl-embedded",
+      moduleName    := "scala3-repl-embedded",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+      // Source directories
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      // Assembly configuration for shading
+      assembly / assemblyJarName := s"scala3-repl-embedded-${version.value}.jar",
+      assembly / mainClass := Some("scala.tools.repl.EmbeddedReplMain"),
+      // Shading rules: relocate specific packages to dotty.tools.repl.shaded, except scala.*, java.*, javax.*
+      assembly / assemblyShadeRules := Seq(
+        ShadeRule.rename("dotty.**" -> "dotty.tools.repl.shaded.dotty.@1").inAll,
+        ShadeRule.rename("org.**" -> "dotty.tools.repl.shaded.org.@1").inAll,
+        ShadeRule.rename("com.**" -> "dotty.tools.repl.shaded.com.@1").inAll,
+        ShadeRule.rename("io.**" -> "dotty.tools.repl.shaded.io.@1").inAll,
+        ShadeRule.rename("coursier.**" -> "dotty.tools.repl.shaded.coursier.@1").inAll,
+        ShadeRule.rename("dependency.**" -> "dotty.tools.repl.shaded.dependency.@1").inAll,
+        ShadeRule.rename("pprint.**" -> "dotty.tools.repl.shaded.pprint.@1").inAll,
+        ShadeRule.rename("fansi.**" -> "dotty.tools.repl.shaded.fansi.@1").inAll,
+        ShadeRule.rename("sourcecode.**" -> "dotty.tools.repl.shaded.sourcecode.@1").inAll,
+      ),
+      // Merge strategy for assembly
+      assembly / assemblyMergeStrategy := {
+        case PathList("META-INF", xs @ _*) => xs match {
+          case "MANIFEST.MF" :: Nil => MergeStrategy.discard
+          case _ => MergeStrategy.discard
+        }
+        case x if x.endsWith(".proto") => MergeStrategy.first
+        case x => MergeStrategy.first
+      },
+      // Don't run tests for assembly
+      assembly / test := {},
     )
 
   // ==============================================================================================
