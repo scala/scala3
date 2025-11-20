@@ -64,11 +64,6 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
  */
 object EmbeddedReplMain {
   def main(args: Array[String]): Unit = {
-    // Get the location of the current jar to use as classpath
-    val codeSource = getClass.getProtectionDomain.getCodeSource
-
-    // Add -classpath argument pointing to the shaded jar itself
-    // This allows the ReplDriver's compiler to find scala.* classes
     val argsWithClasspath = if (args.exists(arg => arg == "-classpath" || arg == "-cp")) {
       args // Already has classpath
     } else {
