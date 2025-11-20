@@ -1178,7 +1178,7 @@ object Build {
       },
     )
   
-  lazy val `scala3-repl-shaded` = project.in(file("repl-embedded"))
+  lazy val `scala3-repl-shaded` = project.in(file("repl-shaded"))
     .dependsOn(`scala3-repl`)
     .enablePlugins(sbtassembly.AssemblyPlugin)
     .settings(
@@ -1250,11 +1250,9 @@ object Build {
       // Don't publish scala3-repl-shaded - it's an internal build artifact
       publish / skip := true,
       publishLocal / skip := true,
-      // Make assembly jar depend on compile
-      assembly := (assembly dependsOn (Compile / compile)).value,
     )
 
-  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded-publish"))
+  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
     .dependsOn(`scala-library-bootstrapped`)
     .settings(publishSettings)
     .settings(
@@ -1273,9 +1271,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq.empty,
       // Use the shaded assembly jar as our packageBin
       Compile / packageBin := (`scala3-repl-shaded` / Compile / assembly).value,
-      // Publish sources from scala3-repl-shaded
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
       Test / publishArtifact := false,
       publish / skip := false,
     )
