@@ -1177,9 +1177,10 @@ object Build {
         (Compile / run).toTask(" -usejavacp").value
       },
     )
-
+  
   lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
     .dependsOn(`scala3-repl`)
+    .settings(publishSettings)
     .settings(
       name          := "scala3-repl-embedded",
       moduleName    := "scala3-repl-embedded",
@@ -1200,10 +1201,12 @@ object Build {
         ShadeRule.rename("com.**" -> "dotty.tools.repl.shaded.com.@1").inAll,
         ShadeRule.rename("io.**" -> "dotty.tools.repl.shaded.io.@1").inAll,
         ShadeRule.rename("coursier.**" -> "dotty.tools.repl.shaded.coursier.@1").inAll,
+        ShadeRule.rename("coursierapi.**" -> "dotty.tools.repl.shaded.coursierapi.@1").inAll,
         ShadeRule.rename("dependency.**" -> "dotty.tools.repl.shaded.dependency.@1").inAll,
         ShadeRule.rename("pprint.**" -> "dotty.tools.repl.shaded.pprint.@1").inAll,
         ShadeRule.rename("fansi.**" -> "dotty.tools.repl.shaded.fansi.@1").inAll,
         ShadeRule.rename("sourcecode.**" -> "dotty.tools.repl.shaded.sourcecode.@1").inAll,
+        ShadeRule.rename("xsbti.**" -> "dotty.tools.repl.shaded.xsbti.@1").inAll,
       ),
       // Merge strategy for assembly
       assembly / assemblyMergeStrategy := {
@@ -1216,6 +1219,18 @@ object Build {
       },
       // Don't run tests for assembly
       assembly / test := {},
+      // Publishing configuration: publish the assembly jar instead of regular jar
+      Compile / packageBin := assembly.value,
+      Compile / packageBin / artifact := {
+        val art = (Compile / packageBin / artifact).value
+        art.withClassifier(None)
+      },
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      Test / publishArtifact := false,
+      publish / skip := false,
+      // Make assembly jar depend on packageBin in Compile scope
+      assembly := (assembly dependsOn (Compile / compile)).value,
     )
 
   // ==============================================================================================

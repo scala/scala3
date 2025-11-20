@@ -17,7 +17,7 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
   private val SHADED_PREFIX = "dotty.tools.repl.shaded."
 
   // Packages that were shaded
-  private val SHADED_PACKAGES = Seq("dotty.", "org.", "com.", "io.", "coursier.", "dependency.", "pprint.", "fansi.", "sourcecode.")
+  private val SHADED_PACKAGES = Seq("dotty.", "org.", "com.", "io.", "coursier.", "coursierapi.", "dependency.", "pprint.", "fansi.", "sourcecode.", "xsbti.")
 
   override def loadClass(name: String, resolve: Boolean): Class[?] = {
     // Check if this is a class from a package we shaded (and not already in the shaded package)
