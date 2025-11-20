@@ -1212,23 +1212,6 @@ object Build {
       },
       // Assembly configuration for shading
       assembly / assemblyJarName := s"scala3-repl-shaded-${version.value}.jar",
-      assembly / mainClass := Some("scala.tools.repl.EmbeddedReplMain"),
-      // Shading rules: relocate specific packages to dotty.tools.repl.shaded, except scala.*, java.*, javax.*
-      // Keep org.jline unshaded (needs to access native terminal libraries)
-      assembly / assemblyShadeRules := Seq(
-        ShadeRule.rename("org.jline.**" -> "org.jline.@1").inAll,
-        ShadeRule.rename("dotty.**" -> "dotty.tools.repl.shaded.dotty.@1").inAll,
-        ShadeRule.rename("org.**" -> "dotty.tools.repl.shaded.org.@1").inAll,
-        ShadeRule.rename("com.**" -> "dotty.tools.repl.shaded.com.@1").inAll,
-        ShadeRule.rename("io.**" -> "dotty.tools.repl.shaded.io.@1").inAll,
-        ShadeRule.rename("coursier.**" -> "dotty.tools.repl.shaded.coursier.@1").inAll,
-        ShadeRule.rename("coursierapi.**" -> "dotty.tools.repl.shaded.coursierapi.@1").inAll,
-        ShadeRule.rename("dependency.**" -> "dotty.tools.repl.shaded.dependency.@1").inAll,
-        ShadeRule.rename("pprint.**" -> "dotty.tools.repl.shaded.pprint.@1").inAll,
-        ShadeRule.rename("fansi.**" -> "dotty.tools.repl.shaded.fansi.@1").inAll,
-        ShadeRule.rename("sourcecode.**" -> "dotty.tools.repl.shaded.sourcecode.@1").inAll,
-        ShadeRule.rename("xsbti.**" -> "dotty.tools.repl.shaded.xsbti.@1").inAll,
-      ),
       // Merge strategy for assembly
       assembly / assemblyMergeStrategy := {
         case PathList("META-INF", xs @ _*) => xs match {
@@ -1247,6 +1230,47 @@ object Build {
           val name = jar.data.getName
           name.startsWith("scala-library") || name.startsWith("scala3-library") || name.startsWith("jline")
         }
+      },
+      // Post-process assembly to physically move files into dotty/tools/repl/shaded/ subfolder
+      assembly := {
+        val originalJar = assembly.value
+        val log = streams.value.log
+
+        log.info(s"Post-processing assembly to relocate files into shaded subfolder...")
+
+        // Create a temporary directory for processing
+        val tmpDir = IO.createTemporaryDirectory
+        try {
+          IO.unzip(originalJar, tmpDir)
+          val shadedDir = tmpDir / "dotty" / "tools" / "repl" / "shaded"
+          IO.createDirectory(shadedDir)
+
+          (tmpDir ** "*").get.foreach { file =>
+            if (file.isFile) {
+              val relativePath = file.relativeTo(tmpDir).get.getPath
+
+              // Skip META-INF and scala/tools/repl files
+              val shouldMove = !relativePath.startsWith("META-INF") &&
+                               !relativePath.startsWith("scala/tools/repl/") &&
+                               !relativePath.startsWith("dotty/tools/repl/shaded/")
+
+              if (shouldMove) {
+                val newPath = shadedDir / relativePath
+                IO.createDirectory(newPath.getParentFile)
+                IO.move(file, newPath)
+              }
+            }
+          }
+
+          val filesToZip = (tmpDir ** "*").get.filter(_.isFile).map { f =>
+            (f, f.relativeTo(tmpDir).get.getPath)
+          }
+          IO.zip(filesToZip, originalJar, None)
+
+          log.info(s"Assembly post-processing complete")
+        } finally IO.delete(tmpDir)
+
+        originalJar
       },
       // Don't publish scala3-repl-shaded - it's an internal build artifact
       publish / skip := true,

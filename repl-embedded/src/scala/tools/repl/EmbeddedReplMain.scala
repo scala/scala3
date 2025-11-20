@@ -16,25 +16,26 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
 
   private val SHADED_PREFIX = "dotty.tools.repl.shaded."
 
-  // Packages that were shaded
   private val SHADED_PACKAGES = Seq("dotty.", "org.", "com.", "io.", "coursier.", "coursierapi.", "dependency.", "pprint.", "fansi.", "sourcecode.", "xsbti.")
 
-  // Packages that are NOT shaded (even though they match SHADED_PACKAGES patterns)
   private val UNSHADED_PACKAGES = Seq("scala.", "scala.tools.repl.", "org.jline.")
 
-  override def loadClass(name: String, resolve: Boolean): Class[?] = {
-    // Check if this is a class from a package we shaded (and not already in the shaded package)
-    // Also exclude packages that are explicitly not shaded
-    val shouldUnshade = SHADED_PACKAGES.exists(pkg => name.startsWith(pkg)) &&
-                        !name.startsWith(SHADED_PREFIX) &&
-                        !UNSHADED_PACKAGES.exists(pkg => name.startsWith(pkg))
+  /** Check if a class/resource name should be loaded from the shaded location */
+  private def shouldUnshade(name: String): Boolean = {
+    SHADED_PACKAGES.exists(pkg => name.startsWith(pkg)) &&
+    !name.startsWith(SHADED_PREFIX) &&
+    !UNSHADED_PACKAGES.exists(pkg => name.startsWith(pkg)) ||
+    name.startsWith("scala.tools.asm")
+  }
 
-    if (shouldUnshade) {
+  override def loadClass(name: String, resolve: Boolean): Class[?] = {
+    if (shouldUnshade(name)) {
       val loaded = findLoadedClass(name)
       if (loaded != null) return loaded
 
       try {
-        val is = getParent.getResourceAsStream((SHADED_PREFIX + name).replace('.', '/') + ".class")
+        val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
+        val is = getParent.getResourceAsStream(shadedPath)
 
         if (is != null) {
           try {
@@ -49,8 +50,19 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
       }
     }
 
-    // For everything else (scala.* and already shaded classes), delegate to parent
     super.loadClass(name, resolve)
+  }
+
+  override def getResourceAsStream(name: String): InputStream | Null = {
+    val nameAsDots = name.replace('/', '.')
+
+    if (shouldUnshade(nameAsDots)) {
+      val shadedPath = SHADED_PREFIX.replace('.', '/') + name
+      val shadedStream = super.getResourceAsStream(shadedPath)
+      if (shadedStream != null) return shadedStream
+    }
+
+    super.getResourceAsStream(name)
   }
 }
 
@@ -64,23 +76,22 @@ object EmbeddedReplMain {
   def main(args: Array[String]): Unit = {
     val argsWithClasspath =
       if (args.exists(arg => arg == "-classpath" || arg == "-cp")) args
-    else Array("-classpath", System.getProperty("java.class.path")) ++ args
+      else Array("-classpath", System.getProperty("java.class.path")) ++ args
 
     val unshadingClassLoader = new UnshadingClassLoader(getClass.getClassLoader)
-    try {
 
-      val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
-      val constructor = replDriverClass.getConstructors().head
+    val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
+    val constructor = replDriverClass.getConstructors().head
 
-      // Create the ReplDriver instance with classpath argument
-      val replDriver = constructor.newInstance(
-        argsWithClasspath, // settings: Array[String] (now includes -classpath)
-        System.out, // out: PrintStream
-        Option(getClass.getClassLoader), // classLoader: Option[ClassLoader]
-        "" // extraPredef: String
-      )
+    // Create the ReplDriver instance with classpath argument
+    val replDriver = constructor.newInstance(
+      argsWithClasspath, // settings: Array[String] (now includes -classpath)
+      System.out, // out: PrintStream
+      Option(getClass.getClassLoader), // classLoader: Option[ClassLoader]
+      "" // extraPredef: String
+    )
 
-      replDriverClass.getMethod("tryRunning").invoke(replDriver)
-    }finally unshadingClassLoader.close
+    replDriverClass.getMethod("tryRunning").invoke(replDriver)
+
   }
 }
