@@ -1193,23 +1193,6 @@ object Build {
       Compile / packageBin := assembly.value,
       // Source directories
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
-      // Configure scalaInstance to use the bootstrapped compiler
-      scalaInstance := {
-        val scalaLibrary = (`scala-library-bootstrapped` / Compile / packageBin).value
-        val tastyCore = (`tasty-core-bootstrapped-new` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-bootstrapped-new` / Compile / packageBin).value
-        val externalCompilerDeps = (`scala3-compiler-bootstrapped-new` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        Defaults.makeScalaInstance(
-          dottyVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
       // Assembly configuration for shading
       assembly / assemblyJarName := s"scala3-repl-shaded-${version.value}.jar",
       // Merge strategy for assembly
