@@ -9,4 +9,4 @@ def onlyShared(x: Object^{cap.only[SharedCapability]}): Unit = ()
 
 def main(): Unit =
   onlyShared(Logger())  // even if we allow (1), why would this type check?
-  val t: Logger^{} = Logger()  // and this type checks too, thus the above line I guess
+  val t: Logger^{} = Logger()  // error

@@ -1625,6 +1625,8 @@ object CaptureSet:
     case Restricted(c1, cls) =>
       if cls == defn.NothingClass then CaptureSet.empty
       else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
+    case ReadOnly(c1) =>
+      c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
       c1.captureSetOfInfo.maybe
     case c: RootCapability =>

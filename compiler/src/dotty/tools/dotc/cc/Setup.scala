@@ -955,7 +955,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case Nil =>
     recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
     if cls.derivesFrom(defn.Caps_SharedCapability) && cls.derivesFrom(defn.Caps_Mutable) then
-      report.error(em"$cls cannot inheit from both SharaedCapability and Mutable", cls.srcPos)
+      report.error(em"$cls cannot inheit from both SharedCapability and Mutable", cls.srcPos)
 
   // ------ Checks to run after main capture checking --------------------------
 

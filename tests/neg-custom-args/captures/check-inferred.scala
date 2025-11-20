@@ -46,5 +46,5 @@ class C:
 
 class D:
   val x: A^{cap.only[caps.Control]} = ???
-  private val y = ??? : (() => A^{cap.only[caps.Read]})  // error
+  private val y = ??? : (() => A^{cap.only[caps.Unscoped]})  // error
 
