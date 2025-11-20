@@ -34,13 +34,11 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
       if (loaded != null) return loaded
 
       try {
-        // Load the shaded class bytes from parent
         val is = getParent.getResourceAsStream((SHADED_PREFIX + name).replace('.', '/') + ".class")
 
         if (is != null) {
           try {
             val bytes = is.readAllBytes()
-            // Define the class with the unshaded name
             val clazz = defineClass(name, bytes, 0, bytes.length)
             if (resolve) resolveClass(clazz)
             return clazz
@@ -64,27 +62,25 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
  */
 object EmbeddedReplMain {
   def main(args: Array[String]): Unit = {
-    val argsWithClasspath = if (args.exists(arg => arg == "-classpath" || arg == "-cp")) {
-      args // Already has classpath
-    } else {
-      Array("-classpath", System.getProperty("java.class.path")) ++ args
-    }
+    val argsWithClasspath =
+      if (args.exists(arg => arg == "-classpath" || arg == "-cp")) args
+    else Array("-classpath", System.getProperty("java.class.path")) ++ args
 
-    // Create the unshading classloader with the current classloader as parent
-    // This ensures it has access to all dependencies in the shaded jar
     val unshadingClassLoader = new UnshadingClassLoader(getClass.getClassLoader)
+    try {
 
-    val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
-    val constructor = replDriverClass.getConstructors().head
+      val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
+      val constructor = replDriverClass.getConstructors().head
 
-    // Create the ReplDriver instance with classpath argument
-    val replDriver = constructor.newInstance(
-      argsWithClasspath,        // settings: Array[String] (now includes -classpath)
-      System.out,               // out: PrintStream
-      Option(getClass.getClassLoader),        // classLoader: Option[ClassLoader]
-      ""                        // extraPredef: String
-    )
+      // Create the ReplDriver instance with classpath argument
+      val replDriver = constructor.newInstance(
+        argsWithClasspath, // settings: Array[String] (now includes -classpath)
+        System.out, // out: PrintStream
+        Option(getClass.getClassLoader), // classLoader: Option[ClassLoader]
+        "" // extraPredef: String
+      )
 
-    replDriverClass.getMethod("tryRunning").invoke(replDriver)
+      replDriverClass.getMethod("tryRunning").invoke(replDriver)
+    }finally unshadingClassLoader.close
   }
 }
