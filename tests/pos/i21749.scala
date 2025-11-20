@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -no-indent
+//> using options -Werror -no-indent
 
 object Test {
   1 match {
