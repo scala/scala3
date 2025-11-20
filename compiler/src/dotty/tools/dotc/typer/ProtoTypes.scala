@@ -286,6 +286,9 @@ object ProtoTypes {
     override def deepenProtoTrans(using Context): SelectionProto =
       derivedSelectionProto(name, memberProto.deepenProtoTrans, compat, nameSpan)
 
+    override def ignoreSelectionProto(using Context): IgnoredProto =
+      IgnoredProto(this)
+
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
@@ -620,6 +623,9 @@ object ProtoTypes {
     override def deepenProtoTrans(using Context): FunProto =
       derivedFunProto(args, resultType.deepenProtoTrans, constrainResultDeep = true)
 
+    override def ignoreSelectionProto(using Context): FunProto =
+      derivedFunProto(args, resultType.ignoreSelectionProto)
+
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
       else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
@@ -734,6 +740,9 @@ object ProtoTypes {
 
     override def deepenProtoTrans(using Context): PolyProto =
       derivedPolyProto(targs, resultType.deepenProtoTrans)
+
+    override def ignoreSelectionProto(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.ignoreSelectionProto)
   }
 
   /** A prototype for expressions [] that are known to be functions:
