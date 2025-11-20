@@ -460,8 +460,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         |and therefore is no longer available.""",
     useLoc.sourcePos
   ):
-      addSubdiag(em"$ref was consumed here.", consumedLoc.sourcePos)
-      addPrimaryNote(em"... and it was used here")
+      addSubdiag(em"The capability was consumed here.", consumedLoc.sourcePos)
+      addPrimaryNote(em"Then, it was used here")
 
   /** Report a failure where a previously consumed capability is used again,
    *  @param ref     the capability that is used after being consumed
