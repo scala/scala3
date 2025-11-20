@@ -16,53 +16,34 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
 
   private val SHADED_PREFIX = "dotty.tools.repl.shaded."
 
-  private val SHADED_PACKAGES = Seq("dotty.", "org.", "com.", "io.", "coursier.", "coursierapi.", "dependency.", "pprint.", "fansi.", "sourcecode.", "xsbti.")
-
-  private val UNSHADED_PACKAGES = Seq("scala.", "scala.tools.repl.", "org.jline.")
-
-  /** Check if a class/resource name should be loaded from the shaded location */
-  private def shouldUnshade(name: String): Boolean = {
-    SHADED_PACKAGES.exists(pkg => name.startsWith(pkg)) &&
-    !name.startsWith(SHADED_PREFIX) &&
-    !UNSHADED_PACKAGES.exists(pkg => name.startsWith(pkg)) ||
-    name.startsWith("scala.tools.asm")
-  }
-
   override def loadClass(name: String, resolve: Boolean): Class[?] = {
-    if (shouldUnshade(name)) {
-      val loaded = findLoadedClass(name)
-      if (loaded != null) return loaded
+    val loaded = findLoadedClass(name)
+    if (loaded != null) return loaded
 
-      try {
-        val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
-        val is = getParent.getResourceAsStream(shadedPath)
+    try {
+      val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
+      val is = getParent.getResourceAsStream(shadedPath)
 
-        if (is != null) {
-          try {
-            val bytes = is.readAllBytes()
-            val clazz = defineClass(name, bytes, 0, bytes.length)
-            if (resolve) resolveClass(clazz)
-            return clazz
-          } finally is.close()
-        }
-      } catch {
-        case _: Exception => // Fall through to parent
+      if (is != null) {
+        try {
+          val bytes = is.readAllBytes()
+          val clazz = defineClass(name, bytes, 0, bytes.length)
+          if (resolve) resolveClass(clazz)
+          return clazz
+        } finally is.close()
       }
+    } catch {
+      case _: Exception => // Fall through to parent
     }
 
     super.loadClass(name, resolve)
   }
 
   override def getResourceAsStream(name: String): InputStream | Null = {
-    val nameAsDots = name.replace('/', '.')
-
-    if (shouldUnshade(nameAsDots)) {
-      val shadedPath = SHADED_PREFIX.replace('.', '/') + name
-      val shadedStream = super.getResourceAsStream(shadedPath)
-      if (shadedStream != null) return shadedStream
-    }
-
-    super.getResourceAsStream(name)
+    val shadedPath = SHADED_PREFIX.replace('.', '/') + name
+    val shadedStream = super.getResourceAsStream(shadedPath)
+    if (shadedStream != null) return shadedStream
+    else super.getResourceAsStream(name)
   }
 }
 

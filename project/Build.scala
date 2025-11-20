@@ -1228,7 +1228,7 @@ object Build {
         val cp = (assembly / fullClasspath).value
         cp.filter { jar =>
           val name = jar.data.getName
-          name.startsWith("scala-library") || name.startsWith("scala3-library") || name.startsWith("jline")
+          name.contains("scala-library") || name.contains("scala3-library") || name.contains("jline")
         }
       },
       // Post-process assembly to physically move files into dotty/tools/repl/shaded/ subfolder
@@ -1249,12 +1249,15 @@ object Build {
             if (file.isFile) {
               val relativePath = file.relativeTo(tmpDir).get.getPath
 
-              // Skip META-INF and scala/tools/repl files
-              val shouldMove = !relativePath.startsWith("META-INF") &&
-                               !relativePath.startsWith("scala/tools/repl/") &&
-                               !relativePath.startsWith("dotty/tools/repl/shaded/")
+              val shouldDelete =
+                relativePath.startsWith("scala/") && !relativePath.startsWith("scala/tools/") ||
+                  relativePath.startsWith("org/jline/")
 
-              if (shouldMove) {
+              val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")
+
+              if (shouldDelete) IO.delete(file)
+              else if (!shouldKeepInPlace) {
+                // Move everything else to the shaded directory
                 val newPath = shadedDir / relativePath
                 IO.createDirectory(newPath.getParentFile)
                 IO.move(file, newPath)
