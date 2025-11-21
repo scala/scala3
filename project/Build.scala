@@ -1297,7 +1297,8 @@ object Build {
       assembly / assemblyExcludedJars := {
         (assembly / fullClasspath).value.filter { jar =>
           val name = jar.data.getName
-
+          // Filter out the `scala-library` here otherwise it conflicts with the
+          // `scala-library` pulled in via `assembly / fullClasspath`
           name.contains("scala-library") ||
             // Avoid shading JLine because shading it causes problems with
             // its service discovery and JNI-related logic
@@ -1318,28 +1319,27 @@ object Build {
           val shadedDir = tmpDir / "dotty" / "isolated"
           IO.createDirectory(shadedDir)
 
-          (tmpDir ** "*").get.foreach { file =>
-            if (file.isFile) {
-              val relativePath = file.relativeTo(tmpDir).get.getPath
+          for(file <- (tmpDir ** "*").get if file.isFile) {
+            val relativePath = file.relativeTo(tmpDir).get.getPath
 
-              val shouldKeepInPlace =
-                relativePath.startsWith("scala/tools/repl/")||
-                // These are manually shaded so leave them alone
-                relativePath.startsWith("dotty/shaded/") ||
-                // This needs to be inside scala/collection so cannot be moved
-                relativePath.startsWith("scala/collection/internal/pprint/")
+            val shouldKeepInPlace =
+              relativePath.startsWith("scala/tools/repl/")||
+              // These are manually shaded so leave them alone
+              relativePath.startsWith("dotty/shaded/") ||
+              // This needs to be inside scala/collection so cannot be moved
+              relativePath.startsWith("scala/collection/internal/pprint/")
 
-              if (!shouldKeepInPlace) {
-                val newPath = shadedDir / relativePath
-                IO.createDirectory(newPath.getParentFile)
-                IO.move(file, newPath)
-              }
+            if (!shouldKeepInPlace) {
+              val newPath = shadedDir / relativePath
+              IO.createDirectory(newPath.getParentFile)
+              IO.move(file, newPath)
             }
           }
 
-          val filesToZip = (tmpDir ** "*").get.filter(_.isFile).map { f =>
-            (f, f.relativeTo(tmpDir).get.getPath)
-          }
+          val filesToZip =
+            for(f <- (tmpDir ** "*").get if f.isFile)
+            yield (f, f.relativeTo(tmpDir).get.getPath)
+
           IO.zip(filesToZip, originalJar, None)
 
           log.info(s"Assembly post-processing complete")
