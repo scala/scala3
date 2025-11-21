@@ -1329,7 +1329,9 @@ object Build {
                   relativePath.startsWith("org/jline/")
               // This is the entrypoint to the embedded Scala REPL so don't shade it
               val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")||
+                // These are manually shaded so leave them alone
                 relativePath.startsWith("dotty/shaded/") ||
+                // This needs to be inside scala/collection so cannot be moved
                 relativePath.startsWith("scala/collection/internal/pprint/")
 
               if (shouldDelete) IO.delete(file)
