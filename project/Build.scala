@@ -1222,7 +1222,11 @@ object Build {
 
               // Avoid shading JLine because shading it causes problems with
               // its service discovery and JNI-related logic
-              val shouldDelete = relativePath.startsWith("org/jline/")
+              val shouldDelete =
+                relativePath.startsWith("scala/") &&
+                  !relativePath.startsWith("scala/tools/")&&
+                  !relativePath.startsWith("scala/collection/internal/pprint/") ||
+                  relativePath.startsWith("org/jline/")
               // This is the entrypoint to the embedded Scala REPL so don't shade it
               val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")
 

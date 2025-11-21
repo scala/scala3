@@ -28,10 +28,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
-    def fallback() =
+    def fallback() = {
       pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
-        .plainText
+        .render
+    }
+
     try
       // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
       // however PPrint works by runtime type testing to deconstruct values. This is
@@ -56,10 +58,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
       )
+
       val FansiStr_render = fansiStrCls.getMethod("render")
-      val fansiStr = Color_apply.invoke(
-        Color, value, width, height, 2, initialOffset, false, true
-      )
+      val fansiStr = Color_apply.invoke(Color, value, width, height, 2, initialOffset, false, true)
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
       case ex: ClassNotFoundException => fallback()
