@@ -243,7 +243,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
     def next(): R =
       if(!hasNext) Iterator.empty.next()
-      else node match {
+      else node.nn match {
         case n: RBNode @uc =>
           val r = extract(n)
           node = CollisionProofHashMap.successor(n )
