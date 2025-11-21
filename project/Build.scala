@@ -1224,8 +1224,7 @@ object Build {
 
           val scalaFiles = (dest ** "*.scala").get
 
-          // Define patches as a map from search text to replacement text
-          val patches = Map(
+          val patches = Map( // Define patches as a map from search text to replacement text
             "import scala" -> "import _root_.scala",
             " scala.collection." -> " _root_.scala.collection.",
             "def apply(c: Char): Trie[T]" -> "def apply(c: Char): Trie[T] | Null",
@@ -1245,11 +1244,9 @@ object Build {
               var processedText = "package dotty.shaded\n" + text
 
               // Apply patches and count usage
-              patches.foreach { case (search, replacement) =>
-                if (processedText.contains(search)) {
-                  processedText = processedText.replace(search, replacement)
-                  patchUsageCounter(search) += 1
-                }
+              for((search, replacement) <- patches if processedText.contains(search)){
+                processedText = processedText.replace(search, replacement)
+                patchUsageCounter(search) += 1
               }
 
               IO.write(file, processedText)
