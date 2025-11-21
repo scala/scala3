@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import scala.language.implicitConversions
 
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
-import scala.annotation.{experimental, implicitNotFound, publicInBinary, targetName }
+import scala.annotation.{experimental, implicitNotFound, publicInBinary, targetName, nowarn }
 import scala.annotation.meta.{ companionClass, companionMethod }
 import scala.annotation.internal.{ RuntimeChecked }
 import scala.compiletime.summonFrom
@@ -490,7 +490,9 @@ object Predef extends LowPriorityImplicits {
 
   // these two are morally deprecated but the @deprecated annotation has been moved to the extension method themselves,
   // in order to provide a more specific deprecation method.
+  @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple2Zipped""")
   implicit def tuple2ToZippedOps[T1, T2](x: (T1, T2)): runtime.Tuple2Zipped.Ops[T1, T2]             = new runtime.Tuple2Zipped.Ops(x)
+  @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple3Zipped""")
   implicit def tuple3ToZippedOps[T1, T2, T3](x: (T1, T2, T3)): runtime.Tuple3Zipped.Ops[T1, T2, T3] = new runtime.Tuple3Zipped.Ops(x)
 
   // Not specialized anymore since 2.13 but we still need separate methods
