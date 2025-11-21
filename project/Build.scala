@@ -1200,9 +1200,7 @@ object Build {
           FilesInfo.lastModified, FilesInfo.exists) { _ =>
           s.log.info(s"Downloading and processing shaded sources to $dest...")
 
-          if (dest.exists) {
-            IO.delete(dest)
-          }
+          if (dest.exists) IO.delete(dest)
           IO.createDirectory(dest)
 
           for((org, name, version) <- dependencies) {
@@ -1287,7 +1285,6 @@ object Build {
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0",
       ),
-      // Source directories
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       // Assembly configuration for shading
       assembly / assemblyJarName := s"scala3-repl-embedded-${version.value}.jar",
@@ -1300,10 +1297,15 @@ object Build {
       assembly / assemblyExcludedJars := {
         (assembly / fullClasspath).value.filter { jar =>
           val name = jar.data.getName
-          name.contains("scala-library") || name.contains("scala3-library") || name.contains("jline")
+
+          name.contains("scala-library") ||
+            // Avoid shading JLine because shading it causes problems with
+            // its service discovery and JNI-related logic
+            // This is the entrypoint to the embedded Scala REPL so don't shade it
+            name.contains("jline")
         }
       },
-      // Post-process assembly to physically move files into dotty/tools/repl/shaded/ subfolder
+
       assembly := {
         val originalJar = assembly.value
         val log = streams.value.log
@@ -1320,22 +1322,14 @@ object Build {
             if (file.isFile) {
               val relativePath = file.relativeTo(tmpDir).get.getPath
 
-              // Avoid shading JLine because shading it causes problems with
-              // its service discovery and JNI-related logic
-              val shouldDelete =
-                relativePath.startsWith("scala/") &&
-                  !relativePath.startsWith("scala/tools/") &&
-                  !relativePath.startsWith("scala/collection/internal/pprint/") ||
-                  relativePath.startsWith("org/jline/")
-              // This is the entrypoint to the embedded Scala REPL so don't shade it
-              val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")||
+              val shouldKeepInPlace =
+                relativePath.startsWith("scala/tools/repl/")||
                 // These are manually shaded so leave them alone
                 relativePath.startsWith("dotty/shaded/") ||
                 // This needs to be inside scala/collection so cannot be moved
                 relativePath.startsWith("scala/collection/internal/pprint/")
 
-              if (shouldDelete) IO.delete(file)
-              else if (!shouldKeepInPlace) {
+              if (!shouldKeepInPlace) {
                 val newPath = shadedDir / relativePath
                 IO.createDirectory(newPath.getParentFile)
                 IO.move(file, newPath)
@@ -1356,7 +1350,6 @@ object Build {
       // Use the shaded assembly jar as our packageBin for publishing
       Compile / packageBin := (Compile / assembly).value,
       publish / skip := false,
-
     )
 
   // ==============================================================================================
