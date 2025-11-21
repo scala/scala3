@@ -21,11 +21,7 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
     if (loaded != null) return loaded
 
     val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
-    val is0 = try {
-      Option(super.getResourceAsStream(shadedPath))
-    }catch{
-      case _: Exception => None
-    }
+    val is0 = scala.util.Try(Option(super.getResourceAsStream(shadedPath))).toOption.flatten
 
     is0 match{
       case Some(is) =>
@@ -60,19 +56,17 @@ object EmbeddedReplMain {
       else Array("-classpath", System.getProperty("java.class.path")) ++ args
 
     val unshadingClassLoader = new UnshadingClassLoader(getClass.getClassLoader)
-
     val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
-
     val someCls = unshadingClassLoader.loadClass("scala.Some")
+    val pprintImport = replDriverClass.getMethod("pprintImport").invoke(null)
 
     val replDriver = replDriverClass.getConstructors().head.newInstance(
       /*settings*/ argsWithClasspath,
       /*out*/ System.out,
       /*classLoader*/ someCls.getConstructors().head.newInstance(getClass.getClassLoader),
-      /*extraPredef*/ ""
+      /*extraPredef*/ pprintImport
     )
 
     replDriverClass.getMethod("tryRunning").invoke(replDriver)
-
   }
 }
