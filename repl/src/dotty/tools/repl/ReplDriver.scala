@@ -34,7 +34,7 @@ import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.CompilerCommand
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
-import dotty.tools.runner.ScalaClassLoader.*
+import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
 

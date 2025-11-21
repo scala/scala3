@@ -91,7 +91,7 @@ object DependencyResolver:
     import dotty.tools.dotc.core.SymbolLoaders
     import dotty.tools.dotc.core.Symbols.defn
     import dotty.tools.io.*
-    import dotty.tools.runner.ScalaClassLoader.fromURLsParallelCapable
+    import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 
     // Create a classloader with all the resolved JAR files
     val urls = files.map(_.toURI.toURL).toArray
