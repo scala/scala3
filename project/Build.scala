@@ -1298,8 +1298,7 @@ object Build {
       assembly / test := {}, // Don't run tests for assembly
       // Exclude scala-library and jline from assembly (users provide them on classpath)
       assembly / assemblyExcludedJars := {
-        val cp = (assembly / fullClasspath).value
-        cp.filter { jar =>
+        (assembly / fullClasspath).value.filter { jar =>
           val name = jar.data.getName
           name.contains("scala-library") || name.contains("scala3-library") || name.contains("jline")
         }
