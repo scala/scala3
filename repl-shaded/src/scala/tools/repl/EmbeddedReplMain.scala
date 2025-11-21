@@ -64,7 +64,7 @@ object EmbeddedReplMain {
     val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
 
     val someCls = unshadingClassLoader.loadClass("scala.Some")
-    // Create the ReplDriver instance with classpath argument
+
     val replDriver = replDriverClass.getConstructors().head.newInstance(
       /*settings*/ argsWithClasspath,
       /*out*/ System.out,
