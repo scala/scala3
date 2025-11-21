@@ -1660,7 +1660,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             case ZAND   => genZandOrZor(and = true)
             case ZOR    => genZandOrZor(and = false)
             case code   =>
-              if (ScalaPrimitivesOps.isUniversalEqualityOp(code) && tpeTK(lhs).isClass) {
+              if (ScalaPrimitivesOps.isUniversalEqualityOp(code) && tpeTK(lhs).isClass && !tpeTK(lhs).asClassBType.isDeepValhalla) {
                 // rewrite `==` to null tests and `equals`. not needed for arrays (`equals` is reference equality).
                 if (code == EQ) genEqEqPrimitive(lhs, rhs, success, failure, targetIfNoJump)
                 else            genEqEqPrimitive(lhs, rhs, failure, success, targetIfNoJump)

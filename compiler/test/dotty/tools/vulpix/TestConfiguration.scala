@@ -95,6 +95,7 @@ object TestConfiguration {
 
   val oldSyntax = defaultOptions `and` "-old-syntax"
   val newSyntax = defaultOptions `and` "-new-syntax"
+  val valueClassOptions = defaultOptions.and("-Yvalue-classes").and("-experimental")
 
   /** Default target of the generated class files */
   private def defaultTarget: String = "17"

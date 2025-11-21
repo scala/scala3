@@ -29,6 +29,7 @@ import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
+import Denotations.*
 import Applications.UnapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
@@ -139,6 +140,25 @@ object Checking {
     def checkValidIfApply(using Context): Unit =
       checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
     withMode(Mode.AllowLambdaWildcardApply)(checkValidIfApply)
+    
+    if (tycon.symbol.isDeepValhalla)
+      def recur(argTypes: List[Type]): Unit = {
+        argTypes.foreach(argType => {
+          argType match {
+            case arg: TypeRef => 
+              val argSym = arg.classSymbol
+              if (!arg.symbol.isTypeParam && !argSym.isDeepValhallaOrPrimitive && !argSym.isInScalaPackage && !argSym.isJavaInterface)
+                report.error(DeepValhallaFieldInstantiatedWithNonDeepValhallaType(tycon.symbol, argSym), tree.srcPos)
+            case AppliedType(tycon1, args1) => 
+              val tycon1Sym = tycon1.classSymbol
+              if(!tycon1Sym.isDeepValhalla && !tycon1Sym.isInScalaPackage && !tycon1Sym.isJavaInterface)
+                report.error(DeepValhallaFieldInstantiatedWithNonDeepValhallaType(tycon.symbol, tycon1Sym), tree.srcPos)
+              recur(args1)
+            case _ =>
+          }
+        })
+      }
+      recur(args.map(_.tpe))      
   }
 
   /** Check all applied type trees in inferred type `tpt` for well-formedness */
@@ -218,6 +238,21 @@ object Checking {
           if selfType.exists && !(stp <:< selfType) then
             report.error(DoesNotConformToSelfTypeCantBeInstantiated(tp, selfType), pos)
       case _ =>
+
+  def checkDeepValhallaInstantiation(tp: Type, pos: SrcPos)(using Context): Unit =    
+    tp match {
+      case AppliedType(tycon, args) if tycon.classSymbol.isDeepValhalla => 
+        args.foreach(arg => {
+          arg match {
+            case arg: TypeRef => 
+              val argSym = arg.classSymbol
+              if (!arg.symbol.isTypeParam && !argSym.isDeepValhallaOrPrimitive)
+                report.error(DeepValhallaFieldInstantiatedWithNonDeepValhallaType(tycon.classSymbol, argSym), pos)
+            case _ =>
+          }
+        })
+      case _ =>
+    }
 
   /** Check that type `tp` is realizable. */
   def checkRealizable(tp: Type, pos: SrcPos, what: String = "path")(using Context): Unit = {
@@ -898,6 +933,53 @@ object Checking {
       }
       stats.foreach(checkValueClassMember)
     }
+  }
+
+  /** Verify classes and traits with the valhalla annotation meet the requirements */
+  def checkValhallaValueClass(cdef: TypeDef, clazz: Symbol)(using Context): Unit = {
+    val isAnyRef = clazz.asClass.parentSyms.contains(defn.ObjectClass)
+    val isDeepValhalla = clazz.isDeepValhalla
+
+    def checkValueClassMember(memberDenot: Denotation) =
+      val member = memberDenot.symbol
+      if(member.isField){
+        if !member.is(ParamAccessor) && member.owner == clazz then
+          report.error(ValueClassesMayNotDefineNonParameterField(clazz, member), member.srcPos)
+        if member.is(Mutable) then
+          report.error(ValueClassParameterMayNotBeAVar(clazz, member), cdef.srcPos)
+        if isDeepValhalla then
+          val fieldSym = member.info.classSymbol
+          val typeIsTypeVar = member.info.typeSymbol.is(Flags.TypeParam)
+          if !typeIsTypeVar && !fieldSym.isDeepValhallaOrPrimitive then
+            report.error(NonDeepValhallaFieldInClassThatExtendsDeepValhalla(clazz, member), cdef.srcPos)
+      }
+      else if(member.isConstructor){
+        report.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, member), member.srcPos)
+      }
+
+    def checkParents(): Unit = {
+      clazz.asClass.baseClasses.foreach(c => {
+        val parentSym = if(c.isConstructor) then c.owner else c
+
+        if (parentSym.asClass.baseClasses.contains(defn.ObjectClass))
+          report.error(ValueClassCannotExtendIdentityClass(clazz, parentSym), cdef.srcPos)
+      })
+    }
+
+    inline def checkSelfType(): Unit = {
+      if(clazz.asClass.givenSelfType.exists)
+        val selfTypeSym = clazz.asClass.givenSelfType.classSymbol
+
+        if(selfTypeSym.exists && !selfTypeSym.isValhallaValueClass)
+          selfTypeSym.asClass.classInfo.decls.foreach(f => if f.isMutableVar then report.error(ValhallaTraitsMayNotHaveSelfTypesWithVars(selfTypeSym, f), cdef.srcPos))
+    }
+
+    if (isDeepValhalla && isAnyRef) report.error(AnyRefClassCantExtendDeepValhalla(clazz), cdef.srcPos)
+    if(clazz.hasAnnotation(defn.ValhallaAnnot))
+      if isAnyRef then report.error(IncorrectValueClassDeclaration(clazz.isClass), cdef.srcPos)
+      checkParents()
+      checkSelfType()
+      clazz.info.allMembers.foreach(checkValueClassMember)
   }
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
