@@ -1222,7 +1222,7 @@ object Build {
               val relativePath = file.relativeTo(tmpDir).get.getPath
 
               val shouldDelete =
-                relativePath.startsWith("scala/") && !relativePath.startsWith("scala/tools/") ||
+                /*relativePath.startsWith("scala/") && !relativePath.startsWith("scala/tools/") ||*/
                   relativePath.startsWith("org/jline/")
 
               val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")

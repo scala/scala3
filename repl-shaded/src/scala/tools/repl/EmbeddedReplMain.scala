@@ -20,23 +20,23 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
     val loaded = findLoadedClass(name)
     if (loaded != null) return loaded
 
-    try {
-      val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
-      val is = getParent.getResourceAsStream(shadedPath)
+    val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
+    val is0 = try {
+      Option(super.getResourceAsStream(shadedPath))
+    }catch{
+      case _: Exception => None
+    }
 
-      if (is != null) {
+    is0 match{
+      case Some(is) =>
         try {
           val bytes = is.readAllBytes()
           val clazz = defineClass(name, bytes, 0, bytes.length)
           if (resolve) resolveClass(clazz)
           return clazz
         } finally is.close()
-      }
-    } catch {
-      case _: Exception => // Fall through to parent
+      case None => super.loadClass(name, resolve)
     }
-
-    super.loadClass(name, resolve)
   }
 
   override def getResourceAsStream(name: String): InputStream | Null = {
@@ -62,13 +62,13 @@ object EmbeddedReplMain {
     val unshadingClassLoader = new UnshadingClassLoader(getClass.getClassLoader)
 
     val replDriverClass = unshadingClassLoader.loadClass("dotty.tools.repl.ReplDriver")
-    val constructor = replDriverClass.getConstructors().head
 
+    val someCls = unshadingClassLoader.loadClass("scala.Some")
     // Create the ReplDriver instance with classpath argument
-    val replDriver = constructor.newInstance(
+    val replDriver = replDriverClass.getConstructors().head.newInstance(
       argsWithClasspath, // settings: Array[String] (now includes -classpath)
       System.out, // out: PrintStream
-      Option(getClass.getClassLoader), // classLoader: Option[ClassLoader]
+      someCls.getConstructors().head.newInstance(getClass.getClassLoader),
       "" // extraPredef: String
     )
 
