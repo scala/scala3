@@ -1193,8 +1193,8 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       // Assembly configuration for shading
       assembly / assemblyJarName := s"scala3-repl-shaded-${version.value}.jar",
-      // Don't run tests for assembly
-      assembly / test := {},
+
+      assembly / test := {}, // Don't run tests for assembly
       // Exclude scala-library and jline from assembly (users provide them on classpath)
       assembly / assemblyExcludedJars := {
         val cp = (assembly / fullClasspath).value
@@ -1210,7 +1210,6 @@ object Build {
 
         log.info(s"Post-processing assembly to relocate files into shaded subfolder...")
 
-        // Create a temporary directory for processing
         val tmpDir = IO.createTemporaryDirectory
         try {
           IO.unzip(originalJar, tmpDir)
@@ -1221,15 +1220,14 @@ object Build {
             if (file.isFile) {
               val relativePath = file.relativeTo(tmpDir).get.getPath
 
-              val shouldDelete =
-                /*relativePath.startsWith("scala/") && !relativePath.startsWith("scala/tools/") ||*/
-                  relativePath.startsWith("org/jline/")
-
+              // Avoid shading JLine because shading it causes problems with
+              // its service discovery and JNI-related logic
+              val shouldDelete = relativePath.startsWith("org/jline/")
+              // This is the entrypoint to the embedded Scala REPL so don't shade it
               val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")
 
               if (shouldDelete) IO.delete(file)
               else if (!shouldKeepInPlace) {
-                // Move everything else to the shaded directory
                 val newPath = shadedDir / relativePath
                 IO.createDirectory(newPath.getParentFile)
                 IO.move(file, newPath)
