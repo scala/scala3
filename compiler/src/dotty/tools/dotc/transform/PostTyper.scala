@@ -438,18 +438,18 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           lengthCalls.foldLeft(singleElemCount): (acc, len) =>
             acc.select(defn.Int_+).appliedTo(len)
 
-        def makeBuilder(name: String) =
-          ref(defn.VarArgsBuilderModule).select(name.toTermName)
+        def builderType(name: String) =
+          defn.VarArgsBuilderModule.termRef.select(name.toTypeName)
 
-        val builder =
+        def builder(len: Tree) =
           if defn.ScalaValueClasses().contains(elemCls) then
-            makeBuilder(s"of${elemCls.name}")
+            tpd.New(builderType(s"of${elemCls.name}"), len :: Nil)
           else if elemCls.derivesFrom(defn.ObjectClass) then
-            makeBuilder("ofRef").appliedToType(elemType)
+            tpd.New(AppliedType(builderType("ofRef"), List(elemType)), len :: Nil)
           else
-            makeBuilder("generic").appliedToType(elemType)
+            tpd.New(AppliedType(builderType("generic"), List(elemType)), len :: Nil)
 
-        elems.foldLeft(builder.appliedTo(totalLength)): (bldr, elem) =>
+        elems.foldLeft(builder(totalLength)): (bldr, elem) =>
           elem match
             case spread(arg) =>
               if arg.tpe.derivesFrom(defn.SeqClass) then
