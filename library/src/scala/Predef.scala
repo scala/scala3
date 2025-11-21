@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import scala.language.implicitConversions
 
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
-import scala.annotation.{elidable, experimental, implicitNotFound, publicInBinary, targetName }, elidable.ASSERTION
+import scala.annotation.{experimental, implicitNotFound, publicInBinary, targetName }
 import scala.annotation.meta.{ companionClass, companionMethod }
 import scala.annotation.internal.{ RuntimeChecked }
 import scala.compiletime.summonFrom
@@ -36,9 +36,7 @@ import scala.runtime.ScalaRunTime.mapNull
  *
  *  === Assertions ===
  *  A set of `assert` functions are provided for use as a way to document
- *  and dynamically check invariants in code. Invocations of `assert` can be elided
- *  at compile time by providing the command line option `-Xdisable-assertions`,
- *  which raises `-Xelide-below` above `elidable.ASSERTION`, to the `scalac` command.
+ *  and dynamically check invariants in code.
  *
  *  Variants of `assert` intended for use with static analysis tools are also
  *  provided: `assume`, `require` and `ensuring`. `require` and `ensuring` are
@@ -298,29 +296,23 @@ object Predef extends LowPriorityImplicits {
     */
 
   /** Tests an expression, throwing an `AssertionError` if false.
-   *  Calls to this method will not be generated if `-Xelide-below`
-   *  is greater than `ASSERTION`.
    *
-   *  @see [[scala.annotation.elidable elidable]]
    *  @param assertion   the expression to test
    *  @group assertions
    */
-  @elidable(ASSERTION) @publicInBinary
+  @publicInBinary
   @targetName("assert") private[scala] def scala2Assert(assertion: Boolean): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed")
   }
 
   /** Tests an expression, throwing an `AssertionError` if false.
-   *  Calls to this method will not be generated if `-Xelide-below`
-   *  is greater than `ASSERTION`.
    *
-   *  @see [[scala.annotation.elidable elidable]]
    *  @param assertion   the expression to test
    *  @param message     a String to include in the failure message
    *  @group assertions
    */
-  @elidable(ASSERTION) @inline @publicInBinary
+  @inline @publicInBinary
   @targetName("assert") private[scala] final def scala2Assert(assertion: Boolean, message: => Any): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed: "+ message)
@@ -339,14 +331,11 @@ object Predef extends LowPriorityImplicits {
   /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
    *  assert contains a predicate which needs to be proven, while
-   *  assume contains an axiom for a static checker.  Calls to this method
-   *  will not be generated if `-Xelide-below` is greater than `ASSERTION`.
+   *  assume contains an axiom for a static checker.
    *
-   *  @see [[scala.annotation.elidable elidable]]
    *  @param assumption   the expression to test
    *  @group assertions
    */
-  @elidable(ASSERTION)
   def assume(assumption: Boolean): Unit = {
     if (!assumption)
       throw new java.lang.AssertionError("assumption failed")
@@ -355,16 +344,13 @@ object Predef extends LowPriorityImplicits {
   /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
    *  assert contains a predicate which needs to be proven, while
-   *  assume contains an axiom for a static checker.  Calls to this method
-   *  will not be generated if `-Xelide-below` is greater than `ASSERTION`.
+   *  assume contains an axiom for a static checker.
    *
-   *  @see [[scala.annotation.elidable elidable]]
    *  @param assumption   the expression to test
    *  @param message      a String to include in the failure message
    *  @group assertions
    */
-  @elidable(ASSERTION) @inline
-  final def assume(assumption: Boolean, message: => Any): Unit = {
+  @inline final def assume(assumption: Boolean, message: => Any): Unit = {
     if (!assumption)
       throw new java.lang.AssertionError("assumption failed: "+ message)
   }
