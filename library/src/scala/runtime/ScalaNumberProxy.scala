@@ -17,14 +17,13 @@ import scala.language.`2.13`
 import scala.collection.immutable
 import scala.math.ScalaNumericAnyConversions
 import immutable.NumericRange
-import Proxy.Typed
 import scala.annotation.nowarn
 
 /** Base classes for the Rich* wrappers of the primitive types.
  *  As with all classes in scala.runtime.*, this is not a supported API.
  */
 @nowarn("cat=deprecation")
-trait ScalaNumberProxy[T] extends Any with ScalaNumericAnyConversions with Typed[T] with OrderedProxy[T] {
+trait ScalaNumberProxy[T] extends Any with ScalaNumericAnyConversions with Proxy.Typed[T] with OrderedProxy[T] {
   protected implicit def num: Numeric[T]
 
   def doubleValue = num.toDouble(self)
@@ -70,14 +69,14 @@ trait FractionalProxy[T] extends Any with ScalaNumberProxy[T] {
 }
 
 @nowarn("cat=deprecation")
-trait OrderedProxy[T] extends Any with Ordered[T] with Typed[T] {
+trait OrderedProxy[T] extends Any with Ordered[T] with Proxy.Typed[T] {
   protected def ord: Ordering[T]
 
   def compare(y: T) = ord.compare(self, y)
 }
 
 @nowarn("cat=deprecation")
-trait RangedProxy[T] extends Any with Typed[T] {
+trait RangedProxy[T] extends Any with Proxy.Typed[T] {
   type ResultWithoutStep
 
   def until(end: T): ResultWithoutStep

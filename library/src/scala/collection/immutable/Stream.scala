@@ -25,8 +25,6 @@ import scala.collection.mutable.{ArrayBuffer, StringBuilder}
 import scala.language.implicitConversions
 import scala.runtime.ScalaRunTime.nullForGC
 
-import Stream.cons
-
 @deprecated("Use LazyListIterable (which is fully lazy) instead of Stream (which has a lazy tail only)", "2.13.0")
 @SerialVersionUID(3L)
 sealed abstract class Stream[+A] extends AbstractSeq[A]
@@ -123,11 +121,11 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     * @return The stream containing elements of this stream and the iterable object.
     */
   def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]): Stream[B] =
-    if (isEmpty) iterableFactory.from(suffix) else cons[B](head, tail.lazyAppendedAll(suffix))
+    if (isEmpty) iterableFactory.from(suffix) else Stream.cons[B](head, tail.lazyAppendedAll(suffix))
 
   override def scanLeft[B](z: B)(op: (B, A) => B): Stream[B] =
     if (isEmpty) z +: iterableFactory.empty
-    else cons(z, tail.scanLeft(op(z, head))(op))
+    else Stream.cons(z, tail.scanLeft(op(z, head))(op))
 
   /** Stream specialization of reduceLeft which allows GC to collect
     *  along the way.
@@ -169,11 +167,11 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   override final def withFilter(p: A => Boolean): collection.WithFilter[A, Stream] =
     Stream.withFilter(coll, p)
 
-  override final def prepended[B >: A](elem: B): Stream[B] = cons(elem, coll)
+  override final def prepended[B >: A](elem: B): Stream[B] = Stream.cons(elem, coll)
 
   override final def map[B](f: A => B): Stream[B] =
     if (isEmpty) iterableFactory.empty
-    else cons(f(head), tail.map(f))
+    else Stream.cons(f(head), tail.map(f))
 
   @tailrec override final def collect[B](pf: PartialFunction[A, B]): Stream[B] =
     if(isEmpty) Stream.empty
@@ -218,7 +216,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
         case that: collection.Iterable[B] => that
         case _ => LazyList.from(that)
       }
-      cons[(A, B)]((this.head, thatIterable.head), this.tail.zip(thatIterable.tail))
+      Stream.cons[(A, B)]((this.head, thatIterable.head), this.tail.zip(thatIterable.tail))
     }
 
   override final def zipWithIndex: Stream[(A, Int)] = this.zip(LazyList.from(0))
