@@ -63,12 +63,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       val fansiStr = Color_apply.invoke(Color, value, width, height, 2, initialOffset, false, true)
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
-      case ex: ClassNotFoundException =>
-        println("FALLBACK 1")
-        fallback()
-      case ex: NoSuchMethodException  =>
-        println("FALLBACK 2")
-        fallback()
+      case ex: ClassNotFoundException => fallback()
+      case ex: NoSuchMethodException  => fallback()
   }
 
 
