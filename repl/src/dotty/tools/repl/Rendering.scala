@@ -28,11 +28,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
-    def fallback() = {
+    def fallback() =
       pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
         .render
-    }
 
     try
       // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
