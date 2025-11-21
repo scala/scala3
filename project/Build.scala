@@ -1270,22 +1270,33 @@ object Build {
       }
     )
 
-  lazy val `scala3-repl-shaded` = project.in(file("repl-shaded"))
-    .dependsOn(`scala3-repl`)
+  lazy val `scala3-repl-embedded` = project.in(file("repl-shaded"))
+    .dependsOn(`scala-library-bootstrapped`)
     .enablePlugins(sbtassembly.AssemblyPlugin)
+    .settings(publishSettings)
     .settings(
-      name          := "scala3-repl-shaded",
-      moduleName    := "scala3-repl-shaded",
+      name          := "scala3-repl-embedded",
+      moduleName    := "scala3-repl-embedded",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
       scalaVersion  := referenceVersion,
       crossPaths    := true,
       autoScalaLibrary := true,
+      libraryDependencies ++= Seq(
+        "org.jline" % "jline-reader" % "3.29.0",
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0",
+      ),
       // Source directories
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       // Assembly configuration for shading
-      assembly / assemblyJarName := s"scala3-repl-shaded-${version.value}.jar",
-
+      assembly / assemblyJarName := s"scala3-repl-embedded-${version.value}.jar",
+      // Add scala3-repl to assembly classpath without making it a published dependency
+      assembly / fullClasspath := {
+        val replJar = (`scala3-repl` / Compile / packageBin).value
+        val cp = (assembly / fullClasspath).value
+        cp :+ Attributed.blank(replJar)
+      },
       assembly / test := {}, // Don't run tests for assembly
       // Exclude scala-library and jline from assembly (users provide them on classpath)
       assembly / assemblyExcludedJars := {
@@ -1305,7 +1316,7 @@ object Build {
         val tmpDir = IO.createTemporaryDirectory
         try {
           IO.unzip(originalJar, tmpDir)
-          val shadedDir = tmpDir / "dotty" / "shaded"
+          val shadedDir = tmpDir / "dotty" / "isolated"
           IO.createDirectory(shadedDir)
 
           (tmpDir ** "*").get.foreach { file =>
@@ -1343,32 +1354,10 @@ object Build {
 
         originalJar
       },
-      // Don't publish scala3-repl-shaded - it's an internal build artifact
-      publish / skip := true,
-      publishLocal / skip := true,
-
-    )
-
-  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
-    .dependsOn(`scala-library-bootstrapped`)
-    .settings(publishSettings)
-    .settings(
-      name          := "scala3-repl-embedded",
-      moduleName    := "scala3-repl-embedded",
-      version       := dottyVersion,
-      versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
-      crossPaths    := true,
-      libraryDependencies ++= Seq(
-        "org.jline" % "jline-reader" % "3.29.0",
-        "org.jline" % "jline-terminal" % "3.29.0",
-        "org.jline" % "jline-terminal-jni" % "3.29.0",
-      ),
-      // No source files in this project - just publishes the shaded jar
-      Compile / unmanagedSourceDirectories := Seq.empty,
-      // Use the shaded assembly jar as our packageBin
-      Compile / packageBin := (`scala3-repl-shaded` / Compile / assembly).value,
+      // Use the shaded assembly jar as our packageBin for publishing
+      Compile / packageBin := (Compile / assembly).value,
       publish / skip := false,
+
     )
 
   // ==============================================================================================

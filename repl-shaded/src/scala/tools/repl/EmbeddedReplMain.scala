@@ -14,7 +14,7 @@ import java.io.InputStream
  */
 class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
 
-  private val SHADED_PREFIX = "dotty.shaded."
+  private val SHADED_PREFIX = "dotty.isolated."
 
   override def loadClass(name: String, resolve: Boolean): Class[?] = {
     val loaded = findLoadedClass(name)
