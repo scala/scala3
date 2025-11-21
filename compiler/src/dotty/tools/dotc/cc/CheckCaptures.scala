@@ -980,8 +980,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
         case cls: ClassSymbol =>
           var fieldClassifiers = knownFields(cls).flatMap(classifiersOfFreshInType)
-          if cls.typeRef.isMutableType then
-            fieldClassifiers = cls.classifier :: fieldClassifiers
           val parentClassifiers =
             cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
           if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
