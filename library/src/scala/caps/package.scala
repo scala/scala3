@@ -96,7 +96,7 @@ trait Separate extends Stateful
 trait Unscoped extends Stateful, Classifier
 
 @experimental
-trait Mutable extends Stateful, Separate//, Unscoped
+trait Mutable extends Stateful, Separate, Unscoped
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes */
 @experimental

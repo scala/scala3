@@ -288,7 +288,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if elideCapabilityCaps
             && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && (!parent.derivesFromExclusive || refs.isReadOnly)
+            && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refSet) =>

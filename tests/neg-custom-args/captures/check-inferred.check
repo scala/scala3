@@ -58,4 +58,4 @@
    |           Fields capturing a root capability need to be given an explicit type unless the capability is already
    |           subsumed by the computed capability of the enclosing class.
    |
-   |           where:    ^ refers to a fresh root capability in the type of value count
+   |           where:    ^ refers to a fresh root capability classified as Unscoped in the type of value count

@@ -6,8 +6,6 @@ class Ref2[T](init: T) extends caps.Mutable:
   val x = Ref[T](init)
 
 def test =
-  val r4 = () =>
-    val r = Ref2(22)
-    r
-  //val _: Ref2[Int]^{r4*} = r4()
+  val r4 = () => Ref2(22)
+  val _: Ref2[Int]^{r4*} = r4()
   r4().x.set(33) // ok

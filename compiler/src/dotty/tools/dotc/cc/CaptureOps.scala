@@ -397,7 +397,7 @@ extension (tp: Type)
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
   def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
   def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
-  def derivesFromExclusive(using Context): Boolean = derivesFromCapTrait(defn.Caps_ExclusiveCapability)
+  def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling

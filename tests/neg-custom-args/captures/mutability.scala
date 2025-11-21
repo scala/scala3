@@ -37,6 +37,7 @@ def test =
   r3.x.set(33) // error
 
   val r4 = () => Ref2(22)
+  val r4x = r4().x
   r4().x.set(33) // ok
   val ref2: Ref2[Int] = Ref2(22)
   val r5: () => Ref2[Int]^ = () => ref2 // error

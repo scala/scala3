@@ -566,6 +566,7 @@ object Capabilities:
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
     def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
     def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+    def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
