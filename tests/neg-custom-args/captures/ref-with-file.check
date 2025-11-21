@@ -1,0 +1,31 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:15:12 --------------------------------
+15 |  withFile: f => // error
+   |            ^
+   |Found:    (f: File^'s1) ->'s2 Ref[File^'s3]^
+   |Required: (f: File^²) => Ref[File^'s4]^'s5
+   |
+   |Note that capability cap cannot be included in capture set {} of value r.
+   |
+   |where:    =>  refers to a fresh root capability created in method Test when checking argument to parameter op of method withFile
+   |          ^   refers to a fresh root capability classified as Unscoped in the type of value r
+   |          ^²  refers to the universal root capability
+   |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Ref[File^'s3]^ of parameter parameter f² of method $anonfun
+16 |    val r = Ref(f)
+17 |    r
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:18:12 --------------------------------
+18 |  withFile: f => // error
+   |            ^
+   |Found:    (f: File^'s6) ->'s7 (??? : -> Nothing)
+   |Required: (f: File^) => Nothing
+   |
+   |Note that capability cap cannot be included in capture set {} of value r.
+   |
+   |where:    =>  refers to a fresh root capability created in method Test when checking argument to parameter op of method withFile
+   |          ^   refers to the universal root capability
+   |          cap is a fresh root capability created in anonymous function of type (f: File^'s6): (??? : -> Nothing) of parameter parameter f² of method $anonfun
+19 |    val r = Ref(f)
+20 |    ???
+   |
+   | longer explanation available when compiling with `-explain`

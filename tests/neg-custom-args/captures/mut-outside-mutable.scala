@@ -8,3 +8,7 @@ trait Foo extends Mutable:
   def bar =
     update def baz() = 1 // error
     baz()
+
+trait Bar extends Mutable:
+  class Baz:
+    update def baz() = 1 // error

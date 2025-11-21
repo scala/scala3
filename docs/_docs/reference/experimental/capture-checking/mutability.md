@@ -62,7 +62,7 @@ can only access exclusive capabilities defined in the class or passed to it in p
 For instance, we can also define counter objects that update a shared variable that is external to the object:
 
 ```scala
-object Registry extends Mutable:
+object Registry extends Stateful:
   var sharedCount = 0
   update class CounterX:
     update def next: Int =
@@ -87,7 +87,7 @@ an update method or an update class as non-private member or constructor.
 
  1. The class does not retain any exclusive capabilities from its environment.
  2. The constructor does not take arguments that retain exclusive capabilities.
- 3. The class does not does not have fields that retain exclusive universal capabilities.
+ 3. The class does not have fields that retain exclusive universal capabilities.
 
 **Restriction:** If a class or trait extends `Stateful` all its parent classes or traits must either extend `Stateful` or be read-only.
 
@@ -138,7 +138,7 @@ But it also has two other properties that are explained in the following.
 
 ## Separate Classes
 
-Each time one creates a mutable type one gets a separate fresh object that can be updated independently
+Each time one creates a value of a mutable type one gets a separate fresh object that can be updated independently
 of other objects. This property is expressed by extending the `Separate` trait in the `scala.caps` object:
 ```scala
 trait Separate extends ExclusiveCapability
