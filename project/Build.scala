@@ -1174,7 +1174,7 @@ object Build {
         //val classpath = s"-classpath ${(`scala-library-bootstrapped` / Compile / packageBin).value}"
         // TODO: We should use the val above instead of `-usejavacp` below. SBT crashes we we have a val and we call toTask
         // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
-        (Compile / run).toTask(" -usejavacp").value
+        (Compile / run).partialInput(" -usejavacp").evaluated
       },
       bspEnabled := false,
     )
