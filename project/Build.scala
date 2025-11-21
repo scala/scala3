@@ -1184,7 +1184,7 @@ object Build {
         val lm = dependencyResolution.value
 
         val dependencies = Seq(
-          ("com.lihaoyi", "pprint_3", "0.9.3"),
+          ("com.lihaoyi", "pprint_3", "0.9.5"),
           ("com.lihaoyi", "fansi_3", "0.5.1"),
           ("com.lihaoyi", "sourcecode_3", "0.4.4"),
         )
