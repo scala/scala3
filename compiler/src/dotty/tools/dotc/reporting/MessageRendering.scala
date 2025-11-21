@@ -332,12 +332,56 @@ trait MessageRendering {
         val partsOnLine = validParts.filter(_.srcPos.startLine == lineNum)
           .sortBy(p => (p.srcPos.startColumn, !p.isPrimary))
 
-        for part <- partsOnLine do
+        if partsOnLine.size == 1 then
+          // Single marker on this line
+          val part = partsOnLine.head
           val markerChar = if part.isPrimary then '^' else '-'
           val marker = positionMarker(part.srcPos, markerChar)
           val err = errorMsg(part.srcPos, part.text)
           sb.append(marker).append(EOL)
           sb.append(err).append(EOL)
+        else if partsOnLine.size > 1 then
+          // Multiple markers on same line
+          val markerLine = StringBuilder()
+          markerLine.append(offsetBox)
+
+          var currentCol = 0
+          for part <- partsOnLine do
+            val markerChar = if part.isPrimary then '^' else '-'
+            val targetCol = part.srcPos.startColumn
+            val padding = " " * (targetCol - currentCol)
+            markerLine.append(padding).append(markerChar)
+            currentCol = targetCol + 1
+
+          sb.append(markerLine).append(EOL)
+
+          // Render messages from right to left with connector bars
+          val sortedByColumn = partsOnLine.reverse // rightmost first
+          for (part, idx) <- sortedByColumn.zipWithIndex do
+            val remainingParts = sortedByColumn.drop(idx + 1) // parts still waiting for messages
+
+            // Build connector line with vertical bars for remaining parts
+            val connectorLine = StringBuilder()
+            connectorLine.append(offsetBox)
+
+            var col = 0
+            // First, add vertical bars for all remaining (not-yet-shown) parts
+            for p <- partsOnLine do
+              if remainingParts.contains(p) then
+                val targetCol = p.srcPos.startColumn
+                val padding = " " * (targetCol - col)
+                connectorLine.append(padding).append("|")
+                col = targetCol + 1
+
+            // Then add the message for the current part, aligned to its column
+            val msgText = part.text
+            val msgCol = part.srcPos.startColumn
+            // If we've added bars, col is position after last bar; if not, col is 0
+            // We want the message to start at msgCol, with at least one space separation
+            val msgPadding = if col == 0 then " " * msgCol else " " * Math.max(1, msgCol - col)
+            connectorLine.append(msgPadding).append(msgText)
+
+            sb.append(connectorLine).append(EOL)
 
     // Add explanation if needed
     if Diagnostic.shouldExplain(dia) then

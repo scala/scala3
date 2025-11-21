@@ -1,0 +1,33 @@
+-- Type Error: tests/neg-custom-args/captures/consume-twice-same-line.scala:5:16 ---------------------------------------
+Separation failure: Illegal access to (x : Object^), which was passed to a
+consume parameter or was used as a prefix to a consume method
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of parameter x
+5 |  send(x); send(x)  // error
+  |       -        ^
+  |       |        Then, it was used here
+  |       The capability was consumed here.
+
+-- Type Error: tests/neg-custom-args/captures/consume-twice-same-line.scala:8:16 ---------------------------------------
+Separation failure: Illegal access to (x : Object^), which was passed to a
+consume parameter or was used as a prefix to a consume method
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of parameter x
+8 |  send(x); send(x); send(x)  // error // error
+  |       -        ^
+  |       |        Then, it was used here
+  |       The capability was consumed here.
+
+-- Type Error: tests/neg-custom-args/captures/consume-twice-same-line.scala:8:25 ---------------------------------------
+Separation failure: Illegal access to (x : Object^), which was passed to a
+consume parameter or was used as a prefix to a consume method
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of parameter x
+8 |  send(x); send(x); send(x)  // error // error
+  |       -                 ^
+  |       |                 Then, it was used here
+  |       The capability was consumed here.
+
