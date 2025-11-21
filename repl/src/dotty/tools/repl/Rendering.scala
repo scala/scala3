@@ -9,7 +9,7 @@ import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
-
+import dotty.shaded.*
 import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
 
@@ -46,8 +46,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       // Due the possible interruption instrumentation, it is unlikely that we can get
       // rid of reflection here.
       val cl = classLoader()
-      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
-      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$Color$", false, cl)
+      val fansiStrCls = Class.forName("dotty.shaded.fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
       val Color_apply = pprintCls.getMethod("apply",
         classOf[Any],     // value
@@ -63,8 +63,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       val fansiStr = Color_apply.invoke(Color, value, width, height, 2, initialOffset, false, true)
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
-      case ex: ClassNotFoundException => fallback()
-      case ex: NoSuchMethodException  => fallback()
+      case ex: ClassNotFoundException =>
+        println("FALLBACK 1")
+        fallback()
+      case ex: NoSuchMethodException  =>
+        println("FALLBACK 2")
+        fallback()
   }
 
 

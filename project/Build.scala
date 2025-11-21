@@ -1108,9 +1108,6 @@ object Build {
         "org.jline" % "jline-reader" % "3.29.0",
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0",
-        "com.lihaoyi" %% "pprint"     % "0.9.3",
-        "com.lihaoyi" %% "fansi"      % "0.5.1",
-        "com.lihaoyi" %% "sourcecode" % "0.4.4",
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         "io.get-coursier" % "interface" % "1.0.28", // used by the REPL for dependency resolution
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
@@ -1176,41 +1173,97 @@ object Build {
         // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
         (Compile / run).toTask(" -usejavacp").value
       },
-    )
+      (Compile / sourceGenerators) += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val dest = (Compile / sourceManaged).value / "downloaded"
+        val lm = dependencyResolution.value
 
-  lazy val `scala3-repl-pprint` = project.in(file("repl-pprint"))
-    .enablePlugins(sbtassembly.AssemblyPlugin)
-    .settings(publishSettings)
-    .settings(
-      name          := "scala3-repl-pprint",
-      moduleName    := "scala3-repl-pprint",
-      version       := dottyVersion,
-      versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
-      crossPaths    := true,
-      autoScalaLibrary := false,
+        val dependencies = Seq(
+          ("com.lihaoyi", "pprint_3", "0.9.3"),
+          ("com.lihaoyi", "fansi_3", "0.5.1"),
+          ("com.lihaoyi", "sourcecode_3", "0.4.4"),
+        )
 
-      libraryDependencies ++= Seq( // Dependencies to shade
-        "com.lihaoyi" %% "pprint" % "0.9.0",
-        "com.lihaoyi" %% "fansi" % "0.5.0",
-        "com.lihaoyi" %% "sourcecode" % "0.4.2"
-      ),
-      assembly / assemblyJarName := s"scala3-repl-pprint-${version.value}.jar",
-      assembly / assemblyShadeRules := Seq(
-        ShadeRule.rename("pprint.**" -> "dotty.shaded.pprint.@1").inAll,
-        ShadeRule.rename("fansi.**" -> "dotty.shaded.fansi.@1").inAll,
-        ShadeRule.rename("sourcecode.**" -> "dotty.shaded.sourcecode.@1").inAll,
-      ),
-      // Exclude scala-library from assembly
-      assembly / assemblyExcludedJars := {
-        val cp = (assembly / fullClasspath).value
-        cp.filter { jar =>
-          val name = jar.data.getName
-          name.startsWith("scala-library") || name.startsWith("scala3-library")
+        // Create a marker file that tracks the dependencies for cache invalidation
+        val markerFile = cacheDir / "shaded-sources-marker"
+        val markerContent = dependencies.map { case (org, name, version) => s"$org:$name:$version:sources" }.mkString("\n")
+        if (!markerFile.exists || IO.read(markerFile) != markerContent) {
+          IO.write(markerFile, markerContent)
         }
-      },
-      Compile / packageBin := assembly.value,
-      publish / skip := false,
+
+        FileFunction.cached(cacheDir / "fetchShadedSources",
+          FilesInfo.lastModified, FilesInfo.exists) { _ =>
+          s.log.info(s"Downloading and processing shaded sources to $dest...")
+
+          if (dest.exists) {
+            IO.delete(dest)
+          }
+          IO.createDirectory(dest)
+
+          for((org, name, version) <- dependencies) {
+            import sbt.librarymanagement._
+
+            val moduleId = ModuleID(org, name, version).sources()
+            val retrieveDir = cacheDir / "retrieved" / s"$org-$name-$version-sources"
+
+            s.log.info(s"Retrieving $org:$name:$version:sources...")
+            val retrieved = lm.retrieve(moduleId, scalaModuleInfo = None, retrieveDir, s.log)
+            val jarFiles = retrieved.fold(
+              w => throw w.resolveException,
+              files => files.filter(_.getName.contains("-sources.jar"))
+            )
+
+            jarFiles.foreach { jarFile =>
+              s.log.info(s"Extracting ${jarFile.getName}...")
+              IO.unzip(jarFile, dest)
+            }
+          }
+
+          val scalaFiles = (dest ** "*.scala").get
+
+          // Define patches as a map from search text to replacement text
+          val patches = Map(
+            "import scala" -> "import _root_.scala",
+            " scala.collection." -> " _root_.scala.collection.",
+            "def apply(c: Char): Trie[T]" -> "def apply(c: Char): Trie[T] | Null",
+            "var head: Iterator[T] = null" -> "var head: Iterator[T] | Null = null",
+            "if (head != null && head.hasNext) true" -> "if (head != null && head.nn.hasNext) true",
+            "head.next()" -> "head.nn.next()",
+            "abstract class Walker" -> "@scala.annotation.nowarn abstract class Walker",
+            "object TPrintLowPri" -> "@scala.annotation.nowarn object TPrintLowPri",
+            "x.toString match{" -> "scala.runtime.ScalaRunTime.stringOf(x) match{"
+          )
+
+          val patchUsageCounter = scala.collection.mutable.Map(patches.keys.map(_ -> 0).toSeq: _*)
+
+          scalaFiles.foreach { file =>
+            val text = IO.read(file)
+            if (!file.getName.equals("CollectionName.scala")) {
+              var processedText = "package dotty.shaded\n" + text
+
+              // Apply patches and count usage
+              patches.foreach { case (search, replacement) =>
+                if (processedText.contains(search)) {
+                  processedText = processedText.replace(search, replacement)
+                  patchUsageCounter(search) += 1
+                }
+              }
+
+              IO.write(file, processedText)
+            }
+          }
+
+          // Assert that all patches were applied at least once
+          val unappliedPatches = patchUsageCounter.filter(_._2 == 0).keys
+          if (unappliedPatches.nonEmpty) {
+            throw new RuntimeException(s"Patches were not applied: ${unappliedPatches.mkString(", ")}")
+          }
+
+          scalaFiles.toSet
+        } (Set(markerFile)).toSeq
+
+      }
     )
 
   lazy val `scala3-repl-shaded` = project.in(file("repl-shaded"))
@@ -1223,7 +1276,7 @@ object Build {
       versionScheme := Some("semver-spec"),
       scalaVersion  := referenceVersion,
       crossPaths    := true,
-      autoScalaLibrary := false,
+      autoScalaLibrary := true,
       // Source directories
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       // Assembly configuration for shading
@@ -1248,7 +1301,7 @@ object Build {
         val tmpDir = IO.createTemporaryDirectory
         try {
           IO.unzip(originalJar, tmpDir)
-          val shadedDir = tmpDir / "dotty" / "tools" / "repl" / "shaded"
+          val shadedDir = tmpDir / "dotty" / "shaded"
           IO.createDirectory(shadedDir)
 
           (tmpDir ** "*").get.foreach { file =>
@@ -1259,11 +1312,13 @@ object Build {
               // its service discovery and JNI-related logic
               val shouldDelete =
                 relativePath.startsWith("scala/") &&
-                  !relativePath.startsWith("scala/tools/")&&
+                  !relativePath.startsWith("scala/tools/") &&
                   !relativePath.startsWith("scala/collection/internal/pprint/") ||
                   relativePath.startsWith("org/jline/")
               // This is the entrypoint to the embedded Scala REPL so don't shade it
-              val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")
+              val shouldKeepInPlace = relativePath.startsWith("scala/tools/repl/")||
+                relativePath.startsWith("dotty/shaded/") ||
+                relativePath.startsWith("scala/collection/internal/pprint/")
 
               if (shouldDelete) IO.delete(file)
               else if (!shouldKeepInPlace) {
@@ -1287,10 +1342,11 @@ object Build {
       // Don't publish scala3-repl-shaded - it's an internal build artifact
       publish / skip := true,
       publishLocal / skip := true,
+
     )
 
   lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
-    .dependsOn(`scala-library-bootstrapped`, `scala3-repl-pprint`)
+    .dependsOn(`scala-library-bootstrapped`)
     .settings(publishSettings)
     .settings(
       name          := "scala3-repl-embedded",
