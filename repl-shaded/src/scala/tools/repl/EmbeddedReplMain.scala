@@ -66,10 +66,10 @@ object EmbeddedReplMain {
     val someCls = unshadingClassLoader.loadClass("scala.Some")
     // Create the ReplDriver instance with classpath argument
     val replDriver = replDriverClass.getConstructors().head.newInstance(
-      argsWithClasspath, // settings: Array[String] (now includes -classpath)
-      System.out, // out: PrintStream
-      someCls.getConstructors().head.newInstance(getClass.getClassLoader),
-      "" // extraPredef: String
+      /*settings*/ argsWithClasspath,
+      /*out*/ System.out,
+      /*classLoader*/ someCls.getConstructors().head.newInstance(getClass.getClassLoader),
+      /*extraPredef*/ ""
     )
 
     replDriverClass.getMethod("tryRunning").invoke(replDriver)
