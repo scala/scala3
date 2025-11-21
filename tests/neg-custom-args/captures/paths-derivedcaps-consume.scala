@@ -7,15 +7,15 @@ class Foo extends ExclusiveCapability, Classifier
 // Testing with various DerivedCapabilities
 class D
 class C(val d: D)
-class B(val c: C) extends Foo, Mutable:
+class B(val c: C) extends Foo, Stateful:
   update def foo() = println("foo")
-class A(consume val b: B^) extends Mutable:
+class A(consume val b: B^) extends Stateful:
   update def bar() = b.foo()
-class A2(consume val b: B^) extends Mutable:
+class A2(consume val b: B^) extends Stateful:
   update def bar() = b.foo()
-class A3(consume var b: B^) extends Mutable:
+class A3(consume var b: B^) extends Stateful:
   update def bar() = b.foo()
-class A4(consume val b: A2^{cap.only[Foo]}) extends Mutable: // FIXME needs to be classified as Foo, too
+class A4(consume val b: A2^{cap.only[Foo]}) extends Stateful: // FIXME needs to be classified as Foo, too
   update def bar() = b.b.foo()
 
 // Test: Access nested fields (suffix paths) after consume

@@ -13,7 +13,7 @@ import tpd.*
 import Annotations.Annotation
 import CaptureSet.VarState
 import Capabilities.*
-import Mutability.isMutableType
+import Mutability.isStatefulType
 import StdNames.nme
 import config.Feature
 import NameKinds.TryOwnerName
@@ -395,7 +395,7 @@ extension (tp: Type)
       false
 
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-  def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
+  def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
   def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
   def derivesFromExclusive(using Context): Boolean = derivesFromCapTrait(defn.Caps_ExclusiveCapability)
 
@@ -531,7 +531,7 @@ extension (cls: ClassSymbol)
     else defn.AnyClass
 
   def isSeparate(using Context): Boolean =
-    cls.typeRef.isMutableType
+    cls.typeRef.isStatefulType || cls.derivesFrom(defn.Caps_Separate)
 
 extension (sym: Symbol)
 

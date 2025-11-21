@@ -88,15 +88,15 @@ trait Stateful extends ExclusiveCapability
  *  extending Separate is created, a fresh `cap` is automatically added to the value's capture set.
  */
 @experimental
-trait Separate extends ExclusiveCapability
+trait Separate extends Stateful
 
 /** Marker trait for classes that are not subject to scoping restrictions of captured capabilities.
  */
 @experimental
-trait Unscoped extends ExclusiveCapability, Classifier
+trait Unscoped extends Stateful, Classifier
 
 @experimental
-trait Mutable extends Stateful, Separate //, Unscoped
+trait Mutable extends Stateful, Separate//, Unscoped
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes */
 @experimental

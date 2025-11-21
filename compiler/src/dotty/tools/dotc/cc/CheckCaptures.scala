@@ -597,7 +597,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
-                  && env.owner.owner.derivesFrom(defn.Caps_Mutable)
+                  && env.owner.owner.derivesFrom(defn.Caps_Stateful)
               then
                 checkReadOnlyMethod(included, env.owner)
               recur(included, nextEnv, env)
@@ -961,7 +961,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
      *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-     *  capabiltities. Class parameters are not counted. If the type is a mutable type,
+     *  capabiltities. Class parameters are not counted. If the type externds Separate,
      *  we add a fresh cap in any case -- this is because we can currently hide
      *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
      */
@@ -1164,10 +1164,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                 tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
             if ccConfig.noUnsafeMutableFields
                 && sym.owner.isClass
-                && !sym.owner.derivesFrom(defn.Caps_Mutable)
+                && !sym.owner.derivesFrom(defn.Caps_Stateful)
                 && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
               report.error(
-                em"""Mutable $sym is defined in a class that does not extend `Mutable`.
+                em"""Mutable $sym is defined in a class that does not extend `Stateful`.
                     |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
                 tree.namePos)
 
@@ -1865,7 +1865,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if needsAdaptation && !insertBox then // we are unboxing
           val criticalSet =          // the set with which we unbox
             if covariant then
-              if expected.expectsReadOnly && actual.derivesFromMutable
+              if expected.expectsReadOnly && actual.derivesFromStateful
               then captures.readOnly
               else captures
             else expected.captureSet     // contravarant: we unbox with captures of epected type
@@ -2240,18 +2240,18 @@ class CheckCaptures extends Recheck, SymTransformer:
       end for
     end checkEscapingUses
 
-    /** Check all parent class constructors of classes extending Mutable
-     *  either also extend Mutable or are read-only.
+    /** Check all parent class constructors of classes extending Stateful
+     *  either also extend Stateful or are read-only.
      *
      *  A parent class constructor is _read-only_ if the following conditions are met
      *   1. The class does not retain any exclusive capabilities from its environment.
      *   2. The constructor does not take arguments that retain exclusive capabilities.
      *   3. The class does not does not have fields that retain exclusive universal capabilities.
      */
-    def checkMutableInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
-      if cls.derivesFrom(defn.Caps_Mutable) then
+    def checkStatefulInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
+      if cls.derivesFrom(defn.Caps_Stateful) then
         for parent <- parents do
-          if !parent.tpe.derivesFromMutable then
+          if !parent.tpe.derivesFromStateful then
             val pcls = parent.nuType.classSymbol
             val parentIsExclusive =
               if parent.isType then
@@ -2261,8 +2261,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               else parent.nuType.captureSet.isExclusive
             if parentIsExclusive then
               report.error(
-                em"""illegal inheritance: $cls which extends `Mutable` is not allowed to also extend $pcls
-                    |since $pcls retains exclusive capabilities but does not extend `Mutable`.""",
+                em"""illegal inheritance: $cls which extends `Stateful` is not allowed to also extend $pcls
+                    |since $pcls retains exclusive capabilities but does not extend `Stateful`.""",
                 parent.srcPos)
 
     /** Checks to run after the rechecking pass:
@@ -2270,8 +2270,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Check that no uses refer to reach capabilities of parameters of enclosing
      *     methods or classes.
      *   - Run the separation checker under language.experimental.separationChecking
-     *   - Check that classes extending Mutable do not extend other classes that do
-     *     not extend Mutable yet retain exclusive capabilities
+     *   - Check that classes extending Stateful do not extend other classes that do
+     *     not extend Stateful yet retain exclusive capabilities
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       val checker = new TreeTraverser:
@@ -2296,7 +2296,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case TypeDef(_, impl: Template) =>
-            checkMutableInheritance(tree.symbol.asClass, impl.parents)
+            checkStatefulInheritance(tree.symbol.asClass, impl.parents)
           case _ =>
       end checker
 

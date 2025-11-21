@@ -38,8 +38,8 @@ In the `scala.caps` object we define a new trait
 ```scala
 trait Stateful extends ExclusiveCapability
 ```
-It is used as a marker trait for types that can consult and change the global program state.
-These types typically contain mutable variables and/or _update methods_.
+It is used as a marker trait for classes that can consult and change the global program state.
+These classes typically contain mutable variables and/or _update methods_.
 
 ## Update Methods
 
@@ -141,10 +141,10 @@ But it also has two other properties that are explained in the following.
 Each time one creates a value of a mutable type one gets a separate fresh object that can be updated independently
 of other objects. This property is expressed by extending the `Separate` trait in the `scala.caps` object:
 ```scala
-trait Separate extends ExclusiveCapability
+trait Separate extends Stateful
 ```
-If one creates an object of a type extending `Separate`, a fresh `cap` is automatically added to the object's capture set:
-
+If a value of a type extending Separate is created, a fresh `cap` is automatically
+added to the value's capture set:
 ```scala
 class S extends Separate
 val s = S()   // s: S^

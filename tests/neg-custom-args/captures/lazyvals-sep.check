@@ -29,8 +29,8 @@
    |Found:    Ref^{TestClass.this.r.rd}
    |Required: Ref^
    |
-   |Note that {cap} is an exclusive capture set of the mutable type Ref^,
-   |it cannot subsume a read-only capture set of the mutable type Ref^{TestClass.this.r.rd}.
+   |Note that {cap} is an exclusive capture set of the stateful type Ref^,
+   |it cannot subsume a read-only capture set of the stateful type Ref^{TestClass.this.r.rd}.
    |
    |where:    ^ and cap refer to a fresh root capability created in lazy value lazyVal8 when checking argument to parameter ref of constructor Wrapper
    |
@@ -41,8 +41,8 @@
    |Found:    Ref^{TestClass.this.r.rd}
    |Required: Ref^
    |
-   |Note that {cap} is an exclusive capture set of the mutable type Ref^,
-   |it cannot subsume a read-only capture set of the mutable type Ref^{TestClass.this.r.rd}.
+   |Note that {cap} is an exclusive capture set of the stateful type Ref^,
+   |it cannot subsume a read-only capture set of the stateful type Ref^{TestClass.this.r.rd}.
    |
    |where:    ^ and cap refer to a fresh root capability created in lazy value lazyVal9 when checking argument to parameter ref of constructor Wrapper
    |

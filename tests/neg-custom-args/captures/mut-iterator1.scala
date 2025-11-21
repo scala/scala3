@@ -1,6 +1,6 @@
-import caps.{Mutable, SharedCapability}
+import caps.{Stateful, SharedCapability}
 
-trait Iterator[T] extends Mutable:
+trait Iterator[T] extends Stateful:
   def hasNext: Boolean
   def next(): T
 

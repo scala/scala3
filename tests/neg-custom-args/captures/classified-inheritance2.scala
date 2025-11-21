@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 import caps.*
-class Logger extends SharedCapability, Mutable:  // error (1) does this make sense?
+class Logger extends SharedCapability, Stateful:  // error (1) does this make sense?
   private var _state: Int = 0
   update def log(msg: String): Unit = ()
 

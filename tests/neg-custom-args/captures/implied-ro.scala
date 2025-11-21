@@ -1,5 +1,5 @@
 import caps.*
-class Ref extends Mutable, Unscoped
+class Ref extends Stateful, Unscoped
 
 class C:
   val r: Ref = Ref()

@@ -1,6 +1,6 @@
 import caps.*
 
-class Ref[T](init: T) extends Mutable, Unscoped:
+class Ref[T](init: T) extends caps.Stateful, Unscoped:
   var x = init
   def get: T = x
   update def put(y: T): Unit = x = y

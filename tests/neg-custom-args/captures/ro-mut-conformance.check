@@ -9,8 +9,8 @@
    |                     Found:    (a : Ref)
    |                     Required: Ref^
    |
-   |                     Note that {cap} is an exclusive capture set of the mutable type Ref^,
-   |                     it cannot subsume a read-only capture set of the mutable type (a : Ref).
+   |                     Note that {cap} is an exclusive capture set of the stateful type Ref^,
+   |                     it cannot subsume a read-only capture set of the stateful type (a : Ref).
    |
    |                     Note that capability cap².rd is not included in capture set {cap}.
    |

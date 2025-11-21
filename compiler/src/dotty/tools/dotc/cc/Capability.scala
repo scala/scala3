@@ -564,7 +564,7 @@ object Capabilities:
       case _ => false
 
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-    def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
+    def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
     def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
 
     /** The capture set consisting of exactly this reference */

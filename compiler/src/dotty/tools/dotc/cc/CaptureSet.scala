@@ -59,15 +59,15 @@ sealed abstract class CaptureSet extends Showable:
   def mutability_=(x: Mutability): Unit =
     myMut = x
 
-  /** Mark this capture set as belonging to a Mutable type. Called when a new
+  /** Mark this capture set as belonging to a Stateful type. Called when a new
    *  CapturingType is formed. This is different from the setter `mutability_=`
-   *  in that it be defined with different behaviors:
+   *  in that it can be defined with different behaviors:
    *
-   *   - set mutability to Mutable (for normal Vars)
+   *   - set mutability to Writer (for normal Vars)
    *   - take mutability from the set's sources (for DerivedVars)
    *   - compute mutability on demand based on mutability of elements (for Consts)
    */
-  def associateWithMutable()(using Context): CaptureSet
+  def associateWithStateful()(using Context): CaptureSet
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -191,7 +191,7 @@ sealed abstract class CaptureSet extends Showable:
     newElems.forall(tryInclude(_, origin))
 
   protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
-    if mutability == Mutable then toReader() else true
+    if mutability == Writer then toReader() else true
 
   /** Add an element to this capture set, assuming it is not already accounted for,
    *  and omitting any mapping or filtering.
@@ -315,8 +315,8 @@ sealed abstract class CaptureSet extends Showable:
   def adaptMutability(that: CaptureSet)(using Context): CaptureSet | Null =
     val m1 = this.mutability
     val m2 = that.mutability
-    if m1 == Mutable && m2 == Reader then this.readOnly
-    else if m1 == Reader && m2 == Mutable then
+    if m1 == Writer && m2 == Reader then this.readOnly
+    else if m1 == Reader && m2 == Writer then
       if that.toReader() then this else null
     else this
 
@@ -542,13 +542,13 @@ object CaptureSet:
   type Deps = SimpleIdentitySet[CaptureSet]
 
   enum Mutability:
-    case Mutable, Reader, Ignored
+    case Writer, Reader, Ignored
 
     def | (that: Mutability): Mutability =
       if this == that then this
       else if this == Ignored || that == Ignored then Ignored
       else if this == Reader || that == Reader then Reader
-      else Mutable
+      else Writer
 
     def & (that: Mutability): Mutability =
       if this == that then this
@@ -569,9 +569,9 @@ object CaptureSet:
   @sharable // sharable since the set is empty, so mutability won't be set
   val empty: CaptureSet.Const = Const(emptyRefs)
 
-  /** The empty capture set `{}` of a Mutable type, with Reader status */
-  @sharable // sharable since the set is empty, so mutability won't be set
-  val emptyOfMutable: CaptureSet.Const =
+  /** The empty capture set `{}` of a Stateful type, with Reader status */
+  @sharable // sharable since the set is empty, so mutability won't be re-set
+  val emptyOfStateful: CaptureSet.Const =
     val cs = Const(emptyRefs)
     cs.mutability = Mutability.Reader
     cs
@@ -630,15 +630,15 @@ object CaptureSet:
 
     private var isComplete = true
 
-    def associateWithMutable()(using Context): CaptureSet =
-      if elems.isEmpty then emptyOfMutable
+    def associateWithStateful()(using Context): CaptureSet =
+      if elems.isEmpty then emptyOfStateful
       else
         isComplete = false // delay computation of Mutability status
         this
 
     override def mutability(using Context): Mutability =
       if !isComplete then
-        myMut = if maybeExclusive then Mutable else Reader
+        myMut = if maybeExclusive then Writer else Reader
         isComplete = true
       myMut
 
@@ -652,7 +652,7 @@ object CaptureSet:
       else ""
 
   private def capImpliedByCapability(parent: Type)(using Context): Capability =
-    if parent.derivesFromMutable then GlobalCap.readOnly else GlobalCap
+    if parent.derivesFromStateful then GlobalCap.readOnly else GlobalCap
 
   /* The same as {cap} but generated implicitly for references of Capability subtypes.
    */
@@ -665,13 +665,14 @@ object CaptureSet:
    *  nulls, this provides more lenient checking against compilation units that
    *  were not yet compiled with capture checking on.
    */
-  @sharable // sharable since the set is empty, so setMutable is a no-op
+  @sharable
   object Fluid extends Const(emptyRefs):
     override def isAlwaysEmpty(using Context) = false
     override def addThisElem(elem: Capability)(using Context, VarState) = true
     override def toReader()(using Context) = true
     override def accountsFor(x: Capability)(using Context)(using VarState): Boolean = true
     override def mightAccountFor(x: Capability)(using Context): Boolean = true
+    override def mutability_=(x: Mutability): Unit = ()
     override def toString = "<fluid>"
   end Fluid
 
@@ -727,8 +728,8 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def associateWithMutable()(using Context): CaptureSet =
-      mutability = Mutable
+    def associateWithStateful()(using Context): CaptureSet =
+      mutability = Writer
       this
 
     def isConst(using Context) = solved >= ccState.iterationId
@@ -846,7 +847,7 @@ object CaptureSet:
       if isConst then failWith(MutAdaptFailure(this))
       else
         mutability = Reader
-        TypeComparer.logUndoAction(() => mutability = Mutable)
+        TypeComparer.logUndoAction(() => mutability = Writer)
         deps.forall(_.mutableToReader(this))
 
     private def isPartOf(binder: Type)(using Context): Boolean =
@@ -933,7 +934,7 @@ object CaptureSet:
     def markSolved(provisional: Boolean)(using Context): Unit =
       solved = if provisional then ccState.iterationId else Int.MaxValue
       deps.foreach(_.propagateSolved(provisional))
-      if mutability == Mutable && !maybeExclusive then mutability = Reader
+      if mutability == Writer && !maybeExclusive then mutability = Reader
 
 
     var skippedMaps: Set[TypeMap] = Set.empty
@@ -1046,7 +1047,7 @@ object CaptureSet:
     addAsDependentTo(source)
 
     /** Mutability is same as in source, except for readOnly */
-    override def associateWithMutable()(using Context): CaptureSet = this
+    override def associateWithStateful()(using Context): CaptureSet = this
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1175,8 +1176,8 @@ object CaptureSet:
       super.mutableToReader(origin)
       && {
         if (origin eq cs1) || (origin eq cs2) then true
-        else if cs1.isConst && cs1.mutability == Mutable then cs2.mutableToReader(this)
-        else if cs2.isConst && cs2.mutability == Mutable then cs1.mutableToReader(this)
+        else if cs1.isConst && cs1.mutability == Writer then cs2.mutableToReader(this)
+        else if cs2.isConst && cs2.mutability == Writer then cs1.mutableToReader(this)
         else true
       }
 
@@ -1403,7 +1404,7 @@ object CaptureSet:
           else i"$elem cannot be included in $cs"
   end IncludeFailure
 
-  /** Failure indicating that a read-only capture set of a mutable type cannot be
+  /** Failure indicating that a read-only capture set of a stateful type cannot be
    *  widened to an exclusive set.
    *  @param  cs    the exclusive set in question
    *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
@@ -1412,7 +1413,7 @@ object CaptureSet:
   case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note:
 
     def render(using Context): String =
-      def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
+      def ofType(tp: Type) = if tp.exists then i"of the stateful type $tp" else "of a stateful type"
       i"""
          |
          |Note that $cs is an exclusive capture set ${ofType(hi)},

@@ -14,8 +14,8 @@
   |                         Found:    Ref[T]^{Ref.this.rd}
   |                         Required: Ref[T]^
   |
-  |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
-  |                         it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
+  |                         Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
+  |                         it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
   |
   |                         where:    ^ and cap refer to a fresh root capability in the type of value self2
   |
@@ -28,14 +28,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutvars.scala:14:31 --------------------------------------
 14 |    val self4: () => Ref[T]^ = () => this // error
    |                               ^^^^^^^^^^
-   |                         Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
-   |                         Required: () => Ref[T]^
+   |                        Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
+   |                        Required: () => Ref[T]^
    |
-   |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
-   |                         it cannot subsume a read-only capture set of the mutable type Ref[T^'s1]^{Ref.this.rd}.
+   |                        Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
+   |                        it cannot subsume a read-only capture set of the stateful type Ref[T^'s1]^{Ref.this.rd}.
    |
-   |                         where:    =>        refers to a fresh root capability in the type of value self4
-   |                                   ^ and cap refer to a fresh root capability in the type of value self4
+   |                        where:    =>        refers to a fresh root capability in the type of value self4
+   |                                  ^ and cap refer to a fresh root capability in the type of value self4
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutvars.scala:18:16 -----------------------------------------------------------
@@ -49,8 +49,8 @@
    |                         Found:    Ref[T]^{Ref.this.rd}
    |                         Required: Ref[T]^
    |
-   |                         Note that {cap} is an exclusive capture set of the mutable type Ref[T]^,
-   |                         it cannot subsume a read-only capture set of the mutable type Ref[T]^{Ref.this.rd}.
+   |                         Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
+   |                         it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
    |
    |                         where:    ^ and cap refer to a fresh root capability in the result type of method self6
    |
@@ -76,8 +76,8 @@
    |                             Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
    |                             Required: () => Ref2[Int]^
    |
-   |                             Note that {cap} is an exclusive capture set of the mutable type Ref2[Int]^,
-   |                             it cannot subsume a read-only capture set of the mutable type Ref2[Int]^{ref2}.
+   |                             Note that {cap} is an exclusive capture set of the stateful type Ref2[Int]^,
+   |                             it cannot subsume a read-only capture set of the stateful type Ref2[Int]^{ref2}.
    |
    |                             where:    =>        refers to a fresh root capability in the type of value r5
    |                                       ^ and cap refer to a fresh root capability in the type of value r5
