@@ -11,8 +11,6 @@ import dotty.tools.dotc.util.chaining.*
 import java.util.{Collections, Optional, List => JList}
 import core.Decorators.toMessage
 
-import collection.mutable.ArrayBuffer
-
 object Diagnostic:
 
   def shouldExplain(dia: Diagnostic)(using Context): Boolean =
@@ -120,30 +118,5 @@ class Diagnostic(
   override def diagnosticRelatedInformation: JList[interfaces.DiagnosticRelatedInformation] =
     Collections.emptyList()
   override def toString: String = s"$getClass at $pos L${pos.line+1}: $message"
-
-  private val subdiags: ArrayBuffer[Subdiagnostic] = ArrayBuffer.empty
-
-  private var primaryNote: Message | Null = null
-
-  def addSubdiag(diag: Subdiagnostic): Unit =
-    subdiags += diag
-
-  def addPrimaryNote(msg: Message): Unit =
-    assert(primaryNote eq null)
-    primaryNote = msg
-
-  def getPrimaryNote: Option[Message] =
-    if primaryNote eq null then None else Some(primaryNote.nn)
-
-  def addSubdiag(msg: Message, pos: SourcePosition): Unit =
-    addSubdiag(Subdiagnostic(msg, pos))
-
-  def withSubdiags(diags: List[Subdiagnostic]): this.type =
-    diags.foreach(addSubdiag)
-    this
-
-  def getSubdiags: List[Subdiagnostic] = subdiags.toList
 end Diagnostic
-
-class Subdiagnostic(val msg: Message, val pos: SourcePosition)
 
