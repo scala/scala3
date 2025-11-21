@@ -78,7 +78,7 @@ trait Iterable[+A] extends IterableOnce[A]
     *            string consists of the `className` of this $coll, followed
     *            by all elements separated by commas and enclosed in parentheses.
     */
-  override def toString = mkString(className + "(", ", ", ")")
+  override def toString() = mkString(className + "(", ", ", ")")
 
   /** Analogous to `zip` except that the elements in each collection are not consumed until a strict operation is
     * invoked on the returned `LazyZip2` decorator.

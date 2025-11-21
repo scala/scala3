@@ -25,4 +25,4 @@ final case class UninitializedFieldError(msg: String) extends RuntimeException(m
 }
 
 object UninitializedFieldError extends scala.runtime.AbstractFunction1[String, UninitializedFieldError]:
-  override def toString: String = "UninitializedFieldError"
+  override def toString(): String = "UninitializedFieldError"

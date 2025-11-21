@@ -234,9 +234,9 @@ TypeBound         ::=  Type
                     |  CaptureSet                                               -- under captureChecking
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
-CaptureSet        ::=  ‘{’ CaptureRef {‘,’ CaptureRef} ‘}’                      -- under captureChecking
-CaptureRef        ::=  { SimpleRef ‘.’ } SimpleRef [‘*’] [CapFilter] [‘.’ ‘rd’] -- under captureChecking
-CapFilter         ::=  ‘.’ ‘as’ ‘[’ QualId ’]’                                  -- under captureChecking
+CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
+CaptureRef        ::=  { SimpleRef '.' } SimpleRef ['*'] [CapFilter] ['.' 'rd'] -- under captureChecking
+CapFilter         ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
 ```
 
 ### Expressions

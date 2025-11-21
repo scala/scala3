@@ -1,4 +1,4 @@
-//> using options -source future -feature -Xfatal-warnings
+//> using options -source future -feature -Werror
 
 package adhoc
 class B extends A  // warn: adhoc-extension (under -strict -feature -Xfatal-warnings)

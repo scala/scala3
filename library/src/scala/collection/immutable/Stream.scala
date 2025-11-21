@@ -331,7 +331,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     *           - `"Stream(1, 2, 3, &lt;cycle&gt;)"`, an infinite stream that contains
     *             a cycle at the fourth element.
     */
-  override def toString = addStringNoForce(new JStringBuilder(className), "(", ", ", ")").toString
+  override def toString() = addStringNoForce(new JStringBuilder(className), "(", ", ", ")").toString
 
   @deprecated("Check .knownSize instead of .hasDefiniteSize for more actionable information (see scaladoc for details)", "2.13.0")
   override def hasDefiniteSize: Boolean = isEmpty || {

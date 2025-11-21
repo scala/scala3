@@ -2,4 +2,4 @@
 10 |      case is: Some[t] => ??? // unreachable
    |           ^^^^^^^^^^^
    |           Unreachable case
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
+No warnings can be incurred under -Werror

@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wvalue-discard
+//> using options -Werror -Wvalue-discard
 
 import scala.collection.mutable
 import scala.annotation.nowarn

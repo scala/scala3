@@ -54,7 +54,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
     new WrappedString(self.substring(start, end))
   }
   override def length = self.length
-  override def toString = self
+  override def toString() = self
   override def view: StringView = new StringView(self)
 
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Char, S]): S & EfficientSplit = {

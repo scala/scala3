@@ -216,7 +216,7 @@ object ClassManifestFactory {
   private class AbstractTypeClassManifest[T](prefix: OptManifest[?], name: String, clazz: jClass[?], args: OptManifest[?]*) extends ClassManifest[T] {
     override def runtimeClass = clazz
     override val typeArguments = args.toList
-    override def toString = prefix.toString+"#"+name+argString
+    override def toString() = prefix.toString+"#"+name+argString
   }
 
   /** ClassManifest for the abstract type `prefix # name`. `upperBound` is not
@@ -243,7 +243,7 @@ private class ClassTypeManifest[T](
   val runtimeClass: jClass[?],
   override val typeArguments: List[OptManifest[?]]) extends ClassManifest[T]
 {
-  override def toString =
+  override def toString() =
     (if (prefix.isEmpty) "" else prefix.get.toString+"#") +
     (if (runtimeClass.isArray) "Array" else runtimeClass.getName) +
     argString
