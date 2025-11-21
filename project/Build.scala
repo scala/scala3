@@ -1265,7 +1265,7 @@ object Build {
       }
     )
 
-  lazy val `scala3-repl-embedded` = project.in(file("repl-shaded"))
+  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
     .dependsOn(`scala-library-bootstrapped`)
     .enablePlugins(sbtassembly.AssemblyPlugin)
     .settings(publishSettings)
@@ -1320,8 +1320,8 @@ object Build {
             val relativePath = file.relativeTo(tmpDir).get.getPath
 
             val shouldKeepInPlace =
-              relativePath.startsWith("scala/tools/repl/")||
-              // These are manually shaded so leave them alone
+              relativePath.startsWith("dotty/embedded/")||
+              // These are manually shaded when vendored/patched so leave them alone
               relativePath.startsWith("dotty/shaded/") ||
               // This needs to be inside scala/collection so cannot be moved
               relativePath.startsWith("scala/collection/internal/pprint/")

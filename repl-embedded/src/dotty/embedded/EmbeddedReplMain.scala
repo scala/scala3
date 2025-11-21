@@ -1,26 +1,29 @@
-package scala.tools.repl
+package dotty.embedded
 
 import java.net.{URL, URLClassLoader}
 import java.io.InputStream
 
 /**
  * A classloader that remaps shaded classes back to their original package names.
- *
- * This classloader intercepts class loading requests and remaps them from
- * dotty.tools.repl.shaded.* back to their original package names, allowing the
- * shaded classes to be loaded as if they were in their original packages.
- *
- * The scala.* packages are not shaded, so they pass through normally.
  */
 class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
 
-  private val SHADED_PREFIX = "dotty.isolated."
+  // dotty.isolated classes are loaded only within the REPL impl classloader.
+  // They exist in the enclosing classpath relocated within the dotty.isolated
+  // package, but are relocated to their proper package when the REPL impl
+  // classloader loads them
+  private val ISOLATED_PREFIX = "dotty.isolated."
 
   override def loadClass(name: String, resolve: Boolean): Class[?] = {
     val loaded = findLoadedClass(name)
     if (loaded != null) return loaded
 
-    val shadedPath = (SHADED_PREFIX + name).replace('.', '/') + ".class"
+    // dotty.shaded classes are loaded separately between the REPL line classloader
+    // and the REPL impl classloader, but at the same path because the REPL line
+    // classloader doesn't tolerate relocating classfiles
+    val shadedPath = (if (name.startsWith("dotty.shaded.")) name else ISOLATED_PREFIX + name)
+      .replace('.', '/') + ".class"
+
     val is0 = scala.util.Try(Option(super.getResourceAsStream(shadedPath))).toOption.flatten
 
     is0 match{
@@ -29,17 +32,22 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
           val bytes = is.readAllBytes()
           val clazz = defineClass(name, bytes, 0, bytes.length)
           if (resolve) resolveClass(clazz)
-          return clazz
+          clazz
         } finally is.close()
-      case None => super.loadClass(name, resolve)
+      case None =>
+        // These classes are loaded shared between all classloaders, because
+        // they misbehave if loaded multiple times in separate classloaders
+        if (name.startsWith("java.") || name.startsWith("org.jline.")) parent.loadClass(name)
+        // Other classes loaded by the `UnshadingClassLoader` *must* be found in the
+        // `dotty.isolated` package. If they're not there, throw an error rather than
+        // trying to look for them at their normal package path, to ensure we're not
+        // accidentally pulling stuff in from the enclosing classloader
+        else throw new ClassNotFoundException(name)
     }
   }
 
   override def getResourceAsStream(name: String): InputStream | Null = {
-    val shadedPath = SHADED_PREFIX.replace('.', '/') + name
-    val shadedStream = super.getResourceAsStream(shadedPath)
-    if (shadedStream != null) return shadedStream
-    else super.getResourceAsStream(name)
+    super.getResourceAsStream(ISOLATED_PREFIX.replace('.', '/') + name)
   }
 }
 
