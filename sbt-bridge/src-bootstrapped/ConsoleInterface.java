@@ -10,7 +10,7 @@ import scala.Option;
 import xsbti.Logger;
 
 import dotty.tools.dotc.core.Contexts.Context;
-import dotty.tools.repl.;
+import dotty.tools.repl.ReplDriver;
 import dotty.tools.repl.State;
 
 public class ConsoleInterface {
@@ -49,7 +49,7 @@ public class ConsoleInterface {
 
     state = driver.run(initialCommands, state);
     // TODO handle failure during initialisation
-    state = driver.runUntilQuit(state, null);
+    state = driver.runUntilQuit(state);
     driver.run(cleanupCommands, state);
   }
 }
