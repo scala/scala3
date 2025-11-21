@@ -1137,7 +1137,11 @@ object Parsers {
           lookahead.skipParens()
           isArrowIndent()
         else if lookahead.token == CASE && in.featureEnabled(Feature.relaxedLambdaSyntax) then
-          Some(() => singleCaseMatch())
+          Some: () =>
+            inSepRegion(SingleLineLambda(_)):
+              singleCaseMatch()
+            .tap: _ =>
+              accept(ENDlambda)
         else
           None
       isParamsAndArrow()
