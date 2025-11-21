@@ -3749,3 +3749,27 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+class UseAfterConsume(ref: cc.Capabilities.Capability, consumedLoc: SourcePosition, useLoc: SourcePosition)(using Context)
+extends TypeMsg(NoExplanationID):
+  protected def msg(using Context): String =
+    i"""Separation failure: Illegal access to $ref, which was passed to a
+       |consume parameter or was used as a prefix to a consume method
+       |and therefore is no longer available."""
+
+  protected def explain(using Context): String = ""
+
+  override def leading(using Context): Option[String] = Some(message)
+
+  override def parts(using Context): List[Message.MessagePart] = List(
+    Message.MessagePart(
+      "The capability was consumed here.",
+      consumedLoc,
+      isPrimary = false
+    ),
+    Message.MessagePart(
+      "Then, it was used here",
+      useLoc,
+      isPrimary = true
+    )
+  )
