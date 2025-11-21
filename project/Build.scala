@@ -1293,9 +1293,7 @@ object Build {
       assembly / assemblyJarName := s"scala3-repl-embedded-${version.value}.jar",
       // Add scala3-repl to assembly classpath without making it a published dependency
       assembly / fullClasspath := {
-        val replJar = (`scala3-repl` / Compile / packageBin).value
-        val cp = (assembly / fullClasspath).value
-        cp :+ Attributed.blank(replJar)
+        (Compile / fullClasspath).value ++ (`scala3-repl` / assembly / fullClasspath).value
       },
       assembly / test := {}, // Don't run tests for assembly
       // Exclude scala-library and jline from assembly (users provide them on classpath)
