@@ -55,7 +55,6 @@ class UnshadingClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
  */
 object EmbeddedReplMain {
   def main(args: Array[String]): Unit = {
-    dotty.shaded.pprint.log(dotty.shaded.fansi.Color.Green("Helloo").toString)
     val argsWithClasspath =
       if (args.exists(arg => arg == "-classpath" || arg == "-cp")) args
       else Array("-classpath", System.getProperty("java.class.path")) ++ args
