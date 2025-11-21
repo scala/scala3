@@ -1177,7 +1177,42 @@ object Build {
         (Compile / run).toTask(" -usejavacp").value
       },
     )
-  
+
+  lazy val `scala3-repl-pprint` = project.in(file("repl-pprint"))
+    .enablePlugins(sbtassembly.AssemblyPlugin)
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-repl-pprint",
+      moduleName    := "scala3-repl-pprint",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+
+      libraryDependencies ++= Seq( // Dependencies to shade
+        "com.lihaoyi" %% "pprint" % "0.9.0",
+        "com.lihaoyi" %% "fansi" % "0.5.0",
+        "com.lihaoyi" %% "sourcecode" % "0.4.2"
+      ),
+      assembly / assemblyJarName := s"scala3-repl-pprint-${version.value}.jar",
+      assembly / assemblyShadeRules := Seq(
+        ShadeRule.rename("pprint.**" -> "dotty.shaded.pprint.@1").inAll,
+        ShadeRule.rename("fansi.**" -> "dotty.shaded.fansi.@1").inAll,
+        ShadeRule.rename("sourcecode.**" -> "dotty.shaded.sourcecode.@1").inAll,
+      ),
+      // Exclude scala-library from assembly
+      assembly / assemblyExcludedJars := {
+        val cp = (assembly / fullClasspath).value
+        cp.filter { jar =>
+          val name = jar.data.getName
+          name.startsWith("scala-library") || name.startsWith("scala3-library")
+        }
+      },
+      Compile / packageBin := assembly.value,
+      publish / skip := false,
+    )
+
   lazy val `scala3-repl-shaded` = project.in(file("repl-shaded"))
     .dependsOn(`scala3-repl`)
     .enablePlugins(sbtassembly.AssemblyPlugin)
@@ -1255,7 +1290,7 @@ object Build {
     )
 
   lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
-    .dependsOn(`scala-library-bootstrapped`)
+    .dependsOn(`scala-library-bootstrapped`, `scala3-repl-pprint`)
     .settings(publishSettings)
     .settings(
       name          := "scala3-repl-embedded",
@@ -1273,7 +1308,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq.empty,
       // Use the shaded assembly jar as our packageBin
       Compile / packageBin := (`scala3-repl-shaded` / Compile / assembly).value,
-      Test / publishArtifact := false,
       publish / skip := false,
     )
 
