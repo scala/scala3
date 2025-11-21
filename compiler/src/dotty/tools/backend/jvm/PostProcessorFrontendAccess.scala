@@ -52,6 +52,7 @@ object PostProcessorFrontendAccess {
   sealed trait CompilerSettings {
     def debug: Boolean
     def target: String // javaOutputVersion
+    def experimental: Boolean
 
     def dumpClassesDirectory: Option[String]
     def outputDirectory: AbstractFile
@@ -119,6 +120,8 @@ object PostProcessorFrontendAccess {
             report.warning(s"The value of ${s.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
             release
           case (None, None) => "8" // least supported version by default
+
+      override val experimental = s.YvalueClasses.value
 
       override val debug: Boolean = ctx.debug
       override val dumpClassesDirectory: Option[String] = s.Xdumpclasses.valueSetByUser

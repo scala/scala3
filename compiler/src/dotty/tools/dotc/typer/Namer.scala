@@ -1771,7 +1771,7 @@ class Namer { typer: Typer =>
       tempInfo = null // The temporary info can now be garbage-collected
 
       Checking.checkWellFormed(cls)
-      if (isDerivedValueClass(cls)) cls.setFlag(Final)
+      if (isDerivedValueClass(cls) || (cls.isValhallaValueClass && !cls.is(Abstract) && !cls.is(Trait))) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.invalidateMemberCaches() // we might have checked for a member when parents were not known yet.

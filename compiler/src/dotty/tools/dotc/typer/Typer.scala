@@ -3446,6 +3446,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if cls.is(ModuleClass)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
+         && !effectiveOwner.isValhallaValueClass
       then
         report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 

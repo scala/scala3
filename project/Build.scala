@@ -199,7 +199,8 @@ object Build {
       "-language:implicitConversions",
       s"--java-output-version:${Versions.minimumJVMVersion}",
       "-Yexplicit-nulls",
-      "-Wsafe-init"
+      "-Wsafe-init",
+      "-Yvalue-classes"
     ),
 
     (Compile / compile / javacOptions) ++= Seq(

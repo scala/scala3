@@ -204,9 +204,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
       else if cls1 == defn.NullClass then
-        cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
+        cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass) || cls2.isValhallaValueClass
       else if cls2 == defn.NullClass then
-        cls1.derivesFrom(defn.ObjectClass)
+        cls1.derivesFrom(defn.ObjectClass) || cls1.isValhallaValueClass
       else
         cls1 == defn.NothingClass || cls2 == defn.NothingClass
     end canComparePredefinedClasses

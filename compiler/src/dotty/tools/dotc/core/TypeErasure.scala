@@ -411,9 +411,9 @@ object TypeErasure {
   def erasedLub(tp1: Type, tp2: Type)(using Context): Type = {
     // We need to short-circuit the following 2 case because the regular lub logic in the else relies on
     // the class hierarchy, which doesn't properly capture `Nothing`/`Null` subtyping behaviour.
-    if tp1.isRef(defn.NothingClass) || (tp1.isRef(defn.NullClass) && tp2.derivesFrom(defn.ObjectClass)) then
+    if tp1.isRef(defn.NothingClass) || (tp1.isRef(defn.NullClass) && (tp2.derivesFrom(defn.ObjectClass) || tp2.isValhallaValueClassType)) then
       tp2 // After erasure, Nothing | T is just T and Null | C is just C, if C is a reference type.
-    else if tp2.isRef(defn.NothingClass) || (tp2.isRef(defn.NullClass) && tp1.derivesFrom(defn.ObjectClass)) then
+    else if tp2.isRef(defn.NothingClass) || (tp2.isRef(defn.NullClass) && (tp1.derivesFrom(defn.ObjectClass) || tp1.isValhallaValueClassType)) then
       tp1 // After erasure, T | Nothing is just T and C | Null is just C, if C is a reference type.
     else tp1 match {
       case JavaArrayType(elem1) =>
