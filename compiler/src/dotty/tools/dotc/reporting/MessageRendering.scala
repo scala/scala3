@@ -253,55 +253,31 @@ trait MessageRendering {
     else
     pos
 
-  /** Render diagnostics with positions in different files separately */
-  private def renderSeparateSpans(dia: Diagnostic)(using Context): String =
+  /** Render a message using multi-span information from Message.parts. */
+  def messageAndPosFromParts(dia: Diagnostic)(using Context): String =
     val msg = dia.msg
     val pos = dia.pos
     val pos1 = adjust(pos.nonInlined)
-    given Level = Level(dia.level)
-    given Offset =
-      val maxLineNumber = if pos.exists then pos1.endLine + 1 else 0
-      Offset(maxLineNumber.toString.length + 2)
+    val msgParts = msg.parts
 
-    val sb = StringBuilder()
-    val posString = posStr(pos1, msg, diagnosticLevel(dia))
-    if posString.nonEmpty then sb.append(posString).append(EOL)
+    if msgParts.isEmpty then
+      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
 
-    if pos.exists && pos1.exists && pos1.source.file.exists then
-      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-      val marker = positionMarker(pos1)
-      val err = errorMsg(pos1, msg.message)
-      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
-    else
-      sb.append(msg.message)
+    // Collect all positions from message parts
+    val validParts = msgParts.filter(_.srcPos.exists)
 
-    dia.getSubdiags.foreach(addSubdiagnostic(sb, _))
-    sb.toString
-
-  def messageAndPosMultiSpan(dia: Diagnostic)(using Context): String =
-    val msg = dia.msg
-    val pos = dia.pos
-    val pos1 = adjust(pos.nonInlined)
-    val subdiags = dia.getSubdiags
-
-    // Collect all positions with their associated messages
-    case class PosAndMsg(pos: SourcePosition, msg: Message, isPrimary: Boolean)
-    val allPosAndMsg = PosAndMsg(pos1, msg, true) :: subdiags.map(s => PosAndMsg(adjust(s.pos), s.msg, false))
-    val validPosAndMsg = allPosAndMsg.filter(_.pos.exists)
-
-    if validPosAndMsg.isEmpty then
-      return msg.message
+    if validParts.isEmpty then
+      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
 
     // Check all positions are in the same source file
-    val source = validPosAndMsg.head.pos.source
-    if !validPosAndMsg.forall(_.pos.source == source) || !source.file.exists then
-      // Cannot render multi-span if positions are in different files
-      // Fall back to showing them separately
-      return renderSeparateSpans(dia)
+    val source = validParts.head.srcPos.source
+    if !validParts.forall(_.srcPos.source == source) || !source.file.exists then
+      // TODO: support rendering source positions across multiple files
+      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
 
     // Find the line range covering all positions
-    val minLine = validPosAndMsg.map(_.pos.startLine).min
-    val maxLine = validPosAndMsg.map(_.pos.endLine).max
+    val minLine = validParts.map(_.srcPos.startLine).min
+    val maxLine = validParts.map(_.srcPos.endLine).max
     val maxLineNumber = maxLine + 1
 
     given Level = Level(dia.level)
@@ -313,12 +289,13 @@ trait MessageRendering {
     val posString = posStr(pos1, msg, diagnosticLevel(dia))
     if posString.nonEmpty then sb.append(posString).append(EOL)
 
-    // Always display primary error message before code snippet
-    sb.append(msg.message)
-    if !msg.message.endsWith(EOL) then sb.append(EOL)
+    // Display leading text if present
+    msg.leading.foreach { leadingText =>
+      sb.append(leadingText)
+      if !leadingText.endsWith(EOL) then sb.append(EOL)
+    }
 
     // Render the unified code snippet
-    // Get syntax-highlighted content for the entire range
     val startOffset = source.lineToOffset(minLine)
     val endOffset = source.nextLine(source.lineToOffset(maxLine))
     val content = source.content.slice(startOffset, endOffset)
@@ -352,19 +329,13 @@ trait MessageRendering {
         sb.append(lnum).append(lineContent.stripLineEnd).append(EOL)
 
         // Find all positions that should show markers after this line
-        // A position shows its marker after its start line
-        val positionsOnLine = validPosAndMsg.filter(_.pos.startLine == lineNum)
-          .sortBy(pm => (pm.pos.startColumn, !pm.isPrimary)) // Primary positions first if same column
+        val partsOnLine = validParts.filter(_.srcPos.startLine == lineNum)
+          .sortBy(p => (p.srcPos.startColumn, !p.isPrimary))
 
-        for posAndMsg <- positionsOnLine do
-          // Use '^' for primary error, '-' for sub-diagnostics
-          val markerChar = if posAndMsg.isPrimary then '^' else '-'
-          val marker = positionMarker(posAndMsg.pos, markerChar)
-          // For primary position: use PrimaryNote if available, otherwise use primary message
-          val messageToShow =
-            if posAndMsg.isPrimary then dia.getPrimaryNote.map(_.message).getOrElse(posAndMsg.msg.message)
-            else posAndMsg.msg.message
-          val err = errorMsg(posAndMsg.pos, messageToShow)
+        for part <- partsOnLine do
+          val markerChar = if part.isPrimary then '^' else '-'
+          val marker = positionMarker(part.srcPos, markerChar)
+          val err = errorMsg(part.srcPos, part.text)
           sb.append(marker).append(EOL)
           sb.append(err).append(EOL)
 
@@ -381,7 +352,7 @@ trait MessageRendering {
       sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
     sb.toString
-  end messageAndPosMultiSpan
+  end messageAndPosFromParts
 
   /** The whole message rendered from `dia.msg`.
    *
@@ -403,9 +374,11 @@ trait MessageRendering {
    *
    */
   def messageAndPos(dia: Diagnostic)(using Context): String =
-    if dia.getSubdiags.nonEmpty then messageAndPosMultiSpan(dia)
+    val msg = dia.msg
+    // Check if message provides its own multi-span structure
+    if msg.leading.isDefined || msg.parts.nonEmpty then
+      messageAndPosFromParts(dia)
     else
-      val msg = dia.msg
       val pos = dia.pos
       val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
       val outermost = pos.outermost // call.pos
@@ -439,8 +412,6 @@ trait MessageRendering {
         end if
       else sb.append(msg.message)
 
-      dia.getSubdiags.foreach(addSubdiagnostic(sb, _))
-
       if dia.isVerbose then
         appendFilterHelp(dia, sb)
 
@@ -457,20 +428,6 @@ trait MessageRendering {
 
       sb.toString
   end messageAndPos
-
-  private def addSubdiagnostic(sb: StringBuilder, subdiag: Subdiagnostic)(using Context, Level, Offset): Unit =
-    val pos1 = adjust(subdiag.pos)
-    val msg = subdiag.msg
-    assert(pos1.exists && pos1.source.file.exists)
-
-    val posString = posStr(pos1, msg, "Note", isSubdiag = true)
-    val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-    val marker = positionMarker(pos1, '-')  // Use '-' for sub-diagnostics
-    val err = errorMsg(pos1, msg.message)
-
-    val diagText = (posString :: srcBefore ::: marker :: err :: srcAfter).mkString(EOL)
-    sb.append(EOL)
-    sb.append(diagText)
 
   private def hl(str: String)(using Context, Level): String =
     summon[Level].value match
