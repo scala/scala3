@@ -3750,8 +3750,9 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
 
-class UseAfterConsume(ref: cc.Capabilities.Capability, consumedLoc: SourcePosition, useLoc: SourcePosition, howConsumed: => String)(using Context)
-extends TypeMsg(NoExplanationID):
+class UseAfterConsume(ref: cc.Capabilities.Capability, consumedLoc: SourcePosition, useLoc: SourcePosition, howConsumed: => String)(using Context) extends Message(NoExplanationID):
+  def kind = MessageKind.NoKind
+
   protected def msg(using Context): String =
     i"""Separation failure: Illegal access to $ref, which was $howConsumed
        |and therefore is no longer available."""
