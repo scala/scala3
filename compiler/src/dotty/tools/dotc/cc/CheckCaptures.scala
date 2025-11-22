@@ -572,7 +572,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def checkReadOnlyMethod(included: CaptureSet, meth: Symbol): Unit =
         included.checkAddedElems: elem =>
-          if elem.isExclusive then
+          if elem.isExclusive() then
             report.error(
                 em"""Read-only $meth accesses exclusive capability $elem;
                     |$meth should be declared an update method to allow this.""",
@@ -2256,10 +2256,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             val pcls = parent.nuType.classSymbol
             val parentIsExclusive =
               if parent.isType then
-                capturedVars(pcls).isExclusive
-                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive
-
-              else parent.nuType.captureSet.isExclusive
+                capturedVars(pcls).isExclusive()
+                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive()
+              else parent.nuType.captureSet.isExclusive()
             if parentIsExclusive then
               report.error(
                 em"""illegal inheritance: $cls which extends `Stateful` is not allowed to also extend $pcls

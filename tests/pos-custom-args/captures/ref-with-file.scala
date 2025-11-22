@@ -11,9 +11,15 @@ class File:
 def withFile[T](op: (f: File^) => T): T =
   op(new File)
 
+def withFileAndRef[T](op: (f: File^, r: Ref[String]^) => T): T =
+  op(File(), Ref(""))
+
 def Test =
   withFile: f =>
     val r = Ref(f.read())
     r
+  withFileAndRef: (f, r: Ref[String]^) =>
+    r.put(f.read())
+
 
 

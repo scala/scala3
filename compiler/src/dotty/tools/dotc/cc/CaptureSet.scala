@@ -148,8 +148,20 @@ sealed abstract class CaptureSet extends Showable:
 
   final def isAlwaysReadOnly(using Context): Boolean = isConst && isReadOnly
 
-  final def isExclusive(using Context): Boolean =
-    elems.exists(_.isExclusive)
+  /** Is capture set exclusive? If `required` is true, a variable capture set
+   *  is forced to Writer mutability which makes it exclusive. Otherwise a set
+   *  is exclusive if one of its elements is exclusive.
+   *  Possible issue: If required is true, and the set is a constant, with
+   *  multiple elements that each have a variable capture set, then we make
+   *  the set exclusive by updating the first such variable capture set with
+   *  Ignore mutability to have Write mutability. That makes the effect
+   *  order dependent.
+   */
+  def isExclusive(required: Boolean = false)(using Context): Boolean =
+    if required && !isConst && mutability == Ignored then
+      mutability = Writer
+    mutability == Writer
+    || elems.exists(_.isExclusive(required))
 
   /** Similar to isExclusive, but also includes capture set variables
    *  with unknown status.

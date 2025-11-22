@@ -260,7 +260,7 @@ object SepCheck:
        */
       def common(refs1: Refs, refs2: Refs) =
         refs1.filter: ref =>
-          ref.isExclusive && refs2.exists(_.stripReadOnly.covers(ref))
+          ref.isExclusive() && refs2.exists(_.stripReadOnly.covers(ref))
         ++
         refs1
           .filter:

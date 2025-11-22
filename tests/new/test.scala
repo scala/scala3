@@ -1,13 +1,27 @@
-class Ref[T](init: T) extends caps.Mutable:
-  var x: T = init
-  update def set(x: T) = this.x = x
+import caps.*
 
-class Ref2[T](init: T) extends caps.Mutable:
-  val x = Ref[T](init)
+class Ref[T](init: T) extends caps.Stateful, Unscoped:
+  var x = init
+  def get: T = x
+  update def put(y: T): Unit = x = y
 
-def test =
-  val r4 = () =>
-    val r = Ref2(22)
-    r
-  //val _: Ref2[Int]^{r4*} = r4()
-  r4().x.set(33) // ok
+class File:
+  def read(): String = ???
+
+def withFile[T](op: (f: File^) => T): T =
+  op(new File)
+
+def withFileAndRef[T](op: (f: File^, r: Ref[String]^) => T): T =
+  op(File(), Ref(""))
+
+def Test =
+/*
+  withFileAndRef: (f, r: Ref[String]^) =>
+    r.put(f.read())
+*/
+
+  withFileAndRef: (f, r) =>
+    r.put(f.read())
+
+
+

@@ -83,24 +83,32 @@ object Mutability:
         if mbr.symbol.is(Method) then mbr.symbol.isUpdateMethod
         else !mbr.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
 
-    /** OK, except if `tp` extends `Stateful` but `tp`'s capture set is non-exclusive */
-    private def exclusivity(using Context): Exclusivity =
+    /** OK, except if `tp` extends `Stateful` but `tp`'s capture set is non-exclusive
+     *  @param required  if true, exclusivity can be obtained by setting the mutability
+     *                   status of some capture set variable from Ignored to Writer.
+     */
+    private def exclusivity(required: Boolean)(using Context): Exclusivity =
       if tp.derivesFrom(defn.Caps_Stateful) then
         tp match
-          case tp: Capability if tp.isExclusive => Exclusivity.OK
-          case _ => tp.captureSet.exclusivity(tp)
+          case tp: Capability if tp.isExclusive(required) => Exclusivity.OK
+          case _ =>
+            if tp.captureSet.isExclusive(required) then Exclusivity.OK
+            else Exclusivity.ReadOnly(tp)
       else Exclusivity.OK
 
-    /** Test conditions (1) and (2) listed in `adaptReadOnly` below */
-    private def exclusivityInContext(using Context): Exclusivity = tp match
+    /** Test conditions (1) and (2) listed in `adaptReadOnly` below
+     *  @param required  if true, exclusivity can be obtained by setting the mutability
+     *                   status of some capture set variable from Ignored to Writer.
+     */
+    private def exclusivityInContext(required: Boolean = false)(using Context): Exclusivity = tp match
       case tp: ThisType =>
         if tp.derivesFrom(defn.Caps_Stateful)
         then ctx.owner.inExclusivePartOf(tp.cls)
         else Exclusivity.OK
       case tp @ TermRef(prefix: Capability, _) =>
-        prefix.exclusivityInContext.andAlso(tp.exclusivity)
+        prefix.exclusivityInContext(required).andAlso(tp.exclusivity(required))
       case _ =>
-        tp.exclusivity
+        tp.exclusivity(required)
 
     def expectsReadOnly(using Context): Boolean = tp match
       case tp: PathSelectionProto =>
@@ -108,10 +116,6 @@ object Mutability:
       case _ =>
         tp.isValueType
         && (!tp.isStatefulType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
-
-  extension (cs: CaptureSet)
-    private def exclusivity(tp: Type)(using Context): Exclusivity =
-      if cs.isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
 
   extension (ref: TermRef | ThisType)
     /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
@@ -122,7 +126,7 @@ object Mutability:
      */
     def adjustReadOnly(pt: Type)(using Context): Capability = {
       if ref.derivesFromStateful
-          && (pt.expectsReadOnly || ref.exclusivityInContext != Exclusivity.OK)
+          && (pt.expectsReadOnly || ref.exclusivityInContext() != Exclusivity.OK)
       then ref.readOnly
       else ref
     }.showing(i"Adjust RO $ref vs $pt = $result", capt)
@@ -131,7 +135,7 @@ object Mutability:
    *  of a field of `qualType`.
    */
   def checkUpdate(qualType: Type, pos: SrcPos)(msg: => String)(using Context): Unit =
-    qualType.exclusivityInContext match
+    qualType.exclusivityInContext(required = true) match
       case Exclusivity.OK =>
       case err =>
         report.error(em"$msg\nsince ${err.description(qualType)}.", pos)
@@ -238,8 +242,8 @@ object Mutability:
       case improved @ CapturingType(parent, refs)
       if parent.derivesFrom(defn.Caps_Stateful)
           && expected.isValueType
-          && refs.isExclusive
-          && !original.exclusivityInContext.isOK =>
+          && refs.isExclusive()
+          && !original.exclusivityInContext().isOK =>
         improved.derivedCapturingType(parent, refs.readOnly)
           .showing(i"Adapted readonly $improved for $tree with original = $original in ${ctx.owner} --> $result", capt)
       case improved =>
