@@ -531,7 +531,11 @@ extension (cls: ClassSymbol)
     else defn.AnyClass
 
   def isSeparate(using Context): Boolean =
-    cls.typeRef.isStatefulType || cls.derivesFrom(defn.Caps_Separate)
+    cls.derivesFrom(defn.Caps_Separate)
+    || cls.typeRef.isStatefulType
+    || cls.paramGetters.exists: getter =>
+          !getter.is(Private) // Setup makes sure that getters with capture sets are not private
+          && getter.hasAnnotation(defn.ConsumeAnnot)
 
 extension (sym: Symbol)
 

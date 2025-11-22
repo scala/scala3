@@ -1384,14 +1384,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      type arguments. Charge deep capture sets of type arguments to non-reserved typevars
      *      to the environment. Other generic parents are represented as TypeApplys, where the
      *      same check is already done in the TypeApply.
-     *   6. Consume parameters are only allowed for classes producing a fresh cap
-     *      for their constructor, and they don't contribute to the capture set. Example:
-     *
-     *        class A(consume val x: B^) extends caps.Separate
-     *        val a = A(b)
-     *
-     *      Here, `a` is of type A{val x: B^}^, and the outer `^` does not hide `b`.
-     *      That's necessary since we would otherwise get consume/use conflicts on `b`.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
@@ -1435,28 +1427,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
-
-        // (6) Check that consume parameters are covered by an implied FreshCap
-        for getter <- cls.paramGetters do
-          if !getter.is(Private) // Setup makes sure that getters with capture sets are not private
-            && getter.hasAnnotation(defn.ConsumeAnnot)
-          then
-            val implied = captureSetImpliedByFields(cls, cls.appliedRef)
-            val getterCS = getter.info.captureSet
-
-            val hasCoveringFresh = implied.elems.exists:
-              case fresh: FreshCap =>
-                getterCS.elems.forall: elem =>
-                  given VarState = VarState.Unrecorded // make sure we don't add to fresh's hidden set
-                  fresh.maxSubsumes(elem, canAddHidden = true)
-              case _ =>
-                false
-
-            if !hasCoveringFresh then
-              report.error(
-                  em"""A consume parameter is only allowed for classes producing a `cap` in their constructor.
-                      |This can be achieved by having the class extend caps.Separate.""",
-                  getter.srcPos)
 
         super.recheckClassDef(tree, impl, cls)
       finally

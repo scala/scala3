@@ -56,7 +56,7 @@ class Counter extends Stateful:
 
 In class `Counter`, the `incr` method should be declared as an update method since it accesses `this` as an exclusive write capability by writing to the variable `this.count` in its environment.
 
-`update` can also be used on an inner class of a class or object extending `Stateful`. It gives all code in the class the right to  access exclusive capabilities in the class environment. Normal classes
+`update` can also be used on an inner class of a class or object extending `Stateful`. It gives all code in the inner class the right to  access exclusive capabilities in the outer class environment. Normal classes
 can only access exclusive capabilities defined in the class or passed to it in parameters.
 
 For instance, we can also define counter objects that update a shared variable that is external to the object:
