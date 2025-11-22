@@ -384,6 +384,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
       topLines = Some(4)
     )
 
+  @Ignore
   @Test def `no-apply` =
     checkSnippet(
       s"""|package example

@@ -455,7 +455,7 @@ object Int extends AnyValCompanion {
   /** The largest value representable as an Int. */
   final val MaxValue = java.lang.Integer.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToInteger`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -464,7 +464,7 @@ object Int extends AnyValCompanion {
    */
   def box(x: Int): java.lang.Integer = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Integer.
    *
@@ -477,7 +477,7 @@ object Int extends AnyValCompanion {
   def unbox(x: java.lang.Object): Int = ???
 
   /** The String representation of the scala.Int companion object. */
-  override def toString = "object scala.Int"
+  override def toString() = "object scala.Int"
   /** Language mandated coercions from Int to "wider" types. */
   import scala.language.implicitConversions
   @deprecated("Implicit conversion from Int to Float is dangerous because it loses precision. Write `.toFloat` instead.", "2.13.1")

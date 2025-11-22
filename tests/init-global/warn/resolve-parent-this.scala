@@ -1,6 +1,6 @@
 class Delegate {
   def foo() = f
-  val f: O.type = O
+  val f: O.type = O // warn
 }
 
 object O extends Delegate {

@@ -14,6 +14,7 @@ package scala.runtime;
 
 import java.lang.invoke.*;
 
+@Deprecated
 public final class SymbolLiteral {
     private SymbolLiteral() {
     }

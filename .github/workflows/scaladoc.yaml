@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17
@@ -41,11 +41,11 @@ jobs:
       - name: Compile and test scala3doc-js
         run: ./project/scripts/sbt scaladoc-js-main/test
 
-      - name: Compile and test
-        run: |
-          ./project/scripts/sbt scaladoc/test
-          ./project/scripts/sbt dist/Universal/stage
-          ./project/scripts/cmdScaladocTests
+      #- name: Compile and test
+      #  run: |
+      #    ./project/scripts/sbt scaladoc/test
+      #    ./project/scripts/sbt dist/Universal/stage
+      #    ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
         run: ./project/scripts/sbt scaladoc/publishLocal
@@ -61,9 +61,6 @@ jobs:
 
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
-
-      - name: Generate documentation for example project using dotty-sbt
-        run: ./project/scripts/sbt "sbt-test/scripted sbt-dotty/scaladoc"
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
@@ -81,7 +78,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17

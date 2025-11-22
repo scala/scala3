@@ -26,6 +26,7 @@ import cc.*
 import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
+import reporting.Message.Note
 import scala.util.boundary, boundary.break
 
 /** Provides methods to compare types.
@@ -61,7 +62,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var monitored = false
 
   private var maxErrorLevel: Int = -1
-  protected var errorNotes: List[(Int, ErrorNote)] = Nil
+  protected var errorNotes: List[(Int, Note)] = Nil
 
   val undoLog = mutable.ArrayBuffer[() => Unit]()
 
@@ -814,21 +815,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: MethodType =>
         def compareMethod = tp1 match {
           case tp1: MethodType =>
-            (tp1.signature consistentParams tp2.signature) &&
-            matchingMethodParams(tp1, tp2) &&
-            (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            tp1.signature.consistentParams(tp2.signature)
+            && matchingMethodParams(tp1, tp2)
+            && (!tp2.isImplicitMethod || tp1.isImplicitMethod)
+            && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
       case tp2: PolyType =>
         def comparePoly = tp1 match {
           case tp1: PolyType =>
-            comparingTypeLambdas(tp1, tp2) {
-              (tp1.signature consistentParams tp2.signature)
+            comparingTypeLambdas(tp1, tp2):
+              tp1.signature.consistentParams(tp2.signature)
               && matchingPolyParams(tp1, tp2)
               && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-            }
           case _ => false
         }
         comparePoly
@@ -853,7 +853,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
              || (hi2 eq AnyKindType)
              || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
-            tp2 contains tp1
+            tp2.contains(tp1)
           case _ =>
             false
         }
@@ -862,7 +862,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
-            if refs1.isAlwaysEmpty then recur(tp1, parent2)
+            if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
+              recur(tp1, parent2)
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton
               // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
@@ -2308,7 +2309,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type): Boolean = tp.stripTypeVar match {
-    case tp: TypeParamRef if constraint contains tp => true
+    case tp: TypeParamRef if constraint.contains(tp) => true
     case _ => proto.isMatchedBy(tp, keepConstraint = true)
   }
 
@@ -2460,7 +2461,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** If the range `tp1..tp2` consist of a single type, that type, otherwise NoType`.
    *  This is the case if `tp1 =:= tp2`, but also if `tp1 <:< tp2`, `tp1` is a singleton type,
-   *  and `tp2` derives from `scala.Singleton` (or vice-versa). Examples of the latter case:
+   *  and `tp2` derives from `scala.Singleton` and `sourceVersion.enablesDistributeAnd` (or vice-versa).
+   *  Examples of the latter case:
    *
    *     "name".type .. Singleton
    *     "name".type .. String & Singleton
@@ -2473,8 +2475,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def isSingletonBounds(lo: Type, hi: Type) =
       lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && isSubTypeWhenFrozen(lo, hi)
     if (isSameTypeWhenFrozen(tp1, tp2)) tp1
-    else if (isSingletonBounds(tp1, tp2)) tp1
-    else if (isSingletonBounds(tp2, tp1)) tp2
+    else if sourceVersion.enablesDistributeAnd then
+      if (isSingletonBounds(tp1, tp2)) tp1
+      else if (isSingletonBounds(tp2, tp1)) tp2
+      else NoType
     else NoType
   }
 
@@ -2771,7 +2775,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @pre !(tp1 <: tp2) && !(tp2 <:< tp1) -- these cases were handled before
    */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
-    case tp1 @ AppliedType(tycon1, args1) =>
+    case tp1 @ AppliedType(tycon1, args1) if sourceVersion.enablesDistributeAnd =>
       tp2 match {
         case AppliedType(tycon2, args2)
         if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
@@ -2819,8 +2823,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** Try to distribute `|` inside type, detect and handle conflicts
-   *  Note that, unlike for `&`, a disjunction cannot be pushed into
-   *  a refined or applied type. Example:
+   *  Note that a disjunction cannot be pushed into a refined or applied type. Example:
    *
    *     List[T] | List[U] is not the same as List[T | U].
    *
@@ -2852,7 +2855,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo =>
-          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
+          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || tp1.cls.owner.derivesFrom(tp2.cls.owner)
         case _ =>
           false
       }
@@ -2911,8 +2914,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
     subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-        || refs1.subCaptures(CaptureSet.empty, makeVarState())
+    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
+        || refs1.subCaptures(CaptureSet.empty, makeVarState()))
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
@@ -3131,9 +3134,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        * unique value derives from the class.
        */
       case (tp1: SingletonType, tp2) =>
-        !tp1.derivesFrom(tp2.classSymbol)
+        !tp1.derivesFrom(tp2.classSymbol, defaultIfUnknown = true)
       case (tp1, tp2: SingletonType) =>
-        !tp2.derivesFrom(tp1.classSymbol)
+        !tp2.derivesFrom(tp1.classSymbol, defaultIfUnknown = true)
 
       /* Now both sides are possibly-parameterized class types `p.C[Ts]` and `q.D[Us]`.
        *
@@ -3189,7 +3192,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
             val commonBaseClasses = cls1.classDenot.baseClasses.filter(cls2BaseClassSet.contains(_))
             def isAncestorOfOtherBaseClass(cls: ClassSymbol): Boolean =
-              commonBaseClasses.exists(other => (other ne cls) && other.derivesFrom(cls))
+              commonBaseClasses.exists(other => (other ne cls) && other.mayDeriveFrom(cls))
             val result = commonBaseClasses.exists { baseClass =>
               !isAncestorOfOtherBaseClass(baseClass) && isBaseTypeWithDisjointArguments(baseClass, innerPending)
             }
@@ -3230,7 +3233,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       .filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
-      cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)
+      cls1.mayDeriveFrom(cls2) || cls2.mayDeriveFrom(cls1)
 
     def smallestNonTraitBase(cls: Symbol): Symbol =
       val classes = if cls.isClass then cls.asClass.baseClasses else cls.info.classSymbols
@@ -3322,12 +3325,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
 
-  /** Add given ErrorNote note, provided there is not yet an error note with
-   *  the same class as `note`.
+  /** Add given note, provided there is not yet an error note that covers `note`
+   *  If the new note is added, any existing note covered by it is removed first.
    */
-  def addErrorNote(note: ErrorNote): Unit =
-    if errorNotes.forall(_._2.kind != note.kind) then
-      errorNotes = (recCount, note) :: errorNotes
+  def addErrorNote(note: Note)(using Context): Unit =
+    if !errorNotes.exists(_._2.covers(note)) then
+      errorNotes = (recCount, note) :: errorNotes.filterConserve(n => !note.covers(n._2))
       assert(maxErrorLevel <= recCount)
       maxErrorLevel = recCount
 
@@ -3354,20 +3357,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
 object TypeComparer {
 
-  /** A base trait for data producing addenda to error messages */
-  trait ErrorNote:
-    /** A disciminating kind. An error note is not added if it has the same kind
-     *  as an already existing error note.
-     */
-    def kind: Class[?] = getClass
-
-    def description(using Context): String
-  end ErrorNote
-
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
     case OK, OKwithGADTUsed, OKwithOpaquesUsed
-    case Fail(errorNotes: List[ErrorNote])
+    case Fail(errorNotes: List[Note])
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
@@ -3545,10 +3538,10 @@ object TypeComparer {
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
     currentComparer.inNestedLevel(op)
 
-  def addErrorNote(note: ErrorNote)(using Context): Unit =
+  def addErrorNote(note: Note)(using Context): Unit =
     currentComparer.addErrorNote(note)
 
-  def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
+  def updateErrorNotes(f: PartialFunction[Note, Note])(using Context): Unit =
     currentComparer.errorNotes = currentComparer.errorNotes.mapConserve: p =>
       val (level, note) = p
       if f.isDefinedAt(note) then (level, f(note)) else p
@@ -3962,7 +3955,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   private val b = new StringBuilder
   private var lastForwardGoal: String | Null = null
 
-  private def appendFailure(notes: List[ErrorNote]) =
+  private def appendFailure(notes: List[Note]) =
     if lastForwardGoal != null then  // last was deepest goal that failed
       b.append(s"  = false")
       for case note: printing.Showable <- notes do

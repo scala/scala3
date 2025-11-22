@@ -40,10 +40,12 @@ object Diagnostic:
    */
   trait OriginWarning(val origin: String):
     self: Warning =>
+  object OriginWarning:
+    val NoOrigin = "..."
 
   /** Lints are likely to be filtered. Provide extra axes for filtering by `-Wconf`.
    */
-  class LintWarning(msg: Message, pos: SourcePosition, origin: String)
+  class LintWarning(msg: Message, pos: SourcePosition, origin: String = OriginWarning.NoOrigin)
   extends Warning(msg, pos), OriginWarning(origin)
 
   class Warning(
@@ -86,6 +88,12 @@ object Diagnostic:
   class DeprecationWarning(msg: Message, pos: SourcePosition, origin: String)
   extends ConditionalWarning(msg, pos), OriginWarning(origin):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
+
+  class ConfigurationWarning(msg: Message, pos: SourcePosition) extends ConditionalWarning(msg, pos):
+    def enablingOption(using Context): Setting[Boolean] = ConfigurationWarning.setting
+    override def isSummarizedConditional(using Context): Boolean = false
+  object ConfigurationWarning:
+    private val setting = Setting.internal("-configuration", value = true)
 
   class MigrationWarning(
     msg: Message,

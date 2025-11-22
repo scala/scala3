@@ -15,6 +15,8 @@ package collection
 package convert
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.{concurrent => juc}
 import java.util.{NavigableMap}
 import java.{lang => jl, util => ju}
@@ -29,55 +31,55 @@ import scala.util.control.ControlThrowable
 // not private[convert] because `WeakHashMap` uses JMapWrapper
 private[collection] object JavaCollectionWrappers extends Serializable {
   @SerialVersionUID(3L)
-  class IteratorWrapper[A](val underlying: Iterator[A]) extends ju.Iterator[A] with ju.Enumeration[A] with Serializable {
+  class IteratorWrapper[A](val underlying: Iterator[A]^) extends ju.Iterator[A] with ju.Enumeration[A] with Serializable {
     def hasNext = underlying.hasNext
-    def next() = underlying.next()
+    def next(): A = underlying.next()
     def hasMoreElements = underlying.hasNext
-    def nextElement() = underlying.next()
+    def nextElement(): A = underlying.next()
     override def remove(): Nothing = throw new UnsupportedOperationException
     override def equals(other: Any): Boolean = other match {
       case that: IteratorWrapper[_] => this.underlying == that.underlying
       case _ => false
     }
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   @SerialVersionUID(3L)
   class JIteratorWrapper[A](val underlying: ju.Iterator[A]) extends AbstractIterator[A] with Serializable {
     def hasNext = underlying.hasNext
-    def next() = underlying.next
+    def next(): A = underlying.next
     override def equals(other: Any): Boolean = other match {
       case that: JIteratorWrapper[_] => this.underlying == that.underlying
       case _ => false
     }
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   @SerialVersionUID(3L)
   class JEnumerationWrapper[A](val underlying: ju.Enumeration[A]) extends AbstractIterator[A] with Serializable {
     def hasNext = underlying.hasMoreElements
-    def next() = underlying.nextElement
+    def next(): A = underlying.nextElement
     override def equals(other: Any): Boolean = other match {
       case that: JEnumerationWrapper[_] => this.underlying == that.underlying
       case _ => false
     }
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   trait IterableWrapperTrait[A] extends ju.AbstractCollection[A] {
-    val underlying: Iterable[A]
+    val underlying: Iterable[A]^
     def size = underlying.size
-    override def iterator: IteratorWrapper[A] = new IteratorWrapper(underlying.iterator)
+    override def iterator: IteratorWrapper[A]^{this} = new IteratorWrapper(underlying.iterator)
     override def isEmpty = underlying.isEmpty
   }
 
   @SerialVersionUID(3L)
-  class IterableWrapper[A](val underlying: Iterable[A]) extends ju.AbstractCollection[A] with IterableWrapperTrait[A] with Serializable {
+  class IterableWrapper[A](val underlying: Iterable[A]^) extends ju.AbstractCollection[A] with IterableWrapperTrait[A] with Serializable {
     override def equals(other: Any): Boolean = other match {
       case that: IterableWrapper[_] => this.underlying == that.underlying
       case _ => false
     }
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   @SerialVersionUID(3L)
@@ -92,7 +94,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       case that: JIterableWrapper[_] => this.underlying == that.underlying
       case _ => false
     }
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   @SerialVersionUID(3L)
@@ -100,7 +102,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractIterable[A]
       with StrictOptimizedIterableOps[A, Iterable, Iterable[A]]
       with Serializable {
-    def iterator = underlying.iterator.asScala
+    def iterator: Iterator[A] = underlying.iterator.asScala
     override def size = underlying.size
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
@@ -109,18 +111,18 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       case that: JCollectionWrapper[_] => this.underlying == that.underlying
       case _ => false
     }
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   @SerialVersionUID(3L)
   class SeqWrapper[A](val underlying: Seq[A]) extends ju.AbstractList[A] with IterableWrapperTrait[A] with Serializable {
-    def get(i: Int) = underlying(i)
+    def get(i: Int): A = underlying(i)
   }
 
   @SerialVersionUID(3L)
   class MutableSeqWrapper[A](val underlying: mutable.Seq[A]) extends ju.AbstractList[A] with IterableWrapperTrait[A] with Serializable {
-    def get(i: Int) = underlying(i)
-    override def set(i: Int, elem: A) = {
+    def get(i: Int): A = underlying(i)
+    override def set(i: Int, elem: A): A = {
       val p = underlying(i)
       underlying(i) = elem
       p
@@ -129,10 +131,10 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
   @SerialVersionUID(3L)
   class MutableBufferWrapper[A](val underlying: mutable.Buffer[A]) extends ju.AbstractList[A] with IterableWrapperTrait[A] with Serializable {
-    def get(i: Int) = underlying(i)
-    override def set(i: Int, elem: A) = { val p = underlying(i); underlying(i) = elem; p }
+    def get(i: Int): A = underlying(i)
+    override def set(i: Int, elem: A): A = { val p = underlying(i); underlying(i) = elem; p }
     override def add(elem: A) = { underlying += elem; true }
-    override def remove(i: Int) = underlying remove i
+    override def remove(i: Int): A = underlying remove i
   }
 
   @SerialVersionUID(3L)
@@ -146,12 +148,12 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
     override def iterator: Iterator[A] = underlying.iterator.asScala
-    def apply(i: Int) = underlying.get(i)
+    def apply(i: Int): A = underlying.get(i)
     def update(i: Int, elem: A) = underlying.set(i, elem)
-    def prepend(elem: A) = { underlying.subList(0, 0) add elem; this }
-    def addOne(elem: A): this.type = { underlying add elem; this }
+    def prepend(elem: A) = { underlying.subList(0, 0).add(elem); this }
+    def addOne(elem: A): this.type = { underlying.add(elem); this }
     def insert(idx: Int,elem: A): Unit = underlying.subList(0, idx).add(elem)
-    def insertAll(i: Int, elems: IterableOnce[A]) = {
+    def insertAll(i: Int, elems: IterableOnce[A]^) = {
       val ins = underlying.subList(0, i)
       elems.iterator.foreach(ins.add(_))
     }
@@ -160,7 +162,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     // Note: Clone cannot just call underlying.clone because in Java, only specific collections
     // expose clone methods.  Generically, they're protected.
     override def clone(): JListWrapper[A] = new JListWrapper(new ju.ArrayList[A](underlying))
-    def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
+    def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
       remove(from, replaced)
       insertAll(from, patch)
       this
@@ -183,7 +185,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       val ui = underlying.iterator
       var prev: Option[A] = None
       def hasNext = ui.hasNext
-      def next = { val e = ui.next(); prev = Some(e); e }
+      def next: A = { val e = ui.next(); prev = Some(e); e }
       override def remove() = prev match {
         case Some(e) =>
           underlying match {
@@ -226,10 +228,10 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     def contains(elem: A): Boolean = underlying.contains(elem)
 
-    def addOne(elem: A): this.type = { underlying add elem; this }
-    def subtractOne(elem: A): this.type = { underlying remove elem; this }
+    def addOne(elem: A): this.type = { underlying.add(elem); this }
+    def subtractOne(elem: A): this.type = { underlying.remove(elem); this }
 
-    override def remove(elem: A): Boolean = underlying remove elem
+    override def remove(elem: A): Boolean = underlying.remove(elem)
 
     override def clear(): Unit = {
       underlying.clear()
@@ -277,13 +279,13 @@ private[collection] object JavaCollectionWrappers extends Serializable {
           new ju.Map.Entry[K, V] {
             def getKey = k
             def getValue = v
-            def setValue(v1 : V) = self.put(k, v1)
+            def setValue(v1 : V): V = self.put(k, v1)
 
             // It's important that this implementation conform to the contract
             // specified in the javadocs of java.util.Map.Entry.hashCode
             //
             // See https://github.com/scala/bug/issues/10663
-            override def hashCode = {
+            override def hashCode() = {
               (if (k == null) 0 else k.hashCode()) ^
               (if (v == null) 0 else v.hashCode())
             }
@@ -324,7 +326,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
   @SerialVersionUID(3L)
   class MutableMapWrapper[K, V](val underlying: mutable.Map[K, V]) extends MapWrapper[K, V](underlying) {
-    override def put(k: K, v: V) = underlying.put(k, v) match {
+    override def put(k: K, v: V): V = underlying.put(k, v) match {
       case Some(v1) => v1
       case None => null.asInstanceOf[V]
     }
@@ -346,7 +348,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends mutable.AbstractMap[K, V]
       with JMapWrapperLike[K, V, mutable.Map, mutable.Map[K, V]] with Serializable
 
-  trait JMapWrapperLike[K, V, +CC[X, Y] <: mutable.MapOps[X, Y, CC, _], +C <: mutable.MapOps[K, V, CC, C]]
+  trait JMapWrapperLike[K, V, +CC[X, Y] <: mutable.MapOps[X, Y, CC, ?], +C <: mutable.MapOps[K, V, CC, C]]
     extends mutable.MapOps[K, V, CC, C]
       with StrictOptimizedMapOps[K, V, CC, C]
       with StrictOptimizedIterableOps[(K, V), mutable.Iterable, C] {
@@ -373,7 +375,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       }
 
     def addOne(kv: (K, V)): this.type = { underlying.put(kv._1, kv._2); this }
-    def subtractOne(key: K): this.type = { underlying remove key; this }
+    def subtractOne(key: K): this.type = { underlying.remove(key); this }
 
     // support Some(null) if currently bound to null
     override def put(k: K, v: V): Option[V] =
@@ -419,7 +421,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     }
 
     def iterator: Iterator[(K, V)] = new AbstractIterator[(K, V)] {
-      val ui = underlying.entrySet.iterator
+      val ui: java.util.Iterator[java.util.Map.Entry[K, V]] = underlying.entrySet.iterator
       def hasNext = ui.hasNext
       def next() = { val e = ui.next(); (e.getKey, e.getValue) }
     }
@@ -457,7 +459,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     def underlyingConcurrentMap: concurrent.Map[K, V] = underlying
 
-    override def putIfAbsent(k: K, v: V) = underlying.putIfAbsent(k, v).getOrElse(null.asInstanceOf[V])
+    override def putIfAbsent(k: K, v: V): V = underlying.putIfAbsent(k, v).getOrElse(null.asInstanceOf[V])
 
     override def remove(k: AnyRef, v: AnyRef) =
       try underlying.remove(k.asInstanceOf[K], v.asInstanceOf[V])
@@ -477,7 +479,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractJMapWrapper[K, V]
       with concurrent.Map[K, V] {
 
-    override def get(k: K) = Option(underlying get k)
+    override def get(k: K) = Option(underlying.get(k))
 
     override def getOrElseUpdate(key: K, op: => V): V =
       underlying.computeIfAbsent(key, _ => op) match {
@@ -524,7 +526,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def isEmpty: Boolean = underlying.isEmpty
     def keys: ju.Enumeration[K] = underlying.keysIterator.asJavaEnumeration
     def elements: ju.Enumeration[V] = underlying.valuesIterator.asJavaEnumeration
-    def get(key: AnyRef) = try {
+    def get(key: AnyRef): V = try {
       underlying get key.asInstanceOf[K] match {
         case None => null.asInstanceOf[V]
         case Some(v) => v
@@ -536,7 +538,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       case Some(v) => v
       case None => null.asInstanceOf[V]
     }
-    override def remove(key: AnyRef) = try {
+    override def remove(key: AnyRef): V = try {
       underlying remove key.asInstanceOf[K] match {
         case None => null.asInstanceOf[V]
         case Some(v) => v
@@ -550,7 +552,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       case _ => false
     }
 
-    override def hashCode: Int = underlying.hashCode()
+    override def hashCode(): Int = underlying.hashCode()
   }
 
   @SerialVersionUID(3L)
@@ -559,17 +561,17 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
 
-    def get(k: K) = Option(underlying get k)
+    def get(k: K) = Option(underlying.get(k))
 
     def addOne(kv: (K, V)): this.type = { underlying.put(kv._1, kv._2); this }
-    def subtractOne(key: K): this.type = { underlying remove key; this }
+    def subtractOne(key: K): this.type = { underlying.remove(key); this }
 
     override def put(k: K, v: V): Option[V] = Option(underlying.put(k, v))
 
     override def update(k: K, v: V): Unit = { underlying.put(k, v) }
 
-    override def remove(k: K): Option[V] = Option(underlying remove k)
-    def iterator = underlying.keys.asScala map (k => (k, underlying get k))
+    override def remove(k: K): Option[V] = Option(underlying.remove(k))
+    def iterator = underlying.keys.asScala map (k => (k, underlying.get(k)))
 
     override def clear() = iterator.foreach(entry => underlying.remove(entry._1))
 
@@ -588,12 +590,12 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = size
     def get(k: String) = {
-      val v = underlying get k
+      val v = underlying.get(k)
       if (v != null) Some(v.asInstanceOf[String]) else None
     }
 
     def addOne(kv: (String, String)): this.type = { underlying.put(kv._1, kv._2); this }
-    def subtractOne(key: String): this.type = { underlying remove key; this }
+    def subtractOne(key: String): this.type = { underlying.remove(key); this }
 
     override def put(k: String, v: String): Option[String] = {
       val r = underlying.put(k, v)
@@ -603,12 +605,12 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def update(k: String, v: String): Unit = { underlying.put(k, v) }
 
     override def remove(k: String): Option[String] = {
-      val r = underlying remove k
+      val r = underlying.remove(k)
       if (r != null) Some(r.asInstanceOf[String]) else None
     }
 
     def iterator: Iterator[(String, String)] = new AbstractIterator[(String, String)] {
-      val ui = underlying.entrySet.iterator
+      val ui: java.util.Iterator[java.util.Map.Entry[Object, Object]] = underlying.entrySet.iterator
       def hasNext = ui.hasNext
       def next() = {
         val e = ui.next()
@@ -620,12 +622,11 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     override def empty: JPropertiesWrapper = new JPropertiesWrapper(new ju.Properties)
 
-    def getProperty(key: String) = underlying.getProperty(key)
+    def getProperty(key: String): String | Null = underlying.getProperty(key)
 
-    def getProperty(key: String, defaultValue: String) =
-      underlying.getProperty(key, defaultValue)
+    def getProperty(key: String, defaultValue: String): String = underlying.getProperty(key, defaultValue)
 
-    def setProperty(key: String, value: String) =
+    def setProperty(key: String, value: String): AnyRef | Null =
       underlying.setProperty(key, value)
 
     override def mapFactory: mutable.HashMap.type = mutable.HashMap

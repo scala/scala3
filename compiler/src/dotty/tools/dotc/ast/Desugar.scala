@@ -150,25 +150,22 @@ object desugar {
      *  accessor of a type parameter is a private type alias that cannot be accessed
      *  from subclasses.
      */
-    def derivedTree(sym: Symbol)(using Context): tpd.TypeTree = {
-      val relocate = new TypeMap {
+    def derivedTree(sym: Symbol)(using Context): tpd.TypeTree =
+      val relocate = new TypeMap:
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = mapCtx.outersIterator.dropWhile(_.scope eq mapCtx.scope).next()
             var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
-            if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
-            else {
+            if local.exists then defctx.owner.thisType.select(local).dealiasKeepAnnots
+            else
               def msg =
                 em"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               ErrorType(msg).assertingErrorsReported(msg)
-            }
           case _ =>
             mapOver(tp)
         }
-      }
       tpd.TypeTree(relocate(sym.info))
-    }
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
@@ -229,7 +226,7 @@ object desugar {
           paramss = (setterParam :: Nil) :: Nil,
           tpt     = TypeTree(defn.UnitType),
           rhs     = setterRhs
-        ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+        ).withMods((vdef.mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy | Transparent))
         .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
     else vdef1
@@ -1270,25 +1267,27 @@ object desugar {
     else tree
   }
 
+  def checkSimplePackageName(name: Name, errSpan: Span, source: SourceFile, isPackageObject: Boolean)(using Context) =
+    if !ctx.isAfterTyper then
+      name match
+      case name: SimpleName if (isPackageObject || !errSpan.isSynthetic) && name.exists(Chars.willBeEncoded) =>
+        report.warning(EncodedPackageName(name), source.atSpan(errSpan))
+      case _ =>
+
   def checkPackageName(mdef: ModuleDef | PackageDef)(using Context): Unit =
-
-    def check(name: Name, errSpan: Span): Unit = name match
-      case name: SimpleName if !errSpan.isSynthetic && name.exists(Chars.willBeEncoded) =>
-        report.warning(em"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour.", mdef.source.atSpan(errSpan))
-      case _ =>
-
-    def loop(part: RefTree): Unit = part match
-      case part @ Ident(name) => check(name, part.span)
-      case part @ Select(qual: RefTree, name) =>
-        check(name, part.nameSpan)
-        loop(qual)
-      case _ =>
-
+    def check(name: Name, errSpan: Span) = checkSimplePackageName(name, errSpan, mdef.source, isPackageObject = false)
     mdef match
-      case pdef: PackageDef => loop(pdef.pid)
-      case mdef: ModuleDef if mdef.mods.is(Package) => check(mdef.name, mdef.nameSpan)
-      case _ =>
-  end checkPackageName
+    case pdef: PackageDef =>
+      def loop(part: RefTree): Unit = part match
+        case part @ Ident(name) => check(name, part.span)
+        case part @ Select(qual: RefTree, name) =>
+          check(name, part.nameSpan)
+          loop(qual)
+        case _ =>
+      loop(pdef.pid)
+    case mdef: ModuleDef if mdef.mods.is(Package) =>
+      check(mdef.name, mdef.nameSpan)
+    case _ =>
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
@@ -1347,7 +1346,7 @@ object desugar {
       )).withSpan(tree.span)
   end makePolyFunctionType
 
-  /** Invent a name for an anonympus given of type or template `impl`. */
+  /** Invent a name for an anonymous given of type or template `impl`. */
   def inventGivenName(impl: Tree)(using Context): SimpleName =
     val str = impl match
       case impl: Template =>
@@ -1968,7 +1967,6 @@ object desugar {
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
-            .withFlags(Synthetic)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
@@ -2136,18 +2134,19 @@ object desugar {
        *  that refers to the bound variable for the pattern. Wildcard Binds are
        *  also replaced by Binds with fresh names.
        */
-      def makeIdPat(pat: Tree): (Tree, Ident) = pat match {
-        case bind @ Bind(name, pat1) =>
-          if name == nme.WILDCARD then
-            val name = UniqueName.fresh()
-            (cpy.Bind(pat)(name, pat1).withMods(bind.mods), Ident(name))
-          else (pat, Ident(name))
+      def makeIdPat(pat: Tree): (Tree, Ident) = pat match
+        case pat @ Bind(nme.WILDCARD, body) =>
+          val name =
+            body match
+            case Typed(Ident(nme.WILDCARD), tpt) if pat.mods.is(Given) => inventGivenName(tpt)
+            case _ => UniqueName.fresh()
+          (cpy.Bind(pat)(name, body).withMods(pat.mods), Ident(name))
+        case Bind(name, _) => (pat, Ident(name))
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
         case _ =>
           val name = UniqueName.fresh()
           (Bind(name, pat), Ident(name))
-      }
 
       /** Make a pattern filter:
        *    rhs.withFilter { case pat => true case _ => false }
@@ -2344,9 +2343,9 @@ object desugar {
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
       case ForDo(enums, body) =>
-        makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
+        makeFor(nme.foreach, nme.foreach, enums, body) `orElse` tree
       case ForYield(enums, body) =>
-        makeFor(nme.map, nme.flatMap, enums, body) orElse tree
+        makeFor(nme.map, nme.flatMap, enums, body) `orElse` tree
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))

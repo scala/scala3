@@ -4,8 +4,7 @@
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1} String
    |
-   |        Note that capability cap3, defined in method scope
-   |        cannot be included in outer capture set {cap1} of variable a.
+   |        Note that capability cap3 cannot be included in capture set {cap1} of variable a.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------
@@ -14,8 +13,7 @@
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1} String
    |
-   |        Note that capability cap3, defined in method scope
-   |        cannot be included in outer capture set {cap1} of variable a.
+   |        Note that capability cap3 cannot be included in capture set {cap1} of variable a.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:27:12 -----------------------------------------
@@ -27,21 +25,19 @@
    |        Note that capability cap3 is not included in capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:36:8 ------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:36:10 -----------------------------------------
 36 |  local { cap3 => // error
-   |        ^
-   |Found:    (cap3: CC^) ->'s1 String => String
-   |Required: CC^ -> String =>² String
+   |          ^
+   |      Capability cap3 outlives its scope: it leaks into outer capture set {cap3²} which is owned by method test.
+   |      The leakage occurred when trying to match the following types:
    |
-   |Note that capability cap cannot be included in outer capture set {cap²}.
+   |      Found:    (cap3: CC^) ->'s1 String ->{cap3} String
+   |      Required: CC^ -> String ->{cap3²} String
    |
-   |where:    =>   refers to a root capability associated with the result type of (cap3: CC^): String => String
-   |          =>²  refers to a fresh root capability created in method test of parameter parameter cap3² of method $anonfun
-   |          ^    refers to the universal root capability
-   |          cap  is a root capability associated with the result type of (cap3: CC^): String =>² String
-   |          cap² is a fresh root capability created in method test of parameter parameter cap3² of method $anonfun
+   |      where:    ^     refers to the universal root capability
+   |                cap3  is a reference to a value parameter
+   |                cap3² is a parameter in an anonymous function in method test
 37 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 38 |    g
-39 |  }
    |
    | longer explanation available when compiling with `-explain`

@@ -43,8 +43,8 @@ object Rewrites {
       pbuf.filterInPlace(x => !p(x.span))
 
     def apply(cs: Array[Char]): Array[Char] = {
-      val delta = pbuf.map(_.delta).sum
-      val patches = pbuf.toList.sortBy(_.span.start)
+      val patches = pbuf.toList.distinct.sortBy(_.span.start)
+      val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
         patches.reduceLeft {(p1, p2) =>
           assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")

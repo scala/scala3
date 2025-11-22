@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
@@ -44,7 +46,7 @@ sealed class ListSet[A]
     with IterableFactoryDefaults[A, ListSet]
     with DefaultSerializable {
 
-  override protected[this] def className: String = "ListSet"
+  override protected def className: String = "ListSet"
 
   override def size: Int = 0
   override def knownSize: Int = 0
@@ -77,7 +79,7 @@ sealed class ListSet[A]
 
     override def size = sizeInternal(this, 0)
     override def knownSize: Int = -1
-    @tailrec private[this] def sizeInternal(n: ListSet[A], acc: Int): Int =
+    @tailrec private def sizeInternal(n: ListSet[A], acc: Int): Int =
       if (n.isEmpty) acc
       else sizeInternal(n.next, acc + 1)
 
@@ -85,14 +87,14 @@ sealed class ListSet[A]
 
     override def contains(e: A): Boolean = containsInternal(this, e)
 
-    @tailrec private[this] def containsInternal(n: ListSet[A], e: A): Boolean =
+    @tailrec private def containsInternal(n: ListSet[A], e: A): Boolean =
       !n.isEmpty && (n.elem == e || containsInternal(n.next, e))
 
     override def incl(e: A): ListSet[A] = if (contains(e)) this else new Node(e)
 
     override def excl(e: A): ListSet[A] = removeInternal(e, this, Nil)
 
-    @tailrec private[this] def removeInternal(k: A, cur: ListSet[A], acc: List[ListSet[A]]): ListSet[A] =
+    @tailrec private def removeInternal(k: A, cur: ListSet[A], acc: List[ListSet[A]]): ListSet[A] =
       if (cur.isEmpty) acc.last
       else if (k == cur.elem) acc.foldLeft(cur.next)((t, h) => new t.Node(h.elem))
       else removeInternal(k, cur.next, cur :: acc)
@@ -118,7 +120,7 @@ sealed class ListSet[A]
 @SerialVersionUID(3L)
 object ListSet extends IterableFactory[ListSet] {
 
-  def from[E](it: scala.collection.IterableOnce[E]): ListSet[E] =
+  def from[E](it: scala.collection.IterableOnce[E]^): ListSet[E] =
     it match {
       case ls: ListSet[E] => ls
       case _ if it.knownSize == 0 => empty[E]

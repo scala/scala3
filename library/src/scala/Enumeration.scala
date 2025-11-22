@@ -98,21 +98,25 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The name of this enumeration.
    */
-  override def toString: String =
-    ((getClass.getName stripSuffix MODULE_SUFFIX_STRING split '.').last split
-       Regex.quote(NAME_JOIN_STRING)).last
+  override def toString(): String =
+    getClass.getName
+      .stripSuffix(MODULE_SUFFIX_STRING)
+      .split('.')
+      .last
+      .split(Regex.quote(NAME_JOIN_STRING))
+      .last
 
   /** The mapping from the integer used to identify values to the actual
     * values. */
   private val vmap: mutable.Map[Int, Value] = new mutable.HashMap
 
   /** The cache listing all values of this enumeration. */
-  @transient private var vset: ValueSet = null
+  @transient private var vset: ValueSet | Null = null
   @transient @volatile private var vsetDefined = false
 
   /** The mapping from the integer used to identify values to their
     * names. */
-  private[this] val nmap: mutable.Map[Int, String] = new mutable.HashMap
+  private val nmap: mutable.Map[Int, String] = new mutable.HashMap
 
   /** The values of this enumeration as a set.
    */
@@ -121,25 +125,25 @@ abstract class Enumeration (initial: Int) extends Serializable {
       vset = (ValueSet.newBuilder ++= vmap.values).result()
       vsetDefined = true
     }
-    vset
+    vset.nn
   }
 
   /** The integer to use to identify the next created value. */
   protected var nextId: Int = initial
 
   /** The string to use to name the next created value. */
-  protected var nextName: Iterator[String] = _
+  protected var nextName: Iterator[String] = compiletime.uninitialized
 
-  private def nextNameOrNull =
+  private def nextNameOrNull: String | Null =
     if (nextName != null && nextName.hasNext) nextName.next() else null
 
   /** The highest integer amongst those used to identify values in this
     * enumeration. */
-  private[this] var topId = initial
+  private var topId = initial
 
   /** The lowest integer amongst those used to identify values in this
     * enumeration, but no higher than 0. */
-  private[this] var bottomId = if(initial < 0) initial else 0
+  private var bottomId = if(initial < 0) initial else 0
 
   /** The one higher than the highest integer amongst those used to identify
     *  values in this enumeration. */
@@ -177,7 +181,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  @param name A human-readable name for that value.
    *  @return  Fresh value called `name`.
    */
-  protected final def Value(name: String): Value = Value(nextId, name)
+  protected final def Value(name: String | Null): Value = Value(nextId, name)
 
   /** Creates a fresh value, part of this enumeration, called `name`
    *  and identified by the integer `i`.
@@ -187,10 +191,10 @@ abstract class Enumeration (initial: Int) extends Serializable {
    * @param name A human-readable name for that value.
    * @return     Fresh value with the provided identifier `i` and name `name`.
    */
-  protected final def Value(i: Int, name: String): Value = new Val(i, name)
+  protected final def Value(i: Int, name: String | Null): Value = new Val(i, name)
 
   private def populateNameMap(): Unit = {
-    @tailrec def getFields(clazz: Class[_], acc: Array[JField]): Array[JField] = {
+    @tailrec def getFields(clazz: Class[?] | Null, acc: Array[JField]): Array[JField] = {
       if (clazz == null)
         acc
       else
@@ -237,7 +241,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
       case that: Enumeration#Value  => (outerEnum eq that.outerEnum) && (id == that.id)
       case _                        => false
     }
-    override def hashCode: Int = id.##
+    override def hashCode(): Int = id.##
 
     /** Create a ValueSet which contains this value and another one */
     def + (v: Value): ValueSet = ValueSet(this, v)
@@ -248,9 +252,9 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  identification behaviour.
    */
   @SerialVersionUID(0 - 3501153230598116017L)
-  protected class Val(i: Int, name: String) extends Value with Serializable {
+  protected class Val(i: Int, name: String | Null) extends Value with Serializable {
     def this(i: Int)       = this(i, nextNameOrNull)
-    def this(name: String) = this(nextId, name)
+    def this(name: String | Null) = this(nextId, name)
     def this()             = this(nextId)
 
     assert(!vmap.isDefinedAt(i), "Duplicate id: " + i)
@@ -285,7 +289,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  @define Coll `collection.immutable.SortedSet`
    */
   @SerialVersionUID(7229671200427364242L)
-  class ValueSet private[ValueSet] (private[this] var nnIds: immutable.BitSet)
+  class ValueSet private[ValueSet] (private var nnIds: immutable.BitSet)
     extends immutable.AbstractSet[Value]
       with immutable.SortedSet[Value]
       with immutable.SortedSetOps[Value, immutable.SortedSet, ValueSet]
@@ -341,7 +345,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     def fromBitMask(elems: Array[Long]): ValueSet = new ValueSet(immutable.BitSet.fromBitMask(elems))
     /** A builder object for value sets */
     def newBuilder: mutable.Builder[Value, ValueSet] = new mutable.Builder[Value, ValueSet] {
-      private[this] val b = new mutable.BitSet
+      private val b = new mutable.BitSet
       def addOne (x: Value) = { b += (x.id - bottomId); this }
       def clear() = b.clear()
       def result() = new ValueSet(b.toImmutable)

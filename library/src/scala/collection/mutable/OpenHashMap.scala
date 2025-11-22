@@ -14,6 +14,9 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
+import scala.annotation.nowarn
 import java.lang.Integer.numberOfLeadingZeros
 import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
@@ -27,7 +30,7 @@ import scala.collection.generic.DefaultSerializable
 object OpenHashMap extends MapFactory[OpenHashMap] {
 
   def empty[K, V] = new OpenHashMap[K, V]
-  def from[K, V](it: IterableOnce[(K, V)]): OpenHashMap[K,V] = empty ++= it
+  def from[K, V](it: IterableOnce[(K, V)]^): OpenHashMap[K,V] = empty ++= it
 
   def newBuilder[K, V]: Builder[(K, V), OpenHashMap[K,V]] =
     new GrowableBuilder[(K, V), OpenHashMap[K, V]](empty)
@@ -78,26 +81,26 @@ class OpenHashMap[Key, Value](initialSize : Int)
 
   override def mapFactory: MapFactory[OpenHashMap] = OpenHashMap
 
-  private[this] val actualInitialSize = OpenHashMap.nextPositivePowerOfTwo(initialSize)
+  private val actualInitialSize = OpenHashMap.nextPositivePowerOfTwo(initialSize)
 
-  private[this] var mask = actualInitialSize - 1
+  private var mask = actualInitialSize - 1
 
   /** The hash table.
     *
     * The table's entries are initialized to `null`, indication of an empty slot.
     * A slot is either deleted or occupied if and only if the entry is non-`null`.
     */
-  private[this] var table = new Array[Entry](actualInitialSize)
+  private var table = new Array[Entry](actualInitialSize)
 
-  private[this] var _size = 0
-  private[this] var deleted = 0
+  private var _size = 0
+  private var deleted = 0
 
   // Used for tracking inserts so that iterators can determine if concurrent modification has occurred.
-  private[this] var modCount = 0
+  private var modCount = 0
 
   override def size = _size
   override def knownSize: Int = size
-  private[this] def size_=(s : Int): Unit = _size = s
+  private def size_=(s : Int): Unit = _size = s
   override def isEmpty: Boolean = _size == 0
   /** Returns a mangled hash code of the provided key. */
   protected def hashOf(key: Key) = {
@@ -109,7 +112,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
   /** Increase the size of the table.
     * Copy only the occupied slots, effectively eliminating the deleted slots.
     */
-  private[this] def growTable() = {
+  private def growTable() = {
     val oldSize = mask + 1
     val newSize = 4 * oldSize
     val oldTable = table
@@ -126,7 +129,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     *
     * @param hash hash value for `key`
     */
-  private[this] def findIndex(key: Key, hash: Int): Int = {
+  private def findIndex(key: Key, hash: Int): Int = {
     var index = hash & mask
     var j = 0
 
@@ -186,7 +189,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
 
   /** Delete the hash table slot contained in the given entry. */
   @`inline`
-  private[this] def deleteSlot(entry: Entry) = {
+  private def deleteSlot(entry: Entry) = {
     entry.key = null.asInstanceOf[Key]
     entry.hash = 0
     entry.value = None
@@ -239,10 +242,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
   }
 
   private abstract class OpenHashMapIterator[A] extends AbstractIterator[A] {
-    private[this] var index = 0
-    private[this] val initialModCount = modCount
+    private var index = 0
+    private val initialModCount = modCount
 
-    private[this] def advance(): Unit = {
+    private def advance(): Unit = {
       if (initialModCount != modCount) throw new ConcurrentModificationException
       while((index <= mask) && (table(index) == null || table(index).value == None)) index+=1
     }
@@ -289,7 +292,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     )
   }
 
-  private[this] def foreachUndeletedEntry(f : Entry => Unit): Unit = {
+  private def foreachUndeletedEntry(f : Entry => Unit): Unit = {
     table.foreach(entry => if (entry != null && entry.value != None) f(entry))
   }
 
@@ -303,5 +306,6 @@ class OpenHashMap[Key, Value](initialSize : Int)
     this
   }
 
-  override protected[this] def stringPrefix = "OpenHashMap"
+  @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
+  override protected def stringPrefix = "OpenHashMap"
 }

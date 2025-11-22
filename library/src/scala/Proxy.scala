@@ -29,14 +29,14 @@ import scala.language.`2.13`
 trait Proxy extends Any {
   def self: Any
 
-  override def hashCode: Int = self.hashCode
+  override def hashCode(): Int = self.hashCode
   override def equals(that: Any): Boolean = that match {
     case null  => false
     case _     =>
       val x = that.asInstanceOf[AnyRef]
-      (x eq this.asInstanceOf[AnyRef]) || (x eq self.asInstanceOf[AnyRef]) || (x equals self)
+      (x eq this.asInstanceOf[AnyRef]) || (x eq self.asInstanceOf[AnyRef]) || (x.equals(self))
   }
-  override def toString = "" + self
+  override def toString() = "" + self
 }
 
 @deprecated("All members of this object are deprecated.", "2.13.0")

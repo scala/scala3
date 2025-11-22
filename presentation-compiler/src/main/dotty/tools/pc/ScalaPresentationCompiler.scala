@@ -119,7 +119,7 @@ case class ScalaPresentationCompiler(
   ): PresentationCompiler =
     copy(completionItemPriority = priority)
 
-  override def withBuildTargetName(buildTargetName: String) =
+  override def withBuildTargetName(buildTargetName: String): PresentationCompiler =
     copy(buildTargetName = Some(buildTargetName))
 
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
@@ -501,7 +501,13 @@ case class ScalaPresentationCompiler(
   override def didChange(
       params: VirtualFileParams
   ): CompletableFuture[ju.List[l.Diagnostic]] =
-    CompletableFuture.completedFuture(Nil.asJava)
+    compilerAccess.withNonInterruptableCompiler(
+      ju.Collections.emptyList(),
+      EmptyCancelToken
+    ) { access =>
+      val driver = access.compiler()
+      DiagnosticProvider(driver, params).diagnostics().asJava
+    }(params.toQueryContext)
 
   override def didClose(uri: URI): Unit =
     compilerAccess.withNonInterruptableCompiler(

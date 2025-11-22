@@ -15,8 +15,11 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.tailrec
+import scala.annotation.publicInBinary
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.Statics.releaseFence
@@ -144,7 +147,7 @@ sealed abstract class List[+A]
 
   override def prepended[B >: A](elem: B): List[B] = elem :: this
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): List[B] = prefix match {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = prefix match {
     case xs: List[B] => xs ::: this
     case _ if prefix.knownSize == 0 => this
     case b: ListBuffer[B] if this.isEmpty => b.toList
@@ -166,7 +169,7 @@ sealed abstract class List[+A]
   }
 
   // When calling appendAll with another list `suffix`, avoid copying `suffix`
-  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]): List[B] = suffix match {
+  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): List[B] = suffix match {
     case xs: List[B] => this ::: xs
     case _ => super.appendedAll(suffix)
   }
@@ -187,17 +190,6 @@ sealed abstract class List[+A]
     h
   }
 
-  /** @inheritdoc
-    *
-    *  @example {{{
-    *  // Given a list
-    *  val letters = List('a','b','c','d','e')
-    *
-    *  // `slice` returns all elements beginning at index `from` and afterwards,
-    *  // up until index `until` (excluding index `until`.)
-    *  letters.slice(1,3) // Returns List('b','c')
-    *  }}}
-    */
   override def slice(from: Int, until: Int): List[A] = {
     val lo = scala.math.max(from, 0)
     if (until <= lo || isEmpty) Nil
@@ -259,10 +251,10 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def collect[B](pf: PartialFunction[A, B]): List[B] = {
+  final override def collect[B](pf: PartialFunction[A, B]^): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
-      var h: ::[B] = null
+      var h: ::[B] | Null = null
       var x: Any = null
       // Special case for first element
       while (h eq null) {
@@ -287,10 +279,10 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def flatMap[B](f: A => IterableOnce[B]): List[B] = {
+  final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
     var rest = this
-    var h: ::[B] = null
-    var t: ::[B] = null
+    var h: ::[B] | Null = null
+    var t: ::[B] | Null = null
     while (rest ne Nil) {
       val it = f(rest.head).iterator
       while (it.hasNext) {
@@ -446,7 +438,7 @@ sealed abstract class List[+A]
       super.corresponds(that)(p)
   }
 
-  override protected[this] def className = "List"
+  override protected def className = "List"
 
   /** Builds a new list by applying a function to all elements of this list.
     *  Like `xs map f`, but returns `xs` unchanged if function
@@ -461,11 +453,11 @@ sealed abstract class List[+A]
     // Note to developers: there exists a duplication between this function and `reflect.internal.util.Collections#map2Conserve`.
     // If any successful optimization attempts or other changes are made, please rehash them there too.
     @tailrec
-    def loop(mappedHead: List[B], mappedLast: ::[B], unchanged: List[A], pending: List[A]): List[B] = {
+    def loop(mappedHead: List[B] | Null, mappedLast: ::[B] | Null, unchanged: List[A], pending: List[A]): List[B] = {
       if (pending.isEmpty) {
         if (mappedHead eq null) unchanged
         else {
-          mappedLast.next = (unchanged: List[B])
+          mappedLast.nn.next = (unchanged: List[B])
           mappedHead
         }
       }
@@ -477,8 +469,8 @@ sealed abstract class List[+A]
           loop(mappedHead, mappedLast, unchanged, pending.tail)
         else {
           var xc = unchanged
-          var mappedHead1: List[B] = mappedHead
-          var mappedLast1: ::[B] = mappedLast
+          var mappedHead1: List[B] | Null = mappedHead
+          var mappedLast1: ::[B] | Null = mappedLast
           while (xc ne pending) {
             val next = new ::[B](xc.head, Nil)
             if (mappedHead1 eq null) mappedHead1 = next
@@ -505,7 +497,7 @@ sealed abstract class List[+A]
 
   override def filterNot(p: A => Boolean): List[A] = filterCommon(p, isFlipped = true)
 
-  private[this] def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
+  private def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
 
     // everything seen so far so far is not included
     @tailrec def noneIn(l: List[A]): List[A] = {
@@ -598,7 +590,7 @@ sealed abstract class List[+A]
 
   // Override for performance
   override def equals(o: scala.Any): Boolean = {
-    @tailrec def listEq(a: List[_], b: List[_]): Boolean =
+    @tailrec def listEq(a: List[?], b: List[?]): Boolean =
       (a eq b) || {
         val aEmpty = a.isEmpty
         val bEmpty = b.isEmpty
@@ -659,7 +651,8 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   override def headOption: Some[A] = Some(head)
   override def tail: List[A] = next
 
-  def next$access$1 = next
+  @publicInBinary
+  private[::] def next$access$1 = next
 
 }
 
@@ -671,10 +664,10 @@ case object Nil extends List[Nothing] {
   override def init: Nothing = throw new UnsupportedOperationException("init of empty list")
   override def knownSize: Int = 0
   override def iterator: Iterator[Nothing] = Iterator.empty
-  override def unzip[A1, A2](implicit asPair: Nothing => (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
+  override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
-  private[this] val EmptyUnzip = (Nil, Nil)
+  private val EmptyUnzip = (Nil, Nil)
 }
 
 /**
@@ -686,7 +679,7 @@ case object Nil extends List[Nothing] {
 object List extends StrictOptimizedSeqFactory[List] {
   private val TupleOfNil = (Nil, Nil)
 
-  def from[B](coll: collection.IterableOnce[B]): List[B] = Nil.prependedAll(coll)
+  def from[B](coll: collection.IterableOnce[B]^): List[B] = Nil.prependedAll(coll)
 
   def newBuilder[A]: Builder[A, List[A]] = new ListBuffer()
 

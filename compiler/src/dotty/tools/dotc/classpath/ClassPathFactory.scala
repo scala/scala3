@@ -23,10 +23,9 @@ class ClassPathFactory {
     * Creators for sub classpaths which preserve this context.
     */
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
-    for {
+    for
       file <- expandPath(path, expandStar = false)
-      dir <- Option(AbstractFile getDirectory file)
-    }
+      dir <- Option(AbstractFile.getDirectory(file))
     yield createSourcePath(dir)
 
 
@@ -48,7 +47,8 @@ class ClassPathFactory {
   def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
 
   def classesInManifest(useManifestClassPath: Boolean)(using Context): List[ClassPath] =
-    if (useManifestClassPath) dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile getResources url))
+    if useManifestClassPath
+    then dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile.getResources(url)))
     else Nil
 
   // Internal

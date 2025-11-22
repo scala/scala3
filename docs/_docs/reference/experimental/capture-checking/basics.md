@@ -172,6 +172,63 @@ def f(x: ->{c} Int): Int
 ```
 Here, the actual argument to `f` is allowed to use the `c` capability but no others.
 
+## Lazy Vals
+
+Lazy vals receive special treatment under capture checking, similar to parameterless methods. A lazy val has two distinct capture sets:
+
+1. **The initializer's capture set**: What capabilities the initialization code uses
+2. **The result's capture set**: What capabilities the lazy val's value captures
+
+### Initializer Captures
+
+When a lazy val is declared, its initializer is checked in its own environment (like a method body). The initializer can capture capabilities, and these are tracked separately:
+
+```scala
+def example(console: Console^) =
+  lazy val x: () -> String =
+    console.println("Computing x")  // console captured by initializer
+    () => "Hello, World!"           // result doesn't capture console
+
+  val fun: () ->{console} String = () => x()   // ok: accessing x uses console
+  val fun2: () -> String = () => x()           // error: x captures console
+```
+
+Here, the initializer of `x` uses `console` (to print a message), so accessing `x` for the first time will use the `console` capability. However, the **result** of `x` is a pure function `() -> String` that doesn't capture any capabilities.
+
+The type system tracks that accessing `x` requires the `console` capability, even though the resulting value doesn't. This is reflected in the function types: `fun` must declare `{console}` in its capture set because it accesses `x`.
+
+### Lazy Val Member Selection
+
+When accessing a lazy val member through a qualifier, the qualifier is charged to the current capture set, just like calling a parameterless method:
+
+```scala
+trait Container:
+  lazy val lazyMember: String
+
+def client(c: Container^): Unit =
+  val f1: () -> String = () => c.lazyMember        // error
+  val f2: () ->{c} String = () => c.lazyMember     // ok
+```
+
+Accessing `c.lazyMember` can trigger initialization, which may use capabilities from `c`. Therefore, the capture set must include `c`.
+
+### Equivalence with Methods
+
+For capture checking purposes, lazy vals behave identically to parameterless methods:
+
+```scala
+trait T:
+  def methodMember: String
+  lazy val lazyMember: String
+
+def test(t: T^): Unit =
+  // Both require {t} in the capture set
+  val m: () ->{t} String = () => t.methodMember
+  val l: () ->{t} String = () => t.lazyMember
+```
+
+This equivalence reflects that both can trigger computation using capabilities from their enclosing object.
+
 ## Subtyping and Subcapturing
 
 Capturing influences subtyping. As usual we write `T₁ <: T₂` to express that the type
@@ -219,9 +276,12 @@ This widening is called _avoidance_; it is not specific to capture checking but 
 
 ## Capability Classes
 
-Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `SharedCapability` class defined in object `cap`.
+Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `SharedCapability` class defined in object `caps`.
 
-The capture set of type extending `SharedCapability` is always `{cap}`. This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
+A type extending `SharedCapability` always comes with a capture set. If no capture set is given explicitly, we assume the capture set is `{cap}`.
+
+This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
+
 ```scala
 import caps.SharedCapability
 
@@ -234,9 +294,10 @@ def test(using fs: FileSystem) =
   val l: Logger^{fs} = Logger()
   ...
 ```
-In this version, `FileSystem` is a capability class, which means that the `{cap}` capture set is implied on the parameters of `Logger` and `test`.
+In this version, `FileSystem` is a capability class, which means that the occurrences of `FileSystem` in the types of the parameters of `Logger` and `test` are implicitly expanded to `FileSystem^`. On the other hand, types like `FileSystem^{f}` or
+`FileSystem^{}` are kept as written.
 
-Another, unrelated change in the version of the last example here is that the `FileSystem` capability is now passed as an implicit parameter. It is quite natural to model capabilities with implicit parameters since it greatly reduces the wiring overhead once multiple capabilities are in play.
+Another, unrelated change in the last version of the `Logger` example is that the `FileSystem` capability is now passed as an implicit parameter. It is quite natural to model capabilities with implicit parameters since it greatly reduces the wiring overhead once multiple capabilities are in play.
 
 ## Escape Checking
 

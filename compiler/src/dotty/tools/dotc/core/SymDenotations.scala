@@ -295,7 +295,7 @@ object SymDenotations {
 
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
-      annotations = myAnnotations.filterNot(_ matches cls)
+      annotations = myAnnotations.filterNot(_.matches(cls))
 
     /** Remove any annotations with same class as `annot`, and add `annot` */
     final def updateAnnotation(annot: Annotation)(using Context): Unit = {
@@ -309,7 +309,7 @@ object SymDenotations {
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(using Context): List[Annotation] = anns match {
-      case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
+      case ann :: rest => if ann.matches(cls) then anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
 
@@ -865,8 +865,22 @@ object SymDenotations {
      *  and is the denoting symbol also different from `Null` or `Nothing`?
      *  @note  erroneous classes are assumed to derive from all other classes
      *         and all classes derive from them.
+     *  @note may return a false negative when `this.info.isInstanceOf[TempClassInfo]`.
      */
     def derivesFrom(base: Symbol)(using Context): Boolean = false
+
+    /** Could `this` derive from `base` now or in the future.
+     *  For concistency with derivesFrom, the info is only forced when this is a ClassDenotation.
+     *  If the info is a TempClassInfo then the baseClassSet may be temporarily approximated as empty.
+     *  This is problematic when stability of `!derivesFrom(base)` is assumed for soundness,
+     *  e.g., in `TypeComparer#provablyDisjointClasses`.
+     *  @note may return a false positive when `this.info.isInstanceOf[TempClassInfo]`.
+     */
+    final def mayDeriveFrom(base: Symbol)(using Context): Boolean =
+      this.isInstanceOf[ClassDenotation] && (info.isInstanceOf[TempClassInfo] || derivesFrom(base))
+
+    final def derivesFrom(base: Symbol, defaultIfUnknown: Boolean)(using Context): Boolean =
+      if defaultIfUnknown/*== true*/ then mayDeriveFrom(base) else derivesFrom(base)
 
     /** Is this a Scala or Java annotation ? */
     def isAnnotation(using Context): Boolean =
@@ -1147,7 +1161,7 @@ object SymDenotations {
       val d = owner.info.decl(fieldName)
       val field = d.suchThat(!_.is(Method)).symbol
       def getter = d.suchThat(_.info.isParameterless).symbol
-      field orElse getter
+      field `orElse` getter
     }
 
     /** The field accessed by a getter or setter, or
@@ -1155,7 +1169,7 @@ object SymDenotations {
      *  if that does not exist the symbol itself.
      */
     def underlyingSymbol(using Context): Symbol =
-      if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
+      if (is(Accessor)) accessedFieldOrGetter `orElse` symbol else symbol
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
@@ -1234,10 +1248,12 @@ object SymDenotations {
       || isClass
         && (!isOneOf(EffectivelyOpenFlags) || isLocalToCompilationUnit)
 
-    final def isLocalToCompilationUnit(using Context): Boolean =
-      is(Private)
-      || owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
+    final def isLocalToCompilationUnitIgnoringPrivate(using Context): Boolean =
+      owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
       || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
+
+    final def isLocalToCompilationUnit(using Context): Boolean =
+      is(Private) || isLocalToCompilationUnitIgnoringPrivate
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType) || defn.isAssumedTransparent(symbol)
@@ -2047,11 +2063,9 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(using Context): Boolean =
-      !isAbsent() &&
-      base.isClass &&
-      (  (symbol eq base)
-      || (baseClassSet contains base)
-      )
+      !isAbsent()
+      && base.isClass
+      && ((symbol eq base) || baseClassSet.contains(base))
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
       derivesFrom(base)
@@ -2574,7 +2588,7 @@ object SymDenotations {
         else
           val assocFiles = multi
             .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
-            .aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
+            .aggregate(d => Set(d.symbol.associatedFile.nn), _ `union` _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
           else
@@ -2787,9 +2801,6 @@ object SymDenotations {
     /** Sets all missing fields of given denotation */
     def complete(denot: SymDenotation)(using Context): Unit
 
-    /** Is this a completer for an explicit type tree */
-    def isExplicit: Boolean = false
-
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
@@ -2945,7 +2956,7 @@ object SymDenotations {
       dependent = null
     }
 
-    protected def addDependent(dep: InheritedCache) = {
+    protected def addDependent(dep: InheritedCache): Unit = {
       if (dependent == null) dependent = new WeakHashMap
       dependent.nn.put(dep, ())
     }
@@ -2992,7 +3003,7 @@ object SymDenotations {
         else {
           locked = true
           val computed =
-            try clsd.computeMemberNames(keepOnly)(this, ctx)
+            try clsd.computeMemberNames(keepOnly)(using this, ctx)
             finally locked = false
           cache = cache.nn.updated(keepOnly, computed)
           computed
@@ -3035,7 +3046,7 @@ object SymDenotations {
           locked = true
           provisional = false
           val computed =
-            try clsd.computeBaseData(this, ctx)
+            try clsd.computeBaseData(using this, ctx)
             finally locked = false
           if (!provisional) cache = computed
           else onBehalf.signalProvisional()

@@ -22,8 +22,6 @@ on:
       - 'lts-**'
   pull_request:
   merge_group:
-  schedule:
-    - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
 
 # Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
@@ -53,212 +51,6 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  test_non_bootstrapped:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/scala/scala3/pull/19720)
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        # DON'T add dist/Universal/stage!
-        # Adding dist/Universal/stage bootstraps the compiler
-        # which undermines the point of these tests:
-        # to quickly run the tests without the cost of bootstrapping
-        # and also to run tests when the compiler doesn't bootstrap
-        run: |
-          ./project/scripts/sbt ";compile ;test"
-          ./project/scripts/cmdTests
-
-  test:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Cmd Tests
-        run: |
-          ./project/scripts/buildScalaBinary
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
-          ./project/scripts/cmdTests
-          ./project/scripts/bootstrappedOnlyCmdTests
-
-      - name: Scala.js Test
-        run: |
-          ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
-
-      - name: Test with Scala 2 library TASTy (fast)
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
-
-      - name: Test with Scala 2 library with CC TASTy (fast)
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty; scala2-library-cc/compile; scala2-library-cc-tasty/compile; scala3-bootstrapped/testCompilation i3"
-
-  test_scala2_library_tasty:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || (
-           github.event_name == 'pull_request'
-           && contains(github.event.pull_request.body, '[test_scala2_library_tasty]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test with Scala 2 library TASTy
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/test"
-
-      - name: Test with Scala 2 library with CC TASTy
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/test"
-
-
-  test_windows_fast:
-    runs-on: [self-hosted, Windows]
-    if: "(
-           github.event_name == 'push'
-           && github.ref != 'refs/heads/main'
-         )
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
-         )"
-
-    steps:
-      - name: Reset existing repo
-        shell: cmd
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Test
-        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation; scala3-presentation-compiler/test; scala3-language-server/test"
-        shell: cmd
-
-      - name: build binary
-        run: sbt "dist-win-x86_64/Universal/stage" & bash -version
-        shell: cmd
-
-      - name: cygwin tests
-        run: '"C:\Program Files\cygwin64\bin\bash" ./project/scripts/winCmdTests'
-        shell: cmd
-
-      - name: msys tests
-        run: '"C:\Program Files\Git\bin\bash" ./project/scripts/winCmdTests'
-        shell: cmd
-
-      - name: win tests
-        run: './project/scripts/winCmdTests.bat'
-        shell: cmd
-
-      - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
-        shell: cmd
-
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
@@ -279,467 +71,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v5
 
-      - name: build binary
-        run: sbt "dist-win-x86_64/Universal/stage"
+      - name: Test
+        run: sbt ";scala3-bootstrapped-new/compile ;scala3-compiler-bootstrapped-new/test"
         shell: cmd
-
-      - name: Test
-        run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
-        shell: cmd
-
-      - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
-        shell: cmd
-
-  mima:
-    name: MiMa
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip mima]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: MiMa
-        run: |
-          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues; scala2-library-bootstrapped/mimaReportBinaryIssues"
-
-      - name: TASTy MiMa
-        run: |
-          # This script cleans the compiler and recompiles it from scratch (keep as last run)
-          ./project/scripts/scala2-library-tasty-mima.sh
-
-  community_build_a:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip community_build]')
-           && !contains(github.event.pull_request.body, '[skip community_build_a]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git submodule sync
-          git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
-
-      - name: Show dependency tracking file
-        if: ${{ always() }}
-        run: cat community-build/dotty-community-build-deps || true
-
-  community_build_b:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip community_build]')
-           && !contains(github.event.pull_request.body, '[skip community_build_b]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git submodule sync
-          git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
-
-      - name: Show dependency tracking file
-        if: ${{ always() }}
-        run: cat community-build/dotty-community-build-deps || true
-
-  community_build_c:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip community_build]')
-           && !contains(github.event.pull_request.body, '[skip community_build_c]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git submodule sync
-          git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
-
-      - name: Show dependency tracking file
-        if: ${{ always() }}
-        run: cat community-build/dotty-community-build-deps || true
-
-  test_sbt:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_sbt]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test sbt
-        run: ./project/scripts/sbt "sbt-test/scripted; sbt-community-build/scripted"
-
-  test_java8:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || (
-           github.event_name == 'push'
-           && startsWith(github.event.ref, 'refs/tags/')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_java8]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      ####################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. THIS TEST IS SPECIFIC FOR JAVA 8 ##
-      ####################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        run: |
-          ./project/scripts/buildScalaBinary
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*"
-          ./project/scripts/cmdTests
-          ./project/scripts/bootstrappedOnlyCmdTests
-
-      - name: Scala.js Test
-        run: |
-          ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
-
-  publish_nightly:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    strategy:
-      matrix:
-        series: [
-          {repository: scala/scala3, branch: main}, # Scala Next nightly
-          {repository: scala/scala3-lts, branch: lts-3.3} # Scala LTS nightly
-        ]
-    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
-    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
-    env:
-      NIGHTLYBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
-
-    steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ matrix.series.repository }}
-          ref: ${{ matrix.series.branch }}
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Get version string for this build
-        run: |
-          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
-          echo "This build version: $ver"
-          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
-
-      - name: Check is version matching pattern
-        shell: bash
-        run: |
-          if ! grep -Eo "3\.[0-9]+\.[0-9]+-RC[0-9]+-bin-[0-9]{8}-[a-zA-Z0-9]{7}-NIGHTLY" <<< "${{ env.THISBUILD_VERSION }}"; then
-            echo "Version used by compiler to publish nightly release does not match expected pattern"
-            exit 1
-          fi
-
-      - name: Check whether not yet published
-        id: not_yet_published
-        continue-on-error: true
-        run: |
-          ! ./project/scripts/is-version-published.sh "$THISBUILD_VERSION"
-
-      - name: Publish Nightly
-        if: "steps.not_yet_published.outcome == 'success'"
-        run: |
-          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
-
-  nightly_documentation:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [publish_nightly]
-    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
-    env:
-      NIGHTLYBUILD: yes
-    steps:
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Generate Website
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          ./project/scripts/genDocs -doc-snapshot
-
-      - name: Deploy Website to https://dotty.epfl.ch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          personal_token: ${{ secrets.DOTTYBOT_TOKEN }}
-          publish_dir: docs/_site
-          external_repository: scala/dotty.epfl.ch
-          publish_branch: main
 
   publish_release:
     permissions:
@@ -752,9 +86,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8, build-sdk-package, build-msi-package]
-    if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/')"
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
 
     env:
       RELEASEBUILD: yes
@@ -764,11 +96,11 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -793,7 +125,7 @@ jobs:
       - name: Check compiler version
         shell: bash
         run : |
-          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped-new/version" | tail -n1)
           echo "This build version: ${version}"
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
@@ -801,6 +133,7 @@ jobs:
           fi
 
       - name: Prepare the SDKs
+        if: false # TODO: Requires changes to dist targets, to be done before stable release
         shell: bash
         run : |
           prepareSDK() {
@@ -827,11 +160,13 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        uses: actions/download-artifact@v5
+        if: false # TODO: Requires changes to dist targets, to be done before stable release
+        uses: actions/download-artifact@v6
         with:
           name: scala.msi
           path: .
       - name: Prepare MSI package
+        if: false # TODO: Requires changes to dist targets, to be done before stable release
         shell: bash
         run: |
           msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
@@ -859,73 +194,53 @@ jobs:
           --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
           --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
           --verify-tag ${{ env.RELEASE_TAG }} \
-          scala3-${{ env.RELEASE_TAG }}*.zip \
-          scala3-${{ env.RELEASE_TAG }}*.tar.gz \
-          scala3-${{ env.RELEASE_TAG }}*.sha256 \
-          scala3-${{ env.RELEASE_TAG }}.msi
+          # TODO: dist packaging for 3.8.0 stable release
+          # scala3-${{ env.RELEASE_TAG }}*.zip \
+          # scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          # scala3-${{ env.RELEASE_TAG }}*.sha256 \
+          # scala3-${{ env.RELEASE_TAG }}.msi
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaUpload"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped-new ;publishSigned ;sonaUpload"
 
+  #build-msi-package:
+  #  uses: ./.github/workflows/build-msi.yml
+  #  if  :
+  #    (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
+  #    (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
 
-  open_issue_on_failure:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-    needs: [nightly_documentation, test_windows_full]
-    # The `failure()` expression is true iff at least one of the dependencies
-    # of this job (including transitive dependencies) has failed.
-    if: "failure() && github.event_name == 'schedule'"
-    steps:
-      - name: Checkout issue template
-        uses: actions/checkout@v5
+  #test-msi-package:
+  #  uses: ./.github/workflows/test-msi.yml
+  #  needs: [build-msi-package]
+  #  with:
+  #    # Ensure that version starts with prefix 3.
+  #    # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
+  #    version: "3."
+  #    java-version: 17
 
-      - name: Open an issue
-        uses: JasonEtco/create-an-issue@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        with:
-          filename: .github/workflows/issue_nightly_failed.md
+  #build-sdk-package:
+  #  uses: ./.github/workflows/build-sdk.yml
+  #  if:
+  #    (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+  #    (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+  #    (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
+  #    github.event_name == 'push' ||
+  #    github.event_name == 'merge_group'
+  #  with:
+  #    java-version: 17
 
-  build-msi-package:
-    uses: ./.github/workflows/build-msi.yml
-    if  :
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
-      (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
+  #build-chocolatey-package:
+  #  uses: ./.github/workflows/build-chocolatey.yml
+  #  needs: [ build-sdk-package ]
+  #  with:
+  #    version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
+  #    url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+  #    digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
 
-  test-msi-package:
-    uses: ./.github/workflows/test-msi.yml
-    needs: [build-msi-package]
-    with:
-      # Ensure that version starts with prefix 3.
-      # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
-      version: "3."
-      java-version: 17
-
-  build-sdk-package:
-    uses: ./.github/workflows/build-sdk.yml
-    if:
-      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
-      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
-      (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
-      github.event_name == 'push' ||
-      github.event_name == 'merge_group'
-    with:
-      java-version: 17
-
-  build-chocolatey-package:
-    uses: ./.github/workflows/build-chocolatey.yml
-    needs: [ build-sdk-package ]
-    with:
-      version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
-      digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
-
-  test-chocolatey-package:
-    uses: ./.github/workflows/test-chocolatey.yml
-    with:
-      version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-      java-version: 17
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
-    needs: [ build-chocolatey-package ]
+  #test-chocolatey-package:
+  #  uses: ./.github/workflows/test-chocolatey.yml
+  #  with:
+  #    version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
+  #    java-version: 17
+  #  if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
+  #  needs: [ build-chocolatey-package ]

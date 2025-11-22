@@ -14,6 +14,8 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.{unchecked => uc}
 import scala.annotation.{implicitNotFound, tailrec, unused}
 import scala.annotation.unchecked.uncheckedVariance
@@ -39,32 +41,32 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     with StrictOptimizedIterableOps[(K, V), Iterable, CollisionProofHashMap[K, V]]
     with StrictOptimizedMapOps[K, V, Map, CollisionProofHashMap[K, V]] { //--
 
-  private[this] final def sortedMapFactory: SortedMapFactory[CollisionProofHashMap] = CollisionProofHashMap
+  private final def sortedMapFactory: SortedMapFactory[CollisionProofHashMap] = CollisionProofHashMap
 
-  def this()(implicit ordering: Ordering[K]) = this(CollisionProofHashMap.defaultInitialCapacity, CollisionProofHashMap.defaultLoadFactor)(ordering)
+  def this()(implicit ordering: Ordering[K]) = this(CollisionProofHashMap.defaultInitialCapacity, CollisionProofHashMap.defaultLoadFactor)(using ordering)
 
   import CollisionProofHashMap.Node
-  private[this] type RBNode = CollisionProofHashMap.RBNode[K, V]
-  private[this] type LLNode = CollisionProofHashMap.LLNode[K, V]
+  private type RBNode = CollisionProofHashMap.RBNode[K, V]
+  private type LLNode = CollisionProofHashMap.LLNode[K, V]
 
   /** The actual hash table. */
-  private[this] var table: Array[Node] = new Array[Node](tableSizeFor(initialCapacity))
+  private var table: Array[Node | Null] = new Array[Node | Null](tableSizeFor(initialCapacity))
 
   /** The next size value at which to resize (capacity * load factor). */
-  private[this] var threshold: Int = newThreshold(table.length)
+  private var threshold: Int = newThreshold(table.length)
 
-  private[this] var contentSize = 0
+  private var contentSize = 0
 
   override def size: Int = contentSize
 
-  @`inline` private[this] final def computeHash(o: K): Int = {
+  @inline private final def computeHash(o: K): Int = {
     val h = if(o.asInstanceOf[AnyRef] eq null) 0 else o.hashCode
     h ^ (h >>> 16)
   }
 
-  @`inline` private[this] final def index(hash: Int) = hash & (table.length - 1)
+  @inline private final def index(hash: Int) = hash & (table.length - 1)
 
-  override protected def fromSpecific(coll: IterableOnce[(K, V)] @uncheckedVariance): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
+  override protected def fromSpecific(coll: (IterableOnce[(K, V)] @uncheckedVariance)^): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
   override protected def newSpecificBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] @uncheckedVariance = CollisionProofHashMap.newBuilder[K, V]
 
   override def empty: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
@@ -96,7 +98,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  @`inline` private[this] def findNode(elem: K): Node = {
+  @`inline` private def findNode(elem: K): Node | Null = {
     val hash = computeHash(elem)
     table(index(hash)) match {
       case null => null
@@ -122,25 +124,25 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   def addOne(elem: (K, V)): this.type = { put0(elem._1, elem._2, getOld = false); this }
 
-  @`inline` private[this] def put0(key: K, value: V, getOld: Boolean): Some[V] = {
+  @`inline` private def put0(key: K, value: V, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     val hash = computeHash(key)
     val idx = index(hash)
     put0(key, value, getOld, hash, idx)
   }
 
-  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] = {
+  private def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] | Null = {
     val res = table(idx) match {
       case n: RBNode @uc =>
         insert(n, idx, key, hash, value)
       case _old =>
-        val old: LLNode = _old.asInstanceOf[LLNode]
+        val old: LLNode | Null = _old.asInstanceOf[LLNode | Null]
         if(old eq null) {
           table(idx) = new LLNode(key, hash, value, null)
         } else {
           var remaining = CollisionProofHashMap.treeifyThreshold
-          var prev: LLNode = null
-          var n = old
+          var prev: LLNode | Null = null
+          var n: LLNode | Null = old
           while((n ne null) && n.hash <= hash && remaining > 0) {
             if(n.hash == hash && key == n.key) {
               val old = n.value
@@ -164,9 +166,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     if(res) Some(null.asInstanceOf[V]) else null //TODO
   }
 
-  private[this] def treeify(old: LLNode, idx: Int): Unit = {
+  private def treeify(old: LLNode, idx: Int): Unit = {
     table(idx) = CollisionProofHashMap.leaf(old.key, old.hash, old.value, red = false, null)
-    var n: LLNode = old.next
+    var n: LLNode | Null = old.next
     while(n ne null) {
       val root = table(idx).asInstanceOf[RBNode]
       insertIntoExisting(root, idx, n.key, n.hash, n.value, root)
@@ -174,13 +176,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs, delta = contentSize)
     super.addAll(xs)
   }
 
   // returns the old value or Statics.pfMarker if not found
-  private[this] def remove0(elem: K) : Any = {
+  private def remove0(elem: K) : Any = {
     val hash = computeHash(elem)
     val idx = index(hash)
     table(idx) match {
@@ -211,13 +213,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  private[this] abstract class MapIterator[R] extends AbstractIterator[R] {
-    protected[this] def extract(node: LLNode): R
-    protected[this] def extract(node: RBNode): R
+  private abstract class MapIterator[R] extends AbstractIterator[R] {
+    protected def extract(node: LLNode): R
+    protected def extract(node: RBNode): R
 
-    private[this] var i = 0
-    private[this] var node: Node = null
-    private[this] val len = table.length
+    private var i = 0
+    private var node: Node | Null = null
+    private val len = table.length
 
     def hasNext: Boolean = {
       if(node ne null) true
@@ -241,7 +243,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
     def next(): R =
       if(!hasNext) Iterator.empty.next()
-      else node match {
+      else node.nn match {
         case n: RBNode @uc =>
           val r = extract(n)
           node = CollisionProofHashMap.successor(n )
@@ -256,20 +258,20 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   override def keysIterator: Iterator[K] = {
     if (isEmpty) Iterator.empty
     else new MapIterator[K] {
-      protected[this] def extract(node: LLNode) = node.key
-      protected[this] def extract(node: RBNode) = node.key
+      protected def extract(node: LLNode) = node.key
+      protected def extract(node: RBNode) = node.key
     }
   }
 
   override def iterator: Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
     else new MapIterator[(K, V)] {
-      protected[this] def extract(node: LLNode) = (node.key, node.value)
-      protected[this] def extract(node: RBNode) = (node.key, node.value)
+      protected def extract(node: LLNode) = (node.key, node.value)
+      protected def extract(node: RBNode) = (node.key, node.value)
     }
   }
 
-  private[this] def growTable(newlen: Int) = {
+  private def growTable(newlen: Int) = {
     var oldlen = table.length
     table = java.util.Arrays.copyOf(table, newlen)
     threshold = newThreshold(table.length)
@@ -284,24 +286,25 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  @`inline` private[this] def reallocTable(newlen: Int) = {
-    table = new Array(newlen)
+  @`inline` private def reallocTable(newlen: Int) = {
+    table = new Array[Node | Null](newlen)
     threshold = newThreshold(table.length)
   }
 
-  @`inline` private[this] def splitBucket(tree: Node, lowBucket: Int, highBucket: Int, mask: Int): Unit = tree match {
+  @`inline` private def splitBucket(tree: Node | Null, lowBucket: Int, highBucket: Int, mask: Int): Unit = tree match {
     case t: LLNode @uc => splitBucket(t, lowBucket, highBucket, mask)
     case t: RBNode @uc => splitBucket(t, lowBucket, highBucket, mask)
+    case null =>
   }
 
-  private[this] def splitBucket(list: LLNode, lowBucket: Int, highBucket: Int, mask: Int): Unit = {
+  private def splitBucket(list: LLNode, lowBucket: Int, highBucket: Int, mask: Int): Unit = {
     val preLow: LLNode = new LLNode(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
     val preHigh: LLNode = new LLNode(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
     //preLow.next = null
     //preHigh.next = null
     var lastLow: LLNode = preLow
     var lastHigh: LLNode = preHigh
-    var n = list
+    var n: LLNode | Null = list
     while(n ne null) {
       val next = n.next
       if((n.hash & mask) == 0) { // keep low
@@ -321,7 +324,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  private[this] def splitBucket(tree: RBNode, lowBucket: Int, highBucket: Int, mask: Int): Unit = {
+  private def splitBucket(tree: RBNode, lowBucket: Int, highBucket: Int, mask: Int): Unit = {
     var lowCount, highCount = 0
     tree.foreachNode((n: RBNode) => if((n.hash & mask) != 0) highCount += 1 else lowCount += 1)
     if(highCount != 0) {
@@ -335,10 +338,10 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  private[this] def tableSizeFor(capacity: Int) =
+  private def tableSizeFor(capacity: Int) =
     (Integer.highestOneBit((capacity-1).max(4))*2).min(1 << 30)
 
-  private[this] def newThreshold(size: Int) = (size.toDouble * loadFactor).toInt
+  private def newThreshold(size: Int) = (size.toDouble * loadFactor).toInt
 
   override def clear(): Unit = {
     java.util.Arrays.fill(table.asInstanceOf[Array[AnyRef]], null)
@@ -382,9 +385,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(new CollisionProofHashMap.DeserializationFactory[K, V](table.length, loadFactor, ordering), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(new CollisionProofHashMap.DeserializationFactory[K, V](table.length, loadFactor, ordering), this)
 
-  override protected[this] def className = "CollisionProofHashMap"
+  override protected def className = "CollisionProofHashMap"
 
   override def getOrElseUpdate(key: K, defaultValue: => V): V = {
     val hash = computeHash(key)
@@ -426,7 +429,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     *  @return       a new $coll resulting from applying the given collection-valued function
     *                `f` to each element of this $coll and concatenating the results.
     */
-  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)])
+  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.FlatMap(this, f))
 
@@ -442,13 +445,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
-  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
+  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
     case it: Iterable[(K, V2)] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
 
   /** Alias for `concat` */
-  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]): CollisionProofHashMap[K, V2] = concat(xs)
+  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): CollisionProofHashMap[K, V1] =
@@ -460,22 +463,22 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   ///////////////////// RedBlackTree code derived from mutable.RedBlackTree:
 
-  @`inline` private[this] def isRed(node: RBNode) = (node ne null) && node.red
-  @`inline` private[this] def isBlack(node: RBNode) = (node eq null) || !node.red
+  @`inline` private def isRed(node: RBNode | Null) = (node ne null) && node.red
+  @`inline` private def isBlack(node: RBNode | Null) = (node eq null) || !node.red
 
-  @unused @`inline` private[this] def compare(key: K, hash: Int, node: LLNode): Int = {
+  @unused @`inline` private def compare(key: K, hash: Int, node: LLNode): Int = {
     val i = hash - node.hash
     if(i != 0) i else ordering.compare(key, node.key)
   }
 
-  @`inline` private[this] def compare(key: K, hash: Int, node: RBNode): Int = {
+  @`inline` private def compare(key: K, hash: Int, node: RBNode): Int = {
     /*val i = hash - node.hash
     if(i != 0) i else*/ ordering.compare(key, node.key)
   }
 
   // ---- insertion ----
 
-  @tailrec private[this] final def insertIntoExisting(_root: RBNode, bucket: Int, key: K, hash: Int, value: V, x: RBNode): Boolean = {
+  @tailrec private final def insertIntoExisting(_root: RBNode, bucket: Int, key: K, hash: Int, value: V, x: RBNode): Boolean = {
     val cmp = compare(key, hash, x)
     if(cmp == 0) {
       x.value = value
@@ -492,48 +495,48 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  private[this] final def insert(tree: RBNode, bucket: Int, key: K, hash: Int, value: V): Boolean = {
+  private final def insert(tree: RBNode | Null, bucket: Int, key: K, hash: Int, value: V): Boolean = {
     if(tree eq null) {
       table(bucket) = CollisionProofHashMap.leaf(key, hash, value, red = false, null)
       true
     } else insertIntoExisting(tree, bucket, key, hash, value, tree)
   }
 
-  private[this] def fixAfterInsert(_root: RBNode, node: RBNode): RBNode = {
+  private def fixAfterInsert(_root: RBNode, node: RBNode): RBNode = {
     var root = _root
     var z = node
     while (isRed(z.parent)) {
-      if (z.parent eq z.parent.parent.left) {
-        val y = z.parent.parent.right
+      if (z.parent eq z.parent.nn.parent.nn.left) {
+        val y = z.parent.nn.parent.nn.right
         if (isRed(y)) {
-          z.parent.red = false
-          y.red = false
-          z.parent.parent.red = true
-          z = z.parent.parent
+          z.parent.nn.red = false
+          y.nn.red = false
+          z.parent.nn.parent.nn.red = true
+          z = z.parent.nn.parent.nn
         } else {
-          if (z eq z.parent.right) {
-            z = z.parent
+          if (z eq z.parent.nn.right) {
+            z = z.parent.nn
             root = rotateLeft(root, z)
           }
-          z.parent.red = false
-          z.parent.parent.red = true
-          root = rotateRight(root, z.parent.parent)
+          z.parent.nn.red = false
+          z.parent.nn.parent.nn.red = true
+          root = rotateRight(root, z.parent.nn.parent.nn)
         }
       } else { // symmetric cases
-        val y = z.parent.parent.left
+        val y = z.parent.nn.parent.nn.left
         if (isRed(y)) {
-          z.parent.red = false
-          y.red = false
-          z.parent.parent.red = true
-          z = z.parent.parent
+          z.parent.nn.red = false
+          y.nn.red = false
+          z.parent.nn.parent.nn.red = true
+          z = z.parent.nn.parent.nn
         } else {
-          if (z eq z.parent.left) {
-            z = z.parent
+          if (z eq z.parent.nn.left) {
+            z = z.parent.nn
             root = rotateRight(root, z)
           }
-          z.parent.red = false
-          z.parent.parent.red = true
-          root = rotateLeft(root, z.parent.parent)
+          z.parent.nn.red = false
+          z.parent.nn.parent.nn.red = true
+          root = rotateLeft(root, z.parent.nn.parent.nn)
         }
       }
     }
@@ -544,19 +547,19 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   // ---- deletion ----
 
   // returns the old value or Statics.pfMarker if not found
-  private[this] def delete(_root: RBNode, bucket: Int, key: K, hash: Int): Any = {
+  private def delete(_root: RBNode, bucket: Int, key: K, hash: Int): Any = {
     var root = _root
     val z = root.getNode(key, hash: Int)
     if (z ne null) {
       val oldValue = z.value
       var y = z
       var yIsRed = y.red
-      var x: RBNode = null
-      var xParent: RBNode = null
+      var x: RBNode | Null = null
+      var xParent: RBNode | Null = null
 
       if (z.left eq null) {
         x = z.right
-        root = transplant(root, z, z.right)
+        root = transplant(root, z, z.right.nn)
         xParent = z.parent
       }
       else if (z.right eq null) {
@@ -572,13 +575,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
         if (y.parent eq z) xParent = y
         else {
           xParent = y.parent
-          root = transplant(root, y, y.right)
+          root = transplant(root, y, y.right.nn)
           y.right = z.right
-          y.right.parent = y
+          y.right.nn.parent = y
         }
         root = transplant(root, z, y)
         y.left = z.left
-        y.left.parent = y
+        y.left.nn.parent = y
         y.red = z.red
       }
 
@@ -588,65 +591,65 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     } else Statics.pfMarker
   }
 
-  private[this] def fixAfterDelete(_root: RBNode, node: RBNode, parent: RBNode): RBNode = {
+  private def fixAfterDelete(_root: RBNode, node: RBNode | Null, parent: RBNode | Null): RBNode = {
     var root = _root
     var x = node
     var xParent = parent
     while ((x ne root) && isBlack(x)) {
-      if (x eq xParent.left) {
-        var w = xParent.right
+      if (x eq xParent.nn.left) {
+        var w = xParent.nn.right
         // assert(w ne null)
 
-        if (w.red) {
-          w.red = false
-          xParent.red = true
-          root = rotateLeft(root, xParent)
-          w = xParent.right
+        if (w.nn.red) {
+          w.nn.red = false
+          xParent.nn.red = true
+          root = rotateLeft(root, xParent.nn)
+          w = xParent.nn.right
         }
-        if (isBlack(w.left) && isBlack(w.right)) {
-          w.red = true
+        if (isBlack(w.nn.left) && isBlack(w.nn.right)) {
+          w.nn.red = true
           x = xParent
         } else {
-          if (isBlack(w.right)) {
-            w.left.red = false
-            w.red = true
-            root = rotateRight(root, w)
-            w = xParent.right
+          if (isBlack(w.nn.right)) {
+            w.nn.left.nn.red = false
+            w.nn.red = true
+            root = rotateRight(root, w.nn)
+            w = xParent.nn.right
           }
-          w.red = xParent.red
-          xParent.red = false
-          w.right.red = false
-          root = rotateLeft(root, xParent)
+          w.nn.red = xParent.nn.red
+          xParent.nn.red = false
+          w.nn.right.nn.red = false
+          root = rotateLeft(root, xParent.nn)
           x = root
         }
       } else { // symmetric cases
-        var w = xParent.left
+        var w = xParent.nn.left
         // assert(w ne null)
 
-        if (w.red) {
-          w.red = false
-          xParent.red = true
-          root = rotateRight(root, xParent)
-          w = xParent.left
+        if (w.nn.red) {
+          w.nn.red = false
+          xParent.nn.red = true
+          root = rotateRight(root, xParent.nn)
+          w = xParent.nn.left
         }
-        if (isBlack(w.right) && isBlack(w.left)) {
-          w.red = true
+        if (isBlack(w.nn.right) && isBlack(w.nn.left)) {
+          w.nn.red = true
           x = xParent
         } else {
-          if (isBlack(w.left)) {
-            w.right.red = false
-            w.red = true
-            root = rotateLeft(root, w)
-            w = xParent.left
+          if (isBlack(w.nn.left)) {
+            w.nn.right.nn.red = false
+            w.nn.red = true
+            root = rotateLeft(root, w.nn)
+            w = xParent.nn.left
           }
-          w.red = xParent.red
-          xParent.red = false
-          w.left.red = false
-          root = rotateRight(root, xParent)
+          w.nn.red = xParent.nn.red
+          xParent.nn.red = false
+          w.nn.left.nn.red = false
+          root = rotateRight(root, xParent.nn)
           x = root
         }
       }
-      xParent = x.parent
+      xParent = x.nn.parent
     }
     if (x ne null) x.red = false
     root
@@ -654,9 +657,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   // ---- helpers ----
 
-  @`inline` private[this] def rotateLeft(_root: RBNode, x: RBNode): RBNode = {
+  @`inline` private def rotateLeft(_root: RBNode, x: RBNode): RBNode = {
     var root = _root
-    val y = x.right
+    val y = x.right.nn
     x.right = y.left
 
     val xp = x.parent
@@ -672,9 +675,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     root
   }
 
-  @`inline` private[this] def rotateRight(_root: RBNode, x: RBNode): RBNode = {
+  @`inline` private def rotateRight(_root: RBNode, x: RBNode): RBNode = {
     var root = _root
-    val y = x.left
+    val y = x.left.nn
     x.left = y.right
 
     val xp = x.parent
@@ -694,7 +697,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     * Transplant the node `from` to the place of node `to`. This is done by setting `from` as a child of `to`'s previous
     * parent and setting `from`'s parent to the `to`'s previous parent. The children of `from` are left unchanged.
     */
-  private[this] def transplant(_root: RBNode, to: RBNode, from: RBNode): RBNode = {
+  private def transplant(_root: RBNode, to: RBNode, from: RBNode): RBNode = {
     var root = _root
     if (to.parent eq null) root = from
     else if (to eq to.parent.left) to.parent.left = from
@@ -705,9 +708,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   // building
 
-  def fromNodes(xs: Iterator[Node], size: Int): RBNode = {
+  def fromNodes(xs: Iterator[Node], size: Int): RBNode | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
-    def f(level: Int, size: Int): RBNode = size match {
+    def f(level: Int, size: Int): RBNode | Null = size match {
       case 0 => null
       case 1 =>
         val nn = xs.next()
@@ -727,7 +730,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
         }
         val n = new RBNode(key, hash, value, red = false, left, right, null)
         if(left ne null) left.parent = n
-        right.parent = n
+        if(right ne null) right.parent = n
         n
     }
     f(1, size)
@@ -743,7 +746,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private[collection] final val ordMsg = "No implicit Ordering[${K2}] found to build a CollisionProofHashMap[${K2}, ${V2}]. You may want to upcast to a Map[${K}, ${V}] first by calling `unsorted`."
 
-  def from[K : Ordering, V](it: scala.collection.IterableOnce[(K, V)]): CollisionProofHashMap[K, V] = {
+  def from[K : Ordering, V](it: scala.collection.IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new CollisionProofHashMap[K, V](cap, defaultLoadFactor) ++= it
@@ -765,8 +768,8 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
-  private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double, val ordering: Ordering[K]) extends Factory[(K, V), CollisionProofHashMap[K, V]] with Serializable {
-    def fromSpecific(it: IterableOnce[(K, V)]): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(ordering) ++= it
+  private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double, val ordering: Ordering[K]) extends Factory[(K, V), CollisionProofHashMap[K, V]], Serializable {
+    def fromSpecific(it: IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(using ordering) ++= it
     def newBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] = CollisionProofHashMap.newBuilder(tableLength, loadFactor)(using ordering)
   }
 
@@ -788,10 +791,18 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   /////////////////////////// Red-Black Tree Node
 
-  final class RBNode[K, V](var key: K, var hash: Int, var value: V, var red: Boolean, var left: RBNode[K, V], var right: RBNode[K, V], var parent: RBNode[K, V]) extends Node {
-    override def toString: String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
+  final class RBNode[K, V](
+      var key: K, var hash: Int, var value: V, var red: Boolean,
+      @annotation.stableNull
+      var left: RBNode[K, V] | Null,
+      @annotation.stableNull
+      var right: RBNode[K, V] | Null,
+      @annotation.stableNull
+      var parent: RBNode[K, V] | Null
+    ) extends Node {
+    override def toString(): String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
 
-    @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): RBNode[K, V] = {
+    @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): RBNode[K, V] | Null = {
       val cmp = compare(k, h, this)
       if (cmp < 0) {
         if(left ne null) left.getNode(k, h) else null
@@ -819,7 +830,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 
-  @`inline` private def leaf[A, B](key: A, hash: Int, value: B, red: Boolean, parent: RBNode[A, B]): RBNode[A, B] =
+  @`inline` private def leaf[A, B](key: A, hash: Int, value: B, red: Boolean, parent: RBNode[A, B] | Null): RBNode[A, B] =
     new RBNode(key, hash, value, red, null, null, parent)
 
   @tailrec private def minNodeNonNull[A, B](node: RBNode[A, B]): RBNode[A, B] =
@@ -829,7 +840,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     * Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
     * therefore, the last node), this method returns `null`.
     */
-  private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] = {
+  private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] | Null = {
     if (node.right ne null) minNodeNonNull(node.right)
     else {
       var x = node
@@ -842,8 +853,8 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 
-  private final class RBNodesIterator[A, B](tree: RBNode[A, B])(implicit @unused ord: Ordering[A]) extends AbstractIterator[RBNode[A, B]] {
-    private[this] var nextNode: RBNode[A, B] = if(tree eq null) null else minNodeNonNull(tree)
+  private final class RBNodesIterator[A, B](tree: RBNode[A, B] | Null)(implicit @unused ord: Ordering[A]) extends AbstractIterator[RBNode[A, B]] {
+    private var nextNode: RBNode[A, B] | Null = if(tree eq null) null else minNodeNonNull(tree)
 
     def hasNext: Boolean = nextNode ne null
 
@@ -858,13 +869,13 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   /////////////////////////// Linked List Node
 
-  private final class LLNode[K, V](var key: K, var hash: Int, var value: V, var next: LLNode[K, V]) extends Node {
-    override def toString = s"LLNode($key, $value, $hash) -> $next"
+  private final class LLNode[K, V](var key: K, var hash: Int, var value: V, @annotation.stableNull var next: LLNode[K, V] | Null) extends Node {
+    override def toString() = s"LLNode($key, $value, $hash) -> $next"
 
-    private[this] def eq(a: Any, b: Any): Boolean =
+    private def eq(a: Any, b: Any): Boolean =
       if(a.asInstanceOf[AnyRef] eq null) b.asInstanceOf[AnyRef] eq null else a.asInstanceOf[AnyRef].equals(b)
 
-    @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): LLNode[K, V] = {
+    @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): LLNode[K, V] | Null = {
       if(h == hash && eq(k, key) /*ord.compare(k, key) == 0*/) this
       else if((next eq null) || (hash > h)) null
       else next.getNode(k, h)
@@ -886,3 +897,4 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 }
+

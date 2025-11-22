@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.nowarn
 
 
@@ -27,7 +28,7 @@ trait Buffer[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]
     with Shrinkable[A]
-    with IterableFactoryDefaults[A, Buffer] {
+    with IterableFactoryDefaults[A, Buffer] { self =>
 
   override def iterableFactory: SeqFactory[Buffer] = Buffer
 
@@ -55,7 +56,7 @@ trait Buffer[A]
    *  @param elems  the iterable object containing the elements to append.
    *  @return       this $coll
    */
-  @`inline` final def appendAll(@deprecatedName("xs") elems: IterableOnce[A]): this.type = addAll(elems)
+  @`inline` final def appendAll(@deprecatedName("xs") elems: IterableOnce[A]^): this.type = addAll(elems)
 
   /** Alias for `prepend` */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
@@ -64,13 +65,13 @@ trait Buffer[A]
    *  @param elems  the iterable object containing the elements to append.
    *  @return       this $coll
    */
-  def prependAll(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
+  def prependAll(elems: IterableOnce[A]^): this.type = { insertAll(0, elems); this }
 
   @deprecated("Use prependAll instead", "2.13.0")
   @`inline` final def prepend(elems: A*): this.type = prependAll(elems)
 
   /** Alias for `prependAll` */
-  @inline final def ++=:(elems: IterableOnce[A]): this.type = prependAll(elems)
+  @inline final def ++=:(elems: IterableOnce[A]^): this.type = prependAll(elems)
 
   /** Inserts a new element at a given index into this buffer.
     *
@@ -91,7 +92,7 @@ trait Buffer[A]
     *  @throws IndexOutOfBoundsException if `idx` is out of bounds.
     */
   @throws[IndexOutOfBoundsException]
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit
 
   /** Removes the element at a given index position.
     *
@@ -153,7 +154,7 @@ trait Buffer[A]
    *  @param  replaced the number of elements to drop in the original $coll
    *  @return          this $coll
    */
-  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type
 
   // +=, ++=, clear inherited from Growable
   // Per remark of @ichoran, we should preferably not have these:
@@ -247,7 +248,7 @@ trait Buffer[A]
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Buffer"
+  override protected def stringPrefix = "Buffer"
 }
 
 trait IndexedBuffer[A] extends IndexedSeq[A]
@@ -262,11 +263,11 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
    *  @param f the mapping function
    *  @return this $coll
    */
-  def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
+  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
     // There's scope for a better implementation which copies elements in place.
     var i = 0
     val s = size
-    val newElems = new Array[IterableOnce[A]](s)
+    val newElems = new Array[IterableOnce[A]^{f}](s)
     while (i < s) { newElems(i) = f(this(i)); i += 1 }
     clear()
     i = 0
@@ -294,7 +295,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     if (i == j) this else takeInPlace(j)
   }
 
-  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
     val replaced0 = math.min(math.max(replaced, 0), length)
     val i = math.min(math.max(from, 0), length)
     var j = 0

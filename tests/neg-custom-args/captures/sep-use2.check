@@ -10,11 +10,6 @@
    |        This type hides capabilities  {c}
    |
    |        where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:12:10 ----------------------------------------------------------
-12 |  val x4: Object^ = // error
-   |          ^^^^^^^
-   |          Separation failure: value x4's type Object^ hides parameter f.
-   |          The parameter needs to be annotated with consume to allow this.
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:16:10 ----------------------------------------------------------
 16 |  def cc: Object^ = c // error
    |          ^^^^^^^
@@ -47,15 +42,15 @@
 24 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{c} Object^{f*}
+   |to a function of type Object^ ->{f} Object^{f*}
    |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {c, f*}
-   |  Footprint set of function prefix      : {c, f*}
+   |  Capture set of function prefix        : {f*}
+   |  Footprint set of function prefix      : {f*, c}
    |  The two sets overlap at               : {c}
    |
    |where:    ^  refers to a fresh root capability in the type of parameter c
@@ -69,15 +64,15 @@
 28 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{c} Object^{f*}
+   |to a function of type Object^ ->{f} Object^{f*}
    |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {c, f*}
-   |  Footprint set of function prefix      : {c, f*}
+   |  Capture set of function prefix        : {f*}
+   |  Footprint set of function prefix      : {f*, c}
    |  The two sets overlap at               : {c}
    |
    |where:    ^  refers to a fresh root capability in the type of parameter c

@@ -32,7 +32,9 @@ object SourceLanguage:
       SourceLanguage.Java
     // Scala 2 methods don't have Inline set, except for the ones injected with `patchStdlibClass`
     // which are really Scala 3 methods.
-    else if denot.isClass && denot.is(Scala2x) || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline)) then
+    else if denot.isClass && denot.is(Scala2x)
+          || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline))
+          || denot.is(Param) && denot.maybeOwner.is(Method)  && denot.maybeOwner.maybeOwner.lastKnownDenotation.is(Scala2x) then
       SourceLanguage.Scala2
     else
       SourceLanguage.Scala3
@@ -386,6 +388,12 @@ object TypeErasure {
     case _ => false
   }
 
+  /** Is `tp` of the form `Array^N[T]` where T is generic? */
+  def isGenericArrayArg(tp: Type)(using Context): Boolean = tp.dealias match
+    case defn.ArrayOf(elem) => isGenericArrayArg(elem)
+    case _ => isGeneric(tp)
+  end isGenericArrayArg
+
   /** The erased least upper bound of two erased types is computed as follows
    *  - if both argument are arrays of objects, an array of the erased lub of the element types
    *  - if both arguments are arrays of same primitives, an array of this primitive
@@ -435,7 +443,12 @@ object TypeErasure {
             }
 
             // We are not interested in anything that is not a supertype of tp2
-            val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)
+            val tp2superclasses = tp1.baseClasses
+              // We filter out Pure from the base classes since CC should not affect binary compatibitlity
+              // and the algorithm here sometimes will take the erasure of Pure
+              // The root problem is described here: https://github.com/scala/scala3/issues/24148
+              .filter(_ != defn.PureClass)
+              .filter(cls2.derivesFrom)
 
             // From the spec, "Linearization also satisfies the property that a
             // linearization of a class always contains the linearization of its
@@ -664,6 +677,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         WildcardType
       case tp: TypeProxy =>
         this(tp.underlying)
+      // When erasing something that is `A & Pure` or `Pure & A`, we should take the erasure of A
+      // This also work for [T <: Pure] `T & A` or `A & T`
+      // The root problem is described here: https://github.com/scala/scala3/issues/24113
+      case AndType(tp1, tp2) if tp1.dealias.classSymbol == defn.PureClass =>
+        this(tp2)
+      case AndType(tp1, tp2) if tp2.dealias.classSymbol == defn.PureClass =>
+        this(tp1)
       case tp @ AndType(tp1, tp2) =>
         if sourceLanguage.isJava then
           this(tp1)
@@ -675,7 +695,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           if e1.isInstanceOf[WildcardType] || e2.isInstanceOf[WildcardType] then WildcardType
           else erasedGlb(e1, e2)
       case OrType(tp1, tp2) =>
-        if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value then
+        val e1 = this(tp1)
+        val e2 = this(tp2)
+        val result = if e1.isInstanceOf[WildcardType] || e2.isInstanceOf[WildcardType]
+          then WildcardType
+          else TypeComparer.orType(e1, e2, isErased = true)
+        def isNullStripped =
+          tp2.isNullType && e1.derivesFrom(defn.ObjectClass)
+          || tp1.isNullType && e2.derivesFrom(defn.ObjectClass)
+        if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value && !isNullStripped then
           // In Scala2Unpickler we unpickle Scala.js pseudo-unions as if they were
           // real unions, but we must still erase them as Scala 2 would to emit
           // the correct signatures in SJSIR.
@@ -686,11 +714,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           // impact on overriding relationships so it's best to leave them
           // alone (and this doesn't impact the SJSIR we generate).
           JSDefinitions.jsdefn.PseudoUnionType
-        else
-          val e1 = this(tp1)
-          val e2 = this(tp2)
-          if e1.isInstanceOf[WildcardType] || e2.isInstanceOf[WildcardType] then WildcardType
-          else TypeComparer.orType(e1, e2, isErased = true)
+        else result
       case tp: MethodType =>
         def paramErasure(tpToErase: Type) =
           erasureFn(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, inSigName = false)(tpToErase)

@@ -24,6 +24,8 @@ import Inferencing.*
 import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.{Feature, MigrationVersion, SourceVersion}
+import util.Property
+import util.chaining.tap
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -41,6 +43,17 @@ import dotty.tools.dotc.inlines.Inlines
 
 object Applications {
   import tpd.*
+
+  /** Attachment key for SeqLiterals containing spreads. Eliminated at PostTyper */
+  val HasSpreads = new Property.StickyKey[Unit]
+
+  /** An extractor for spreads in sequence literals */
+  object spread:
+    def apply(arg: Tree, elemtpt: Tree)(using Context) =
+      ref(defn.spreadMethod).appliedToTypeTree(elemtpt).appliedTo(arg)
+    def unapply(arg: Apply)(using Context): Option[Tree] = arg match
+      case Apply(fn, x :: Nil) if fn.symbol == defn.spreadMethod => Some(x)
+      case _ => None
 
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
@@ -140,16 +153,18 @@ object Applications {
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
     tp.widenExpr.dealias.normalized match
-    case tp: AppliedType =>
-      if defn.isTupleClass(tp.tycon.typeSymbol) then
-        tp.args
-      else if tp.tycon.derivesFrom(defn.PairClass) then
-        val List(head, tail) = tp.args
-        head :: tupleComponentTypes(tail)
-      else
+      case defn.NamedTuple(_, vals) =>
+        tupleComponentTypes(vals)
+      case tp: AppliedType =>
+        if defn.isTupleClass(tp.tycon.typeSymbol) then
+          tp.args
+        else if tp.tycon.derivesFrom(defn.PairClass) then
+          val List(head, tail) = tp.args
+          head :: tupleComponentTypes(tail)
+        else
+          Nil
+      case _ =>
         Nil
-    case _ =>
-      Nil
 
   def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
@@ -291,6 +306,11 @@ object Applications {
           report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
           argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
+
+      val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
+      if varArgs.length >= 2 then
+        report.error(em"Ony one spread pattern allowed in sequence", varArgs(1).srcPos)
+
       alignedArgs.lazyZip(alignedArgTypes).map(typer.typed(_, _))
         .showing(i"unapply patterns = $result", unapp)
 
@@ -319,7 +339,7 @@ object Applications {
       case pre: SingletonType => singleton(pre, needLoad = !testOnly)
       case pre if testOnly =>
         // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
-        ref(pre.narrow)
+        ref(pre.narrow())
       case _ => EmptyTree
 
     if fn.symbol.hasDefaultParams then
@@ -501,7 +521,7 @@ trait Applications extends Compatibility {
      */
     protected def addArg(arg: TypedArg, formal: Type): Unit
 
-    /** Is this an argument of the form `expr: _*` or a RepeatedParamType
+    /** Is this an argument of the form `expr*` or a RepeatedParamType
      *  derived from such an argument?
      */
     protected def isVarArg(arg: Arg): Boolean
@@ -797,14 +817,17 @@ trait Applications extends Compatibility {
                 addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedArgs =
-                  harmonic(harmonizeArgs, elemFormal) {
-                    args.map { arg =>
-                      checkNoVarArg(arg)
+                val typedVarArgs = util.HashSet[TypedArg]()
+                val typedArgs = harmonic(harmonizeArgs, elemFormal):
+                  args.map: arg =>
+                    if isVarArg(arg) then
+                      if !Feature.enabled(Feature.multiSpreads) || ctx.isAfterTyper then
+                        checkNoVarArg(arg)
+                      typedArg(arg, formal).tap(typedVarArgs += _)
+                    else
                       typedArg(arg, elemFormal)
-                    }
-                  }
-                typedArgs.foreach(addArg(_, elemFormal))
+                typedArgs.foreach: targ =>
+                  addArg(targ, if typedVarArgs.contains(targ) then formal else elemFormal)
                 makeVarArg(args.length, elemFormal)
             }
           else args match {
@@ -944,12 +967,18 @@ trait Applications extends Compatibility {
       typedArgBuf += typedArg
       ok = ok & !typedArg.tpe.isError
 
-    def makeVarArg(n: Int, elemFormal: Type): Unit = {
+    def makeVarArg(n: Int, elemFormal: Type): Unit =
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.dropRightInPlace(n)
-      val elemtpt = TypeTree(elemFormal.normalizedTupleType, inferred = true)
-      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
-    }
+      val elemTpe = elemFormal.normalizedTupleType
+      val elemtpt = TypeTree(elemTpe, inferred = true)
+      def wrapSpread(arg: Tree): Tree = arg match
+        case Typed(argExpr, tpt) if tpt.tpe.isRepeatedParam => spread(argExpr, elemtpt)
+        case _ => arg
+      val args1 = args.mapConserve(wrapSpread)
+      val seqLit = SeqLiteral(args1, elemtpt)
+      if args1 ne args then seqLit.putAttachment(HasSpreads, ())
+      typedArgBuf += seqToRepeated(seqLit)
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] =
       // harmonize args only if resType depends on parameter types
@@ -1338,7 +1367,7 @@ trait Applications extends Compatibility {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
-              checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
+              checkCanEqual(left, right.tpe.widen, app.span)
           case _ =>
         }
         app
@@ -1427,14 +1456,11 @@ trait Applications extends Compatibility {
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.srcPos)
-
-      def newGenericArrayCall =
+      if TypeErasure.isGenericArrayArg(targ.tpe) then
         ref(defn.DottyArraysModule)
-          .select(defn.newGenericArrayMethod).withSpan(tree.span)
-          .appliedToTypeTrees(targs).appliedToTermArgs(args)
-
-      if (TypeErasure.isGeneric(targ.tpe))
-        newGenericArrayCall
+            .select(defn.newGenericArrayMethod).withSpan(tree.span)
+            .appliedToTypeTrees(targs)
+            .appliedToTermArgs(args)
       else tree
     case _ =>
       tree
@@ -1754,7 +1780,7 @@ trait Applications extends Compatibility {
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = unadaptedArgs.mapconserve(typed(_, defn.AnyType))
-        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
+        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr).withType(unapplyErr.tpe)
     }
   }
 
@@ -1821,7 +1847,7 @@ trait Applications extends Compatibility {
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[MethodicType] =>
       p(methRef)
     case mt: MethodicType =>
-      p(mt.narrow)
+      p(mt.narrow())
     case _ =>
       followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
@@ -2561,7 +2587,7 @@ trait Applications extends Compatibility {
   /** Is `formal` a product type which is elementwise compatible with `params`? */
   def ptIsCorrectProduct(formal: Type, params: List[untpd.ValDef])(using Context): Boolean =
     isFullyDefined(formal, ForceDegree.flipBottom)
-    && defn.isProductSubType(formal)
+    && (defn.isProductSubType(formal) || formal.isNamedTupleType)
     && tupleComponentTypes(formal).corresponds(params): (argType, param) =>
          param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
 
@@ -2679,7 +2705,8 @@ trait Applications extends Compatibility {
           case ConstantType(c: Constant) if c.tag == IntTag =>
             targetClass(ts1, cls, true)
           case t =>
-            val sym = t.classSymbol
+            val sym =
+              if t.isRepeatedParam then t.argTypesLo.head.classSymbol else t.classSymbol
             if (!sym.isNumericValueClass || cls.exists && cls != sym) NoSymbol
             else targetClass(ts1, sym, intLitSeen)
         }

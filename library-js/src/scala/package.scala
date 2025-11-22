@@ -12,6 +12,8 @@
 
 import scala.annotation.migration
 
+import scala.language.`2.13`
+
 /**
  * Core Scala types. They are always available without an explicit import.
  * @contentDiagram hideNodes "scala.Serializable"

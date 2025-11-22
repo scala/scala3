@@ -13,6 +13,8 @@
 package scala.collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import scala.collection.generic.CommonErrors
@@ -56,15 +58,15 @@ sealed class NumericRange[T](
 
   override def iterator: Iterator[T] = new NumericRange.NumericRangeIterator(this, num)
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[T, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit = {
     import scala.collection.convert._
     import impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntNumericRangeStepper   (this.asInstanceOf[NumericRange[Int]],    0, length)
       case StepperShape.LongShape   => new LongNumericRangeStepper  (this.asInstanceOf[NumericRange[Long]],   0, length)
-      case _         => shape.parUnbox(new AnyNumericRangeStepper[T](this, 0, length).asInstanceOf[AnyStepper[T] with EfficientSplit])
+      case _         => shape.parUnbox(new AnyNumericRangeStepper[T](this, 0, length).asInstanceOf[AnyStepper[T] & EfficientSplit])
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
 
@@ -121,7 +123,7 @@ sealed class NumericRange[T](
     }
   }
 
-  private[this] def indexOfTyped(elem: T, from: Int): Int =
+  private def indexOfTyped(elem: T, from: Int): Int =
     posOf(elem) match {
       case pos if pos >= from => pos
       case _                  => -1
@@ -131,7 +133,7 @@ sealed class NumericRange[T](
     try indexOfTyped(elem.asInstanceOf[T], from)
     catch { case _: ClassCastException => super.indexOf(elem, from) }
 
-  private[this] def lastIndexOfTyped(elem: T, end: Int): Int =
+  private def lastIndexOfTyped(elem: T, end: Int): Int =
     posOf(elem) match {
       case pos if pos <= end => pos
       case _                 => -1
@@ -141,7 +143,7 @@ sealed class NumericRange[T](
     try lastIndexOfTyped(elem.asInstanceOf[T], end)
     catch { case _: ClassCastException => super.lastIndexOf(elem, end) }
 
-  private[this] def posOf(i: T): Int =
+  private def posOf(i: T): Int =
       /*
       If i is in this NumericRange, its position can simply be calculated by taking the amount of values up till i.
       NumericRange.count does this in an most efficient manner.
@@ -275,14 +277,14 @@ sealed class NumericRange[T](
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
       if (num.sign(step) > zero) head
       else last
-    } else super.min(ord)
+    } else super.min(using ord)
 
   override def max[T1 >: T](implicit ord: Ordering[T1]): T =
   // See comment for fast path in min().
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
       if (num.sign(step) > zero) last
       else head
-    } else super.max(ord)
+    } else super.max(using ord)
 
   // a well-typed contains method.
   def containsTyped(x: T): Boolean =
@@ -360,14 +362,14 @@ sealed class NumericRange[T](
       super.equals(other)
   }
 
-  override def toString: String = {
+  override def toString(): String = {
     val empty = if (isEmpty) "empty " else ""
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"
     s"${empty}NumericRange $start $preposition $end$stepped"
   }
 
-  override protected[this] def className = "NumericRange"
+  override protected def className = "NumericRange"
 }
 
 /** A companion object for numeric ranges.
@@ -512,7 +514,7 @@ object NumericRange {
   def inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T]): Inclusive[T] =
     new Inclusive(start, end, step)
 
-  private[collection] val defaultOrdering = Map[Numeric[_], Ordering[_]](
+  private[collection] val defaultOrdering = Map[Numeric[?], Ordering[?]](
     Numeric.BigIntIsIntegral -> Ordering.BigInt,
     Numeric.IntIsIntegral -> Ordering.Int,
     Numeric.ShortIsIntegral -> Ordering.Short,
@@ -526,9 +528,9 @@ object NumericRange {
   private final class NumericRangeIterator[T](self: NumericRange[T], num: Integral[T]) extends AbstractIterator[T] with Serializable {
     import num.mkNumericOps
 
-    private[this] var _hasNext = !self.isEmpty
-    private[this] var _next: T = self.start
-    private[this] val lastElement: T = if (_hasNext) self.last else self.start
+    private var _hasNext = !self.isEmpty
+    private var _next: T = self.start
+    private val lastElement: T = if (_hasNext) self.last else self.start
     override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / self.step) + 1 else 0
     def hasNext: Boolean = _hasNext
     def next(): T = {

@@ -1,15 +1,11 @@
--- Error: tests/neg-custom-args/captures/reference-cc.scala:42:20 ------------------------------------------------------
-42 |    def f = println(c)  // error
-   |                    ^
-   |                    reference (c : Cap) is not included in the allowed capture set {}
-   |                    of the enclosing class A
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:27 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:29 ---------------------------------
 44 |  val later = usingLogFile { file => () => file.write(0) } // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (file: java.io.FileOutputStream^'s1) ->'s2 () ->{file} Unit
-   |Required: java.io.FileOutputStream^ => () ->'s3 Unit
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Capability file outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability file cannot be included in outer capture set 's3.
+   |Found:    (file: java.io.FileOutputStream^'s2) ->'s3 () ->{file} Unit
+   |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
@@ -18,10 +14,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:47:25 ---------------------------------
 47 |  val xs = usingLogFile: f => // error
    |                         ^
-   |Found:    (f: java.io.FileOutputStream^'s4) ->'s5 LzyList[Int]^{f}
-   |Required: java.io.FileOutputStream^ => LzyList[Int]^'s6
+   |Capability f outlives its scope: it leaks into outer capture set 's4 which is owned by value xs.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability f cannot be included in outer capture set 's6.
+   |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 LzyList[Int]^{f}
+   |Required: java.io.FileOutputStream^ => LzyList[Int]^'s4
    |
    |where:    => refers to a fresh root capability created in value xs when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
@@ -31,15 +28,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:58:8 ----------------------------------
 58 |    try () => xs.map(f).sum  // error TODO improve error message
    |        ^^^^^^^^^^^^^^^^^^^
-   |Found:    () => Double
-   |Required: () =>² Double
+   |Found:    () ->{canThrow$1} Double
+   |Required: () => Double
    |
-   |Note that capability cap is not included in capture set {cap²}
-   |because cap in method try$1 is not visible from cap² in enclosing function.
+   |Note that capability canThrow$1 is not included in capture set {cap}
+   |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from cap in an enclosing function.
    |
-   |where:    =>   refers to a fresh root capability classified as Control in the type of given instance canThrow$1
-   |          =>²  refers to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap³} Double of function literal
-   |          cap  is a fresh root capability classified as Control in the type of given instance canThrow$1
-   |          cap² is a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap³} Double of function literal
+   |where:    => and cap refer to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
    |
    | longer explanation available when compiling with `-explain`

@@ -11,24 +11,24 @@ object Transform:
     Transform(f)
 
 def leak(a: A): Transform^{} =
-  val f: Any ->{a} Any = _ =>  // error
+  val f: Any ->{a} Any = _ =>
     a.print()
     ()
-  Transform(f)
+  Transform(f)  // error
 
 def leak1(a: A): Transform^{} =
-  val f: Any ->{a} Any = _ => // error
+  val f: Any ->{a} Any = _ =>
     a.print()
     ()
   val x = Transform(f)
-  x
+  x  // error
 
 def leak2(a: A): Transform^{} =
-  val f: Any ->{a} Any = _ =>  // error
+  val f: Any ->{a} Any = _ =>
     a.print()
     ()
   val x = Transform.app(f)
-  x
+  x  // error
 
 def withA[T](body: A => T): T = body(A())
 

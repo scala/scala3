@@ -1,3 +1,4 @@
+//> using options -source:future
 import language.experimental.modularity
 
 trait M[Self]:
@@ -7,14 +8,39 @@ trait M[Self]:
 trait Num[Self]:
   def zero: Self
 
-trait A extends M[A]
-trait B extends M[A]
+object Test1:
+  trait X extends M[X]
+  trait Y extends M[Y]
 
-trait AA:
-  type X: M
-trait BB:
-  type X: Num
-class CC[X1: {M, Num}] extends AA, BB:
-  type X = X1
-  X.zero
-  X.unit
+object Test2:
+  trait A[X: Num]:
+    X.zero
+  trait B[X: {M, Num}]:
+    X.unit
+    X.zero
+
+object Test3:
+
+  trait A:
+    type X: M
+    X.unit
+
+  trait B:
+    type X: Num
+    X.zero
+
+  trait C extends A, B:
+    X.zero
+    X.unit
+
+  class AA[Y: M] extends A:
+    type X = Y
+    X.unit
+    Y.unit
+
+  class CC[Y: {M, Num}] extends C:
+    type X = Y
+    X.zero
+    X.unit
+    Y.zero
+    Y.unit

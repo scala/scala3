@@ -14,6 +14,8 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.Arrays
 
 import scala.annotation.unchecked.uncheckedVariance
@@ -39,12 +41,12 @@ sealed abstract class ArraySeq[+A]
     with IndexedSeqOps[A, ArraySeq, ArraySeq[A]]
     with StrictOptimizedSeqOps[A, ArraySeq, ArraySeq[A]]
     with EvidenceIterableFactoryDefaults[A, ArraySeq, ClassTag]
-    with Serializable {
+    with Serializable{
 
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
     * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
     * or subtype of the element type. */
-  protected def elemTag: ClassTag[_]
+  protected def elemTag: ClassTag[?]
 
   override def iterableFactory: SeqFactory[ArraySeq] = ArraySeq.untagged
 
@@ -52,12 +54,12 @@ sealed abstract class ArraySeq[+A]
     * the expected immutability. Its element type does not have to be equal to the element type of this ArraySeq.
     * A primitive ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an
     * array of a supertype or subtype of the element type. */
-  def unsafeArray: Array[_]
+  def unsafeArray: Array[?]
 
   protected def evidenceIterableFactory: ArraySeq.type = ArraySeq
   protected def iterableEvidence: ClassTag[A @uncheckedVariance] = elemTag.asInstanceOf[ClassTag[A]]
 
-  def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit
+  def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit
 
   @throws[ArrayIndexOutOfBoundsException]
   def apply(i: Int): A
@@ -89,7 +91,7 @@ sealed abstract class ArraySeq[+A]
     *
     * @return null if optimisation not possible.
     */
-  private def appendedAllArraySeq[B >: A](that: ArraySeq[B]): ArraySeq[B] = {
+  private def appendedAllArraySeq[B >: A](that: ArraySeq[B]): ArraySeq[B] | Null = {
     // Optimise concatenation of two ArraySeqs
     // For ArraySeqs with sizes of [100, 1000, 10000] this is [3.5, 4.1, 5.2]x as fast
     if (isEmpty)
@@ -125,7 +127,7 @@ sealed abstract class ArraySeq[+A]
     }
   }
 
-  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]): ArraySeq[B] = {
+  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): ArraySeq[B] = {
     def genericResult = {
       val k = suffix.knownSize
       if (k == 0) this
@@ -148,7 +150,7 @@ sealed abstract class ArraySeq[+A]
     }
   }
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): ArraySeq[B] = {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): ArraySeq[B] = {
     def genericResult = {
       val k = prefix.knownSize
       if (k == 0) this
@@ -172,7 +174,7 @@ sealed abstract class ArraySeq[+A]
     }
   }
 
-  override def zip[B](that: collection.IterableOnce[B]): ArraySeq[(A, B)] =
+  override def zip[B](that: collection.IterableOnce[B]^): ArraySeq[(A, B)] =
     that match {
       case bs: ArraySeq[B] =>
         ArraySeq.tabulate(length min bs.length) { i =>
@@ -244,7 +246,7 @@ sealed abstract class ArraySeq[+A]
 
   override def reverse: ArraySeq[A] = ArraySeq.unsafeWrapArray(new ArrayOps(unsafeArray).reverse).asInstanceOf[ArraySeq[A]]
 
-  override protected[this] def className = "ArraySeq"
+  override protected def className = "ArraySeq"
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
@@ -259,7 +261,7 @@ sealed abstract class ArraySeq[+A]
   override def sorted[B >: A](implicit ord: Ordering[B]): ArraySeq[A] =
     if(unsafeArray.length <= 1) this
     else {
-      val a = Array.copyAs[AnyRef](unsafeArray, length)(ClassTag.AnyRef)
+      val a = Array.copyAs[AnyRef](unsafeArray, length)
       Arrays.sort(a, ord.asInstanceOf[Ordering[AnyRef]])
       new ArraySeq.ofRef[AnyRef](a).asInstanceOf[ArraySeq[A]]
     }
@@ -274,11 +276,11 @@ sealed abstract class ArraySeq[+A]
 object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   val untagged: SeqFactory[ArraySeq] = new ClassTagSeqFactory.AnySeqDelegate(self)
 
-  private[this] lazy val emptyImpl = new ArraySeq.ofRef[Nothing](new Array[Nothing](0))
+  private lazy val emptyImpl = new ArraySeq.ofRef[Nothing](new Array[Nothing](0))
 
   def empty[A : ClassTag]: ArraySeq[A] = emptyImpl
 
-  def from[A](it: scala.collection.IterableOnce[A])(implicit tag: ClassTag[A]): ArraySeq[A] = it match {
+  def from[A](it: scala.collection.IterableOnce[A]^)(implicit tag: ClassTag[A]): ArraySeq[A] = it match {
     case as: ArraySeq[A] => as
     case _ => unsafeWrapArray(Array.from[A](it))
   }
@@ -325,12 +327,12 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   }).asInstanceOf[ArraySeq[T]]
 
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](val unsafeArray: Array[T]) extends ArraySeq[T] {
+  final class ofRef[T <: AnyRef | Null](val unsafeArray: Array[T]) extends ArraySeq[T] {
     def elemTag: ClassTag[T] = ClassTag[T](unsafeArray.getClass.getComponentType)
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): T = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any): Boolean = that match {
       case that: ofRef[_] =>
         Array.equals(
@@ -347,11 +349,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       }
     }
     override def iterator: Iterator[T] = new ArrayOps.ArrayIterator[T](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[T, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         new ObjectArrayStepper(unsafeArray, 0, unsafeArray.length)
-      else shape.parUnbox(new ObjectArrayStepper(unsafeArray, 0, unsafeArray.length).asInstanceOf[AnyStepper[T] with EfficientSplit])
-    ).asInstanceOf[S with EfficientSplit]
+      else shape.parUnbox(new ObjectArrayStepper(unsafeArray, 0, unsafeArray.length).asInstanceOf[AnyStepper[T] & EfficientSplit])
+    ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -361,7 +363,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Byte = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofByte => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
@@ -374,11 +376,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
         new ArraySeq.ofByte(a)
       } else super.sorted[B]
     override def iterator: Iterator[Byte] = new ArrayOps.ArrayIterator[Byte](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Byte, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Byte, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new WidenedByteArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new WidenedByteArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Byte](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Byte => new ArraySeq.ofByte(unsafeArray.updated(index, b))
@@ -403,7 +405,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Short = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofShort => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
@@ -416,11 +418,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
         new ArraySeq.ofShort(a)
       } else super.sorted[B]
     override def iterator: Iterator[Short] = new ArrayOps.ArrayIterator[Short](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Short, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Short, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new WidenedShortArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new WidenedShortArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Short](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Short => new ArraySeq.ofShort(unsafeArray.updated(index, b))
@@ -445,7 +447,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Char = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofChar => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
@@ -458,11 +460,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
         new ArraySeq.ofChar(a)
       } else super.sorted[B]
     override def iterator: Iterator[Char] = new ArrayOps.ArrayIterator[Char](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Char, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Char, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new WidenedCharArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new WidenedCharArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Char](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Char => new ArraySeq.ofChar(unsafeArray.updated(index, b))
@@ -490,7 +492,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Int = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofInt => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
@@ -503,11 +505,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
         new ArraySeq.ofInt(a)
       } else super.sorted[B]
     override def iterator: Iterator[Int] = new ArrayOps.ArrayIterator[Int](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new IntArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new IntArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Int](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Int => new ArraySeq.ofInt(unsafeArray.updated(index, b))
@@ -532,7 +534,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Long = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofLong => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
@@ -545,11 +547,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
         new ArraySeq.ofLong(a)
       } else super.sorted[B]
     override def iterator: Iterator[Long] = new ArrayOps.ArrayIterator[Long](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Long, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Long, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParLongStepper(new LongArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new LongArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Long](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Long => new ArraySeq.ofLong(unsafeArray.updated(index, b))
@@ -574,17 +576,24 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Float = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
-      case that: ofFloat => Arrays.equals(unsafeArray, that.unsafeArray)
+      case that: ofFloat =>
+        val array = unsafeArray
+        val thatArray = that.unsafeArray
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Float] = new ArrayOps.ArrayIterator[Float](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Float, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Float, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParDoubleStepper(new WidenedFloatArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new WidenedFloatArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Float](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Float => new ArraySeq.ofFloat(unsafeArray.updated(index, b))
@@ -609,17 +618,24 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Double = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
-      case that: ofDouble => Arrays.equals(unsafeArray, that.unsafeArray)
+      case that: ofDouble =>
+        val array = unsafeArray
+        val thatArray = that.unsafeArray
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Double] = new ArrayOps.ArrayIterator[Double](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Double, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Double, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParDoubleStepper(new DoubleArrayStepper(unsafeArray, 0, unsafeArray.length))
       else new DoubleArrayStepper(unsafeArray, 0, unsafeArray.length)
-    ).asInstanceOf[S with EfficientSplit]
+    ).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Double](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Double => new ArraySeq.ofDouble(unsafeArray.updated(index, b))
@@ -644,7 +660,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Boolean = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofBoolean => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
@@ -657,8 +673,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
         new ArraySeq.ofBoolean(a)
       } else super.sorted[B]
     override def iterator: Iterator[Boolean] = new ArrayOps.ArrayIterator[Boolean](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Boolean, S]): S with EfficientSplit =
-      new BoxedBooleanArrayStepper(unsafeArray, 0, unsafeArray.length).asInstanceOf[S with EfficientSplit]
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Boolean, S]): S & EfficientSplit =
+      new BoxedBooleanArrayStepper(unsafeArray, 0, unsafeArray.length).asInstanceOf[S & EfficientSplit]
     override def updated[B >: Boolean](index: Int, elem: B): ArraySeq[B] =
       elem match {
         case b: Boolean => new ArraySeq.ofBoolean(unsafeArray.updated(index, b))
@@ -683,13 +699,13 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]
     def apply(i: Int): Unit = unsafeArray(i)
-    override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
+    override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
       case that: ofUnit => unsafeArray.length == that.unsafeArray.length
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Unit] = new ArrayOps.ArrayIterator[Unit](unsafeArray)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Unit, S]): S with EfficientSplit =
-      new ObjectArrayStepper[AnyRef](unsafeArray.asInstanceOf[Array[AnyRef]], 0, unsafeArray.length).asInstanceOf[S with EfficientSplit]
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Unit, S]): S & EfficientSplit =
+      new ObjectArrayStepper[AnyRef](unsafeArray.asInstanceOf[Array[AnyRef]], 0, unsafeArray.length).asInstanceOf[S & EfficientSplit]
   }
 }

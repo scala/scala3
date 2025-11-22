@@ -37,7 +37,8 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
+import cc.{isCaptureChecking, isRetainsLike}
+import cc.Mutability.isUpdateMethod
 
 import collection.mutable
 import reporting.*
@@ -630,8 +631,13 @@ object Checking {
     if sym.is(Transparent) then
       if sym.isType then
         if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits")
+      else if sym.isMutableVar && sym.owner.isClass && Feature.ccEnabled
+          || sym.isInlineMethod
+      then
+        () // ok
       else
-        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
+        def ccAdd = if Feature.ccEnabled then i" and mutable fields" else ""
+        fail(em"`transparent` can only be used for inline methods$ccAdd")
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
@@ -691,7 +697,7 @@ object Checking {
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
-      fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Mutable` trait.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
@@ -771,8 +777,9 @@ object Checking {
           !(symBoundary.isContainedIn(otherBoundary) ||
             otherLinkedBoundary.exists && symBoundary.isContainedIn(otherLinkedBoundary))
         }
-        && !(inCaptureSet && other.isAllOf(LocalParamAccessor))
-            // class parameters in capture sets are not treated as leaked since in
+        && !(inCaptureSet && (!Feature.ccEnabled || other.isAllOf(LocalParamAccessor)))
+            // All references are skipped in capture sets when CC is not enabled.
+            // Class parameters in capture sets are not treated as leaked since in
             // phase CheckCaptures these are treated as normal vals.
 
       def apply(tp: Type): Type = tp match {
@@ -1088,7 +1095,7 @@ trait Checking {
       val pos =
         if isPatDef then reason match
           case NonConforming => sel.srcPos
-          case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
+          case RefutableExtractor => pat.source.atSpan(pat.span `union` sel.span)
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
       report.errorOrMigrationWarning(
@@ -1334,39 +1341,35 @@ trait Checking {
     decl.matches(other) && !staticNonStaticPair
 
   /** Check that class does not declare same symbol twice */
-  def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
+  def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit =
     val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
-    def checkDecl(decl: Symbol): Unit = {
-      for (other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent()) {
+    def checkDecl(decl: Symbol): Unit =
+      for other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if (matchesSameStatic(decl, other) && !javaFieldMethodPair) {
+        if matchesSameStatic(decl, other) && !javaFieldMethodPair then
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
           if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
             () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
-          else if (decl is Synthetic) doubleDefError(other, decl)
+          else if decl.is(Synthetic) then doubleDefError(other, decl)
           else doubleDefError(decl, other)
-        }
         if decl.hasDefaultParams && other.hasDefaultParams then
           report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
           decl.resetFlag(HasDefaultParams)
-      }
-      if (!excludeFromDoubleDeclCheck(decl))
+      if !excludeFromDoubleDeclCheck(decl) then
         seen(decl.name) = decl :: seen(decl.name)
-    }
 
     cls.info.decls.foreach(checkDecl)
-    cls.info match {
+    cls.info match
       case ClassInfo(_, _, _, _, selfSym: Symbol) => checkDecl(selfSym)
       case _ =>
-    }
-  }
+  end checkNoDoubleDeclaration
 
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
     if (!ctx.isAfterTyper) {

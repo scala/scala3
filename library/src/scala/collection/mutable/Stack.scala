@@ -13,6 +13,7 @@
 package scala.collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{migration, nowarn}
 import scala.collection.generic.DefaultSerializable
 import scala.collection.{IterableFactoryDefaults, IterableOnce, SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}
@@ -34,7 +35,7 @@ import scala.collection.{IterableFactoryDefaults, IterableOnce, SeqFactory, Stri
  *  @define willNotTerminateInf
  */
 @migration("Stack is now based on an ArrayDeque instead of a linked list", "2.13.0")
-class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
+class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   extends ArrayDeque[A](array, start, end)
     with IndexedSeqOps[A, Stack, Stack[A]]
     with StrictOptimizedSeqOps[A, Stack, Stack[A]]
@@ -49,7 +50,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
   override def iterableFactory: SeqFactory[Stack] = Stack
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Stack"
+  override protected def stringPrefix = "Stack"
 
   /**
     * Add elements to the top of this stack
@@ -77,7 +78,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
     *  @param elems the iterable object.
     *  @return the stack with the new elements on top.
     */
-  def pushAll(elems: scala.collection.IterableOnce[A]): this.type =
+  def pushAll(elems: scala.collection.IterableOnce[A]^): this.type =
     prependAll(elems match {
       case it: scala.collection.Seq[A] => it.view.reverse
       case it => IndexedSeq.from(it).view.reverse
@@ -121,7 +122,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
     bf.result()
   }
 
-  override protected def ofArray(array: Array[AnyRef], end: Int): Stack[A] =
+  override protected def ofArray(array: Array[AnyRef | Null], end: Int): Stack[A] =
     new Stack(array, start = 0, end)
 
 }
@@ -134,7 +135,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Stack extends StrictOptimizedSeqFactory[Stack] {
 
-  def from[A](source: IterableOnce[A]): Stack[A] = empty ++= source
+  def from[A](source: IterableOnce[A]^): Stack[A] = empty ++= source
 
   def empty[A]: Stack[A] = new Stack
 

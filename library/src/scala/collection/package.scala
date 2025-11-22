@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 package object collection {
   @deprecated("Use Iterable instead of Traversable", "2.13.0")
@@ -65,7 +66,7 @@ package object collection {
     /** Splits a sequence into head +: tail.
       * @return Some((head, tail)) if sequence is non-empty. None otherwise.
       */
-    def unapply[A, CC[_] <: Seq[_], C <: SeqOps[A, CC, C]](t: C with SeqOps[A, CC, C]): Option[(A, C)] =
+    def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(A, C^{t})] =
       if(t.isEmpty) None
       else Some(t.head -> t.tail)
   }
@@ -75,7 +76,7 @@ package object collection {
     /** Splits a sequence into init :+ last.
       * @return Some((init, last)) if sequence is non-empty. None otherwise.
       */
-    def unapply[A, CC[_] <: Seq[_], C <: SeqOps[A, CC, C]](t: C with SeqOps[A, CC, C]): Option[(C, A)] =
+    def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(C^{t}, A)] =
       if(t.isEmpty) None
       else Some(t.init -> t.last)
   }

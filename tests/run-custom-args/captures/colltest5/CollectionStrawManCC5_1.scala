@@ -423,7 +423,7 @@ object CollectionStrawMan5 {
     def start: Int
     def end: Int
     def apply(i: Int): A
-    def iterator: Iterator[A] = new Iterator[A] {
+    def iterator: Iterator[A]^{this} = new Iterator[A] {
       private var current = start
       def hasNext = current < end
       def next(): A = {
@@ -532,7 +532,7 @@ object CollectionStrawMan5 {
       }
       -1
     }
-    def filter(p: A => Boolean): Iterator[A]^{this, p} = new Iterator[A] {
+    def filter(p: A ->{cap, this} Boolean): Iterator[A]^{this, p} = new Iterator[A] {
       private var hd: A = compiletime.uninitialized
       private var hdDefined: Boolean = false
 

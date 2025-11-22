@@ -12,5 +12,5 @@ object Collection:
 trait Foo:
   val thunks: Collection[() => Unit] // that's fine
 
-object FooImpl1 extends Foo:
+class FooImpl1 extends Foo:
   val thunks: Collection[() => Unit] = Collection.empty // was error, now ok

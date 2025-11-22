@@ -263,7 +263,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           m.paramInfos.head.stripNull() == defn.StringType
         case _ => false
       }
-      val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
+      val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor(_)).asTerm
       val stringIndex = Apply(Select(index, nme.toString_), Nil)
       val error = Throw(New(ioob, constructor, List(stringIndex)))
 
@@ -303,7 +303,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val comparisons = sortedAccessors.map { accessor =>
         This(clazz).withSpan(ctx.owner.span.focus).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
-        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceBalanced(_ and _)
+        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceBalanced(_ `and` _)
       val canEqualMeth = existingDef(defn.Product_canEqual, clazz)
       if !clazz.is(Final) || canEqualMeth.exists && !canEqualMeth.is(Synthetic) then
         rhs = rhs.and(
@@ -316,7 +316,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (isDerivedValueClass(clazz)) matchExpr
       else {
         val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
-        eqCompare or matchExpr
+        eqCompare `or` matchExpr
       }
     }
 

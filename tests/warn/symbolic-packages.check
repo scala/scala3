@@ -1,16 +1,24 @@
--- Warning: tests/warn/symbolic-packages.scala:3:8 ---------------------------------------------------------------------
+-- [E222] Syntax Warning: tests/warn/symbolic-packages.scala:3:8 -------------------------------------------------------
 3 |package `with spaces` { // warn
   |        ^^^^^^^^^^^^^
   |        The package name `with spaces` will be encoded on the classpath, and can lead to undefined behaviour.
--- Warning: tests/warn/symbolic-packages.scala:7:10 --------------------------------------------------------------------
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E222] Syntax Warning: tests/warn/symbolic-packages.scala:7:10 ------------------------------------------------------
 7 |package +.* { // warn // warn
   |          ^
   |          The package name `*` will be encoded on the classpath, and can lead to undefined behaviour.
--- Warning: tests/warn/symbolic-packages.scala:7:8 ---------------------------------------------------------------------
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E222] Syntax Warning: tests/warn/symbolic-packages.scala:7:8 -------------------------------------------------------
 7 |package +.* { // warn // warn
   |        ^
   |        The package name `+` will be encoded on the classpath, and can lead to undefined behaviour.
--- Warning: tests/warn/symbolic-packages.scala:11:16 -------------------------------------------------------------------
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E222] Syntax Warning: tests/warn/symbolic-packages.scala:11:16 -----------------------------------------------------
 11 |package object `mixed_*` { // warn
    |                ^^^^^^^
    |               The package name `mixed_*` will be encoded on the classpath, and can lead to undefined behaviour.
+   |
+   | longer explanation available when compiling with `-explain`

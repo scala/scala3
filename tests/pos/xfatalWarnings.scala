@@ -1,4 +1,4 @@
-//> using options -nowarn -Xfatal-warnings
+//> using options -nowarn -Werror
 // succeeds despite -Xfatal-warnings because of -nowarn
 
 object xfatalWarnings {

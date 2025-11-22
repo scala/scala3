@@ -114,7 +114,7 @@ final class Tuple2Zipped[El1, It1 <: Iterable[El1], El2, It2 <: Iterable[El2]](p
     }
   }
 
-  override def toString = s"($coll1, $coll2).zipped"
+  override def toString() = s"($coll1, $coll2).zipped"
 }
 
 @deprecated("Use scala.collection.LazyZip2.", since = "2.13.0")
@@ -137,8 +137,8 @@ object Tuple2Zipped {
 
     @deprecated("Use xs.lazyZip(ys)", since = "2.13.0")
     def zipped[El1, It1 <: Iterable[El1], El2, It2 <: Iterable[El2]]
-      (implicit w1: T1 => IterableOps[El1, Iterable, It1] with It1,
-                w2: T2 => IterableOps[El2, Iterable, It2] with It2
+      (implicit w1: T1 => IterableOps[El1, Iterable, It1] & It1,
+                w2: T2 => IterableOps[El2, Iterable, It2] & It2
       ): Tuple2Zipped[El1, It1, El2, It2] = new Tuple2Zipped((w1(x._1), w2(x._2)))
   }
 }

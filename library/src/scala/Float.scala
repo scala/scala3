@@ -230,7 +230,7 @@ object Float extends AnyValCompanion {
   /** The largest finite positive number representable as a Float. */
   final val MaxValue = java.lang.Float.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToFloat`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -239,7 +239,7 @@ object Float extends AnyValCompanion {
    */
   def box(x: Float): java.lang.Float = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Float.
    *
@@ -252,7 +252,7 @@ object Float extends AnyValCompanion {
   def unbox(x: java.lang.Object): Float = ???
 
   /** The String representation of the scala.Float companion object. */
-  override def toString = "object scala.Float"
+  override def toString() = "object scala.Float"
   /** Language mandated coercions from Float to "wider" types. */
   import scala.language.implicitConversions
   implicit def float2double(x: Float): Double = x.toDouble

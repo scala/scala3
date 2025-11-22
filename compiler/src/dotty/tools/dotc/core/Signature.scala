@@ -189,7 +189,7 @@ object Signature {
     }
     def compare(x: Signature, y: Signature): Int = {
       import scala.math.Ordering.Implicits.seqOrdering
-      val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig, y.paramsSig)
+      val paramsOrdering = seqOrdering(using paramSigOrdering).compare(x.paramsSig, y.paramsSig)
       if (paramsOrdering != 0) paramsOrdering
       else summon[Ordering[Name]].compare(x.resSig, y.resSig)
     }

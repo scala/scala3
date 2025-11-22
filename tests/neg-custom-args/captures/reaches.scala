@@ -41,9 +41,9 @@ def runAll2(consume xs: List[Proc]): Unit =
 def runAll3(xs: List[Proc]): Unit =
   val cur = Ref[List[Proc]](xs) // error
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head // error
+    val next: () => Unit = cur.get.head // error // error
     next()
-    cur.set(cur.get.tail: List[Proc]) // error
+    cur.set(cur.get.tail: List[Proc])
 
 class Id[-A,  +B >: A]():
   def apply(a: A): B = a
@@ -64,8 +64,8 @@ def attack2 =
 def attack3 =
   val id: (x: File^) -> File^ = x => x // was error, now OK
 
-  val leaked = usingFile[File^{id*}]: f => // error
-    val f1: File^{id*} = id(f)
+  val leaked = usingFile[File^{id*}]: f =>
+    val f1: File^{id*} = id(f)   // error
     f1
 
 class List[+A]:

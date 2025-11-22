@@ -21,7 +21,8 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
-import cc.{stripCapturing, isUpdateMethod, CCState}
+import cc.{stripCapturing, CCState}
+import cc.Mutability.isUpdateMethod
 
 object RefChecks {
   import tpd.*
@@ -69,8 +70,10 @@ object RefChecks {
     }
 
     // Check for doomed attempt to overload applyDynamic
-    if (clazz derivesFrom defn.DynamicClass)
-      for (case (_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length))
+    if clazz.derivesFrom(defn.DynamicClass) then
+      for case (_, m1 :: m2 :: _) <- clazz.info.member(nme.applyDynamic)
+          .alternatives.groupBy(_.symbol.typeParams.length)
+      do
         report.error("implementation restriction: applyDynamic cannot be overloaded except by methods with different numbers of type parameters, e.g. applyDynamic[T1](method: String)(arg: T1) and applyDynamic[T1, T2](method: String)(arg1: T1, arg2: T2)",
           m1.symbol.srcPos)
   }
@@ -329,6 +332,15 @@ object RefChecks {
 
     val mixinOverrideErrors = new mutable.ListBuffer[MixinOverrideError]()
 
+    /** Returns a `SourcePosition` containing the full span (with the correct
+     *  end) of the class name. */
+    def clazzNamePos =
+      if clazz.name == tpnme.ANON_CLASS then
+        clazz.srcPos
+      else
+        val clazzNameEnd = clazz.srcPos.span.start + clazz.name.stripModuleClassSuffix.lastPart.length
+        clazz.srcPos.sourcePos.copy(span = clazz.srcPos.span.withEnd(clazzNameEnd))
+
     def printMixinOverrideErrors(): Unit =
       mixinOverrideErrors.toList match {
         case Nil =>
@@ -559,10 +571,11 @@ object RefChecks {
         overrideError("needs `abstract override` modifiers")
       else if member.is(Override) && other.isMutableVarOrAccessor then
         overrideError("cannot override a mutable variable")
-      else if (member.isAnyOverride &&
-        !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
-        !member.is(Deferred) && !other.is(Deferred) &&
-        intersectionIsEmpty(member.extendedOverriddenSymbols, other.extendedOverriddenSymbols))
+      else if member.isAnyOverride
+        && !(member.owner.thisType.baseClasses.exists(_.isSubClass(other.owner)))
+        && !member.is(Deferred) && !other.is(Deferred)
+        && intersectionIsEmpty(member.extendedOverriddenSymbols, other.extendedOverriddenSymbols)
+      then
         overrideError("cannot override a concrete member without a third member that's overridden by both " +
           "(this rule is designed to prevent ``accidental overrides'')")
       else if (other.isStableMember && !member.isStableMember) // (1.5)
@@ -794,9 +807,9 @@ object RefChecks {
                           case _ =>
                             ""
                         }
-                      else if (abstractSym isSubClass concreteSym)
+                      else if abstractSym.isSubClass(concreteSym) then
                         subclassMsg(abstractSym, concreteSym)
-                      else if (concreteSym isSubClass abstractSym)
+                      else if concreteSym.isSubClass(abstractSym) then
                         subclassMsg(concreteSym, abstractSym)
                       else ""
 
@@ -914,7 +927,7 @@ object RefChecks {
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazz.srcPos)
+        report.error(abstractErrorMessage, clazzNamePos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -1123,8 +1136,8 @@ object RefChecks {
    *  This check is suppressed if the method is an override. (Because the type of the receiver
    *  may be narrower in the override.)
    *
-   *  If the extension method is nilary, it is always hidden by a member of the same name.
-   *  (Either the member is nilary, or the reference is taken as the eta-expansion of the member.)
+   *  If the extension method is parameterless, it is always hidden by a member of the same name.
+   *  (Either the member is parameterless, or the reference is taken as the eta-expansion of the member.)
    *
    *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
    *  That check would account for accessibility and opacity. As a limitation, this check considers
@@ -1144,15 +1157,15 @@ object RefChecks {
    *  parameters of the extension method must be distinguishable from the member parameters, as described above.
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
-    if sym.is(Extension) then
+    if sym.is(Extension) then atPhase(typerPhase):
       extension (tp: Type)
         def explicit = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true)
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
-        def isNilary = tp.stripPoly match { case mt: MethodType => false case _ => true }
+        def isParamLess = tp.stripPoly match { case mt: MethodType => false case _ => true }
       val explicitInfo = sym.info.explicit // consider explicit value params
       def memberHidesMethod(member: Denotation): Boolean =
         val methTp = explicitInfo.resultType // skip leading implicits and the "receiver" parameter
-        if methTp.isNilary then
+        if methTp.isParamLess then
           return true // extension without parens is always hidden by a member of same name
         val memberIsImplicit = member.info.hasImplicitParams
         inline def paramsCorrespond =
@@ -1161,7 +1174,8 @@ object RefChecks {
             else methTp.explicit.firstParamTypes
           val memberParamTps = member.info.stripPoly.firstParamTypes
           memberParamTps.corresponds(paramTps): (m, x) =>
-            m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias && (x frozen_<:< m)
+               m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias
+            && (x frozen_<:< m)
         memberIsImplicit && !methTp.hasImplicitParams || paramsCorrespond
       def targetOfHiddenExtension: Symbol =
         val target =
@@ -1184,6 +1198,19 @@ object RefChecks {
         if target.exists then
           report.warning(ExtensionNullifiedByMember(sym, target), sym.srcPos)
   end checkExtensionMethods
+
+  /** Check that public (and protected) methods/fields do not expose flexible types. */
+  def checkPublicFlexibleTypes(sym: Symbol)(using Context): Unit =
+    if ctx.explicitNulls && !ctx.isJava
+        && sym.exists && sym.owner.isClass
+        && !sym.owner.isAnonymousClass
+        && !sym.isOneOf(JavaOrPrivateOrSynthetic | InlineProxy | Param | Exported) then
+      val resTp = sym.info.finalResultType
+      if resTp.existsPart(_.isInstanceOf[FlexibleType], StopAt.Static) then
+        report.warning(
+          em"${sym.show} exposes a flexible type in its inferred result type ${resTp}. Consider annotating the type explicitly",
+          sym.srcPos
+        )
 
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
@@ -1321,6 +1348,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       val sym = tree.symbol
       checkNoPrivateOverrides(sym)
       checkVolatile(sym)
+      checkPublicFlexibleTypes(sym)
       if (sym.exists && sym.owner.isTerm) {
         tree.rhs match {
           case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.srcPos)
@@ -1336,6 +1364,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkImplicitNotFoundAnnotation.defDef(sym.denot)
     checkUnaryMethods(sym)
     checkExtensionMethods(sym)
+    checkPublicFlexibleTypes(sym)
     tree
   }
 

@@ -15,6 +15,8 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.immutable.Range
 import BitSetOps.{LogWL, MaxSize}
 import scala.annotation.implicitNotFound
@@ -48,7 +50,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
 
   def this() = this(0)
 
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
 
@@ -176,19 +178,19 @@ class BitSet(protected[collection] final var elems: Array[Long])
   override def map[B](f: Int => B)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].map(f)
 
-  override def flatMap(f: Int => IterableOnce[Int]): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
-  override def flatMap[B](f: Int => IterableOnce[B])(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
+  override def flatMap(f: Int => IterableOnce[Int]^): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
+  override def flatMap[B](f: Int => IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].flatMap(f)
 
-  override def collect(pf: PartialFunction[Int, Int]): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
-  override def collect[B](pf: scala.PartialFunction[Int, B])(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
+  override def collect(pf: PartialFunction[Int, Int]^): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
+  override def collect[B](pf: scala.PartialFunction[Int, B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].collect(pf)
 
   // necessary for disambiguation
-  override def zip[B](that: IterableOnce[B])(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
+  override def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
     super.zip(that)
 
-  override def addAll(xs: IterableOnce[Int]): this.type = xs match {
+  override def addAll(xs: IterableOnce[Int]^): this.type = xs match {
     case bs: collection.BitSet =>
       this |= bs
     case range: Range =>
@@ -261,12 +263,12 @@ class BitSet(protected[collection] final var elems: Array[Long])
       super.subsetOf(other)
   }
 
-  override def subtractAll(xs: IterableOnce[Int]): this.type = xs match {
+  override def subtractAll(xs: IterableOnce[Int]^): this.type = xs match {
     case bs: collection.BitSet => this &~= bs
     case other => super.subtractAll(other)
   }
 
-  protected[this] def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
+  protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 
   override def diff(that: collection.Set[Int]): BitSet = that match {
     case bs: collection.BitSet =>
@@ -327,7 +329,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
     // * over-allocating -- the resulting array will be exactly the right size
     // * multiple resizing allocations -- the array is allocated one time, not log(n) times.
     var i = nwords - 1
-    var newArray: Array[Long] = null
+    var newArray: Array[Long] | Null = null
     while (i >= 0) {
       val w = BitSetOps.computeWordForFilter(pred, isFlipped, word(i), i)
       if (w != 0L) {
@@ -361,7 +363,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
-  def fromSpecific(it: scala.collection.IterableOnce[Int]): BitSet = Growable.from(empty, it)
+  def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet = Growable.from(empty, it)
 
   def empty: BitSet = new BitSet()
 
@@ -388,6 +390,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    protected[this] def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
+    protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

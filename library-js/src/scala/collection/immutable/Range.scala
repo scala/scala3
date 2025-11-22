@@ -13,6 +13,8 @@
 package scala
 package collection.immutable
 
+import scala.language.`2.13`
+
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl.RangeStepper
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}

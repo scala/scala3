@@ -23,9 +23,9 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.generic.SerializeEnd
 import scala.collection.mutable.{ArrayBuffer, StringBuilder}
 import scala.language.implicitConversions
-import Stream.cons
+import scala.runtime.ScalaRunTime.nullForGC
 
-@deprecated("Use LazyList (which is fully lazy) instead of Stream (which has a lazy tail only)", "2.13.0")
+@deprecated("Use LazyListIterable (which is fully lazy) instead of Stream (which has a lazy tail only)", "2.13.0")
 @SerialVersionUID(3L)
 sealed abstract class Stream[+A] extends AbstractSeq[A]
   with LinearSeq[A]
@@ -47,7 +47,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
 
   override def iterableFactory: SeqFactory[Stream] = Stream
 
-  override protected[this] def className: String = "Stream"
+  override protected def className: String = "Stream"
 
   /** Apply the given function `f` to each element of this linear sequence
     * (while respecting the order of the elements).
@@ -102,7 +102,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   @deprecated("The `append` operation has been renamed `lazyAppendedAll`", "2.13.0")
   @inline final def append[B >: A](rest: => IterableOnce[B]): Stream[B] = lazyAppendedAll(rest)
 
-  protected[this] def writeReplace(): AnyRef =
+  protected def writeReplace(): AnyRef =
     if(nonEmpty && tailDefined) new Stream.SerializationProxy[A](this) else this
 
   /** Prints elements of this stream one by one, separated by commas. */
@@ -121,11 +121,11 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     * @return The stream containing elements of this stream and the iterable object.
     */
   def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]): Stream[B] =
-    if (isEmpty) iterableFactory.from(suffix) else cons[B](head, tail.lazyAppendedAll(suffix))
+    if (isEmpty) iterableFactory.from(suffix) else Stream.cons[B](head, tail.lazyAppendedAll(suffix))
 
   override def scanLeft[B](z: B)(op: (B, A) => B): Stream[B] =
     if (isEmpty) z +: iterableFactory.empty
-    else cons(z, tail.scanLeft(op(z, head))(op))
+    else Stream.cons(z, tail.scanLeft(op(z, head))(op))
 
   /** Stream specialization of reduceLeft which allows GC to collect
     *  along the way.
@@ -167,11 +167,11 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   override final def withFilter(p: A => Boolean): collection.WithFilter[A, Stream] =
     Stream.withFilter(coll, p)
 
-  override final def prepended[B >: A](elem: B): Stream[B] = cons(elem, coll)
+  override final def prepended[B >: A](elem: B): Stream[B] = Stream.cons(elem, coll)
 
   override final def map[B](f: A => B): Stream[B] =
     if (isEmpty) iterableFactory.empty
-    else cons(f(head), tail.map(f))
+    else Stream.cons(f(head), tail.map(f))
 
   @tailrec override final def collect[B](pf: PartialFunction[A, B]): Stream[B] =
     if(isEmpty) Stream.empty
@@ -216,7 +216,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
         case that: collection.Iterable[B] => that
         case _ => LazyList.from(that)
       }
-      cons[(A, B)]((this.head, thatIterable.head), this.tail.zip(thatIterable.tail))
+      Stream.cons[(A, B)]((this.head, thatIterable.head), this.tail.zip(thatIterable.tail))
     }
 
   override final def zipWithIndex: Stream[(A, Int)] = this.zip(LazyList.from(0))
@@ -243,7 +243,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     sb
   }
 
-  private[this] def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
+  private def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
     b.append(start)
     if (nonEmpty) {
       b.append(head)
@@ -329,7 +329,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     *           - `"Stream(1, 2, 3, &lt;cycle&gt;)"`, an infinite stream that contains
     *             a cycle at the fourth element.
     */
-  override def toString = addStringNoForce(new JStringBuilder(className), "(", ", ", ")").toString
+  override def toString() = addStringNoForce(new JStringBuilder(className), "(", ", ", ")").toString
 
   @deprecated("Check .knownSize instead of .hasDefiniteSize for more actionable information (see scaladoc for details)", "2.13.0")
   override def hasDefiniteSize: Boolean = isEmpty || {
@@ -395,14 +395,14 @@ object Stream extends SeqFactory[Stream] {
   @SerialVersionUID(3L)
   final class Cons[A](override val head: A, tl: => Stream[A]) extends Stream[A] {
     override def isEmpty: Boolean = false
-    @volatile private[this] var tlVal: Stream[A] = _
-    @volatile private[this] var tlGen = () => tl
+    @volatile private var tlVal: Stream[A] = compiletime.uninitialized
+    @volatile private var tlGen: (() => Stream[A]) | Null = () => tl
     protected def tailDefined: Boolean = tlGen eq null
     override def tail: Stream[A] = {
       if (!tailDefined)
         synchronized {
           if (!tailDefined) {
-            tlVal = tlGen()
+            tlVal = tlGen.nn()
             tlGen = null
           }
         }
@@ -478,9 +478,9 @@ object Stream extends SeqFactory[Stream] {
   private[immutable] def withFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean): collection.WithFilter[A, Stream] =
     new WithFilter[A](l, p)
 
-  private[this] final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
-    private[this] var s = l                                                // set to null to allow GC after filtered
-    private[this] lazy val filtered: Stream[A] = { val f = s.filter(p); s = null.asInstanceOf[Stream[A]]; f } // don't set to null if throw during filter
+  private final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
+    private var s: Stream[A] = l // set to null to allow GC after filtered
+    private lazy val filtered: Stream[A] = { val f = s.filter(p); s = nullForGC[Stream[A]]; f } // don't set to null if throw during filter
     def map[B](f: A => B): Stream[B] = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]): Stream[B] = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
@@ -542,7 +542,7 @@ object Stream extends SeqFactory[Stream] {
   @SerialVersionUID(3L)
   class SerializationProxy[A](@transient protected var coll: Stream[A]) extends Serializable {
 
-    private[this] def writeObject(out: ObjectOutputStream): Unit = {
+    private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
       var these = coll
       while(these.nonEmpty && these.tailDefined) {
@@ -553,7 +553,7 @@ object Stream extends SeqFactory[Stream] {
       out.writeObject(these)
     }
 
-    private[this] def readObject(in: ObjectInputStream): Unit = {
+    private def readObject(in: ObjectInputStream): Unit = {
       in.defaultReadObject()
       val init = new ArrayBuffer[A]
       var initRead = false
@@ -565,6 +565,6 @@ object Stream extends SeqFactory[Stream] {
       coll = (init ++: tail)
     }
 
-    protected[this] def readResolve(): Any = coll
+    protected def readResolve(): Any = coll
   }
 }

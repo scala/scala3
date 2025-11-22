@@ -2,17 +2,16 @@
  4 |  boundary[AnyRef^]:
  5 |    l1 ?=> // error // error
    |  ^
-   |Found:    scala.util.boundary.Label[Object^'s1]^{cap.rd}
-   |Required: scala.util.boundary.Label[Object^]^²
+   |  Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
+   |  The leakage occurred when trying to match the following types:
    |
-   |Note that capability cap² cannot be included in outer capture set 's1.
+   |  Found:    scala.util.boundary.Label[Object^'s1]
+   |  Required: scala.util.boundary.Label[Object^]^²
    |
-   |where:    ^    refers to the universal root capability
-   |          ^²   refers to a fresh root capability classified as Control in the type of value local
-   |          cap  is a fresh root capability classified as Control created in value local when constructing Capability instance scala.util.boundary.Label[Object^'s1]
-   |          cap² is the universal root capability
+   |  where:    ^ and cap refer to the universal root capability
+   |            ^²        refers to a fresh root capability classified as Control in the type of value local
  6 |      boundary[Unit]: l2 ?=>
- 7 |        boundary.break(l2)(using l1)
+ 7 |        boundary.break(l2)(using l1) // error
  8 |      ???
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
@@ -23,6 +22,20 @@
     --------------------------------------------------------------------------------------------------------------------
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:7:33 --------------------------------------
+7 |        boundary.break(l2)(using l1) // error
+  |                                 ^^
+  |Found:    (local : scala.util.boundary.Label[Object^])
+  |Required: scala.util.boundary.Label[scala.util.boundary.Label[Unit]^²]^³
+  |
+  |Note that capability cap is not included in capture set {cap²}.
+  |
+  |where:    ^           refers to the universal root capability
+  |          ^²          refers to a fresh root capability classified as Control in the type of value local²
+  |          ^³ and cap² refer to a fresh root capability classified as Control created in package <empty> when checking argument to parameter label of method break
+  |          cap         is a fresh root capability classified as Control in the type of value local
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------
  4 |  boundary[AnyRef^]:
  5 |    l1 ?=> // error // error
@@ -32,12 +45,10 @@
    |
    |  Note that capability cap is not included in capture set {cap²}.
    |
-   |  where:    ^    refers to the universal root capability
-   |            ^²   refers to a fresh root capability created in package <empty>
-   |            cap  is a fresh root capability created in package <empty>
-   |            cap² is the universal root capability
+   |  where:    ^ and cap² refer to the universal root capability
+   |            ^² and cap refer to a fresh root capability created in package <empty>
  6 |      boundary[Unit]: l2 ?=>
- 7 |        boundary.break(l2)(using l1)
+ 7 |        boundary.break(l2)(using l1) // error
  8 |      ???
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace

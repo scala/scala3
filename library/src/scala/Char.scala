@@ -455,7 +455,7 @@ object Char extends AnyValCompanion {
   /** The largest value representable as a Char. */
   final val MaxValue = java.lang.Character.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToCharacter`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -464,7 +464,7 @@ object Char extends AnyValCompanion {
    */
   def box(x: Char): java.lang.Character = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Character.
    *
@@ -477,7 +477,7 @@ object Char extends AnyValCompanion {
   def unbox(x: java.lang.Object): Char = ???
 
   /** The String representation of the scala.Char companion object. */
-  override def toString = "object scala.Char"
+  override def toString() = "object scala.Char"
   /** Language mandated coercions from Char to "wider" types. */
   import scala.language.implicitConversions
   implicit def char2int(x: Char): Int = x.toInt

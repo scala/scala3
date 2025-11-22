@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.generic.DefaultSerializationProxy
 import scala.math.Ordering
 
@@ -88,7 +89,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
 
     def p_size0 = size0
     def p_size0_=(s: Int) = size0 = s
-    def p_array = array
+    def p_array: Array[AnyRef | Null] = array.asInstanceOf[Array[AnyRef | Null]]
     def p_ensureSize(n: Int) = super.ensureSize(n)
     def p_ensureAdditionalSize(n: Int) = super.ensureSize(size0 + n)
     def p_swap(a: Int, b: Int): Unit = {
@@ -112,7 +113,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   override def isEmpty: Boolean = resarr.p_size0 < 2
 
   // not eligible for EvidenceIterableFactoryDefaults since C != CC[A] (PriorityQueue[A] != Iterable[A])
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[A]): PriorityQueue[A] = PriorityQueue.from(coll)
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[A]^): PriorityQueue[A] = PriorityQueue.from(coll)
   override protected def newSpecificBuilder: Builder[A, PriorityQueue[A]] = PriorityQueue.newBuilder
   override def empty: PriorityQueue[A] = PriorityQueue.empty
 
@@ -129,8 +130,8 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
 
   def result() = this
 
-  private def toA(x: AnyRef): A = x.asInstanceOf[A]
-  protected def fixUp(as: Array[AnyRef], m: Int): Unit = {
+  private def toA(x: AnyRef | Null): A = x.asInstanceOf[A]
+  protected def fixUp(as: Array[AnyRef | Null], m: Int): Unit = {
     var k: Int = m
     // use `ord` directly to avoid allocating `OrderingOps`
     while (k > 1 && ord.lt(toA(as(k / 2)), toA(as(k)))) {
@@ -139,7 +140,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     }
   }
 
-  protected def fixDown(as: Array[AnyRef], m: Int, n: Int): Boolean = {
+  protected def fixDown(as: Array[AnyRef | Null], m: Int, n: Int): Boolean = {
     // returns true if any swaps were done (used in heapify)
     var k: Int = m
     while (n >= 2 * k) {
@@ -172,7 +173,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type = {
+  override def addAll(xs: IterableOnce[A]^): this.type = {
     val from = resarr.p_size0
     for (x <- xs.iterator) unsafeAdd(x)
     heapify(from)
@@ -238,7 +239,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     *  @param  xs    a iterable object.
     *  @return       a new priority queue containing elements of both `xs` and `this`.
     */
-  def ++(xs: IterableOnce[A]): PriorityQueue[A] = { this.clone() ++= xs }
+  def ++(xs: IterableOnce[A]^): PriorityQueue[A] = { this.clone() ++= xs }
 
   /** Adds all elements to the queue.
     *
@@ -310,7 +311,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     *  @return   the reversed priority queue.
     */
   def reverse: PriorityQueue[A] = {
-    val revq = new PriorityQueue[A]()(ord.reverse)
+    val revq = new PriorityQueue[A]()(using ord.reverse)
     // copy the existing data into the new array backwards
     // this won't put it exactly into the correct order,
     // but will require less fixing than copying it in
@@ -334,7 +335,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     *  @return  an iterator over all elements sorted in descending order.
     */
   def reverseIterator: Iterator[A] = new AbstractIterator[A] {
-    private[this] var i = resarr.p_size0 - 1
+    private var i = resarr.p_size0 - 1
     def hasNext: Boolean = i >= 1
     def next(): A = {
       val n = resarr.p_array(i)
@@ -387,9 +388,9 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   @deprecated("Use `PriorityQueue` instead", "2.13.0")
   def orderedCompanion: PriorityQueue.type = PriorityQueue
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(PriorityQueue.evidenceIterableFactory[A], this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(PriorityQueue.evidenceIterableFactory[A], this)
 
-  override protected[this] def className = "PriorityQueue"
+  override protected def className = "PriorityQueue"
 }
 
 
@@ -406,7 +407,7 @@ object PriorityQueue extends SortedIterableFactory[PriorityQueue] {
 
   def empty[A : Ordering]: PriorityQueue[A] = new PriorityQueue[A]
 
-  def from[E : Ordering](it: IterableOnce[E]): PriorityQueue[E] = {
+  def from[E : Ordering](it: IterableOnce[E]^): PriorityQueue[E] = {
     val b = newBuilder[E]
     b ++= it
     b.result()

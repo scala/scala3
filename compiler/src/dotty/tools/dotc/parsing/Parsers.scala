@@ -349,43 +349,45 @@ object Parsers {
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
     /** Parse statement separators and end markers. Ensure that there is at least
-     *  one statement separator unless the next token terminates a statement´sequence.
-     *  @param   stats      the statements parsed to far
+     *  one statement separator unless the next token terminates a statement sequence.
+     *  @param   stats      the statements parsed so far
      *  @param   noPrevStat true if there was no immediately preceding statement parsed
      *  @param   what       a string indicating what kind of statement is parsed
      *  @param   altEnd     a token that is also considered as a terminator of the statement
-     *                      sequence (the default `EOF` already assumes to terminate a statement
+     *                      sequence (the default `EOF` is already assumed to terminate a statement
      *                      sequence).
      *  @return  true if the statement sequence continues, false if it terminates.
      */
     def statSepOrEnd[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean = false, what: String = "statement", altEnd: Token = EOF): Boolean =
+      inline def stopping = false
+      inline def continuing = true
       def recur(sepSeen: Boolean, endSeen: Boolean): Boolean =
         if isStatSep then
           in.nextToken()
-          recur(true, endSeen)
+          recur(sepSeen = true, endSeen)
         else if in.token == END then
           if endSeen then syntaxError(em"duplicate end marker")
           checkEndMarker(stats)
           recur(sepSeen, endSeen = true)
         else if isStatSeqEnd || in.token == altEnd then
-          false
+          stopping
         else if sepSeen || endSeen then
-          true
+          continuing
         else
           val found = in.token
           val statFollows = mustStartStatTokens.contains(found)
           syntaxError(
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
             else em"end of $what expected but ${showToken(found)} found")
-          if mustStartStatTokens.contains(found) then
-            false // it's a statement that might be legal in an outer context
+          if statFollows then
+            stopping // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             skip()
-            true
+            continuing
 
       in.observeOutdented()
-      recur(false, false)
+      recur(sepSeen = false, endSeen = false)
     end statSepOrEnd
 
     def rewriteNotice(version: SourceVersion = `3.0-migration`, additionalOption: String = "") =
@@ -1056,17 +1058,22 @@ object Parsers {
       }
 
     /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
-        syntactically valid, but we need to include them here for error recovery. */
+        syntactically valid, but we need to include them here for error recovery.
+        Under experimental.multiSpreads we allow `*`` followed by `,` unconditionally.
+     */
     def followingIsVararg(): Boolean =
       in.isIdent(nme.raw.STAR) && {
         val lookahead = in.LookaheadScanner()
         lookahead.nextToken()
         lookahead.token == RPAREN
         || lookahead.token == COMMA
-           && {
-             lookahead.nextToken()
-             lookahead.token == RPAREN || lookahead.token == EOF
-           }
+           && (
+              in.featureEnabled(Feature.multiSpreads)
+              || {
+                lookahead.nextToken()
+                lookahead.token == RPAREN || lookahead.token == EOF
+              }
+            )
       }
 
     /** When encountering a `:`, is that in the binding of a lambda?
@@ -1085,27 +1092,56 @@ object Parsers {
       }
 
     /** Is the token sequence following the current `:` token classified as a lambda?
-     *  This is the case if the input starts with an identifier, a wildcard, or
-     *  something enclosed in (...) or [...], and this is followed by a `=>` or `?=>`
-     *  and an INDENT.
+     *  If yes return a defined parsing function to parse the lambda body, if not
+     *  return None. The case is triggered in two situations:
+     *   1. If the input starts with an identifier, a wildcard, or something
+     *      enclosed in (...) or [...], this is followed by a `=>` or `?=>`,
+     *      and one of the following two subcases applies:
+     *     1a. The next token is an indent. In this case the return parsing function parses
+     *         an Expr in location Location.InColonArg.
+     *     1b. Under relaxedLambdaSyntax: the next token is on the same line and the enclosing region is not `(...)`.
+     *         In this case the parsing function parses an Expr in location Location.InColonArg
+     *         enclosed in a SingleLineLambda region, and then eats the ENDlambda token
+     *         generated by the Scanner at the end of that region.
+     *     The reason for excluding (1b) in regions enclosed in parentheses is to avoid
+     *     an ambiguity with type ascription `(x: A => B)`, where function types are only
+     *     allowed inside parentheses.
+     *   2. Under relaxedLambdaSyntax: the input starts with a `case`.
      */
-    def followingIsLambdaAfterColon(): Boolean =
+    def followingIsLambdaAfterColon(): Option[() => Tree] =
       val lookahead = in.LookaheadScanner(allowIndent = true)
                       .tap(_.currentRegion.knownWidth = in.currentRegion.indentWidth)
-      def isArrowIndent() =
-        lookahead.isArrow
-        && {
+      def isArrowIndent(): Option[() => Tree] =
+        if lookahead.isArrow then
           lookahead.observeArrowIndented()
-          lookahead.token == INDENT || lookahead.token == EOF
-        }
-      lookahead.nextToken()
-      if lookahead.isIdent || lookahead.token == USCORE then
+          if lookahead.token == INDENT || lookahead.token == EOF then
+            Some(() => expr(Location.InColonArg))
+          else if in.featureEnabled(Feature.relaxedLambdaSyntax) then
+            isParamsAndArrow() match
+              case success @ Some(_) => success
+              case _ if !in.currentRegion.isInstanceOf[InParens] =>
+                Some: () =>
+                  val t = inSepRegion(SingleLineLambda(_)):
+                    expr(Location.InColonArg)
+                  accept(ENDlambda)
+                  t
+              case _ => None
+          else None
+        else None
+      def isParamsAndArrow(): Option[() => Tree] =
         lookahead.nextToken()
-        isArrowIndent()
-      else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
-        lookahead.skipParens()
-        isArrowIndent()
-      else false
+        if lookahead.isIdent || lookahead.token == USCORE then
+          lookahead.nextToken()
+          isArrowIndent()
+        else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
+          lookahead.skipParens()
+          isArrowIndent()
+        else if lookahead.token == CASE && in.featureEnabled(Feature.relaxedLambdaSyntax) then
+          Some(() => singleCaseMatch())
+        else
+          None
+      isParamsAndArrow()
+    end followingIsLambdaAfterColon
 
     /** Can the next lookahead token start an operand as defined by
      *  leadingOperandTokens, or is postfix ops enabled?
@@ -1138,7 +1174,7 @@ object Parsers {
             opStack = opStack.tail
             recur {
               migrateInfixOp(opInfo, isType):
-                atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                atSpan(opInfo.operator.span `union` opInfo.operand.span `union` top.span):
                   InfixOp(opInfo.operand, opInfo.operator, top)
             }
           }
@@ -1170,12 +1206,19 @@ object Parsers {
         case _ => infixOp
     }
 
-    /** True if we are seeing a lambda argument after a colon of the form:
+    /** Optionally, if we are seeing a lambda argument after a colon of the form
      *    : (params) =>
      *      body
+     *  or a single-line lambda (under relaxedLambdaSyntax)
+     *    : (params) => body
+     *  or a case clause (under relaxedLambdaSyntax)
+     *    : case pat guard => rhs
+     *  then return the function used to parse `body` or the case clause.
      */
-    def isColonLambda =
-      sourceVersion.enablesFewerBraces && in.token == COLONfollow && followingIsLambdaAfterColon()
+    def detectColonLambda: Option[() => Tree] =
+      if sourceVersion.enablesFewerBraces && in.token == COLONfollow
+      then followingIsLambdaAfterColon()
+      else None
 
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
@@ -1199,17 +1242,19 @@ object Parsers {
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
-          if isColonLambda then
-            in.nextToken()
-            recur(expr(Location.InColonArg))
-          else if maybePostfix && !canStartOperand(in.token) then
-            val topInfo = opStack.head
-            opStack = opStack.tail
-            val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
-            atSpan(startOffset(od), topInfo.offset) {
-              PostfixOp(od, topInfo.operator)
-            }
-          else recur(operand(location))
+          detectColonLambda match
+            case Some(parseExpr) =>
+              in.nextToken()
+              recur(parseExpr())
+            case _ =>
+              if maybePostfix && !canStartOperand(in.token) then
+                val topInfo = opStack.head
+                opStack = opStack.tail
+                val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
+                atSpan(startOffset(od), topInfo.offset) {
+                  PostfixOp(od, topInfo.operator)
+                }
+              else recur(operand(location))
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
           if !isType && in.token == MATCH then recurAtMinPrec(matchClause(t))
@@ -1523,15 +1568,23 @@ object Parsers {
           if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(in.offset), "  ")
 
-    def possibleTemplateStart(isNew: Boolean = false): Unit =
+    inline transparent def possibleTemplateStart(inline isNew: Boolean = false) =
+      inline if isNew then newTemplateStart() else (newTemplateStart(): Unit)
+
+    /** Return true on trivial end */
+    def newTemplateStart(): Boolean =
       in.observeColonEOL(inTemplate = true)
       if in.token == COLONeol then
-        if in.lookahead.token == END then in.token = NEWLINE
+        if in.lookahead.token == END then
+          in.token = NEWLINE
+          true
         else
           in.nextToken()
           if in.token != LBRACE then acceptIndent()
+          false
       else
         newLineOptWhenFollowedBy(LBRACE)
+        false
 
     def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
 
@@ -1591,36 +1644,39 @@ object Parsers {
     }
 
     /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
-     *  CapFilter   ::=  `.` `as` `[` QualId `]`
+     *  CapFilter   ::=  `.` `only` `[` QualId `]`
      */
     def captureRef(): Tree =
 
-      def derived(ref: Tree): Tree =
-        atSpan(startOffset(ref)):
-          if in.isIdent(nme.raw.STAR) then
+      def reachOpt(ref: Tree): Tree =
+        if in.isIdent(nme.raw.STAR) then
+          atSpan(startOffset(ref)):
             in.nextToken()
             Annotated(ref, makeReachAnnot())
-          else if in.isIdent(nme.rd) then
+        else ref
+
+      def restrictedOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.only) then
+          atSpan(startOffset(ref)):
             in.nextToken()
-            Annotated(ref, makeReadOnlyAnnot())
-          else if in.isIdent(nme.only) then
             in.nextToken()
             Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
-          else assert(false)
+        else ref
+
+      def readOnlyOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+          atSpan(startOffset(ref)):
+            in.nextToken()
+            in.nextToken()
+            Annotated(ref, makeReadOnlyAnnot())
+        else ref
 
       def recur(ref: Tree): Tree =
-        if in.token == DOT then
+        val ref1 = readOnlyOpt(restrictedOpt(reachOpt(ref)))
+        if (ref1 eq ref) && in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) || in.isIdent(nme.only) then derived(ref)
-          else recur(selector(ref))
-        else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref)
-          val next = in.lookahead
-          if in.token == DOT && (next.isIdent(nme.rd) || next.isIdent(nme.only)) then
-            in.nextToken()
-            derived(reachRef)
-          else reachRef
-        else ref
+          recur(selector(ref))
+        else ref1
 
       recur(simpleRef())
     end captureRef
@@ -2257,7 +2313,7 @@ object Parsers {
       val t = typeBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
-      else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
+      else atSpan((t.span `union` cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
     /** ContextBound      ::=  Type [`as` id] */
@@ -2353,6 +2409,7 @@ object Parsers {
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  TypTypeParamClause ‘=>’ Expr
+     *                      |  ExprCaseClause                              -- under experimental.relaxedLambdaSyntax
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -2373,6 +2430,7 @@ object Parsers {
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  PrefixOperator SimpleExpr `=' Expr
+     *                      |  InfixExpr id [nl] `=' Expr                  -- only if language.postfixOps is enabled
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  ‘inline’ InfixExpr MatchClause
@@ -2403,6 +2461,8 @@ object Parsers {
           val arrowOffset = accept(ARROW)
           val body = expr(location)
           makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
+        case CASE if in.featureEnabled(Feature.relaxedLambdaSyntax) =>
+          singleCaseMatch()
         case _ =>
           val saved = placeholderParams
           placeholderParams = Nil
@@ -2466,9 +2526,8 @@ object Parsers {
             if in.token == CATCH then
               val span = in.offset
               in.nextToken()
-              (if in.token == CASE then Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
-                else subExpr(),
-                span)
+              (if in.token == CASE then singleCaseMatch() else subExpr(),
+               span)
             else (EmptyTree, -1)
 
           handler match {
@@ -2528,7 +2587,7 @@ object Parsers {
     def expr1Rest(t: Tree, location: Location): Tree =
       if in.token == EQUALS then
         t match
-          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) =>
+          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) | PostfixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
               val loc = if location.inArgs then location else Location.ElseWhere
               Assign(t, subPart(() => expr(loc)))
@@ -2588,11 +2647,52 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
+    /* When parsing (what will become) a sub sub match, that is,
+     * when in a guard of case of a match, in a guard of case of a match;
+     * we will eventually reach Scanners.handleNewLine at the end of the sub sub match
+     * with an in.currretRegion of the shape `InCase +: Indented :+ InCase :+ Indented :+ ...`
+     * if we did not do dropInnerCaseRegion.
+     * In effect, a single outdent would be inserted by handleNewLine after the sub sub match.
+     * This causes the remaining cases of the outer match to be included in the intermediate sub match.
+     * For example:
+     *    match
+     *      case x1 if x1 match
+     *        case y if y match
+     *          case z => "a"
+     *      case x2 => "b"
+     * would become
+     *    match
+     *      case x1 if x1 match {
+     *        case y if y match {
+     *          case z => "a"
+     *        }
+     *        case x2 => "b"
+     *     }
+     * This issue is avoided by dropping the `InCase` region when parsing match clause,
+     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * Note that this _could_ break previous code which relied on matches within guards
+     * being considered as a separate region without explicit indentation.
+     */
+    private def dropInnerCaseRegion(): Unit =
+      in.currentRegion match
+        case Indented(width, prefix, Scanners.InCase(r)) => in.currentRegion = Indented(width, prefix, r)
+        case Scanners.InCase(r) => in.currentRegion = r
+        case _ =>
+
     /**    MatchClause ::= `match' `{' CaseClauses `}'
+     *                   | `match' ExprCaseClause
      */
     def matchClause(t: Tree): Match =
       atSpan(startOffset(t), in.skipToken()) {
-        Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
+        val cases =
+          if in.featureEnabled(Feature.subCases) then
+            dropInnerCaseRegion()
+            if in.token == CASE
+            then caseClause(exprOnly = true) :: Nil // single case without new line
+            else inBracesOrIndented(caseClauses(() => caseClause()))
+          else
+            inBracesOrIndented(caseClauses(() => caseClause()))
+        Match(t, cases)
       }
 
     /**    `match' <<< TypeCaseClauses >>>
@@ -2722,8 +2822,10 @@ object Parsers {
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      *                 |  SimpleExpr1 ColonArgument
-     *  ColonArgument ::= colon [LambdaStart]
+     *  ColonArgument ::= colon {LambdaStart}
      *                    indent (CaseClauses | Block) outdent
+     *                 |  colon LambdaStart {LambdaStart} expr ENDlambda -- under experimental.relaxedLambdaSyntax
+     *                 |  colon ExprCaseClause                    -- under experimental.relaxedLambdaSyntax
      *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
      *                 |  TypTypeParamClause ‘=>’
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
@@ -2806,12 +2908,14 @@ object Parsers {
                   makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
                 }
               case _ => t
-          else if isColonLambda then
-            val app = atSpan(startOffset(t), in.skipToken()) {
-              Apply(t, expr(Location.InColonArg) :: Nil)
-            }
-            simpleExprRest(app, location, canApply = true)
-          else t
+          else detectColonLambda match
+            case Some(parseExpr) =>
+              val app =
+                atSpan(startOffset(t), in.skipToken()):
+                  Apply(t, parseExpr() :: Nil)
+              simpleExprRest(app, location, canApply = true)
+            case None =>
+              t
     end simpleExprRest
 
     /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
@@ -2824,15 +2928,22 @@ object Parsers {
       val parents =
         if in.isNestedStart then Nil
         else constrApps(exclude = COMMA)
-      possibleTemplateStart(isNew = true)
-      parents match {
-        case parent :: Nil if !in.isNestedStart =>
-          reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
-        case tkn if in.token == INDENT =>
-          New(templateBodyOpt(emptyConstructor, parents, Nil))
-        case _ =>
-          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
-      }
+      val colonized = possibleTemplateStart(isNew = true)
+      parents match
+      case parent :: Nil if !in.isNestedStart =>
+        reposition:
+          if colonized then New(Template(emptyConstructor, parents, derived = Nil, self = EmptyValDef, body = Nil))
+          else if parent.isType then ensureApplied(wrapNew(parent))
+          else parent
+      case parents =>
+        // With brace syntax, the last token consumed by a parser is }, but with indent syntax,
+        // the last token consumed by a parser is OUTDENT, which causes mismatching spans, so don't reposition.
+        val indented = in.token == INDENT
+        val body =
+          val bo = templateBodyOpt(emptyConstructor, parents, derived = Nil)
+          if !indented then reposition(bo) else bo
+        New(body)
+    end newExpr
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
      *                       |   NamedExprInParens {‘,’ NamedExprInParens}
@@ -3095,25 +3206,50 @@ object Parsers {
       buf.toList
     }
 
-    /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
-     *  ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
+    /** CaseClause        ::= ‘case’ Pattern [Guard] (‘if’ InfixExpr MatchClause | `=>' Block)
+     *  ExprCaseClause    ::= ‘case’ Pattern [Guard] (‘if’ InfixExpr MatchClause | `=>' Expr)
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {
         accept(CASE)
         (withinMatchPattern(pattern()), guard())
       }
-      CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then
-          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
-            warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
-                        |If this is intended, it should be indented for clarity.
-                        |Otherwise, if the handler is intended to be empty, use a multi-line catch with
-                        |an indented case.""")
-          expr()
-        else block()
-      })
+      var grd1 = grd // may be reset to EmptyTree (and used as sub match body instead) if there is no leading ARROW
+      val tok = in.token
+
+      extension (self: Tree) def asSubMatch: Tree = self match
+        case Match(sel, cases) if in.featureEnabled(Feature.subCases) =>
+          if in.isStatSep then in.nextToken() // else may have been consumed by sub sub match
+          SubMatch(sel, cases)
+        case _ =>
+          syntaxErrorOrIncomplete(ExpectedTokenButFound(ARROW, tok))
+          atSpan(self.span)(Block(Nil, EmptyTree))
+
+      val body = tok match
+        case ARROW => atSpan(in.skipToken()):
+          if exprOnly then
+            if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+              warning(em"""Misleading indentation: this expression forms part of the preceding case.
+                          |If this is intended, it should be indented for clarity.
+                          |Otherwise, if the handler is intended to be empty, use a multi-line match or catch with
+                          |an indented case.""")
+            expr()
+          else block()
+        case IF => atSpan(in.skipToken()):
+          // a sub match after a guard is parsed the same as one without
+          val t = inSepRegion(InCase)(postfixExpr(Location.InGuard))
+          t.asSubMatch
+        case other =>
+          // the guard is reinterpreted as a sub-match when there is no leading IF or ARROW token
+          val t = grd1.asSubMatch
+          grd1 = EmptyTree
+          t
+
+      CaseDef(pat, grd1, body)
     }
+
+    def singleCaseMatch() =
+      Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
 
     /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
      */
@@ -3283,7 +3419,9 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns] ‘)’
+     *
+     *  -- It is checked in Typer that there are no repeated PatVar arguments.
      */
     def argumentPatterns(): List[Tree] =
       inParensWithCommas(patternsOpt(Location.InPatternArgs))
@@ -3303,12 +3441,14 @@ object Parsers {
       case IDENTIFIER =>
         name match {
           case nme.inline => Mod.Inline()
-          case nme.into => Mod.Into()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
+          case nme.into =>
+            Feature.checkPreviewFeature("`into`", in.sourcePos())
+            Mod.Into()
           case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.update if Feature.ccEnabled => Mod.Update()
         }
@@ -3361,14 +3501,16 @@ object Parsers {
           else mods.withPrivateWithin(ident().toTypeName)
         }
         if mods1.is(Local) then
+          val span = Span(startOffset, in.lastOffset)
+          val p = if mods1.is(Private) then "private" else "protected"
           report.errorOrMigrationWarning(
               em"""Ignoring [this] qualifier.
-                  |This syntax will be deprecated in the future; it should be dropped.
+                  |The syntax `$p[this]` will be deprecated in the future; just write `$p` instead.
                   |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
-              in.sourcePos(),
+              in.sourcePos().withSpan(span),
               MigrationVersion.RemoveThisQualifier)
           if MigrationVersion.RemoveThisQualifier.needsPatch then
-            patch(source, Span(startOffset, in.lastOffset), "")
+            patch(source, span, "")
         mods1
       }
       else mods
@@ -3434,7 +3576,7 @@ object Parsers {
     }
 
     def annotsAsMods(skipNewLines: Boolean = false): Modifiers =
-      Modifiers() withAnnotations annotations(skipNewLines)
+      Modifiers().withAnnotations(annotations(skipNewLines))
 
     def defAnnotsMods(allowed: BitSet): Modifiers =
       modifiers(allowed, annotsAsMods(skipNewLines = true))
@@ -4200,18 +4342,21 @@ object Parsers {
       finalizeDef(ModuleDef(name, templ), mods, start)
     }
 
-    private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
-      // We allow `infix to mark the `enum`s type as infix.
-      // Syntax rules disallow the soft infix modifier on `case`s.
-      val mods1 = mods & (AccessFlags | Enum | Infix)
-      if mods1 ne mods then
-        syntaxError(em"Only access modifiers are allowed on enum $where")
-      mods1
+    private def checkAccessOnly(mods: Modifiers, caseStr: String): Modifiers =
+      // We allow `infix` and `into` on `enum` definitions.
+      // Syntax rules disallow these soft infix modifiers on `case`s.
+      val flags = mods.flags
+      var flags1 = flags
+      for mod <- mods.mods do
+        if !mod.flags.isOneOf(AccessFlags | Enum | Infix | Into) then
+          syntaxError(em"This modifier is not allowed on an enum$caseStr", mod.span)
+          flags1 = flags1 &~ mod.flags
+      if flags1 != flags then mods.withFlags(flags1) else mods
 
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      val mods1 = checkAccessOnly(mods, "definitions")
+      val mods1 = checkAccessOnly(mods, "")
       val modulName = ident()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)
@@ -4222,7 +4367,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = checkAccessOnly(mods, "cases") | EnumCase
+      val mods1 = checkAccessOnly(mods, " case") | EnumCase
       accept(CASE)
 
       atSpan(start, nameStart) {
@@ -4626,6 +4771,10 @@ object Parsers {
     def packaging(start: Int): Tree =
       val pkg = qualId()
       possibleTemplateStart()
+      if in.token != INDENT && in.token != LBRACE then
+        val prefix = "':' or "
+        val suffix = "\nNested package statements that are not at the beginning of the file require braces or ':' with an indented body."
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token, prefix = prefix, suffix = suffix), in.lastOffset)
       val stats = inDefScopeBraces(topStatSeq(), rewriteWithColon = true)
       makePackaging(start, pkg, stats)
 

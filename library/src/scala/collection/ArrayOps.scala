@@ -17,6 +17,8 @@ import scala.language.`2.13`
 import java.lang.Math.{max, min}
 import java.util.Arrays
 
+import language.experimental.captureChecking
+
 import scala.Predef.{ // unimport all array-related implicit conversions to avoid triggering them accidentally
   genericArrayOps => _,
   booleanArrayOps => _,
@@ -58,7 +60,7 @@ object ArrayOps {
   private class ArrayView[A](xs: Array[A]) extends AbstractIndexedSeqView[A] {
     def length = xs.length
     def apply(n: Int) = xs(n)
-    override def toString: String = immutable.ArraySeq.unsafeWrapArray(xs).mkString("ArrayView(", ", ", ")")
+    override def toString(): String = immutable.ArraySeq.unsafeWrapArray(xs).mkString("ArrayView(", ", ", ")")
   }
 
   /** A lazy filtered array. No filtering is applied until one of `foreach`, `map` or `flatMap` is called. */
@@ -103,7 +105,7 @@ object ArrayOps {
       *  @return       a new array resulting from applying the given collection-valued function
       *                `f` to each element of this array and concatenating the results.
       */
-    def flatMap[B: ClassTag](f: A => IterableOnce[B]): Array[B] = {
+    def flatMap[B: ClassTag](f: A => IterableOnce[B]^): Array[B] = {
       val b = ArrayBuilder.make[B]
       var i = 0
       while(i < xs.length) {
@@ -118,13 +120,13 @@ object ArrayOps {
       flatMap[B](x => asIterable(f(x)))
 
     /** Creates a new non-strict filter which combines this filter with the given predicate. */
-    def withFilter(q: A => Boolean): WithFilter[A] = new WithFilter[A](a => p(a) && q(a), xs)
+    def withFilter(q: A => Boolean): WithFilter[A]^{this, q} = new WithFilter[A](a => p(a) && q(a), xs)
   }
 
   @SerialVersionUID(3L)
   private[collection] final class ArrayIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
-    private[this] var pos = 0
-    private[this] val len = xs.length
+    private var pos = 0
+    private val len = xs.length
     override def knownSize: Int = len - pos
     def hasNext: Boolean = pos < len
     def next(): A = {
@@ -146,7 +148,7 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private final class ReverseIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
-    private[this] var pos = xs.length-1
+    private var pos = xs.length-1
     def hasNext: Boolean = pos >= 0
     def next(): A = {
       if (pos < 0) Iterator.empty.next()
@@ -163,7 +165,7 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private final class GroupedIterator[A](xs: Array[A], groupSize: Int) extends AbstractIterator[Array[A]] with Serializable {
-    private[this] var pos = 0
+    private var pos = 0
     def hasNext: Boolean = pos < xs.length
     def next(): Array[A] = {
       if(pos >= xs.length) throw new NoSuchElementException
@@ -179,7 +181,7 @@ object ArrayOps {
   private final val MaxStableSortLength = 300
 
   /** Avoid an allocation in [[collect]]. */
-  private val fallback: Any => Any = _ => fallback
+  private val fallback: Any -> Any = _ => fallback
 }
 
 /** This class serves as a wrapper for `Array`s with many of the operations found in
@@ -200,7 +202,7 @@ object ArrayOps {
   */
 final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
 
-  @`inline` private[this] implicit def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
+  @`inline` private implicit def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
 
   /** The size of this array.
     *
@@ -329,7 +331,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     val lo = max(from, 0)
     val hi = min(until, xs.length)
     if (hi > lo) {
-      (((xs: Array[_]): @unchecked) match {
+      (((xs: Array[?]): @unchecked) match {
         case x: Array[AnyRef]     => copyOfRange(x, lo, hi)
         case x: Array[Int]        => copyOfRange(x, lo, hi)
         case x: Array[Double]     => copyOfRange(x, lo, hi)
@@ -368,7 +370,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   def inits: Iterator[Array[A]] = iterateUntilEmpty(xs => new ArrayOps(xs).init)
 
   // A helper for tails and inits.
-  private[this] def iterateUntilEmpty(f: Array[A] => Array[A]): Iterator[Array[A]] =
+  private def iterateUntilEmpty(f: Array[A] => Array[A]): Iterator[Array[A]]^{f} =
     Iterator.iterate(xs)(f).takeWhile(x => x.length != 0) ++ Iterator.single(Array.empty[A])
 
   /** An array containing the first `n` elements of this array. */
@@ -422,12 +424,12 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
       case null               => throw new NullPointerException
     }).asInstanceOf[Iterator[A]]
 
-  def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = (shape.shape: @unchecked) match {
       case StepperShape.ReferenceShape => (xs: Any) match {
         case bs: Array[Boolean] => new BoxedBooleanArrayStepper(bs, 0, xs.length)
-        case _ => new ObjectArrayStepper[AnyRef](xs.asInstanceOf[Array[AnyRef ]], 0, xs.length)
+        case _ => new ObjectArrayStepper[AnyRef](xs.asInstanceOf[Array[AnyRef]], 0, xs.length)
       }
       case StepperShape.IntShape    => new IntArrayStepper           (xs.asInstanceOf[Array[Int    ]], 0, xs.length)
       case StepperShape.LongShape   => new LongArrayStepper          (xs.asInstanceOf[Array[Long   ]], 0, xs.length)
@@ -437,7 +439,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
       case StepperShape.CharShape   => new WidenedCharArrayStepper   (xs.asInstanceOf[Array[Char   ]], 0, xs.length)
       case StepperShape.FloatShape  => new WidenedFloatArrayStepper  (xs.asInstanceOf[Array[Float  ]], 0, xs.length)
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   /** Partitions elements in fixed size arrays.
@@ -587,19 +589,19 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return     an array consisting of the elements of this array
     *              sorted according to the ordering `ord`.
     */
-  def sorted[B >: A](implicit ord: Ordering[B]): Array[A] = {
+  def sorted[B >: A](implicit ord: Ordering[B]^): Array[A] = {
     val len = xs.length
     def boxed = if(len < ArrayOps.MaxStableSortLength) {
       val a = xs.clone()
       Sorting.stableSort(a)(using ord.asInstanceOf[Ordering[A]])
       a
     } else {
-      val a = Array.copyAs[AnyRef](xs, len)(ClassTag.AnyRef)
+      val a = Array.copyAs[AnyRef](xs, len)(using ClassTag.AnyRef)
       Arrays.sort(a, ord.asInstanceOf[Ordering[AnyRef]])
       Array.copyAs[A](a, len)
     }
     if(len <= 1) xs.clone()
-    else ((xs: Array[_]) match {
+    else ((xs: Array[?]) match {
       case xs: Array[AnyRef] =>
         val a = Arrays.copyOf(xs, len); Arrays.sort(a, ord.asInstanceOf[Ordering[AnyRef]]); a
       case xs: Array[Int] =>
@@ -635,7 +637,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return     an array consisting of the elements of this array
     *              sorted according to the comparison function `lt`.
     */
-  def sortWith(lt: (A, A) => Boolean): Array[A] = sorted(Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) => Boolean): Array[A] = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this array according to the Ordering which results from transforming
     *  an implicitly given Ordering with a transformation function.
@@ -650,7 +652,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *           sorted according to the ordering where `x < y` if
     *           `ord.lt(f(x), f(y))`.
     */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): Array[A] = sorted(ord on f)
+  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): Array[A] = sorted(using ord.on(f))
 
   /** Creates a non-strict filter of this array.
     *
@@ -665,7 +667,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *             All these operations apply to those elements of this array
     *             which satisfy the predicate `p`.
     */
-  def withFilter(p: A => Boolean): ArrayOps.WithFilter[A] = new ArrayOps.WithFilter[A](p, xs)
+  def withFilter(p: A => Boolean): ArrayOps.WithFilter[A]^{p} = new ArrayOps.WithFilter[A](p, xs)
 
   /** Finds index of first occurrence of some value in this array after or at some start index.
     *
@@ -965,7 +967,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return       a new array resulting from applying the given collection-valued function
     *                `f` to each element of this array and concatenating the results.
     */
-  def flatMap[B : ClassTag](f: A => IterableOnce[B]): Array[B] = {
+  def flatMap[B : ClassTag](f: A => IterableOnce[B]^): Array[B] = {
     val b = ArrayBuilder.make[B]
     var i = 0
     while(i < xs.length) {
@@ -975,7 +977,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     b.result()
   }
 
-  def flatMap[BS, B](f: A => BS)(implicit asIterable: BS => Iterable[B], m: ClassTag[B]): Array[B] =
+  def flatMap[BS, B](f: A => BS)(implicit asIterable: BS => Iterable[B]^, m: ClassTag[B]): Array[B] =
     flatMap[B](x => asIterable(f(x)))
 
   /** Flattens a two-dimensional array by concatenating all its rows
@@ -985,7 +987,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @param asIterable A function that converts elements of this array to rows - Iterables of type `B`.
     *  @return           An array obtained by concatenating rows of this array.
     */
-  def flatten[B](implicit asIterable: A => IterableOnce[B], m: ClassTag[B]): Array[B] = {
+  def flatten[B](implicit asIterable: A => IterableOnce[B]^, m: ClassTag[B]): Array[B] = {
     val b = ArrayBuilder.make[B]
     val len = xs.length
     var size = 0
@@ -1018,7 +1020,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *                `pf` to each element on which it is defined and collecting the results.
     *                The order of the elements is preserved.
     */
-  def collect[B: ClassTag](pf: PartialFunction[A, B]): Array[B] = {
+  def collect[B: ClassTag](pf: PartialFunction[A, B]^): Array[B] = {
     val fallback: Any => Any = ArrayOps.fallback
     val b = ArrayBuilder.make[B]
     var i = 0
@@ -1032,7 +1034,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
 
   /** Finds the first element of the array for which the given partial function is defined, and applies the
     * partial function to it. */
-  def collectFirst[B](@deprecatedName("f","2.13.9") pf: PartialFunction[A, B]): Option[B] = {
+  def collectFirst[B](@deprecatedName("f","2.13.9") pf: PartialFunction[A, B]^): Option[B] = {
     val fallback: Any => Any = ArrayOps.fallback
     var i = 0
     while (i < xs.length) {
@@ -1052,7 +1054,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return        a new array containing pairs consisting of corresponding elements of this array and `that`.
     *                 The length of the returned array is the minimum of the lengths of this array and `that`.
     */
-  def zip[B](that: IterableOnce[B]): Array[(A, B)] = {
+  def zip[B](that: IterableOnce[B]^): Array[(A, B)] = {
     val b = new ArrayBuilder.ofRef[(A, B)]()
     val k = that.knownSize
     b.sizeHint(if(k >= 0) min(k, xs.length) else xs.length)
@@ -1082,7 +1084,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     * @return a decorator `LazyZip2` that allows strict operations to be performed on the lazily evaluated pairs
     *         or chained calls to `lazyZip`. Implicit conversion to `Iterable[(A, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]): LazyZip2[A, B, Array[A]] = new LazyZip2(xs, immutable.ArraySeq.unsafeWrapArray(xs), that)
+  def lazyZip[B](that: Iterable[B]^): LazyZip2[A, B, Array[A]]^{that} = new LazyZip2(xs, immutable.ArraySeq.unsafeWrapArray(xs), that)
 
   /** Returns an array formed from this array and another iterable collection
     *  by combining corresponding elements in pairs.
@@ -1097,7 +1099,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *                 If this array is shorter than `that`, `thisElem` values are used to pad the result.
     *                 If `that` is shorter than this array, `thatElem` values are used to pad the result.
     */
-  def zipAll[A1 >: A, B](that: Iterable[B], thisElem: A1, thatElem: B): Array[(A1, B)] = {
+  def zipAll[A1 >: A, B](that: Iterable[B]^, thisElem: A1, thatElem: B): Array[(A1, B)] = {
     val b = new ArrayBuilder.ofRef[(A1, B)]()
     val k = that.knownSize
     b.sizeHint(max(k, xs.length))
@@ -1153,7 +1155,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   @`inline` final def +: [B >: A : ClassTag](x: B): Array[B] = prepended(x)
 
   /** A copy of this array with all elements of a collection prepended. */
-  def prependedAll[B >: A : ClassTag](prefix: IterableOnce[B]): Array[B] = {
+  def prependedAll[B >: A : ClassTag](prefix: IterableOnce[B]^): Array[B] = {
     val b = ArrayBuilder.make[B]
     val k = prefix.knownSize
     if(k >= 0) b.sizeHint(k + xs.length)
@@ -1164,18 +1166,18 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   }
 
   /** A copy of this array with all elements of an array prepended. */
-  def prependedAll[B >: A : ClassTag](prefix: Array[_ <: B]): Array[B] = {
+  def prependedAll[B >: A : ClassTag](prefix: Array[? <: B]): Array[B] = {
     val dest = Array.copyAs[B](prefix, prefix.length+xs.length)
     Array.copy(xs, 0, dest, prefix.length, xs.length)
     dest
   }
 
-  @`inline` final def ++: [B >: A : ClassTag](prefix: IterableOnce[B]): Array[B] = prependedAll(prefix)
+  @`inline` final def ++: [B >: A : ClassTag](prefix: IterableOnce[B]^): Array[B] = prependedAll(prefix)
 
-  @`inline` final def ++: [B >: A : ClassTag](prefix: Array[_ <: B]): Array[B] = prependedAll(prefix)
+  @`inline` final def ++: [B >: A : ClassTag](prefix: Array[? <: B]): Array[B] = prependedAll(prefix)
 
   /** A copy of this array with all elements of a collection appended. */
-  def appendedAll[B >: A : ClassTag](suffix: IterableOnce[B]): Array[B] = {
+  def appendedAll[B >: A : ClassTag](suffix: IterableOnce[B]^): Array[B] = {
     val b = ArrayBuilder.make[B]
     b.sizeHint(suffix, delta = xs.length)
     b.addAll(xs)
@@ -1184,23 +1186,23 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   }
 
   /** A copy of this array with all elements of an array appended. */
-  def appendedAll[B >: A : ClassTag](suffix: Array[_ <: B]): Array[B] = {
+  def appendedAll[B >: A : ClassTag](suffix: Array[? <: B]): Array[B] = {
     val dest = Array.copyAs[B](xs, xs.length+suffix.length)
     Array.copy(suffix, 0, dest, xs.length, suffix.length)
     dest
   }
 
-  @`inline` final def :++ [B >: A : ClassTag](suffix: IterableOnce[B]): Array[B] = appendedAll(suffix)
+  @`inline` final def :++ [B >: A : ClassTag](suffix: IterableOnce[B]^): Array[B] = appendedAll(suffix)
 
-  @`inline` final def :++ [B >: A : ClassTag](suffix: Array[_ <: B]): Array[B] = appendedAll(suffix)
+  @`inline` final def :++ [B >: A : ClassTag](suffix: Array[? <: B]): Array[B] = appendedAll(suffix)
 
-  @`inline` final def concat[B >: A : ClassTag](suffix: IterableOnce[B]): Array[B] = appendedAll(suffix)
+  @`inline` final def concat[B >: A : ClassTag](suffix: IterableOnce[B]^): Array[B] = appendedAll(suffix)
 
-  @`inline` final def concat[B >: A : ClassTag](suffix: Array[_ <: B]): Array[B] = appendedAll(suffix)
+  @`inline` final def concat[B >: A : ClassTag](suffix: Array[? <: B]): Array[B] = appendedAll(suffix)
 
-  @`inline` final def ++[B >: A : ClassTag](xs: IterableOnce[B]): Array[B] = appendedAll(xs)
+  @`inline` final def ++[B >: A : ClassTag](xs: IterableOnce[B]^): Array[B] = appendedAll(xs)
 
-  @`inline` final def ++[B >: A : ClassTag](xs: Array[_ <: B]): Array[B] = appendedAll(xs)
+  @`inline` final def ++[B >: A : ClassTag](xs: Array[? <: B]): Array[B] = appendedAll(xs)
 
   /** Tests whether this array contains a given value as an element.
     *
@@ -1219,7 +1221,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @param other      The patch values
     *  @param replaced   The number of values in the original array that are replaced by the patch.
     */
-  def patch[B >: A : ClassTag](from: Int, other: IterableOnce[B], replaced: Int): Array[B] = {
+  def patch[B >: A : ClassTag](from: Int, other: IterableOnce[B]^, replaced: Int): Array[B] = {
     val b = ArrayBuilder.make[B]
     val k = other.knownSize
     val r = if(replaced < 0) 0 else replaced
@@ -1298,7 +1300,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     */
   def transpose[B](implicit asArray: A => Array[B]): Array[Array[B]] = {
     val aClass = xs.getClass.getComponentType
-    val bb = new ArrayBuilder.ofRef[Array[B]]()(ClassTag[Array[B]](aClass))
+    val bb = new ArrayBuilder.ofRef[Array[B]]()(using ClassTag[Array[B]](aClass))
     if (xs.length == 0) bb.result()
     else {
       def mkRowBuilder() = ArrayBuilder.make[B](using ClassTag[B](aClass.getComponentType))
@@ -1347,7 +1349,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     * @tparam B the type of the elements after being transformed by `f`
     * @return a new array consisting of all the elements of this array without duplicates.
     */
-  def distinctBy[B](f: A => B): Array[A] =
+  def distinctBy[B](f: A -> B): Array[A] =
     ArrayBuilder.make[A].addAll(iterator.distinctBy(f)).result()
 
   /** A copy of this array with an element value appended until a given target length is reached.
@@ -1655,7 +1657,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     * @return `true` if the sequence `that` is contained in this array at
     *         index `offset`, otherwise `false`.
     */
-  def startsWith[B >: A](that: IterableOnce[B], offset: Int = 0): Boolean = mutable.ArraySeq.make(xs).startsWith(that, offset)
+  def startsWith[B >: A](that: IterableOnce[B]^, offset: Int = 0): Boolean = mutable.ArraySeq.make(xs).startsWith(that, offset)
 
   // we have another overload here, so we need to duplicate this method
   /** Tests whether this array ends with the given sequence.
@@ -1663,5 +1665,5 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @param  that    the sequence to test
     *  @return `true` if this array has `that` as a suffix, `false` otherwise.
     */
-  def endsWith[B >: A](that: Iterable[B]): Boolean = mutable.ArraySeq.make(xs).endsWith(that)
+  def endsWith[B >: A](that: Iterable[B]^): Boolean = mutable.ArraySeq.make(xs).endsWith(that)
 }

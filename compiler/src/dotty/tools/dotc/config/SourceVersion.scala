@@ -8,6 +8,7 @@ import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
+
   case `3.0-migration`, `3.0`
   case `3.1-migration`, `3.1`
   case `3.2-migration`, `3.2`
@@ -44,6 +45,8 @@ enum SourceVersion:
   def enablesNewGivens = isAtLeast(`3.6`)
   def enablesNamedTuples = isAtLeast(`3.7`)
   def enablesBetterFors(using Context) = isAtLeast(`3.8`) || (isAtLeast(`3.7`) && isPreviewEnabled)
+  /** See PR #23441 and tests/neg/i23435-min */
+  def enablesDistributeAnd = !isAtLeast(`future`)
 
   def requiresNewSyntax = isAtLeast(future)
 

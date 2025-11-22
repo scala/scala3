@@ -455,7 +455,7 @@ object Short extends AnyValCompanion {
   /** The largest value representable as a Short. */
   final val MaxValue = java.lang.Short.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToShort`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -464,7 +464,7 @@ object Short extends AnyValCompanion {
    */
   def box(x: Short): java.lang.Short = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Short.
    *
@@ -477,7 +477,7 @@ object Short extends AnyValCompanion {
   def unbox(x: java.lang.Object): Short = ???
 
   /** The String representation of the scala.Short companion object. */
-  override def toString = "object scala.Short"
+  override def toString() = "object scala.Short"
   /** Language mandated coercions from Short to "wider" types. */
   import scala.language.implicitConversions
   implicit def short2int(x: Short): Int = x.toInt

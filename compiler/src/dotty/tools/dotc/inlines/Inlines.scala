@@ -96,7 +96,6 @@ object Inlines:
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
-   *  @param pt     The expected type of the call.
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
@@ -301,12 +300,12 @@ object Inlines:
 
         inContext(ctx.withSource(curSource)) {
           tree match
-            case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
-            case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
-            case tree: This => finalize(untpd.This(tree.qual)(curSource))
-            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
+            case tree: Ident => finalize(untpd.Ident(tree.name)(using curSource))
+            case tree: Literal => finalize(untpd.Literal(tree.const)(using curSource))
+            case tree: This => finalize(untpd.This(tree.qual)(using curSource))
+            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(using curSource))
             case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
             case tree: DefTree => super.transform(tree).setDefTree
             case EmptyTree => tree
@@ -573,12 +572,47 @@ object Inlines:
       // different for bindings from arguments and bindings from body.
       val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies then inlined
+      val hasOpaquesInResultFromCallWithTransparentContext =
+        val owners = call.symbol.ownersIterator.toSet
+        call.tpe.widenTermRefExpr.existsPart(
+          part => part.typeSymbol.is(Opaque) && owners.contains(part.typeSymbol.owner)
+        )
+
+      /** Remap ThisType nodes that are incorrect in the inlined context.
+       * Incorrect ThisType nodes can cause unwanted opaque type dealiasing later.
+       * E.g. if inlined in a `<root>.Foo` package (but outside of <root>.Foo.Bar object) we will map
+       *   `TermRef(ThisType(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),Bar$)),MyOpaque$)),one)`
+       * into
+       *   `TermRef(TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),object Bar),object MyOpaque),val one)`
+       * See test i13461-d
+       */
+      def fixThisTypeModuleClassReferences(tpe: Type): Type =
+        val owners = ctx.owner.ownersIterator.toSet
+        TreeTypeMap(
+          typeMap = new TypeMap:
+            override def stopAt = StopAt.Package
+            def apply(t: Type) = mapOver {
+              t match
+                case ThisType(tref @ TypeRef(prefix, _)) if tref.symbol.flags.is(Module) && !owners.contains(tref.symbol) =>
+                  TermRef(apply(prefix), tref.symbol.companionModule)
+                case _ => mapOver(t)
+            }
+        ).typeMap(tpe)
+
+      if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
-        val target =
-          if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
-          else call.tpe
-        inlined.ensureConforms(target)
+        val (target, forceCast) =
+          if inlinedMethod.is(Transparent) then
+            val unpacked = unpackProxiesFromResultType(inlined)
+            val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
+            (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
+          else (call.tpe, false)
+        if forceCast then
+          // we need to force the cast for issues with ThisTypes, as ensureConforms will just
+          // check subtyping and then choose not to cast, leaving the previous, incorrect type
+          inlined.cast(target)
+        else
+          inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is

@@ -14,7 +14,7 @@ case class Mode(val bits: Int) extends AnyVal {
   def | (that: Mode): Mode = Mode(bits | that.bits)
   def & (that: Mode): Mode = Mode(bits & that.bits)
   def &~ (that: Mode): Mode = Mode(bits & ~that.bits)
-  def is (that: Mode): Boolean = (bits & that.bits) == that.bits
+  infix def is (that: Mode): Boolean = (bits & that.bits) == that.bits
 
   def isExpr: Boolean = (this & PatternOrTypeBits) == None
 
@@ -140,6 +140,15 @@ object Mode {
    *  In this case, identifiers should never be imported.
    */
   val InPackageClauseName: Mode = newMode(19, "InPackageClauseName")
+
+  /** When creating capset Vars in cc.Setup, mark the variable to be in
+   *  the result type of the context's owner, so that nested vals cannot
+   *  be included in it.
+   *  Reuses the value of InPackageClauseName to save Mode bits.
+   *  This is OK since InPackageClauseName is only set and tested during Typer,
+   *  and CCPreciseOwner only has an effect during phase CheckCaptures.
+   */
+  val CCPreciseOwner = InPackageClauseName
 
   /** We are in the IDE */
   val Interactive: Mode = newMode(20, "Interactive")

@@ -43,9 +43,9 @@ object DynamicUnapply {
   def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
     case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
       unapply(qual)
-    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: ctag :: Nil), _ :: implicits)
+    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: restArgs), _ :: implicits)
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
-      Some(selectable :: ctag :: implicits)
+      Some(selectable :: (restArgs ::: implicits))
     case _ =>
       None
 }
@@ -137,7 +137,7 @@ trait Dynamic {
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
       case _ =>
-        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name))
+        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name, pt))
     }
   }
 

@@ -15,6 +15,7 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 trait Seq[+A] extends Iterable[A]
                  with collection.Seq[A]
@@ -30,7 +31,7 @@ trait Seq[+A] extends Iterable[A]
   * @define coll immutable sequence
   * @define Coll `immutable.Seq`
   */
-transparent trait SeqOps[+A, +CC[_], +C] extends Any with collection.SeqOps[A, CC, C]
+transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collection.SeqOps[A, CC, C] with caps.Pure
 
 /**
   * $factoryInfo
@@ -39,7 +40,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any with collection.SeqOps[A, C
   */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](List) {
-  override def from[E](it: IterableOnce[E]): Seq[E] = it match {
+  override def from[E](it: IterableOnce[E]^): Seq[E] = it match {
     case s: Seq[E] => s
     case _ => super.from(it)
   }
@@ -59,7 +60,7 @@ trait IndexedSeq[+A] extends Seq[A]
   }
 
 
-  override def sameElements[B >: A](o: IterableOnce[B]): Boolean = o match {
+  override def sameElements[B >: A](o: IterableOnce[B]^): Boolean = o match {
     case that: IndexedSeq[_] =>
       (this eq that) || {
         val length = this.length
@@ -112,14 +113,14 @@ object IndexedSeqDefaults {
 
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
-  override def from[E](it: IterableOnce[E]): IndexedSeq[E] = it match {
+  override def from[E](it: IterableOnce[E]^): IndexedSeq[E] = it match {
     case is: IndexedSeq[E] => is
     case _ => super.from(it)
   }
 }
 
 /** Base trait for immutable indexed Seq operations */
-transparent trait IndexedSeqOps[+A, +CC[_], +C]
+transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]
     with collection.IndexedSeqOps[A, CC, C] {
 
@@ -143,13 +144,13 @@ trait LinearSeq[+A]
 
 @SerialVersionUID(3L)
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](List) {
-  override def from[E](it: IterableOnce[E]): LinearSeq[E] = it match {
+  override def from[E](it: IterableOnce[E]^): LinearSeq[E] = it match {
     case ls: LinearSeq[E] => ls
     case _ => super.from(it)
   }
 }
 
-transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeqOps[A, CC, C]]
+transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & LinearSeqOps[A, CC, C]]
   extends Any with SeqOps[A, CC, C]
     with collection.LinearSeqOps[A, CC, C]
 

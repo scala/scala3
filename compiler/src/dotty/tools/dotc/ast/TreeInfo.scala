@@ -245,7 +245,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
     ddef.paramss.flatten.map(_.symbol)
 
-  /** Does this argument list end with an argument of the form <expr> : _* ? */
+  /** Does this argument list end with an argument of the form <expr> * ? */
   def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =
     trees.nonEmpty && isWildcardStarArg(trees.last)
 
@@ -561,7 +561,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | DefDef(_, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>
-      if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs) `min` Pure
+      if vdef.symbol.flags.is(Mutable) then Impure else exprPurity(vdef.rhs) `min` Pure
     case _ =>
       Impure
       // TODO: It seem like this should be exprPurity(tree)
@@ -849,7 +849,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Decompose a template body into parameters and other statements */
   def decomposeTemplateBody(body: List[Tree])(using Context): (List[Tree], List[Tree]) =
     body.partition {
-      case stat: TypeDef => stat.symbol is Flags.Param
+      case stat: TypeDef => stat.symbol.is(Flags.Param)
       case stat: ValOrDefDef =>
         stat.symbol.is(Flags.ParamAccessor) && !stat.symbol.isSetter
       case _ => false
@@ -954,8 +954,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp match {
     case tp @ TypeRef(pre, _) =>
-      (pre == NoPrefix || pre.typeSymbol.isStatic) &&
-      (tp.symbol derivesFrom defn.ThrowableClass) && !tp.symbol.is(Trait)
+      (pre == NoPrefix || pre.typeSymbol.isStatic)
+      && tp.symbol.derivesFrom(defn.ThrowableClass)
+      && !tp.symbol.is(Trait)
     case _ =>
       false
   }

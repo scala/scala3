@@ -1,0 +1,14 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals3.scala:24:52 ------------------------------------
+24 |      lazy val od1: (Int ->{ev1,console} Boolean) = (n: Int) => // error
+   |                                                    ^
+   |                                           Found:    (n: Int) ->{console, c} Boolean
+   |                                           Required: Int ->{ev1, console} Boolean
+   |
+   |                                           Note that capability c is not included in capture set {ev1, console}.
+25 |        if n == 1 then
+26 |          console.println("CONSOLE: 1")
+27 |          true
+28 |        else
+29 |          ev1(n - 1)
+   |
+   | longer explanation available when compiling with `-explain`

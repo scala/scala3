@@ -25,21 +25,17 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
-  val basicClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
-    Properties.scalaLibrary,
-    Properties.dottyLibrary
-  ))
+  val silenceOptions = Array(
+    "-Wconf:id=E222:s", // name=EncodedPackageName don't warn about file names with hyphens
+  )
 
-  val withCompilerClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
+  val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
+
+  val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
-    Properties.jlineTerminal,
-    Properties.jlineReader,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
-    Properties.dottyLibrary,
     Properties.tastyCore,
     Properties.dottyCompiler
   ))
@@ -54,8 +50,17 @@ object TestConfiguration {
     Properties.scalaJSJavalib,
     Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
-    Properties.dottyLibraryJS
   ))
+
+  lazy val replClassPath =
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(
+      Properties.dottyRepl,
+      Properties.jlineTerminal,
+      Properties.jlineReader,
+  ))
+
+  lazy val replWithStagingClasspath = 
+    replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
@@ -66,23 +71,25 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
-  val defaultOptions = TestFlags(basicClasspath, commonOptions)
+  val defaultOptions = TestFlags(basicClasspath, commonOptions) `and` "-Yno-stdlib-patches"
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val withReplOptions =
+    defaultOptions.withRunClasspath(replClassPath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =
     defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
   lazy val scalaJSOptions =
     defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath).withRunClasspath(scalaJSClasspath)
-  val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
-  val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
-  val picklingOptions = defaultOptions and (
+  val allowDeepSubtypes = defaultOptions `without` "-Yno-deep-subtypes"
+  val allowDoubleBindings = defaultOptions `without` "-Yno-double-bindings"
+  val picklingOptions = defaultOptions `and` (
     "-Xprint-types",
     "-Ytest-pickler",
     "-Yprint-pos",
@@ -91,7 +98,7 @@ object TestConfiguration {
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
-  val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
+  val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
 
   /** Default target of the generated class files */
   private def defaultTarget: String = {

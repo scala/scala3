@@ -57,7 +57,7 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   /** A class representing the type `U` to which `T` would be erased.
    *  Note that there is no subtyping relationship between `T` and `U`.
    */
-  def runtimeClass: jClass[_]
+  def runtimeClass: jClass[?]
 
   /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]` */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
@@ -79,11 +79,11 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
     else None
 
   // case class accessories
-  override def canEqual(x: Any) = x.isInstanceOf[ClassTag[_]]
-  override def equals(x: Any) = x.isInstanceOf[ClassTag[_]] && this.runtimeClass == x.asInstanceOf[ClassTag[_]].runtimeClass
-  override def hashCode = runtimeClass.##
-  override def toString = {
-    def prettyprint(clazz: jClass[_]): String =
+  override def canEqual(x: Any) = x.isInstanceOf[ClassTag[?]]
+  override def equals(x: Any) = x.isInstanceOf[ClassTag[?]] && this.runtimeClass == x.asInstanceOf[ClassTag[?]].runtimeClass
+  override def hashCode() = runtimeClass.##
+  override def toString() = {
+    def prettyprint(clazz: jClass[?]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
       clazz.getName
     prettyprint(runtimeClass)
@@ -94,9 +94,9 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
  * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
  */
 object ClassTag {
-  private[this] val ObjectTYPE = classOf[java.lang.Object]
-  private[this] val NothingTYPE = classOf[scala.runtime.Nothing$]
-  private[this] val NullTYPE = classOf[scala.runtime.Null$]
+  private val ObjectTYPE = classOf[java.lang.Object]
+  private val NothingTYPE = classOf[scala.runtime.Nothing$]
+  private val NullTYPE = classOf[scala.runtime.Null$]
 
   import ManifestFactory._
 
@@ -117,11 +117,11 @@ object ClassTag {
   val Null    : ClassTag[scala.Null]       = Manifest.Null
 
   private val cacheDisabled = java.lang.Boolean.getBoolean("scala.reflect.classtag.cache.disable")
-  private[this] object cache extends ClassValueCompat[jWeakReference[ClassTag[_]]] {
-    override def computeValue(runtimeClass: jClass[_]): jWeakReference[ClassTag[_]] =
+  private object cache extends ClassValueCompat[jWeakReference[ClassTag[?]]] {
+    override def computeValue(runtimeClass: jClass[?]): jWeakReference[ClassTag[?]] =
       new jWeakReference(computeTag(runtimeClass))
 
-    def computeTag(runtimeClass: jClass[_]): ClassTag[_] =
+    def computeTag(runtimeClass: jClass[?]): ClassTag[?] =
       runtimeClass match {
         case x if x.isPrimitive => primitiveClassTag(runtimeClass)
         case ObjectTYPE         => ClassTag.Object
@@ -130,7 +130,7 @@ object ClassTag {
         case _                  => new GenericClassTag[AnyRef](runtimeClass)
      }
 
-    private def primitiveClassTag[T](runtimeClass: Class[_]): ClassTag[_] =
+    private def primitiveClassTag[T](runtimeClass: Class[?]): ClassTag[?] =
       (runtimeClass: @unchecked) match {
         case java.lang.Byte.TYPE      => ClassTag.Byte
         case java.lang.Short.TYPE     => ClassTag.Short
@@ -145,13 +145,13 @@ object ClassTag {
   }
 
   @SerialVersionUID(1L)
-  private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T] {
+  private class GenericClassTag[T](val runtimeClass: jClass[?]) extends ClassTag[T] {
     override def newArray(len: Int): Array[T] = {
       java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
     }
   }
 
-  def apply[T](runtimeClass1: jClass[_]): ClassTag[T] = {
+  def apply[T](runtimeClass1: jClass[?]): ClassTag[T] = {
     if (cacheDisabled) {
       cache.computeTag(runtimeClass1).asInstanceOf[ClassTag[T]]
     } else {
@@ -165,5 +165,5 @@ object ClassTag {
     }
   }
 
-  def unapply[T](ctag: ClassTag[T]): Option[Class[_]] = Some(ctag.runtimeClass)
+  def unapply[T](ctag: ClassTag[T]): Option[Class[?]] = Some(ctag.runtimeClass)
 }

@@ -272,9 +272,9 @@ object IArray:
     def concat[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr).concat(suffix)
     def concat[U >: T: ClassTag](suffix: IterableOnce[U]^): IArray[U] = genericArrayOps(arr).concat(suffix)
     def diff[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).diff(that.toSeq)
-    def diff[U >: T](that: Seq[U]^): IArray[T] = genericArrayOps(arr).diff(that)
+    def diff[U >: T](that: Seq[U]): IArray[T] = genericArrayOps(arr).diff(that)
     def distinct: IArray[T] = genericArrayOps(arr).distinct
-    def distinctBy[U](f: T => U): IArray[T] = genericArrayOps(arr).distinctBy(f)
+    def distinctBy[U](f: T -> U): IArray[T] = genericArrayOps(arr).distinctBy(f)
     def startsWith[U >: T](that: IArray[U]): Boolean = genericArrayOps(arr).startsWith(that, 0)
     def startsWith[U >: T](that: IArray[U], offset: Int): Boolean = genericArrayOps(arr).startsWith(that, offset)
     def startsWith[U >: T](that: IterableOnce[U]^): Boolean = genericArrayOps(arr).startsWith(that, 0)
@@ -286,7 +286,7 @@ object IArray:
     def grouped(size: Int): Iterator[IArray[T]] = genericArrayOps(arr).grouped(size)
     def inits: Iterator[IArray[T]] = genericArrayOps(arr).inits
     def intersect[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).intersect(that)
-    def intersect[U >: T](that: Seq[U]^): IArray[T] = genericArrayOps(arr).intersect(that)
+    def intersect[U >: T](that: Seq[U]): IArray[T] = genericArrayOps(arr).intersect(that)
     def lazyZip[U](that: IArray[U]): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
     def lazyZip[U](that: Iterable[U]^): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
     def lengthCompare(len: Int): Int = genericArrayOps(arr).lengthCompare(len)
@@ -297,7 +297,7 @@ object IArray:
     def prepended[U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr).prepended(x)
     def prependedAll[U >: T: ClassTag](prefix: IterableOnce[U]^): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
     def reverseIterator: Iterator[T] = genericArrayOps(arr).reverseIterator
-    def search[U >: T](elem: U)(using Ordering[U]^): Searching.SearchResult = arr.toSeq.search(elem)
+    def search[U >: T](elem: U)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem)
     def search[U >: T](elem: U, from: Int, to: Int)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem, from, to)
     def sizeCompare(that: IArray[Any]): Int = arr.toSeq.sizeCompare(that)
     def sizeCompare(that: Iterable[?]): Int = arr.toSeq.sizeCompare(that)
@@ -330,21 +330,28 @@ object IArray:
   extension [T, U >: T: ClassTag](x: T)
     def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
-  // For backwards compatibility with code compiled without -Yexplicit-nulls
+  // For backward compatibility with code compiled without -Yexplicit-nulls.
+  // If `a` is null, return null; otherwise, return `f`.
+  // Have to add a private mapNull here to avoid errors, use `ScalaRunTime.mapNull` in the future.
   private inline def mapNull[A, B](a: A, inline f: B): B =
-    if((a: A|Null) == null) null.asInstanceOf[B] else f
+    if ((a: A | Null) == null) null.asInstanceOf[B] else f
+
+  // For the following functions, both the parameter and the return type are non-nullable.
+  // However, if a null reference is passed explicitly, this method will still return null.
+  // We intentionally keep this signature to discourage passing nulls implicitly while
+  // preserving the previous behavior for backward compatibility.
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def genericWrapArray[T](arr: IArray[T]): ArraySeq[T] =
     mapNull(arr, ArraySeq.unsafeWrapArray(arr))
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): ArraySeq.ofRef[T] =
-    // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
-    // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
+  implicit def wrapRefArray[T <: AnyRef | Null](arr: IArray[T]): ArraySeq.ofRef[T] =
+    // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef | Null]
+    // is as good as another for all T <: AnyRef | Null.  Instead of creating 100,000,000
     // unique ones by way of this implicit, let's share one.
     mapNull(arr,
-      if (arr.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
+      if (arr.length == 0) ArraySeq.empty[AnyRef | Null].asInstanceOf[ArraySeq.ofRef[T]]
       else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
     )
 

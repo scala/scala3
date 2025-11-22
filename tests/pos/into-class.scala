@@ -1,4 +1,4 @@
-import language.experimental.into
+//> using options -preview
 import Conversion.into
 
 class Text(str: String)

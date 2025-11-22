@@ -41,6 +41,18 @@ object Phases {
     // drop NoPhase at beginning
     def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
+    private var myRecheckPhaseIds: Long = 0
+
+    /** A bitset of the ids of the phases extending `transform.Recheck`.
+     *  Recheck phases must have id 63 or less.
+     */
+    def recheckPhaseIds: Long = myRecheckPhaseIds
+
+    def recordRecheckPhase(phase: Recheck): Unit =
+      val id = phase.id
+      assert(id < 64, s"Recheck phase with id $id outside permissible range 0..63")
+      myRecheckPhaseIds |= (1L << id)
+
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
       def run(using Context): Unit = unsupported("run")
@@ -204,6 +216,9 @@ object Phases {
       else
         this.fusedPhases = this.phases
 
+      if myCheckCapturesPhase.exists then
+        myCheckCapturesPhaseId = myCheckCapturesPhase.id
+
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
@@ -239,10 +254,15 @@ object Phases {
     private var myErasurePhase: Phase = uninitialized
     private var myElimErasedValueTypePhase: Phase = uninitialized
     private var myLambdaLiftPhase: Phase = uninitialized
+    private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
     private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
+
+    private var myCheckCapturesPhaseId: Int = -2
+      // -1 means undefined, 0 means NoPhase, we make sure that we don't get a false hit
+      // if ctx.phaseId is either of these.
 
     final def parserPhase: Phase = myParserPhase
     final def typerPhase: Phase = myTyperPhase
@@ -266,11 +286,13 @@ object Phases {
     final def gettersPhase: Phase = myGettersPhase
     final def erasurePhase: Phase = myErasurePhase
     final def elimErasedValueTypePhase: Phase = myElimErasedValueTypePhase
+    final def mixinPhase: Phase = myMixinPhase
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
     final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
+    final def checkCapturesPhaseId: Int = myCheckCapturesPhaseId
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -295,6 +317,7 @@ object Phases {
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
       myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
+      myMixinPhase = phaseOfClass(classOf[Mixin])
       myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
       myCountOuterAccessesPhase = phaseOfClass(classOf[CountOuterAccesses])
       myFlattenPhase = phaseOfClass(classOf[Flatten])
@@ -550,10 +573,12 @@ object Phases {
   def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
   def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
   def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
+  def checkCapturesPhaseId(using Context): Int          = ctx.base.checkCapturesPhaseId
 
   def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
 

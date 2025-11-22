@@ -1,13 +1,14 @@
--- Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:36:2 -----------------------------------------------
-36 |  try // error
-   |  ^
-   |  The result of `try` cannot have type LazyList[Int]^ since
-   |  that type captures the root capability `cap`.
-   |  This is often caused by a locally generated exception capability leaking as part of its result.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:37:17 -------------------------
+37 |    tabulate(10) { i =>  // error
+   |    ^
+   |    Capability canThrow$1 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's1 of method problem.
+   |    The leakage occurred when trying to match the following types:
    |
-   |  where:    ^ refers to a fresh root capability classified as Control in the type of given instance canThrow$1
-37 |    tabulate(10) { i =>
+   |    Found:    LazyList[Int]^{canThrow$1}
+   |    Required: LazyList[Int]^'s1
 38 |      if i > 9 then throw Ex1()
 39 |      i * i
 40 |    }
-41 |  catch case ex: Ex1 => LazyNil
+   |
+   | longer explanation available when compiling with `-explain`

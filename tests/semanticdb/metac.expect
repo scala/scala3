@@ -43,12 +43,12 @@ Occurrences:
 [9:11..9:14): ??? -> scala/Predef.`???`().
 
 Diagnostics:
-[4:16..4:16): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[4:9..4:15): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[7:18..7:18): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[7:11..7:17): [warning] Ignoring [this] qualifier.
+The syntax `protected[this]` will be deprecated in the future; just write `protected` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
@@ -823,13 +823,13 @@ Occurrences:
 Diagnostics:
 [13:20..13:21): [warning] unused explicit parameter
 [18:9..18:10): [warning] unused explicit parameter
-[20:23..20:23): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[20:16..20:22): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [20:27..20:28): [warning] unused explicit parameter
-[22:23..22:23): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[22:16..22:22): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
@@ -4553,20 +4553,20 @@ Occurrences:
 
 Diagnostics:
 [2:20..2:21): [warning] unused explicit parameter
-[5:16..5:16): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[5:9..5:15): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[7:16..7:16): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[7:9..7:15): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[12:16..12:16): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[12:9..12:15): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[13:16..13:16): [warning] Ignoring [this] qualifier.
-This syntax will be deprecated in the future; it should be dropped.
+[13:9..13:15): [warning] Ignoring [this] qualifier.
+The syntax `private[this]` will be deprecated in the future; just write `private` instead.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
@@ -4742,6 +4742,7 @@ Text => empty
 Language => Scala
 Symbols => 7 entries
 Occurrences => 5 entries
+Diagnostics => 1 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports extends Object { self: exports.type => +4 decls }
@@ -4758,6 +4759,9 @@ Occurrences:
 [2:16..2:23): Decoder <- exports/`exports-package$package`.Decoder#
 [2:25..2:32): Encoder <- exports/`exports-package$package`.Encoder#
 [2:34..2:39): Codec <- exports/`exports-package$package`.Codec#
+
+Diagnostics:
+[0:0..2:40): [warning] The package name `exports-package$package` will be encoded on the classpath, and can lead to undefined behaviour.
 
 expect/filename with spaces.scala
 ---------------------------------
@@ -4987,8 +4991,8 @@ _empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T]
 _empty_/Txn#[T] => typeparam T  <: Txn[T]
 _empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
 local0 => val local out: Repr[Out]
-local1 => val local inObj: Repr[In] & Obj[In]
-local2 => val local outObj: Repr[Out] & Obj[Out]
+local1 => val local inObj: Obj[In] & Repr[In]
+local2 => val local outObj: Obj[Out] & Repr[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#

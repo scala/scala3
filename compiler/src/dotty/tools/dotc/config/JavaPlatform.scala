@@ -23,7 +23,7 @@ class JavaPlatform extends Platform {
   // The given symbol is a method with the right name and signature to be a runnable java program.
   def isMainMethod(sym: Symbol)(using Context): Boolean =
     (sym.name == nme.main) && (sym.info match {
-      case MethodTpe(_, defn.ArrayOf(el) :: Nil, restpe) => el =:= defn.StringType && (restpe isRef defn.UnitClass)
+      case MethodTpe(_, defn.ArrayOf(el) :: Nil, restpe) => el =:= defn.StringType && restpe.isRef(defn.UnitClass)
       case _ => false
     })
 
@@ -60,12 +60,12 @@ class JavaPlatform extends Platform {
   def isMaybeBoxed(sym: ClassSymbol)(using Context): Boolean = {
     val d = defn
     import d.*
-    (sym == ObjectClass) ||
-    (sym == JavaSerializableClass) ||
-    (sym == ComparableClass) ||
-    (sym derivesFrom BoxedNumberClass) ||
-    (sym derivesFrom BoxedCharClass) ||
-    (sym derivesFrom BoxedBooleanClass)
+    sym == ObjectClass
+    || sym == JavaSerializableClass
+    || sym == ComparableClass
+    || sym.derivesFrom(BoxedNumberClass)
+    || sym.derivesFrom(BoxedCharClass)
+    || sym.derivesFrom(BoxedBooleanClass)
   }
 
   def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =

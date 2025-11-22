@@ -23,3 +23,6 @@ import scala.language.`2.13`
 final case class UninitializedFieldError(msg: String) extends RuntimeException(msg) {
   def this(obj: Any) = this("" + obj)
 }
+
+object UninitializedFieldError extends scala.runtime.AbstractFunction1[String, UninitializedFieldError]:
+  override def toString(): String = "UninitializedFieldError"

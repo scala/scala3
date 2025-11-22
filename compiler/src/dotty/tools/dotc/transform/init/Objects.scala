@@ -74,10 +74,12 @@ class Objects(using Context @constructorOnly):
   val MapNode_EmptyMapNode: Symbol = immutableMapNode.requiredValue("EmptyMapNode")
   val immutableHashMap: Symbol = requiredModule("scala.collection.immutable.HashMap")
   val HashMap_EmptyMap: Symbol = immutableHashMap.requiredValue("EmptyMap")
-  val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
-  val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
+  val ManifestFactory_ObjectTYPE = defn.ManifestFactoryModule.requiredValue("ObjectTYPE")
+  val ManifestFactory_NothingTYPE = defn.ManifestFactoryModule.requiredValue("NothingTYPE")
+  val ManifestFactory_NullTYPE = defn.ManifestFactoryModule.requiredValue("NullTYPE")
 
-  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
+  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap,
+    ManifestFactory_ObjectTYPE, ManifestFactory_NothingTYPE, ManifestFactory_NullTYPE)
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -91,11 +93,11 @@ class Objects(using Context @constructorOnly):
    *      | UnknownValue                                                 // values whose source are unknown at compile time
    * vs ::= ValueSet(Set(ve))                                            // set of abstract values
    * Value ::= ve | vs | Package
-   * Ref ::= ObjectRef | InstanceRef | ArrayRef                               // values that represent a reference to some (global or instance) object
+   * Ref ::= ObjectRef | InstanceRef | ArrayRef                          // values that represent a reference to some (global or instance) object
    * RefSet ::= Set(ref)                                                 // set of refs
    * Bottom ::= RefSet(Empty)                                            // unreachable code
    * ThisValue ::= Ref | RefSet                                          // possible values for 'this'
-   * EnvRef(meth, ownerObject)                                         // represents environments for methods or functions
+   * EnvRef(tree, ownerObject)                                           // represents environments for evaluating methods, functions, or lazy/by-name values
    * EnvSet ::= Set(EnvRef)
    * InstanceBody ::= (valsMap: Map[Symbol, Value],
                        outersMap: Map[ClassSymbol, Value],
@@ -142,6 +144,8 @@ class Objects(using Context @constructorOnly):
 
     def isObjectRef: Boolean = this.isInstanceOf[ObjectRef]
 
+    def asObjectRef: ObjectRef = this.asInstanceOf[ObjectRef]
+
     def valValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readVal(this, sym)
 
     def varValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readVal(this, sym)
@@ -176,6 +180,12 @@ class Objects(using Context @constructorOnly):
 
   /** A reference to a static object */
   case class ObjectRef private (klass: ClassSymbol)(using Trace) extends Ref:
+    var afterSuperCall = false
+
+    def isAfterSuperCall = afterSuperCall
+
+    def setAfterSuperCall(): Unit = afterSuperCall = true
+
     def owner = klass
 
     def show(using Context) = "ObjectRef(" + klass.show + ")"
@@ -403,13 +413,18 @@ class Objects(using Context @constructorOnly):
 
   /** Environment for parameters */
   object Env:
-    /** Local environments can be deeply nested, therefore we need `outer`.
-     *
-     *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
+    /** Represents environments for evaluating methods, functions, or lazy/by-name values
+     *  For methods or closures, `tree` is the DefDef of the method.
+     *  For lazy/by-name values, `tree` is the rhs of the definition or the argument passed to by-name param
      */
-    case class EnvRef(meth: Symbol, owner: ClassSymbol)(using Trace) extends Scope:
+    case class EnvRef(tree: Tree, owner: ClassSymbol)(using Trace) extends Scope:
+      override def equals(that: Any): Boolean =
+        that.isInstanceOf[EnvRef] &&
+        (that.asInstanceOf[EnvRef].tree eq tree) &&
+        (that.asInstanceOf[EnvRef].owner == owner)
+
       def show(using Context) =
-        "meth: " + meth.show + "\n" +
+        "tree: " + tree.show + "\n" +
         "owner: " + owner.show
 
       def valValue(sym: Symbol)(using EnvMap.EnvMapMutableData): Value = EnvMap.readVal(this, sym)
@@ -452,14 +467,6 @@ class Objects(using Context @constructorOnly):
 
     val NoEnv = EnvSet(Set.empty)
 
-    /** An empty environment can be used for non-method environments, e.g., field initializers.
-     *
-     *  The owner for the local environment for field initializers is the primary constructor of the
-     *  enclosing class.
-     */
-    def emptyEnv(meth: Symbol)(using Context, State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
-      _of(Map.empty, meth, Bottom, NoEnv)
-
     def valValue(x: Symbol)(using env: EnvRef, ctx: Context, trace: Trace, envMap: EnvMap.EnvMapMutableData): Value =
       if env.hasVal(x) then
         env.valValue(x)
@@ -467,21 +474,42 @@ class Objects(using Context @constructorOnly):
         report.warning("[Internal error] Value not found " + x.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
         Bottom
 
-    private[Env] def _of(argMap: Map[Symbol, Value], meth: Symbol, thisV: ThisValue, outerEnv: EnvSet)
+    /** The method of creating an Env that evaluates `tree` */
+    private[Env] def _of(argMap: Map[Symbol, Value], tree: Tree, thisV: ThisValue, outerEnv: EnvSet)
                         (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
-      val env = EnvRef(meth, State.currentObject)
+      val env = EnvRef(tree, State.currentObject)
       argMap.foreach(env.initVal(_, _))
       env.initThisV(thisV)
       env.initOuterEnvs(outerEnv)
       env
 
     /**
+     * Creates an environment that evaluates the body of a method or the body of a closure
+     */
+    def ofDefDef(ddef: DefDef, args: List[Value], thisV: ThisValue, outerEnv: EnvSet)
+                (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
+      val params = ddef.termParamss.flatten.map(_.symbol)
+      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+      // assert(ddef.symbol.owner.is(Method) ^ (outerEnv == NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outerEnv = " + outerEnv + ", " + ddef.source)
+      _of(params.zip(args).toMap, ddef, thisV, outerEnv)
+
+
+    /**
+     * Creates an environment that evaluates a lazy val with `tree` as rhs
+     * or evaluates a by-name parameter where `tree` is the argument tree
+     */
+    def ofByName(sym: Symbol, tree: Tree, thisV: ThisValue, outerEnv: EnvSet)
+                (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
+      assert((sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType]) || sym.is(Flags.Lazy));
+      _of(Map.empty, tree, thisV, outerEnv)
+
+    /**
      * The main procedure for searching through the outer chain
      * @param target The symbol to search for if `bySymbol = true`; otherwise the method symbol of the target environment
-     * @param scopeSet The set of scopes as starting point
+     * @param envSet The set of scopes as starting point
      * @return The scopes that contains symbol `target` or whose method is `target`,
      *         and the value for `C.this` where C is the enclosing class of the result scopes
-    */
+     */
     private[Env] def resolveEnvRecur(
         target: Symbol, envSet: EnvSet, bySymbol: Boolean = true)
         : Contextual[Option[EnvSet]] = log("Resolving environment, target = " + target + ", envSet = " + envSet, printer) {
@@ -491,7 +519,7 @@ class Objects(using Context @constructorOnly):
           if bySymbol then
             envSet.envs.filter(_.hasVal(target))
           else
-            envSet.envs.filter(_.meth == target)
+            envSet.envs.filter(env => env.tree.isInstanceOf[DefDef] && env.tree.asInstanceOf[DefDef].symbol == target)
 
         assert(filter.isEmpty || filter.size == envSet.envs.size, "Either all scopes or no scopes contain " + target)
         if (!filter.isEmpty) then
@@ -512,19 +540,6 @@ class Objects(using Context @constructorOnly):
             }
             resolveEnvRecur(target, outerEnvsOfThis, bySymbol)
     }
-
-
-    def ofDefDef(ddef: DefDef, args: List[Value], thisV: ThisValue, outerEnv: EnvSet)
-                (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
-      val params = ddef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
-      // assert(ddef.symbol.owner.is(Method) ^ (outerEnv == NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outerEnv = " + outerEnv + ", " + ddef.source)
-      _of(params.zip(args).toMap, ddef.symbol, thisV, outerEnv)
-
-    def ofByName(byNameParam: Symbol, thisV: ThisValue, outerEnv: EnvSet)
-                (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
-      assert(byNameParam.is(Flags.Param) && byNameParam.info.isInstanceOf[ExprType]);
-      _of(Map.empty, byNameParam, thisV, outerEnv)
 
     def setLocalVal(x: Symbol, value: Value)(using scope: Scope, ctx: Context, heap: Heap.MutableData, envMap: EnvMap.EnvMapMutableData): Unit =
       assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
@@ -690,6 +705,11 @@ class Objects(using Context @constructorOnly):
     def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
   end Heap
 
+  /**
+     *  Local environments can be deeply nested, therefore we need `outerEnvs`, which stores the immediate outer environment.
+     *  If the immediate enclosing scope of an environment is a template, then `outerEnvs` is empty in EnvMap.
+     *  We can restore outerEnvs of `this` in the heap.
+     */
   object EnvMap:
     private case class EnvBody(
       valsMap: Map[Symbol, Value],
@@ -905,7 +925,7 @@ class Objects(using Context @constructorOnly):
             // the typer might mistakenly set the receiver to be a package instead of package object.
             // See pos/packageObjectStringInterpolator.scala
             if packageModuleClass == klass || (klass.denot.isPackageObject && klass.owner == packageModuleClass) then a else Bottom
-          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) then a else Bottom
+          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) && v.typeSymbol.asClass != defn.NullClass then a else Bottom
           case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
           case ValueSet(values) => values.map(v => v.filterClass(klass)).join
           case fun: Fun =>
@@ -1189,12 +1209,12 @@ class Objects(using Context @constructorOnly):
 
     case ref: Ref =>
       val target = if needResolve then resolve(ref.klass, field) else field
-      if target.is(Flags.Lazy) then
-        given Scope = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
+      if target.is(Flags.Lazy) then // select a lazy field
         if ref.hasVal(target) then
           ref.valValue(target)
         else if target.hasSource then
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
+          given Scope = Env.ofByName(target, rhs, ref, Env.NoEnv)
           val result = eval(rhs, ref, target.owner.asClass, cacheResult = true)
           ref.initVal(target, result)
           result
@@ -1356,17 +1376,17 @@ class Objects(using Context @constructorOnly):
     def evalByNameParam(value: Value): Contextual[Value] = value match
       case Fun(code, thisV, klass, scope) =>
         val byNameEnv = scope match {
-          case ref: Ref => Env.ofByName(sym, thisV, Env.NoEnv)
-          case env: Env.EnvRef => Env.ofByName(sym, thisV, Env.EnvSet(Set(env)))
+          case ref: Ref => Env.ofByName(sym, code, thisV, Env.NoEnv) // for by-name arguments of constructors
+          case env: Env.EnvRef => Env.ofByName(sym, code, thisV, Env.EnvSet(Set(env))) // for by-name arguments of methods/functions
         }
         given Scope = byNameEnv
-        eval(code, thisV, klass)
+        eval(code, thisV, klass, cacheResult = true)
       case UnknownValue =>
         reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
       case Bottom => Bottom
-      case ValueSet(values) if values.size == 1 =>
-        evalByNameParam(values.head)
-      case _: ValueSet | _: Ref | _: ArrayRef | _: Package | SafeValue(_) =>
+      case ValueSet(values) =>
+        values.map(evalByNameParam(_)).join
+      case _: Ref | _: ArrayRef | _: Package | SafeValue(_) =>
         report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
         Bottom
     end evalByNameParam
@@ -1387,7 +1407,7 @@ class Objects(using Context @constructorOnly):
       else
         if sym.is(Flags.Lazy) then
           val outerThis = envSet.joinThisV
-          given Scope = Env.ofByName(sym, outerThis, envSet)
+          given Scope = Env.ofByName(sym, sym.defTree, outerThis, envSet)
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, outerThis, sym.enclosingClass.asClass, cacheResult = true)
         else
@@ -1435,9 +1455,15 @@ class Objects(using Context @constructorOnly):
   /** Check an individual object */
   private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace, Heap.MutableData, EnvMap.EnvMapMutableData): ObjectRef = log("accessing " + classSym.show, printer, (_: Value).show) {
     if classSym.hasSource then
-      State.checkObjectAccess(classSym)
+      val obj = State.checkObjectAccess(classSym)
+      if !obj.isAfterSuperCall then
+        report.warning("Accessing " + obj.klass + " before the super constructor of the object finishes! " + Trace.show, Trace.position)
+      end if
+      obj
     else
-      ObjectRef(classSym)
+      val obj = ObjectRef(classSym)
+      obj.setAfterSuperCall()
+      obj
   }
 
 
@@ -2100,6 +2126,10 @@ class Objects(using Context @constructorOnly):
       tasks.foreach(task => task())
     end if
 
+    if thisV.isInstanceOf[ObjectRef] && klass == thisV.klass then
+      thisV.asObjectRef.setAfterSuperCall()
+    end if
+
     // class body
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
@@ -2142,7 +2172,7 @@ class Objects(using Context @constructorOnly):
       thisV
     else
       // `target` must enclose `klass`
-      assert(klass.enclosingClassNamed(target.name) != NoSymbol, target.show + " does not enclose " + klass.show)
+      assert(klass.ownersIterator.contains(target), target.show + " does not enclose " + klass.show)
       val outerThis = thisV match {
         case ref: Ref => ref.outerValue(klass)
         case refSet: RefSet => refSet.joinOuters(klass)

@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 //import scala.collection.generic._
 import scala.collection.{Factory, immutable, mutable}
@@ -49,7 +50,7 @@ object Array {
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
-    def fromSpecific(it: IterableOnce[A]): Array[A] = Array.from[A](it)
+    def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
@@ -71,7 +72,7 @@ object Array {
    *  @param  it the iterable collection
    *  @return    an array consisting of elements of the iterable collection
    */
-  def from[A : ClassTag](it: IterableOnce[A]): Array[A] = it match {
+  def from[A : ClassTag](it: IterableOnce[A]^): Array[A] = it match {
     case it: Iterable[A] => it.toArray[A]
     case _ => it.iterator.toArray[A]
   }
@@ -151,7 +152,7 @@ object Array {
     *
     * @see `java.util.Arrays#copyOf`
     */
-  def copyAs[A](original: Array[_], newLength: Int)(implicit ct: ClassTag[A]): Array[A] = {
+  def copyAs[A](original: Array[?], newLength: Int)(implicit ct: ClassTag[A]): Array[A] = {
     val runtimeClass = ct.runtimeClass
     if (runtimeClass == Void.TYPE) newUnitArray(newLength).asInstanceOf[Array[A]]
     else {
@@ -659,7 +660,7 @@ object Array {
  *  @define collectExample
  *  @define undefinedorder
  */
-final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable {
+final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self: Array[T] =>
 
   /** The length of the array */
   def length: Int = throw new Error()

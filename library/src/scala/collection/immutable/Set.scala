@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.immutable.Set.Set4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 
@@ -66,10 +68,10 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     *  @param that the collection containing the elements to remove.
     *  @return a new $coll with the given elements removed, omitting duplicates.
     */
-  def removedAll(that: IterableOnce[A]): C = that.iterator.foldLeft[C](coll)(_ - _)
+  def removedAll(that: IterableOnce[A]^): C = that.iterator.foldLeft[C](coll)(_ - _)
 
   /** Alias for removedAll */
-  override final def -- (that: IterableOnce[A]): C = removedAll(that)
+  override final def -- (that: IterableOnce[A]^): C = removedAll(that)
 }
 
 transparent trait StrictOptimizedSetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
@@ -77,7 +79,7 @@ transparent trait StrictOptimizedSetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     with collection.StrictOptimizedSetOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 
-  override def concat(that: collection.IterableOnce[A]): C = {
+  override def concat(that: collection.IterableOnce[A]^): C = {
     var result: C = coll
     val it = that.iterator
     while (it.hasNext) result = result + it.next()
@@ -95,7 +97,7 @@ object Set extends IterableFactory[Set] {
 
   def empty[A]: Set[A] = EmptySet.asInstanceOf[Set[A]]
 
-  def from[E](it: collection.IterableOnce[E]): Set[E] =
+  def from[E](it: collection.IterableOnce[E]^): Set[E] =
     it match {
       case _ if it.knownSize == 0 => empty[E]
       // Since IterableOnce[E] launders the variance of E,
@@ -124,7 +126,7 @@ object Set extends IterableFactory[Set] {
     override def knownSize: Int = size
     override def filter(pred: Any => Boolean): Set[Any] = this
     override def filterNot(pred: Any => Boolean): Set[Any] = this
-    override def removedAll(that: IterableOnce[Any]): Set[Any] = this
+    override def removedAll(that: IterableOnce[Any]^): Set[Any] = this
     override def diff(that: collection.Set[Any]): Set[Any] = this
     override def subsetOf(that: collection.Set[Any]): Boolean = true
     override def intersect(that: collection.Set[Any]): Set[Any] = this
@@ -139,8 +141,8 @@ object Set extends IterableFactory[Set] {
 
   @SerialVersionUID(3L)
   private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A] with Serializable {
-    private[this] var current = 0
-    private[this] var remainder = n
+    private var current = 0
+    private var remainder = n
     override def knownSize: Int = remainder
     def hasNext = remainder > 0
     def apply(i: Int): A
@@ -361,9 +363,9 @@ abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A
   * $multipleResults
   */
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
-  private[this] var elems: Set[A] = Set.empty
-  private[this] var switchedToHashSetBuilder: Boolean = false
-  private[this] var hashSetBuilder: HashSetBuilder[A] = _
+  private var elems: Set[A] = Set.empty
+  private var switchedToHashSetBuilder: Boolean = false
+  private var hashSetBuilder: HashSetBuilder[A] = compiletime.uninitialized
 
   override def clear(): Unit = {
     elems = Set.empty
@@ -398,7 +400,7 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type =
+  override def addAll(xs: IterableOnce[A]^): this.type =
     if (switchedToHashSetBuilder) {
       hashSetBuilder.addAll(xs)
       this

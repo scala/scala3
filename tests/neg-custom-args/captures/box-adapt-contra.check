@@ -9,8 +9,7 @@
    |            Cap^{c} => Unit cannot be box-converted to Cap^{c} ->{cap, c} Unit
    |            since the additional capture set {c} resulting from box conversion is not allowed in Cap^{c} => Unit
    |
-   |            where:    =>  refers to the universal root capability
-   |                      cap is the universal root capability
+   |            where:    => and cap refer to the universal root capability
 -- Error: tests/neg-custom-args/captures/box-adapt-contra.scala:19:54 --------------------------------------------------
 19 |  val f3: (Cap^{c} -> Unit) => Unit = useCap3[Cap^{c}](c)  // error
    |                                      ^^^^^^^^^^^^^^^^^^^

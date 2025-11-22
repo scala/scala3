@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.DefaultSerializable
 import scala.util.hashing.MurmurHash3
@@ -46,35 +47,37 @@ class LinkedHashSet[A]
 
   /*private*/ type Entry = LinkedHashSet.Entry[A]
 
-  protected var firstEntry: Entry = null
+  @annotation.stableNull
+  protected var firstEntry: Entry | Null = null
 
-  protected var lastEntry: Entry = null
+  @annotation.stableNull
+  protected var lastEntry: Entry | Null = null
 
   /* Uses the same implementation as mutable.HashSet. The hashtable holds the following invariant:
    * - For each i between 0 and table.length, the bucket at table(i) only contains keys whose hash-index is i.
    * - Every bucket is sorted in ascendant hash order
    * - The sum of the lengths of all buckets is equal to contentSize.
    */
-  private[this] var table = new Array[Entry](tableSizeFor(LinkedHashSet.defaultinitialSize))
+  private var table = new Array[Entry | Null](tableSizeFor(LinkedHashSet.defaultinitialSize))
 
-  private[this] var threshold: Int = newThreshold(table.length)
+  private var threshold: Int = newThreshold(table.length)
 
-  private[this] var contentSize = 0
+  private var contentSize = 0
 
   override def last: A =
-    if (size > 0) lastEntry.key
+    if (size > 0) lastEntry.nn.key
     else throw new NoSuchElementException("Cannot call .last on empty LinkedHashSet")
 
   override def lastOption: Option[A] =
-    if (size > 0) Some(lastEntry.key)
+    if (size > 0) Some(lastEntry.nn.key)
     else None
 
   override def head: A =
-    if (size > 0) firstEntry.key
+    if (size > 0) firstEntry.nn.key
     else throw new NoSuchElementException("Cannot call .head on empty LinkedHashSet")
 
   override def headOption: Option[A] =
-    if (size > 0) Some(firstEntry.key)
+    if (size > 0) Some(firstEntry.nn.key)
     else None
 
   override def size: Int = contentSize
@@ -106,12 +109,12 @@ class LinkedHashSet[A]
 
   override def remove(elem: A): Boolean = remove0(elem, computeHash(elem))
 
-  private[this] abstract class LinkedHashSetIterator[T] extends AbstractIterator[T] {
-    private[this] var cur = firstEntry
+  private abstract class LinkedHashSetIterator[T] extends AbstractIterator[T] {
+    private var cur: Entry | Null = firstEntry
     def extract(nd: Entry): T
     def hasNext: Boolean = cur ne null
     def next(): T =
-      if (hasNext) { val r = extract(cur); cur = cur.later; r }
+      if (hasNext) { val r = extract(cur.nn); cur = cur.nn.later; r }
       else Iterator.empty.next()
   }
 
@@ -124,7 +127,7 @@ class LinkedHashSet[A]
   }
 
   override def foreach[U](f: A => U): Unit = {
-    var cur = firstEntry
+    var cur: Entry | Null = firstEntry
     while (cur ne null) {
       f(cur.key)
       cur = cur.later
@@ -138,23 +141,23 @@ class LinkedHashSet[A]
     lastEntry = null
   }
 
-  private[this] def tableSizeFor(capacity: Int) =
+  private def tableSizeFor(capacity: Int) =
     (Integer.highestOneBit((capacity - 1).max(4)) * 2).min(1 << 30)
 
-  private[this] def newThreshold(size: Int) = (size.toDouble * LinkedHashSet.defaultLoadFactor).toInt
+  private def newThreshold(size: Int) = (size.toDouble * LinkedHashSet.defaultLoadFactor).toInt
 
-  @`inline` private[this] def improveHash(originalHash: Int): Int = {
+  @`inline` private def improveHash(originalHash: Int): Int = {
     originalHash ^ (originalHash >>> 16)
   }
 
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
   /** Computes the improved hash of this key */
-  @`inline` private[this] def computeHash(o: A): Int = improveHash(o.##)
+  @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
-  @`inline` private[this] def index(hash: Int) = hash & (table.length - 1)
+  @`inline` private def index(hash: Int) = hash & (table.length - 1)
 
-  @`inline` private[this] def findEntry(key: A): Entry = {
+  @`inline` private def findEntry(key: A): Entry | Null = {
     val hash = computeHash(key)
     table(index(hash)) match {
       case null => null
@@ -166,11 +169,11 @@ class LinkedHashSet[A]
   * new entry will be the firstEntry. If not, just set the new entry to
   * be the lastEntry.
   * */
-  private[this] def createNewEntry(key: A, hash: Int): Entry = {
+  private def createNewEntry(key: A, hash: Int): Entry = {
     val e = new Entry(key, hash)
     if (firstEntry eq null) firstEntry = e
     else {
-      lastEntry.later = e
+      lastEntry.nn.later = e
       e.earlier = lastEntry
     }
     lastEntry = e
@@ -178,7 +181,7 @@ class LinkedHashSet[A]
   }
 
   /** Delete the entry from the LinkedHashSet, set the `earlier` and `later` pointers correctly */
-  private[this] def deleteEntry(e: Entry): Unit = {
+  private def deleteEntry(e: Entry): Unit = {
     if (e.earlier eq null) firstEntry = e.later
     else e.earlier.later = e.later
     if (e.later eq null) lastEntry = e.earlier
@@ -188,13 +191,13 @@ class LinkedHashSet[A]
     e.next = null
   }
 
-  private[this] def put0(elem: A, hash: Int, idx: Int): Boolean = {
+  private def put0(elem: A, hash: Int, idx: Int): Boolean = {
     table(idx) match {
       case null =>
         table(idx) = createNewEntry(elem, hash)
       case old =>
-        var prev: Entry = null
-        var n = old
+        var prev: Entry | Null = null
+        var n: Entry | Null = old
         while ((n ne null) && n.hash <= hash) {
           if (n.hash == hash && elem == n.key) return false
           prev = n
@@ -213,7 +216,7 @@ class LinkedHashSet[A]
     true
   }
 
-  private[this] def remove0(elem: A, hash: Int): Boolean = {
+  private def remove0(elem: A, hash: Int): Boolean = {
     val idx = index(hash)
     table(idx) match {
       case null => false
@@ -226,7 +229,7 @@ class LinkedHashSet[A]
       case nd =>
         // find an element that matches
         var prev = nd
-        var next = nd.next
+        var next: Entry | Null = nd.next
         while ((next ne null) && next.hash <= hash) {
           if (next.hash == hash && next.key == elem) {
             prev.next = next.next
@@ -241,7 +244,7 @@ class LinkedHashSet[A]
     }
   }
 
-  private[this] def growTable(newlen: Int): Unit = {
+  private def growTable(newlen: Int): Unit = {
     if (newlen < 0)
       throw new RuntimeException(s"new hash table size $newlen exceeds maximum")
     var oldlen = table.length
@@ -256,13 +259,13 @@ class LinkedHashSet[A]
       while (oldlen < newlen) {
         var i = 0
         while (i < oldlen) {
-          val old = table(i)
+          val old: Entry | Null = table(i)
           if (old ne null) {
             preLow.next = null
             preHigh.next = null
             var lastLow = preLow
             var lastHigh = preHigh
-            var n = old
+            var n: Entry | Null = old
             while (n ne null) {
               val next = n.next
               if ((n.hash & oldlen) == 0) { // keep low
@@ -288,13 +291,13 @@ class LinkedHashSet[A]
     }
   }
 
-  override def hashCode: Int = {
+  override def hashCode(): Int = {
     val setHashIterator =
       if (isEmpty) this.iterator
       else {
         new LinkedHashSetIterator[Any] {
           var hash: Int = 0
-          override def hashCode: Int = hash
+          override def hashCode(): Int = hash
           override def extract(nd: Entry): Any = {
             hash = unimproveHash(nd.hash)
             this
@@ -305,7 +308,7 @@ class LinkedHashSet[A]
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "LinkedHashSet"
+  override protected def stringPrefix: String = "LinkedHashSet"
 }
 
 /** $factoryInfo
@@ -317,7 +320,7 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
 
   override def empty[A]: LinkedHashSet[A] = new LinkedHashSet[A]
 
-  def from[E](it: collection.IterableOnce[E]) = {
+  def from[E](it: collection.IterableOnce[E]^) = {
     val newlhs = empty[E]
     newlhs.sizeHint(it, delta = 0)
     newlhs.addAll(it)
@@ -329,12 +332,12 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
   /** Class for the linked hash set entry, used internally.
    */
   private[mutable] final class Entry[A](val key: A, val hash: Int) {
-    var earlier: Entry[A] = null
-    var later: Entry[A] = null
-    var next: Entry[A] = null
+    @annotation.stableNull var earlier: Entry[A] | Null = null
+    @annotation.stableNull var later: Entry[A] | Null = null
+    @annotation.stableNull var next: Entry[A] | Null = null
 
     @tailrec
-    final def findEntry(k: A, h: Int): Entry[A] =
+    final def findEntry(k: A, h: Int): Entry[A] | Null =
       if (h == hash && k == key) this
       else if ((next eq null) || (hash > h)) null
       else next.findEntry(k, h)
@@ -346,4 +349,3 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
   /** The default initial capacity for the hash table */
   private[collection] final def defaultinitialSize: Int = 16
 }
-

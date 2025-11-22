@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import java.util.Arrays
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl._
@@ -43,7 +44,7 @@ sealed abstract class ArraySeq[T]
 
   override def iterableFactory: scala.collection.SeqFactory[ArraySeq] = ArraySeq.untagged
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[T]): ArraySeq[T] = {
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[T]^): ArraySeq[T] = {
     val b = ArrayBuilder.make(using elemTag).asInstanceOf[ArrayBuilder[T]]
     b.sizeHint(coll, delta = 0)
     b ++= coll
@@ -55,7 +56,7 @@ sealed abstract class ArraySeq[T]
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
     * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
     * or subtype of the element type. */
-  def elemTag: ClassTag[_]
+  def elemTag: ClassTag[?]
 
   /** Update element at given index */
   def update(@deprecatedName("idx", "2.13.0") index: Int, elem: T): Unit
@@ -63,11 +64,11 @@ sealed abstract class ArraySeq[T]
   /** The underlying array. Its element type does not have to be equal to the element type of this ArraySeq. A primitive
     * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
     * or subtype of the element type. */
-  def array: Array[_]
+  def array: Array[?]
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[T, S]): S with EfficientSplit
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit
 
-  override protected[this] def className = "ArraySeq"
+  override protected def className = "ArraySeq"
 
   /** Clones this object, including the underlying Array. */
   override def clone(): ArraySeq[T] = ArraySeq.make(array.clone()).asInstanceOf[ArraySeq[T]]
@@ -88,7 +89,7 @@ sealed abstract class ArraySeq[T]
   }
 
   override def sorted[B >: T](implicit ord: Ordering[B]): ArraySeq[T] =
-    ArraySeq.make(array.sorted(ord.asInstanceOf[Ordering[Any]])).asInstanceOf[ArraySeq[T]]
+    ArraySeq.make(array.sorted(using ord.asInstanceOf[Ordering[Any]])).asInstanceOf[ArraySeq[T]]
 
   override def sortInPlace[B >: T]()(implicit ord: Ordering[B]): this.type = {
     if (length > 1) scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]])
@@ -103,10 +104,10 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   val untagged: SeqFactory[ArraySeq] = new ClassTagSeqFactory.AnySeqDelegate(self)
 
   // This is reused for all calls to empty.
-  private[this] val EmptyArraySeq  = new ofRef[AnyRef](new Array[AnyRef](0))
+  private val EmptyArraySeq  = new ofRef[AnyRef](new Array[AnyRef](0))
   def empty[T : ClassTag]: ArraySeq[T] = EmptyArraySeq.asInstanceOf[ArraySeq[T]]
 
-  def from[A : ClassTag](it: scala.collection.IterableOnce[A]): ArraySeq[A] = make(Array.from[A](it))
+  def from[A : ClassTag](it: scala.collection.IterableOnce[A]^): ArraySeq[A] = make(Array.from[A](it))
 
   def newBuilder[A : ClassTag]: Builder[A, ArraySeq[A]] = ArrayBuilder.make[A].mapResult(make)
 
@@ -137,12 +138,12 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   }).asInstanceOf[ArraySeq[T]]
 
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](val array: Array[T]) extends ArraySeq[T] {
+  final class ofRef[T <: AnyRef | Null](val array: Array[T]) extends ArraySeq[T] {
     def elemTag: ClassTag[T] = ClassTag[T](array.getClass.getComponentType)
     def length: Int = array.length
     def apply(index: Int): T = array(index)
     def update(index: Int, elem: T): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofRef[_] =>
         Array.equals(
@@ -151,11 +152,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case _ => super.equals(that)
     }
     override def iterator: Iterator[T] = new ArrayOps.ArrayIterator[T](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[T, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         new ObjectArrayStepper(array, 0, array.length)
-      else shape.parUnbox(new ObjectArrayStepper(array, 0, array.length).asInstanceOf[AnyStepper[T] with EfficientSplit])
-      ).asInstanceOf[S with EfficientSplit]
+      else shape.parUnbox(new ObjectArrayStepper(array, 0, array.length).asInstanceOf[AnyStepper[T] & EfficientSplit])
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -165,17 +166,17 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Byte = array(index)
     def update(index: Int, elem: Byte): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofByte => Arrays.equals(array, that.array)
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Byte] = new ArrayOps.ArrayIterator[Byte](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Byte, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Byte, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new WidenedByteArrayStepper(array, 0, array.length))
       else new WidenedByteArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -185,17 +186,17 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Short = array(index)
     def update(index: Int, elem: Short): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofShort => Arrays.equals(array, that.array)
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Short] = new ArrayOps.ArrayIterator[Short](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Short, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Short, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new WidenedShortArrayStepper(array, 0, array.length))
       else new WidenedShortArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -205,17 +206,17 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Char = array(index)
     def update(index: Int, elem: Char): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofChar => Arrays.equals(array, that.array)
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Char] = new ArrayOps.ArrayIterator[Char](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Char, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Char, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new WidenedCharArrayStepper(array, 0, array.length))
       else new WidenedCharArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
 
     override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type = {
       val jsb = sb.underlying
@@ -246,17 +247,17 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Int = array(index)
     def update(index: Int, elem: Int): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofInt => Arrays.equals(array, that.array)
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Int] = new ArrayOps.ArrayIterator[Int](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParIntStepper(new IntArrayStepper(array, 0, array.length))
       else new IntArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -266,17 +267,17 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Long = array(index)
     def update(index: Int, elem: Long): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofLong => Arrays.equals(array, that.array)
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Long] = new ArrayOps.ArrayIterator[Long](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Long, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Long, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParLongStepper(new LongArrayStepper(array, 0, array.length))
       else new LongArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -286,17 +287,23 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Float = array(index)
     def update(index: Int, elem: Float): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
-      case that: ofFloat => Arrays.equals(array, that.array)
+      case that: ofFloat =>
+        val thatArray = that.array
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Float] = new ArrayOps.ArrayIterator[Float](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Float, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Float, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParDoubleStepper(new WidenedFloatArrayStepper(array, 0, array.length))
       else new WidenedFloatArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -306,17 +313,23 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Double = array(index)
     def update(index: Int, elem: Double): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
-      case that: ofDouble => Arrays.equals(array, that.array)
+      case that: ofDouble =>
+        val thatArray = that.array
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Double] = new ArrayOps.ArrayIterator[Double](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Double, S]): S with EfficientSplit = (
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Double, S]): S & EfficientSplit = (
       if(shape.shape == StepperShape.ReferenceShape)
         AnyStepper.ofParDoubleStepper(new DoubleArrayStepper(array, 0, array.length))
       else new DoubleArrayStepper(array, 0, array.length)
-      ).asInstanceOf[S with EfficientSplit]
+      ).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -326,14 +339,14 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Boolean = array(index)
     def update(index: Int, elem: Boolean): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofBoolean => Arrays.equals(array, that.array)
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Boolean] = new ArrayOps.ArrayIterator[Boolean](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Boolean, S]): S with EfficientSplit =
-      new BoxedBooleanArrayStepper(array, 0, array.length).asInstanceOf[S with EfficientSplit]
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Boolean, S]): S & EfficientSplit =
+      new BoxedBooleanArrayStepper(array, 0, array.length).asInstanceOf[S & EfficientSplit]
   }
 
   @SerialVersionUID(3L)
@@ -343,13 +356,13 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def length: Int = array.length
     def apply(index: Int): Unit = array(index)
     def update(index: Int, elem: Unit): Unit = { array(index) = elem }
-    override def hashCode = MurmurHash3.arraySeqHash(array)
+    override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
       case that: ofUnit => array.length == that.array.length
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Unit] = new ArrayOps.ArrayIterator[Unit](array)
-    override def stepper[S <: Stepper[_]](implicit shape: StepperShape[Unit, S]): S with EfficientSplit =
-      new ObjectArrayStepper[AnyRef](array.asInstanceOf[Array[AnyRef]], 0, array.length).asInstanceOf[S with EfficientSplit]
+    override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Unit, S]): S & EfficientSplit =
+      new ObjectArrayStepper[AnyRef](array.asInstanceOf[Array[AnyRef]], 0, array.length).asInstanceOf[S & EfficientSplit]
   }
 }

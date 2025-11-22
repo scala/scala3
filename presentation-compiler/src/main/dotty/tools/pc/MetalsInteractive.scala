@@ -120,8 +120,9 @@ object MetalsInteractive:
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
-        if funSym.is(Synthetic) && funSym.owner.is(CaseClass) then
-          val sym = funSym.owner.info.member(name).symbol
+        lazy val owner = funSym.owner.companionClass
+        if funSym.is(Synthetic) && owner.is(CaseClass) then
+          val sym = owner.info.member(name).symbol
           List((sym, sym.info, None))
         else
           val paramSymbol =
@@ -129,6 +130,13 @@ object MetalsInteractive:
             yield param
           val sym = paramSymbol.getOrElse(fn.symbol)
           List((sym, sym.info, None))
+
+      case NamedArg(name, _) :: UnApply(s, _, _) :: _ =>
+        lazy val owner = s.symbol.owner.companionClass
+        if s.symbol.is(Synthetic) && owner.is(CaseClass) then
+          val sym = owner.info.member(name).symbol
+          List((sym, sym.info, None))
+        else Nil
 
       case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>

@@ -13,6 +13,7 @@
 package scala.collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.{IterableFactoryDefaults, IterableOnce}
 import scala.collection.immutable.WrappedString
 
@@ -77,12 +78,12 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  and with additional character capacity `initCapacity`.
     */
   def this(initCapacity: Int, initValue: String) =
-    this(new java.lang.StringBuilder(initValue.length + initCapacity) append initValue)
+    this(new java.lang.StringBuilder(initValue.length + initCapacity).append(initValue))
 
   // Methods required to make this an IndexedSeq:
   def apply(i: Int): Char = underlying.charAt(i)
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]): StringBuilder =
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]^): StringBuilder =
     new StringBuilder() appendAll coll
 
   override protected def newSpecificBuilder: Builder[Char, StringBuilder] =
@@ -108,7 +109,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   def result() = underlying.toString
 
-  override def toString: String = result()
+  override def toString(): String = result()
 
   override def toArray[B >: Char](implicit ct: scala.reflect.ClassTag[B]) =
     ct.runtimeClass match {
@@ -130,7 +131,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
   // append* methods delegate to the underlying java.lang.StringBuilder:
 
   def appendAll(xs: String): this.type = {
-    underlying append xs
+    underlying.append(xs)
     this
   }
 
@@ -141,7 +142,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @return     this StringBuilder.
     */
   def append(x: Any): this.type = {
-    underlying append String.valueOf(x)
+    underlying.append(String.valueOf(x))
     this
   }
 
@@ -151,7 +152,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @return     this StringBuilder.
     */
   def append(s: String): this.type = {
-    underlying append s
+    underlying.append(s)
     this
   }
 
@@ -176,7 +177,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @return
     */
   def append(s: StringBuilder): this.type = {
-    underlying append s.underlying
+    underlying.append(s.underlying)
     this
   }
 
@@ -185,18 +186,18 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @param  xs  the characters to be appended.
     *  @return     this StringBuilder.
     */
-  def appendAll(xs: IterableOnce[Char]): this.type = {
+  def appendAll(xs: IterableOnce[Char]^): this.type = {
     xs match {
-      case x: WrappedString => underlying append x.unwrap
-      case x: ArraySeq.ofChar => underlying append x.array
-      case x: StringBuilder => underlying append x.underlying
+      case x: WrappedString => underlying.append(x.unwrap)
+      case x: ArraySeq.ofChar => underlying.append(x.array)
+      case x: StringBuilder => underlying.append(x.underlying)
       case _ =>
         val ks = xs.knownSize
         if (ks != 0) {
           val b = underlying
           if (ks > 0) b.ensureCapacity(b.length + ks)
           val it = xs.iterator
-          while (it.hasNext) { b append it.next() }
+          while (it.hasNext) { b.append(it.next()) }
         }
     }
     this
@@ -208,7 +209,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @return     a reference to this object.
     */
   def appendAll(xs: Array[Char]): this.type = {
-    underlying append xs
+    underlying.append(xs)
     this
   }
 
@@ -231,14 +232,14 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @param   x  a primitive value
     *  @return     This StringBuilder.
     */
-  def append(x: Boolean): this.type = { underlying append x ; this }
+  def append(x: Boolean): this.type = { underlying.append(x) ; this }
   def append(x: Byte): this.type = append(x.toInt)
   def append(x: Short): this.type = append(x.toInt)
-  def append(x: Int): this.type = { underlying append x ; this }
-  def append(x: Long): this.type = { underlying append x ; this }
-  def append(x: Float): this.type = { underlying append x ; this }
-  def append(x: Double): this.type = { underlying append x ; this }
-  def append(x: Char): this.type = { underlying append x ; this }
+  def append(x: Int): this.type = { underlying.append(x) ; this }
+  def append(x: Long): this.type = { underlying.append (x) ; this }
+  def append(x: Float): this.type = { underlying.append (x) ; this }
+  def append(x: Double): this.type = { underlying.append(x) ; this }
+  def append(x: Char): this.type = { underlying.append(x) ; this }
 
   /** Remove a subsequence of Chars from this sequence, starting at the
     *  given start index (inclusive) and extending to the end index (exclusive)
@@ -314,7 +315,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @return       this StringBuilder.
     *  @throws StringIndexOutOfBoundsException  if the index is out of bounds.
     */
-  def insertAll(index: Int, xs: IterableOnce[Char]): this.type =
+  def insertAll(index: Int, xs: IterableOnce[Char]^): this.type =
     insertAll(index, (ArrayBuilder.make[Char] ++= xs).result())
 
   /** Inserts the given Array[Char] into this sequence at the given index.

@@ -13,6 +13,8 @@
 package scala
 package util
 
+import scala.language.`2.13`
+
 import java.lang.InheritableThreadLocal
 
 /** `DynamicVariables` provide a binding mechanism where the current

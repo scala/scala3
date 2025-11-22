@@ -88,7 +88,7 @@ class SymUtils:
     }
 
     def isContextBoundCompanion(using Context): Boolean =
-      self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
+      self.is(Synthetic) && self.infoOrCompleter.isContextBoundCompanion
 
     def isDummyCaptureParam(using Context): Boolean =
       self.is(PhantomSymbol) && self.infoOrCompleter.typeSymbol != defn.CBCompanion
@@ -313,7 +313,7 @@ class SymUtils:
       }
 
     def isField(using Context): Boolean =
-      self.isTerm && !self.is(Method)
+      self.isTerm && !self.isOneOf(Method | PhantomSymbol | NonMember)
 
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)

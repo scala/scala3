@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 
 /** Base trait for linearly accessed sequences that have efficient `head` and
@@ -24,7 +26,7 @@ trait LinearSeq[+A] extends Seq[A]
   with LinearSeqOps[A, LinearSeq, LinearSeq[A]]
   with IterableFactoryDefaults[A, LinearSeq] {
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix: String = "LinearSeq"
+  override protected def stringPrefix: String = "LinearSeq"
 
   override def iterableFactory: SeqFactory[LinearSeq] = LinearSeq
 }
@@ -33,7 +35,7 @@ trait LinearSeq[+A] extends Seq[A]
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](immutable.LinearSeq)
 
 /** Base trait for linear Seq operations */
-transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeqOps[A, CC, C]] extends Any with SeqOps[A, CC, C] {
+transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & LinearSeqOps[A, CC, C]] extends Any with SeqOps[A, CC, C] with caps.Pure { self =>
 
   /** @inheritdoc
    *
@@ -97,7 +99,7 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] wi
     else loop(0, coll)
   }
 
-  override def lengthCompare(that: Iterable[_]): Int = {
+  override def lengthCompare(that: Iterable[?]^): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this lengthCompare thatKnownSize
@@ -187,7 +189,7 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] wi
     acc
   }
 
-  override def sameElements[B >: A](that: IterableOnce[B]): Boolean = {
+  override def sameElements[B >: A](that: IterableOnce[B]^): Boolean = {
     @tailrec def linearSeqEq(a: LinearSeq[B], b: LinearSeq[B]): Boolean =
       (a eq b) || {
         if (a.nonEmpty && b.nonEmpty && a.head == b.head) {
@@ -260,10 +262,10 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] wi
   }
 }
 
-transparent trait StrictOptimizedLinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with StrictOptimizedLinearSeqOps[A, CC, C]] extends Any with LinearSeqOps[A, CC, C] with StrictOptimizedSeqOps[A, CC, C] {
+transparent trait StrictOptimizedLinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & StrictOptimizedLinearSeqOps[A, CC, C]] extends Any with LinearSeqOps[A, CC, C] with StrictOptimizedSeqOps[A, CC, C] { self =>
   // A more efficient iterator implementation than the default LinearSeqIterator
   override def iterator: Iterator[A] = new AbstractIterator[A] {
-    private[this] var current = StrictOptimizedLinearSeqOps.this
+    private var current = StrictOptimizedLinearSeqOps.this
     def hasNext = !current.isEmpty
     def next() = { val r = current.head; current = current.tail; r }
   }
@@ -289,9 +291,9 @@ transparent trait StrictOptimizedLinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: 
   */
 private[collection] final class LinearSeqIterator[A](coll: LinearSeqOps[A, LinearSeq, LinearSeq[A]]) extends AbstractIterator[A] {
   // A call-by-need cell
-  private[this] final class LazyCell(st: => LinearSeqOps[A, LinearSeq, LinearSeq[A]]) { lazy val v = st }
+  private final class LazyCell(st: => LinearSeqOps[A, LinearSeq, LinearSeq[A]]) { lazy val v = st }
 
-  private[this] var these: LazyCell = {
+  private var these: LazyCell = {
     // Reassign reference to avoid creating a private class field and holding a reference to the head.
     // LazyCell would otherwise close over `coll`.
     val initialHead = coll

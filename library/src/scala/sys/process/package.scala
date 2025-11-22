@@ -211,11 +211,11 @@ import scala.language.`2.13`
   @annotation.nowarn("msg=package object inheritance")
   object `package` extends ProcessImplicits {
     /** The input stream of this process */
-    def stdin  = java.lang.System.in
+    def stdin: java.io.InputStream = java.lang.System.in
     /** The output stream of this process */
-    def stdout = java.lang.System.out
+    def stdout: java.io.PrintStream = java.lang.System.out
     /** The error stream of this process */
-    def stderr = java.lang.System.err
+    def stderr: java.io.PrintStream = java.lang.System.err
   }
   // private val shell: String => Array[String] =
   //   if (isWin) Array("cmd.exe", "/C", _)

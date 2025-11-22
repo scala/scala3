@@ -1,12 +1,8 @@
--- [E008] Not Found Error: tests/neg/no-patches.scala:3:23 -------------------------------------------------------------
+-- Error: tests/neg/no-patches.scala:3:23 ------------------------------------------------------------------------------
 3 |val _ = scala.language.`3.4` // error: we do not patch `scala.language`
   |        ^^^^^^^^^^^^^^^^^^^^
-  |        value 3.4 is not a member of object language
--- [E008] Not Found Error: tests/neg/no-patches.scala:4:36 -------------------------------------------------------------
+  |        `3.4` can only be used at compile time in import statements
+-- Error: tests/neg/no-patches.scala:4:36 ------------------------------------------------------------------------------
 4 |val _ = scala.language.experimental.modularity // error: we do not patch `scala.language.experimental`
   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |        value modularity is not a member of object language.experimental
--- [E008] Not Found Error: tests/neg/no-patches.scala:5:15 -------------------------------------------------------------
-5 |val _ = Predef.summon[DummyImplicit] // error: we do not patch `scala.Predef`
-  |        ^^^^^^^^^^^^^
-  |        value summon is not a member of object Predef
+  |        `modularity` can only be used at compile time in import statements

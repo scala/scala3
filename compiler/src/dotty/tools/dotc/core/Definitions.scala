@@ -279,17 +279,11 @@ class Definitions {
    * To achieve this, we synthesize all Any and Object methods; Object methods no longer get
    * loaded from a classfile.
    */
-  @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
+  @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract | TransparentType, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
+  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait | TransparentType, AnyType :: Nil), ensureCtor = false)
   def MatchableType: TypeRef = MatchableClass.typeRef
-  @tu lazy val AnyValClass: ClassSymbol =
-    val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyType, MatchableType)))
-    // Mark companion as absent, so that class does not get re-completed
-    val companion = ScalaPackageVal.info.decl(nme.AnyVal).symbol
-    companion.moduleClass.markAbsent()
-    companion.markAbsent()
-    res
+  @tu lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
   def AnyValType: TypeRef = AnyValClass.typeRef
 
@@ -399,7 +393,7 @@ class Definitions {
    *       meth8(1) // OK (creates a primitive array and copies it into a reference array at Erasure)
    *       val ai = Array[Int](1)
    *       meth7(ai: _*) // OK (will copy the array at Erasure)
-   *       meth8(ai: _*) // OK (will copy the array at Erasure)
+   *       meth8(ai*) // OK (will copy the array at Erasure)
    *
    *     Java repeated arguments are erased to arrays, so it would be safe to treat
    *     them in the same way: add an `& Object` to the parameter type to disallow
@@ -460,13 +454,18 @@ class Definitions {
   @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
     enterPermanentSymbol(tpnme.CBCompanion,
       TypeBounds(NothingType,
-        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil, Contravariant :: Nil)(
+        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil)(
           tl => TypeBounds.empty :: Nil,
           tl => AnyType))).asType
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
+
+  @tu lazy val spreadMethod = enterMethod(OpsPackageClass, nme.spread,
+      PolyType(TypeBounds.empty :: Nil)(
+        tl => MethodType(AnyType :: Nil, tl.paramRefs(0))
+      ))
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
@@ -519,6 +518,8 @@ class Definitions {
     @tu lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     @tu lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
+  @tu lazy val VarArgsBuilderModule: Symbol = requiredModule("scala.runtime.VarArgsBuilder")
+
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
@@ -563,10 +564,11 @@ class Definitions {
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
     @tu lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
+    @tu lazy val Seq_dropRight    : Symbol = SeqClass.requiredMethod(nme.dropRight)
+    @tu lazy val Seq_takeRight    : Symbol = SeqClass.requiredMethod(nme.takeRight)
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
-
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
@@ -748,7 +750,10 @@ class Definitions {
   def JavaEnumType = JavaEnumClass.typeRef
 
   @tu lazy val MethodHandleClass: ClassSymbol        = requiredClass("java.lang.invoke.MethodHandle")
+  @tu lazy val MethodHandlesClass: TermSymbol        = requiredModule("java.lang.invoke.MethodHandles")
+  @tu lazy val MethodHandles_lookup: Symbol          = MethodHandlesClass.requiredMethod("lookup")
   @tu lazy val MethodHandlesLookupClass: ClassSymbol = requiredClass("java.lang.invoke.MethodHandles.Lookup")
+    @tu lazy val MethodHandlesLookup_FindVarHandle: Symbol = MethodHandlesLookupClass.requiredMethod("findVarHandle")
   @tu lazy val VarHandleClass: ClassSymbol           = requiredClass("java.lang.invoke.VarHandle")
 
   @tu lazy val StringBuilderClass: ClassSymbol = requiredClass("scala.collection.mutable.StringBuilder")
@@ -1009,12 +1014,14 @@ class Definitions {
     @tu lazy val Caps_Control: ClassSymbol = requiredClass("scala.caps.Control")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_Read: ClassSymbol = requiredClass("scala.caps.Read")
+    @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
     @tu lazy val Caps_erasedValue: Symbol = CapsInternalModule.requiredMethod("erasedValue")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
+    @tu lazy val Caps_unsafeDiscardUses: Symbol = CapsUnsafeModule.requiredMethod("unsafeDiscardUses")
     @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
@@ -1078,7 +1085,6 @@ class Definitions {
   @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val ReserveAnnot: ClassSymbol = requiredClass("scala.caps.reserve")
   @tu lazy val ConsumeAnnot: ClassSymbol = requiredClass("scala.caps.internal.consume")
-  @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.internal.refineOverride")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
@@ -1122,7 +1128,7 @@ class Definitions {
 
   // Set of annotations that are not printed in types except under -Yprint-debug
   @tu lazy val SilentAnnots: Set[Symbol] =
-    Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot)
+    Set(InlineParamAnnot, ErasedParamAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
@@ -1147,7 +1153,8 @@ class Definitions {
     "lombok.NonNull" ::
     "reactor.util.annotation.NonNull" ::
     "reactor.util.annotation.NonNullApi" ::
-    "io.reactivex.annotations.NonNull" :: Nil)
+    "io.reactivex.annotations.NonNull" ::
+    "org.jspecify.annotations.NonNull" :: Nil)
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -1996,6 +2003,8 @@ class Definitions {
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
+      case tp: FlexibleType =>
+        asContextFunctionType(tp.hi)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
@@ -2060,42 +2069,12 @@ class Definitions {
     HasProblematicGetClass.contains(className)
 
   @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
-    // add these for now, until we had a chance to retrofit 2.13 stdlib
     // we should do a more through sweep through it then.
     val strs = Map(
-      "Any" -> Set("scala"),
-      "AnyVal" -> Set("scala"),
-      "Matchable" -> Set("scala"),
-      "Product" -> Set("scala"),
       "Object" -> Set("java.lang"),
       "Comparable" -> Set("java.lang"),
       "Serializable" -> Set("java.io"),
-      "BitSetOps" -> Set("scala.collection"),
-      "IndexedSeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "IterableOnceOps" -> Set("scala.collection"),
-      "IterableOps" -> Set("scala.collection"),
-      "LinearSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "MapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SortedMapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SortedOps" -> Set("scala.collection"),
-      "SortedSetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "StrictOptimizedIterableOps" -> Set("scala.collection"),
-      "StrictOptimizedLinearSeqOps" -> Set("scala.collection"),
-      "StrictOptimizedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSortedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSortedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "ArrayDequeOps" -> Set("scala.collection.mutable"),
-      "DefaultSerializable" -> Set("scala.collection.generic"),
-      "IsIterable" -> Set("scala.collection.generic"),
-      "IsIterableLowPriority" -> Set("scala.collection.generic"),
-      "IsIterableOnce" -> Set("scala.collection.generic"),
-      "IsIterableOnceLowPriority" -> Set("scala.collection.generic"),
-      "IsMap" -> Set("scala.collection.generic"),
-      "IsSeq" -> Set("scala.collection.generic"))
+    )
     strs.map { case (simple, pkgs) => (
         simple.toTypeName,
         pkgs.map(pkg => staticRef(pkg.toTermName, isPackage = true).symbol.moduleClass)
@@ -2113,7 +2092,7 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
-    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read,
+    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped,
     RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
@@ -2251,7 +2230,6 @@ class Definitions {
       orType,
       RepeatedParamClass,
       ByNameParamClass2x,
-      AnyValClass,
       NullClass,
       NothingClass,
       SingletonClass,
@@ -2264,7 +2242,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   @tu lazy val syntheticCoreMethods: List[TermSymbol] =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, spreadMethod)
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
@@ -2554,51 +2532,6 @@ class Definitions {
     """/** The union of two types.
       | *
       | *   See [[https://docs.scala-lang.org/scala3/reference/new-types/union-types.html]].
-      | */
-    """.stripMargin)
-
-    add(AnyValClass,
-    """/** `AnyVal` is the root class of all ''value types'', which describe values
-      | *  not implemented as objects in the underlying host system. Value classes
-      | *  are specified in Scala Language Specification, section 12.2.
-      | *
-      | *  The standard implementation includes nine `AnyVal` subtypes:
-      | *
-      | *  [[scala.Double]], [[scala.Float]], [[scala.Long]], [[scala.Int]], [[scala.Char]],
-      | *  [[scala.Short]], and [[scala.Byte]] are the ''numeric value types''.
-      | *
-      | *  [[scala.Unit]] and [[scala.Boolean]] are the ''non-numeric value types''.
-      | *
-      | *  Other groupings:
-      | *
-      | *   - The ''subrange types'' are [[scala.Byte]], [[scala.Short]], and [[scala.Char]].
-      | *   - The ''integer types'' include the subrange types as well as [[scala.Int]] and [[scala.Long]].
-      | *   - The ''floating point types'' are [[scala.Float]] and [[scala.Double]].
-      | *
-      | * Prior to Scala 2.10, `AnyVal` was a sealed trait. Beginning with Scala 2.10,
-      | * however, it is possible to define a subclass of `AnyVal` called a ''user-defined value class''
-      | * which is treated specially by the compiler. Properly-defined user value classes provide a way
-      | * to improve performance on user-defined types by avoiding object allocation at runtime, and by
-      | * replacing virtual method invocations with static method invocations.
-      | *
-      | * User-defined value classes which avoid object allocation...
-      | *
-      | *   - must have a single `val` parameter that is the underlying runtime representation.
-      | *   - can define `def`s, but no `val`s, `var`s, or nested `traits`s, `class`es or `object`s.
-      | *   - typically extend no other trait apart from `AnyVal`.
-      | *   - cannot be used in type tests or pattern matching.
-      | *   - may not override `equals` or `hashCode` methods.
-      | *
-      | * A minimal example:
-      | * {{{
-      | *     class Wrapper(val underlying: Int) extends AnyVal {
-      | *       def foo: Wrapper = new Wrapper(underlying * 19)
-      | *     }
-      | * }}}
-      | *
-      | * It's important to note that user-defined value classes are limited, and in some circumstances,
-      | * still must allocate a value class instance at runtime. These limitations and circumstances are
-      | * explained in greater detail in the [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Classes and Universal Traits]].
       | */
     """.stripMargin)
 

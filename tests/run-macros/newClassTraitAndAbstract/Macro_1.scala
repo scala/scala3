@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.quoted.*
 
 transparent inline def makeTrait(inline name: String): Any = ${ makeTraitExpr('name) }

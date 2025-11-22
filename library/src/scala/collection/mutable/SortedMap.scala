@@ -14,6 +14,7 @@ package scala
 package collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.{SortedMapFactory, SortedMapFactoryDefaults}
 
 /**
@@ -38,7 +39,7 @@ trait SortedMap[K, V]
     *  @param d     the function mapping keys to values, used for non-present keys
     *  @return      a wrapper of the map with a default value
     */
-  override def withDefault(d: K => V): SortedMap[K, V] = new SortedMap.WithDefault[K, V](this, d)
+  override def withDefault(d: K -> V): SortedMap[K, V] = new SortedMap.WithDefault[K, V](this, d)
 
   /** The same map with a given default value.
     * Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
@@ -52,7 +53,7 @@ trait SortedMap[K, V]
   override def withDefaultValue(d: V): SortedMap[K, V] = new SortedMap.WithDefault[K, V](this, _ => d)
 }
 
-transparent trait SortedMapOps[K, V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
+transparent trait SortedMapOps[K, V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?], +C <: SortedMapOps[K, V, CC, C]]
   extends collection.SortedMapOps[K, V, CC, C]
     with MapOps[K, V, Map, C] {
 
@@ -67,7 +68,7 @@ transparent trait SortedMapOps[K, V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X,
 object SortedMap extends SortedMapFactory.Delegate[SortedMap](TreeMap) {
 
   @SerialVersionUID(3L)
-  final class WithDefault[K, V](underlying: SortedMap[K, V], defaultValue: K => V)
+  final class WithDefault[K, V](underlying: SortedMap[K, V], defaultValue: K -> V)
     extends Map.WithDefault[K, V](underlying, defaultValue)
       with SortedMap[K, V]
       with SortedMapOps[K, V, SortedMap, WithDefault[K, V]]
@@ -92,10 +93,10 @@ object SortedMap extends SortedMapFactory.Delegate[SortedMap](TreeMap) {
 
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
-    override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]): SortedMap[K, V2] =
+    override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): SortedMap[K, V2] =
       underlying.concat(suffix).withDefault(defaultValue)
 
-    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]): WithDefault[K, V] =
+    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]^): WithDefault[K, V] =
       new WithDefault[K, V](sortedMapFactory.from(coll), defaultValue)
 
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] =

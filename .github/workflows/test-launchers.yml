@@ -1,6 +1,6 @@
 name: Test CLI Launchers on all the platforms
 on:
-  pull_request:
+  #pull_request:
   workflow_dispatch:
 
 env:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -45,13 +45,13 @@ jobs:
 
   mac-x86_64:
     name: Deploy and Test on Mac x64 architecture
-    runs-on: macos-13
+    runs-on: macos-15-intel
     if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
         (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'

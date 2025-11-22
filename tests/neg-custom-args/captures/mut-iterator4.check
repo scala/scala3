@@ -1,0 +1,29 @@
+-- Error: tests/neg-custom-args/captures/mut-iterator4.scala:9:26 ------------------------------------------------------
+9 |    update def next() = f(Iterator.this.next()) // error // error
+  |                          ^^^^^^^^^^^^^
+  |                          Read-only method map accesses exclusive capability (Iterator.this : Iterator[T]^);
+  |                          method map should be declared an update method to allow this.
+  |
+  |                          where:    ^ refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-iterator4.scala:9:47 ---------------------------------
+9 |    update def next() = f(Iterator.this.next()) // error // error
+  |                                               ^
+  |Found:    Iterator[U^'s1]^{Iterator.this.rd, f, Iterator.this, cap}
+  |Required: Iterator[U]^{Iterator.this, f}
+  |
+  |Note that capability cap is not included in capture set {Iterator.this, f}.
+  |
+  |where:    cap is a fresh root capability created in method map when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-iterator4.scala:23:34 --------------------------------
+23 |  update def next() = f(it.next()) // error
+   |                                  ^
+   |Found:    Iterator[U^'s2]^{it.rd, f, it, cap}
+   |Required: Iterator[U]^{it, f}
+   |
+   |Note that capability cap is not included in capture set {it, f}.
+   |
+   |where:    cap is a fresh root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
+   |
+   | longer explanation available when compiling with `-explain`
