@@ -3,7 +3,7 @@ package config
 
 import Settings.Setting.ChoiceWithHelp
 import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 
 object ScalaSettingsProperties:
 
@@ -16,7 +16,7 @@ object ScalaSettingsProperties:
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
 
   def supportedReleaseVersions: List[String] =
-    val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
+    val jdkVersion = Runtime.version().feature()
     val maxVersion = Math.min(jdkVersion, maxTargetVersion)
     (minReleaseVersion to maxVersion).toList.map(_.toString)
 
