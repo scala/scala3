@@ -40,7 +40,7 @@ object CheckCaptures:
   val name: String = "cc"
   val description: String = "capture checking"
 
-  enum EnvKind:
+  enum EnvKind derives CanEqual:
     case Regular        // normal case
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
                         // and does not have a different actual owner symbol

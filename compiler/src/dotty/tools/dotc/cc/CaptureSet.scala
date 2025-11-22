@@ -156,7 +156,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   final def maybeExclusive(using Context): Boolean = reporting.trace(i"mabe exclusive $this"):
     if isConst then elems.exists(_.maybeExclusive)
-    else mutability != ReadOnly
+    else mutability != Reader
 
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
 
@@ -541,7 +541,7 @@ object CaptureSet:
   type Vars = SimpleIdentitySet[Var]
   type Deps = SimpleIdentitySet[CaptureSet]
 
-  enum Mutability:
+  enum Mutability derives CanEqual:
     case Writer, Reader, Ignored
 
     def | (that: Mutability): Mutability =

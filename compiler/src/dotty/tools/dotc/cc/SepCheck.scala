@@ -31,7 +31,7 @@ import Capabilities.*
 object SepCheck:
 
   /** Enumerates kinds of captures encountered so far */
-  enum Captures:
+  enum Captures derives CanEqual:
     case None
     case Explicit   // one or more explicitly declared captures
     case Hidden     // exacttly one hidden captures
@@ -45,7 +45,7 @@ object SepCheck:
   end Captures
 
   /** The role in which a checked type appears, used for composing error messages */
-  enum TypeRole:
+  enum TypeRole derives CanEqual:
     case Result(sym: Symbol, inferred: Boolean)
     case Argument(arg: Tree, meth: Symbol)
     case Qualifier(qual: Tree, meth: Symbol)

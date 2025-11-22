@@ -15,7 +15,7 @@ import typer.ProtoTypes.LhsProto
 object Mutability:
 
   /** Either OK, or a reason why capture set cannot be exclusive */
-  private enum Exclusivity:
+  private enum Exclusivity derives CanEqual:
     case OK
 
     /** Enclosing symbol `sym` is a method of class `cls`, but not an update method */

@@ -925,7 +925,7 @@ object Capabilities:
    *    Unclassified     : No set exists since some parts of tcs are not classified
    *    ClassifiedAs(clss: All parts of tcss are classified with classes in clss
    */
-  enum Classifiers:
+  enum Classifiers derives CanEqual:
     case UnknownClassifier
     case Unclassified
     case ClassifiedAs(clss: List[ClassSymbol])
@@ -966,7 +966,7 @@ object Capabilities:
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics
    */
-  enum Origin:
+  enum Origin derives CanEqual:
     case InDecl(sym: Symbol)
     case TypeArg(tp: Type)
     case UnsafeAssumePure
