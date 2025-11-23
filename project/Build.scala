@@ -1305,7 +1305,6 @@ object Build {
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
-    .settings(disableDocSetting) // TODO now produces empty JAR to satisfy Sonatype, see https://github.com/scala/scala3/issues/24434
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
