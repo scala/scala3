@@ -3232,6 +3232,9 @@ object Parsers {
       val body = tok match
         case ARROW => atSpan(in.skipToken()):
           if exprOnly then
+            if in.token == ENDlambda then
+              in.token = NEWLINE
+              in.observeIndented()
             if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
               warning(em"""Misleading indentation: this expression forms part of the preceding case.
                           |If this is intended, it should be indented for clarity.

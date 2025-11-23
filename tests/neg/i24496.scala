@@ -5,8 +5,8 @@ import scala.language.experimental.relaxedLambdaSyntax
 
   val three = list
         .collect: case x =>
-          (x, x + 1) // error not a member of tuple
-        .toMap
+        (x, x + 1)
+        .toMap // error value toMap is not a member of (Int, Int)
 
   val huh = list
         .collect: x => case y => (y, y + 1) // error expecting case at x
