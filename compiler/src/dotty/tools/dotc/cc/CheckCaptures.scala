@@ -113,7 +113,7 @@ object CheckCaptures:
         if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
           report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
       case ref: CoreCapability =>
-        if !ref.isTrackableRef && !ref.isCapRef then
+        if !ref.isTrackableRef && !ref.isCapRef && !ctx.mode.is(Mode.ReadPositions) then
           report.error(em"$elem cannot be tracked since it is not a parameter or local value", ann.srcPos)
       case ReachCapability(ref) =>
         check(ref)

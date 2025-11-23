@@ -1687,7 +1687,7 @@ trait Checking {
       val tname = sym.targetName
       if tname != sym.name then
         val preExisting = ctx.effectiveScope.lookup(tname)
-        if preExisting.exists || seen.contains(tname) then
+        if (preExisting.exists || seen.contains(tname)) && !ctx.mode.is(Mode.ReadPositions) then
           report.error(em"@targetName annotation ${'"'}$tname${'"'} clashes with other definition in same scope", stat.srcPos)
         if stat.isDef then seen += tname
 

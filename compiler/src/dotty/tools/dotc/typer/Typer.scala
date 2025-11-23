@@ -3287,7 +3287,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           selfType.member(decl.name).symbol.filter(other => other.isClass && other.owner != cls)
         decls.iterator.filter(_.isType).foldLeft(false) { (foundRedef, decl) =>
           val other = memberInSelfButNotThis(decl)
-          if (other.exists) {
+          if (other.exists && !ctx.mode.is(Mode.ReadPositions)) {
             val msg = CannotHaveSameNameAs(decl, other, CannotHaveSameNameAs.DefinedInSelf(self))
             report.error(msg, decl.srcPos)
           }

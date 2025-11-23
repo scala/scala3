@@ -1098,7 +1098,7 @@ trait Implicits:
   def inferImplicit(pt: Type, argument: Tree, span: Span, ignored: Set[Symbol] = Set.empty)(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt):
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
-      assert(ctx.phase.allowsImplicitSearch,
+      assert(ctx.phase.allowsImplicitSearch || ctx.mode.is(Mode.ReadPositions),
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase}"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
 
