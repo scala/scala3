@@ -1160,26 +1160,36 @@ object RefChecks {
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
     if sym.is(Extension) then atPhase(typerPhase):
-      extension (tp: Type) def explicit = Applications.stripImplicit(tp.widen, wildcardOnly = true)
+      extension (tp: Type)
+        def explicit = Applications.stripImplicit(tp.widen, wildcardOnly = true)
+        def hiBoundOpaque =
+          if tp.typeSymbol.isOpaqueAlias then
+            tp.typeSymbol.info match
+            case TypeBounds(lo, hi) if lo ne hi => hi
+            case _ => tp
+          else tp.hiBound
       val explicitInfo = sym.info.explicit // consider explicit value params
       def memberHidesMethod(member: Denotation): Boolean =
         val methTp = explicitInfo.stripPoly.resultType // skip leading implicits and the "receiver" parameter
         val memberIsImplicit = member.info.isImplicitMethod
+        // are the params of the extension subsumed by the params of the member?
+        // an unbounded type param always subsumes.
+        // the params must have the same opacity to conclude the extension is hidden.
         inline def paramsCorrespond = {
           val paramTps =
-            if memberIsImplicit then methTp.stripPoly.firstParamTypes
+            if memberIsImplicit then methTp.firstParamTypes
             else methTp.explicit.firstParamTypes
-          val memberParamTps = member.info.stripPoly.firstParamTypes
+          val memberParamTps = member.info.firstParamTypes
           memberParamTps.corresponds(paramTps): (m, x) =>
                m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias
-            && (x frozen_<:< m)
+            && (m.isInstanceOf[ParamRef] && (m eq m.hiBound) || (x.hiBound frozen_<:< m.hiBound))
         }
            methTp.isParameterless // extension without parens is always hidden by a member of same name
         || memberIsImplicit && !methTp.isImplicitMethod // see above
         || paramsCorrespond // match by type and opacity
       def targetOfHiddenExtension: Symbol =
         val target = explicitInfo.firstParamTypes.head // required for extension method; the nominal receiver
-          .typeSymbol.typeRef.dealiasKeepOpaques
+          .hiBound.typeSymbol.typeRef.dealiasKeepOpaques.hiBoundOpaque
         val member = target.nonPrivateMember(sym.name)
           .filterWithPredicate: member =>
             member.symbol.isPublic && memberHidesMethod(member)
