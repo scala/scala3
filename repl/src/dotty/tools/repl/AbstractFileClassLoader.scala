@@ -15,6 +15,8 @@ package repl
 
 import scala.language.unsafeNulls
 
+import dotty.tools.dotc.config.ScalaSettings
+
 import io.AbstractFile
 
 import java.net.{URL, URLConnection, URLStreamHandler}
@@ -22,6 +24,8 @@ import java.util.Collections
 
 class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String)
   extends io.AbstractFileClassLoader(root, parent):
+
+  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, ScalaSettings.XreplInterruptInstrumentation.default)
 
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile | Null = root
