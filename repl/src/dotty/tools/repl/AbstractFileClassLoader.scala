@@ -22,10 +22,30 @@ import io.AbstractFile
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String)
+import AbstractFileClassLoader.InterruptInstrumentation
+
+
+object AbstractFileClassLoader:
+  enum InterruptInstrumentation(val stringValue: String):
+    case Disabled extends InterruptInstrumentation("false")
+    case Enabled extends InterruptInstrumentation("true")
+    case Local extends InterruptInstrumentation("local")
+
+    def is(value: InterruptInstrumentation): Boolean = this == value
+    def isOneOf(others: InterruptInstrumentation*): Boolean = others.contains(this)
+
+  object InterruptInstrumentation:
+    def fromString(string: String): InterruptInstrumentation = string match {
+      case "false" => Disabled
+      case "true" => Enabled
+      case "local" => Local
+      case _ => throw new IllegalArgumentException(s"Invalid interrupt instrumentation value: $string")
+    }
+
+class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
   extends io.AbstractFileClassLoader(root, parent):
 
-  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, ScalaSettings.XreplInterruptInstrumentation.default)
+  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
 
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile | Null = root
@@ -39,7 +59,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
 
     val bytes = file.toByteArray
 
-    if interruptInstrumentation != "false" then defineClassInstrumented(name, bytes)
+    if !interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
     else defineClass(name, bytes, 0, bytes.length)
   }
 
@@ -49,8 +69,8 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
   }
 
   override def loadClass(name: String): Class[?] =
-    if interruptInstrumentation == "false" || interruptInstrumentation == "local"
-    then return super.loadClass(name)
+    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+      return super.loadClass(name)
 
     val loaded = findLoadedClass(name) // Check if already loaded
     if loaded != null then return loaded

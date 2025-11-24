@@ -607,7 +607,7 @@ class ReplDriver(settings: Array[String],
             rendering.myClassLoader = new AbstractFileClassLoader(
               prevOutputDir,
               jarClassLoader,
-              ctx.settings.XreplInterruptInstrumentation.value
+              AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
             )
 
             out.println(s"Added '$path' to classpath.")
