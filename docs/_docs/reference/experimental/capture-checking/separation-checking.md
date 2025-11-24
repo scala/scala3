@@ -235,3 +235,36 @@ val c = b += 3
 ```
 This code is equivalent to functional append with `+`, and is at the same time more efficient since it re-uses the storage of the argument buffer.
 
+## The `freeze` Wrapper
+
+We often want to create a mutable data structure like an array, initialize by assigning to its elements and then return the array as an immutable type that does not
+capture any capabilities. This can be achieved using the `freeze` wrapper.
+
+As an example, consider a class `Arr` which is modelled after `Array` and its immutable counterpart `IArr`:
+
+```scala
+class Arr[T: reflect.ClassTag](len: Int) extends Mutable:
+  private val arr: Array[T] = new Array[T](len)
+  def get(i: Int): T = arr(i)
+  update def update(i: Int, x: T): Unit = arr(i) = x
+type IArr[T] = Arr[T]^{}
+```
+
+The `freeze` wrapper allows us to go from an `Arr` to an `IArr`, safely:
+```scala
+import caps.freeze
+
+val f: IArr[String] =
+  val a = Arr[String](2)
+  a(0) = "hello"
+  a(1) = "world"
+  freeze(a)
+```
+The `freeze` method is defined in `caps` like this:
+```scala
+def freeze[T](consume x: Mutable^): x.type = x
+```
+It consumes a value of `Mutable` type with arbitrary capture set. The actual signature of
+`consume` declares that `x.type` is returned, but the actual return type after capture checking is special. Instead of `x.type` it is the underlying `Mutable` type with its top-level capture set
+mapped to `{}`. Applications of `freeze` are safe only if separation checking is enabled.
+

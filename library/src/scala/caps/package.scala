@@ -151,12 +151,6 @@ final class use extends annotation.StaticAnnotation
 @deprecated
 sealed trait Exists extends Capability
 
-/** A wrapper that strips all covariant capture sets from Mutable types in the
- *  result of pure operation `op`, turning them into immutable types.
- */
-@experimental
-def freeze[T](op: -> T): T = op
-
 @experimental
 object internal:
 
@@ -196,6 +190,12 @@ object internal:
   def erasedValue[T]: T = ???
 
 end internal
+
+/** A wrapper that strips all covariant capture sets from Mutable types in the
+ *  result of pure operation `op`, turning them into immutable types.
+ */
+@experimental
+def freeze[T](@internal.consume x: Mutable^): x.type = x
 
 @experimental
 object unsafe:

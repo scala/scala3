@@ -800,21 +800,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
       super.recheckFinish(argType, tree, pt)
 
-    /** Recheck `caps.freeze(...)` */
-    def applyFreeze(tree: Apply)(using Context): Type =
-      val arg :: Nil = tree.args: @unchecked
-      def imm = new TypeMap:
-        def apply(t: Type) = t match
-          case t @ CapturingType(parent, _)
-          if parent.derivesFromMutable && variance > 0 =>
-            t.derivedCapturingType(apply(parent), CaptureSet.emptyOfStateful)
-          case _ =>
-            mapOver(t)
-      val opProto = // () ?-> <?>
-        defn.FunctionType(0, isContextual = true).appliedTo(WildcardType)
-      recheck(arg, opProto).stripCapturing match
-        case defn.ContextFunctionType(Nil, resType) => imm(resType)
-
     /** Recheck applications, with special handling of unsafeAssumePure,
      *  unsafeDiscardUses, and freeze.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
@@ -827,7 +812,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val arg :: Nil = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
       else if meth == defn.Caps_freeze then
-        applyFreeze(tree)
+        freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)

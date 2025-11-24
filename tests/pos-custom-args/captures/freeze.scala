@@ -15,12 +15,11 @@ def test2 =
     a
   val _: Arr[String]^{} = a
 
-  val a2 = freeze:
-    val a = Arr[String](2)
-    val b = Arr[String](2)
-    a(0) = "1"
-    a(1) = "2"
-    b(0) = "1"
-    b(1) = "2"
-    (a, b)
-  val _: (Arr[String]^{}, Arr[String]^{}) = a2
+def test3 =
+  val a = Arr[String](2)
+  a(0) = "1"
+  a(1) = "2"
+  val b = freeze(a)
+  val _: Arr[String]^{} = b
+  b
+

@@ -1,3 +1,8 @@
+-- Error: tests/neg-custom-args/captures/sep-consume.scala:30:49 -------------------------------------------------------
+30 |def test4(consume p: Pair[Ref^, Ref^]): Ref^ = p.fst // error
+   |                                               ^^^^^
+   |                          Local reach capability p.fst* leaks into capture scope of method test4.
+   |                          You could try to abstract the capabilities referred to by p.fst* in a capset variable.
 -- Error: tests/neg-custom-args/captures/sep-consume.scala:19:2 --------------------------------------------------------
 19 |  x.put(42)  // error
    |  ^
