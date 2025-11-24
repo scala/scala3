@@ -20,25 +20,8 @@ import io.AbstractFile
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String) extends ClassLoader(parent):
-  private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
-
-  // on JDK 20 the URL constructor we're using is deprecated,
-  // but the recommended replacement, URL.of, doesn't exist on JDK 8
-  @annotation.nowarn("cat=deprecation")
-  override protected def findResource(name: String): URL | Null =
-    findAbstractFile(name) match
-      case null => null
-      case file => new URL(null, s"memory:${file.path}", new URLStreamHandler {
-        override def openConnection(url: URL): URLConnection = new URLConnection(url) {
-          override def connect() = ()
-          override def getInputStream = file.input
-        }
-      })
-  override protected def findResources(name: String): java.util.Enumeration[URL] =
-    findResource(name) match
-      case null => Collections.enumeration(Collections.emptyList[URL])  //Collections.emptyEnumeration[URL]
-      case url  => Collections.enumeration(Collections.singleton(url))
+class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String)
+  extends io.AbstractFileClassLoader(root, parent):
 
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile | Null = root
@@ -68,7 +51,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
     val loaded = findLoadedClass(name) // Check if already loaded
     if loaded != null then return loaded
 
-    name match { 
+    name match {
       // Don't instrument JDK classes or StopRepl. These are often restricted to load from a single classloader
       // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
       // results in runtime exceptions
