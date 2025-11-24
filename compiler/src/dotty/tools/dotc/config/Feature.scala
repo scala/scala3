@@ -70,6 +70,9 @@ object Feature:
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (packageObjectValues, "Enable experimental package objects as values"),
+    (multiSpreads, "Enable experimental varargs with multi-spreads"),
+    (subCases, "Enable experimental match expressions with sub-cases"),
+    (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
