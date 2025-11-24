@@ -1,0 +1,13 @@
+-- Warning: tests/init-global/special/tastySource/B.scala:4:14 ---------------------------------------------------------
+4 |  def bar = C.n * 3      // warn
+  |            ^^^
+  |Reading mutable state of object C during initialization of object B.
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object B:	[ B.scala:1 ]
+  |│   ^
+  |├── (no source)	[ tastySource/A.scala:2 ]
+  |├── (no source)	[ tastySource/A.scala:4 ]
+  |├── var y = A.foo(bar) * 2	[ B.scala:2 ]
+  |│                 ^^^
+  |└── def bar = C.n * 3      // warn	[ B.scala:4 ]
+  |              ^^^
