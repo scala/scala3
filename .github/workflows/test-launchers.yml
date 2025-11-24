@@ -13,7 +13,7 @@ jobs:
     if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
         (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -30,7 +30,7 @@ jobs:
     name: Deploy and Test on Linux ARM64 architecture
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -49,7 +49,7 @@ jobs:
     if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
         (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -68,7 +68,7 @@ jobs:
     if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
         (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -87,7 +87,7 @@ jobs:
     if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
         (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
