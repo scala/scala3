@@ -43,7 +43,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
     else defineClass(name, bytes, 0, bytes.length)
   }
 
-  def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
+  private def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
     val instrumentedBytes = ReplBytecodeInstrumentation.instrument(originalBytes)
     defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
   }
