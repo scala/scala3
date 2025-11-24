@@ -6,9 +6,9 @@ import scala.language.unsafeNulls
 import scala.tools.asm.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.tree.*
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 import java.util.concurrent.atomic.AtomicBoolean
-  
+
 object ReplBytecodeInstrumentation:
   /** Instrument bytecode to add checks to throw an exception if the REPL command is cancelled
    */

@@ -86,7 +86,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       myClassLoader = new AbstractFileClassLoader(
         ctx.settings.outputDir.value,
         parent,
-        ctx.settings.XreplInterruptInstrumentation.value
+        AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
       )
       myClassLoader
     }
