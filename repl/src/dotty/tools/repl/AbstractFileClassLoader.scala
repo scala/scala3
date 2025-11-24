@@ -42,11 +42,10 @@ object AbstractFileClassLoader:
       case _ => throw new IllegalArgumentException(s"Invalid interrupt instrumentation value: $string")
     }
 
-class AbstractFileClassLoader(
-    root: AbstractFile,
-    parent: ClassLoader,
-    interruptInstrumentation: InterruptInstrumentation = InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default)
-  ) extends io.AbstractFileClassLoader(root, parent):
+class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
+  extends io.AbstractFileClassLoader(root, parent):
+
+  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
 
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile | Null = root
