@@ -148,13 +148,8 @@ object CompilationUnit {
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source, info)
     unit1.tpdTree = unpickled
-    if (forceTrees) {
-      val force = new Force
-      force.traverse(unit1.tpdTree)
-      unit1.needsStaging = force.containsQuote
-      unit1.needsInlining = force.containsInline
-      unit1.hasMacroAnnotations = force.containsMacroAnnotation
-    }
+    if forceTrees then
+      Force.traverse(unit1.tpdTree)(using ctx.fresh.setCompilationUnit(unit1))
     unit1
   }
 
@@ -187,19 +182,15 @@ object CompilationUnit {
   }
 
   /** Force the tree to be loaded */
-  private class Force extends TreeTraverser {
-    var containsQuote = false
-    var containsInline = false
-    var containsCaptureChecking = false
-    var containsMacroAnnotation = false
+  private object Force extends TreeTraverser {
     def traverse(tree: Tree)(using Context): Unit = {
       if tree.symbol.is(Flags.Inline) then
-        containsInline = true
+        ctx.compilationUnit.needsInlining = true
       tree match
         case _: tpd.Quote =>
-          containsQuote = true
+          ctx.compilationUnit.needsStaging = true
         case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
-          containsQuote = true
+          ctx.compilationUnit.needsStaging = true
         case Import(qual, selectors) =>
           tpd.languageImport(qual) match
             case Some(prefix) =>
