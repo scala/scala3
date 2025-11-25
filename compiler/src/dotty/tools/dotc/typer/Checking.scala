@@ -1346,7 +1346,7 @@ trait Checking {
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
-      for other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent() do
+      for other <- seen(decl.name) if decl.name != nme.ERROR && !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
