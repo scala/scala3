@@ -1422,7 +1422,7 @@ trait Applications extends Compatibility {
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
 
-    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
+    typedExpr(tree.fun, PolyProto(typedArgs, pt.ignoreSelectionProto)) match
       case fun: TypeApply if !ctx.isAfterTyper =>
         val function = fun.fun
         val args = (fun.args ++ tree.args).map(_.show).mkString(", ")
@@ -1446,7 +1446,6 @@ trait Applications extends Compatibility {
         }
         if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
         else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
-    }
   }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
