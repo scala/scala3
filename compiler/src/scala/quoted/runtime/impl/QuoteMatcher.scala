@@ -464,9 +464,8 @@ class QuoteMatcher(debug: Boolean) {
                       else
                         val td = if i == 0 then sctypedef else pttypedef
                         td.rhs match
-                        case tbt: TypeBoundsTree
-                        if tbt.lo.tpe.isNothingType && tbt.hi.tpe.isAny && tbt.alias.isEmpty
-                        => recur(i + 1)
+                        case TypeBoundsTree(lo, hi, alias @ EmptyTree) if lo.tpe.isNothingType && hi.tpe.isAny =>
+                          recur(i + 1)
                         case _ => notMatched
                     recur(i = 0)
 
