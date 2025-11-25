@@ -2915,8 +2915,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case _ =>
     subc
     && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
-        || refs1.subCaptures(CaptureSet.empty, makeVarState()))
-
+        || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
+        
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
 

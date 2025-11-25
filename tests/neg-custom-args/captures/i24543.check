@@ -1,0 +1,24 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i24543.scala:7:23 ----------------------------------------
+7 |  val y: (Ref^, Int) = (x.elem, 1) // error
+  |                       ^^^^^^^^^^^
+  |                       Found:    (T^'s1, Int)
+  |                       Required: (Ref^, Int)
+  |
+  |                       Note that Ref^² does not conform to Ref^ because Ref^² is boxed but Ref^ is not.
+  |
+  |                       where:    ^  refers to a fresh root capability in the type of value y
+  |                                 ^² refers to a fresh root capability in the type of type T
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i24543.scala:9:45 ----------------------------------------
+9 |def h2[T <: Ref^](x: List[T]): (Ref^, Int) = (x.head, 1) // error
+  |                                             ^^^^^^^^^^^
+  |                                  Found:    (T^'s2, Int)
+  |                                  Required: (Ref^, Int)
+  |
+  |                                  Note that Ref^² does not conform to Ref^ because Ref^² is boxed but Ref^ is not.
+  |
+  |                                  where:    ^  refers to a fresh root capability in the result type of method h2
+  |                                            ^² refers to a fresh root capability in the type of type T
+  |
+  | longer explanation available when compiling with `-explain`

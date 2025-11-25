@@ -588,6 +588,9 @@ object CaptureSet:
     cs.mutability = Mutability.Reader
     cs
 
+  class EmptyOfBoxed(val tp1: Type, val tp2: Type) extends Const(emptyRefs):
+    override def toString = "{} of boxed mismatch"
+
   /** The universal capture set `{cap}` */
   def universal(using Context): Const =
     Const(SimpleIdentitySet(GlobalCap))
@@ -1341,15 +1344,19 @@ object CaptureSet:
       case _ =>
         false
 
-    /** An include failure F1 covers another include failure F2 unless F2
-     *  strictly subsumes F1, which means they describe the same capture sets
-     *  and the element in F2 is more specific than the element in F1.
+    /** An include failure F1 covers another include failure F2 unless one
+     *  of the following two conditons holds:
+     *   1. F2 strictly subsumes F1, which means they describe the same capture sets
+     *      and the element in F2 is more specific than the element in F1.
+     *   2. Both F1 and F2 are the empty set, but only F2 is an empty set synthesized
+     *      when comparing types with different box status
      */
     override def covers(other: Note)(using Context) = other match
       case other @ IncludeFailure(cs1, elem1, _) =>
         val strictlySubsumes =
           cs.elems == cs1.elems
-          && elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+          && (elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+              || cs1.isInstanceOf[EmptyOfBoxed] && !cs.isInstanceOf[EmptyOfBoxed])
         !strictlySubsumes
       case _ => false
 
@@ -1390,6 +1397,11 @@ object CaptureSet:
         else
           trailing:
             i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
+      case cs: EmptyOfBoxed =>
+        trailing:
+          val (boxed, unboxed) =
+            if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+          i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
       case _ =>
         def why =
           val reasons = cs.elems.toList.collect:
