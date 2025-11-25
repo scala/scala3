@@ -390,6 +390,8 @@ object RefChecks {
       if makeOverridingPairsChecker == null then OverridingPairsChecker(clazz, self)
       else makeOverridingPairsChecker(clazz, self)
 
+    def isMarkedOverride(sym: Symbol) = sym.isAnyOverride || sym.hasAnnotation(defn.UncheckedOverrideAnnot)
+
     /* Check that all conditions for overriding `other` by `member`
      * of class `clazz` are met.
      */
@@ -539,7 +541,7 @@ object RefChecks {
               )
             && !member.is(Deferred)
             && !other.name.is(DefaultGetterName)
-            && !member.isAnyOverride
+            && !isMarkedOverride(member)
       then
         // Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
@@ -569,9 +571,9 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.isMutableVarOrAccessor then
+      else if isMarkedOverride(member) && other.isMutableVarOrAccessor then
         overrideError("cannot override a mutable variable")
-      else if member.isAnyOverride
+      else if isMarkedOverride(member)
         && !(member.owner.thisType.baseClasses.exists(_.isSubClass(other.owner)))
         && !member.is(Deferred) && !other.is(Deferred)
         && intersectionIsEmpty(member.extendedOverriddenSymbols, other.extendedOverriddenSymbols)
