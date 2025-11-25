@@ -339,8 +339,13 @@ class ReplDriver(settings: Array[String],
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
+      case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
+        // Check for magic comments specifying dependencies
+        println("Please use `:dep com.example::artifact:version` to add dependencies in the REPL")
+        state
+
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state)
+          compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
@@ -654,6 +659,27 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
+    case Dep(dep) =>
+      val depStrings = List(dep)
+      if depStrings.nonEmpty then
+        val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+        if deps.nonEmpty then
+          DependencyResolver.resolveDependencies(deps) match
+            case Right(files) =>
+              if files.nonEmpty then
+                inContext(state.context):
+                  // Update both compiler classpath and classloader
+                  val prevOutputDir = ctx.settings.outputDir.value
+                  val prevClassLoader = rendering.classLoader()
+                  rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                    files,
+                    prevClassLoader,
+                    prevOutputDir
+                  )
+                  out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
+            case Left(error) =>
+              out.println(s"Error resolving dependencies: $error")
+      state
 
     case Quit =>
       // end of the world!
