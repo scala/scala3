@@ -169,7 +169,7 @@ object Capabilities:
      */
     var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
 
-    //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
+    //assert(rootId != 4, i"fresh $prefix, $origin, ${ctx.owner}")
 
     /** Is this fresh cap (definitely) classified? If that's the case, the
      *  classifier cannot be changed anymore.
