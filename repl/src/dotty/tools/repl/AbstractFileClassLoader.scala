@@ -15,30 +15,37 @@ package repl
 
 import scala.language.unsafeNulls
 
+import dotty.tools.dotc.config.ScalaSettings
+
 import io.AbstractFile
 
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, interruptInstrumentation: String) extends ClassLoader(parent):
-  private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
+import AbstractFileClassLoader.InterruptInstrumentation
 
-  // on JDK 20 the URL constructor we're using is deprecated,
-  // but the recommended replacement, URL.of, doesn't exist on JDK 8
-  @annotation.nowarn("cat=deprecation")
-  override protected def findResource(name: String): URL | Null =
-    findAbstractFile(name) match
-      case null => null
-      case file => new URL(null, s"memory:${file.path}", new URLStreamHandler {
-        override def openConnection(url: URL): URLConnection = new URLConnection(url) {
-          override def connect() = ()
-          override def getInputStream = file.input
-        }
-      })
-  override protected def findResources(name: String): java.util.Enumeration[URL] =
-    findResource(name) match
-      case null => Collections.enumeration(Collections.emptyList[URL])  //Collections.emptyEnumeration[URL]
-      case url  => Collections.enumeration(Collections.singleton(url))
+
+object AbstractFileClassLoader:
+  enum InterruptInstrumentation(val stringValue: String):
+    case Disabled extends InterruptInstrumentation("false")
+    case Enabled extends InterruptInstrumentation("true")
+    case Local extends InterruptInstrumentation("local")
+
+    def is(value: InterruptInstrumentation): Boolean = this == value
+    def isOneOf(others: InterruptInstrumentation*): Boolean = others.contains(this)
+
+  object InterruptInstrumentation:
+    def fromString(string: String): InterruptInstrumentation = string match {
+      case "false" => Disabled
+      case "true" => Enabled
+      case "local" => Local
+      case _ => throw new IllegalArgumentException(s"Invalid interrupt instrumentation value: $string")
+    }
+
+class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
+  extends io.AbstractFileClassLoader(root, parent):
+
+  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
 
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile | Null = root
@@ -52,23 +59,23 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader, inter
 
     val bytes = file.toByteArray
 
-    if interruptInstrumentation != "false" then defineClassInstrumented(name, bytes)
+    if !interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
     else defineClass(name, bytes, 0, bytes.length)
   }
 
-  def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
+  private def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
     val instrumentedBytes = ReplBytecodeInstrumentation.instrument(originalBytes)
     defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
   }
 
   override def loadClass(name: String): Class[?] =
-    if interruptInstrumentation == "false" || interruptInstrumentation == "local"
-    then return super.loadClass(name)
+    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+      return super.loadClass(name)
 
     val loaded = findLoadedClass(name) // Check if already loaded
     if loaded != null then return loaded
 
-    name match { 
+    name match {
       // Don't instrument JDK classes or StopRepl. These are often restricted to load from a single classloader
       // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
       // results in runtime exceptions

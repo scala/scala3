@@ -51,13 +51,13 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsParent(): Unit =
     val p = new URLClassLoader(Array.empty[URL])
     val d = new VirtualDirectory("vd", None)
-    val x = new AbstractFileClassLoader(d, p, "false")
+    val x = new AbstractFileClassLoader(d, p)
     assertSame(p, x.getParent)
 
   @Test def afclGetsResource(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
+    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
     assertEquals("hello, world", slurp(res))
@@ -67,8 +67,8 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-    val p = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
-    val sut = new AbstractFileClassLoader(fuzz_, p, "false")
+    val p = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val sut = new AbstractFileClassLoader(fuzz_, p)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
     assertEquals("hello, world", slurp(res))
@@ -79,7 +79,7 @@ class AbstractFileClassLoaderTest:
     val bass = fuzz.fileNamed("bass")
     booz.writeContent("hello, world")
     bass.writeContent("lo tone")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
+    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
     val res = sut.getResource("booz.class")
     assertNotNull(res)
     assertEquals("hello, world", slurp(res))
@@ -89,7 +89,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResources(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
+    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
     val e = sut.getResources("buzz/booz.class")
     assertTrue("At least one buzz/booz.class", e.hasMoreElements)
     assertEquals("hello, world", slurp(e.nextElement))
@@ -100,8 +100,8 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-    val p = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
-    val x = new AbstractFileClassLoader(fuzz_, p, "false")
+    val p = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val x = new AbstractFileClassLoader(fuzz_, p)
     val e = x.getResources("buzz/booz.class")
     assertTrue(e.hasMoreElements)
     assertEquals("hello, world", slurp(e.nextElement))
@@ -112,7 +112,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResourceAsStream(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val x = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
+    val x = new AbstractFileClassLoader(fuzz, NoClassLoader)
     val r = x.getResourceAsStream("buzz/booz.class")
     assertNotNull(r)
     assertEquals("hello, world", closing(r)(is => Source.fromInputStream(is).mkString))
@@ -120,7 +120,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsClassBytes(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
+    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
 
@@ -130,8 +130,8 @@ class AbstractFileClassLoaderTest:
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
 
-    val p = new AbstractFileClassLoader(fuzz, NoClassLoader, "false")
-    val sut = new AbstractFileClassLoader(fuzz_, p, "false")
+    val p = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val sut = new AbstractFileClassLoader(fuzz_, p)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
 end AbstractFileClassLoaderTest
