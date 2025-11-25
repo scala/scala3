@@ -122,7 +122,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
       val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
       resolveScoped(caneq)
-    case _ =>
+    case tree =>
+      refUsage(tree.tpe.typeSymbol)
     tree
 
   override def transformTypeApply(tree: TypeApply)(using Context): tree.type =
