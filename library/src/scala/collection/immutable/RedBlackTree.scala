@@ -582,7 +582,7 @@ private[collection] object RedBlackTree {
     //Note - only used in tests outside RedBlackTree
     @`inline` private[immutable] final def isRed = _count >= 0
 
-    override def toString: String = s"${if(isRed) "RedTree" else "BlackTree"}($key, $value, $left, $right)"
+    override def toString(): String = s"${if(isRed) "RedTree" else "BlackTree"}($key, $value, $left, $right)"
 
     //mutable APIs
     private[RedBlackTree] def makeImmutable: this.type = {

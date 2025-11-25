@@ -68,7 +68,7 @@ trait MapView[K, +V]
 
   override def withFilter(p: ((K, V)) => Boolean): MapOps.WithFilter[K, V, View, ({ type l[X, Y] = View[(X, Y)] })#l]^{this, p} = new MapOps.WithFilter(this, p)
 
-  override def toString: String = super[View].toString
+  override def toString(): String = super[View].toString
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "MapView"

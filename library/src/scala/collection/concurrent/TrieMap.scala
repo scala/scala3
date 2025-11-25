@@ -446,7 +446,7 @@ private[concurrent] final class FailedNode[K, V](p: MainNode[K, V]) extends Main
 
   def knownSize: Int = throw new UnsupportedOperationException
 
-  override def toString: String = "FailedNode(%s)".format(p)
+  override def toString(): String = "FailedNode(%s)".format(p)
 }
 
 
@@ -643,7 +643,7 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
 
   def string(lev: Int): String = "CNode %x\n%s".format(bitmap, array.map(_.string(lev + 1)).mkString("\n"))
 
-  override def toString = {
+  override def toString() = {
     def elems: Seq[String] = array.flatMap {
       case sn: SNode[K, V] @uc => Iterable.single(sn.kvPair._2.toString)
       case in: INode[K, V] @uc => Iterable.single(augmentString(in.toString).drop(14) + "(" + in.gen + ")")

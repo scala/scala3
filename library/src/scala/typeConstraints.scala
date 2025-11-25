@@ -160,7 +160,7 @@ object <:< {
     override def andThen[C](r: Any =:= C) = r
     override def liftCo    [F[_]] = asInstanceOf[F[Any] =:= F[Any]]
     override def liftContra[F[_]] = asInstanceOf[F[Any] =:= F[Any]]
-    override def toString = "generalized constraint"
+    override def toString() = "generalized constraint"
   }
 
   /** `A =:= A` for all `A` (equality is reflexive). This also provides implicit views `A <:< B`

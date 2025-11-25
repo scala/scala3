@@ -133,7 +133,7 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     }
   }
 
-  override def toString = s"$coll1.lazyZip($coll2)"
+  override def toString() = s"$coll1.lazyZip($coll2)"
 }
 
 object LazyZip2 {
@@ -273,7 +273,7 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     }
   }
 
-  override def toString = s"$coll1.lazyZip($coll2).lazyZip($coll3)"
+  override def toString() = s"$coll1.lazyZip($coll2).lazyZip($coll3)"
 }
 
 object LazyZip3 {
@@ -415,7 +415,7 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     }
   }
 
-  override def toString = s"$coll1.lazyZip($coll2).lazyZip($coll3).lazyZip($coll4)"
+  override def toString() = s"$coll1.lazyZip($coll2).lazyZip($coll3).lazyZip($coll4)"
 }
 
 object LazyZip4 {

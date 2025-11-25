@@ -66,5 +66,5 @@ class DynamicVariable[T](init: T) {
     */
   def value_=(newval: T) = tl.set(newval)
 
-  override def toString: String = "DynamicVariable(" + value + ")"
+  override def toString(): String = "DynamicVariable(" + value + ")"
 }

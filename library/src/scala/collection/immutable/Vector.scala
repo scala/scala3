@@ -1390,7 +1390,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  override def toString: String =
+  override def toString(): String =
     s"VectorSliceBuilder(lo=$lo, hi=$hi, len=$len, pos=$pos, maxDim=$maxDim)"
 
   private[immutable] def getSlices: Array[Array[AnyRef] | Null] = slices
@@ -1981,7 +1981,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
-  override def toString: String =
+  override def toString(): String =
     s"VectorBuilder(len1=$len1, lenRest=$lenRest, offset=$offset, depth=$depth)"
 
   private[immutable] def getData: Array[Array[?]] = Array[Array[AnyRef]](
@@ -2257,7 +2257,7 @@ private final class NewVectorIterator[A](v: Vector[A], private var totalLength: 
   private var sliceStart = 0 // absolute position
   private var sliceEnd = a1len // absolute position
 
-  //override def toString: String =
+  //override def toString(): String =
   //  s"NewVectorIterator(v=$v, totalLength=$totalLength, sliceCount=$sliceCount): a1len=$a1len, len1=$len1, i1=$i1, sliceEnd=$sliceEnd"
 
   @inline override def knownSize = len1 - i1
