@@ -187,6 +187,7 @@ class Erasure extends Phase with DenotTransformer {
       tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
     assert(
       isErasedType(tp)
+      || isAllowed(defn.AnyValClass, "AnyVal.scala")
       || isAllowed(defn.ArrayClass, "Array.scala")
       || isAllowed(defn.TupleClass, "Tuple.scala")
       || isAllowed(defn.NonEmptyTupleClass, "Tuple.scala")
