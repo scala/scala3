@@ -2,7 +2,7 @@ package scala.scalajs.js.internal
 
 import scala.scalajs.js
 
-@deprecated(message = "The implicit conversion was moved to the companion object of `scala.Unit` in Scala.js", since = "3.8.0")
+/** Under -scalajs, this object is part of the implicit scope of `scala.Unit` */
 object UnitOps:
   implicit def unitOrOps[A](x: A | Unit): js.UndefOrOps[A] =
     new js.UndefOrOps(x)
