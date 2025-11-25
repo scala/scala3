@@ -5,15 +5,15 @@ class B
 
 object A {
 
-  implicit def a2b(x: A): B = ??? // warn under -Xfatal-warnings -feature
+  implicit def a2b(x: A): B = ??? // warn under -Werror -feature
 
-  implicit def b2a(x: B): A = ??? // warn under -Xfatal-warnings -feature
+  implicit def b2a(x: B): A = ??? // warn under -Werror -feature
 }
 
 class C
 
 object D {
-  implicit def a2c(x: A): C = ??? // warn under -Xfatal-warnings -feature
+  implicit def a2c(x: A): C = ??? // warn under -Werror -feature
 }
 
 object Test {

@@ -407,6 +407,73 @@ class SettingsTests:
       testValues(summary = summaryColon)
       testValues(summary = summaryWhitespace)
 
+  @Test def `prefix option requires nonempty suffix`: Unit =
+    object Settings extends SettingGroup:
+      val jvmargs  = PrefixSetting(RootSetting, "J<flag>", "Pass -J<flag> directly to the runtime system.")
+    import Settings.*
+    val args = List("-J")
+    val summary = processArguments(args, processAll = true)
+    withProcessedArgs(summary):
+      assertTrue("Nothing to see here", summary.errors.isEmpty)
+      assertEquals(1, summary.warnings.length)
+      assertTrue("Prefix option warns", summary.warnings.head.contains("requires a suffix"))
+      assertTrue("Prefix option is empty", jvmargs.value.isEmpty)
+
+  @Test def `alias deprecation is honored`: Unit =
+    object Settings extends SettingGroup:
+      val flag = BooleanSetting(RootSetting, "yas", "Yes, do it!",
+        aliases = SettingAlias("-meh", Deprecation("that was a dumb flag name")) :: Nil,
+      )
+    import Settings.*
+    val args = List("-meh")
+    val summary = processArguments(args, processAll = true)
+    withProcessedArgs(summary):
+      assertTrue("Nothing to see here", summary.errors.isEmpty)
+      assertEquals(1, summary.warnings.length)
+      assertEquals("Option -meh is a deprecated alias: that was a dumb flag name", summary.warnings.head)
+      assertTrue("flag was set anyway", flag.value)
+
+  @Test def `alias deprecation is honored when primary option is deprecated`: Unit =
+    object Settings extends SettingGroup:
+      val flag = BooleanSetting(RootSetting, "yas", "Yes, do it!",
+        aliases = SettingAlias("-meh", Deprecation("that was a dumb flag name")) :: Nil,
+        deprecation = Deprecation.removed(),
+      )
+    import Settings.*
+    val args = List("-meh")
+    val summary = processArguments(args, processAll = true)
+    withProcessedArgs(summary):
+      assertTrue("Nothing to see here", summary.errors.isEmpty)
+      assertEquals(2, summary.warnings.length)
+      assertEquals("Option -meh is a deprecated alias: that was a dumb flag name", summary.warnings.head)
+      assertEquals("Option -yas is deprecated: Scheduled for removal.", summary.warnings(1))
+      assertTrue("flag was set anyway", flag.value)
+
+  @Test def `alias deprecation respects primary rename`: Unit =
+    object Settings extends SettingGroup:
+      val flag = BooleanSetting(RootSetting, "yas", "Yes, do it!",
+        aliases = SettingAlias("-meh", Deprecation("that was a dumb flag name")) :: Nil,
+        deprecation = Deprecation.renamed("anything!"),
+      )
+    import Settings.*
+    val args = List("-meh")
+    val summary = processArguments(args, processAll = true)
+    withProcessedArgs(summary):
+      assertTrue("Nothing to see here", summary.errors.isEmpty)
+      assertEquals(2, summary.warnings.length)
+      assertEquals("Option -meh is a deprecated alias: that was a dumb flag name", summary.warnings.head)
+      assertEquals("Option -yas is deprecated: Use anything! instead.", summary.warnings(1))
+      assertFalse("flag was set anyway", flag.value)
+
+  @Test def `alias deprecation can't be replaced by anything`: Unit =
+    object Settings extends SettingGroup:
+      val flag = BooleanSetting(RootSetting, "yas", "Yes, do it!",
+        aliases = SettingAlias("-meh", Deprecation.renamed("anything at all!")) :: Nil,
+      )
+    import Settings.*
+    assertThrows[AssertionError](_.getMessage.contains("replaced by")):
+      flag
+
   // use the supplied summary for evaluating settings
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 
