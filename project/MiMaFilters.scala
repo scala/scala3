@@ -23,7 +23,10 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
         ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$namedTupleOrdering"),
 
-		// cc related
+        // scala/scala3#24545
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
+
+        // cc related
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.onlyCapability"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.separationChecking"),
