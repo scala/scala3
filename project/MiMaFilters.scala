@@ -23,6 +23,9 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
         ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$namedTupleOrdering"),
 
+        // IArray integration with Scala Collections:
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.generic.IsSeq.iarrayIsSeq"),
+
 		// cc related
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.onlyCapability"),
