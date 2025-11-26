@@ -13,9 +13,10 @@
 -- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:17:15 -----------------------------------------------
 17 |    def gg() = g()     // error but msg could be better
    |               ^
-   |         reference (g : () => Unit) is not included in the allowed capture set {cap} of the self type of class E
+   |               Read-only method gg accesses exclusive capability (g : () => Unit);
+   |               method gg should be declared an update method to allow this.
    |
-   |         where:    cap is a fresh root capability classified as Unscoped in the type of class E
+   |               where:    => refers to a fresh root capability in the type of parameter g
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unscoped-classifier.scala:19:11 --------------------------
 19 |  val b = B() // error  but msg could be better
    |          ^^^

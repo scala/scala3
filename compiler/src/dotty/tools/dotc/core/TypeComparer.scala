@@ -2896,7 +2896,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       throw ex
 
   /**
-   *  - Compare capture sets using subCaptures. If the lower type derives from Mutable and the
+   *  - Compare capture sets using subCaptures. If the lower type derives from Stateful and the
    *    upper type does not, make the lower set read-only.
    *  - Test whether the boxing status of tp1 and tp2 the same, or alternatively,
    *    whether the capture set `refs1` of `tp1` is subcapture of the empty set?
@@ -2904,7 +2904,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type, refs2: CaptureSet): Boolean =
     val refs1Adapted =
-      if tp1.derivesFromMutable && !tp2.derivesFromMutable
+      if tp1.derivesFromStateful && !tp2.derivesFromStateful
       then refs1.readOnly
       else refs1
     val subc = subCaptures(refs1Adapted, refs2)

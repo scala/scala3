@@ -6,7 +6,7 @@ import caps.*
 class D
 class C(val d: D^)
 class B(val c: C^)
-class A(consume val b: B^) extends Mutable { var x: Int = 0 }
+class A(consume val b: B^) extends Separate
 
 // Test 1: Simple suffix paths after consume
 def test1 =

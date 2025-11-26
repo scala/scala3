@@ -997,7 +997,7 @@ class Namer { typer: Typer =>
     private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
       if denot.is(Method)
           && denot.hasAnnotation(defn.ConsumeAnnot)
-          && denot.owner.derivesFrom(defn.Caps_Mutable)
+          && denot.owner.derivesFrom(defn.Caps_Stateful)
       then
         denot.setFlag(Mutable)
 

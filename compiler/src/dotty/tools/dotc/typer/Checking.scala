@@ -696,8 +696,8 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
-    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
-      fail(em"Update method ${sym.name} must be declared in a class extending the `Mutable` trait.")
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) then
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
