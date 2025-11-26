@@ -602,7 +602,7 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos)
+            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos).stripNamedTuple
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
