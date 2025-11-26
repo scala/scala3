@@ -444,3 +444,4 @@ The subcapturing theory for sets is then as before, with the following additiona
  - `C₁.reader <: C₂.reader` if `C₍ <: C₂`
  - `{x, ...}.reader = {x.rd, ...}.reader`
  - `{x.rd, ...} <: {x, ...}`
+

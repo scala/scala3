@@ -7,6 +7,7 @@ import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import Capabilities.*
 import util.SrcPos
 import config.Printers.capt
+import config.Feature
 import ast.tpd.Tree
 import typer.ProtoTypes.LhsProto
 
@@ -249,4 +250,22 @@ object Mutability:
       case improved =>
         improved
 
+  /** Apply `caps.freeze(...)`. Strip all capture sets of covariant Mutable
+   *  types, turning them into `CaptureSet.emptyOfMutable`. Only Mutable types
+   *  that contribute to the overall capture set are considered, since that is the
+   *  set analyzed by consume/use checking. That means that double-flip covariant
+   *  and boxed capture sets are not dropped.
+   */
+  def freeze(tp: Type, pos: SrcPos)(using Context): Type = tp.widen match
+    case tpw @ CapturingType(parent, refs)
+    if parent.derivesFromMutable && !tpw.isBoxed =>
+      if !Feature.enabled(Feature.separationChecking) then
+        report.warning(
+          em"""freeze is safe only if separation checking is enabled.
+              |You can enable separation checking with the language import
+              |
+              |   import language.experimental.separationChecking""",
+          pos)
+      tpw.derivedCapturingType(parent, CaptureSet.emptyOfStateful)
+    case _ => tp
 end Mutability

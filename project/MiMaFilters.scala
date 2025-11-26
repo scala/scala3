@@ -32,6 +32,7 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.SharedCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
       ),
 
     )

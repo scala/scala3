@@ -790,22 +790,29 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** Recheck applications, with special handling of unsafeAssumePure.
+    /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
+    def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
+      val arg :: Nil = tree.args: @unchecked
+      val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
+      val argType =
+        if argType0.captureSet.isAlwaysEmpty then argType0
+        else argType0.widen.stripCapturing
+      capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
+      super.recheckFinish(argType, tree, pt)
+
+    /** Recheck applications, with special handling of unsafeAssumePure,
+     *  unsafeDiscardUses, and freeze.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
-        val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
-        val argType =
-          if argType0.captureSet.isAlwaysEmpty then argType0
-          else argType0.widen.stripCapturing
-        capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
-        super.recheckFinish(argType, tree, pt)
+        applyAssumePure(tree, pt)
       else if meth == defn.Caps_unsafeDiscardUses then
         val arg :: Nil = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
+      else if meth == defn.Caps_freeze then
+        freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)

@@ -141,6 +141,7 @@ final class reserve extends annotation.StaticAnnotation
  *  environment.
  */
 @experimental
+@deprecated(since = "3.8.0")
 final class use extends annotation.StaticAnnotation
 
 /** A trait that used to allow expressing existential types. Replaced by
@@ -189,6 +190,12 @@ object internal:
   def erasedValue[T]: T = ???
 
 end internal
+
+/** A wrapper that strips all covariant capture sets from Mutable types in the
+ *  result of pure operation `op`, turning them into immutable types.
+ */
+@experimental
+def freeze(@internal.consume x: Mutable): x.type = x
 
 @experimental
 object unsafe:
