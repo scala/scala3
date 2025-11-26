@@ -896,16 +896,12 @@ class Namer { typer: Typer =>
           original.mods.withAnnotations:
             original.mods.annotations.mapConserve: annotTree =>
               val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
-              if (cls eq sym)
-                report.error(em"An annotation class cannot be annotated with iself", annotTree.srcPos)
-                annotTree
-              else
-                val ann =
-                  if cls.is(JavaDefined) then Checking.checkNamedArgumentForJavaAnnotation(annotTree, cls.asClass)
-                  else annotTree
-                val ann1 = Annotation.deferred(cls)(typedAheadExpr(ann)(using annotCtx))
-                sym.addAnnotation(ann1)
-                ann
+              val ann =
+                if cls.is(JavaDefined) then Checking.checkNamedArgumentForJavaAnnotation(annotTree, cls.asClass)
+                else annotTree
+              val ann1 = Annotation.deferred(cls)(typedAheadExpr(ann)(using annotCtx))
+              sym.addAnnotation(ann1)
+              ann
       case _ =>
     }
 
