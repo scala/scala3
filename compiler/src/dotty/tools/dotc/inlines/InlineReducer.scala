@@ -430,7 +430,7 @@ class InlineReducer(inliner: Inliner)(using Context):
               // positions provided the types of these references are
               // realizable. See erased-inline-product.scala and
               // tests/neg/erased-inline-unrealizable-path.scala.
-              if !inType || !(realizability(id.tpe.widen) eq Realizable) then
+              if !inType || (realizability(id.tpe.widen) ne Realizable) then
                 report.error(
                   em"""${id.symbol} is unusable in ${ctx.owner} because it refers to an erased expression
                       |in the selector of an inline match that reduces to
