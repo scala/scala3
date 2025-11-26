@@ -1448,6 +1448,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def unapply(ts: List[Tree]): Option[List[Tree]] =
       if ts.nonEmpty && ts.head.isType then Some(ts) else None
 
+
+  /** An extractor for trees that are constant values. */
+  object ConstantTree:
+    def unapply(tree: Tree)(using Context): Option[Constant] =
+      tree match
+        case Inlined(_, Nil, expr) => unapply(expr)
+        case Typed(expr, _) => unapply(expr)
+        case Literal(c) if c.tag == Constants.NullTag => Some(c)
+        case _ =>
+          tree.tpe.widenTermRefExpr.normalized.simplified match
+            case ConstantType(c) => Some(c)
+            case _ => None
+
   /** Split argument clauses into a leading type argument clause if it exists and
    *  remaining clauses
    */
