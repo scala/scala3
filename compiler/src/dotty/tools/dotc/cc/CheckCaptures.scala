@@ -962,7 +962,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
      *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-     *  capabiltities. Class parameters are not counted. If the type externds Separate,
+     *  capabiltities. Class parameters are not counted. If the type extends Separate,
      *  we add a fresh cap in any case -- this is because we can currently hide
      *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
      */
