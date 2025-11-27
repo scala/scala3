@@ -30,6 +30,7 @@ import Hashable.*
 import Uniques.*
 import collection.mutable
 import config.Config
+import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
@@ -6483,10 +6484,13 @@ object Types extends TypeUtils {
           mapCapturingType(tp, parent, refs, variance)
 
         case tp @ AnnotatedType(underlying, annot) =>
-          val underlying1 = this(underlying)
-          val annot1 = annot.mapWith(this)
-          if annot1 eq EmptyAnnotation then underlying1
-          else derivedAnnotatedType(tp, underlying1, annot1)
+          if annot.symbol.isRetainsLike && !Feature.ccEnabledSomewhere then
+            this(underlying) // strip retains like annotations unless capture checking is enabled
+          else
+            val underlying1 = this(underlying)
+            val annot1 = annot.mapWith(this)
+            if annot1 eq EmptyAnnotation then underlying1
+            else derivedAnnotatedType(tp, underlying1, annot1)
 
         case _: ThisType
           | _: BoundType
