@@ -351,6 +351,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
         sameSym && alt.symbol.isAccessibleFrom(qtpe)
       def hasAltMemberNamed(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol.isAccessibleFrom(qtpe))
+      def hasTypeAlias(nm: Name) = nm.isTypeName && qtpe.member(nm).hasAltWith: alt =>
+        alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym && alt.symbol.isAccessibleFrom(qtpe)
 
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
@@ -379,7 +381,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
               false
             else
                  !name.exists(_.toTermName != sel.rename) // if there is an explicit name, it must match
-              && (prefix.eq(NoPrefix) || qtpe =:= prefix)
+              && (prefix.eq(NoPrefix) || qtpe =:= prefix || hasTypeAlias(sel.name.toTypeName))
               && (hasAltMember(sel.name) || hasAltMember(sel.name.toTypeName))
           if matches then sel else loop(sels)
         case nil => null
