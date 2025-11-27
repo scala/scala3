@@ -6280,12 +6280,12 @@ object Types extends TypeUtils {
 
   end BiTypeMap
 
-  /** A typemap that follows aliases and keeps their transformed results if
-  *  there is a change.
-  */
+  /** A typemap that follows non-opaque aliases and keeps their transformed
+   *  results if there is a change.
+   */
   trait FollowAliasesMap(using Context) extends TypeMap:
     def mapFollowingAliases(t: Type): Type =
-      val t1 = t.dealiasKeepAnnots
+      val t1 = t.dealiasKeepAnnotsAndOpaques
       if t1 ne t then
         val t2 = apply(t1)
         if t2 ne t1 then t2
