@@ -1214,14 +1214,22 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
 
 class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
 extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
-  def msg(using Context) = i"${definition.name} is a forward reference extending over the definition of ${value.name}"
+  extension (sym: Symbol) def srcLine = sym.line + 1
+
+  def msg(using Context) =
+    val ref =
+      if value != definition then i"${definition.name} (defined on line ${definition.srcLine})"
+      else i"${definition.name}"
+    i"forward reference to ${ref} extends over the definition of ${value.name} (on line ${value.srcLine})"
 
   def explain(using Context) =
     i"""|${definition.name} is used before you define it, and the definition of ${value.name}
         |appears between that use and the definition of ${definition.name}.
         |
-        |Forward references are allowed only, if there are no value definitions between
-        |the reference and the referred method definition.
+        |Forward references are allowed only if there are no value definitions between
+        |the reference and the definition that is referred to.
+        |Specifically, any statement between the reference and the definition
+        |cannot be a variable definition, and if it's a value definition, it must be lazy.
         |
         |Define ${definition.name} before it is used,
         |or move the definition of ${value.name} so it does not appear between
