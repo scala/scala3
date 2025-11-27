@@ -5904,8 +5904,9 @@ object Types extends TypeUtils {
 
     override def underlying(using Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): AnnotatedType =
+    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): Type =
       if ((parent eq this.parent) && (annot eq this.annot)) this
+      else if annot == EmptyAnnotation then parent
       else AnnotatedType(parent, annot)
 
     override def stripTypeVar(using Context): Type =
@@ -6483,10 +6484,7 @@ object Types extends TypeUtils {
           mapCapturingType(tp, parent, refs, variance)
 
         case tp @ AnnotatedType(underlying, annot) =>
-          val underlying1 = this(underlying)
-          val annot1 = annot.mapWith(this)
-          if annot1 eq EmptyAnnotation then underlying1
-          else derivedAnnotatedType(tp, underlying1, annot1)
+          derivedAnnotatedType(tp, this(underlying), annot.mapWith(this))
 
         case _: ThisType
           | _: BoundType
