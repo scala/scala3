@@ -98,6 +98,9 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
+
+  // New API: IsSeq[IArray[T]]
+  "scala.collection.generic.IsSeq$.iarrayIsSeq",
 )
 
 

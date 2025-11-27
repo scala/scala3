@@ -18,6 +18,7 @@ import language.experimental.captureChecking
 import caps.unsafe.untrackedCaptures
 
 import scala.reflect.ClassTag
+import scala.annotation.experimental
 
 /** Type class witnessing that a collection representation type `Repr` has
   * elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
@@ -102,6 +103,25 @@ object IsSeq {
           def iterableFactory: IterableFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder
+          def iterator: Iterator[A] = a.iterator
+        }
+    }
+
+  @experimental
+  given iarrayIsSeq[A0 : ClassTag]: (IsSeq[IArray[A0]] { type A = A0; type C = IArray[A0] }) =
+    new IsSeq[IArray[A0]] {
+      type A = A0
+      type C = IArray[A0]
+      def apply(a: IArray[A0]): SeqOps[A0, Seq, IArray[A0]] =
+        new SeqOps[A, immutable.ArraySeq, IArray[A]] {
+          def apply(i: Int): A = a(i)
+          def length: Int = a.length
+          def toIterable: Iterable[A] = IArray.genericWrapArray(a)
+          protected def coll: IArray[A] = a
+          protected def fromSpecific(coll: IterableOnce[A]^): IArray[A] = IArray.from(coll)
+          def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
+          override def empty: IArray[A] = IArray.empty[A]
+          protected def newSpecificBuilder: mutable.Builder[A, IArray[A]] = IArray.newBuilder
           def iterator: Iterator[A] = a.iterator
         }
     }
