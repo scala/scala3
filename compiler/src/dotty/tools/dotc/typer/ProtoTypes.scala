@@ -162,13 +162,15 @@ object ProtoTypes {
     override def viewExists(tp: Type, pt: Type)(using Context): Boolean = false
   }
 
-  /** A trait for prototypes that match all types */
-  trait MatchAlways extends ProtoType {
-    def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = true
+  /** A trait for prototypes that map to themselves */
+  trait FixedProto extends ProtoType:
     def map(tm: TypeMap)(using Context): ProtoType = this
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = x
     override def toString: String = getClass.toString
-  }
+
+  /** A trait for prototypes that match all types */
+  trait MatchAlways extends FixedProto:
+    def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = true
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
@@ -178,6 +180,21 @@ object ProtoTypes {
       myWasDeepened = true
       ignored
     override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
+
+    override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean =
+      def takesParams(tp: Type): Boolean = tp match
+        case tp: PolyType => takesParams(tp.resType)
+        case MethodType(pnames) => pnames.nonEmpty && !tp.isImplicitMethod
+        case _ => false
+      ignored match
+        case ignored: SelectionProto if ignored.name != nme.apply =>
+          // Non-implicit methods that take at least one parameter don't match ignored
+          // selection protos unless the selection is via `apply`. This is because a
+          // match of a different selection would require an eta expansion _and_ an
+          // implicit conversion, which is not allowed. So the prototype would not
+          // match even if implicit conversions were present. Test case: i23773a.scala.
+          !takesParams(tp1.widen)
+        case _ => true
 
     /** Did someone look inside via deepenProto? Used for error deagniostics
      *  to give a more extensive expected type.
@@ -285,6 +302,9 @@ object ProtoTypes {
 
     override def deepenProtoTrans(using Context): SelectionProto =
       derivedSelectionProto(name, memberProto.deepenProtoTrans, compat, nameSpan)
+
+    override def ignoreSelectionProto(using Context): IgnoredProto =
+      IgnoredProto(this)
 
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
@@ -620,6 +640,9 @@ object ProtoTypes {
     override def deepenProtoTrans(using Context): FunProto =
       derivedFunProto(args, resultType.deepenProtoTrans, constrainResultDeep = true)
 
+    override def ignoreSelectionProto(using Context): FunProto =
+      derivedFunProto(args, resultType.ignoreSelectionProto)
+
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
       else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
@@ -734,6 +757,9 @@ object ProtoTypes {
 
     override def deepenProtoTrans(using Context): PolyProto =
       derivedPolyProto(targs, resultType.deepenProtoTrans)
+
+    override def ignoreSelectionProto(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.ignoreSelectionProto)
   }
 
   /** A prototype for expressions [] that are known to be functions:

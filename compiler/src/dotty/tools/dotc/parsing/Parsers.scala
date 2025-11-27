@@ -411,7 +411,9 @@ object Parsers {
       false
     }
 
-    def errorTermTree(start: Offset): Tree = atSpan(Span(start, in.offset)) { unimplementedExpr }
+    def errorTermTree(start: Offset): Tree =
+      val end = if in.token == OUTDENT then start else in.offset
+      atSpan(Span(start, end)) { unimplementedExpr }
 
     private var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {

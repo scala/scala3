@@ -78,20 +78,31 @@ type Exclusive = ExclusiveCapability
  */
 trait Control extends SharedCapability, Classifier
 
-/** Marker trait for classes with methods that require an exclusive reference. */
+/** Marker trait for classes that can consult and change the global program state.
+ *  These  classes typically contain mutable variables and/or update methods.
+ */
 @experimental
-trait Mutable extends ExclusiveCapability
+trait Stateful extends ExclusiveCapability
+
+/** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
+ *  extending Separate is created, a fresh `cap` is automatically added to the value's capture set.
+ */
+@experimental
+trait Separate extends Stateful
+
+/** Marker trait for classes that are not subject to scoping restrictions of captured capabilities.
+ */
+@experimental
+trait Unscoped extends Stateful, Classifier
+
+@experimental
+trait Mutable extends Stateful, Separate, Unscoped
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes */
 @experimental
 @deprecated
 trait Read extends Mutable
 
-/** Marker trait for classes that are not subject to scoping restrictions
- *  of captured capabilities.
- */
-@experimental
-trait Unscoped extends ExclusiveCapability, Classifier
 
 /** Carrier trait for capture set type parameters */
 @experimental
@@ -130,6 +141,7 @@ final class reserve extends annotation.StaticAnnotation
  *  environment.
  */
 @experimental
+@deprecated(since = "3.8.0")
 final class use extends annotation.StaticAnnotation
 
 /** A trait that used to allow expressing existential types. Replaced by
@@ -178,6 +190,12 @@ object internal:
   def erasedValue[T]: T = ???
 
 end internal
+
+/** A wrapper that strips all covariant capture sets from Mutable types in the
+ *  result of pure operation `op`, turning them into immutable types.
+ */
+@experimental
+def freeze(@internal.consume x: Mutable): x.type = x
 
 @experimental
 object unsafe:

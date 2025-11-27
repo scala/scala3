@@ -5,7 +5,7 @@ class Ref extends Mutable:
   def get(): Int = value
   update def set(v: Int): Unit = value = v
 
-class Matrix(val f: () => Int) extends Mutable:
+class Matrix(val f: () => Int) extends Stateful:
   self: Matrix^ =>
     def run() = f() // error <- note the missing update
     update def add(): Unit = ()

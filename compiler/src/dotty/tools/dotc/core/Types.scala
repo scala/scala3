@@ -1956,6 +1956,11 @@ object Types extends TypeUtils {
     /** If this is a proto type, WildcardType, otherwise the type itself */
     def dropIfProto: Type = this
 
+    /** If this is a (possibly applied) selection proto type, ignore the
+     *  selection part
+     */
+    def ignoreSelectionProto(using Context): Type = this
+
     /** If this is an AndType, the number of factors, 1 for all other types */
     def andFactorCount: Int = 1
 

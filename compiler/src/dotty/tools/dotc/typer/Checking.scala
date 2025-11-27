@@ -696,8 +696,8 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
-    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
-      fail(em"Update method ${sym.name} must be declared in a class extending the `Mutable` trait.")
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) then
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
@@ -1346,7 +1346,7 @@ trait Checking {
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
-      for other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent() do
+      for other <- seen(decl.name) if decl.name != nme.ERROR && !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&

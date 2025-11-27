@@ -48,7 +48,7 @@ object ccConfig:
    */
   inline val useSpanCapset = false
 
-  /** If true force all mutable fields to be in Mutable classes, unless they
+  /** If true force all mutable fields to be in Stateful classes, unless they
    *  are annotated with @untrackedCaptures
    */
   inline val noUnsafeMutableFields = false

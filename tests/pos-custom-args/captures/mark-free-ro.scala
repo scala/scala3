@@ -1,10 +1,10 @@
-import caps.{cap, Mutable}
+import caps.{cap, Stateful}
 import caps.unsafe.untrackedCaptures
 
-class Test extends Mutable:
+class Test extends Stateful:
   var ctxStack: Array[FreshCtx^] = new Array(10)
 
-  class FreshCtx(level: Int) extends Mutable:
+  class FreshCtx(level: Int) extends Stateful:
     this: FreshCtx^ =>
     def detached: Boolean =
       val c: FreshCtx^{cap.rd} = ctxStack(level)

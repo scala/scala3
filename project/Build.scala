@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.0-RC1"
+  val referenceVersion = "3.8.0-RC2"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -1257,7 +1257,8 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := false,
       // Generate library.properties, used by scala.util.Properties
-      Compile / resourceGenerators += generateLibraryProperties.taskValue
+      Compile / resourceGenerators += generateLibraryProperties.taskValue,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1299,6 +1300,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
@@ -1376,7 +1378,8 @@ object Build {
       keepSJSIR := false,
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1420,7 +1423,8 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
@@ -1551,6 +1555,7 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := true,
       bspEnabled := false,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
@@ -1593,6 +1598,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library",
       bspEnabled := false,
+      mainClass := None,
     )
 
   // ==============================================================================================
@@ -2017,7 +2023,7 @@ object Build {
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   // ==============================================================================================
@@ -2094,7 +2100,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
@@ -2165,13 +2171,16 @@ object Build {
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
   }
 
   lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
     .dependsOn(`scala3-compiler-bootstrapped-new`)
-    .settings(commonBootstrappedSettings)
+    .settings(
+      commonBootstrappedSettings,
+      bspEnabled := enableBspAllProjects,
+    )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-repl`).

@@ -2680,7 +2680,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tpt1 = withoutMode(Mode.Pattern):
       typed(tree.tpt, AnyTypeConstructorProto)
 
-    val tparams = tpt1.tpe.typeParams
+    val tparams = tpt1.tpe.dealiasKeepAnnotsAndOpaques.typeParams
      if tpt1.tpe.isError then
        val args1 = tree.args.mapconserve(typedType(_))
        assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)

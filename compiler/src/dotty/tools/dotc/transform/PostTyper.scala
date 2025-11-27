@@ -624,8 +624,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               case _ =>
           processMemberDef(super.transform(scala2LibPatch(tree)))
         case tree: Bind =>
-          if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
-            Checking.checkGoodBounds(tree.symbol)
+          val sym = tree.symbol
+          if sym.isType && !sym.name.is(WildcardParamName) then
+            Checking.checkGoodBounds(sym)
+          // Cleanup retains from the info of the Bind symbol
+          sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(sym.info))).installAfter(thisPhase)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
