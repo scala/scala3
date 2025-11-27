@@ -550,10 +550,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
             || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
+            def remainsBoxed1 = parent1.isBoxedCapturing || parent1.dealias.match
+              case parent1: TypeRef =>
+                parent1.superType.isBoxedCapturing
+                // When comparing a type parameter with boxed upper bound on the left
+                // we should not strip the box on the right. See i24543.scala.
+              case _ =>
+                false
             val tp2a =
-              if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
-              then tp2.unboxed
-              else tp2
+              if tp1.isBoxedCapturing && !remainsBoxed1 then tp2.unboxed else tp2
             recur(parent1, tp2a)
           else thirdTry
         compareCapturing
@@ -2916,7 +2921,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     subc
     && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
         || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
-        
+
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
 
