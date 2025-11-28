@@ -2494,14 +2494,14 @@ class Definitions {
     """.stripMargin)
 
     add(Object_wait,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()]].
       | *
       | *  @note   not specified by SLS as a member of AnyRef
       | */
     """.stripMargin)
 
     add(Object_waitL,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)]].
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @note not specified by SLS as a member of AnyRef
@@ -2509,7 +2509,7 @@ class Definitions {
     """.stripMargin)
 
     add(Object_waitLI,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]]
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)]]
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @param nanos   additional time, in nanoseconds range 0-999999.

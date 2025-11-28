@@ -107,13 +107,13 @@ trait ExecutionContext {
 
 /**
  * An [[ExecutionContext]] that is also a
- * Java [[http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executor.html Executor]].
+ * Java [[http://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html Executor]].
  */
 trait ExecutionContextExecutor extends ExecutionContext with Executor
 
 /**
  * An [[ExecutionContext]] that is also a
- * Java [[http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html ExecutorService]].
+ * Java [[http://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ExecutorService.html ExecutorService]].
  */
 trait ExecutionContextExecutorService extends ExecutionContextExecutor with ExecutorService
 
@@ -175,7 +175,7 @@ object ExecutionContext {
      *
      * The default `ExecutionContext` implementation is backed by a work-stealing thread pool. By default,
      * the thread pool uses a target number of worker threads equal to the number of
-     * [[https://docs.oracle.com/javase/8/docs/api/java/lang/Runtime.html#availableProcessors-- available processors]].
+     * [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Runtime.html#availableProcessors() available processors]].
      */
     implicit final def global: ExecutionContext = ExecutionContext.global
   }
@@ -220,7 +220,7 @@ object ExecutionContext {
    */
   def fromExecutor(e: Executor): ExecutionContextExecutor = fromExecutor(e, defaultReporter)
 
-  /** The default reporter simply prints the stack trace of the `Throwable` to [[http://docs.oracle.com/javase/8/docs/api/java/lang/System.html#err System.err]].
+  /** The default reporter simply prints the stack trace of the `Throwable` to [[http://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/System.html#err System.err]].
    *
    *  @return the function for error reporting
    */
