@@ -1312,7 +1312,7 @@ object Build {
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
-    .settings(disableDocSetting) // TODO now produces empty JAR to satisfy Sonatype, see https://github.com/scala/scala3/issues/24434
+    //.settings(disableDocSetting) // TODO now produces empty JAR to satisfy Sonatype, see https://github.com/scala/scala3/issues/24434
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -1336,6 +1336,11 @@ object Build {
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
+      // For doc generation, filter out -sourcepath as it causes conflicts with symbols loaded from tasty
+      Compile / doc / scalacOptions ~= { opts =>
+        val idx = opts.indexOf("-sourcepath")
+        if (idx >= 0) opts.patch(idx, Nil, 2) else opts
+      },
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := true,
