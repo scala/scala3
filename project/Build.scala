@@ -583,6 +583,7 @@ object Build {
     }),
 
     mimaExcludeAnnotations += "scala.annotation.experimental",
+    mimaReportSignatureProblems := true,
   )
 
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
