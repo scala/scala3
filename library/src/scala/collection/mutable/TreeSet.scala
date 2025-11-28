@@ -197,7 +197,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
   def empty[A : Ordering]: TreeSet[A] = new TreeSet[A]()
 
   def from[E](it: IterableOnce[E]^)(implicit ordering: Ordering[E]): TreeSet[E] =
-    it match {
+    (it: @unchecked) match {
       case ts: TreeSet[E] if ordering == ts.ordering =>
         new TreeSet[E](ts.tree.treeCopy())
       case ss: scala.collection.SortedSet[E] if ordering == ss.ordering =>

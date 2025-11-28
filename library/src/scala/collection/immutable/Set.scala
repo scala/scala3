@@ -98,7 +98,7 @@ object Set extends IterableFactory[Set] {
   def empty[A]: Set[A] = EmptySet.asInstanceOf[Set[A]]
 
   def from[E](it: collection.IterableOnce[E]^): Set[E] =
-    it match {
+    (it: @unchecked) match {
       case _ if it.knownSize == 0 => empty[E]
       // Since IterableOnce[E] launders the variance of E,
       // identify only our implementations which can be soundly substituted.

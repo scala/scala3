@@ -416,7 +416,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   @deprecatedOverriding("Override lastIndexWhere(p, end) instead - lastIndexWhere(p) calls lastIndexWhere(p, Int.MaxValue)", "2.13.0")
   def lastIndexWhere(p: A => Boolean): Int = lastIndexWhere(p, Int.MaxValue)
 
-  @inline private def toGenericSeq: scala.collection.Seq[A] = this match {
+  @inline private def toGenericSeq: scala.collection.Seq[A] = (this: @unchecked) match {
     case s: scala.collection.Seq[A] => s
     case _ => toSeq
   }

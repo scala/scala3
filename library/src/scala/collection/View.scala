@@ -153,7 +153,7 @@ object View extends IterableFactory[View] {
 
   object Filter {
     def apply[A](underlying: Iterable[A]^, p: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, p} =
-      underlying match {
+      (underlying: @unchecked) match {
         case filter : Filter[A] if filter.isFlipped == isFlipped => {
           val f: Filter[A]^{underlying} = filter.unsafeAssumePure // TODO remove when pattern matching works
           val f2: Filter[A]^{f, p} = new Filter(f.underlying, a => f.p(a) && p(a), isFlipped)

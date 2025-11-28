@@ -137,7 +137,7 @@ transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & S
 @SerialVersionUID(3L)
 object SortedMap extends SortedMapFactory.Delegate[SortedMap](TreeMap) {
 
-  override def from[K: Ordering, V](it: IterableOnce[(K, V)]^): SortedMap[K, V] = it match {
+  override def from[K: Ordering, V](it: IterableOnce[(K, V)]^): SortedMap[K, V] = (it: @unchecked) match {
     case sm: SortedMap[K, V] if Ordering[K] == sm.ordering => sm
     case _ => super.from(it)
   }

@@ -236,7 +236,7 @@ object VectorMap extends MapFactory[VectorMap] {
   def empty[K, V]: VectorMap[K, V] = EmptyMap.asInstanceOf[VectorMap[K, V]]
 
   def from[K, V](it: collection.IterableOnce[(K, V)]^): VectorMap[K, V] =
-    it match {
+    (it: @unchecked) match {
       case vm: VectorMap[K, V] => vm
       case _                   => (newBuilder[K, V] ++= it).result()
     }

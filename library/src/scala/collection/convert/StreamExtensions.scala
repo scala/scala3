@@ -147,7 +147,7 @@ trait StreamExtensions {
       * [[java.util.stream.IntStream `IntStream`]]).
       */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S = {
-      val sStepper = stepper match {
+      val sStepper = (stepper: @unchecked) match {
         case as: (AnyStepper[A] & EfficientSplit) => st.parUnbox(as)
         case _ => stepper.asInstanceOf[St]
       }

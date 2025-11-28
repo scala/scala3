@@ -196,7 +196,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   def keySet: Set[K] =
     // If we know one of the strict implementations inside this library, simply return LazyKeySet
     import MapOps.LazyKeySet
-    this match
+    (this: @unchecked) match
       case s: SeqMap[K, V] => new LazyKeySet(s)
       case s: SortedMap[K, V] => new LazyKeySet(s)
       case s: immutable.MapOps[K, V, immutable.Map, immutable.Map[K, V]] => new LazyKeySet(s)
