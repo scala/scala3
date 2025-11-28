@@ -149,7 +149,7 @@ private[scala] trait PropertiesTrait {
 
   /** System.console.isTerminal, or just check for null console on JDK < 22 */
   private[scala] lazy val consoleIsTerminal: Boolean = {
-    import language.reflectiveCalls
+    import scala.reflect.Selectable.reflectiveSelectable
     val console = System.console
     def isTerminal: Boolean =
       try console.asInstanceOf[{ def isTerminal(): Boolean }].isTerminal()

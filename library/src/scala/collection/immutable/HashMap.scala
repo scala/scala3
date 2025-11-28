@@ -164,7 +164,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
-  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
+  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = (that: @unchecked) match {
     case hm: HashMap[K, V1] =>
       if (isEmpty) hm
       else {
@@ -242,7 +242,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
           }
         }
       }
-      that match {
+      (that: @unchecked) match {
         case thatMap: Map[K, V1] =>
           if (thatMap.isEmpty) this
           else {
@@ -391,7 +391,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     if (isEmpty) {
       this
     } else {
-      keys match {
+      (keys: @unchecked) match {
         case hashSet: HashSet[K] =>
           if (hashSet.isEmpty) {
             this
@@ -2207,7 +2207,7 @@ object HashMap extends MapFactory[HashMap] {
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
   def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
-    source match {
+    (source: @unchecked) match {
       case hs: HashMap[K, V] => hs
       case _ => (newBuilder[K, V] ++= source).result()
     }
@@ -2373,7 +2373,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
 
   override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     ensureUnaliased()
-    xs match {
+    (xs: @unchecked) match {
       case hm: HashMap[K, V] =>
         new ChampBaseIterator[(K, V), MapNode[K, V]](hm.rootNode) {
           while(hasNext) {

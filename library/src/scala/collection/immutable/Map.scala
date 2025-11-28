@@ -212,7 +212,7 @@ object Map extends MapFactory[Map] {
   def empty[K, V]: Map[K, V] = EmptyMap.asInstanceOf[Map[K, V]]
 
   def from[K, V](it: IterableOnce[(K, V)]^): Map[K, V] =
-    it match {
+    (it: @unchecked) match {
       case it: Iterable[_] if it.isEmpty => empty[K, V]
       // Since IterableOnce[(K, V)] launders the variance of K,
       // identify only our implementations which can be soundly substituted.
@@ -253,7 +253,7 @@ object Map extends MapFactory[Map] {
     override def valuesIterator: Iterator[Nothing] = Iterator.empty
     def updated [V1] (key: Any, value: V1): Map[Any, V1] = new Map1(key, value)
     def removed(key: Any): Map[Any, Nothing] = this
-    override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]^): Map[Any, V2] = suffix match {
+    override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]^): Map[Any, V2] = (suffix: @unchecked) match {
       case m: immutable.Map[Any, V2] => m
       case _ => super.concat(suffix)
     }

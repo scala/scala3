@@ -48,7 +48,7 @@ object SeqMap extends MapFactory[SeqMap] {
   def empty[K, V]: SeqMap[K, V] = EmptySeqMap.asInstanceOf[SeqMap[K, V]]
 
   def from[K, V](it: collection.IterableOnce[(K, V)]^): SeqMap[K, V] =
-    it match {
+    (it: @unchecked) match {
       //case sm: SeqMap[K, V] => sm
       case m: ListMap[K, V]    => m
       case m: TreeSeqMap[K, V] => m

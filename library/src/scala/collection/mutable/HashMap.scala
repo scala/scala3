@@ -100,7 +100,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs)
 
-    xs match {
+    (xs: @unchecked) match {
       case hm: immutable.HashMap[K, V] =>
         hm.foreachWithHash((k, v, h) => put0(k, v, improveHash(h), getOld = false))
         this
@@ -193,7 +193,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       return this
     }
 
-    xs match {
+    (xs: @unchecked) match {
       case hs: immutable.HashSet[K] =>
         hs.foreachWithHashWhile { (k, h) =>
           remove0(k, improveHash(h))

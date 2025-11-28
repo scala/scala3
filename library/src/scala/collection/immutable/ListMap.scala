@@ -244,7 +244,7 @@ object ListMap extends MapFactory[ListMap] {
   private object EmptyListMap extends ListMap[Any, Nothing]
 
   def from[K, V](it: collection.IterableOnce[(K, V)]^): ListMap[K, V] =
-    it match {
+    (it: @unchecked) match {
       case lm: ListMap[K, V] => lm
       case lhm: collection.mutable.LinkedHashMap[K, V] =>
         // by directly iterating through LinkedHashMap entries, we save creating intermediate tuples for each
@@ -305,7 +305,7 @@ private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuil
   override def addOne(elem: (K, V)): this.type = addOne(elem._1, elem._2)
 
   @tailrec
-  private def insertValueAtKeyReturnFound(m: ListMap[K, V], key: K, value: V): Boolean = m match {
+  private def insertValueAtKeyReturnFound(m: ListMap[K, V], key: K, value: V): Boolean = (m: @unchecked) match {
     case n: ListMap.Node[K, V] =>
       if (n.key == key) {
         n._value = value
@@ -330,7 +330,7 @@ private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuil
     if (isAliased) {
       super.addAll(xs)
     } else if (underlying.nonEmpty) {
-      xs match {
+      (xs: @unchecked) match {
         case m: collection.Map[K, V] =>
           // if it is a map, then its keys will not collide with themselves.
           // therefor we only need to check the already-existing elements for collisions.
@@ -350,7 +350,7 @@ private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuil
         case _ =>
           super.addAll(xs)
       }
-    } else xs match {
+    } else (xs: @unchecked) match {
       case lhm: collection.mutable.LinkedHashMap[K, V] =>
         // special-casing LinkedHashMap avoids creating of Iterator and tuples for each key-value
         var firstEntry = lhm._firstEntry

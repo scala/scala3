@@ -95,7 +95,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
   }
 
   override def concat(that: IterableOnce[A]^): HashSet[A] =
-    that match {
+    (that: @unchecked) match {
       case hs: HashSet[A] =>
         if (isEmpty) hs
         else {
@@ -308,7 +308,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     this
   }
 
-  override def removedAll(that: IterableOnce[A]^): HashSet[A] = that match {
+  override def removedAll(that: IterableOnce[A]^): HashSet[A] = (that: @unchecked) match {
     case set: scala.collection.Set[A] => diff(set)
     case range: Range if range.length > size =>
       filter {
@@ -1940,7 +1940,7 @@ object HashSet extends IterableFactory[HashSet] {
     EmptySet.asInstanceOf[HashSet[A]]
 
   def from[A](source: collection.IterableOnce[A]^): HashSet[A] =
-    source match {
+    (source: @unchecked) match {
       case hs: HashSet[A] => hs
       case _ if source.knownSize == 0 => empty[A]
       case _ => (newBuilder[A] ++= source).result()
@@ -2082,7 +2082,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
 
   override def addAll(xs: IterableOnce[A]^) = {
     ensureUnaliased()
-    xs match {
+    (xs: @unchecked) match {
       case hm: HashSet[A] =>
         new ChampBaseIterator[A, SetNode[A]](hm.rootNode) {
           while(hasNext) {
