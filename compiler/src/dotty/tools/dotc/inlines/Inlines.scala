@@ -102,9 +102,19 @@ object Inlines:
    */
   def inlineCall(tree: Tree)(using Context): Tree = ctx.profiler.onInlineCall(tree.symbol):
 
-    /** Strip @retains annotations from types in the call tree */
-    val cleanupRetains = new TreeTypeMap(typeMap = CleanupRetains())
-    val tree0 = cleanupRetains.transform(tree)
+    /** Strip @retains annotations from inferred types in the call tree */
+    val stripRetains = CleanupRetains()
+    val stripper = new TreeTypeMap(
+      treeMap = {
+        case tree: InferredTypeTree =>
+          val stripped = stripRetains(tree.tpe)
+          if stripped ne tree.tpe then tree.withType(stripped)
+          else tree
+        case tree => tree
+      }
+    )
+
+    val tree0 = stripper.transform(tree)
 
     if tree0.symbol.denot.exists
       && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
