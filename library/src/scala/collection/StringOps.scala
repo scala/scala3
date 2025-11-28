@@ -392,13 +392,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     if (sLen >= len) s else {
       val sb = new JStringBuilder(len)
       sb.append(s)
-      // With JDK 11, this can written as:
-      // sb.append(String.valueOf(elem).repeat(len - sLen))
-      var i = sLen
-      while (i < len) {
-        sb.append(elem)
-        i += 1
-      }
+      sb.append(String.valueOf(elem).repeat(len - sLen))
       sb.toString
     }
   }
