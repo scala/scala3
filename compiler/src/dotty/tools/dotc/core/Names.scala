@@ -20,17 +20,15 @@ object Names {
    */
   type PreName = Name | String
 
-  /** A common superclass of Name and Symbol. After bootstrap, this should be
-   *  just the type alias Name | Symbol
-   */
-  abstract class Designator
+  /** A common type of Name and Symbol */
+  type Designator = Name | Symbols.Symbol
 
   /** A name is either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, Showable derives CanEqual {
+  abstract class Name extends Showable derives CanEqual {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
