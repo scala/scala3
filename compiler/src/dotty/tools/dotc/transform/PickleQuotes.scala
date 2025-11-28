@@ -15,7 +15,6 @@ import ast.TreeTypeMap
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.config.ScalaRelease.*
 
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.StdNames.*
