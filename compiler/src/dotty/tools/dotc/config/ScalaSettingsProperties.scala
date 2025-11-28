@@ -20,9 +20,6 @@ object ScalaSettingsProperties:
     val maxVersion = Math.min(jdkVersion, maxTargetVersion)
     (minReleaseVersion to maxVersion).toList.map(_.toString)
 
-  def supportedScalaReleaseVersions: List[String] =
-    ScalaRelease.values.toList.map(_.show)
-
   def supportedSourceVersions: List[String] =
     SourceVersion.values.diff(SourceVersion.illegalInSettings)
       .map(_.toString).toList
