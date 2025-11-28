@@ -1,4 +1,4 @@
-import language.experimental.packageObjectValues
+//> using options -preview
 
 package a:
   package object b:
