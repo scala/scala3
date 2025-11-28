@@ -1102,7 +1102,7 @@ object Types extends TypeUtils {
      * methods of [[java.lang.Object]], that also does not count toward the interface's
      * abstract method count.
      *
-     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     * @see https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/FunctionalInterface.html
      *
      * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
      *

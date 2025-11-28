@@ -463,7 +463,7 @@ object Erasure {
        *  will throw a `NullPointerException` instead. See `lambda-null.scala`
        *  for test cases.
        *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/javase/8/docs/api/java/lang/invoke/LambdaMetafactory.html)
+       *  @see [LambdaMetaFactory](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/invoke/LambdaMetafactory.html)
        */
       def autoAdaptedParam(tp: Type) =
         !tp.isErasedValueType && !tp.isPrimitiveValueType

@@ -796,7 +796,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     * If the separator character is a surrogate character, only split on
     * matching surrogate characters if they are not part of a surrogate pair
     *
-    * The behaviour follows, and is implemented in terms of <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#split-java.lang.String-">String.split(re: String)</a>
+    * The behaviour follows, and is implemented in terms of <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html#split(java.lang.String)">String.split(re: String)</a>
     *
     *
     * @example {{{
