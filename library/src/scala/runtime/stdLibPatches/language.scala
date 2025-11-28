@@ -3,10 +3,12 @@ package scala.runtime.stdLibPatches
 import scala.language.experimental.captureChecking
 
 import scala.annotation.compileTimeOnly
+import scala.annotation.publicInBinary
 
-/** Scala 3 additions and replacements to the `scala.language` object.
- */
-object language:
+/** Scala 3 additions and replacements to the `scala.language` object. */
+@publicInBinary
+@deprecated(message = "Patches are not applied to the stdlib anymore", since = "3.8.0")
+private[scala] object language:
 
   /** The experimental object contains features that have been recently added but have not
    *  been thoroughly tested in production yet.
