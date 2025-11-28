@@ -394,11 +394,38 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       adaptVarargs: Boolean)(using Context): Block = {
     AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ `union` _), adaptVarargs) { cls =>
       def forwarder(name: TermName, fn: TermSymbol) = {
-        val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
+        // Look up the SAM method from the parent to get its signature
+        val samMember = parents.head.member(name)
+        // Use SAM's signature if it exists and the SAM param erases to an array but the fn param
+        // does not. This handles cases like Array[? >: AnyRef] (erases to Object) vs
+        // Array[AnyRef] (erases to Array[Object]).
+        val useParentSig = samMember.exists && {
+          val samInfo = samMember.info
+          val fnInfo = fn.info
+          (samInfo, fnInfo) match
+            case (samMt: MethodType, fnMt: MethodType) =>
+              samMt.paramInfos.lazyZip(fnMt.paramInfos).exists { (samPt, fnPt) =>
+                val samErased = TypeErasure.erasure(samPt)
+                val fnErased = TypeErasure.erasure(fnPt)
+                // Only adapt when SAM expects an array but fn takes Object
+                samErased.isInstanceOf[JavaArrayType] && !fnErased.isInstanceOf[JavaArrayType]
+              }
+            case _ => false
+        }
+        val fwdMeth =
+          if useParentSig then
+            newSymbol(cls, name, Synthetic | Method | Final | Override, samMember.info).entered.asTerm
+          else
+            fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
         for overridden <- fwdMeth.allOverriddenSymbols do
           if overridden.is(Extension) then fwdMeth.setFlag(Extension)
           if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
-        DefDef(fwdMeth, ref(fn).appliedToArgss(_))
+        if useParentSig then
+          // Need to cast args from SAM param types to fn param types
+          DefDef(fwdMeth, argss =>
+            ref(fn).appliedToArgss(argss.map(_.map(arg => arg.cast(arg.tpe.widen)))))
+        else
+          DefDef(fwdMeth, ref(fn).appliedToArgss(_))
       }
       termForwarders.map((name, sym) => forwarder(name, sym)) ++
       typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
