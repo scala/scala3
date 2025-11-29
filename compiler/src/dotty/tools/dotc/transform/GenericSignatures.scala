@@ -246,6 +246,16 @@ object GenericSignatures {
             jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
           else typeParamSig(ref.paramName.lastPart)
 
+        case ref: TermRef if ref.symbol.isGetter =>
+          // If the type of a val is a TermRef to another val, generating the generic signature
+          // based on the underlying type will produce the type `scala.Function0<underlying>`
+          // The reason behind this is that during the `getters` phase, the same symbol will now
+          // refer to the getter where the type will be now `=> <underlying>`.
+          // Since the TermRef originally intended to capture the underlying type of a `val`,
+          // we recover that information by directly checking the resultType of the getter.
+          // See `tests/run/i24553.scala` for an example
+          jsig(ref.info.resultType, toplevel = toplevel, unboxedVCs = unboxedVCs)
+
         case ref: SingletonType =>
           // Singleton types like `x.type` need to be widened to their underlying type
           // For example, `def identity[A](x: A): x.type` should have signature 
