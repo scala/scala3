@@ -292,8 +292,8 @@ object Annotations {
     }
   }
 
-  /** An annotation rhat is used as a result of mapping annotations
-   *  to indicate that the resultign typemap should drop the annotation
+  /** An annotation that is used as a result of mapping annotations
+   *  to indicate that the resulting typemap should drop the annotation
    *  (in derivedAnnotatedType).
    */
   @sharable val EmptyAnnotation = Annotation(EmptyTree)
