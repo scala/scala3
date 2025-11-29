@@ -25,3 +25,5 @@ addSbtPlugin("com.gradle" % "sbt-develocity" % "1.3.1")
 addSbtPlugin("com.gradle" % "sbt-develocity-common-custom-user-data" % "1.1")
 
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
+
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.1.5")
