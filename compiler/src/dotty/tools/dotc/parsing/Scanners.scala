@@ -770,6 +770,7 @@ object Scanners {
               peekAhead()
               if isAfterLineEnd
                  && currentRegion.commasExpected
+                 && !currentRegion.preserveTrailingComma
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
                 // encountered a trailing comma
@@ -1660,6 +1661,17 @@ object Scanners {
       res
 
     def commasExpected = myCommasExpected
+
+    private var myPreserveTrailingComma: Boolean = false
+
+    inline def withPreserveTrailingComma[T](inline op: => T): T =
+      val saved = myPreserveTrailingComma
+      myPreserveTrailingComma = true
+      val res = op
+      myPreserveTrailingComma = saved
+      res
+
+    def preserveTrailingComma = myPreserveTrailingComma
 
     def toList: List[Region] =
       this :: (if outer == null then Nil else outer.toList)
