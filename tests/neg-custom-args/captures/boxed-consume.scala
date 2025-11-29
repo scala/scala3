@@ -17,6 +17,10 @@ def Test =
   h((e1, e2))  // no consume, still boxed
   println(e1)  // ok
 
+  class Ref extends Mutable
+  def i[T <: Ref](consume x: Ref): Ref = x
+
+
 
 
 

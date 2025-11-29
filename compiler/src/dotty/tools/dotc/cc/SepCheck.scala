@@ -833,6 +833,22 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t =>
               foldOver(c, t)
 
+    /** Check that no fresh caps from the bounds of parameters or abstract types
+     *  are hidden in the result. See issue #24539
+     */
+    def checkNoTParamBounds(refsToCheck: Refs, descr: => String, pos: SrcPos): Unit =
+      for ref <- refsToCheck do
+        ref match
+          case ref: FreshCap =>
+            ref.origin match
+              case Origin.InDecl(sym) if sym.isAbstractOrParamType =>
+                report.error(
+                  em"""Separation failure: $descr $ref, which appears in the bound of $sym.
+                      |This is not allowed. The $sym has to be returned explicitly in the result type.""",
+                  pos)
+              case _ =>
+          case _ =>
+
     /** If `tpe` appears as a (result-) type of a definition, treat its
      *  hidden set minus its explicitly declared footprint as consumed.
      *  If `tpe` appears as an argument to a consume parameter, treat
@@ -847,8 +863,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.transHiddenSet.directFootprint.nonPeaks.deduct(refs.directFootprint.nonPeaks)
-          checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
+          val refsStar = refs.transHiddenSet
+          val toCheck = refsStar.directFootprint.nonPeaks.deduct(refs.directFootprint.nonPeaks)
+          def descr = i"${role.description} $tpe hides"
+          checkConsumedRefs(toCheck, tpe, role, descr, pos)
+          checkNoTParamBounds(refsStar, descr, pos)
       case TypeRole.Argument(arg, _) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
           val capts = spanCaptures(arg).directFootprint.nonPeaks
