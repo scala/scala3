@@ -7,6 +7,9 @@ import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
 import printing.Texts.Text
+import cc.isRetainsLike
+import config.Feature
+import Decorators.*
 
 import scala.annotation.internal.sharable
 
@@ -53,33 +56,74 @@ object Annotations {
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
-    def mapWith(tm: TypeMap)(using Context) =
-      val args = tpd.allArguments(tree)
-      if args.isEmpty then this
-      else
-        // Checks if `tm` would result in any change by applying it to types
-        // inside the annotations' arguments and checking if the resulting types
-        // are different.
-        val findDiff = new TreeAccumulator[Type]:
-          def apply(x: Type, tree: Tree)(using Context): Type =
-            if tm.isRange(x) then x
-            else
-              val tp1 = tm(tree.tpe)
-              foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
-        val diff = findDiff(NoType, args)
-        if tm.isRange(diff) then EmptyAnnotation
-        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
-        else this
+    def mapWith(tm: TypeMap)(using Context): Annotation =
+      tpd.allArguments(tree) match
+        case Nil => this
+
+        case arg :: Nil if symbol.isRetainsLike =>
+          // Use a more efficient scheme to map retains and retainsByName annotations:
+          //  1. Map the type argument to a simple TypeTree instead of tree-mapping
+          //     the original tree. TODO Try to use this scheme for other annotations that
+          //     take only type arguments as well. We should wait until after 3.9 LTS to
+          //     do this, though.
+          //  2. Map all skolems (?n: T) to (?n: Any), and map all recursive captures of
+          //     that are not on CapSet to `^`. Skolems and capturing types on types
+          //     other than CapSet are not allowed in a retains annotation anyway,
+          //     so the underlying type does not matter. This simplification prevents
+          //     exponential blowup in some cases. See i24556.scala and i24556a.scala.
+          //  3. Drop the annotation entirely if CC is not enabled somehwere.
+
+          def sanitize(tp: Type): Type = tp match
+            case SkolemType(_) =>
+              SkolemType(defn.AnyType)
+            case tp @ AnnotatedType(parent, ann)
+            if ann.symbol.isRetainsLike && parent.typeSymbol != defn.Caps_CapSet =>
+              tp.derivedAnnotatedType(parent, Annotation(defn.RetainsCapAnnot, ann.tree.span))
+            case tp @ OrType(tp1, tp2) =>
+              tp.derivedOrType(sanitize(tp1), sanitize(tp2))
+            case _ =>
+              tp
+
+          def rebuild(tree: Tree, mappedType: Type): Tree = tree match
+            case Apply(fn, Nil) => cpy.Apply(tree)(rebuild(fn, mappedType), Nil)
+            case TypeApply(fn, arg :: Nil) => cpy.TypeApply(tree)(fn, TypeTree(mappedType) :: Nil)
+            case Block(Nil, expr) => rebuild(expr, mappedType)
+
+          if !Feature.ccEnabledSomewhere then
+            EmptyAnnotation // strip retains-like annotations unless capture checking is enabled
+          else
+            val mappedType = sanitize(tm(arg.tpe))
+            if mappedType `eql` arg.tpe then this
+            else derivedAnnotation(rebuild(tree, mappedType))
+
+        case args =>
+          // Checks if `tm` would result in any change by applying it to types
+          // inside the annotations' arguments and checking if the resulting types
+          // are different.
+          val findDiff = new TreeAccumulator[Type]:
+            def apply(x: Type, tree: Tree)(using Context): Type =
+              if tm.isRange(x) then x
+              else
+                val tp1 = tm(tree.tpe)
+                foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
+          val diff = findDiff(NoType, args)
+          if tm.isRange(diff) then EmptyAnnotation
+          else if diff.exists then derivedAnnotation(tm.mapOver(tree))
+          else this
+    end mapWith
 
     /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
-      val args = tpd.allArguments(tree)
-      if args.isEmpty then false
-      else tree.existsSubTree:
-        case id: (Ident | This) => id.tpe.stripped match
-          case TermParamRef(tl1, _) => tl eq tl1
-          case _ => false
+      def isLambdaParam(t: Type) = t match
+        case TermParamRef(tl1, _) => tl eq tl1
         case _ => false
+      tpd.allArguments(tree).exists: arg =>
+        if arg.isType then
+          arg.tpe.existsPart(isLambdaParam, stopAt = StopAt.Static)
+        else
+          arg.existsSubTree:
+            case id: (Ident | This) => isLambdaParam(id.tpe.stripped)
+            case _ => false
 
     /** A string representation of the annotation. Overridden in BodyAnnotation.
      */
@@ -248,6 +292,10 @@ object Annotations {
     }
   }
 
+  /** An annotation that is used as a result of mapping annotations
+   *  to indicate that the resulting typemap should drop the annotation
+   *  (in derivedAnnotatedType).
+   */
   @sharable val EmptyAnnotation = Annotation(EmptyTree)
 
   def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
@@ -303,7 +351,7 @@ object Annotations {
         case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
       }
   }
-  
+
   object PreviewAnnotation {
     /** Matches and extracts the message from an instance of `@preview(msg)`
      *  Returns `Some("")` for `@preview` with no message.
