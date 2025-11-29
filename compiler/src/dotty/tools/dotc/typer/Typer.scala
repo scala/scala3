@@ -4741,11 +4741,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val inlined = Inlines.inlineCall(tree)
           if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
           else inlined
-        else if (tree.symbol.isScala2Macro &&
-                // `raw`, `f` and `s` are eliminated by the StringInterpolatorOpt phase
-                tree.symbol != defn.StringContext_raw &&
-                tree.symbol != defn.StringContext_f &&
-                tree.symbol != defn.StringContext_s)
+        else if (tree.symbol.isScala2Macro)
           if (ctx.settings.XignoreScala2Macros.value) {
             report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html", tree.srcPos.startPos)
             Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
