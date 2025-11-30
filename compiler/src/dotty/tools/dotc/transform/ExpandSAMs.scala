@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import core.*
+import core.TypeErasure.erasure
 import Scopes.newScope
 import Contexts.*, Symbols.*, Types.*, Flags.*, Decorators.*, StdNames.*, Constants.*
 import MegaPhase.*
@@ -69,14 +70,52 @@ class ExpandSAMs extends MiniPhase:
             case _ => tp
           val tpe1 = collectAndStripRefinements(tpe)
           val Seq(samDenot) = tpe1.possibleSamMethods
-          cpy.Block(tree)(stats,
-            transformFollowingDeep:
-              AnonClass(List(tpe1),
-                List(samDenot.symbol.asTerm.name -> fn.symbol.asTerm),
-                refinements.toList,
-                adaptVarargs = true
+          val implSym = fn.symbol.asTerm
+
+          // Check if SAM param erases to array but impl param doesn't (see #23179).
+          // E.g. SAM expects Array[AnyRef] (erases to Array[Object]) but impl has
+          // Array[? >: AnyRef] (erases to Object). In this case we need to create
+          // a wrapper with the SAM signature that casts arguments before forwarding.
+          val samInfo = samDenot.info
+          val implInfo = implSym.info
+          val needsArrayAdaptation = (samInfo, implInfo) match
+            case (samMt: MethodType, implMt: MethodType) =>
+              samMt.paramInfos.lazyZip(implMt.paramInfos).exists { (samPt, implPt) =>
+                erasure(samPt).isInstanceOf[JavaArrayType] && !erasure(implPt).isInstanceOf[JavaArrayType]
+              }
+            case _ => false
+
+          val forwarderSym =
+            if needsArrayAdaptation then
+              // Create a wrapper method with SAM's signature that casts args to impl's types
+              val wrapperSym = newSymbol(
+                implSym.owner, implSym.name.asTermName, Synthetic | Method,
+                samInfo, coord = implSym.span).entered.asTerm
+              val wrapperDef = DefDef(wrapperSym, paramss => {
+                val implMt = implInfo.asInstanceOf[MethodType]
+                val adaptedArgs = paramss.head.lazyZip(implMt.paramInfos).map { (arg, implPt) =>
+                  if arg.tpe =:= implPt then arg else arg.cast(implPt)
+                }
+                ref(implSym).appliedToTermArgs(adaptedArgs)
+              })
+              cpy.Block(tree)(fn :: wrapperDef :: Nil,
+                transformFollowingDeep:
+                  AnonClass(List(tpe1),
+                    List(samDenot.symbol.asTerm.name -> wrapperSym),
+                    refinements.toList,
+                    adaptVarargs = true
+                  )
               )
-          )
+            else
+              cpy.Block(tree)(stats,
+                transformFollowingDeep:
+                  AnonClass(List(tpe1),
+                    List(samDenot.symbol.asTerm.name -> implSym),
+                    refinements.toList,
+                    adaptVarargs = true
+                  )
+              )
+          forwarderSym
       }
     case _ =>
       tree
