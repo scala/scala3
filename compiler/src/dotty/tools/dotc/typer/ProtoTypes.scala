@@ -133,7 +133,7 @@ object ProtoTypes {
 
       constFoldException(pt) || {
         if Inlines.isInlineable(meth) then
-          // Stricter behavisour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
           // unless their return type is a MatchType. In this case there's no reason
           // not to constrain type variables in the expected type. For transparent inlines
           // we do not want to constrain type variables in the expected type since the

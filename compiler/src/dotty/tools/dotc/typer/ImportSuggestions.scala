@@ -185,7 +185,7 @@ trait ImportSuggestions:
             // To regain precision, test both sides separately.
             test(ViewProto(argType, rt1)) || test(ViewProto(argType, rt2))
           case pt: ViewProto =>
-            pt.isMatchedBy(ref)
+            pt.isMatchedBy(ref, keepConstraint = false)
           case _ =>
             normalize(ref, pt) <:< pt
         test(pt)
