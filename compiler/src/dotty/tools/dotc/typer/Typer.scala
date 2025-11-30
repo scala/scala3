@@ -54,7 +54,7 @@ import transform.CheckUnused.OriginalName
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
-import dotty.tools.dotc.ast.untpd.Mod
+import dotty.tools.dotc.ast.untpd, untpd.Mod
 
 object Typer {
 
@@ -5009,29 +5009,41 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
     }
 
-    /** If `tree` is a constructor proxy reference, convert it to a `new` expression,
+    /** If `tree` is a constructor proxy reference, convert it to a `new` expression;
+     *  check if it is a reference to an exported type/companion pair;
      *  otherwise return EmptyTree.
      */
     def newExpr(tree: Tree): Tree =
-      val ctorResultType = applyProxyResultType(tree)
-      if !ctorResultType.exists then return EmptyTree
-      val qual = qualifier(tree)
-      val tpt = qual match
-        case Ident(name) =>
-          cpy.Ident(qual)(name.toTypeName)
-        case Select(pre, name) =>
-          cpy.Select(qual)(pre, name.toTypeName)
-        case qual: This if qual.symbol.is(ModuleClass) =>
-          cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
-        case _ =>
-          errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
-      typed(
-        untpd.Select(
-          untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
-          nme.CONSTRUCTOR),
-        pt)
-        .showing(i"convert creator $tree -> $result", typr)
+      def finish(tpt: untpd.Tree, tycon: Type): Tree =
+        typed(
+          untpd.Select(
+            untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
+            nme.CONSTRUCTOR),
+          pt
+        ).showing(i"convert creator $tree -> $result", typr)
+      var ctorResultType: Type = applyProxyResultType(tree)
+      if ctorResultType.exists then
+        val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
+        val qual = qualifier(tree)
+        val tpt = qual match
+          case Ident(name) =>
+            cpy.Ident(qual)(name.toTypeName)
+          case Select(pre, name) =>
+            cpy.Select(qual)(pre, name.toTypeName)
+          case qual: This if qual.symbol.is(ModuleClass) =>
+            cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
+          case _ =>
+            errorTree(tree, em"cannot convert from $tree to an instance creation expression")
+        finish(tpt, tycon)
+      else
+        if tree.symbol.isAllOf(SyntheticMethod | Exported) then
+          val sibling = tree.symbol.owner.info.memberBasedOnFlags(tree.symbol.name.toTypeName, required = Exported)
+          if sibling.exists then
+            ctorResultType = sibling.symbol.typeRef
+        if ctorResultType.exists then
+          finish(tree, ctorResultType)
+        else
+          EmptyTree
 
     /** If `tree` is a constructor proxy reference, return the type it constructs,
      *  otherwise return NoType.
@@ -5050,7 +5062,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // begin adapt1
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
-      case _ => tree.tpe.widen match {
+      case _ =>
+        tree.tpe.widen match
         case tp: FlexType =>
           ensureReported(tp)
           tree
@@ -5112,7 +5125,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)
           }
-      }
     }
   }
 
