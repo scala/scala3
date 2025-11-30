@@ -169,15 +169,6 @@ class BackendUtils(val postProcessor: PostProcessor) {
 
 object BackendUtils {
   lazy val classfileVersionMap: Map[Int, Int] = Map(
-    8 -> asm.Opcodes.V1_8,
-    9 -> asm.Opcodes.V9,
-    10 -> asm.Opcodes.V10,
-    11 -> asm.Opcodes.V11,
-    12 -> asm.Opcodes.V12,
-    13 -> asm.Opcodes.V13,
-    14 -> asm.Opcodes.V14,
-    15 -> asm.Opcodes.V15,
-    16 -> asm.Opcodes.V16,
     17 -> asm.Opcodes.V17,
     18 -> asm.Opcodes.V18,
     19 -> asm.Opcodes.V19,
