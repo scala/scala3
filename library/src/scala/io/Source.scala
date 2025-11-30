@@ -317,7 +317,7 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, msg, out)
   }
 
-  private def spaces(n: Int) = List.fill(n)(' ').mkString
+  private def spaces(n: Int) = " ".repeat(n)
   /**
    *  @param pos the source position (line/column)
    *  @param msg the error message to report
