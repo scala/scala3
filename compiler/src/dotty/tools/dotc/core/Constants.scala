@@ -147,46 +147,35 @@ object Constants {
       case _         => throw new Error("value " + value + " is not a Double")
     }
 
-    /** Convert constant value to conform to given type.
-     */
-    def convertTo(pt: Type)(using Context): Constant | Null = {
-      def classBound(pt: Type): Type = pt.dealias.stripTypeVar.stripNull() match {
-        case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
-          classBound(tref.info.bounds.lo)
-        case param: TypeParamRef =>
-          ctx.typerState.constraint.entry(param) match {
-            case TypeBounds(lo, hi) =>
-              if (hi.classSymbol.isPrimitiveValueClass) hi //constrain further with high bound
-              else classBound(lo)
-            case NoType => classBound(param.binder.paramInfos(param.paramNum).lo)
-            case inst => classBound(inst)
-          }
-        case pt => pt
-      }
-      pt match
-        case ConstantType(value) if value == this => this
-        case _: SingletonType => null
-        case _ =>
-          val target = classBound(pt).typeSymbol
-          if (target == tpe.typeSymbol)
-            this
-          else if ((target == defn.ByteClass) && isByteRange)
-            Constant(byteValue)
-          else if (target == defn.ShortClass && isShortRange)
-            Constant(shortValue)
-          else if (target == defn.CharClass && isCharRange)
-            Constant(charValue)
-          else if (target == defn.IntClass && isIntRange)
-            Constant(intValue)
-          else if (target == defn.LongClass && isLongRange)
-            Constant(longValue)
-          else if (target == defn.FloatClass && isFloatRange)
-            Constant(floatValue)
-          else if (target == defn.DoubleClass && isNumeric)
-            Constant(doubleValue)
-          else
-            null
-    }
+    /** Convert constant value to conform to given type. */
+    def convertTo(pt: Type)(using Context): Constant | Null = pt.dealias.stripTypeVar match
+      case ConstantType(value) if value == this => this
+      case _: SingletonType => null
+      case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
+        convertTo(tref.info.bounds.lo)
+      case param: TypeParamRef =>
+        ctx.typerState.constraint.entry(param) match
+          case TypeBounds(lo, hi) =>
+            val hiResult = convertTo(hi)
+            if hiResult != null then hiResult
+            else convertTo(lo)
+          case NoType => convertTo(param.binder.paramInfos(param.paramNum).lo)
+          case inst => convertTo(inst)
+      case pt: OrType =>
+        val leftResult = convertTo(pt.tp1)
+        if leftResult != null then leftResult
+        else convertTo(pt.tp2)
+      case pt =>
+        val target = pt.typeSymbol
+        if target == tpe.typeSymbol then this
+        else if (target == defn.ByteClass) && isByteRange then Constant(byteValue)
+        else if (target == defn.ShortClass) && isShortRange then Constant(shortValue)
+        else if (target == defn.CharClass) && isCharRange then Constant(charValue)
+        else if (target == defn.IntClass) && isIntRange then Constant(intValue)
+        else if (target == defn.LongClass) && isLongRange then Constant(longValue)
+        else if (target == defn.FloatClass) && isFloatRange then Constant(floatValue)
+        else if (target == defn.DoubleClass) && isNumeric then Constant(doubleValue)
+        else null
 
     def stringValue: String = value.toString
 
