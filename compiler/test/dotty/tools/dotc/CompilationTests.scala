@@ -30,7 +30,7 @@ class CompilationTests {
 
   @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    var tests = List(
+    val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
@@ -45,14 +45,14 @@ class CompilationTests {
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
+      compileFilesInDir("tests/pos/java-records", defaultOptions.and("-Wsafe-init")),
+      compileFilesInDir("tests/pos/i19386", defaultOptions.and("-Wsafe-init"))
     ) ::: (
       // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
       if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
       else Nil
     )
 
-    if scala.util.Properties.isJavaAtLeast("16") then
-      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Wsafe-init"))
 
     aggregateTests(tests*).checkCompile()
   }
