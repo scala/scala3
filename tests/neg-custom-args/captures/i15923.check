@@ -5,10 +5,12 @@
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (lcap: scala.caps.Capability^) ?->'s2 Cap^'s3 ->'s4 Id[Cap^'s5]^'s6
-   |Required: (lcap: scala.caps.Capability^) ?-> Cap^{lcap} => Id[Cap^'s1]^'s7
+   |Required: (lcap²: scala.caps.Capability^) ?-> Cap^{lcap²} => Id[Cap^'s1]^'s7
    |
-   |where:    =>  refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^): Cap^{lcap} => Id[Cap^'s1]^'s7
-   |          ^   refers to the universal root capability
-   |          cap is a root capability associated with the result type of (x$0: Cap^'s3): Id[Cap^'s5]^'s6
+   |where:    =>    refers to a root capability associated with the result type of (using lcap²: scala.caps.Capability^): Cap^{lcap²} => Id[Cap^'s1]^'s7
+   |          ^     refers to the universal root capability
+   |          cap   is a root capability associated with the result type of (x$0: Cap^'s3): Id[Cap^'s5]^'s6
+   |          lcap  is a reference to a value parameter
+   |          lcap² is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`
