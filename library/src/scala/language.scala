@@ -195,7 +195,7 @@ object language {
    *
    *  @group experimental
    */
-  object experimental {
+  object experimental:
 
     import languageFeature.experimental._
 
@@ -299,7 +299,7 @@ object language {
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
-    @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
+    @deprecated("The `into` language import is no longer needed since the feature is now in preview", since = "3.8")
     object into
 
     /** Experimental support for named tuples.
@@ -307,7 +307,7 @@ object language {
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
-    @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
+    @deprecated("`experimental.namedTuples` is now standard, no language import is needed", since = "3.7")
     object namedTuples
 
     /** Experimental support for new features for better modularity, including
@@ -327,7 +327,7 @@ object language {
       * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
       */
     @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
-    @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
+    @deprecated("`experimental.relaxedExtensionImports` is now standard, no language import is needed", since = "3.4")
     object relaxedExtensionImports
 
     /** Enhance match type extractors to follow aliases and singletons.
@@ -335,7 +335,7 @@ object language {
      *  @see [[https://github.com/scala/improvement-proposals/pull/84]]
      */
     @compileTimeOnly("`betterMatchTypeExtractors` can only be used at compile time in import statements")
-    @deprecated("The experimental.betterMatchTypeExtractors language import is no longer needed since the feature is now standard. It now has no effect, including when setting an older source version.", since = "3.6")
+    @deprecated("`experimental.betterMatchTypeExtractors` is now standard, no language import is needed", since = "3.6")
     object betterMatchTypeExtractors
 
     /** Experimental support for quote pattern matching with polymorphic functions
@@ -350,12 +350,13 @@ object language {
      * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
-    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stabilised and can be enabled using `-preview` flag", since = "3.7")
+    @deprecated("`experimental.betterFors` is now standard, no language import is needed", since = "3.7")
     object betterFors
 
     /** Experimental support for package object values
      */
     @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
+    @deprecated("The `experimental.packageObjectValues` language import is no longer needed since the feature is now in preview", since = "3.10")
     object packageObjectValues
 
     /** Experimental support for multiple spread arguments.
@@ -368,13 +369,13 @@ object language {
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
 
-   /** Experimental support for single-line lambdas and case clause expressions after `:`
+    /** Experimental support for single-line lambdas and case clause expressions after `:`
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
-  }
+  end experimental
 
-    /** The deprecated object contains features that are no longer officially suypported in Scala.
+  /** The deprecated object contains features that are no longer officially suypported in Scala.
    *  Features in this object are slated for removal. New code should not use them and
    *  old code should migrate away from them.
    */
