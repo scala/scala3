@@ -1,0 +1,6 @@
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i23459.scala:7:14 ------------------------------------------------
+7 |    case Test(x*) => println(x) // warn
+  |              ^
+  |the type test for Seq[Int]* cannot be checked at runtime because its type arguments can't be determined from Seq[Int]
+  |
+  | longer explanation available when compiling with `-explain`
