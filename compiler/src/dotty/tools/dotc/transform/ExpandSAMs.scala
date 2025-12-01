@@ -85,37 +85,35 @@ class ExpandSAMs extends MiniPhase:
               }
             case _ => false
 
-          val forwarderSym =
-            if needsArrayAdaptation then
-              // Create a wrapper method with SAM's signature that casts args to impl's types
-              val wrapperSym = newSymbol(
-                implSym.owner, implSym.name.asTermName, Synthetic | Method,
-                samInfo, coord = implSym.span).entered.asTerm
-              val wrapperDef = DefDef(wrapperSym, paramss => {
-                val implMt = implInfo.asInstanceOf[MethodType]
-                val adaptedArgs = paramss.head.lazyZip(implMt.paramInfos).map { (arg, implPt) =>
-                  if arg.tpe =:= implPt then arg else arg.cast(implPt)
-                }
-                ref(implSym).appliedToTermArgs(adaptedArgs)
-              })
-              cpy.Block(tree)(fn :: wrapperDef :: Nil,
-                transformFollowingDeep:
-                  AnonClass(List(tpe1),
-                    List(samDenot.symbol.asTerm.name -> wrapperSym),
-                    refinements.toList,
-                    adaptVarargs = true
-                  )
-              )
-            else
-              cpy.Block(tree)(stats,
-                transformFollowingDeep:
-                  AnonClass(List(tpe1),
-                    List(samDenot.symbol.asTerm.name -> implSym),
-                    refinements.toList,
-                    adaptVarargs = true
-                  )
-              )
-          forwarderSym
+          if needsArrayAdaptation then
+            // Create a wrapper method with SAM's signature that casts args to impl's types
+            val wrapperSym = newSymbol(
+              implSym.owner, implSym.name.asTermName, Synthetic | Method,
+              samInfo, coord = implSym.span).entered.asTerm
+            val wrapperDef = DefDef(wrapperSym, paramss => {
+              val implMt = implInfo.stripPoly.asInstanceOf[MethodType]
+              val adaptedArgs = paramss.head.lazyZip(implMt.paramInfos).map { (arg, implPt) =>
+                if arg.tpe =:= implPt then arg else arg.cast(implPt)
+              }
+              ref(implSym).appliedToTermArgs(adaptedArgs)
+            })
+            cpy.Block(tree)(fn :: wrapperDef :: Nil,
+              transformFollowingDeep:
+                AnonClass(List(tpe1),
+                  List(samDenot.symbol.asTerm.name -> wrapperSym),
+                  refinements.toList,
+                  adaptVarargs = true
+                )
+            )
+          else
+            cpy.Block(tree)(stats,
+              transformFollowingDeep:
+                AnonClass(List(tpe1),
+                  List(samDenot.symbol.asTerm.name -> implSym),
+                  refinements.toList,
+                  adaptVarargs = true
+                )
+            )
       }
     case _ =>
       tree
