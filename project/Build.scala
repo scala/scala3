@@ -1950,10 +1950,10 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions += "-Yexplicit-nulls",
-      Compile / scalacOptions ++= Seq(
+      Compile / compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / compile / scalacOptions += "-Yexplicit-nulls",
+      Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -2031,7 +2031,6 @@ object Build {
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
-    .settings(disableDocSetting) // TODO now produces empty JAR to satisfy Sonatype, see https://github.com/scala/scala3/issues/24434
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -2051,10 +2050,10 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions += "-Yexplicit-nulls",
-      Compile / scalacOptions ++= Seq(
+      Compile / compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / compile / scalacOptions += "-Yexplicit-nulls",
+      Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -2192,12 +2191,12 @@ object Build {
       Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
-      Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions += "-Yexplicit-nulls",
-      Compile / scalacOptions += "-scalajs",
+      Compile / compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
+      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / compile / scalacOptions += "-Yexplicit-nulls",
+      Compile / compile / scalacOptions += "-scalajs",
       // Configure the source maps to point to GitHub for releases
-      Compile / scalacOptions ++= {
+      Compile / compile / scalacOptions ++= {
         if (isRelease) {
           val baseURI = (LocalRootProject / baseDirectory).value.toURI
           val dottyVersion = version.value
