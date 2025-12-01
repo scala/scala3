@@ -483,7 +483,9 @@ object Erasure {
 
       val paramAdaptationNeeded =
         implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && !autoAdaptedParam(implType))
+          !sameClass(implType, samType) && (!autoAdaptedParam(implType)
+            // LambdaMetaFactory cannot auto-adapt between Object and Array types
+            || samType.isInstanceOf[JavaArrayType]))
       val resultAdaptationNeeded =
         !sameClass(implResultType, samResultType) && !autoAdaptedResult
 
