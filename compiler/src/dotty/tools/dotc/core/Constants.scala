@@ -147,6 +147,8 @@ object Constants {
       case _         => throw new Error("value " + value + " is not a Double")
     }
 
+    import dotty.tools.dotc.core.Decorators.i
+
     /** Convert constant value to conform to given type. */
     def convertTo(pt: Type)(using Context): Constant | Null = pt.dealias.stripTypeVar match
       case ConstantType(value) if value == this => this
@@ -162,9 +164,20 @@ object Constants {
           case NoType => convertTo(param.binder.paramInfos(param.paramNum).lo)
           case inst => convertTo(inst)
       case pt: OrType =>
+        // For a union type, if both sides convert to constants,
+        // return a constant only if two sides convert to the same constant
+        // (same value and same tag).
+        // For example, `2` can be converted to `Byte | String | Byte`,
+        // but not to `Byte | Int` (which would be ambiguous).
+        // TODO: However, the logic will not work here, since `2: Int` is already
+        // a subtype of `Byte | Int` before `adapt`.
         val leftResult = convertTo(pt.tp1)
-        if leftResult != null then leftResult
-        else convertTo(pt.tp2)
+        val rightResult = convertTo(pt.tp2)
+        // println(s"convertTo OrType: $this to $pt, leftResult = $leftResult, rightResult = $rightResult, compare = ${leftResult == rightResult}")
+        if leftResult == null then rightResult
+        else if rightResult == null then leftResult
+        else if leftResult == rightResult then leftResult
+        else null
       case pt =>
         val target = pt.typeSymbol
         if target == tpe.typeSymbol then this
