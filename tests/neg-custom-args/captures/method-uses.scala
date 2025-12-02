@@ -23,8 +23,8 @@ def test3(xs: List[() => Unit]): () ->{xs*} Unit = () =>
   def test4(xs: List[() => Unit]) = () => xs.head // error, ok under deferredReaches
 
   def test5(xs: List[() => Unit]) = new:
-    println(xs.head) // error, ok under deferredReaches // error
+    println(xs.head) // error, ok under deferredReaches
 
   def test6(xs: List[() => Unit]) =
-    val x= new { println(xs.head) } // error // error
+    val x= new { println(xs.head) } // error
     x
