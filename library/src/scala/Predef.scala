@@ -13,8 +13,8 @@
 package scala
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.language.implicitConversions
-
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
 import scala.annotation.{experimental, implicitNotFound, publicInBinary, targetName, nowarn }
 import scala.annotation.meta.{ companionClass, companionMethod }
@@ -552,7 +552,7 @@ object Predef extends LowPriorityImplicits {
    *  `(A => A) <: (A => B)`.
    */
   // $ to avoid accidental shadowing (e.g. scala/bug#7788)
-  implicit def $conforms[A]: A => A = <:<.refl
+  implicit def $conforms[A]: A -> A = <:<.refl
 
   // Extension methods for working with explicit nulls
 
