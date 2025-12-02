@@ -50,28 +50,30 @@ object GenericSignatures {
     val isTraitSignature = sym0.enclosingClass.is(Trait)
 
     // Collect class-level type parameter names from all enclosing classes to avoid conflicts with method-level type parameters
-    val usedNames = collection.mutable.Set.empty[String]
+    val usedNames = collection.mutable.Map.empty[String, Name]
     if(sym0.is(Method)) {
       var enclosing = sym0.enclosingClass
       while (enclosing.exists) {
         enclosing.typeParams.foreach { tp =>
-          usedNames += sanitizeName(tp.name)
+          usedNames(sanitizeName(tp.name)) = tp.name
         }
         enclosing = enclosing.owner.enclosingClass
       }
     }
-    val methodTypeParamRenaming = collection.mutable.Map.empty[String, String]
-    def freshTypeParamName(sanitizedName: String): String = {
-      if !usedNames.contains(sanitizedName) then sanitizedName
+    val methodTypeParamRenaming = collection.mutable.Map.empty[Name, Name]
+    def freshTypeParamName(originalName: Name): Name = {
+      val sanitizedName = sanitizeName(originalName)
+      if !usedNames.contains(sanitizedName) then originalName
       else {
         var i = 1
         var newName = sanitizedName + i
         while usedNames.contains(newName) do
           i += 1
           newName = sanitizedName + i
-        methodTypeParamRenaming(sanitizedName) = newName
-        usedNames += newName
-        newName
+        val freshName = newName.toTypeName
+        methodTypeParamRenaming(originalName) = freshName
+        usedNames(newName) = freshName
+        freshName
       }
     }
 
@@ -165,8 +167,8 @@ object GenericSignatures {
             Right(parent))
 
     def tparamSig(param: TypeParamInfo): Unit = {
-      val freshName = freshTypeParamName(sanitizeName(param.paramName.lastPart))
-      builder.append(freshName)
+      val freshName = freshTypeParamName(param.paramName.lastPart)
+      builder.append(sanitizeName(freshName))
       boundsSig(hiBounds(param.paramInfo.bounds))
     }
 
@@ -180,12 +182,6 @@ object GenericSignatures {
     def typeParamSig(name: Name): Unit = {
       builder.append(ClassfileConstants.TVAR_TAG)
       builder.append(sanitizeName(name))
-      builder.append(';')
-    }
-
-    def typeParamSigWithName(sanitizedName: String): Unit = {
-      builder.append(ClassfileConstants.TVAR_TAG)
-      builder.append(sanitizedName)
       builder.append(';')
     }
 
@@ -278,9 +274,9 @@ object GenericSignatures {
           if erasedUnderlying.isPrimitiveValueType then
             jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
           else {
-            val name = sanitizeName(ref.paramName.lastPart)
+            val name = ref.paramName.lastPart
             val nameToUse = methodTypeParamRenaming.getOrElse(name, name)
-            typeParamSigWithName(nameToUse)
+            typeParamSig(nameToUse)
           }
 
         case ref: TermRef if ref.symbol.isGetter =>
