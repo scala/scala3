@@ -1581,7 +1581,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
-      try testAdapted(actual, expected, tree, notes: List[Note])(err.typeMismatch)
+      try testAdapted(actual, expected, tree, notes)(err.typeMismatch)
       catch case ex: AssertionError =>
         println(i"error while checking $tree: $actual against $expected")
         throw ex
