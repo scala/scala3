@@ -22,6 +22,7 @@ import java.math.{
   RoundingMode => JRM,
 }
 import scala.collection.immutable.NumericRange
+import scala.runtime.ScalaRunTime.mapNull
 
 object BigDecimal {
   private final val maximumHashScale = 4934           // Quit maintaining hash identity with BigInt beyond this scale
@@ -304,8 +305,13 @@ object BigDecimal {
   /** Implicit conversion from `Double` to `BigDecimal`. */
   implicit def double2bigDecimal(d: Double): BigDecimal = decimal(d)
 
+  // For the following function, both the parameter and the return type are non-nullable.
+  // However, if a null reference is passed explicitly, this method will still return null.
+  // We intentionally keep this signature to discourage passing nulls implicitly while
+  // preserving the previous behavior for backward compatibility.
+
   /** Implicit conversion from `java.math.BigDecimal` to `scala.BigDecimal`. */
-  implicit def javaBigDecimal2bigDecimal(x: BigDec | Null): BigDecimal | Null = if (x == null) null else apply(x)
+  implicit def javaBigDecimal2bigDecimal(x: BigDec): BigDecimal = mapNull(x, apply(x))
 }
 
 /**
