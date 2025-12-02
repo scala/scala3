@@ -35,47 +35,15 @@ final class ReusableDataReader() extends DataReader {
 
   def reset(file: dotty.tools.io.AbstractFile): this.type = {
     this.size = 0
-    file.sizeOption match {
-      case Some(size) =>
-        if (size > data.length) {
-          data = new Array[Byte](nextPositivePowerOfTwo(size))
-        } else {
-          java.util.Arrays.fill(data, 0.toByte)
-        }
-        val input = file.input
-        try {
-          var endOfInput = false
-          while (!endOfInput) {
-            val remaining = data.length - this.size
-            if (remaining == 0) endOfInput = true
-            else {
-              val read = input.read(data, this.size, remaining)
-              if (read < 0) endOfInput = true
-              else this.size += read
-            }
-          }
-          bb = ByteBuffer.wrap(data, 0, size)
-        } finally {
-          input.close()
-        }
-      case None =>
-        val input = file.input
-        try {
-          var endOfInput = false
-          while (!endOfInput) {
-            val remaining = data.length - size
-            if (remaining == 0) {
-              data = java.util.Arrays.copyOf(data, nextPositivePowerOfTwo(size))
-            }
-            val read = input.read(data, this.size, data.length - this.size)
-            if (read < 0) endOfInput = true
-            else this.size += read
-          }
-          bb = ByteBuffer.wrap(data, 0, size)
-        } finally {
-          input.close()
-        }
+    val bytes = file.toByteArray
+    val size = bytes.length
+    if (size > data.length) {
+      data = new Array[Byte](nextPositivePowerOfTwo(size))
+    } else {
+      java.util.Arrays.fill(data, 0.toByte)
     }
+    System.arraycopy(bytes, 0, data, 0, size)
+    bb = ByteBuffer.wrap(data, 0, size)
     this
   }
 

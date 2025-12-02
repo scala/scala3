@@ -55,6 +55,20 @@ object AbstractFile {
     else new PlainFile(new Path(Paths.get(url.toURI)))
 
   def getResources(url: URL): AbstractFile = ZipArchive.fromManifestURL(url)
+
+  val cache = scala.collection.mutable.Map[String, (Long, Array[Byte])]()
+  inline def cachedBytes(file: AbstractFile)(compute: => Array[Byte]): Array[Byte] = {
+    val key = file.absolutePath
+    val lastModified = file.lastModified
+    cache.get(key) match {
+      case Some((modTime, bytes)) if modTime == lastModified =>
+        bytes
+      case _ =>
+        val bytes = compute
+        cache.update(key, (lastModified, bytes))
+        bytes
+    }
+  }
 }
 
 /**
@@ -169,7 +183,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns contents of file (if applicable) in a byte array.
    */
   @throws(classOf[IOException])
-  def toByteArray: Array[Byte] = {
+  def toByteArray: Array[Byte] = AbstractFile.cachedBytes(this) {
     val in = input
     sizeOption match {
       case Some(size) =>
