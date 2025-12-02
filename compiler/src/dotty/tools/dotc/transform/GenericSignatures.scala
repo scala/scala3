@@ -49,11 +49,15 @@ object GenericSignatures {
     val builder = new StringBuilder(64)
     val isTraitSignature = sym0.enclosingClass.is(Trait)
 
-    // Collect class-level type parameter names to avoid conflicts with method-level type parameters
+    // Collect class-level type parameter names from all enclosing classes to avoid conflicts with method-level type parameters
     val usedNames = collection.mutable.Set.empty[String]
     if(sym0.is(Method)) {
-      sym0.enclosingClass.typeParams.foreach { tp =>
-        usedNames += sanitizeName(tp.name)
+      var enclosing = sym0.enclosingClass
+      while (enclosing.exists) {
+        enclosing.typeParams.foreach { tp =>
+          usedNames += sanitizeName(tp.name)
+        }
+        enclosing = enclosing.owner.enclosingClass
       }
     }
     val methodTypeParamRenaming = collection.mutable.Map.empty[String, String]
