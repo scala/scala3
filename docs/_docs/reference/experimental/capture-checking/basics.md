@@ -66,7 +66,8 @@ val xs = usingLogFile { f =>
 }
 ```
 An error would be issued in the second case, but not the first one (this assumes a capture-aware
-formulation `LzyList` of lazily evaluated lists, which we will present later in this page).
+formulation `LzyList` of lazily evaluated lists, which we will present later in the chapter
+on [capture checking classes](classes.md)).
 
 It turns out that capture checking has very broad applications. Besides the various
 try-with-resources patterns, it can also be a key part to the solutions of many other long standing problems in programming languages. Among them:
