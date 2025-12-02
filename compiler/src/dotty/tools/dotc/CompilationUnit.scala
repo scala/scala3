@@ -162,7 +162,7 @@ object CompilationUnit {
    *  Used for `compiletime.testing.typeChecks`.
    */
   def apply(name: String, source: String): CompilationUnit = {
-    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+    val src = SourceFile.virtual(name = name, content = source)
     new CompilationUnit(src, null)
   }
 

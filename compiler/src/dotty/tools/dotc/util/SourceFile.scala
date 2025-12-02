@@ -104,10 +104,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     myContent
   }
 
-  private var _maybeInComplete: Boolean = false
-
-  def maybeIncomplete: Boolean = _maybeInComplete
-
   override def name: String = file.name
   override def path: String = file.path
   override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
@@ -252,9 +248,8 @@ object SourceFile {
   /** A source file with an underlying virtual file. The name is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
+  def virtual(name: String, content: String) =
     SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
-      .tap(_._maybeInComplete = maybeIncomplete)
 
   /** A helper method to create a virtual source file for given URI.
    *  It relies on SourceFile#virtual implementation to create the virtual file.
