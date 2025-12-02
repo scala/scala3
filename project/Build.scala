@@ -1983,7 +1983,8 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := false,
       // Generate library.properties, used by scala.util.Properties
-      Compile / resourceGenerators += generateLibraryProperties.taskValue
+      Compile / resourceGenerators += generateLibraryProperties.taskValue,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -2023,6 +2024,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
@@ -2112,6 +2114,7 @@ object Build {
       keepSJSIR := false,
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -2153,6 +2156,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
@@ -2291,6 +2295,7 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       // Should we also patch .sjsir files
       keepSJSIR := true,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
@@ -2332,6 +2337,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library",
+      mainClass := None,
     )
 
   // ==============================================================================================
