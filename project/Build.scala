@@ -164,6 +164,7 @@ object Build {
   val homepageUrl = "https://scala-lang.org/"
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
+  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
 
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
