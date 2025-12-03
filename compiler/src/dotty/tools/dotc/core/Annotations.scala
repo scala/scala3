@@ -117,13 +117,18 @@ object Annotations {
       def isLambdaParam(t: Type) = t match
         case TermParamRef(tl1, _) => tl eq tl1
         case _ => false
-      tpd.allArguments(tree).exists: arg =>
-        if arg.isType then
-          arg.tpe.existsPart(isLambdaParam, stopAt = StopAt.Static)
-        else
-          arg.existsSubTree:
+
+      val acc = new TreeAccumulator[Boolean]:
+        def apply(x: Boolean, t: Tree)(using Context) =
+          if x then true
+          else if t.isType then
+            t.tpe.existsPart(isLambdaParam, stopAt = StopAt.Static)
+          else t match
             case id: (Ident | This) => isLambdaParam(id.tpe.stripped)
-            case _ => false
+            case _ => foldOver(x, t)
+
+      tpd.allArguments(tree).exists(acc(false, _))
+    end refersToParamOf
 
     /** A string representation of the annotation. Overridden in BodyAnnotation.
      */
