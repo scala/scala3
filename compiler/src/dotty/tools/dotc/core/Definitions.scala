@@ -1763,7 +1763,7 @@ class Definitions {
     RootRef(() => ScalaPackageVal.termRef)
 
   private val PredefImportFns: RootRef =
-    RootRef(() => ScalaPredefModule.termRef, isPredef=true)
+    RootRef(() => ScalaPredefModule.termRef)
 
   @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { name =>
     val denot =

@@ -16,7 +16,7 @@ import scala.compiletime.uninitialized
 
 object ImportInfo {
 
-  case class RootRef(refFn: () => TermRef, isPredef: Boolean = false)
+  case class RootRef(refFn: () => TermRef)
 
   /** The import info for a root import */
   def rootImport(ref: RootRef)(using Context): ImportInfo =
@@ -24,9 +24,6 @@ object ImportInfo {
       untpd.ImportSelector(untpd.Ident(nme.WILDCARD))  // import all normal members...
       :: untpd.ImportSelector(untpd.Ident(nme.EMPTY))  // ... and also all given members
       :: Nil
-    if ref.isPredef then                               // do not import any2stringadd
-      selectors = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
-        :: selectors
 
     def sym(using Context) =
       val expr = tpd.Ident(ref.refFn()) // refFn must be called in the context of ImportInfo.sym
