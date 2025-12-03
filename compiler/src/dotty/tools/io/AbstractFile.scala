@@ -169,7 +169,9 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns contents of file (if applicable) in a byte array.
    */
   @throws(classOf[IOException])
-  def toByteArray: Array[Byte] = {
+  def toByteArray: Array[Byte] = _toByteArray
+
+  private lazy val _toByteArray: Array[Byte] = {
     val in = input
     sizeOption match {
       case Some(size) =>
