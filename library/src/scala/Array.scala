@@ -77,9 +77,9 @@ object Array {
     case _ => it.iterator.toArray[A]
   }
 
-  private def slowcopy(src : AnyRef,
+  private def slowcopy(src : AnyRef^,
                        srcPos : Int,
-                       dest : AnyRef,
+                       dest : AnyRef^,
                        destPos : Int,
                        length : Int): Unit = {
     var i = srcPos
@@ -107,7 +107,7 @@ object Array {
    *
    *  @see `java.lang.System#arraycopy`
    */
-  def copy(src: AnyRef, srcPos: Int, dest: AnyRef, destPos: Int, length: Int): Unit = {
+  def copy(src: AnyRef^, srcPos: Int, dest: AnyRef^, destPos: Int, length: Int): Unit = {
     val srcClass = src.getClass
     val destClass = dest.getClass
     if (srcClass.isArray && ((destClass eq srcClass) ||
