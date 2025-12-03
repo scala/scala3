@@ -6,7 +6,7 @@ trait Iterator[T] extends Stateful:
 
   def map[U](f: T => U): Iterator[U]^{Iterator.this, f} = new Iterator:
     def hasNext = Iterator.this.hasNext
-    update def next() = f(Iterator.this.next()) // error // error
+    update def next() = f(Iterator.this.next()) // error
 
 end Iterator
 
@@ -18,9 +18,9 @@ def listIterator[T](xs: List[T]): Iterator[T]^ = new Iterator[T]:
       current = xs1
       x
 
-def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U]^{it, f} = new Iterator:
+def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U]^{it, f} = new Iterator: // error
   def hasNext = it.hasNext
-  update def next() = f(it.next()) // error
+  update def next() = f(it.next())
 
 class IO extends SharedCapability:
   def write(x: Any): Unit = ()

@@ -1251,7 +1251,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedAhead(parent, tree => inferTypeParams(typedType(tree), pt))
         val anon = tpnme.ANON_CLASS
         val clsDef = TypeDef(anon, templ1).withFlags(Final | Synthetic)
-        typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(anon), Nil)), pt)
+        typed(
+          cpy.Block(tree)(
+            clsDef :: Nil,
+            New(Ident(anon), Nil).withSpan(tree.span)),
+          pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
         val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
