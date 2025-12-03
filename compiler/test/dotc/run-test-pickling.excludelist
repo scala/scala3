@@ -4,6 +4,7 @@
 derive-generic.scala
 eff-dependent.scala
 enum-java
+enum-java-scala
 i5257.scala
 i7212
 i7868.scala
