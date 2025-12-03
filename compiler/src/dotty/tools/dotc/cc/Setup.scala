@@ -84,6 +84,16 @@ object Setup:
         case _ => false
     case _ => None
 
+  def patchArrayClass()(using Context): Unit =
+    if ccConfig.strictMutability then
+      val arrayCls = defn.ArrayClass.asClass
+      arrayCls.info match
+        case oldInfo: ClassInfo if !arrayCls.derivesFrom(defn.Caps_Mutable) =>
+          arrayCls.info = oldInfo.derivedClassInfo(
+            declaredParents = oldInfo.declaredParents :+ defn.Caps_Mutable.typeRef)
+          arrayCls.invalidateBaseDataCache()
+        case _ =>
+
 end Setup
 import Setup.*
 
@@ -425,7 +435,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         then
           normalizeCaptures(mapOver(t)) match
             case t1 @ CapturingType(_, _) => t1
-            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1), boxed = false)
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1, sym, variance), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =

@@ -1,27 +1,18 @@
-import caps.*
+import caps.unsafe.untrackedCaptures
 
-class Ref[T](init: T) extends caps.Stateful, Unscoped:
-  var x = init
-  def get: T = x
-  update def put(y: T): Unit = x = y
+class ArrayBuffer[A] private (@untrackedCaptures initElems: Array[AnyRef]^, initLength: Int):
+  private var elems: Array[AnyRef]^ = initElems
+  private var start = 0
+  private var end = initLength
 
-class File:
-  def read(): String = ???
+  def +=(elem: A): this.type =
+    elems(end) = elem.asInstanceOf[AnyRef]
+    this
 
-def withFile[T](op: (f: File^) => T): T =
-  op(new File)
-
-def withFileAndRef[T](op: (f: File^, r: Ref[String]^) => T): T =
-  op(File(), Ref(""))
-
-def Test =
-/*
-  withFileAndRef: (f, r: Ref[String]^) =>
-    r.put(f.read())
-*/
-
-  withFileAndRef: (f, r) =>
-    r.put(f.read())
-
-
-
+  override def toString =
+    val slice = elems.slice(start, end)
+    val wrapped = wrapRefArray(slice)
+    //val wrapped2 = collection.mutable.ArraySeq.ofRef(slice)
+    val str = wrapped.mkString(", ")
+    str
+    //s"ArrayBuffer(${elems.slice(start, end).mkString(", ")})"

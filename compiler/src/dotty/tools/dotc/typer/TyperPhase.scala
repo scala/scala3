@@ -44,6 +44,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     val unit = ctx.compilationUnit
     try
       if !unit.suspended then ctx.profiler.onUnit(ctx.phase, unit):
+        if ctx.run.nn.ccEnabledSomewhere then cc.Setup.patchArrayClass()
         unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)

@@ -61,9 +61,12 @@ object ccConfig:
   def newScheme(using ctx: Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
+  /** Allow @use annotations */
   def allowUse(using Context): Boolean =
     Feature.sourceVersion.stable.isAtMost(SourceVersion.`3.7`)
 
-
+  /** Treat arrays as mutable types. Enabled under separation checking */
+  def strictMutability(using Context): Boolean =
+    Feature.enabled(Feature.separationChecking)
 
 end ccConfig

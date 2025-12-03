@@ -6,7 +6,7 @@ import scala.reflect.ClassTag
 import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
 import caps.cap
-import caps.unsafe.unsafeAssumeSeparate
+import caps.unsafe.{unsafeAssumeSeparate, untrackedCaptures}
 
 import language.experimental.captureChecking
 
@@ -295,12 +295,12 @@ object CollectionStrawMan5 {
   }
 
   /** Concrete collection type: ArrayBuffer */
-  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLength: Int)
+  class ArrayBuffer[A] private (@untrackedCaptures initElems: Array[AnyRef]^, initLength: Int)
   extends Seq[A] with SeqLike[A] with Builder[A, ArrayBuffer[A]] {
-    this: ArrayBuffer[A] =>
+    //this: ArrayBuffer[A] =>
     type C[X] = ArrayBuffer[X]
     def this() = this(new Array[AnyRef](16), 0)
-    private var elems: Array[AnyRef] = initElems
+    private var elems: Array[AnyRef]^ = initElems
     private var start = 0
     private var end = initLength
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
@@ -358,7 +358,7 @@ object CollectionStrawMan5 {
       }
   }
 
-  class ArrayBufferView[A](val elems: Array[AnyRef], val start: Int, val end: Int) extends RandomAccessView[A] {
+  class ArrayBufferView[A](@untrackedCaptures val elems: Array[AnyRef]^, val start: Int, val end: Int) extends RandomAccessView[A] {
     this: ArrayBufferView[A] =>
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
   }

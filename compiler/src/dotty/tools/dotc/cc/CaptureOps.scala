@@ -553,10 +553,13 @@ extension (sym: Symbol)
    *   - or it is a value class
    *   - or it is an exception
    *   - or it is one of Nothing, Null, or String
+   *  Arrays are not pure under strict mutability even though their self type is declared pure
+   *  in Arrays.scala.
    */
   def isPureClass(using Context): Boolean = sym match
     case cls: ClassSymbol =>
-      cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls)
+      (cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls))
+      && !(cls == defn.ArrayClass && ccConfig.strictMutability)
     case _ =>
       false
 
@@ -588,8 +591,8 @@ extension (sym: Symbol)
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
-  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures
-   *  and that is not a consume accessor.
+  /** It's a parameter accessor for a parameter that that is not annotated
+   *  @constructorOnly or @uncheckedCaptures and that is not a consume parameter.
    */
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
@@ -598,6 +601,17 @@ extension (sym: Symbol)
       !param.hasAnnotation(defn.ConstructorOnlyAnnot)
       && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
       && !param.hasAnnotation(defn.ConsumeAnnot)
+    }
+
+  /** It's a parameter accessor that is tracked for capture checking. Excluded are
+   *  accessors for parameters annotated with constructorOnly or @uncheckedCaptures.
+   */
+  def isTrackedParamAccessor(using Context): Boolean =
+    sym.is(ParamAccessor)
+    && {
+      val param = sym.owner.primaryConstructor.paramNamed(sym.name)
+      !param.hasAnnotation(defn.ConstructorOnlyAnnot)
+      && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
     }
 
   def hasTrackedParts(using Context): Boolean =
