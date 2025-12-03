@@ -471,10 +471,44 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     classfileParser.run()
 }
 
+object TastyLoader:
+
+  /** A cache of tasty bytes read from AbstractFiles to avoid reading and
+   *  decompressing the same tasty file over multiple compiler runs.
+   */
+  private val tastyBytesCache = collection.mutable.WeakHashMap[AbstractFile, (Array[Byte], Long)]()
+
+  /** Maximum number of files to cache tasty bytes for.
+   *
+   *  Heuristic: cache entries up to 10% of max memory, assuming an average
+   *  tasty file size of 10 KB (in the standard library, there are currently 936
+   *  tasty files totalling ~6.9 MB, which is ~7.4 KB per (uncompressed) tasty
+   *  file). For 1 GB max memory, this gives a cache size of ~10_000 entries,
+   *  which should be more than enough in practice.
+   *
+   *  This limit would probably only be reached when running many consecutive
+   *  compilations in the same JVM (e.g. in a build server).
+   */
+  private val maxTastyBytesCacheSize = Runtime.getRuntime.maxMemory() / 10 / 10_000
+
+  /** Get the bytes of the given tasty file, using the cache if possible. */
+  def getTastyBytes(tastyFile: AbstractFile): Array[Byte] =
+    tastyBytesCache.synchronized:
+      val modifiedTime = tastyFile.lastModified
+      tastyBytesCache.get(tastyFile) match
+        case Some((bytes, time)) if time == modifiedTime =>
+          bytes
+        case _ =>
+          val bytes = tastyFile.toByteArray
+          if tastyBytesCache.size >= maxTastyBytesCacheSize then
+            tastyBytesCache.clear()
+          tastyBytesCache.put(tastyFile, (bytes, modifiedTime))
+          bytes
+
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
   val isBestEffortTasty = tastyFile.hasBetastyExtension
 
-  lazy val tastyBytes = tastyFile.toByteArray
+  private def tastyBytes = TastyLoader.getTastyBytes(tastyFile)
 
   private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
