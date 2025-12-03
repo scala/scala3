@@ -125,13 +125,6 @@ object Build {
   // LTS or Next
   val versionLine = "Next"
 
-  // Versions used by the vscode extension to create a new project
-  // This should be the latest published releases.
-  // TODO: Have the vscode extension fetch these numbers from the Internet
-  // instead of hardcoding them ?
-  val publishedDottyVersion = referenceVersion
-  val sbtDottyVersion = "0.5.5"
-
   /** Minor version against which we check binary compatibility.
    *
    *  This must be the earliest published release in the same versioning line.
@@ -140,14 +133,6 @@ object Build {
    *   - `3.(M-1).0` if `P = 0`
    */
   val mimaPreviousDottyVersion = "3.7.3" // for 3.8.0, we compare against 3.7.3
-
-  /** LTS version against which we check binary compatibility.
-   *
-   *  This must be the earliest published release in the LTS versioning line.
-   *  For example, if the latest LTS release is be 3.3.4, then this must be
-   *  set to 3.3.0.
-   */
-  val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.10.1"
@@ -167,17 +152,6 @@ object Build {
     }
   }
 
-  /** scala-library version required to compile Dotty.
-   *
-   *  Both the non-bootstrapped and bootstrapped version should match, unless
-   *  we're in the process of upgrading to a new major version of
-   *  scala-library.
-   */
-  def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.16"
-    case Bootstrapped => "2.13.16"
-  }
-
   /** Version of the scala-library for which we will generate TASTy.
    *
    *  We should never use a nightly version here to release.
@@ -192,33 +166,11 @@ object Build {
   val dottyGithubUrl = "https://github.com/scala/scala3"
   val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
 
-  val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
-
-  val agentOptions = List(
-    // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
-    // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
-    // "-agentpath:/Applications/YourKit_Java_Profiler_2015_build_15052.app/Contents/Resources/bin/mac/libyjpagent.jnilib",
-    // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
-  )
-
-  // Packages all subprojects to their jars
-  val packageAll = taskKey[Map[String, String]]("Package everything needed to run tests")
-
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
-
-  // Used to run binaries similar to ./bin/scala script
-  val scala = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
-
-  val repl = taskKey[Unit]("spawns a repl with the correct classpath")
-
-  val buildQuick = taskKey[Unit]("builds the compiler and writes the classpath to bin/.cp to enable the bin/scalacQ and bin/scalaQ scripts")
-
-  // Compiles the documentation and static site
-  val genDocs = inputKey[Unit]("run scaladoc to generate static documentation site")
 
   // Settings used to configure the test language server
   val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
@@ -345,7 +297,7 @@ object Build {
     PgpKeys.useGpgPinentry := true,
 
     // Do not cut off the bottom of large stack traces (default is 1024)
-    javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions,
+    javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: Nil,
 
     excludeLintKeys ++= Set(
       // We set these settings in `commonSettings`, if a project
@@ -414,25 +366,6 @@ object Build {
         .withAutoBoot(false)      // no library on the compiler bootclasspath - we may need a more recent version
         .withFilterLibrary(false) // ...instead, we put it on the compiler classpath
     ),
-  )
-
-  lazy val commonScala2Settings = commonSettings ++ Seq(
-    scalaVersion := stdlibVersion(Bootstrapped),
-    moduleName ~= { _.stripSuffix("-scala2") },
-    version := dottyVersion,
-    target := baseDirectory.value / ".." / "out" / "scala-2" / name.value,
-
-    disableDocSetting
-  )
-
-  // Settings used when compiling dotty with the reference compiler
-  lazy val commonNonBootstrappedSettings = commonDottySettings ++ Seq(
-    (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-non-bootstrapped",
-
-    version := dottyNonBootstrappedVersion,
-    scalaVersion := referenceVersion,
-
-    disableDocSetting
   )
 
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
@@ -557,7 +490,7 @@ object Build {
     scalaVersion := dottyNonBootstrappedVersion,
 
     scalaCompilerBridgeBinaryJar := {
-      Some((`scala3-sbt-bridge` / Compile / packageBin).value)
+      Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
     },
 
     // Use the same name as the non-bootstrapped projects for the artifacts.
@@ -581,21 +514,21 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      val externalLibraryDeps = (`scala3-library` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-      val externalCompilerDeps = (`scala3-compiler` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
       // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
       // just directories containing classfiles because sbt maintains a cache of
       // compiler instances. This cache is invalidated based on timestamps
       // however this is only implemented on jars, directories are never
       // invalidated.
-      val tastyCore = (`tasty-core` / Compile / packageBin).value
-      val scala3Library = (`scala3-library` / Compile / packageBin).value
+      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+      val scala3Library = (`scala3-library-nonbootstrapped` / Compile / packageBin).value
+      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
       val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-      val scala3Compiler = (`scala3-compiler` / Compile / packageBin).value
+      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
 
-      val libraryJars = Array(scala3Library) ++ externalLibraryDeps
-      val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
+      val libraryJars = Array(scala3Library, scalaLibrary)
+      val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps
 
       Defaults.makeScalaInstance(
         scalaVersion.value,
@@ -612,8 +545,8 @@ object Build {
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
     doc / scalaInstance := {
-      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data)
-      val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value
+      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
       val docJars = Array(scalaDoc) ++ externalDeps
 
       val base = scalaInstance.value
@@ -632,15 +565,15 @@ object Build {
     Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
     // force recompilation of bootstrapped modules when the compiler changes
     Compile / extraDevelocityCacheInputFiles ++=
-      (`scala3-compiler` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
+      (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
   )
 
-  lazy val commonBenchmarkSettings = Seq(
+  /*lazy val commonBenchmarkSettings = Seq(
     Jmh / bspEnabled := false,
     Jmh / run / mainClass := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((`scala3-bootstrapped` / Compile / fullClasspath).value).mkString("", File.pathSeparator, ""),
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((`scala3-library-bootstrapped` / Compile / fullClasspath).value).mkString("", File.pathSeparator, "")
-  )
+  )*/
 
   lazy val commonMiMaSettings = Def.settings(
     mimaPreviousArtifacts += {
@@ -659,24 +592,6 @@ object Build {
 
     mimaExcludeAnnotations += "scala.annotation.experimental",
   )
-
-  /** Projects -------------------------------------------------------------- */
-
-  val dottyCompilerBootstrappedRef = LocalProject("scala3-compiler-bootstrapped")
-
-  /** External dependencies we may want to put on the compiler classpath. */
-  def externalCompilerClasspathTask: Def.Initialize[Task[Def.Classpath]] =
-    // Even if we're running the non-bootstrapped compiler, we want the
-    // dependencies of the bootstrapped compiler since we want to put them on
-    // the compiler classpath, not the JVM classpath.
-    (dottyCompilerBootstrappedRef / Runtime / externalDependencyClasspath)
-
-  // The root project:
-  // - aggregates other projects so that "compile", "test", etc are run on all projects at once.
-  // - publishes its own empty artifact "dotty" that depends on "scala3-library" and "scala3-compiler",
-  //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
-  lazy val scala3 = project.in(file(".")).asDottyRoot(NonBootstrapped)
-  lazy val `scala3-bootstrapped` = project.asDottyRoot(Bootstrapped)
 
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
     settings(commonJavaSettings).
@@ -761,624 +676,11 @@ object Build {
     recur(lines)
   }
 
-  // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
-  lazy val commonDottyCompilerSettings = Seq(
-      // Note: bench/profiles/projects.yml should be updated accordingly.
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
-
-      // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
-      Compile / scalacOptions -= "-Werror",
-
-      // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
-      scalacOptions ++= Seq("-source", "3.3"),
-
-      /* Ignore a deprecation warning about AnyRefMap in scalajs-ir. The latter
-       * cross-compiles for 2.12, and therefore AnyRefMap remains useful there
-       * for performance reasons.
-       * The build of Scala.js core does the same thing.
-       */
-      scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.mutable\\.AnyRefMap.*:s",
-
-      // Generate compiler.properties, used by sbt
-      (Compile / resourceGenerators) += generateCompilerProperties.taskValue,
-
-      // get libraries onboard
-      libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1", // used by the backend
-        Dependencies.compilerInterface,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
-      ),
-
-      // For convenience, change the baseDirectory when running the compiler
-      Compile / forkOptions := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
-      Compile / run / forkOptions := (Compile / run / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
-      // And when running the tests
-      Test / forkOptions := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
-
-      Test / test := {
-        // Exclude VulpixMetaTests
-        (Test / testOnly).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value
-      },
-
-      (Test / testOptions) += Tests.Argument(
-        TestFrameworks.JUnit,
-        "--run-listener=dotty.tools.ContextEscapeDetector",
-      ),
-
-      // Spawn new JVM in run and test
-
-      // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
-      packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
-
-      javaOptions ++= {
-        val log = streams.value.log
-        val managedSrcDir = {
-          // Populate the directory
-          (Compile / managedSources).value
-
-          (Compile / sourceManaged).value
-        }
-        val externalDeps = externalCompilerClasspathTask.value
-        val jars = packageAll.value
-
-        Seq(
-          "-Ddotty.tests.dottyCompilerManagedSources=" + managedSrcDir,
-          "-Ddotty.tests.classes.dottyInterfaces=" + jars("scala3-interfaces"),
-          "-Ddotty.tests.classes.dottyLibrary=" + jars("scala3-library"),
-          "-Ddotty.tests.classes.dottyCompiler=" + jars("scala3-compiler"),
-          "-Ddotty.tests.classes.tastyCore=" + jars("tasty-core"),
-          "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
-          "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
-          "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
-        )
-      },
-
-      javaOptions ++= Seq(
-        s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
-      ),
-
-      testCompilation := Def.inputTaskDyn {
-        val args = spaceDelimited("<arg>").parsed
-        if (args.contains("--help")) {
-          println(
-            s"""
-               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [<filter>]
-               |
-               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
-               |excluding tests tagged with dotty.SlowTests.
-               |
-               |  --help                show this message
-               |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
-               |  --update-checkfiles   override the checkfiles that did not match with the current output
-               |  --failed              re-run only failed tests
-               |  <filter>              substring of the path of the tests file
-               |
-             """.stripMargin
-          )
-          (Test / testOnly).toTask(" not.a.test")
-        }
-        else {
-          val updateCheckfile = args.contains("--update-checkfiles")
-          val rerunFailed = args.contains("--failed")
-          val fromTasty = args.contains("--from-tasty")
-          val args1 = if (updateCheckfile | fromTasty | rerunFailed) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed") else args
-          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
-          val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
-            (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
-            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
-            (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
-          (Test / testOnly).toTask(cmd)
-        }
-      }.evaluated,
-
-      Compile / mainClass := Some("dotty.tools.dotc.Main"),
-
-      scala := {
-        val args: List[String] = spaceDelimited("<arg>").parsed.toList
-        val externalDeps = externalCompilerClasspathTask.value
-        val jars = packageAll.value
-
-        val argsWithDefaultClasspath: List[String] =
-          if (args.contains("-classpath")) args
-          else insertClasspathInArgs(args, (baseDirectory.value / ".." / "out" / "default-last-scalac-out.jar").getPath)
-
-        val scalaLib = findArtifactPath(externalDeps, "scala-library")
-        val dottyLib = jars("scala3-library")
-
-        def run(args: List[String]): Unit = {
-          val fullArgs = insertClasspathInArgs(args, List(".", dottyLib, scalaLib).mkString(File.pathSeparator))
-          runProcess("java" :: fullArgs, wait = true)
-        }
-
-        if (args.isEmpty) {
-          println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
-        } else if (scalaLib == "") {
-          println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
-        } else if (args.contains("-with-compiler")) {
-          val args1 = argsWithDefaultClasspath.filter(_ != "-with-compiler")
-          val asm = findArtifactPath(externalDeps, "scala-asm")
-          val dottyCompiler = jars("scala3-compiler")
-          val dottyStaging = jars("scala3-staging")
-          val dottyTastyInspector = jars("scala3-tasty-inspector")
-          val dottyInterfaces = jars("scala3-interfaces")
-          val tastyCore = jars("tasty-core")
-          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
-        } else run(argsWithDefaultClasspath)
-      },
-
-      run := scalac.evaluated,
-      scalac := Def.inputTaskDyn {
-        val log = streams.value.log
-        val externalDeps = externalCompilerClasspathTask.value
-        val jars = packageAll.value
-        val scalaLib = findArtifactPath(externalDeps, "scala-library")
-        val dottyLib = jars("scala3-library")
-        val dottyCompiler = jars("scala3-compiler")
-        val args0: List[String] = spaceDelimited("<arg>").parsed.toList
-        val decompile = args0.contains("-decompile")
-        val printTasty = args0.contains("-print-tasty")
-        val debugFromTasty = args0.contains("-Ythrough-tasty")
-        val defaultOutputDirectory =
-          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil else List("-d", (baseDirectory.value / ".." / "out" / "default-last-scalac-out.jar").getPath)
-        val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
-        val main =
-          if (decompile) "dotty.tools.dotc.decompiler.Main"
-          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
-          else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
-          else "dotty.tools.dotc.Main"
-
-        var extraClasspath = Seq(scalaLib, dottyLib)
-
-        if (decompile && !args.contains("-classpath"))
-          extraClasspath ++= Seq(".")
-
-        if (args0.contains("-with-compiler")) {
-          if (scalaVersion.value == referenceVersion) {
-            log.error("-with-compiler should only be used with a bootstrapped compiler")
-          }
-          val dottyInterfaces = jars("scala3-interfaces")
-          val dottyStaging = jars("scala3-staging")
-          val dottyTastyInspector = jars("scala3-tasty-inspector")
-          val tastyCore = jars("tasty-core")
-          val asm = findArtifactPath(externalDeps, "scala-asm")
-          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
-        }
-
-        val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
-        val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
-
-        (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
-      }.evaluated,
-
-      /* Add the sources of scalajs-ir.
-       * To guarantee that dotty can bootstrap without depending on a version
-       * of scalajs-ir built with a different Scala compiler, we add its
-       * sources instead of depending on the binaries.
-       */
-      ivyConfigurations += SourceDeps.hide,
-      transitiveClassifiers := Seq("sources"),
-      libraryDependencies +=
-        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
-      (Compile / sourceGenerators) += Def.task {
-        val s = streams.value
-        val cacheDir = s.cacheDirectory
-        val trgDir = (Compile / sourceManaged).value / "scalajs-ir-src"
-
-        val report = updateClassifiers.value
-        val scalaJSIRSourcesJar = report.select(
-            configuration = configurationFilter("sourcedeps"),
-            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
-            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
-          sys.error(s"Could not fetch scalajs-ir sources")
-        }
-
-        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
-            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
-          if (trgDir.exists)
-            IO.delete(trgDir)
-          IO.createDirectory(trgDir)
-          IO.unzip(scalaJSIRSourcesJar, trgDir)
-
-          val sjsSources = (trgDir ** "*.scala").get.toSet
-          sjsSources.foreach(f => {
-            val lines = IO.readLines(f)
-            val linesWithPackage = replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
-            IO.writeLines(f, insertUnsafeNullsImport(linesWithPackage))
-          })
-          sjsSources
-        } (Set(scalaJSIRSourcesJar)).toSeq
-      }.taskValue,
-  )
-
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
     val classpath = fromCp.drop(1).headOption.fold(cp)(_ + File.pathSeparator + cp)
     "-classpath" :: classpath :: beforeCp ::: fromCp.drop(2)
   }
-
-  lazy val nonBootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    // packageAll packages all and then returns a map with the abs location
-    packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
-      Def.task {
-        Map(
-          "scala3-interfaces"    -> (`scala3-interfaces` / Compile / packageBin).value,
-          "scala3-compiler"      -> (Compile / packageBin).value,
-          "tasty-core"          -> (`tasty-core` / Compile / packageBin).value,
-
-          // NOTE: Using scala3-library-bootstrapped here is intentional: when
-          // running the compiler, we should always have the bootstrapped
-          // library on the compiler classpath since the non-bootstrapped one
-          // may not be binary-compatible.
-          "scala3-library"       -> (`scala3-library-bootstrapped` / Compile / packageBin).value
-        ).mapValues(_.getAbsolutePath)
-      }
-    }.value,
-
-    (Test / testOptions) += Tests.Argument(
-      TestFrameworks.JUnit,
-      "--exclude-categories=dotty.BootstrappedOnlyTests",
-    ),
-    // increase stack size for non-bootstrapped compiler, because some code
-    // is only tail-recursive after bootstrap
-    (Test / javaOptions) += "-Xss2m"
-  )
-
-  lazy val bootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    javaOptions ++= {
-      val jars = packageAll.value
-      Seq(
-        "-Ddotty.tests.classes.dottyStaging=" + jars("scala3-staging"),
-        "-Ddotty.tests.classes.dottyTastyInspector=" + jars("scala3-tasty-inspector"),
-      )
-    },
-    // For compatibility at this moment, both the bootstrapped and the non-bootstrapped
-    // compilers are compiled without flexible types.
-    // We should move the flag to commonDottyCompilerSettings once the reference
-    // compiler is updated.
-    // Then, the next step is to enable flexible types by default and reduce the use of
-    // `unsafeNulls`.
-    packageAll := {
-      (`scala3-compiler` / packageAll).value ++ Seq(
-        "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
-        "scala3-staging"  -> (LocalProject("scala3-staging") / Compile / packageBin).value.getAbsolutePath,
-        "scala3-tasty-inspector"  -> (LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.getAbsolutePath,
-        "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
-      )
-    },
-
-    repl := (Compile / console).value,
-    Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
-  )
-
-  def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
-    if (mode == NonBootstrapped) nonBootstrappedDottyCompilerSettings else bootstrappedDottyCompilerSettings
-
-  lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
-
-  lazy val Scala3CompilerCoursierTest = config("scala3CompilerCoursierTest") extend Test
-  lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
-    .configs(Scala3CompilerCoursierTest)
-    .settings(
-      inConfig(Scala3CompilerCoursierTest)(Defaults.testSettings),
-      Scala3CompilerCoursierTest / scalaSource := baseDirectory.value / "test-coursier",
-      Scala3CompilerCoursierTest / fork := true,
-      Scala3CompilerCoursierTest / envVars := Map("DOTTY_BOOTSTRAPPED_VERSION" -> dottyVersion),
-      Scala3CompilerCoursierTest / unmanagedClasspath += (Scala3CompilerCoursierTest / scalaSource).value,
-      Scala3CompilerCoursierTest / test := ((Scala3CompilerCoursierTest / test) dependsOn (
-          publishLocal, // Had to enumarate all deps since calling `scala3-bootstrap` / publishLocal will lead to recursive dependency => stack overflow
-          `scala3-interfaces` / publishLocal,
-          dottyLibrary(Bootstrapped) / publishLocal,
-          tastyCore(Bootstrapped) / publishLocal,
-        ),
-      ).value,
-    )
-
-  def dottyCompiler(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `scala3-compiler`
-    case Bootstrapped => `scala3-compiler-bootstrapped`
-  }
-
-  // Settings shared between scala3-library, scala3-library-bootstrapped and scala3-library-bootstrappedJS
-  def dottyLibrarySettings(implicit mode: Mode) = Seq(
-    versionScheme := Some("semver-spec"),
-    libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-    (Compile / scalacOptions) ++= Seq(
-      // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
-      // NOTE: Do not use `sourceDirectories` since `sources` are currently pinned until `3.8.0`
-      "-sourcepath", (Compile / sources).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
-      "-Yexplicit-nulls",
-    ),
-    (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
-    (Compile / packageSrc / mappings) ++= {
-      val auxBase = (ThisBuild / baseDirectory).value / "library-aux/src"
-      auxBase ** "*.scala" pair io.Path.relativeTo(auxBase)
-    },
-  )
-
-  lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
-    .settings(
-      // Note: extracted using `print scala3-library / Compile / sources`
-      // Only keep scala3 files until 3.8.0
-      Compile / sources := Seq(
-        file(s"${baseDirectory.value}/src/scala/Precise.scala"),
-        file(s"${baseDirectory.value}/src/scala/CanEqual.scala"),
-        file(s"${baseDirectory.value}/src/scala/Conversion.scala"),
-        file(s"${baseDirectory.value}/src/scala/PolyFunction.scala"),
-        file(s"${baseDirectory.value}/src/scala/IArray.scala"),
-        file(s"${baseDirectory.value}/src/scala/CanThrow.scala"),
-        file(s"${baseDirectory.value}/src/scala/Tuple.scala"),
-        file(s"${baseDirectory.value}/src/scala/Selectable.scala"),
-        file(s"${baseDirectory.value}/src/scala/main.scala"),
-        file(s"${baseDirectory.value}/src/scala/NamedTuple.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/FromDigits.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/CommandLineParser.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/TupledFunction.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/NotGiven.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/boundary.scala"),
-        file(s"${baseDirectory.value}/src/scala/caps/package.scala"),
-        file(s"${baseDirectory.value}/src/scala/caps/Pure.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/TypeTest.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/Selectable.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/Typeable.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/Enum.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TupleMirror.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TypeBox.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/Arrays.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TupledFunctions.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/FunctionXXL.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/Scala3RunTime.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/$$throws.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/LazyVals.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/EnumValue.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TupleXXL.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/Tuples.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/MatchCase.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/retains.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/capability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/static.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/transparentTrait.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/RefiningAnnotation.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/retainsByName.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/threadUnsafe.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/constructorOnly.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/experimental.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/MacroAnnotation.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/alpha.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/publicInBinary.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/init.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/unroll.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/targetName.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/stableNull.scala"),
-        file(s"${baseDirectory.value}/src/scala/deriving/Mirror.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/package.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Type.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Varargs.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Quotes.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Expr.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/ExprMap.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/FromExpr.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Exprs.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/ToExpr.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/control/NonLocalReturns.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/language.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/Predef.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure8.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure10.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure4.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure5.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure11.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure9.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure2.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure20.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure16.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure17.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure3.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure21.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure18.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure22.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure0.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure14.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure15.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure1.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure19.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure12.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure6.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure7.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure13.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/coverage/Invoker.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/ErasedParam.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/RuntimeChecked.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/CaptureChecked.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/ContextResultCount.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYSignature.java"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Alias.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/MappedAlternative.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Repeated.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/WithPureFuns.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Child.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/ProvisionalSuperClass.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/WitnessNames.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/AssignedNonLocally.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/preview.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/InlineParam.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/SourceFile.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/reachCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/$$into.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYLongSignature.java"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/readOnlyCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/unshared.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/AnnotationDefault.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/sharable.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Body.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/requiresCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCaptures.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/testing/Error.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/testing/ErrorKind.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/testing/package.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/long.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/any.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/int.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/string.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/double.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/boolean.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/float.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteUnpickler.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteMatching.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Expr.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Patterns.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/SplicedType.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/StopMacroExpansion.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/Erased.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/onlyCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/VarArgsBuilder.scala"),
-      )
-    )
-  lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
-    .settings(
-      // Note: extracted using `print scala3-library-bootstrapped / Compile / sources`
-      // Only keep scala3 files until 3.8.0
-      Compile / sources := Seq(
-        file(s"${baseDirectory.value}/src/scala/Precise.scala"),
-        file(s"${baseDirectory.value}/src/scala/CanEqual.scala"),
-        file(s"${baseDirectory.value}/src/scala/Conversion.scala"),
-        file(s"${baseDirectory.value}/src/scala/PolyFunction.scala"),
-        file(s"${baseDirectory.value}/src/scala/IArray.scala"),
-        file(s"${baseDirectory.value}/src/scala/CanThrow.scala"),
-        file(s"${baseDirectory.value}/src/scala/Tuple.scala"),
-        file(s"${baseDirectory.value}/src/scala/Selectable.scala"),
-        file(s"${baseDirectory.value}/src/scala/main.scala"),
-        file(s"${baseDirectory.value}/src/scala/NamedTuple.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/FromDigits.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/CommandLineParser.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/TupledFunction.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/NotGiven.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/boundary.scala"),
-        file(s"${baseDirectory.value}/src/scala/caps/package.scala"),
-        file(s"${baseDirectory.value}/src/scala/caps/Pure.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/TypeTest.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/Selectable.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/Typeable.scala"),
-        file(s"${baseDirectory.value}/src/scala/reflect/Enum.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TupleMirror.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TypeBox.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/Arrays.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TupledFunctions.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/FunctionXXL.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/Scala3RunTime.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/$$throws.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/LazyVals.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/EnumValue.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/TupleXXL.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/Tuples.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/MatchCase.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/retains.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/capability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/static.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/transparentTrait.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/RefiningAnnotation.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/retainsByName.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/threadUnsafe.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/constructorOnly.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/experimental.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/MacroAnnotation.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/alpha.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/publicInBinary.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/init.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/unroll.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/targetName.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/stableNull.scala"),
-        file(s"${baseDirectory.value}/src/scala/deriving/Mirror.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/package.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Type.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Varargs.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Quotes.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Expr.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/ExprMap.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/FromExpr.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/Exprs.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/ToExpr.scala"),
-        file(s"${baseDirectory.value}/src/scala/util/control/NonLocalReturns.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/language.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/Predef.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure8.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure10.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure4.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure5.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure11.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure9.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure2.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure20.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure16.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure17.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure3.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure21.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure18.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure22.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure0.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure14.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure15.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure1.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure19.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure12.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure6.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure7.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure13.java"),
-        file(s"${baseDirectory.value}/src/scala/runtime/coverage/Invoker.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/ErasedParam.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/RuntimeChecked.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/CaptureChecked.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/ContextResultCount.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYSignature.java"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Alias.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/MappedAlternative.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Repeated.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/WithPureFuns.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Child.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/ProvisionalSuperClass.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/WitnessNames.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/AssignedNonLocally.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/preview.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/InlineParam.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/SourceFile.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/reachCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/$$into.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYLongSignature.java"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/readOnlyCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/unshared.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/AnnotationDefault.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/sharable.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/Body.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/requiresCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCaptures.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/testing/Error.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/testing/ErrorKind.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/testing/package.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/long.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/any.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/int.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/string.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/double.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/boolean.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/ops/float.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteUnpickler.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteMatching.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Expr.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Patterns.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/SplicedType.scala"),
-        file(s"${baseDirectory.value}/src/scala/quoted/runtime/StopMacroExpansion.scala"),
-        file(s"${baseDirectory.value}/src/scala/compiletime/Erased.scala"),
-        file(s"${baseDirectory.value}/src/scala/annotation/internal/onlyCapability.scala"),
-        file(s"${baseDirectory.value}/src/scala/runtime/VarArgsBuilder.scala"),
-      )
-    )
 
   // ==============================================================================================
   // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
@@ -1576,7 +878,7 @@ object Build {
           val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath.toString
           val dottyStaging = (`scala3-staging-new` / Compile / packageBin).value.getAbsolutePath.toString
           val dottyTastyInspector = (`scala3-tasty-inspector-new` / Compile / packageBin).value.getAbsolutePath.toString
-          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath.toString
+          val tastyCore = (`tasty-core-bootstrapped-new` / Compile / packageBin).value.getAbsolutePath.toString
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
@@ -1628,7 +930,7 @@ object Build {
       scriptedBatchExecution := true,
       scriptedLaunchOpts ++= Seq(
         s"-Dplugin.scalaVersion=${dottyVersion}",
-        s"-Dplugin.scala2Version=${stdlibVersion(Bootstrapped)}",
+        s"-Dplugin.scala2Version=2.13.16",
         s"-Dplugin.scalaJSVersion=${scalaJSVersion}",
       ),
       scriptedBufferLog := true,
@@ -2867,121 +2169,8 @@ object Build {
       },
     )
 
-  def dottyLibrary(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `scala3-library`
-    case Bootstrapped => `scala3-library-bootstrapped`
-  }
-
-  /** The dotty standard library compiled with the Scala.js back-end, to produce
-   *  the corresponding .sjsir files.
-   *
-   *  This artifact must be on the classpath on every "Dotty.js" project.
-   *
-   *  Currently, only a very small fraction of the dotty library is actually
-   *  included in this project, and hence available to Dotty.js projects. More
-   *  will be added in the future as things are confirmed to be supported.
-   */
-  lazy val `scala3-library-bootstrappedJS`: Project = project.in(file("library-js")).
-    asDottyLibrary(Bootstrapped).
-    enablePlugins(DottyJSPlugin).
-    settings(
-      commonBootstrappedSettings,
-      libraryDependencies +=
-        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
-      // NOTE: Until 3.8.0, we pin the source files to be used by the scala3 library
-      Compile / sources := (`scala3-library-bootstrapped` / Compile / sources).value,
-      Compile / sources ++= Seq(
-        file(s"${baseDirectory.value}/src/scala/scalajs/js/internal/UnitOps.scala"),
-        file(s"${baseDirectory.value}/src/scala/scalajs/runtime/AnonFunctionXXL.scala"),
-      ),
-      // NOTE: We keep this so that the mappings are correct when packaging
-      Compile / unmanagedSourceDirectories ++=
-        (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-
-      // Configure the source maps to point to GitHub for releases
-      scalacOptions ++= {
-        if (isRelease) {
-          val baseURI = (LocalRootProject / baseDirectory).value.toURI
-          val dottyVersion = version.value
-          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/$dottyVersion/")
-        } else {
-          Nil
-        }
-      },
-
-      // Make sure `scala3-bootstrapped/test` doesn't fail on this project for no reason
-      Test / test := {},
-      Test / testOnly := {},
-    )
-
-  lazy val tastyCoreSettings = Seq(
-    scalacOptions += "-source:3.0-migration"
-  )
-
-  lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
-  lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
-  lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).asTastyCoreScala2
-
-  def tastyCore(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `tasty-core`
-    case Bootstrapped => `tasty-core-bootstrapped`
-  }
-
-  lazy val `scala3-staging` = project.in(file("staging")).
-    withCommonSettings(Bootstrapped).
-    // We want the compiler to be present in the compiler classpath when compiling this project but not
-    // when compiling a project that depends on scala3-staging (see sbt-test/sbt-dotty/quoted-example-project),
-    // but we always need it to be present on the JVM classpath at runtime.
-    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
-    )
-
-  lazy val `scala3-tasty-inspector` = project.in(file("tasty-inspector")).
-    withCommonSettings(Bootstrapped).
-    // We want the compiler to be present in the compiler classpath when compiling this project but not
-    // when compiling a project that depends on scala3-tasty-inspector (see sbt-test/sbt-dotty/tasty-inspector-example-project),
-    // but we always need it to be present on the JVM classpath at runtime.
-    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
-    )
-
-  lazy val `scala3-sbt-bridge` = project.in(file("sbt-bridge/src")).
-    // We cannot depend on any bootstrapped project to compile the bridge, since the
-    // bridge is needed to compile these projects.
-    dependsOn(`scala3-compiler` % Provided).
-    settings(commonJavaSettings).
-    settings(
-      description := "sbt compiler bridge for Dotty",
-
-      Test / sources := Seq(),
-      Compile / scalaSource := baseDirectory.value,
-      Compile / javaSource := baseDirectory.value,
-      Compile / resourceDirectory := baseDirectory.value.getParentFile / "resources",
-
-      // Referring to the other project using a string avoids an infinite loop
-      // when sbt reads the settings.
-      Test / test := (LocalProject("scala3-sbt-bridge-tests") / Test / test).value,
-
-      libraryDependencies += Dependencies.compilerInterface % Provided
-    )
-
-  // We use a separate project for the bridge tests since they can only be run
-  // with the bootstrapped library on the classpath.
-  lazy val `scala3-sbt-bridge-tests` = project.in(file("sbt-bridge/test")).
-    dependsOn(dottyCompiler(Bootstrapped) % Test).
-    dependsOn(`scala3-sbt-bridge`).
-    settings(commonBootstrappedSettings).
-    settings(
-      Compile / sources := Seq(),
-      Test / scalaSource := baseDirectory.value,
-      Test / javaSource := baseDirectory.value,
-      libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
-    )
-
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
-    .withCommonSettings(Bootstrapped)
+    .settings(commonBootstrappedSettings)
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-library-bootstrapped-new`, `scala3-presentation-compiler-testcases` % "test->test")
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
@@ -3054,7 +2243,7 @@ object Build {
   }
 
   lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
-    .dependsOn(`scala3-compiler-bootstrapped`)
+    .dependsOn(`scala3-compiler-bootstrapped-new`)
     .settings(commonBootstrappedSettings)
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
@@ -3070,10 +2259,10 @@ object Build {
       // Exclude the dependency that is resolved transively, the stdlib
       // is a project dependency instead
       excludeDependencies += "org.scala-lang" %% "scala3-library",
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
+      javaOptions := (`scala3-compiler-bootstrapped-new` / javaOptions).value,
     ).
     settings(
-      ideTestsCompilerVersion := (`scala3-compiler` / version).value,
+      ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
       ideTestsCompilerArguments := Seq(),
       ideTestsDependencyClasspath := {
         val scalaLib = (`scala-library-bootstrapped` / Compile / classDirectory).value
@@ -3427,13 +2616,13 @@ object Build {
       Test / forkOptions := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
     )
 
-  lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
-  lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
-  lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
+  //lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
+  //lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
+  //lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
-  lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
+  /*lazy val `scala3-bench-micro` = project.in(file("bench-micro"))
     .asDottyBench(Bootstrapped)
-    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))
+    .settings(Jmh / run / mainClass := Some("org.openjdk.jmh.Main"))*/
 
   val testcasesOutputDir = taskKey[Seq[String]]("Root directory where tests classes are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
@@ -3453,7 +2642,7 @@ object Build {
   val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
-    dependsOn(`scala3-compiler-bootstrapped`).
+    dependsOn(`scala3-compiler-bootstrapped-new`).
     settings(commonBootstrappedSettings)
 
 
@@ -3466,7 +2655,7 @@ object Build {
    */
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scala3-library-sjs`).
     settings(
       commonBootstrappedSettings,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
@@ -3533,8 +2722,8 @@ object Build {
   lazy val scaladoc = project.in(file("scaladoc")).
     configs(SourceLinksIntegrationTest).
     settings(commonBootstrappedSettings).
-    dependsOn(`scala3-compiler-bootstrapped`).
-    dependsOn(`scala3-tasty-inspector`).
+    dependsOn(`scala3-compiler-bootstrapped-new`).
+    dependsOn(`scala3-tasty-inspector-new`).
     settings(inConfig(SourceLinksIntegrationTest)(Defaults.testSettings)).
     settings(
       SourceLinksIntegrationTest / scalaSource := baseDirectory.value / "test-source-links",
@@ -3632,7 +2821,7 @@ object Build {
               |  <aside class="warning">
               |    <div class='icon'></div>
               |    <div class='content'>
-              |      This is a nightly documentation. The content of this page may not be consistent with the current stable version of language. 
+              |      This is a nightly documentation. The content of this page may not be consistent with the current stable version of language.
               |      Click <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this page.
               |    </div>
               |  </aside>
@@ -3854,7 +3043,7 @@ object Build {
     ),
   )
 
-  lazy val commonDistSettings = Seq(
+  /*lazy val commonDistSettings = Seq(
     publishArtifact := false,
     republishRepo := target.value / "republish",
     Universal / packageName := packageName.value,
@@ -3879,9 +3068,9 @@ object Build {
     republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
     republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
     republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
-  )
+  )*/
 
-  lazy val dist = project.asDist(Bootstrapped)
+  /*lazy val dist = project.asDist(Bootstrapped)
     .settings(packageName := "scala3-" + dottyVersion)
     .settings(
       republishLibexecDir := baseDirectory.value / "libexec",
@@ -3889,9 +3078,9 @@ object Build {
         ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
       republishLaunchers +=
         ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
-    )
+    )*/
 
-  lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
+  /*lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-apple-darwin")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3899,9 +3088,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
-    )
+    )*/
 
-  lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+  /*lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-apple-darwin")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3909,9 +3098,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
-    )
+    )*/
 
-  lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
+  /*lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
     .enablePlugins(WindowsPlugin) // TO GENERATE THE `.msi` installer
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-win32")
     .settings(
@@ -3936,9 +3125,9 @@ object Build {
       wixProductId := "*",                                                        // Unique ID for each generated MSI; will change for each generated msi
       wixProductUpgradeId := "3E5A1A82-CA67-4353-94FE-5BDD400AF66B",              // Unique ID to identify the package; used to manage the upgrades
       wixProductLicense := Some(dist.base / "LICENSE.rtf")                        // Link to the LICENSE to show during the installation (keep in sync with ../LICENSE)
-    )
+    )*/
 
-  lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
+  /*lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3946,9 +3135,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
-    )
+    )*/
 
-  lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+  /*lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-pc-linux")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3956,7 +3145,7 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
-    )
+    )*/
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
@@ -3969,100 +3158,12 @@ object Build {
 
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 
-    // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
-    def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`).
-      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`,
-        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
-      dependsOn(tastyCore).
-      dependsOn(dottyCompiler).
-      dependsOn(dottyLibrary).
-      bootstrappedSettings(
-        addCommandAlias("clean", ";scala3-bootstrapped/clean"),
-      ).
-      nonBootstrappedSettings(
-        addCommandAlias("run", "scala3-compiler/run"),
-        // Clean everything by default
-        addCommandAlias("clean", ";scala3/clean;scala3-bootstrapped/clean"),
-        // `publishLocal` on the non-bootstrapped compiler does not produce a
-        // working distribution (it can't in general, since there's no guarantee
-        // that the non-bootstrapped library is compatible with the
-        // non-bootstrapped compiler), so publish the bootstrapped one by
-        // default.
-        addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
-        repl := (`scala3-compiler-bootstrapped` / repl).value,
-        buildQuick := {
-          val _ = (`scala3-compiler` / Compile / compile).value
-          val cp = (`scala3-compiler` / Compile / fullClasspath).value.map(_.data.getAbsolutePath).mkString(File.pathSeparator)
-          IO.write(baseDirectory.value / "bin" / ".cp", cp)
-        },
-        (Compile / console) := (Compile / console).dependsOn(Def.task {
-          import _root_.scala.io.AnsiColor._
-          val msg = "`console` uses the reference Scala version. Use `repl` instead."
-          val f = "═" * (msg.length + 2)
-          val box =
-            s"""╔$f╗
-               |║ ${BOLD}$msg$RESET ║
-               |╚$f╝""".stripMargin
-          streams.value.log.warn(box)
-        }).value,
-      ).
-      settings(
-        publish / skip := true
-      )
-
-    def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(`scala3-interfaces`).
-      dependsOn(dottyLibrary).
-      dependsOn(tastyCore).
-      settings(dottyCompilerSettings)
-
-    def asDottyLibrary(implicit mode: Mode): Project = {
-      val base = project
-        .withCommonSettings
-        .settings(dottyLibrarySettings)
-      if (mode == Bootstrapped) {
-        base.settings(
-          (Compile/doc) := {
-            // Workaround for
-            // [error]    |object IArray cannot have the same name as object IArray in package scala
-            // -- cannot define object member with the same name as a object member in self reference _.
-            val doWork = (Compile/doc).result.value
-            (Compile/doc/target).value
-          },
-        )
-      } else base
-    }
-
-
-    def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyLibrary).
-      settings(tastyCoreSettings).
-      settings(disableDocSetting).
-      settings(
-        versionScheme := Some("semver-spec"),
-        Test / envVars ++= Map(
-          "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
-        ),
-      )
-
-    def asTastyCoreScala2: Project = project
-      .settings(commonScala2Settings)
-      // need to add @annotation.internal.sharable to the classpath for compiling
-      // we don't actually publish this library anywhere, so it's fine.
-      // if someone depends on the sources of tasty-core in a scala 2 project,
-      // they should strip the sharable annotation, or add -Ytasty-reader
-      .dependsOn(dottyLibrary(NonBootstrapped) % Provided)
-      .settings(
-        scalacOptions += "-Ytasty-reader" // to read scala3 library
-      )
-
-    def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
+    /*def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
-      enablePlugins(JmhPlugin)
+      enablePlugins(JmhPlugin)*/
 
-    def asDist(implicit mode: Mode): Project = project.
+    /*def asDist(implicit mode: Mode): Project = project.
       enablePlugins(UniversalPlugin, RepublishPlugin).
       withCommonSettings.
       settings(commonDistSettings).
@@ -4078,12 +3179,7 @@ object Build {
       ).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
-      )
-
-    def withCommonSettings(implicit mode: Mode): Project = project.settings(mode match {
-      case NonBootstrapped => commonNonBootstrappedSettings
-      case Bootstrapped => commonBootstrappedSettings
-    })
+      )*/
 
   }
 
