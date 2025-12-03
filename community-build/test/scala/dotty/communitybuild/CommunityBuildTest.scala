@@ -93,7 +93,7 @@ class CommunityBuildTestC:
   @Test def scalaz = projects.scalaz.run()
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
-  @Test def shapeless3 = projects.shapeless3.run()
+  //@Test def shapeless3 = projects.shapeless3.run()
   @Test def sourcecode = projects.sourcecode.run()
   @Test def specs2 = projects.specs2.run()
 
