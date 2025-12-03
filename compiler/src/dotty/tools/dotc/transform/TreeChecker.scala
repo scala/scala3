@@ -710,12 +710,6 @@ object TreeChecker {
       super.typedWhileDo(tree)
     }
 
-    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
-      if tree.symbol == defn.StdLibPatchesPackage then
-        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
-      else
-        super.typedPackageDef(tree)
-
     override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
       if ctx.phase <= stagingPhase.prev then
         assert(tree.tags.isEmpty, i"unexpected tags in Quote before staging phase: ${tree.tags}")

@@ -1353,7 +1353,6 @@ object Build {
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
-      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
       Compile / compile / scalacOptions += "-Yexplicit-nulls",
       Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
@@ -1494,7 +1493,6 @@ object Build {
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
-      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
       Compile / compile / scalacOptions += "-Yexplicit-nulls",
       Compile / compile / scalacOptions += "-scalajs",
       // Configure the source maps to point to GitHub for releases
