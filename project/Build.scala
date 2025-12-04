@@ -1419,7 +1419,7 @@ object Build {
       Compile / classDirectory := (`scala-library-bootstrapped` / Compile / classDirectory).value,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1592,7 +1592,7 @@ object Build {
       Test / run     := (`scala-library-sjs` / Test / run).evaluated,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
