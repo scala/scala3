@@ -203,6 +203,7 @@ jobs:
       # Each namespace needs to be published separately
       - name: Publish Release (org.scala-lang)
         run: |
+          rm -rf ./target/sona-staging/
           ./project/scripts/sbtPublish " \
             all \
               scala-library-bootstrapped/publishSigned \
@@ -221,7 +222,9 @@ jobs:
             ;sonaUpload"
 
       - name: Publish Release (org.scala-js)
-        run: ./project/scripts/sbtPublish "clean; scala-library-sjs/publishSigned ;sonaUpload"
+        run: |
+          rm -rf ./target/sona-staging/
+          ./project/scripts/sbtPublish "scala-library-sjs/publishSigned ;sonaUpload"
 
   #build-msi-package:
   #  uses: ./.github/workflows/build-msi.yml
