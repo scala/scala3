@@ -303,12 +303,18 @@ object NameKinds {
   /** The name of an inferred contextual function parameter:
    *
    *      val x: A ?=> B = b
+   *      val f: (x: A) ?=> B = b
    *
    *  becomes:
    *
    *      val x: A ?=> B = (contextual$1: A) ?=> b
+   *      val f: (x: A) ?=> B = (xcontextual$1: A) ?=> b
    */
-  val ContextFunctionParamName: UniqueNameKind = new UniqueNameKind("contextual$")
+  val ContextFunctionParamName: UniqueNameKind =
+    new UniqueNameKind("contextual$"):
+      override def mkString(underlying: TermName, info: ThisInfo): String =
+        if !underlying.isEmpty then str.sanitize(underlying.toString)
+        else separator + info.num
 
   /** Other unique names */
   val CanThrowEvidenceName: UniqueNameKind   = new UniqueNameKind("canThrow$")
