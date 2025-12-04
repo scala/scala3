@@ -347,6 +347,8 @@ loophole()
 But this will not compile either, since the capture set of the mutable variable `loophole` cannot refer to variable `f`, which is not visible
 where `loophole` is defined.
 
+### Monotonicity Rule
+
 Looking at object graphs, we observe a monotonicity property: The capture set of an object `x` covers the capture sets of all objects reachable through `x`. This property is reflected in the type system by the following _monotonicity rule_:
 
  - In a class `C` with a field `f`, the capture set `{this}` covers the capture set `{this.f}` as well as the capture set of any application of `this.f` to pure arguments.
