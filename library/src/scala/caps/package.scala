@@ -4,6 +4,7 @@ package caps
 import language.experimental.captureChecking
 
 import annotation.{experimental, compileTimeOnly, retainsCap}
+import annotation.meta.*
 
 /**
  * Base trait for classes that represent capabilities in the
@@ -157,6 +158,7 @@ object internal:
   /** An annotation to reflect that a parameter or method carries the `consume`
    *  soft modifier.
    */
+  @getter @param
   final class consume extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
@@ -193,6 +195,8 @@ end internal
 
 /** A wrapper that strips all covariant capture sets from Mutable types in the
  *  result of pure operation `op`, turning them into immutable types.
+ *  Array[?] is also included since it counts as a Mutable type for
+ *  separation checking.
  */
 @experimental
 def freeze(@internal.consume x: Mutable | Array[?]): x.type = x
@@ -220,6 +224,7 @@ object unsafe:
    * @note This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
+  @getter @param
   final class untrackedCaptures extends annotation.StaticAnnotation
 
   extension [T](x: T)
