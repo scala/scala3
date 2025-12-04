@@ -1,0 +1,5 @@
+-- [E172] Type Error: tests/neg/implicits-numeric.scala:6:28 -----------------------------------------------------------
+6 |  println(implicitly[AnyVal]) // error
+  |                            ^
+  |                            No implicit search was attempted for parameter e of method implicitly in object Predef
+  |                            since the expected type AnyVal is not specific enough
