@@ -2,9 +2,10 @@ import language.experimental.captureChecking
 import language.experimental.separationChecking
 
 import caps.*
+import caps.unsafe.untrackedCaptures
 
 object Regions:
-  class Ref(private var x: Int):
+  class Ref(@untrackedCaptures private var x: Int):
     def get = x
     def set(y: Int) = x = y
 
