@@ -42,8 +42,8 @@ import scala.runtime.ClassValueCompat
  *
  * For compile-time type information in macros, see the facilities in the
  * [[scala.quoted]] package.
- * For limited runtime type checks beyond what `Class[_]` provides, see
- * [[scala.reflect.Typeable]].
+ * For limited runtime type checks beyond what `Class[?]` provides, see
+ * [[scala.reflect.TypeTest]] and [[scala.reflect.Typeable]].
  *
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")
