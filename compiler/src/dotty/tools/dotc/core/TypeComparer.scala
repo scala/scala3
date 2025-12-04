@@ -3594,9 +3594,10 @@ object MatchReducer:
       case Stuck              => "Stuck"
       case NoInstance(fails)  => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
-/** A type comparer for reducing match types.
- *  TODO: Not sure this needs to be a type comparer. Can we make it a
- *  separate class?
+/** A [[TypeComparer]] for reducing match types.
+ *
+ *  This needs to be a [[TypeComparer]] because it mutates the `caseLambda`
+ *  field defined in [[ConstraintHandling]]. See #24488 for more details.
  */
 class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
   import MatchReducer.*
