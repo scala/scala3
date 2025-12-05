@@ -86,7 +86,7 @@ The above is represented in the quotes reflect API by a `Block` (a subtype of `T
 ```
 
 You can see the whole hierarchy between different types of Trees in
-[`reflectModule` documentation](https://scala-lang.org/api/3.3_LTS/scala/quoted/Quotes$reflectModule.html#`).
+[`reflectModule` documentation](https://scala-lang.org/api/3.3_LTS/scala/quoted/Quotes$reflectModule.html).
 
 You can also check the shape of code by printing out quoted code transformed into a Term:
 ```scala
