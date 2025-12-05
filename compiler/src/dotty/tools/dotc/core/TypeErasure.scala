@@ -74,7 +74,7 @@ end SourceLanguage
  *  only for isInstanceOf, asInstanceOf: PolyType, TypeParamRef, TypeBounds
  *
  */
-object TypeErasure {
+object TypeErasure:
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
     sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass
@@ -586,7 +586,102 @@ object TypeErasure {
         defn.FunctionType(n = info.nonErasedParamCount)
     }
     erasure(functionType(applyInfo))
-}
+
+  /** Check if LambdaMetaFactory can handle signature adaptation between two method types.
+   *
+   *  LMF has limitations on what type adaptations it can perform automatically.
+   *  This method checks whether manual bridging is needed for params and/or result.
+   *
+   *  The adaptation rules are:
+   *  - For parameters: primitives and value classes cannot be auto-adapted by LMF
+   *    because the Scala spec requires null to be "unboxed" to the default value,
+   *    but LMF throws `NullPointerException` instead.
+   *  - For results: value classes and Unit cannot be auto-adapted by LMF.
+   *    Non-Unit primitives can be auto-adapted since LMF only needs to box (not unbox).
+   *  - LMF cannot auto-adapt between Object and Array types.
+   *
+   *  @param implParamTypes  Parameter types of the implementation method
+   *  @param implResultType  Result type of the implementation method
+   *  @param samParamTypes   Parameter types of the SAM method
+   *  @param samResultType   Result type of the SAM method
+   *
+   *  @return (paramNeeded, resultNeeded) indicating what needs bridging
+   */
+  def additionalAdaptationNeeded(
+      implParamTypes: List[Type],
+      implResultType: Type,
+      samParamTypes: List[Type],
+      samResultType: Type
+  )(using Context): (paramNeeded: Boolean, resultNeeded: Boolean) =
+    def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
+
+    /** Can the implementation parameter type `tp` be auto-adapted to a different
+     *  parameter type in the SAM?
+     *
+     *  For derived value classes, we always need to do the bridging manually.
+     *  For primitives, we cannot rely on auto-adaptation on the JVM because
+     *  the Scala spec requires null to be "unboxed" to the default value of
+     *  the value class, but the adaptation performed by LambdaMetaFactory
+     *  will throw a `NullPointerException` instead.
+     */
+    def autoAdaptedParam(tp: Type) = !tp.isErasedValueType && !tp.isPrimitiveValueType
+
+    /** Can the implementation result type be auto-adapted to a different result
+     *  type in the SAM?
+     *
+     *  For derived value classes, it's the same story as for parameters.
+     *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
+     *  adaptation, because it only needs to box, not unbox, so no special
+     *  handling of null is required.
+     */
+    def autoAdaptedResult(tp: Type) =
+      !tp.isErasedValueType && !(tp.classSymbol eq defn.UnitClass)
+
+    val paramAdaptationNeeded =
+      implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
+        !sameClass(implType, samType) && (!autoAdaptedParam(implType)
+          // LambdaMetaFactory cannot auto-adapt between Object and Array types
+          || samType.isInstanceOf[JavaArrayType]))
+
+    val resultAdaptationNeeded =
+      !sameClass(implResultType, samResultType) && !autoAdaptedResult(implResultType)
+
+    (paramAdaptationNeeded, resultAdaptationNeeded)
+  end additionalAdaptationNeeded
+
+  /** Check if LambdaMetaFactory can handle the SAM method's required signature adaptation.
+   *
+   *  When a SAM method overrides other methods, the erased signatures must be compatible
+   *  to be qualifies as a valid functional interface on JVM.
+   *  This method returns true if all overridden methods have compatible erased signatures
+   *  that LMF can auto-adapt (or don't need adaptation).
+   *
+   *  When this returns true, the SAM class does not need to be expanded.
+   *
+   *  @param cls  The SAM class to check
+   *  @return     true if LMF can handle the required adaptation
+   */
+  def samNotNeededExpansion(cls: ClassSymbol)(using Context): Boolean = cls.typeRef.possibleSamMethods match
+    case Seq(samMeth) =>
+      val samMethSym = samMeth.symbol
+      val erasedSamInfo = transformInfo(samMethSym, samMeth.info)
+
+      val (erasedSamParamTypes, erasedSamResultType) = erasedSamInfo match
+        case mt: MethodType => (mt.paramInfos, mt.resultType)
+        case _ => return false
+
+      samMethSym.allOverriddenSymbols.forall { overridden =>
+        val erasedOverriddenInfo = transformInfo(overridden, overridden.info)
+        erasedOverriddenInfo match
+          case mt: MethodType =>
+            val (paramNeeded, resultNeeded) =
+              additionalAdaptationNeeded(erasedSamParamTypes, erasedSamResultType, mt.paramInfos, mt.resultType)
+            !(paramNeeded || resultNeeded)
+          case _ => true
+      }
+    case _ => false
+  end samNotNeededExpansion
+end TypeErasure
 
 import TypeErasure.*
 

@@ -50,7 +50,10 @@ class JavaPlatform extends Platform {
     cls.superClass == defn.ObjectClass &&
     cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
     !ExplicitOuter.needsOuterIfReferenced(cls) &&
-    cls.typeRef.fields.isEmpty // Superaccessors already show up as abstract methods here, so no test necessary
+    // Superaccessors already show up as abstract methods here, so no test necessary
+    cls.typeRef.fields.isEmpty &&
+    // Check if the SAM can be implemented via LambdaMetaFactory
+    TypeErasure.samNotNeededExpansion(cls)
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal
