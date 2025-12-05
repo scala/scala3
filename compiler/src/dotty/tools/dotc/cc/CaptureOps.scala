@@ -67,11 +67,16 @@ extension (tree: Tree)
 
   /** The type representing the capture set of @retains, @retainsCap or @retainsByName annotation. */
   def retainedSet(using Context): Type =
-    tree match
+    val rcap = defn.RetainsCapAnnot
+    if tree.symbol == rcap || tree.symbol.maybeOwner == rcap then
+      defn.captureRoot.termRef
+    else tree match
       case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
-      case _ =>
-        if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-        then defn.captureRoot.termRef else NoType
+      case tree: TypeTree =>
+        tree.tpe match
+          case AppliedType(_, refs :: Nil) => refs
+          case _ => NoType
+      case _ => NoType
 
 extension (tp: Type)
 

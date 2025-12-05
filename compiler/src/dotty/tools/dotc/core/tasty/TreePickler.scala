@@ -283,8 +283,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
-      withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
-      annotatedTypeTrees += tpe.annot.tree
+      withLength:
+        pickleType(tpe.parent, richTypes)
+        tpe.annot match
+          case CompactAnnotation(tp) => pickleType(tp)
+          case _ =>
+            pickleTree(tpe.annot.tree)
+            annotatedTypeTrees += tpe.annot.tree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }

@@ -354,6 +354,11 @@ class TreeUnpickler(reader: TastyReader,
         op
       }
 
+      /** Can `tag` start a type argument of a CompactAnnotation? */
+      def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
+        case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
+        case _ => false
+
       def readLengthType(): Type = {
         val end = readEnd()
 
@@ -420,7 +425,12 @@ class TreeUnpickler(reader: TastyReader,
                 val hi = readVariances(readType())
                 createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
-              AnnotatedType(readType(), Annotation(readTree()))
+              val parent = readType()
+              val ann =
+                if isCompactAnnotTypeTag(nextByte)
+                then CompactAnnotation(readType())
+                else Annotation(readTree())
+              AnnotatedType(parent, ann)
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>
