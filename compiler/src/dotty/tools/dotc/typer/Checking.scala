@@ -1054,8 +1054,9 @@ trait Checking {
   }
 
   /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
-   *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
-   *  pattern's type. If pattern is an UnApply, also check that the extractor is
+   *  This means `sel` is either marked `: @RuntimeChecked`, `: @unchecked` (old style),
+   *  or `sel.tpe` conforms to the pattern's type. If pattern is an Unapply,
+   *  also check that the extractor is
    *  irrefutable, and do the check recursively.
    */
   def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
@@ -1068,7 +1069,7 @@ trait Checking {
       import Reason.*
       val message = reason match
         case NonConforming =>
-          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot).dropAnnot(defn.RuntimeCheckedAnnot)
           if !pat.tpe.isSingleton then reportedPt = reportedPt.widen
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
           em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
@@ -1084,7 +1085,7 @@ trait Checking {
           else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
-        if isPatDef then "adding `: @unchecked` after the expression"
+        if isPatDef then "adding `.runtimeChecked` after the expression"
         else "adding the `case` keyword before the full pattern"
       val addendum =
         if isPatDef then "may result in a MatchError at runtime"
