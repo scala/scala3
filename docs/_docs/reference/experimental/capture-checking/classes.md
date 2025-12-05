@@ -77,9 +77,10 @@ we know that the type of `this` must be pure, since `this` is the right hand sid
 
 ### Traits and Open Classes
 
-The self-type inference behaves differently depending on whether all subclasses of a class are known. For a regular (non-open, non-abstract) class, all subclasses are known at compile time, so the capture checker can precisely infer the self-type. However, for traits, abstract classes, and [`open`](../other-new-features/open-classes.md) classes, arbitrary subclasses may exist, so the capture checker conservatively assumes that `this` may capture capabilities.
+The self-type inference behaves differently depending on whether all subclasses of a class are known. For a regular (non-open, non-abstract) class, all subclasses are known at compile time, so the capture checker can precisely infer the self-type. However, for traits, abstract classes, and [`open`](../../other-new-features/open-classes.md) classes, arbitrary subclasses may exist, so the capture checker conservatively assumes that `this` may capture arbitrary capabilities
+(i.e., it infers the universal capture set `cap`).
 
-For example:
+For example (assuming all definitions are in the same file):
 ```scala
 class A:
   def fn: A = this   // ok
@@ -101,6 +102,38 @@ open class E:
   def fn: E = this   // error
   def fn2: E^ = this // ok
 ```
+
+### Inheritance
+
+The capture set of `this` of a class or trait also serves as an upper bound of the possible capture
+sets of extending classes
+```scala
+abstract class Root:
+  this: Root^ => // the default, can capture anything
+
+abstract class Sub extends Root:
+  this: Sub^{a, b} => // ok, refinement {a, b} <: {cap}
+
+class SubGood extends Sub:
+  val fld: AnyRef^{a} = a // ok, {a} included in {a, b}
+
+class SubBad extends Sub:
+  val fld: IO^{io} = io // error, {io} not included in the this capture set {a, b}
+
+class SubBad2 extends Sub:
+  this: SubBad2^{io} => // error, self type SubBad2^{e} does not conform to Sub^{c, d}
+```
+
+Generally, the further up a class hierarchy we go, the more permissive/impure the `this` capture set
+of a class will be (and the more restrictive/pure it will be if we traverse the hierarchy downwards).
+For example, Scala 3's top reference type `AnyRef`/`Object` conceptually has the universal
+capability
+```scala
+class AnyRef:
+  this: AnyRef^ =>
+  // ...
+```
+Similarly, pure `Iterator`s are subtypes of impure ones.
 
 ## Capture Tunneling
 

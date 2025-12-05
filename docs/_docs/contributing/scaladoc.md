@@ -84,7 +84,7 @@ In case of any discrepancies rely on the source files instead.
 the names of directories containing corresponding TASTY files
 and the kinds of signatures from source files (corresponding to keywords used to declare them like `def`, `class`, `object` etc.)
 whose presence in the generated documentation will be checked (other signatures, when missing, will be ignored).
-The mentioned source files should be located directly inside [](../scaladoc-testcases/src/tests) directory
+The mentioned source files should be located directly inside the [scaladoc-testcases](https://github.com/scala/scala3/tree/main/scaladoc-testcases) directory
 but the file names passed as parameters should contain neither this path prefix nor `.scala` suffix.
 
 By default it's expected that all signatures from the source files will be present in the documentation
