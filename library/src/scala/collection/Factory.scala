@@ -21,6 +21,7 @@ import scala.language.implicitConversions
 import scala.collection.mutable.Builder
 import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
+import scala.annotation.experimental
 
 /** A factory that builds a collection of type `C` with elements of type `A`.
  *
@@ -68,6 +69,17 @@ object Factory {
       b.result()
     }
     def newBuilder: Builder[A, Array[A]] = mutable.ArrayBuilder.make[A]
+  }
+
+  @experimental
+  given IArrayFactory[A: ClassTag]: Factory[A, IArray[A]] = {
+    @experimental
+    @SerialVersionUID(3L)
+    class ConcreteIArrayFactory[A: ClassTag] extends Factory[A, IArray[A]] with Serializable {
+      def fromSpecific(it: IterableOnce[A]^): IArray[A] = IArray.from(it)
+      def newBuilder: Builder[A, IArray[A]] = IArray.newBuilder[A]
+    }
+    ConcreteIArrayFactory[A]
   }
 
 }
