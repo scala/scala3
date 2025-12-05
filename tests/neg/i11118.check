@@ -5,7 +5,7 @@
   |
   |       If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
   |       which may result in a MatchError at runtime.
-  |       This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+  |       This patch can be rewritten automatically under -rewrite -source 3.8-migration.
 -- Error: tests/neg/i11118.scala:2:4 -----------------------------------------------------------------------------------
 2 |val (a,b) = (1,2,3) // error // warning
   |    ^

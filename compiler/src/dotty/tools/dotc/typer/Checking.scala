@@ -1085,7 +1085,10 @@ trait Checking {
           else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
-        if isPatDef then "adding `.runtimeChecked` after the expression"
+        if isPatDef then
+          val patchText =
+            if sourceVersion.isAtLeast(`3.8`) then ".runtimeChecked" else ": @unchecked"
+          s"adding `$patchText` after the expression"
         else "adding the `case` keyword before the full pattern"
       val addendum =
         if isPatDef then "may result in a MatchError at runtime"
@@ -1098,7 +1101,9 @@ trait Checking {
           case NonConforming => sel.srcPos
           case RefutableExtractor => pat.source.atSpan(pat.span `union` sel.span)
         else pat.srcPos
-      def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
+      def rewriteMsg = Message.rewriteNotice("This patch",
+        if isPatDef && sourceVersion.isAtLeast(`3.8`) then `3.8-migration` else `3.2-migration`
+      )
       report.errorOrMigrationWarning(
         message.append(
           i"""|
@@ -1107,7 +1112,7 @@ trait Checking {
               |which $addendum.$rewriteMsg"""),
         pos,
         // we tighten for-comprehension without `case` to error in 3.4,
-        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // but we keep pat-defs as warnings for now (".runtimeChecked"),
         // until we propose an alternative way to assert exhaustivity to the typechecker.
         if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
         else MigrationVersion.ForComprehensionPatternWithoutCase

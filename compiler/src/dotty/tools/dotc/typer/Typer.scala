@@ -2235,12 +2235,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   && sourceVersion.isAtLeast(`3.2`)
                   && sourceVersion.isMigrating
                 then
-                  if isPatDef then runtimeCheckedBrackets(tree.selector) match
+                  if isPatDef then
+                    val patchText =
+                      if sourceVersion.isAtLeast(`3.8`) then ".runtimeChecked"
+                      else ": @unchecked"
+                    runtimeCheckedBrackets(tree.selector) match
                     case None =>
-                      patch(Span(tree.selector.span.end), ".runtimeChecked")
+                      patch(Span(tree.selector.span.end), patchText)
                     case Some(bl, br) =>
                       patch(Span(tree.selector.span.start), s"$bl")
-                      patch(Span(tree.selector.span.end), s"$br.runtimeChecked")
+                      patch(Span(tree.selector.span.end), s"$br$patchText")
                   else
                     patch(Span(tree.span.start), "case ")
 
