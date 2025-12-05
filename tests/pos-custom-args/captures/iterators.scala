@@ -1,4 +1,5 @@
 package cctest
+import caps.unsafe.untrackedCaptures
 
 trait IterableOnce[A]:
   def iterator: Iterator[A]^{this}
@@ -25,7 +26,7 @@ def map[T, U](it: Iterator[T]^, f: T^ => U): Iterator[U]^{it, f} = new Iterator:
 
 def test(c: Cap, d: Cap, e: Cap) =
   val it = new Iterator[Int]:
-    private var ctr = 0
+    @untrackedCaptures private var ctr = 0
     def hasNext = ctr < 10
     def next = { ctr += 1; ctr }
 

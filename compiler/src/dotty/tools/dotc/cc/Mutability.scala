@@ -10,6 +10,7 @@ import config.Printers.capt
 import config.Feature
 import ast.tpd.Tree
 import typer.ProtoTypes.LhsProto
+import StdNames.nme
 
 /** Handling mutability and read-only access
  */
@@ -59,6 +60,7 @@ object Mutability:
               && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
             else true
            )
+      || ccConfig.strictMutability && sym.name == nme.update && sym == defn.Array_update
 
     /** A read-only member is a lazy val or a method that is not an update method. */
     def isReadOnlyMember(using Context): Boolean =

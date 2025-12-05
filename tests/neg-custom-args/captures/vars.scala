@@ -39,7 +39,7 @@ def test(cap1: Cap, cap2: Cap) =
   }
 
   class Ref:
-    var elem: String ->{cap1} String = null
+    @caps.unsafe.untrackedCaptures var elem: String ->{cap1} String = null
 
   val r = Ref()
   r.elem = f

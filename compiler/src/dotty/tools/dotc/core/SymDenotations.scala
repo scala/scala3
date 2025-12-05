@@ -1886,7 +1886,7 @@ object SymDenotations {
       myBaseTypeCache.nn
     }
 
-    private def invalidateBaseDataCache() = {
+    def invalidateBaseDataCache() = {
       baseDataCache.invalidate()
       baseDataCache = BaseData.None
     }

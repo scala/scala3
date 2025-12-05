@@ -2,7 +2,8 @@
 import compiletime.uninitialized
 import annotation.{experimental, tailrec, constructorOnly}
 import collection.mutable
-import caps.unsafe.untrackedCaptures
+import caps.*
+import caps.unsafe.{untrackedCaptures, unsafeDiscardUses}
 
 case class Symbol(name: String, initOwner: Symbol | Null) extends caps.Pure:
   def owner = initOwner.nn
@@ -39,7 +40,7 @@ case object NoType extends Type:
   override def exists = false
   def show = "<none>"
 
-abstract class LazyType(using DetachedContext) extends Type:
+abstract class LazyType(using Context) extends Type:
   def complete(): Unit = doComplete()
   def doComplete()(using Context): Unit
   def show = "?"
@@ -55,7 +56,7 @@ case class Binding(name: String, rhs: Tree)
 
 class Scope:
   private val elems = mutable.Map[String, Symbol]()
-  def enter(sym: Symbol)(using Context): Unit =
+  def enter(sym: Symbol)(using Context, Reporter^): Unit =
     if elems.contains(sym.name) then
       report.error(s"duplicate definition: ${sym.name}")
     elems(sym.name) = sym
@@ -67,105 +68,58 @@ object EmptyScope extends Scope
 
 class TypeError(val msg: String) extends Exception
 
-class Run:
-  @untrackedCaptures var errorCount = 0
-
-object report:
-  def error(msg: -> String)(using Context) =
-    ctx.run.errorCount += 1
+class Reporter extends Stateful:
+  var errorCount = 0
+  update def error(msg: -> String)(using Context) =
+    errorCount += 1
     println(s"ERROR: $msg")
 
-abstract class Ctx:
+abstract class Context:
   def outer: Context
   def owner: Symbol
   def scope: Scope
-  def run: Run
-  def detached: DetachedContext
 
-type Context = Ctx^
+class FreshContext(using val outer: Context)
+    (val owner: Symbol = outer.owner, val scope: Scope = outer.scope) extends Context
 
-abstract class DetachedContext extends Ctx:
-  def outer: DetachedContext
+object NoContext extends Context:
+  def outer = ???
+  def owner = NoSymbol
+  def scope = EmptyScope
 
-class FreshCtx(val level: Int) extends DetachedContext:
-  @untrackedCaptures var outer: FreshCtx = uninitialized
-  @untrackedCaptures var owner: Symbol = uninitialized
-  @untrackedCaptures var scope: Scope = uninitialized
-  @untrackedCaptures var run: Run = uninitialized
-  def initFrom(other: Context): this.type =
-    outer = other.asInstanceOf[FreshCtx]
-    owner = other.owner
-    scope = other.scope
-    run = other.run
-    this
-  def detached: DetachedContext =
-    var c = this
-    while c.level >= 0 && (ctxStack(c.level) eq c) do
-      ctxStack(c.level) = FreshCtx(c.level)
-      c = c.outer
-    this
+def ctx(using c: Context): Context = c
+def report(using r: Reporter^): r.type = r
 
-object NoContext extends FreshCtx(-1):
-  owner = NoSymbol
-  scope = EmptyScope
+def withOwner[T](owner: Symbol)(op: Context ?=> T)(using Context): T =
+  op(using FreshContext(owner = owner))
 
-type FreshContext = FreshCtx^
+def withScope[T](scope: Scope)(op: Context ?=> T)(using Context): T =
+  op(using FreshContext(scope = scope))
 
-inline def ctx(using c: Context): Ctx^{c} = c
-
-// !cc! it does not work if ctxStack is an Array[FreshContext] instead.
-@untrackedCaptures var ctxStack = Array.tabulate(16)(new FreshCtx(_))
-@untrackedCaptures var curLevel = 0
-
-private def freshContext(using Context): FreshContext =
-  if curLevel == ctxStack.length then
-    val prev = ctxStack
-    ctxStack = new Array[FreshCtx](curLevel * 2)
-    Array.copy(prev, 0, ctxStack, 0, prev.length)
-    for level <- curLevel until ctxStack.length do
-      ctxStack(level) = FreshCtx(level)
-  val result = ctxStack(curLevel).initFrom(ctx)
-  curLevel += 1
-  result
-
-inline def inFreshContext[T](inline op: FreshContext ?-> T)(using Context): T =
-  try op(using freshContext) finally curLevel -= 1
-
-inline def withOwner[T](owner: Symbol)(inline op: Context ?-> T)(using Context): T =
-  inFreshContext: c ?=>
-    c.owner = owner
-    op
-
-inline def withScope[T](scope: Scope)(inline op: Context ?-> T)(using Context): T =
-  inFreshContext: c ?=>
-    c.scope = scope
-    op
-
-def typed(tree: Tree, expected: Type = NoType)(using Context): Type =
+def typed(tree: Tree, expected: Type = NoType)(using Context, Reporter^): Type =
   try
     val tp = typedUnadapted(tree, expected)
     if expected.exists && tp != expected then
-      report.error(
+      report.error:
         s"""Type error
           |  found   : $tp
           |  expected: $expected
-          |  for     : $tree""".stripMargin)
+          |  for     : $tree""".stripMargin
     tp
   catch case ex: TypeError =>
     report.error(ex.msg)
     NoType
 
 import Tree.*
-def typedUnadapted(tree: Tree, expected: Type = NoType)(using Context): Type = tree match
+def typedUnadapted(tree: Tree, expected: Type = NoType)(using ctx: Context, rep: Reporter^): Type = tree match
   case Let(bindings, res) =>
     withScope(Scope()):
       for Binding(name, rhs) <- bindings do
         val sym = Symbol(name, ctx.owner)
-        val dctx = ctx.detached
-        sym.info = new LazyType(using dctx):
+        sym.info = new LazyType:
           override def doComplete()(using Context) =
             sym.info = withOwner(sym):
-              typed(rhs)
+              typed(rhs)(using ctx, unsafeDiscardUses(rep))
         ctx.scope.enter(sym)
       for sym <- ctx.scope.elements do sym.info
       typed(res, expected)
@@ -215,12 +169,10 @@ val cyclic =
     "s" := Lit("abc"))
 
 def compile(tree: Tree)(using Context) =
-  val run = new Run
-  inFreshContext: c ?=>
-    c.run = run
-    val tp = typed(tree)(using c)
-    if run.errorCount == 0 then
-      println(s"OK $tp")
+  val reporter = Reporter()
+  val tp = typed(tree)(using ctx, reporter)
+  if reporter.errorCount == 0 then
+    println(s"OK $tp")
 
 @main def Test =
   given Context = NoContext

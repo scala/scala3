@@ -4,6 +4,7 @@ package caps
 import language.experimental.captureChecking
 
 import annotation.{experimental, compileTimeOnly, retainsCap}
+import annotation.meta.*
 
 /**
  * Base trait for classes that represent capabilities in the
@@ -157,6 +158,7 @@ object internal:
   /** An annotation to reflect that a parameter or method carries the `consume`
    *  soft modifier.
    */
+  @getter @param
   final class consume extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
@@ -193,20 +195,22 @@ end internal
 
 /** A wrapper that strips all covariant capture sets from Mutable types in the
  *  result of pure operation `op`, turning them into immutable types.
+ *  Array[?] is also included since it counts as a Mutable type for
+ *  separation checking.
  */
 @experimental
-def freeze(@internal.consume x: Mutable): x.type = x
+def freeze(@internal.consume x: Mutable | Array[?]): x.type = x
 
 @experimental
 object unsafe:
-  /** Two usages:
+  /** Three usages:
    *
    *   1. Marks the constructor parameter as untracked.
    *      The capture set of this parameter will not be included in
    *      the capture set of the constructed object.
    *
-   *   2. Marks a class field that has a cap in its capture set, so that
-   *      the cap is not contributed to the class instance.
+   *   2. Marks a class field that has a root capability in its capture set, so
+   *      that the root capability is not contributed to the class instance.
    *      Example:
    *
    *          class A { val b B^ = ... }; new A()
@@ -217,9 +221,13 @@ object unsafe:
    *
    *      has type A. The `b` field does not contribute its cap.
    *
+   *   3. Allows a field to be declarewd in a class that does not extend Stateful,
+   *      and suppresses checks for updates to the field.
+   *
    * @note This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
+  @getter @param
   final class untrackedCaptures extends annotation.StaticAnnotation
 
   extension [T](x: T)

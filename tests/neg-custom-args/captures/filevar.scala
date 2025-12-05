@@ -4,7 +4,7 @@ import compiletime.uninitialized
 class File:
   def write(x: String): Unit = ???
 
-class Service:
+class Service extends caps.Stateful:
   var file: File^ = uninitialized  //OK, was  error under sealed
   def log = file.write("log") // OK, was error under unsealed
 

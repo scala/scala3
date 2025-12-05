@@ -2,6 +2,7 @@ import language.experimental.captureChecking
 import annotation.experimental
 import caps.{CapSet, SharedCapability}
 import caps.use
+import caps.unsafe.untrackedCaptures
 
 @experimental object Test:
 
@@ -12,7 +13,7 @@ import caps.use
   class Listener
 
   class Source[X^]:
-    private var listeners: Set[Listener^{X}] = Set.empty
+    @untrackedCaptures private var listeners: Set[Listener^{X}] = Set.empty
     def register(x: Listener^{X}): Unit =
       listeners += x
 
