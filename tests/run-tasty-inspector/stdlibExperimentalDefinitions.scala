@@ -98,6 +98,9 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
+
+  // New API: BuildFrom[IArray[Any], T, IArray[T]]
+  "scala.collection.BuildFrom$.buildFromIArray",
 )
 
 
