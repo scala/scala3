@@ -820,11 +820,69 @@ object Build {
   // =================================== BOOTSTRAPPED PROJECTS ====================================
   // ==============================================================================================
 
+  /* Configuration of the org.scala-lang:scala3-tasty-interpreter:*.**.**-bootstrapped project */
+  // Note: Defined before scala3-bootstrapped-new aggregate to avoid forward reference issues
+  lazy val `scala3-tasty-interpreter-new` = project.in(file("tasty-interpreter"))
+    // We want the compiler to be present in the compiler classpath when compiling this project but not
+    // when compiling a project that depends on scala3-tasty-interpreter,
+    // but we always need it to be present on the JVM classpath at runtime.
+    .dependsOn(`scala3-compiler-bootstrapped-new` % "provided; compile->runtime; test->test")
+    .dependsOn(`scala3-tasty-inspector-new`)
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-tasty-interpreter",
+      moduleName    := "scala3-tasty-interpreter",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := dottyNonBootstrappedVersion,
+      crossPaths    := true, // org.scala-lang:scala3-tasty-interpreter has a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
+      // Add the source directories
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      // Packaging configuration
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := true,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      publish / skip := false,
+      // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scaladocDerivedInstanceSettings,
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      bspEnabled := false,
+    )
+
   lazy val `scala3-bootstrapped-new` = project
     .enablePlugins(ScriptedPlugin)
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
-      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`,
+      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala3-tasty-interpreter-new`, `scala-library-sjs`, `scala3-library-sjs`,
       `scaladoc-new`, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
       name          := "scala3-bootstrapped",

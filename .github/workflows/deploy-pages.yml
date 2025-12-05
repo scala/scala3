@@ -1,0 +1,102 @@
+# GitHub Actions workflow to build and deploy the browser compiler demo to GitHub Pages
+
+name: Deploy Demo to GitHub Pages
+
+on:
+  push:
+    branches: [main, master, scala-interpreter]
+    paths:
+      - 'browser-interpreter/**'
+      - '.github/workflows/deploy-pages.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'browser-interpreter/**'
+  workflow_dispatch:  # Allow manual trigger from any branch
+    inputs:
+      deploy:
+        description: 'Deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Build Scala.js
+        working-directory: browser-interpreter
+        run: sbt js/fastLinkJS
+
+      - name: Prepare deployment files
+        run: |
+          mkdir -p _site
+
+          # Find the Scala version from the build output
+          SCALA_VERSION=$(ls browser-interpreter/js/target/ | grep scala | head -1)
+          echo "Scala version: $SCALA_VERSION"
+
+          # Copy the demo HTML as index.html, updating the JS path if needed
+          sed "s|js/target/scala-[0-9.]*|js/target/$SCALA_VERSION|g" \
+            browser-interpreter/demo-compiler.html > _site/index.html
+
+          # Copy the generated JavaScript
+          mkdir -p "_site/js/target/$SCALA_VERSION"
+          cp -r "browser-interpreter/js/target/$SCALA_VERSION/browser-interpreter-js-fastopt" \
+            "_site/js/target/$SCALA_VERSION/"
+
+          # Add .nojekyll to prevent Jekyll processing
+          touch _site/.nojekyll
+
+          # Show what we're deploying
+          echo "Deployment contents:"
+          find _site -type f | head -20
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  deploy:
+    # Only deploy on push to main/master or manual trigger with deploy=true
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+

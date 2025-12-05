@@ -160,7 +160,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def interpretVarargs(args: List[Object]): Object =
     args.toSeq
 
-  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
+  protected def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
     val inst =
       try loadModule(moduleClass)
       catch
@@ -172,16 +172,16 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     stopIfRuntimeException(method.invoke(inst, args*), method)
   }
 
-  private def interpretedStaticFieldAccess(sym: Symbol): Object = {
+  protected def interpretedStaticFieldAccess(sym: Symbol): Object = {
     val clazz = loadClass(sym.owner.fullName.toString)
     val field = clazz.getField(sym.name.toString)
     field.get(null)
   }
 
-  private def interpretModuleAccess(fn: Symbol): Object =
+  protected def interpretModuleAccess(fn: Symbol): Object =
     loadModule(fn.moduleClass)
 
-  private def interpretNew(fn: Symbol, args: List[Object]): Object = {
+  protected def interpretNew(fn: Symbol, args: List[Object]): Object = {
     val className = fn.owner.fullName.mangledString.replaceAll("\\$\\.", "\\$")
     val clazz = loadClass(className)
     val constr = clazz.getConstructor(paramsSig(fn)*)
@@ -191,7 +191,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def unexpectedTree(tree: Tree): Object =
     throw new StopInterpretation(em"Unexpected tree could not be interpreted: ${tree.toString}", tree.srcPos)
 
-  private def loadModule(sym: Symbol): Object =
+  protected def loadModule(sym: Symbol): Object =
     if (sym.owner.is(Package)) {
       // is top level object
       val moduleClass = loadClass(sym.fullName.toString)
@@ -208,14 +208,14 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     lineClassloader.loadClass(moduleClass.name.firstPart.toString)
   }
 
-  private def loadClass(name: String): Class[?] =
+  protected def loadClass(name: String): Class[?] =
     try classLoader.loadClass(name)
     catch
       case MissingClassValidInCurrentRun(sym, origin) =>
         suspendOnMissing(sym, origin, pos)
 
 
-  private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
+  protected def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
     try clazz.getMethod(name.toString, paramClasses*)
     catch {
       case _: NoSuchMethodException =>
@@ -225,7 +225,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         suspendOnMissing(sym, origin, pos)
     }
 
-  private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
+  protected def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
     try thunk
     catch {
       case ex: RuntimeException =>
@@ -265,7 +265,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
 
   /** List of classes of the parameters of the signature of `sym` */
-  private def paramsSig(sym: Symbol): List[Class[?]] = {
+  protected def paramsSig(sym: Symbol): List[Class[?]] = {
     def paramClass(param: Type): Class[?] = {
       def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
         case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
