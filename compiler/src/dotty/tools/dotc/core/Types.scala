@@ -43,11 +43,16 @@ import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
 import transform.Recheck.currentRechecker
+import scala.collection.immutable.HashMap
+import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.reporting.NonDecreasingMatchReduction
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 object Types extends TypeUtils {
+
+  val Reduction = new Property.Key[HashMap[Type, List[Int]]]
 
   @sharable private var nextId = 0
 
@@ -1628,7 +1633,25 @@ object Types extends TypeUtils {
      *  then the result after applying all toplevel normalizations, otherwise NoType.
      */
     def tryNormalize(using Context): Type = underlyingNormalizable match
-      case mt: MatchType => mt.reduced.normalized
+      case mt: MatchType =>
+        this match
+          case self: AppliedType =>
+            report.log(i"AppliedType with underlying MatchType: ${self.tycon}${self.args}")
+            val currentListSize = self.args.map(_.typeSize)
+            val currentSize = currentListSize.sum
+            report.log(i"Arguments Size: ${currentListSize}")
+            val history = ctx.property(Reduction).getOrElse(Map.empty)
+
+            if history.contains(self.tycon) && currentSize >= history(self.tycon).sum then
+              val prevSize = history(self.tycon).sum
+              ErrorType(NonDecreasingMatchReduction(self, prevSize, currentSize))
+            else
+              val newHistory = history.updated(self.tycon, currentListSize)
+              val result =
+                given Context = ctx.fresh.setProperty(Reduction, newHistory)
+                mt.reduced.normalized
+              result
+          case _ => mt.reduced.normalized
       case tp: AppliedType => tp.tryCompiletimeConstantFold
       case _ => NoType
 
