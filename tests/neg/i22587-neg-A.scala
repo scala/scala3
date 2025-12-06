@@ -1,9 +1,12 @@
-// Test Case 2: Direct Self-Reference Without Reduction (NEGATIVE)
-// This SHOULD diverge because Loop[X] immediately expands to Loop[X]
-// with no progress made - infinite loop without termination
+// Negative Test Case A: Direct Self-Reference Without Reduction
+// This SHOULD diverge because Loop[Int] => Loop[Float] => Loop[Double] => Loop[String] => Loop[Int] => ...
+// The type cycles without reaching a base case.
 
 type Loop[X] = X match
-  case Int => Loop[Int]
+  case Int => Loop[Float]
+  case Float => Loop[Double]
+  case Double => Loop[String]
+  case String => Loop[Int]
   case _ => String
 
 @main def test02(): Unit =
