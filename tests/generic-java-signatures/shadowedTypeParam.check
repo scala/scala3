@@ -1,0 +1,7 @@
+bar: public <T> T Foo.bar(T)
+baz: public <T> T Foo.baz(T,Foo<T>)
+qux: public <U> U Foo.qux(U,Foo<T>)
+quux: public <T,U> scala.Tuple2<T, U> Foo.quux(T,U,Foo<T>)
+copy: public <T> Bar<T> Bar.copy(T)
+compose: public <A1> scala.Function1<A1, B> JavaPartialFunction.compose(scala.Function1<A1, A>)
+compose: public <R> scala.PartialFunction<R, B> JavaPartialFunction.compose(scala.PartialFunction<R, A>)
