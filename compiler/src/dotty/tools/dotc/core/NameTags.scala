@@ -30,7 +30,7 @@ object NameTags extends TastyFormat.NameTags {
 
   inline val PARAMACC = 33       // Used for a private parameter alias
 
-  inline val SETTER = 34         // A synthesized += suffix.
+  inline val SETTER = 34         // A synthesized _= suffix.
 
   // Name of type variables created by `ConstraintHandling#LevelAvoidMap`.
   final val AVOIDUPPER = 35
@@ -41,6 +41,8 @@ object NameTags extends TastyFormat.NameTags {
                                  // with a regular field of the underlying name
 
   inline val LAZYVALVARHANDLE = 39 // A field containing a VarHandle generated for lazy vals
+
+  inline val REPL_ASSIGN = 40 // Alias of an assigned term in REPL
 
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"

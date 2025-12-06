@@ -84,6 +84,7 @@ class CompilationTests {
       compileFile("tests/rewrites/i24103.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24103b.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24213.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
+      compileFile("tests/rewrites/i18234.scala", defaultOptions.and("-rewrite", "-source:3.8-migration")),
     )).checkRewrites()
   }
 

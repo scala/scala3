@@ -9,6 +9,7 @@ import dotc.core.CompilationUnitInfo
 import dotc.core.Decorators.*
 import dotc.core.Flags.*
 import dotc.core.Names.*
+import dotc.core.NameKinds.ReplAssignName
 import dotc.core.Phases.Phase
 import dotc.core.StdNames.*
 import dotc.core.Symbols.*
@@ -304,7 +305,7 @@ class ReplPhase extends Phase:
       case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
-        val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
+        val assignName = ReplAssignName(id.name.toTermName)
         val assign = ValDef(assignName, TypeTree(), id).withSpan(expr.span)
         defs += expr += assign
       case expr if expr.isTerm =>

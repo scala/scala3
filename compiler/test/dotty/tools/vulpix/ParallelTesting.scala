@@ -986,10 +986,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       lazy val (expected, unexpected) = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
       def hasMissingAnnotations = expected.nonEmpty || unexpected.nonEmpty
+      def showLines(title: String, lines: Seq[String]) =
+        if lines.isEmpty then "" else lines.mkString(s"$title\n", "\n", "")
       def showErrors = "-> following the errors:\n" +
         reporters.flatMap(_.allErrors.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
 
-      Option {
+      Option:
         if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
         else if expectedErrors == 0 then
           s"""|No expected errors marked in $testSource -- use // error or // nopos-error
@@ -1006,13 +1008,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if hasMissingAnnotations then
           s"""|Errors found on incorrect row numbers when compiling $testSource
+              |${showLines("Unfulfilled expectations:", expected)}
+              |${showLines("Unexpected errors:", unexpected)}
               |$showErrors
-              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
-              |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if !errorMap.isEmpty then s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"
         else null
-      }
     end maybeFailureMessage
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =

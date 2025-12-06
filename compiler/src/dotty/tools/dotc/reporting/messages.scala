@@ -3882,3 +3882,21 @@ extends SyntaxMsg(IndentationWarningID):
     }"
   override protected def explain(using Context): String =
     "Indentation that does not reflect syntactic nesting may be due to a typo such as missing punctuation."
+
+final class IllegalIdentifier(name: Name)(using Context) extends SyntaxMsg(IllegalIdentifierID):
+  override protected def msg(using Context): String =
+    name match
+    case nme.CONSTRUCTOR | nme.STATIC_CONSTRUCTOR =>
+      "Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden"
+    case _ =>
+      i"The identifier `$name` should not contain `$$`, which is reserved for internal compiler use."
+  override protected def explain(using Context): String =
+    name match
+    case nme.CONSTRUCTOR | nme.STATIC_CONSTRUCTOR =>
+      "Names can include unusual characters when enclosed in backquotes, but `<init>` and `<clinit>` are reserved."
+    case _ =>
+      i"""User identifiers may be encoded with embedded `$$`, and other compiler artifacts
+         |may rely on using `$$` with specific meanings.
+         |
+         |The prohibition against explicit `$$` may be ignored by enclosing the identifier in backquotes
+         |at the definition site."""
