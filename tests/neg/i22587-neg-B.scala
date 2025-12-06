@@ -1,4 +1,4 @@
-// Test Case 3: Wrapping Type Without Progress (NEGATIVE)
+// Negative Test Case 2: Wrapping Type Without Progress
 // This SHOULD diverge because Wrap[Int] => Wrap[List[Int]] => Wrap[List[List[Int]]] => ...
 // The type grows infinitely without reaching a base case
 

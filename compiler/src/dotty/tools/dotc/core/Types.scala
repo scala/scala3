@@ -45,14 +45,15 @@ import Capabilities.*
 import transform.Recheck.currentRechecker
 import scala.collection.immutable.HashMap
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.reporting.NonDecreasingMatchReduction
+import dotty.tools.dotc.reporting.IncreasingMatchReduction
+import dotty.tools.dotc.reporting.CyclicMatchTypeReduction
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 object Types extends TypeUtils {
 
-  val Reduction = new Property.Key[HashMap[Type, List[Int]]]
+  val Reduction = new Property.Key[HashMap[Type, List[List[Type]]]]
 
   @sharable private var nextId = 0
 
@@ -1637,20 +1638,30 @@ object Types extends TypeUtils {
         this match
           case self: AppliedType =>
             report.log(i"AppliedType with underlying MatchType: ${self.tycon}${self.args}")
-            val currentListSize = self.args.map(_.typeSize)
-            val currentSize = currentListSize.sum
-            report.log(i"Arguments Size: ${currentListSize}")
             val history = ctx.property(Reduction).getOrElse(Map.empty)
-
-            if history.contains(self.tycon) && currentSize >= history(self.tycon).sum then
-              val prevSize = history(self.tycon).sum
-              ErrorType(NonDecreasingMatchReduction(self, prevSize, currentSize))
-            else
-              val newHistory = history.updated(self.tycon, currentListSize)
-              val result =
-                given Context = ctx.fresh.setProperty(Reduction, newHistory)
-                mt.reduced.normalized
-              result
+            val decision: Either[ErrorType, List[List[Type]]] =
+              if history.contains(self.tycon) then
+                val stack = history(self.tycon) // Stack is non-empty
+                report.log(i"Match type reduction history for ${self.tycon}: $stack")
+                val currentArgsSize = self.args.map(_.typeSize)
+                val prevArgsSize = stack.head.map(_.typeSize)
+                val listOrd = scala.math.Ordering.Implicits.seqOrdering[Seq, Int]
+                if listOrd.gt(currentArgsSize, prevArgsSize) then
+                  Left(ErrorType(IncreasingMatchReduction(self.tycon, stack.head, prevArgsSize, self.args, currentArgsSize)))
+                else if listOrd.equiv(currentArgsSize, prevArgsSize) then
+                  if stack.contains(self.args) then
+                    Left(ErrorType(CyclicMatchTypeReduction(self.tycon, self.args, currentArgsSize, stack)))
+                  else Right(self.args :: stack)
+                else Right(self.args :: Nil) // currentArgsSize < prevArgsSize
+              else Right(self.args :: Nil)
+            decision match
+              case Left(err) => err
+              case Right(stack) =>
+                val newHistory = history.updated(self.tycon, stack)
+                val result =
+                  given Context = ctx.fresh.setProperty(Reduction, newHistory)
+                  mt.reduced.normalized
+                result
           case _ => mt.reduced.normalized
       case tp: AppliedType => tp.tryCompiletimeConstantFold
       case _ => NoType

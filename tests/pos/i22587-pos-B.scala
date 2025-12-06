@@ -1,21 +1,13 @@
-// Test Case 4: Two-Parameter Match Type with Swapping (POSITIVE)
-// This should NOT diverge because even though parameters swap positions,
-// the tuple structure reduces (Tuple2 -> single type)
+// Positive Test Case B: Binary Recursive construction
+// This should NOT diverge because although types have same complexity, the structure
+// changes by incrementing by one the numeric parameter until reaching a base case.
 
-type Swap[X, Y] = (X, Y) match
-  case (Int, String) => Y
-  case (String, Int) => X
-  case (List[a], b) => Swap[a, b]
-  case (a, List[b]) => Swap[a, b]
-  case _ => X
+
+type Increase[X, Y, Z] = (X, Y, Z) match
+  case (X, Y, 0) => Increase[X, Y, 1]
+  case (X, 0, _) => Increase[X, 1, 0]
+  case (0, _, _) => Increase[1, 0, 0]
+  case _ => "done"
 
 @main def test04(): Unit =
-  val e1: Swap[Int, String] = "result"
-  println("Test 4 - Two-parameter swap:")
-  println(s"e1 value: $e1")
-  
-  val e2: Swap[String, Int] = "swapped"
-  println(s"e2 value: $e2")
-  
-  val e3: Swap[List[List[Int]], List[String]] = "42"
-  println(s"e3 value: $e3")
+  val e1: Increase[0, 0, 0] = "done"

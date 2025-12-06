@@ -3326,9 +3326,29 @@ class MatchTypeLegacyPattern(errorText: String)(using Context) extends TypeMsg(M
   def msg(using Context) = errorText
   def explain(using Context) = ""
 
-class NonDecreasingMatchReduction(tpe: Type, originalSize: Int, newSize: Int)(using Context)
-  extends TypeMsg(NonDecreasingMatchReductionID):
-  def msg(using Context) = i"Match type reduction failed: Non-decreasing argument size detected for $tpe. Size went from $originalSize to $newSize."
+class IncreasingMatchReduction(tpcon: Type, prevArgs: List[Type], prevSize: List[Int], curArgs: List[Type], curSize: List[Int])(using Context)
+  extends TypeMsg(IncreasingMatchReductionID):
+  def msg(using Context) =
+    i"""Match type reduction failed due to potentially infinite recursion.
+       |
+       |The reduction step for $tpcon resulted in strictly larger arguments (lexicographically):
+       |  Previous: $prevArgs (size: $prevSize)
+       |  Current:  $curArgs (size: $curSize)
+       |
+       |To guarantee termination, recursive match types must strictly decrease in size
+       |or stay the same (without cycles)."""
+  def explain(using Context) = ""
+
+class CyclicMatchTypeReduction(tpcon: Type, args: List[Type], argsSize: List[Int], stack: List[List[Type]])(using Context)
+  extends TypeMsg(CyclicMatchTypeReductionID):
+  def msg(using Context) =
+    val trace: String = stack.map(a => i"${tpcon}${a}").mkString(" -> ")
+    i"""Match type reduction failed due to a cycle.
+       |
+       |The match type $tpcon reduced to itself with the same arguments:
+       |$args
+       |
+       |Trace: $trace"""
   def explain(using Context) = ""
 
 class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
