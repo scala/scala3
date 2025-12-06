@@ -350,8 +350,6 @@ final abstract class Double private extends AnyVal {
    */
   def %(x: Double): Double
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Double] = ???
 }
 
 object Double extends AnyValCompanion {

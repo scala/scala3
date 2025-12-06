@@ -607,8 +607,6 @@ final abstract class Byte private extends AnyVal {
    */
   def %(x: Double): Double
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Byte] = ???
 }
 
 object Byte extends AnyValCompanion {
