@@ -189,7 +189,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       register(tree)
     relax(tree.rhs, tree.tpt.tpe)
-    ctx
+    if tree.symbol.isAllOf(EnumCase) then ctx.outer else ctx
   override def transformValDef(tree: ValDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
     if tree.name.startsWith("derived$") && tree.hasType then
@@ -222,6 +222,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       resolveUsage(defn.Compiletime_deferred, nme.NO_NAME, NoPrefix)
     tree
 
+  override def prepareForTypeDef(tree: TypeDef)(using Context): Context =
+    if tree.symbol.isAllOf(EnumCase) then ctx.outer else ctx
   override def transformTypeDef(tree: TypeDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
     if !tree.symbol.is(Param) then // type parameter to do?
