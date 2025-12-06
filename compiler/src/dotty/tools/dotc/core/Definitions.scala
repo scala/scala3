@@ -1940,27 +1940,6 @@ class Definitions {
     if (isBoxedUnitClass(cls)) parents.filter(_.typeSymbol != JavaSerializableClass)
     else parents
 
-  private val HasProblematicGetClass: Set[Name] = Set(
-    tpnme.AnyVal, tpnme.Byte, tpnme.Short, tpnme.Char, tpnme.Int, tpnme.Long, tpnme.Float, tpnme.Double,
-    tpnme.Unit, tpnme.Boolean)
-
-  /** When typing a primitive value class or AnyVal, we ignore the `getClass`
-   *  member: it's supposed to be an override of the `getClass` defined on `Any`,
-   *  but in dotty `Any#getClass` is polymorphic so it ends up being an overload.
-   *  This is especially problematic because it means that when writing:
-   *
-   *    1.asInstanceOf[Int & AnyRef].getClass
-   *
-   *  the `getClass` that returns `Class[Int]` defined in Int can be selected,
-   *  but this call is specified to return `classOf[Integer]`, see
-   *  tests/run/t5568.scala.
-   *
-   *  FIXME: remove all the `getClass` methods defined in the standard library
-   *  so we don't have to hot-patch it like this.
-   */
-  def hasProblematicGetClass(className: Name): Boolean =
-    HasProblematicGetClass.contains(className)
-
   @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
     // we should do a more through sweep through it then.
     val strs = Map(
