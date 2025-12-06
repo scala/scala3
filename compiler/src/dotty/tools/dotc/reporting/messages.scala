@@ -3326,6 +3326,11 @@ class MatchTypeLegacyPattern(errorText: String)(using Context) extends TypeMsg(M
   def msg(using Context) = errorText
   def explain(using Context) = ""
 
+class NonDecreasingMatchReduction(tpe: Type, originalSize: Int, newSize: Int)(using Context)
+  extends TypeMsg(NonDecreasingMatchReductionID):
+  def msg(using Context) = i"Match type reduction failed: Non-decreasing argument size detected for $tpe. Size went from $originalSize to $newSize."
+  def explain(using Context) = ""
+
 class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
   extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
     def msg(using Context) =
