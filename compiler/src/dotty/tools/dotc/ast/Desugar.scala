@@ -13,15 +13,14 @@ import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion.*
-import collection.mutable
+import collection.mutable, mutable.ListBuffer
 import reporting.*
 import printing.Formatting.hl
 import config.Printers
 import parsing.Parsers
-import dotty.tools.dotc.util.chaining.*
+import util.chaining.*
 
 import scala.annotation.{unchecked as _, *}, internal.sharable
-import scala.collection.mutable, mutable.ListBuffer
 
 object desugar {
   import untpd.*
@@ -2236,7 +2235,7 @@ object desugar {
           case (Tuple(ts1), Tuple(ts2)) => ts1.corresponds(ts2)(deepEquals)
           case _ => false
 
-      def markTrailingMap(aply: Apply, gen: GenFrom, selectName: TermName, body: Tree): Unit =
+      def markTrailingMap(aply: Apply, gen: GenFrom, selectName: TermName): Unit =
         if sourceVersion.enablesBetterFors
           && selectName == mapName
           && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
@@ -2248,7 +2247,7 @@ object desugar {
         case Nil if sourceVersion.enablesBetterFors => body
         case (gen: GenFrom) :: Nil =>
           Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
-            .tap(markTrailingMap(_, gen, mapName, body))
+            .tap(markTrailingMap(_, gen, mapName))
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
@@ -2265,7 +2264,6 @@ object desugar {
               if suffix.exists(_.isInstanceOf[GenFrom]) then flatMapName
               else mapName
             Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
-              .tap(markTrailingMap(_, gen, selectName, cont))
           else
             val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
             val (defpat0, id0) = makeIdPat(gen.pat)
