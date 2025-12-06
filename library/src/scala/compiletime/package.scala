@@ -193,3 +193,15 @@ def byName[T](x: => T): T = x
   */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]
+
+extension (inline self: Any)
+  /**
+    * TODO: Write the scaladoc here and how it works
+    * ???
+    * @param self ???
+    * @param T ???
+    * @return ???
+    */
+  transparent inline def as[T]: T = inline self match
+    case self: T => self
+    case _ => error("Cannot statically prove the correctness of the cast")
