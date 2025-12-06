@@ -1,0 +1,4 @@
+-- Error: tests/neg/i24681.scala:3:9 -----------------------------------------------------------------------------------
+3 |class Foo @targetName("bla") () // error
+  |         ^^^^^^^^^^^^^^^^^^^^^^
+  |         @targetName annotation may not be used on a constructor
