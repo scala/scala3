@@ -33,8 +33,15 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
+    def derivedClassAnnotation(cls: ClassSymbol)(using Context) =
+      Annotation(cls, tree.span)
+
     /** All term arguments of this annotation in a single flat list */
     def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
+
+    /** All type arguments of this annotation in a single flat list */
+    def argumentTypes(using Context): List[Type] =
+      tpd.allArguments(tree).filterConserve(_.isType).tpes
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -66,23 +73,8 @@ object Annotations {
           //     the original tree. TODO Try to use this scheme for other annotations that
           //     take only type arguments as well. We should wait until after 3.9 LTS to
           //     do this, though.
-          //  2. Map all skolems (?n: T) to (?n: Any), and map all recursive captures of
-          //     that are not on CapSet to `^`. Skolems and capturing types on types
-          //     other than CapSet are not allowed in a retains annotation anyway,
-          //     so the underlying type does not matter. This simplification prevents
-          //     exponential blowup in some cases. See i24556.scala and i24556a.scala.
-          //  3. Drop the annotation entirely if CC is not enabled somehwere.
-
-          def sanitize(tp: Type): Type = tp match
-            case SkolemType(_) =>
-              SkolemType(defn.AnyType)
-            case tp @ AnnotatedType(parent, ann)
-            if ann.symbol.isRetainsLike && parent.typeSymbol != defn.Caps_CapSet =>
-              tp.derivedAnnotatedType(parent, Annotation(defn.RetainsCapAnnot, ann.tree.span))
-            case tp @ OrType(tp1, tp2) =>
-              tp.derivedOrType(sanitize(tp1), sanitize(tp2))
-            case _ =>
-              tp
+          //  2. Sanitize the arguments to prevent compilation time blowup.
+          //  3. Drop the annotation entirely if CC is not enabled somewhere.
 
           def rebuild(tree: Tree, mappedType: Type): Tree = tree match
             case Apply(fn, Nil) => cpy.Apply(tree)(rebuild(fn, mappedType), Nil)
@@ -93,8 +85,12 @@ object Annotations {
             EmptyAnnotation // strip retains-like annotations unless capture checking is enabled
           else
             val mappedType = sanitize(tm(arg.tpe))
-            if mappedType `eql` arg.tpe then this
-            else derivedAnnotation(rebuild(tree, mappedType))
+            if mappedType `eql` arg.tpe then
+              this
+            else if cc.ccConfig.newScheme then
+              CompactAnnotation(symbol.typeRef.appliedTo(mappedType))
+            else
+              derivedAnnotation(rebuild(tree, mappedType))
 
         case args =>
           // Checks if `tm` would result in any change by applying it to types
@@ -114,17 +110,12 @@ object Annotations {
 
     /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
-      def isLambdaParam(t: Type) = t match
-        case TermParamRef(tl1, _) => tl eq tl1
-        case _ => false
-
       val acc = new TreeAccumulator[Boolean]:
         def apply(x: Boolean, t: Tree)(using Context) =
           if x then true
-          else if t.isType then
-            t.tpe.existsPart(isLambdaParam, stopAt = StopAt.Static)
+          else if t.isType then refersToLambdaParam(t.tpe, tl)
           else t match
-            case id: (Ident | This) => isLambdaParam(id.tpe.stripped)
+            case id: (Ident | This) => isLambdaParam(id.tpe.stripped, tl)
             case _ => foldOver(x, t)
 
       tpd.allArguments(tree).exists(acc(false, _))
@@ -162,6 +153,82 @@ object Annotations {
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
+
+  case class CompactAnnotation(tp: Type) extends Annotation:
+    assert(tp.isInstanceOf[AppliedType | TypeRef], tp)
+
+    def tree(using Context) = TypeTree(tp)
+
+    override def symbol(using Context) = tp.typeSymbol
+
+    override def derivedAnnotation(tree: Tree)(using Context): Annotation =
+      derivedAnnotation(tree.tpe)
+
+    override def derivedClassAnnotation(cls: ClassSymbol)(using Context) =
+      derivedAnnotation(cls.typeRef)
+
+    def derivedAnnotation(tp: Type)(using Context): Annotation =
+      if tp eq this.tp then this else CompactAnnotation(tp)
+
+    override def arguments(using Context): List[Tree] =
+      argumentTypes.map(TypeTree(_))
+
+    override def argumentTypes(using Context): List[Type] = tp.argTypes
+
+    def argumentType(i: Int)(using Context): Type =
+      val args = argumentTypes
+      if i < args.length then args(i) else NoType
+
+    override def argumentConstant(i: Int)(using Context): Option[Constant] =
+      argumentType(i).normalized match
+        case ConstantType(c) => Some(c)
+        case _ => None
+
+    override def mapWith(tm: TypeMap)(using Context): Annotation =
+      def derived(tp: Type) =
+        if tm.isRange(tp) then EmptyAnnotation else derivedAnnotation(tp)
+      def sanitizeArg(tp: Type) = tp match
+        case tp @ AppliedType(tycon, args) =>
+          tp.derivedAppliedType(tycon, args.mapConserve(sanitize))
+        case _ =>
+          tp
+      if !symbol.isRetainsLike then derived(tm(tp))
+      else if Feature.ccEnabledSomewhere then derived(sanitizeArg(tm(tp)))
+      else EmptyAnnotation // strip retains-like annotations unless capture checking is enabled
+
+    override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
+      refersToLambdaParam(tp, tl)
+
+    override def hash: Int = tp.hash
+    override def eql(that: Annotation) = that match
+      case that: CompactAnnotation => this.tp `eql` that.tp
+      case _ => false
+  end CompactAnnotation
+
+  /** Sanitize @retains arguments to approximate illegal types that could cause a compilation
+   *  time blowup before they are dropped ot detected. This means mapping all all skolems
+   *  (?n: T) to (?n: Any), and mapping all recursive captures that are not on CapSet to `^`.
+   *  Skolems and capturing types on types other than CapSet are not allowed in a
+   *  @retains annotation anyway, so the underlying type does not matter as long as it is also
+   *  illegal. See i24556.scala and i24556a.scala.
+   */
+  private def sanitize(tp: Type)(using Context): Type = tp match
+    case SkolemType(_) =>
+      SkolemType(defn.AnyType)
+    case tp @ AnnotatedType(parent, ann)
+    if ann.symbol.isRetainsLike && parent.typeSymbol != defn.Caps_CapSet =>
+      tp.derivedAnnotatedType(parent, ann.derivedClassAnnotation(defn.RetainsCapAnnot))
+    case tp @ OrType(tp1, tp2) =>
+      tp.derivedOrType(sanitize(tp1), sanitize(tp2))
+    case _ =>
+      tp
+
+  private def isLambdaParam(t: Type, tl: TermLambda): Boolean = t match
+    case TermParamRef(tl1, _) => tl eq tl1
+    case _ => false
+
+  private def refersToLambdaParam(tp: Type, tl: TermLambda)(using Context): Boolean =
+    tp.existsPart(isLambdaParam(_, tl), stopAt = StopAt.Static)
 
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context ?=> Symbol) | Null
@@ -244,7 +311,9 @@ object Annotations {
 
   object Annotation {
 
-    def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
+    def apply(tree: Tree): Annotation = tree match
+      case tree: TypeTree => CompactAnnotation(tree.tpe)
+      case _ => ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
       apply(cls, Nil, span)
