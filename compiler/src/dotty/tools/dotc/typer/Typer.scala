@@ -3126,6 +3126,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.isConstructor then
       if sym.is(Inline) then
         report.error("constructors cannot be `inline`", ddef)
+
+      if sym.targetName != sym.name then
+        report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
+
       if sym.isPrimaryConstructor then
         if sym.owner.is(Case) then
           for
@@ -3135,9 +3139,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if defn.isContextFunctionType(param.tpt.tpe) then
               report.error("case class element cannot be a context function", param.srcPos)
       else
-        if sym.targetName != sym.name then
-          report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
-
         for params <- paramss1; param <- params do
           checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
