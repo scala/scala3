@@ -3887,3 +3887,21 @@ final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
     i"""A private field shadows an inherited field with the same name.
        |This can lead to confusion as the inherited field becomes inaccessible.
        |Consider renaming the private field to avoid the shadowing."""
+
+final class IllegalIdentifier(name: Name)(using Context) extends SyntaxMsg(IllegalIdentifierID):
+  override protected def msg(using Context): String =
+    name match
+    case nme.CONSTRUCTOR | nme.STATIC_CONSTRUCTOR =>
+      "Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden"
+    case _ =>
+      i"The identifier `$name` should not contain `$$`, which is reserved for internal compiler use."
+  override protected def explain(using Context): String =
+    name match
+    case nme.CONSTRUCTOR | nme.STATIC_CONSTRUCTOR =>
+      "Names can include unusual characters when enclosed in backquotes, but `<init>` and `<clinit>` are reserved."
+    case _ =>
+      i"""User identifiers may be encoded with embedded `$$`, and other compiler artifacts
+         |may rely on using `$$` with specific meanings.
+         |
+         |The prohibition against explicit `$$` may be ignored by enclosing the identifier in backquotes
+         |at the definition site."""
