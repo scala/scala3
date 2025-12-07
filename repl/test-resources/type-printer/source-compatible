@@ -7,7 +7,7 @@ val m:
       def i_=(x$1: Int): Unit; type N = Int; val l: List[Int];
       def p[T](t: T): String
   } = Bag()
-scala> type t = Bag { val f: Int; def g: Int; def h(i: Int): Int; val i: Int; def i_=(x$1: Int): Unit; type N = Int; val l: List[Int]; val s: String @unchecked }
+scala> type t = Bag { val f: Int; def g: Int; def h(i: Int): Int; val i: Int; def i_=(`x$1`: Int): Unit; type N = Int; val l: List[Int]; val s: String @unchecked }
 // defined alias type t
    =
     Bag{
