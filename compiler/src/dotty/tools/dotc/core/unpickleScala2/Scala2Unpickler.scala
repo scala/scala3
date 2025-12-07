@@ -106,7 +106,7 @@ object Scala2Unpickler {
     // If from Scala 2, adjust for tuple classes; if not, it's from Java, and adjust for BoxedUnit
     val normalizedParents =
       if (fromScala2) defn.adjustForTuple(cls, tparams, parents1)
-      else defn.adjustForBoxedUnit(cls, parents1)
+      else parents1
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
