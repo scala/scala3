@@ -1301,11 +1301,11 @@ object Parsers {
       val start = in.sourcePos()
       ident().tap: name =>
         if checkable && name.toSimpleName.contains('$') then
-          report.error(IllegalIdentifier(name), start)
+          report.errorOrMigrationWarning(IllegalIdentifier(name), start, MigrationVersion.IdentifierDollars)
 
     extension (nameTree: NameTree) def checkName: nameTree.type =
       if !isBackquoted(nameTree) && nameTree.name.toSimpleName.contains('$') then
-        report.error(IllegalIdentifier(nameTree.name), nameTree.srcPos)
+        report.errorOrMigrationWarning(IllegalIdentifier(nameTree.name), nameTree.srcPos, MigrationVersion.IdentifierDollars)
       nameTree
 
     /** Accept identifier and return Ident with its name as a term name. */
