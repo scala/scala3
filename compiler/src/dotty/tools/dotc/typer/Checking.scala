@@ -1363,11 +1363,12 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit =
-    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
+    val seen = new mutable.HashMap[String, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
-      for other <- seen(decl.name) if decl.name != nme.ERROR && !decl.isAbsent() && !other.isAbsent() do
+      val key = decl.name.toString
+      for other <- seen(key) if decl.name != nme.ERROR && !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
@@ -1384,7 +1385,7 @@ trait Checking {
           report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
           decl.resetFlag(HasDefaultParams)
       if !excludeFromDoubleDeclCheck(decl) then
-        seen(decl.name) = decl :: seen(decl.name)
+        seen(key) ::= decl
 
     cls.info.decls.foreach(checkDecl)
     cls.info match
