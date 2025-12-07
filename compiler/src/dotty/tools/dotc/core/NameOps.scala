@@ -188,9 +188,17 @@ object NameOps {
       }
     }
 
-    /** Do two target names match? An empty target name matchws any other name. */
+    /** Do two target names match? An empty target name matches any other name.
+     *  Target names match if their simple names compare equal,
+     *  if they belong to the same term or type namespace,
+     *  and it's not the case that only one is a field name.
+     */
     def matchesTargetName(other: Name) =
-      name == other || name.isEmpty || other.isEmpty
+         name.isEmpty
+      || other.isEmpty
+      ||    name.isTermName == other.isTermName
+         && name.is(NameKinds.FieldName) == other.is(NameKinds.FieldName)
+         && name.toSimpleName == other.toSimpleName
 
     private def functionSuffixStart: Int =
       val first = name.firstPart
