@@ -536,10 +536,6 @@ sealed abstract class CaptureSet extends Showable:
   /** More info enabled by -Y flags */
   def optionalInfo(using Context): String = ""
 
-  /** A regular @retains or @retainsByName annotation with the elements of this set as arguments. */
-  def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
-    Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
-
   override def toText(printer: Printer): Text =
     printer.toTextCaptureSet(this) ~~ description
 

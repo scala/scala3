@@ -14,7 +14,7 @@ import Annotations.Annotation
 import CaptureSet.VarState
 import Capabilities.*
 import Mutability.isStatefulType
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import config.Feature
 import NameKinds.TryOwnerName
 import typer.ProtoTypes.WildcardSelectionProto
@@ -545,13 +545,23 @@ extension (cls: ClassSymbol)
 
 extension (sym: Symbol)
 
-  /** This symbol is one of `retains` or `retainsCap` */
-  def isRetains(using Context): Boolean =
-    sym == defn.RetainsAnnot || sym == defn.RetainsCapAnnot
+  private def inScalaAnnotation(using Context): Boolean =
+    sym.maybeOwner.name == tpnme.annotation
+    && sym.owner.owner == defn.ScalaPackageClass
 
-  /** This symbol is one of `retains`, `retainsCap`, or`retainsByName` */
+  /** Is this symbol one of `retains` or `retainsCap`?
+   *  Try to avoid cycles by not forcing definition symbols except scala package.
+   */
+  def isRetains(using Context): Boolean =
+    (sym.name == tpnme.retains || sym.name == tpnme.retainsCap)
+    && inScalaAnnotation
+
+  /** Is this symbol one of `retains`, `retainsCap`, or`retainsByName`?
+   *  Try to avoid cycles by not forcing definition symbols except scala package.
+   */
   def isRetainsLike(using Context): Boolean =
-    isRetains || sym == defn.RetainsByNameAnnot
+    (sym.name == tpnme.retains || sym.name == tpnme.retainsCap || sym.name == tpnme.retainsByName)
+    && inScalaAnnotation
 
   /** A class is pure if:
    *   - one its base types has an explicitly declared self type with an empty capture set
@@ -658,7 +668,8 @@ class PathSelectionProto(val select: Select, val pt: Type) extends typer.ProtoTy
   def selector(using Context): Symbol = select.symbol
 
 /** Drop retains annotations in the inferred type if CC is not enabled
- *  or transform them into RetainingTypes if CC is enabled.
+ *  or transform them into RetainingTypes with Nothing as argument if CC is enabled
+ *  (we need to do that to keep by-name status).
  */
 class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type = tp match
