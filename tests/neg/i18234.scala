@@ -162,3 +162,8 @@ package BadPackageEnd$ : // error
 
 class BadConstructor:
   def `<init>`() = () // error // error
+
+def patvar[A](x: Option[A]) =
+  x match
+  case Some(funky$thing) => true // error
+  case _ => false

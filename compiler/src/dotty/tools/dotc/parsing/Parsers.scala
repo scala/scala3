@@ -3425,6 +3425,9 @@ object Parsers {
           p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
         if (in.token == LPAREN)
           p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
+        p match
+        case nt: NameTree if isVarPattern(nt) => checkName(nt)
+        case _ =>
         p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
