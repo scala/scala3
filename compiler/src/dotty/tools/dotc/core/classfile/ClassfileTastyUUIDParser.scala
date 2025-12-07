@@ -104,6 +104,6 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   class ConstantPool(using in: DataReader) extends ClassfileParser.AbstractConstantPool {
     def getClassOrArrayType(index: Int)(using ctx: Context, in: DataReader): Type = throw new UnsupportedOperationException
     def getClassSymbol(index: Int)(using ctx: Context, in: DataReader): Symbol = throw new UnsupportedOperationException
-    def getType(index: Int, isVarargs: Boolean)(using x$3: Context, x$4: DataReader): Type = throw new UnsupportedOperationException
+    def getType(index: Int, isVarargs: Boolean)(using Context, DataReader): Type = throw new UnsupportedOperationException
   }
 }

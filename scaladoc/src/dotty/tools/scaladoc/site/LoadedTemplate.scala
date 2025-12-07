@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters._
 
 case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[String, Object]:
   lazy val getValue: Object = value()
-  def setValue(x$0: Object): Object = ???
+  def setValue(`x$0`: Object): Object = ???
 
 case class LoadedTemplate(
   templateFile: TemplateFile,

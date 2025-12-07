@@ -106,4 +106,4 @@ object Answers {
   def answer: Int = 42
 }
 
-val a$1 = 2
+val `a$1` = 2
