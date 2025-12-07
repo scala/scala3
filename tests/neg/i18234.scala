@@ -1,3 +1,4 @@
+//> using options -source:3.9
 /* vals */
 val goodVal = 1
 val $startVal = 1 // error

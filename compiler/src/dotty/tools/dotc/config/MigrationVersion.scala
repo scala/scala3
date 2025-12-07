@@ -34,6 +34,7 @@ enum MigrationVersion(val warnFrom: SourceVersion, val errorFrom: SourceVersion)
   case GivenSyntax extends MigrationVersion(future, future)
   case ImplicitParamsWithoutUsing extends MigrationVersion(`3.7`, future)
   case Scala2Implicits extends MigrationVersion(future, future)
+  case IdentifierDollars extends MigrationVersion(`3.8`, `3.9`)
 
   require(warnFrom.ordinal <= errorFrom.ordinal)
 
