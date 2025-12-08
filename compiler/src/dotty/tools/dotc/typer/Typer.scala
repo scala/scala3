@@ -2213,10 +2213,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         }
 
-        /** Are some form of brackets necessary to annotate the tree `sel` as `@unchecked`?
+        /** Are some form of brackets necessary to annotate the tree `sel` as `.runtimeChecked`?
          *  If so, return a Some(opening bracket, closing bracket), otherwise None.
          */
-        def uncheckedBrackets(sel: untpd.Tree): Option[(String, String)] = sel match
+        def runtimeCheckedBrackets(sel: untpd.Tree): Option[(String, String)] = sel match
           case _: untpd.If
              | _: untpd.Match
              | _: untpd.ForYield
@@ -2235,20 +2235,24 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   && sourceVersion.isAtLeast(`3.2`)
                   && sourceVersion.isMigrating
                 then
-                  if isPatDef then uncheckedBrackets(tree.selector) match
+                  if isPatDef then
+                    val patchText =
+                      if sourceVersion.isAtLeast(`3.8`) then ".runtimeChecked"
+                      else ": @unchecked"
+                    runtimeCheckedBrackets(tree.selector) match
                     case None =>
-                      patch(Span(tree.selector.span.end), ": @unchecked")
+                      patch(Span(tree.selector.span.end), patchText)
                     case Some(bl, br) =>
                       patch(Span(tree.selector.span.start), s"$bl")
-                      patch(Span(tree.selector.span.end), s"$br: @unchecked")
+                      patch(Span(tree.selector.span.end), s"$br$patchText")
                   else
                     patch(Span(tree.span.start), "case ")
 
                 // skip exhaustivity check in later phase
                 // TODO: move the check above to patternMatcher phase
-                val uncheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.UncheckedAnnot, tree.selector.span))
+                val runtimeCheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.RuntimeCheckedAnnot, tree.selector.span))
                 tpd.cpy.Match(result)(
-                  selector = tpd.Typed(sel, tpd.TypeTree(uncheckedTpe, inferred = true)),
+                  selector = tpd.Typed(sel, tpd.TypeTree(runtimeCheckedTpe, inferred = true)),
                   cases = result.cases
                 )
               case _ =>
