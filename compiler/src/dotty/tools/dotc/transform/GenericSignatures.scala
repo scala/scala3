@@ -551,43 +551,22 @@ object GenericSignatures {
   private def collectUsedTypeParams(types: List[Type], initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
     val usedMethodTypeParamNames = collection.mutable.Set.empty[Name]
     val usedClassTypeParams = collection.mutable.Set.empty[Symbol]
+    val collector = new TypeTraverser:
+      def traverse(tp: Type) = tp.dealias match
+        case ref @ TypeParamRef(_: PolyType, _) =>
+          usedMethodTypeParamNames += ref.paramName
+        case TypeRef(pre, _) =>
+          val sym = tp.typeSymbol
+          if isTypeParameterInMethSig(sym, initialSymbol) then
+            usedMethodTypeParamNames += sym.name
+          else if sym.isTypeParam && sym.isContainedIn(initialSymbol.topLevelClass) then
+            usedClassTypeParams += sym
+          else
+            traverse(pre)
+        case _ =>
+          traverseChildren(tp)
 
-    def collect(tp: Type): Unit = tp.dealias match
-      case ref @ TypeParamRef(_: PolyType, _) =>
-        usedMethodTypeParamNames += ref.paramName
-      case TypeRef(pre, _) =>
-        val sym = tp.typeSymbol
-        if isTypeParameterInMethSig(sym, initialSymbol) then
-          usedMethodTypeParamNames += sym.name
-        else if sym.isTypeParam && sym.isContainedIn(initialSymbol.topLevelClass) then
-          usedClassTypeParams += sym
-        else
-          collect(pre)
-      case AppliedType(tycon, args) =>
-        collect(tycon)
-        args.foreach(collect)
-      case AndType(tp1, tp2) =>
-        collect(tp1)
-        collect(tp2)
-      case OrType(tp1, tp2) =>
-        collect(tp1)
-        collect(tp2)
-      case RefinedType(parent, _, refinedInfo) =>
-        collect(parent)
-        collect(refinedInfo)
-      case TypeBounds(lo, hi) =>
-        collect(lo)
-        collect(hi)
-      case ExprType(res) =>
-        collect(res)
-      case AnnotatedType(tpe, _) =>
-        collect(tpe)
-      case defn.ArrayOf(elemtp) =>
-        collect(elemtp)
-      case _ =>
-        ()
-
-    types.foreach(collect)
+    types.foreach(collector.traverse)
     (usedMethodTypeParamNames.toSet, usedClassTypeParams.toSet)
   end collectUsedTypeParams
 }
