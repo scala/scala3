@@ -14,12 +14,7 @@ object RetainingType:
     val annotCls = if byName then defn.RetainsByNameAnnot else defn.RetainsAnnot
     AnnotatedType(tp, RetainingAnnotation(annotCls.typeRef.appliedTo(typeElems)))
 
-  def unapply(tp: AnnotatedType)(using Context): Option[(Type, Type)] =
-    val sym = tp.annot.symbol
-    if sym.isRetainsLike then
-      tp.annot match
-        case _: CaptureAnnotation => None
-        case ann => Some((tp.parent, ann.tree.retainedSet))
-    else
-      None
+  def unapply(tp: AnnotatedType)(using Context): Option[(Type, Type)] = tp.annot match
+    case ann: RetainingAnnotation => Some((tp.parent, ann.retainedType))
+    case _ => None
 end RetainingType

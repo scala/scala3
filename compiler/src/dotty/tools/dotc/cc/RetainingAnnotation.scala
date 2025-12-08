@@ -31,8 +31,13 @@ class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
     override def mapWith(tm: TypeMap)(using Context): Annotation =
       if Feature.ccEnabledSomewhere then mapWithCtd(tm) else EmptyAnnotation
 
-/*
+    def isStrict(using Context): Boolean = symbol.isRetains
+
+    def retainedType(using Context): Type =
+      if symbol == defn.RetainsCapAnnot then defn.captureRoot.termRef
+      else argumentType(0)
+
     def toCaptureSet(using Context): CaptureSet =
-      CaptureSet(argumentType(0).retainedElements*)
-*/
+      CaptureSet(retainedType.retainedElements*)
+
 end RetainingAnnotation

@@ -54,28 +54,15 @@ def ccState(using Context): CCState =
 
 extension (tree: Tree)
 
-  /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
-   *  For efficience, the result is cached as an Attachment on the tree.
+  /** The type representing the capture set of @retains, @retainsCap or @retainsByName
+   *  annotation tree.
    */
-  def toCaptureSet(using Context): CaptureSet =
-    tree.getAttachment(Captures) match
-      case Some(refs) => refs
-      case None =>
-        val refs = CaptureSet(tree.retainedSet.retainedElements*)
-        tree.putAttachment(Captures, refs)
-        refs
-
-  /** The type representing the capture set of @retains, @retainsCap or @retainsByName annotation. */
   def retainedSet(using Context): Type =
     val rcap = defn.RetainsCapAnnot
     if tree.symbol == rcap || tree.symbol.maybeOwner == rcap then
       defn.captureRoot.termRef
     else tree match
       case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
-      case tree: TypeTree =>
-        tree.tpe match
-          case AppliedType(_, refs :: Nil) => refs
-          case _ => NoType
       case _ => NoType
 
 extension (tp: Type)
@@ -101,8 +88,8 @@ extension (tp: Type)
   def retainedElementsRaw(using Context): List[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
-    case AnnotatedType(tp1, ann) if tp1.derivesFrom(defn.Caps_CapSet) && ann.symbol.isRetains =>
-      ann.tree.retainedSet.retainedElementsRaw
+    case AnnotatedType(tp1, ann: RetainingAnnotation) if tp1.derivesFrom(defn.Caps_CapSet) && ann.isStrict =>
+      ann.retainedType.retainedElementsRaw
     case tp =>
       tp.dealiasKeepAnnots match
         case tp: TypeRef if tp.symbol == defn.Caps_CapSet =>
@@ -244,10 +231,11 @@ extension (tp: Type)
       case tp @ CapturingType(parent, refs) =>
         if tp.isBoxed || parent.derivesFrom(defn.Caps_CapSet) then tp
         else tp.boxed
+      case tp @ AnnotatedType(parent, ann: RetainingAnnotation)
+      if ann.isStrict && !parent.derivesFrom(defn.Caps_CapSet) =>
+        CapturingType(parent, ann.toCaptureSet, boxed = true)
       case tp @ AnnotatedType(parent, ann) =>
-        if ann.symbol.isRetains && !parent.derivesFrom(defn.Caps_CapSet)
-        then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
-        else tp.derivedAnnotatedType(parent.boxDeeply, ann)
+        tp.derivedAnnotatedType(parent.boxDeeply, ann)
       case tp: (Capability & SingletonType) if tp.isTrackableRef && !tp.isAlwaysPure =>
         recur(CapturingType(tp, CaptureSet(tp)))
       case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>

@@ -1035,14 +1035,13 @@ object Capabilities:
       else t match
         case t @ CapturingType(_, _) =>
           mapOver(t)
+        case t @ AnnotatedType(parent, ann: RetainingAnnotation)
+        if ann.isStrict && ann.toCaptureSet.containsCap =>
+          // Applying `this` can cause infinite recursion in some cases during printing.
+          // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
+          mapOver(CapturingType(this(parent), ann.toCaptureSet))
         case t @ AnnotatedType(parent, ann) =>
-          val parent1 = this(parent)
-          if ann.symbol.isRetains && ann.tree.toCaptureSet.containsCap then
-            // Applying `this` can cause infinite recursion in some cases during printing.
-            // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
-            mapOver(CapturingType(parent1, ann.tree.toCaptureSet))
-          else
-            t.derivedAnnotatedType(parent1, ann)
+          t.derivedAnnotatedType(this(parent), ann)
         case defn.RefinedFunctionOf(_) =>
           t  // stop at dependent function types
         case _ =>

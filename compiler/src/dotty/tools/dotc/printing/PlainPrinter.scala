@@ -317,8 +317,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
-          case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            ann.tree.retainedSet.retainedElementsRaw match
+          case AnnotatedType(parent, ann: RetainingAnnotation) if !ann.isStrict =>
+            ann.retainedType.retainedElementsRaw match
               case ref :: Nil if ref.isCapRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>

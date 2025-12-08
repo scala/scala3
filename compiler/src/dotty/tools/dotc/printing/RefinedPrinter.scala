@@ -705,7 +705,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextTemplate(tree)
       case Annotated(arg, annot) =>
         def captureSet =
-          annot.asInstanceOf[tpd.Tree].toCaptureSet
+          CaptureSet(annot.asInstanceOf[tpd.Tree].retainedSet.retainedElements*)
         def toTextAnnot =
           toTextLocal(arg) ~~ annotText(annot.symbol.enclosingClass, annot)
         def toTextRetainsAnnot =
