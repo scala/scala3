@@ -19,9 +19,6 @@ import config.Feature
 import NameKinds.TryOwnerName
 import typer.ProtoTypes.WildcardSelectionProto
 
-/** Attachment key for capturing type trees */
-private val Captures: Key[CaptureSet] = Key()
-
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhaseId
@@ -661,7 +658,7 @@ class PathSelectionProto(val select: Select, val pt: Type) extends typer.ProtoTy
  */
 class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type = tp match
-    case AnnotatedType(parent, annot) if annot.symbol.isRetainsLike =>
+    case AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot then
           RetainingType(parent, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
