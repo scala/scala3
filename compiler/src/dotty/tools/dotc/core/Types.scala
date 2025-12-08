@@ -4228,9 +4228,9 @@ object Types extends TypeUtils {
               if ann.symbol.isRetainsLike then
                 range(
                   AnnotatedType(parent1,
-                    CompactAnnotation(defn.RetainsAnnot.typeRef.appliedTo(defn.NothingType))),
+                    RetainingAnnotation(defn.RetainsAnnot.typeRef.appliedTo(defn.NothingType))),
                   AnnotatedType(parent1,
-                    CompactAnnotation(defn.RetainsCapAnnot.appliedRef)))
+                    RetainingAnnotation(defn.RetainsCapAnnot.appliedRef)))
               else
                 parent1
             case _ => mapOver(tp)
