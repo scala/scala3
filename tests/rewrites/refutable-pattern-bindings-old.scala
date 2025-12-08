@@ -1,3 +1,5 @@
+// NOTE: this file is compiled under -source 3.2-migration (i.e. it will rewrite to `: @unchecked`)
+// see refutable-pattern-bindings.scala for the version compiled under -source 3.8-migration (which rewrites to `.runtimeChecked`)
 val xs: List[Any] = ???
 
 val hd :: tl = xs match
@@ -21,7 +23,7 @@ val e :: f =
 
 val j :: k =
   for
-    case (x: String) <- xs
+    (x: String) <- xs
   yield x
 
 val (_: Int | _: AnyRef) = ??? : AnyRef

@@ -1,0 +1,29 @@
+// NOTE: this file is compiled under -source 3.2-migration (i.e. it will rewrite to `: @unchecked`)
+// see refutable-pattern-bindings.scala for the version compiled under -source 3.8-migration (which rewrites to `.runtimeChecked`)
+val xs: List[Any] = ???
+
+val hd :: tl = (xs match
+  case Nil => null :: xs
+  case _   => xs): @unchecked
+
+val h :: t = xs: @unchecked
+
+val a :: b =
+  (if xs.isEmpty then null :: xs
+  else xs): @unchecked
+
+val c :: d =
+  (try xs.head :: xs
+  catch case _: NoSuchElementException => null :: xs): @unchecked
+
+val e :: f =
+  {val zero = null :: Nil
+  if xs.isEmpty then zero
+  else xs}: @unchecked
+
+val j :: k =
+  (for
+    case (x: String) <- xs
+  yield x): @unchecked
+
+val (_: Int | _: AnyRef) = (??? : AnyRef): @unchecked
