@@ -8,6 +8,13 @@ class Foo[T]:
 // https://github.com/scala/scala3/issues/24671
 final case class Bar[+T](t: T)
 
+// `m: public <T1> T C.m()` rather than `m: public <T> T C.m()`
+// that was wrong and could be crashed with
+// `val c = C[String]; String x = c.<Object>m();`.
+abstract class C[T]:
+  def x: T
+  def m[T] = x
+
 // https://github.com/scala/scala3/issues/24134
 // The mixin forwarders for compose in Function1 method  has signature
 // `def compose[A](g: A => T1): A => R`
@@ -24,10 +31,13 @@ abstract class JavaPartialFunction[A, B] extends PartialFunction[A, B]
 
   val barMethods = classOf[Bar[_]].getDeclaredMethods()
   printMethodSig(barMethods, "copy")
-  // copy$default$1 still have `<T1> T Bar.copy$default$1` rather than `<T> T Bar.copy$default$1`
+  // copy$default$1 have `<T1> T Bar.copy$default$1` rather than `<T> T Bar.copy$default$1`
   // as reported in https://github.com/scala/scala3/issues/24671
   // The type parameter rename occurs because the return type T refers the enclosing class's type param T.
-  // printMethodSig(barMethods, "copy$default$1")
+  printMethodSig(barMethods, "copy$default$1")
+
+  val cMethods = classOf[C[_]].getDeclaredMethods()
+  printMethodSig(cMethods, "m")
 
   val jpfMethods = classOf[JavaPartialFunction[_, _]].getDeclaredMethods()
   printMethodSigs(jpfMethods, "compose")
