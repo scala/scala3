@@ -2,14 +2,10 @@
 layout: doc-page
 title: The `into` Type and Modifier
 redirectFrom: /docs/reference/other-new-features/into.html
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/into.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/into.html
 ---
 
-This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
-
-```scala
-import scala.language.experimental.into
-```
+This feature is available as a preview since Scala 3.8.0.
 
 
 ## Summary
