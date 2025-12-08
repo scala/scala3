@@ -7,8 +7,9 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 ## Introduction
 
 Capture checking supports capture-polymorphic programming in two complementary styles:
-	1.	**Implicit** capture polymorphism, which is the default and has minimal syntactic overhead.
-	2.	**Explicit** capture polymorphism, which allows programmers to abstract over capture sets directly through explicit generic parameters.
+
+1.	**Implicit** capture polymorphism, which is the default and has minimal syntactic overhead.
+1.	**Explicit** capture polymorphism, which allows programmers to abstract over capture sets directly through explicit generic parameters.
 
 ### Implicit Polymorphism
 
@@ -117,7 +118,7 @@ class ConcatIterator[A, C^](var iterators: mutable.List[IterableOnce[A]^{C}]):
     this                                         // track contents of `it` in the result
 ```
 In such cases, the type system must ensure that any existing aliases of the iterator become invalid
-after mutation. This is handled by [mutation tracking](mutability.md) and [separation tracking](separation-checking.md￼), which are currently under development.
+after mutation. This is handled by [mutation tracking](mutability.md) and [separation tracking](separation-checking.md), which are currently under development.
 
 ## Shall I Be Implicit or Explicit?
 
