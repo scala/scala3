@@ -127,6 +127,16 @@ object Annotations {
   case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
 
+  /** A class for optimized, compact annotations that are defined by a type
+   *  instead of a tree. This makes mapping such annotations a lot faster and safer.
+   *  In fact, in retrospect, most annotations would better be represented as
+   *  CompactAnnotations.
+   *
+   *  CompactAnnotation is extended by cc.RetainingAnnotation, which is reserved
+   *  for @retains, @retainsByName and @retainsCap. For now there are no
+   *  CompactAnnotations other than RetainingAnnotations but this could be changed
+   *  in the future, after 3.9 has shipped.
+   */
   class CompactAnnotation(val tpe: Type) extends Annotation:
     assert(tpe.isInstanceOf[AppliedType | TypeRef], tpe)
 
