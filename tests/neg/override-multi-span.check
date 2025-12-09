@@ -1,0 +1,14 @@
+-- [E164] Declaration Error: tests/neg/override-multi-span.scala:6:15 --------------------------------------------------
+error overriding method foo in class A of type => Int;
+  method foo of type => String has incompatible type
+2 |  def foo: Int = 0
+  |      -
+  |      the overridden method is here
+3 |def main(): Unit =
+4 |  println("Hello")
+5 |class B extends A:
+6 |  override def foo: String = "0"  // error
+  |               ^
+  |               the overriding method has incompatible type
+  |
+  | longer explanation available when compiling with `-explain`

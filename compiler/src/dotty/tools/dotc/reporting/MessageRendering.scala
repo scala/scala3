@@ -12,7 +12,7 @@ import io.AbstractFile
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
-import util.{SourcePosition, NoSourcePosition}
+import util.{SourceFile, SourcePosition, NoSourcePosition}
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
@@ -253,47 +253,21 @@ trait MessageRendering {
     else
     pos
 
-  /** Render a message using multi-span information from Message.parts. */
-  def messageAndPosFromParts(dia: Diagnostic)(using Context): String =
-    val msg = dia.msg
-    val pos = dia.pos
-    val pos1 = adjust(pos.nonInlined)
-    val msgParts = msg.parts
+  /** Render parts for a single source file.
+   *  @param parts the message parts to render (all must be from the same source)
+   *  @param sb the StringBuilder to append to
+   */
+  private def renderPartsForFile(
+    parts: List[Message.MessagePart],
+    sb: StringBuilder
+  )(using Context, Level, Offset): Unit =
+    if parts.isEmpty then return
 
-    if msgParts.isEmpty then
-      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
-
-    // Collect all positions from message parts
-    val validParts = msgParts.filter(_.srcPos.exists)
-
-    if validParts.isEmpty then
-      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
-
-    // Check all positions are in the same source file
-    val source = validParts.head.srcPos.source
-    if !validParts.forall(_.srcPos.source == source) || !source.file.exists then
-      // TODO: support rendering source positions across multiple files
-      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
+    val source = parts.head.srcPos.source
 
     // Find the line range covering all positions
-    val minLine = validParts.map(_.srcPos.startLine).min
-    val maxLine = validParts.map(_.srcPos.endLine).max
-    val maxLineNumber = maxLine + 1
-
-    given Level = Level(dia.level)
-    given Offset = Offset(maxLineNumber.toString.length + 2)
-
-    val sb = StringBuilder()
-
-    // Title using the primary position
-    val posString = posStr(pos1, msg, diagnosticLevel(dia))
-    if posString.nonEmpty then sb.append(posString).append(EOL)
-
-    // Display leading text if present
-    msg.leading.foreach { leadingText =>
-      sb.append(leadingText)
-      if !leadingText.endsWith(EOL) then sb.append(EOL)
-    }
+    val minLine = parts.map(_.srcPos.startLine).min
+    val maxLine = parts.map(_.srcPos.endLine).max
 
     // Render the unified code snippet
     val startOffset = source.lineToOffset(minLine)
@@ -316,6 +290,7 @@ trait MessageRendering {
     }
 
     val lines = linesFrom(syntax)
+    val maxLineNumber = maxLine + 1
     val lineNumberWidth = maxLineNumber.toString.length
 
     // Render each line with its markers and messages
@@ -329,7 +304,7 @@ trait MessageRendering {
         sb.append(lnum).append(lineContent.stripLineEnd).append(EOL)
 
         // Find all positions that should show markers after this line
-        val partsOnLine = validParts.filter(_.srcPos.startLine == lineNum)
+        val partsOnLine = parts.filter(_.srcPos.startLine == lineNum)
           .sortBy(p => (p.srcPos.startColumn, !p.isPrimary))
 
         if partsOnLine.size == 1 then
@@ -382,17 +357,76 @@ trait MessageRendering {
             connectorLine.append(msgPadding).append(msgText)
 
             sb.append(connectorLine).append(EOL)
+  end renderPartsForFile
+
+  /** Group consecutive parts by their source file. */
+  private def groupPartsByFile(parts: List[Message.MessagePart]): List[(SourceFile, List[Message.MessagePart])] =
+    if parts.isEmpty then Nil
+    else
+      val head = parts.head
+      val source = head.srcPos.source
+      val (sameSrc, rest) = parts.span(_.srcPos.source == source)
+      (source, sameSrc) :: groupPartsByFile(rest)
+
+  /** Render a message using multi-span information from Message.parts. */
+  def messageAndPosFromParts(dia: Diagnostic)(using Context): String =
+    val msg = dia.msg
+    val pos = dia.pos
+    val pos1 = adjust(pos.nonInlined)
+    val msgParts = msg.parts
+
+    if msgParts.isEmpty then
+      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
+
+    // Collect all positions from message parts
+    val validParts = msgParts.filter(p => p.srcPos.exists && p.srcPos.source.file.exists)
+
+    if validParts.isEmpty then
+      return msg.leading.map(_ + "\n").getOrElse("") + msg.message
+
+    // Group parts by consecutive source files
+    val groupedParts = groupPartsByFile(validParts)
+
+    // Calculate the maximum line number across all files for consistent offset
+    val maxLineNumber = validParts.map(_.srcPos.endLine).max + 1
+
+    given Level = Level(dia.level)
+    given Offset = Offset(maxLineNumber.toString.length + 2)
+
+    val sb = StringBuilder()
+
+    // Title using the primary position
+    val posString = posStr(pos1, msg, diagnosticLevel(dia))
+    if posString.nonEmpty then sb.append(posString).append(EOL)
+
+    // Display leading text if present
+    msg.leading.foreach { leadingText =>
+      sb.append(leadingText)
+      if !leadingText.endsWith(EOL) then sb.append(EOL)
+    }
+
+    // Track the current file
+    // When starting, we set it to the file of the diagnostic
+    var currentFile: SourceFile = pos1.source
+
+    // Render each group of parts
+    for (source, parts) <- groupedParts do
+      // Add a file indicator line when switching to a different file
+      if source != currentFile then
+        sb.append("... ").append(renderPath(source.file)).append(EOL)
+        currentFile = source
+      renderPartsForFile(parts, sb)
 
     // Add explanation if needed
     if Diagnostic.shouldExplain(dia) then
-      sb.append(EOL).append(newBox())
+      sb.append(newBox())
       sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
       sb.append(EOL).append(newBox(soft = true))
       dia.msg.explanation.split(raw"\R").foreach: line =>
         sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
       sb.append(EOL).append(endBox)
     else if dia.msg.canExplain then
-      sb.append(EOL).append(offsetBox)
+      sb.append(offsetBox)
       sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
     sb.toString
