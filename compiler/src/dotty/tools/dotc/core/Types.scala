@@ -4227,10 +4227,8 @@ object Types extends TypeUtils {
               val parent1 = mapOver(parent)
               if ann.symbol.isRetainsLike then
                 range(
-                  AnnotatedType(parent1,
-                    RetainingAnnotation(defn.RetainsAnnot.typeRef.appliedTo(defn.NothingType))),
-                  AnnotatedType(parent1,
-                    RetainingAnnotation(defn.RetainsCapAnnot.appliedRef)))
+                  AnnotatedType(parent1, RetainingAnnotation(defn.RetainsAnnot, defn.NothingType)),
+                  AnnotatedType(parent1, RetainingAnnotation(defn.RetainsCapAnnot)))
               else
                 parent1
             case _ => mapOver(tp)

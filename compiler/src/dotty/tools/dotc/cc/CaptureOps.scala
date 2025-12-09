@@ -492,8 +492,7 @@ extension (cls: ClassSymbol)
       defn.pureBaseClasses.contains(bc)
       || bc.is(CaptureChecked)
           && bc.givenSelfType.dealiasKeepAnnots.match
-            case CapturingType(_, refs) => refs.isAlwaysEmpty
-            case RetainingType(_, refs) => refs.retainedElements.isEmpty
+            case CapturingOrRetainsType(_, refs) => refs.isAlwaysEmpty
             case selfType =>
               isCaptureChecking  // At Setup we have not processed self types yet, so
                                  // unless a self type is explicitly given, we can't tell
@@ -653,17 +652,16 @@ class PathSelectionProto(val select: Select, val pt: Type) extends typer.ProtoTy
   def selector(using Context): Symbol = select.symbol
 
 /** Drop retains annotations in the inferred type if CC is not enabled
- *  or transform them into RetainingTypes with Nothing as argument if CC is enabled
- *  (we need to do that to keep by-name status).
+ *  or transform them into retains annotations with Nothing (i.e. empty set) as
+ *   argument if CC is enabled (we need to do that to keep by-name status).
  */
 class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type = tp match
-    case AnnotatedType(parent, annot: RetainingAnnotation) =>
+    case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
-        if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot then
-          RetainingType(parent, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
-        else mapOver(tp)
-      else apply(parent)
+        if annot.symbol == defn.RetainsCapAnnot then tp
+        else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
+      else this(parent)
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific

@@ -33,9 +33,6 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    def derivedClassAnnotation(cls: ClassSymbol)(using Context) =
-      Annotation(cls, tree.span)
-
     /** All term arguments of this annotation in a single flat list */
     def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
@@ -139,9 +136,6 @@ object Annotations {
 
     override def derivedAnnotation(tree: Tree)(using Context): Annotation =
       derivedAnnotation(tree.tpe)
-
-    override def derivedClassAnnotation(cls: ClassSymbol)(using Context) =
-      derivedAnnotation(cls.typeRef)
 
     def derivedAnnotation(tp: Type)(using Context): Annotation =
       if tp eq this.tpe then this else CompactAnnotation(tp)

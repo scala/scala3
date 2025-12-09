@@ -813,10 +813,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private def instanceCanBeImpure(tp: Type)(using Context): Boolean = {
     tp.dealiasKeepAnnots match
-      case CapturingType(_, refs) =>
+      case CapturingOrRetainsType(_, refs) =>
         !refs.isAlwaysEmpty
-      case RetainingType(parent, refs) =>
-        !refs.retainedElements.isEmpty
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass
@@ -856,15 +854,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(tp.tp1) && needsVariable(tp.tp2)
       case tp: OrType =>
         needsVariable(tp.tp1) || needsVariable(tp.tp2)
-      case CapturingType(parent, refs) =>
+      case CapturingOrRetainsType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
-      case RetainingType(parent, refs) =>
-        needsVariable(parent)
-        && !refs.retainedElements.exists:
-            case ref: TermRef => ref.isCapRef
-            case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
