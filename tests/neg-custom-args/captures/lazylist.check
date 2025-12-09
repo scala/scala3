@@ -44,11 +44,28 @@
    |
    | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
+error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];
+  method tail of type -> lazylists.LazyList[Nothing]^{cap} has incompatible type
+
+where:    cap is a root capability associated with the result type of -> lazylists.LazyList[Nothing]^
+ 8 |  def tail: LazyList[T]
+   |      -
+   |      the overridden method is here
+ 9 |
+10 |  def map[U](f: T => U): LazyList[U]^{f, this} =
+11 |    if isEmpty then LazyNil
+12 |    else LazyCons(f(head), () => tail.map(f))
+13 |
+14 |class LazyCons[+T](val x: T, val xs: () => LazyList[T]^) extends LazyList[T]:
+15 |  def isEmpty = false
+16 |  def head = x
+17 |  def tail = xs() // error
+18 |
+19 |object LazyNil extends LazyList[Nothing]:
+20 |  def isEmpty = true
+21 |  def head = ???
 22 |  def tail: LazyList[Nothing]^ = ???  // error overriding
    |      ^
-   |      error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];
-   |        method tail of type -> lazylists.LazyList[Nothing]^{cap} has incompatible type
-   |
-   |      where:    cap is a root capability associated with the result type of -> lazylists.LazyList[Nothing]^
+   |      the overriding method has incompatible type
    |
    | longer explanation available when compiling with `-explain`

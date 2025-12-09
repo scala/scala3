@@ -1,21 +1,36 @@
 -- Error: tests/neg-custom-args/captures/i24373.scala:28:2 -------------------------------------------------------------
+Separation failure: Illegal access to (x1 : Foo^), which was used as a prefix to consume method sink1
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of value x1
+27 |  x1.sink1
+   |  --
+   |  The capability was consumed here.
 28 |  x1.sink1 // error
    |  ^^
-   |  Separation failure: Illegal access to (x1 : Foo^), which was used as a prefix to consume method sink1
-   |  on line 27 and therefore is no longer available.
-   |
-   |  where:    ^ refers to a fresh root capability in the type of value x1
+   |  Then, it was used here
+
 -- Error: tests/neg-custom-args/captures/i24373.scala:32:2 -------------------------------------------------------------
+Separation failure: Illegal access to (x2 : Bar^), which was used as a prefix to consume method sink2
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of value x2
+31 |  x2.sink2
+   |  --
+   |  The capability was consumed here.
 32 |  x2.sink2 // error
    |  ^^
-   |  Separation failure: Illegal access to (x2 : Bar^), which was used as a prefix to consume method sink2
-   |  on line 31 and therefore is no longer available.
-   |
-   |  where:    ^ refers to a fresh root capability in the type of value x2
+   |  Then, it was used here
+
 -- Error: tests/neg-custom-args/captures/i24373.scala:49:8 -------------------------------------------------------------
+Separation failure: Illegal access to (x6 : Bar^), which was passed as a consume parameter to method sink6
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of value x6
+48 |  sink6(x6)
+   |        --
+   |        The capability was consumed here.
 49 |  sink6(x6) // error
    |        ^^
-   |      Separation failure: Illegal access to (x6 : Bar^), which was passed as a consume parameter to method sink6
-   |      on line 48 and therefore is no longer available.
-   |
-   |      where:    ^ refers to a fresh root capability in the type of value x6
+   |        Then, it was used here
+
