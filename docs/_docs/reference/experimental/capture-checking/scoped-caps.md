@@ -8,6 +8,8 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 When discussing escape checking, we referred to a scoping discipline. That is, capture sets can contain only capabilities that are visible at the point where the set is defined. But that raises the question: where is a universal capability `cap` defined? In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. Usually a `cap` refers to a universal capability defined in the scope where the `cap` appears.
 
+A useful mental model is to think of `cap` as a "container" that can _absorb_ concrete capabilities. When you write `T^` (shorthand for `T^{cap}`), you're saying "this value may capture some capabilities that will flow into this `cap`." Different `cap` instances in different scopes are different containers: a capability that flows into one doesn't automatically flow into another.
+
 ### Existential Binding
 
 Special rules apply to `cap`s in method and function parameters and results. For example, take this method:
@@ -16,7 +18,7 @@ Special rules apply to `cap`s in method and function parameters and results. For
 def makeLogger(fs: FileSystem^): Logger^ = new Logger(fs)
 ```
 
-This creates a `Logger` that captures `fs`. We could have been more specific in specifying `Logger^{fs}` as the return type, but the current definition is also valid, and might be preferable if we want to hide details of what the returned logger captures. If we write it as above then certainly the implied `cap` in the return type should be able to subsume the capability `fs`. This means that this `cap` has to be defined in a scope in which `fs` is visible.
+This creates a `Logger` that captures `fs`. We could have been more specific in specifying `Logger^{fs}` as the return type, but the current definition is also valid, and might be preferable if we want to hide details of what the returned logger captures. If we write it as above then certainly the implied `cap` in the return type should be able to absorb the capability `fs`. This means that this `cap` has to be defined in a scope in which `fs` is visible.
 
 In logic, the usual way to achieve this scoping is with an existential binder. We can express the type of `makeLogger` like this:
 ```scala
@@ -32,7 +34,7 @@ There's a connection with [capture polymorphism](polymorphism.md) here. `cap`s i
 
 ### Function Types
 
-The conventions for method types carry over to function types. A function type
+The conventions for method types carry over to function types. A dependent function type
 ```scala
 (x: T) -> U^
 ```
@@ -40,7 +42,7 @@ is interpreted as having an existentially bound `cap` in the result, like this:
 ```scala
 (x: T) -> ∃cap.U^{cap}
 ```
-The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `cap` can in this case subsume the function parameter `x` since it is locally bound in the function result.
+The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `cap` can in this case absorb the function parameter `x` since `x` is locally bound in the function result.
 
 However, the expansion of `cap` into an existentially bound variable only applies to functions that use the dependent function style syntax, with explicitly named parameters. Parametric functions such as `A => B^` or `(A₁, ..., Aₖ) -> B^` don't bind their result cap in an existential quantifier. For instance, the function
 ```scala
@@ -54,10 +56,11 @@ In other words, existential quantifiers are only inserted in results of function
 
 **Examples:**
 
- - `A => B` is an alias type that expands to `A ->{cap} B`, therefore
-   `(x: T) -> A => B` expands to `(x: T) -> ∃cap.(A ->{cap} B)`.
+ - `A => B` is an alias type that expands to `A ->{cap} B`.
+ -  Therefore
+   `(x: T) -> A => B` expands to `(x: T) -> ∃c.(A ->{c} B)`.
 
- - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃cap.Iterator[A ->{cap} B]`
+ - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃c.Iterator[A ->{c} B]`
 
 To summarize:
 
@@ -69,35 +72,10 @@ To summarize:
   - Occurrences of `cap` elsewhere are not translated. They can be seen as representing an existential in the
     scope of the definition in which they appear.
 
-### Fresh Capabilities vs Result Capabilities
-
-Internally, the compiler represents scoped `cap` instances using two different mechanisms:
-
-- **Fresh capabilities** are used for most `cap` instances. They track a _hidden set_ of concrete capabilities they subsume. When you pass a `FileSystem^` to a function expecting `T^`, the fresh capability in the parameter learns that it subsumes your specific `FileSystem`. Fresh capabilities participate in subcapturing: if `{fs} <: {cap}`, the fresh capability records `fs` in its hidden set.
-
-- **Result capabilities** are used for `cap` in dependent function results. They are _rigid_—they don't accumulate a hidden set. Instead, two result capabilities can only be related through _unification_, which makes them equivalent. This prevents the result's capture set from being "polluted" by unrelated capabilities.
-
-The distinction matters when checking function subtyping:
-
-```scala
-val f: (x: FileSystem^) -> Logger^ = ???
-val g: (x: FileSystem^) -> Logger^{x} = f  // OK
-```
-
-Here, the result `cap` in `f`'s type is a result capability. When checking if `f` can be assigned to `g`, the checker unifies `f`'s result capability with `{x}`. This works because unification is symmetric—we're just saying "these represent the same capability."
-
-In contrast:
-
-```scala
-val leaky: Logger^ = ???
-val f: (x: FileSystem^) -> Logger^ = x => leaky  // Error
-```
-
-This fails because `leaky`'s capture set cannot flow into the result capability—result capabilities don't accept arbitrary capabilities through subsumption, only through unification with other result capabilities tied to the same function.
-
 ## Levels and Escape Prevention
 
-Each capability has a _level_ corresponding to where it was defined. A capability can only be captured by scopes at the same level or nested more deeply.
+Each capability has a _level_ corresponding to where it was defined. The level determines where a capability can flow: it can flow into `cap`s at the same level or more deeply nested, but not outward to enclosing scopes. Later sections on [capability classifiers](classifiers.md) will add a controlled
+escape mechanism.
 
 ### How Levels Are Computed
 
@@ -115,7 +93,7 @@ def outer(c1: Cap^) =                // level: outer
   def inner(c2: Cap^) =                // level: inner
     val y = 2                            // level: inner
     val f = () => c2.use()
-    ref.set(f)                           // Error: cap2 would escape its level
+    ref.set(f)                           // Error: c2 would escape its level
 
     class Local:                       // level: Local
       def method(c3: Cap^) =             // level: method
@@ -129,12 +107,12 @@ Local values like `x`, `y`, and `z` don't define their own levels. They inherit 
 
 ### The Level Check
 
-A capability can flow into a capture set only if the capture set's scope is _contained in_ the capability's level owner. In the example above, `ref.set(f)` fails because:
-- `ref`'s type parameter was instantiated at `outer`'s level
-- `f` captures `cap2`, which is at `inner`'s level
-- `outer` is not contained in `inner`, so `cap2` cannot flow into `ref`
+A capability can flow into a `cap` only if that `cap`'s scope is _contained in_ the capability's level owner. In the example above, `ref.set(f)` fails because:
+- `ref`'s type parameter has a `cap` that was instantiated at `outer`'s level
+- `f` captures `c2`, which is at `inner`'s level
+- `outer` is not contained in `inner`, so `c2` cannot flow into `ref`'s `cap`
 
-This ensures capabilities can only flow "inward" to more nested scopes, never "outward" to enclosing ones.
+This ensures capabilities flow "inward" to more nested scopes, never "outward" to enclosing ones.
 
 ### Comparison with Rust Lifetimes
 
@@ -149,10 +127,13 @@ fn bad<'a>() -> &'a i32 {
 ```
 
 ```scala
-// Scala CC: rejected because cap would escape its level
-def bad(): () -> Unit =
-  val cap = CC()
-  () => cap.use()
+// Scala CC: rejected because c escapes inner's level to outer's level
+def outer() =
+  var escape: () => Unit = () => ()
+  def inner(c: Cap^) =
+    escape = () => c.use()  // Error: c at inner's level cannot escape to outer
+  inner(Cap())
+  escape
 ```
 
 The key analogies are:
@@ -162,47 +143,47 @@ The key analogies are:
 
 The key differences are:
 - **What's tracked**: Rust tracks memory validity (preventing dangling pointers). Scala CC tracks capability usage (preventing unauthorized effects).
-- **Explicit vs. implicit**: Rust lifetimes are often written explicitly (`&'a T`). Scala CC levels are computed automatically from the program structure.
-- **Granularity**: Rust lifetimes can distinguish different fields of a struct. Scala CC levels are coarser, tied to method and class boundaries.
+- **Explicit vs. implicit**: Rust lifetimes are often written explicitly (`&'a T`). Scala capture checking levels are computed automatically from the program structure.
 
 ## Charging Captures to Enclosing Scopes
 
-When a capability is used, the capture checker must verify that all enclosing scopes properly account for it. This process is called _charging_ the capability to the environment.
+When a capability is used, it must flow into the `cap`s of all enclosing scopes. This process is
+called _charging_ the capability to the environment.
 
 ```scala
-def outer(cap1: FileSystem^): Unit =
-  def inner(): () ->{cap1} Unit =
-    () => cap1.read()  // cap1 is used here
+def outer(fs: FileSystem^): Unit =
+  def inner(): () ->{fs} Unit =
+    () => fs.read()  // cap1 is used here
   inner()
 ```
 
-When the capture checker sees `cap1.read()`, it verifies that:
-1. The immediately enclosing closure `() => cap1.read()` declares `cap1` in its capture set
-2. The enclosing method `inner` accounts for `cap1` (it does, via its result type)
-3. The enclosing method `outer` accounts for `cap1` (it does, via its parameter)
+When the capture checker sees `fs.read()`, it verifies that `fs` can flow into each enclosing scope:
+1. The immediately enclosing closure `() => fs.read()` must have `fs` in its capture set ✓
+2. The enclosing method `inner` must account for `fs` (it does, via its result type) ✓
+3. The enclosing method `outer` must account for `fs` (it does, via its parameter) ✓
 
-At each level, the checker verifies that the used capabilities are a _subcapture_ of what the scope declares:
+If any scope refuses to absorb the capability, capture checking fails:
 
 ```scala
 def process(fs: FileSystem^): Unit =
-  val f: () -> Unit = () => fs.read()  // Error: {fs} is not a subset of {}
+  val f: () -> Unit = () => fs.read()  // Error: fs cannot flow into {}
 ```
 
-The closure is declared pure (`() -> Unit`), but uses `fs`. Since `{fs}` is not a subset of the empty capture set, capture checking fails.
+The closure is declared pure (`() -> Unit`), meaning its `cap` is the empty set. The capability `fs` cannot flow into an empty set, so this is rejected.
 
 ## Visibility and Widening
 
-As capabilities are charged to outer scopes, they are _filtered_ to include only those visible at each level. When a local capability cannot appear in a type (because it's not visible), the capture set is _widened_ to the smallest visible superset:
+When capabilities flow outward to enclosing scopes, they must remain visible. A local capability cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to the smallest visible superset:
 
 ```scala
-def test(fs: FileSystem^): Logger^ =
+def test(fs: FileSystem^): Logger^{cap} =
   val localLogger = Logger(fs)
-  localLogger  // Type is widened from Logger^{localLogger} to Logger^{fs}
+  localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
 ```
 
-Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set `{localLogger}` is widened to `{fs}`, which covers it (since `localLogger` captures `fs`) and is visible outside `test`.
+Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set `{localLogger}` widens to `{fs}`, which covers it (since `localLogger` captures `fs`) and is visible outside `test`. In effect, `fs` flows into the result's `cap` instead of `localLogger`.
 
-However, widening cannot always succeed:
+However, widening cannot always find a valid target:
 
 ```scala
 def test(fs: FileSystem^): () -> Unit =
@@ -210,4 +191,4 @@ def test(fs: FileSystem^): () -> Unit =
   () => localLogger.log("hello")  // Error: cannot widen to empty set
 ```
 
-The closure's capture set `{localLogger}` would need to be widened to fit the return type `() -> Unit`, but there's no visible capability that covers `localLogger` and fits in the empty set. This is an error.
+The closure captures `localLogger`, but the return type `() -> Unit` has an empty capture set. There's no visible capability that covers `localLogger` and can flow into an empty set, so the checker rejects this code.
