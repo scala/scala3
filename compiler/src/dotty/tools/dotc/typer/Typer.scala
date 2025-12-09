@@ -4306,54 +4306,47 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val alts = altDenots.map(altRef)
 
       resolveOverloaded(alts, pt) match
-        case alt :: Nil =>
-          readaptSimplified(tree.withType(alt))
-        case Nil =>
-          // If no alternative matches, there are still two ways to recover:
-          //  1. If context is an application, try to insert an apply or implicit
-          //  2. If context is not an application, pick a alternative that does
-          //     not take parameters.
+      case alt :: Nil =>
+        readaptSimplified(tree.withType(alt))
+      case Nil =>
+        // If no alternative matches, there are still two ways to recover:
+        //  1. If context is an application, try to insert an apply or implicit
+        //  2. If context is not an application, pick an alternative that does
+        //     not take parameters.
+        def errorNoMatch = errorTree(tree, NoMatchingOverload(altDenots, pt))
 
-          def errorNoMatch = errorTree(tree, NoMatchingOverload(altDenots, pt))
+        pt match
+        case pt: FunOrPolyProto if pt.applyKind != ApplyKind.Using =>
+          // insert apply or convert qualifier, but only for a regular application
+          tryInsertApplyOrImplicit(tree, pt, locked)(errorNoMatch)
+        case _ =>
+          tryParameterless(alts)(errorNoMatch)
+      case ambiAlts =>
+        // If there are ambiguous alternatives, and:
+        // 1. the types aren't erroneous
+        // 2. the expected type is not a function type
+        // 3. there exists a parameterless alternative
+        //
+        // Then, pick the parameterless alternative. See tests/pos/i10715-*
 
-          pt match
-            case pt: FunOrPolyProto if pt.applyKind != ApplyKind.Using =>
-              // insert apply or convert qualifier, but only for a regular application
-              tryInsertApplyOrImplicit(tree, pt, locked)(errorNoMatch)
-            case _ =>
-              tryParameterless(alts)(errorNoMatch)
+        /** Constructs an "ambiguous overload" error */
+        def errorAmbiguous =
+          val remainingDenots = altDenots.filter(denot => ambiAlts.contains(altRef(denot)))
+          val addendum =
+            if ambiAlts.exists(!_.symbol.exists) then
+              i"""|
+                  |
+                  |Note: Overloaded definitions introduced by refinements cannot be resolved"""
+            else ""
+          errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt, addendum))
 
-        case ambiAlts =>
-          // If there are ambiguous alternatives, and:
-          // 1. the types aren't erroneous
-          // 2. the expected type is not a function type
-          // 3. there exist a parameterless alternative
-          //
-          // Then, pick the parameterless alternative.
-          // See tests/pos/i10715-scala and tests/pos/i10715-java.
-
-          /** Constructs an "ambiguous overload" error */
-          def errorAmbiguous =
-            val remainingDenots = altDenots.filter(denot => ambiAlts.contains(altRef(denot)))
-            val addendum =
-              if ambiAlts.exists(!_.symbol.exists) then
-                i"""|
-                    |
-                    |Note: Overloaded definitions introduced by refinements cannot be resolved"""
-              else ""
-            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt, addendum))
-          end errorAmbiguous
-
-          if tree.tpe.isErroneous || pt.isErroneous then
-            tree.withType(UnspecifiedErrorType)
-          else
-            pt match
-              case _: FunProto =>
-                errorAmbiguous
-              case _  =>
-                tryParameterless(alts)(errorAmbiguous)
-
-      end match
+        pt match
+        case pt if tree.tpe.isErroneous || pt.isErroneous =>
+          tree.withType(UnspecifiedErrorType)
+        case _: FunProto =>
+          errorAmbiguous
+        case _ =>
+          tryParameterless(alts)(errorAmbiguous)
     end adaptOverloaded
 
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
