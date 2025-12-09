@@ -4288,22 +4288,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val allDenots = ref.denot.alternatives
         if pt.isExtensionApplyProto then allDenots.filter(_.symbol.is(ExtensionMethod))
         else allDenots
+      def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
+      val alts = altDenots.map(altRef)
 
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
 
       /** Search for an alternative that does not take parameters.
        *  If there is one, return it, otherwise return the error tree.
        */
-      def tryParameterless(alts: List[TermRef])(error: => tpd.Tree): Tree =
+      def tryParameterless(error: => tpd.Tree): Tree =
         alts.filter(_.info.isParameterless) match
         case alt :: Nil => readaptSimplified(tree.withType(alt))
         case _ =>
           altDenots.find(_.info.paramInfoss == ListOfNil) match
-          case Some(alt) => readaptSimplified(tree.withType(alt.symbol.denot.termRef))
+          case Some(alt) => readaptSimplified(tree.withType(altRef(alt)))
           case _ => error
-
-      def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
-      val alts = altDenots.map(altRef)
 
       resolveOverloaded(alts, pt) match
       case alt :: Nil =>
@@ -4320,7 +4319,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // insert apply or convert qualifier, but only for a regular application
           tryInsertApplyOrImplicit(tree, pt, locked)(errorNoMatch)
         case _ =>
-          tryParameterless(alts)(errorNoMatch)
+          tryParameterless(errorNoMatch)
       case ambiAlts =>
         // If there are ambiguous alternatives, and:
         // 1. the types aren't erroneous
@@ -4346,7 +4345,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _: FunProto =>
           errorAmbiguous
         case _ =>
-          tryParameterless(alts)(errorAmbiguous)
+          tryParameterless(errorAmbiguous)
     end adaptOverloaded
 
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
