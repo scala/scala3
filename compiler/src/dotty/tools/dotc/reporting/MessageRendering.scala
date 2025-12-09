@@ -285,8 +285,12 @@ trait MessageRendering {
         case _ => false
       }
       val (line, rest0) = arr.span(!pred(_))
-      val (_, rest) = rest0.span(pred)
-      new String(line) :: { if (rest.isEmpty) Nil else linesFrom(rest) }
+      // Only consume one line terminator (CRLF counts as one)
+      val rest =
+        if rest0.isEmpty then rest0
+        else if rest0(0) == CR && rest0.length > 1 && rest0(1) == LF then rest0.drop(2)
+        else rest0.drop(1)
+      new String(line) :: { if rest.isEmpty then Nil else linesFrom(rest) }
     }
 
     val lines = linesFrom(syntax)
