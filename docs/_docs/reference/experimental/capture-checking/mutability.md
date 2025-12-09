@@ -239,6 +239,20 @@ class Arr[T](n: Int) extends Mutable:
 An example of a `Stateful` and `Unscoped` capability that is _not_ `Separate` would be a
 facade class that reveals some part of an underlying `Mutable` capability.
 
+## Arrays
+
+The class `scala.Array` is considered a `Mutable` class if [separation checking](./separation-checking.md) is enabled. In that context, class Array can be considered to be declared roughly as follows:
+```scala
+class Array[T] extends Mutable:
+  def length: Int
+  def apply(i: Int): T
+  update def update(i: Int, x: T): Unit
+```
+In fact, for technical reasons `Array` cannot extend `Mutable` or any other new traits beyond what is supported by the JVM. But for the purposes of capture and separation checking, it is still a considered a `Mutable` class.
+
+By contrast, none of the mutable collections in the Scala standard library extend currently `Stateful` or `Mutable`. So to experiment with mutable collections, an
+alternative class library has to be used.
+
 ## Read-only Capabilities
 
 If `x` is an exclusive capability of a type extending `Stateful`, `x.rd` is its associated _read-only_ capability.
@@ -388,7 +402,9 @@ ro.set(22)        // disallowed, since `ro` is read-only access
 
 ## Untracked Vars
 
-Sometimes, disallowing assignments to mutable fields from normal methods is too restrictive. For instance:
+Under [separation checking](./separation-checking.md), mutable fields are allowed to be declared only in `Stateful` classes. Updates to these fields can then only happen in update methods of these classes.
+
+But sometimes, disallowing assignments to mutable fields from normal methods is too restrictive. For instance:
 ```scala
 import caps.unsafe.untrackedCaptures
 
@@ -401,17 +417,12 @@ class Cache[T](eval: () -> T):
       known = true
     x
 ```
-Note that, even though `Cache` has mutable variables, it is not declared as a `Stateful` class. In this case, the mutable field `x` is used to store the result of a pure function `eval` and field `known` reflects whether `eval` was called. This is equivalent to just calling `eval()` directly but can be more efficient since the cached value is evaluated at most once. So from a semantic standpoint, it should not be necessary to make `force` an update method, even though it does assign to `x`.
+Note that `Cache` is not declared as a `Stateful` class, even though it has mutable fields. In this case, the mutable field `x` is used to store the result of a pure function `eval` and field `known` reflects whether `eval` was called. This is equivalent to just calling `eval()` directly but can be more efficient since the cached value is evaluated at most once. So from a semantic standpoint, it should not be necessary to make `Cache` a `Stateful` class with `force` as an update method, even though `force` does assign to `x`.
 
-We can avoid the need for update methods by annotating mutable fields with `@untrackedCaptures`. Assignments to untracked mutable field are then not checked for read-only restrictions. The `@untrackedCaptures` annotation can be imported from the `scala.caps.unsafe` object. It is up to the developer
+We can avoid the need for stateful classes and update methods by annotating mutable fields with `@untrackedCaptures`. Assignments to untracked mutable fields are then not checked for read-only restrictions. The `@untrackedCaptures` annotation can be imported from the `scala.caps.unsafe` object. It is up to the developer
 to use `@untrackedCaptures` responsibly so that it does not hide visible side effects on mutable state.
 
-Note that at the moment an assignment to a variable is restricted _only_ if the variable is a field of a `Stateful` class. Fields of other classes and local variables are currently not checked. So the `Cache` class above would in fact
-currently compile without the addition of `@untrackedCaptures`.
-
-But is planned to tighten the rules in the future so that mutable fields that are not annotated with `@untrackedCaptures` can be declared only in classes extending `Stateful`. This means that all assignments to mutable fields would be checked with the read-only restriction, and `@untrackedCapture`s would become essential as an escape hatch.
-
-By contrast, it is not planned to check assignments to local mutable variables, which are not fields of some class. So `@untrackedCaptures` is disallowed for such local variables.
+Note that the are no restrictions on assignments to local mutable variables, which are not fields of some class. So `@untrackedCaptures` is disallowed for such local variables.
 
 The `untrackedCaptures` annotation can also be used in some other contexts unrelated to mutable variables. These are described in its [doc comment](https://www.scala-lang.org/api/current/scala/caps/unsafe$$untrackedCaptures.html).
 

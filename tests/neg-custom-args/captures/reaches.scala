@@ -5,10 +5,10 @@ def usingFile[T](f: File^ => T): T = ???
 
 type Proc = () => Unit
 
-class Ref[T](init: T):
+class Ref[T](init: T) extends caps.Stateful:
   private var x: T = init
   def get: T = x
-  def set(y: T) = { x = y }
+  update def set(y: T) = { x = y }
 
 def runAll0[C^](xs: List[() ->{C} Unit]): Unit =
   var cur: List[() ->{C} Unit] = xs
