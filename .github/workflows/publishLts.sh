@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -e
+
+# Usage:
+# SONATYPE_USER=<sonatype user> SONATYPE_PW=<sonatype pw> PGP_PW=<pgp pw> PGP_SECRET=<pgp secret> ./sbtPublish <publish cmd>
+
+# Release command:
+RELEASE_CMD="${1:?Missing publish command}"
+
+# Make sure required environment variable are set
+: "${SONATYPE_USER:?not set}"
+: "${SONATYPE_PW:?not set}"
+
+if [ ! "$NIGHTLYBUILD" = "yes" ] && [ ! "$RELEASEBUILD" = "yes" ]; then
+    echo "Neither NIGHTLYBUILD nor RELEASEBUILD env var set to \"yes\""
+    exit 1
+fi
+
+# run sbt with the supplied arg
+SBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/sbt"
+"$SBT" "$RELEASE_CMD"
