@@ -37,47 +37,33 @@
 Separation failure: Illegal access to (buf : Buffer[Int]^), which was passed as a consume parameter to method app
 and therefore is no longer available.
 
-where:    ^ refers to a fresh root capability in the type of parameter buf
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter buf
 21 |  val buf1: Buffer[Int]^ = app(buf, 1)
    |                               ---
    |                               The capability was consumed here.
 22 |  val buf2 = app(buf1, 2) // OK
 23 |  val buf3 = app(buf, 3) // error
    |                 ^^^
-<<<<<<< HEAD
-   |Separation failure: Illegal access to (buf : Buffer[Int]^), which was passed as a consume parameter to method app
-   |on line 21 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter buf
-=======
    |                 Then, it was used here
 
->>>>>>> 2ee70f2604 (Update checkfiles)
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:30:17 -----------------------------------------------------
 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
 and therefore is no longer available.
 
-where:    ^ refers to a fresh root capability in the type of value buf1
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
 28 |    if ??? then app(buf1, 2) // OK
    |                    ----
    |                    The capability was consumed here.
 29 |    else app(buf1, 3) // OK
 30 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
-<<<<<<< HEAD
-   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
-   |on line 28 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
-=======
    |                 Then, it was used here
 
->>>>>>> 2ee70f2604 (Update checkfiles)
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:38:17 -----------------------------------------------------
 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
 and therefore is no longer available.
 
-where:    ^ refers to a fresh root capability in the type of value buf1
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
 35 |    case 1 => app(buf1, 2) // OK
    |                  ----
    |                  The capability was consumed here.
@@ -85,20 +71,13 @@ where:    ^ refers to a fresh root capability in the type of value buf1
 37 |    case _ => app(buf1, 3)
 38 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
-<<<<<<< HEAD
-   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
-   |on line 35 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
-=======
    |                 Then, it was used here
 
->>>>>>> 2ee70f2604 (Update checkfiles)
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:48:17 -----------------------------------------------------
 Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
 and therefore is no longer available.
 
-where:    ^ refers to a fresh root capability in the type of value buf1
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
 43 |    case 1 => app(buf1, 2) // OK
    |                  ----
    |                  The capability was consumed here.
@@ -108,15 +87,8 @@ where:    ^ refers to a fresh root capability in the type of value buf1
 47 |    case 5 => app(buf1, 5)
 48 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
-<<<<<<< HEAD
-   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
-   |on line 43 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
-=======
    |                 Then, it was used here
 
->>>>>>> 2ee70f2604 (Update checkfiles)
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:52:8 ------------------------------------------------------
 52 |    app(buf, 1)  // error
    |        ^^^

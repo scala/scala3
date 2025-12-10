@@ -7,26 +7,19 @@
 Separation failure: Illegal access to (x : Ref^), which was passed as a consume parameter to method bad
 and therefore is no longer available.
 
-where:    ^ refers to a fresh root capability in the type of parameter x
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter x
 18 |  val rx: () => Unit = bad(f)  // hides x.rd in the resulting `cap`
    |                           -
    |                           The capability was consumed here.
 19 |  x.put(42)  // error
    |  ^
-<<<<<<< HEAD
-   |  Separation failure: Illegal access to (x : Ref^), which was passed as a consume parameter to method bad
-   |  on line 18 and therefore is no longer available.
-   |
-   |  where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter x
-=======
    |  Then, it was used here
 
->>>>>>> 2ee70f2604 (Update checkfiles)
 -- Error: tests/neg-custom-args/captures/sep-consume.scala:21:16 -------------------------------------------------------
 Separation failure: Illegal access to (x : Ref^), which was passed as a consume parameter to method bad
 and therefore is no longer available.
 
-where:    ^ refers to a fresh root capability in the type of parameter x
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter x
 18 |  val rx: () => Unit = bad(f)  // hides x.rd in the resulting `cap`
    |                           -
    |                           The capability was consumed here.
@@ -34,15 +27,8 @@ where:    ^ refers to a fresh root capability in the type of parameter x
 20 |  x.get      // ok rd/rd
 21 |  par(rx, () => x.put(42))  // error
    |                ^
-<<<<<<< HEAD
-   |         Separation failure: Illegal access to (x : Ref^), which was passed as a consume parameter to method bad
-   |         on line 18 and therefore is no longer available.
-   |
-   |         where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter x
-=======
    |                Then, it was used here
 
->>>>>>> 2ee70f2604 (Update checkfiles)
 -- Error: tests/neg-custom-args/captures/sep-consume.scala:26:16 -------------------------------------------------------
 26 |  def foo = bad(f) // error
    |                ^
