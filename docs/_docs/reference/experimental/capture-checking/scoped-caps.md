@@ -89,12 +89,12 @@ Consider this example:
 ```scala
 def outer(c1: Cap^) =                // level: outer
   val x = 1                            // level: outer (vals don't create levels)
-  val ref = Ref[() => Unit](() => ())
+  var ref: () => Unit = () => ()
 
   def inner(c2: Cap^) =                // level: inner
     val y = 2                            // level: inner
     val f = () => c2.use()
-    ref.set(f)                           // Error: c2 would escape its level
+    ref = f                              // Error: c2 would escape its level
 
     class Local:                       // level: Local
       def method(c3: Cap^) =             // level: method
@@ -127,14 +127,18 @@ capabilities it contains.
 Consider a `withFile` pattern that ensures a file handle doesn't escape:
 
 ```rust
+struct File;
+impl File { fn open(_path: &str) -> Option<File> { Some(File) } }
+
 // Rust: the closure receives a reference bounded by 'a
-fn with_file<'a, R>(path: &str, f: impl FnOnce(&'a File) -> R) -> R {
+fn with_file<R>(path: &str, f: impl for<'a> FnOnce(&'a File) -> R) -> R {
     let file = File::open(path).unwrap();
     f(&file)
 }
 
 fn main() {
-    let escaped: &File;
+    let f = File;
+    let mut escaped: &File = &f;
     with_file("test.txt", |file| {
         escaped = file;  // Error: borrowed value does not live long enough
     });
