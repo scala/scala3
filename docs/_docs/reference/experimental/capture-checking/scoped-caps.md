@@ -8,7 +8,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 When discussing escape checking, we referred to a scoping discipline. That is, capture sets can contain only capabilities that are visible at the point where the set is defined. But that raises the question: where is a universal capability `cap` defined? In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. Usually a `cap` refers to a universal capability defined in the scope where the `cap` appears.
 
-A useful mental model is to think of `cap` as a "container" that can _absorb_ concrete capabilities. When you write `T^` (shorthand for `T^{cap}`), you're saying "this value may capture some capabilities that will flow into this `cap`." Different `cap` instances in different scopes are different containers: a capability that flows into one doesn't automatically flow into another.
+A useful mental model is to think of `cap` as a "container" that can _absorb_ concrete capabilities. When you write `T^` (shorthand for `T^{cap}`), you're saying "this value may capture some capabilities that will flow into this `cap`." Different `cap` instances in different scopes are different containers: a capability that flows into one doesn't automatically flow into another. We will further expand on this idea later when discussing [separation checking](separation-checking.md).
 
 ### Existential Binding
 
@@ -44,7 +44,7 @@ is interpreted as having an existentially bound `cap` in the result, like this:
 ```
 The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `cap` can in this case absorb the function parameter `x` since `x` is locally bound in the function result.
 
-However, the expansion of `cap` into an existentially bound variable only applies to functions that use the dependent function style syntax, with explicitly named parameters. Parametric functions such as `A => B^` or `(A₁, ..., Aₖ) -> B^` don't bind their result cap in an existential quantifier. For instance, the function
+However, the expansion of `cap` into an existentially bound variable only applies to functions that use the dependent function style syntax, with explicitly named parameters. Parametric functions such as `A => B^` or `(A₁, ..., Aₖ) -> B^` don't bind the `cap` in their return types in an existential quantifier. For instance, the function
 ```scala
 (x: A) -> B -> C^
 ```
@@ -74,8 +74,8 @@ To summarize:
 
 ## Levels and Escape Prevention
 
-Each capability has a _level_ corresponding to where it was defined. The level determines where a capability can flow: it can flow into `cap`s at the same level or more deeply nested, but not outward to enclosing scopes. Later sections on [capability classifiers](classifiers.md) will add a controlled
-escape mechanism.
+Each capability has a _level_ corresponding to where it was defined. The level determines where a capability can flow: it can flow into `cap`s at the same level or more deeply nested, but not outward to enclosing scopes (which would mean a capability lives longer than its lexical lifetime). Later sections on [capability classifiers](classifiers.md) will add a controlled mechanism that permits escaping/flowing outward for situations
+where this would be desirable.
 
 ### How Levels Are Computed
 
@@ -153,7 +153,7 @@ called _charging_ the capability to the environment.
 ```scala
 def outer(fs: FileSystem^): Unit =
   def inner(): () ->{fs} Unit =
-    () => fs.read()  // cap1 is used here
+    () => fs.read()  // fs is used here
   inner()
 ```
 
@@ -173,10 +173,10 @@ The closure is declared pure (`() -> Unit`), meaning its `cap` is the empty set.
 
 ## Visibility and Widening
 
-When capabilities flow outward to enclosing scopes, they must remain visible. A local capability cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to the smallest visible superset:
+When capabilities flow outward to enclosing scopes, they must remain visible. A local capability cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to the smallest visible super capture set:
 
 ```scala
-def test(fs: FileSystem^): Logger^{cap} =
+def test(fs: FileSystem^): Logger^{fs} =
   val localLogger = Logger(fs)
   localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
 ```
