@@ -53,7 +53,7 @@ class JavaPlatform extends Platform {
     // Superaccessors already show up as abstract methods here, so no test necessary
     cls.typeRef.fields.isEmpty &&
     // Check if the SAM can be implemented via LambdaMetaFactory
-    TypeErasure.samNotNeededExpansion(cls)
+    TypeErasure.samExpansionNotNeeded(cls)
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal

@@ -661,7 +661,7 @@ object TypeErasure:
    *  @param cls  The SAM class to check
    *  @return     true if LMF can handle the required adaptation
    */
-  def samNotNeededExpansion(cls: ClassSymbol)(using Context): Boolean = cls.typeRef.possibleSamMethods match
+  def samExpansionNotNeeded(cls: ClassSymbol)(using Context): Boolean = cls.typeRef.possibleSamMethods match
     case Seq(samMeth) =>
       val samMethSym = samMeth.symbol
       val erasedSamInfo = transformInfo(samMethSym, samMeth.info)
@@ -680,7 +680,7 @@ object TypeErasure:
           case _ => true
       }
     case _ => false
-  end samNotNeededExpansion
+  end samExpansionNotNeeded
 end TypeErasure
 
 import TypeErasure.*
