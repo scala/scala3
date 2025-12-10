@@ -1,5 +1,5 @@
 import scala.annotation.tailrec
-import scala.util.chaining.given
+import scala.util.chaining.*
 
 object Test {
   class Ctx

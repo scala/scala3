@@ -14,9 +14,15 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.annotation.nowarn
+
 package object util {
   /**
-   * Adds chaining methods `tap` and `pipe` to every type. See [[ChainingOps]].
+   * Adds chaining methods `tap` and `pipe` to every type.
    */
-  object chaining extends ChainingSyntax
+  @nowarn("msg=ChainingSyntax will be removed in the future")
+  object chaining extends ChainingSyntax:
+    extension[A](x: A)
+      inline def tap(inline f: A => Unit): x.type = { f(x); x }
+      inline def pipe[B](inline f: A => B): B = f(x)
 }
