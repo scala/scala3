@@ -44,7 +44,8 @@ is interpreted as having an existentially bound `cap` in the result, like this:
 ```
 The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `cap` can in this case absorb the function parameter `x` since `x` is locally bound in the function result.
 
-However, the expansion of `cap` into an existentially bound variable only applies to functions that use the dependent function style syntax, with explicitly named parameters. Parametric functions such as `A => B^` or `(A₁, ..., Aₖ) -> B^` don't bind the `cap` in their return types in an existential quantifier. For instance, the function
+However, the expansion of `cap` into an existentially bound variable only applies to functions that use the dependent function style syntax, with explicitly named parameters. Parametric functions such as `A => B^` or
+`(A₁, ..., Aₖ) -> B^` don't bind the `cap` in their return types in an existential quantifier. For instance, the function
 ```scala
 (x: A) -> B -> C^
 ```
@@ -60,7 +61,7 @@ In other words, existential quantifiers are only inserted in results of function
  -  Therefore
    `(x: T) -> A => B` expands to `(x: T) -> ∃c.(A ->{c} B)`.
 
- - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃c.Iterator[A ->{c} B]`
+ - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃c.Iterator[A ->{c} B]`.
 
 To summarize:
 
@@ -116,39 +117,57 @@ This ensures capabilities flow "inward" to more nested scopes, never "outward" t
 
 ### Comparison with Rust Lifetimes
 
-Readers familiar with Rust may notice similarities to lifetime checking. Both systems prevent references from escaping their valid scope:
+Readers familiar with Rust may notice similarities to lifetime checking. Both systems prevent
+references from escaping their valid scope. In Rust, a reference type `&'a T` carries an explicit
+lifetime parameter `'a`. In Scala's capture checking, the lifetime is folded into the capability
+name itself: `T^{x}` says "a `T` capturing `x`," and `x`'s level implicitly determines how long this
+reference is valid. A capture set then acts as an upper bound on the lifetimes of all the
+capabilities it contains.
+
+Consider a `withFile` pattern that ensures a file handle doesn't escape:
 
 ```rust
-// Rust: rejected because x doesn't live long enough
-fn bad<'a>() -> &'a i32 {
-    let x = 42;
-    &x
+// Rust: the closure receives a reference bounded by 'a
+fn with_file<'a, R>(path: &str, f: impl FnOnce(&'a File) -> R) -> R {
+    let file = File::open(path).unwrap();
+    f(&file)
+}
+
+fn main() {
+    let escaped: &File;
+    with_file("test.txt", |file| {
+        escaped = file;  // Error: borrowed value does not live long enough
+    });
 }
 ```
 
 ```scala
-// Scala CC: rejected because c escapes inner's level to outer's level
-def outer() =
-  var escape: () => Unit = () => ()
-  def inner(c: Cap^) =
-    escape = () => c.use()  // Error: c at inner's level cannot escape to outer
-  inner(Cap())
-  escape
+// Scala CC: the closure receives a capability whose level prevents escape
+def withFile[R](path: String)(f: File^ => R): R =
+  val file = File.open(path)
+  f(file)
+
+def main() =
+  var escaped: File^
+  withFile("test.txt"): file =>
+    escaped = file  // Error: file's level cannot escape to main's level
 ```
 
+In both cases, the type system prevents the handle from escaping the callback. Rust achieves this by requiring `'a` to be contained within the closure's scope. Scala achieves it by checking that `file`'s level (tied to `withFile`) cannot flow into `escaped`'s level (at `main`).
+
 The key analogies are:
-- **Levels ≈ Lifetimes**: Both represent "how long something is valid"
-- **Containment ≈ Outlives**: Rust's `'a: 'b` (a outlives b) corresponds to Scala's level containment check (but inverted: inner scopes are contained in outer ones)
-- **Escape prevention**: Both reject code where a reference/capability would outlive its scope
+- **Capability name ≈ Lifetime parameter**: Where Rust writes `&'a T`, Scala writes `T^{x}`. The capability `x` carries its lifetime implicitly via its level.
+- **Capture set ≈ Lifetime bound**: A capture set `{x, y}` bounds the lifetime of a value to be no longer than the shortest-lived capability it contains.
+- **Level containment ≈ Outlives**: Rust's `'a: 'b` (a outlives b) corresponds to Scala's level check (inner scopes are contained in outer ones).
 
 The key differences are:
 - **What's tracked**: Rust tracks memory validity (preventing dangling pointers). Scala CC tracks capability usage (preventing unauthorized effects).
-- **Explicit vs. implicit**: Rust lifetimes are often written explicitly (`&'a T`). Scala capture checking levels are computed automatically from the program structure.
+- **Explicit vs. implicit**: Rust lifetimes are explicit parameters (`&'a T`). Scala levels are computed automatically from program structure: you name the capability, not the lifetime.
 
 ## Charging Captures to Enclosing Scopes
 
-When a capability is used, it must flow into the `cap`s of all enclosing scopes. This process is
-called _charging_ the capability to the environment.
+When a capability is used, it must be checked for compatibility with the capture-set constraints of
+all enclosing scopes. This process is called _charging_ the capability to the environment.
 
 ```scala
 def outer(fs: FileSystem^): Unit =
@@ -158,7 +177,7 @@ def outer(fs: FileSystem^): Unit =
 ```
 
 When the capture checker sees `fs.read()`, it verifies that `fs` can flow into each enclosing scope:
-1. The immediately enclosing closure `() => fs.read()` must have `fs` in its capture set ✓
+1. The immediately enclosing closure `() => fs.read()` must permit `fs` in its capture set ✓
 2. The enclosing method `inner` must account for `fs` (it does, via its result type) ✓
 3. The enclosing method `outer` must account for `fs` (it does, via its parameter) ✓
 
@@ -171,24 +190,14 @@ def process(fs: FileSystem^): Unit =
 
 The closure is declared pure (`() -> Unit`), meaning its `cap` is the empty set. The capability `fs` cannot flow into an empty set, so this is rejected.
 
-## Visibility and Widening
+### Visibility and Widening
 
 When capabilities flow outward to enclosing scopes, they must remain visible. A local capability cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to the smallest visible super capture set:
 
 ```scala
-def test(fs: FileSystem^): Logger^{fs} =
+def test(fs: FileSystem^): Logger^ =
   val localLogger = Logger(fs)
   localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
 ```
 
 Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set `{localLogger}` widens to `{fs}`, which covers it (since `localLogger` captures `fs`) and is visible outside `test`. In effect, `fs` flows into the result's `cap` instead of `localLogger`.
-
-However, widening cannot always find a valid target:
-
-```scala
-def test(fs: FileSystem^): () -> Unit =
-  val localLogger = Logger(fs)
-  () => localLogger.log("hello")  // Error: cannot widen to empty set
-```
-
-The closure captures `localLogger`, but the return type `() -> Unit` has an empty capture set. There's no visible capability that covers `localLogger` and can flow into an empty set, so the checker rejects this code.
