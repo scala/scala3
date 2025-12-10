@@ -81,6 +81,19 @@ class Objects(using Context @constructorOnly):
   val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap,
     ManifestFactory_ObjectTYPE, ManifestFactory_NothingTYPE, ManifestFactory_NullTYPE)
 
+  /**
+   * Whether the analysis work in best-effort mode in contrast to aggressive mode.
+   *
+   * - In best-effort mode, the analysis tries to be fast, useful and unobtrusive.
+   * - In the aggressive mode, the analysis tries to be sound and verbose by spending more check time.
+   *
+   * In both mode, there is a worst-case guarantee based on a quota on the
+   * number of method calls in initializing a global object.
+   *
+   * We use a patch to set `BestEffort` to `false` in testing community projects.
+   */
+  val BestEffort: Boolean = true
+
   // ----------------------------- abstract domain -----------------------------
 
   /** Syntax for the data structure abstraction used in abstract domain:
@@ -370,8 +383,14 @@ class Objects(using Context @constructorOnly):
 
         val hasError = ctx.reporter.pendingMessages.nonEmpty
         if cache.hasChanged && !hasError then
-          cache.prepareForNextIteration()
-          iterate()
+          if count <= 3 then
+            cache.prepareForNextIteration()
+            iterate()
+          else
+            if !BestEffort then
+              report.warning("Giving up checking initializatino of " + classSym + " due to complex code", classSym.sourcePos)
+            data.checkedObjects += obj
+            obj
         else
           data.checkedObjects += obj
           obj
@@ -959,15 +978,11 @@ class Objects(using Context @constructorOnly):
       if !map.contains(sym) then map.updated(sym, value)
       else map.updated(sym, map(sym).join(value))
 
-  /** Check if the checker option reports warnings about unknown code
-   */
-  val reportUnknown: Boolean = false
-
   def reportWarningForUnknownValue(msg: => String, pos: SrcPos)(using Context): Value =
-    if reportUnknown then
-      report.warning(msg, pos)
+    if BestEffort then
       Bottom
     else
+      report.warning(msg, pos)
       UnknownValue
 
   /** Handle method calls `e.m(args)`.
@@ -1122,7 +1137,7 @@ class Objects(using Context @constructorOnly):
               value
             else
               // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
-              // For now, return `UnknownValue` to ensure soundness and trigger a warning when reportUnknown = true.
+              // For now, return `UnknownValue` to ensure soundness and trigger a warning when BestEffort = false.
               UnknownValue
             end if
           end if
