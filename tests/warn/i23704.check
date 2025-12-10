@@ -6,6 +6,10 @@
 16 |  private var myvar: Int = 0 // warn for the same case with simpler syntax
    |              ^^^^^
    |              private variable was mutated but not read
+-- [E198] Unused Symbol Warning: tests/warn/i23704.scala:22:14 ---------------------------------------------------------
+22 |  private var myvar: Int = 0 // warn (because read is in RHS of assignment; see incr)
+   |              ^^^^^
+   |              private variable was mutated but not read
 -- [E198] Unused Symbol Warning: tests/warn/i23704.scala:26:8 ----------------------------------------------------------
 26 |    var localvar = 0 // warn local variable was mutated but not read
    |        ^^^^^^^^
