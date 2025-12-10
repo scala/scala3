@@ -10,10 +10,10 @@ import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
 import config.Feature
-import util.chaining.*
+import fromtasty.{TASTYCompiler, TastyFileUtil}
 
 import scala.util.control.NonFatal
-import fromtasty.{TASTYCompiler, TastyFileUtil}
+import scala.util.chaining.*
 
 /** Run the Dotty compiler.
  *

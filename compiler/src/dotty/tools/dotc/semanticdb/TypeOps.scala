@@ -11,11 +11,11 @@ import core.Names.Name
 import core.StdNames.tpnme
 
 import collection.mutable
+import scala.util.chaining.*
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
 import dotty.tools.dotc.core.Names.Designator
-import dotty.tools.dotc.util.chaining.*
 
 class TypeOps:
   import SymbolScopeOps.*

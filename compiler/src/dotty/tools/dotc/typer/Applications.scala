@@ -25,8 +25,6 @@ import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.{Feature, MigrationVersion, SourceVersion}
 import util.Property
-import util.chaining.tap
-
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications.*
@@ -38,6 +36,7 @@ import annotation.threadUnsafe
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import scala.util.chaining.*
 import dotty.tools.dotc.cc.isRetains
 import dotty.tools.dotc.inlines.Inlines
 

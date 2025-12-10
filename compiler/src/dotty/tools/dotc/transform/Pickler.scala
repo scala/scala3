@@ -28,9 +28,9 @@ import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
 import dotty.tools.io.FileWriters.{EagerReporter, BufferingReporter}
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
-import dotty.tools.dotc.util.chaining.*
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
+import scala.util.chaining.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.file.Files
 

@@ -19,11 +19,11 @@ import dotc.typer.TyperPhase
 import dotc.util.Spans.*
 import dotc.util.{ParsedComment, Property, SourceFile}
 import dotc.{CompilationUnit, Compiler, Run}
-import dotc.util.chaining.*
 
 import results.*
 
 import scala.collection.mutable
+import scala.util.chaining.*
 
 /** This subclass of `Compiler` is adapted for use in the REPL.
  *
