@@ -28,6 +28,9 @@ trait ConIS extends (Int => String):
 trait ConUU extends (() => Unit):
   def apply(): Unit
 
+trait ConVCVC extends (IntVal => IntVal):
+  def apply(t: IntVal): IntVal
+
 trait F1[-T, +R]:
   def apply(t: T): R
 
@@ -58,6 +61,9 @@ trait SFIS extends F1[Int, String]:
 trait SFIU extends F1[Int, Unit]:
   def apply(t: Int): Unit
 
+trait SFVCVC extends F1[IntVal, IntVal]:
+  def apply(t: IntVal): IntVal
+
 trait F1U[-T]:
   def apply(t: T): Unit
 
@@ -69,6 +75,8 @@ trait SF2I extends F1U[Int]:
 
 trait SF2S extends F1U[String]:
   def apply(t: String): Unit
+
+case class IntVal(value: Int) extends AnyVal
 
 object Test:
   def main(args: Array[String]): Unit =
@@ -112,6 +120,8 @@ object Test:
     println(conIS(23))
     val conUU: ConUU = () => println("24") // expanded
     conUU()
+    val conVCVC: ConVCVC = (x: IntVal) => IntVal(x.value + 1) // expanded
+    println(conVCVC(IntVal(24)).value)
 
     val ffIU: F1[Int, Unit] = (x: Int) => println(x) // closure
     ffIU(31)
@@ -159,6 +169,8 @@ object Test:
     println(sfIS(63))
     val sfIU: SFIU = (x: Int) => println(x) // expanded
     sfIU(64)
+    val sfVCVC: SFVCVC = (x: IntVal) => IntVal(x.value + 1) // expanded
+    println(sfVCVC(IntVal(64)).value)
 
     val f2ITU: F1U[Int] = (x: Int) => println(x) // closure
     f2ITU(71)
