@@ -526,17 +526,17 @@ object XRayModeHint:
         anotherTree
          .innerSelect()
          */
-        case a @ Apply(inner, _)
-            if inner.sourcePos.exists && !isParentOnSameLine && !isParentApply &&
-              endsInSimpleSelect(a) && isEndOfLine(tree.sourcePos) =>
-          Some((a.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+        case apply @ Apply(inner, _)
+            if !apply.span.isZeroExtent && inner.sourcePos.exists && !isParentOnSameLine &&
+            !isParentApply && endsInSimpleSelect(apply) && isEndOfLine(tree.sourcePos) =>
+          Some((apply.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
         /*
         innerTree
          .select
          */
         case select @ Select(innerTree, _)
-            if innerTree.sourcePos.exists && !isParentOnSameLine && !isParentApply &&
-              isEndOfLine(tree.sourcePos) =>
+            if !select.span.isZeroExtent && innerTree.sourcePos.exists &&
+            !isParentOnSameLine && !isParentApply && isEndOfLine(tree.sourcePos) =>
           Some((select.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
         case _ => None
     else None
