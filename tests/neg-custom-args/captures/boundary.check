@@ -6,10 +6,10 @@
    |  The leakage occurred when trying to match the following types:
    |
    |  Found:    scala.util.boundary.Label[Object^'s1]
-   |  Required: scala.util.boundary.Label[Object^]^²
+   |  Required: scala.util.boundary.Label[Object^{cap}]^
    |
-   |  where:    ^ and cap refer to the universal root capability
-   |            ^²        refers to a fresh root capability classified as Control in the type of value local
+   |  where:    ^   refers to a fresh root capability classified as Control in the type of value local
+   |            cap is the universal root capability
    |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error

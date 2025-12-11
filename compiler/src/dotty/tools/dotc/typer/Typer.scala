@@ -1861,12 +1861,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *  the singleton list consisting of its position in `args`, otherwise `Nil`.
      */
     def paramIndices(param: untpd.ValDef, args: List[untpd.Tree]): List[Int] = {
-      def loop(args: List[untpd.Tree], start: Int): List[Int] = args match {
+
+      def loop(args: List[untpd.Tree], start: Int): List[Int] = args match
         case arg :: args1 =>
           val others = loop(args1, start + 1)
           if (refersTo(arg, param)) start :: others else others
         case _ => Nil
-      }
+
       val allIndices = loop(args, 0)
       if (allIndices.length == 1) allIndices else Nil
     }

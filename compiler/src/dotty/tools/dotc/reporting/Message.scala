@@ -10,6 +10,7 @@ import printing.Formatting.hl
 import config.SourceVersion
 import cc.CaptureSet
 import cc.Capabilities.*
+import util.Property
 
 import scala.annotation.threadUnsafe
 
@@ -40,6 +41,11 @@ object Message:
         else i"$sourceStr $options"
       i"\n$what can be rewritten automatically under -rewrite $optionStr."
     else ""
+
+  /** A context property that turns off expansion of `^` or `=>` to explicit cap's.
+   *  Used in the where clauses of error messages.
+   */
+  val NoCapExpansion = new Property.Key[Unit]
 
   /** A note can produce an added string for an error message */
   abstract class Note:
@@ -103,9 +109,12 @@ object Message:
      *  If the entry was not yet recorded, allocate the next superscript corresponding
      *  to the same string in the same name space. The first recording is the string proper
      *  and following recordings get consecutive superscripts starting with 2.
+     *  @param   capOk  if true and there is already a cap recorded that matches the entry,
+     *                  then use an expanded representation with explicit `cap` for the
+     *                  original string.
      *  @return  The possibly superscripted version of `str`.
      */
-    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String =
+    def record(str: String, isType: Boolean, entry: Recorded, capOK: Boolean = false)(using Context): String =
       if disambi.recordOK(str) then
         //println(s"recording $str, $isType, $entry")
 
@@ -119,9 +128,6 @@ object Message:
             if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
           case _ => e1
         }
-        val key = SeenKey(str, isType)
-        val existing = seen(key)
-        lazy val dealiased = followAlias(entry)
 
         /** All lambda parameters with the same name are given the same superscript as
          *  long as their corresponding binders have the same parameter name lists.
@@ -138,13 +144,34 @@ object Message:
             case _ =>
               false
 
-        // The length of alts corresponds to the number of superscripts we need to print.
-        var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
-        if alts.isEmpty then
-          alts = entry :: existing
-          seen(key) = alts
+        /** The superscript in `existing` that matches the current entry, using
+         *  `sameSuperscript` on dealiased entries as a test. The superscript is
+         *  the index of the matching entry in existing, counting from the right
+         *  and starting at 1. I.e last entry in the list has superscript 1, next to
+         *  last entry has superscript 2, and so on. A result of 0 means that no
+         *  matching entry exists.
+         */
+        def matchingSuperscript(existing: List[Recorded]): Int =
+          lazy val dealiased = followAlias(entry)
+          existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt))).length
 
-        val suffix = alts.length match {
+        if capOK && ctx.property(NoCapExpansion).isEmpty
+          && matchingSuperscript(seen(SeenKey("cap", isType = false))) > 0
+        then
+          val capStr = record("cap", isType = false, entry)
+          return str match
+            case "^" => s"^{$capStr}"
+            case "=>" => s"->{$capStr}"
+            case "?=>" => s"?->{$capStr}"
+
+        val key = SeenKey(str, isType)
+        val existing = seen(key)
+        var sup = matchingSuperscript(existing)
+        if sup == 0 then
+          seen(key) = entry :: existing
+          sup = existing.length + 1
+
+        val suffix = sup match {
           case 1 => ""
           case n => n.toString.toCharArray.map {
             case '0' => '⁰'
@@ -184,26 +211,27 @@ object Message:
           ""
       }
 
-      entry match
-        case param: TypeParamRef =>
-          s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
-        case param: TermParamRef =>
-          s"is a reference to a value parameter"
-        case sym: Symbol =>
-          val info =
-            if (ctx.gadt.contains(sym))
-              sym.info & ctx.gadt.fullBounds(sym).nn
-            else
-              sym.info
-          s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
-        case tp: SkolemType =>
-          s"is an unknown value of type ${tp.widen.show}"
-        case ref: RootCapability =>
-          val relation =
-            if keys.length > 1 then "refer to"
-            else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
-            else "is"
-          s"$relation ${ref.descr}"
+      inContext(ctx.withProperty(NoCapExpansion, Some(()))):
+        entry match
+          case param: TypeParamRef =>
+            s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
+          case param: TermParamRef =>
+            s"is a reference to a value parameter"
+          case sym: Symbol =>
+            val info =
+              if (ctx.gadt.contains(sym))
+                sym.info & ctx.gadt.fullBounds(sym).nn
+              else
+                sym.info
+            s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
+          case tp: SkolemType =>
+            s"is an unknown value of type ${tp.widen.show}"
+          case ref: RootCapability =>
+            val relation =
+              if keys.length > 1 then "refer to"
+              else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
+              else "is"
+            s"$relation ${ref.descr}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -276,14 +304,14 @@ object Message:
       if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
         boxText
         ~ toTextLocal(parent)
-        ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
+        ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability], capOK = true)
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 
     override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       refs match
         case refs: CaptureSet if isUniversalCaptureSet(refs) && seen.isActive =>
-          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
+          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability], capOK = true)
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
 
