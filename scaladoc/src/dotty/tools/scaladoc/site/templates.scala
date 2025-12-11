@@ -81,8 +81,8 @@ case class TemplateFile(
       val path = Some(Paths.get(file.getAbsolutePath))
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
       val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), scala.io.Codec.UTF8)
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
-          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
+          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
           val compilerData = SnippetCompilerData(
             "staticsitesnippet",
             SnippetCompilerData.Position(configOffset - 1, 0)
