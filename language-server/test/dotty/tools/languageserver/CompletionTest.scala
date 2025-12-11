@@ -1044,7 +1044,7 @@ class CompletionTest {
         ("!=", Method, "(x$0: Any): Boolean"),
         ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
         ("asInstanceOf", Method, "[X0]: X0"),
-        ("->", Method, "[B](y: B): (Foo.Bar.type, B)"),
+        ("->", Method, "[B](that: B): (Foo.Bar.type, B)"),
         ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
         ("`back-tick`", Field, "Foo.Bar"),
         ("notify", Method, "(): Unit"),
