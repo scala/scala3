@@ -1933,19 +1933,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         NoType
     }
 
-    /** Try to instantiate one type variable bounded by function types that appear
+    /** Find one instantiatable type variable bounded by function types that appear
      *  deeply inside `tp`, including union or intersection types.
      */
-    def tryToInstantiateDeeply(tp: Type): Boolean = tp.dealias match
+    def instantiatableTypeVar(tp: Type): Type = tp.dealias match
       case tp: AndOrType =>
-        tryToInstantiateDeeply(tp.tp1)
-        || tryToInstantiateDeeply(tp.tp2)
+        val t1 = instantiatableTypeVar(tp.tp1)
+        if t1.exists then t1
+        else instantiatableTypeVar(tp.tp2)
       case tp: FlexibleType =>
-        tryToInstantiateDeeply(tp.hi)
+        instantiatableTypeVar(tp.hi)
       case tp: TypeVar if isConstrainedByFunctionType(tp) =>
         // Only instantiate if the type variable is constrained by function types
-        isFullyDefined(tp, ForceDegree.flipBottom)
-      case _ => false
+        tp
+      case _ => NoType
 
     def isConstrainedByFunctionType(tvar: TypeVar): Boolean =
       val origin = tvar.origin
@@ -1961,16 +1962,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ => false
       containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 
-    if untpd.isFunctionWithUnknownParamType(tree) && !calleeType.exists then
+    if untpd.isFunctionWithUnknownParamType(tree) then
       // Try to instantiate `pt` when possible.
       // * If `pt` is a type variable, we try to instantiate it directly.
       // * If `pt` is a more complex type, we try to instantiate it deeply by searching
       //   a nested type variable bounded by a function type to help infer parameter types.
       // If it does not work the error will be reported later in `inferredParam`,
       // when we try to infer the parameter type.
-      pt match
-        case pt: TypeVar => isFullyDefined(pt, ForceDegree.flipBottom)
-        case _ => tryToInstantiateDeeply(pt)
+      // Note: we only check the `calleeType` if there is a TypeVar to instantiate to
+      // prioritize inferring from the callee.
+      val tp = if pt.isInstanceOf[TypeVar] then pt else instantiatableTypeVar(pt)
+      if tp.exists && !calleeType.exists then
+        isFullyDefined(tp, ForceDegree.flipBottom)
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
