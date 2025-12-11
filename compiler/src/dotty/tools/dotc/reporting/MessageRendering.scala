@@ -22,6 +22,11 @@ trait MessageRendering {
   import Highlight.*
   import Offsets.*
 
+  /** The maximal number of lines of code that are shown in a message after the
+   *  `^` and error message.
+   */
+  private inline val maxRenderedLinesAfterPoint = 3
+
   /** Remove ANSI coloring from `str`, useful for getting real length of
     * strings
     *
@@ -64,9 +69,21 @@ trait MessageRendering {
     val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint
 
+    def compress(offsetsAndLines: List[(Int, String)]): List[(Int, String)] =
+      if offsetsAndLines.isEmpty then offsetsAndLines
+      else
+        val compressedLines =
+          if offsetsAndLines.length > maxRenderedLinesAfterPoint then
+            offsetsAndLines.take(maxRenderedLinesAfterPoint - 2)
+            ++ List(
+                (offsetsAndLines(maxRenderedLinesAfterPoint - 2)._1, "..."),
+                offsetsAndLines.last)
+          else offsetsAndLines
+        compressedLines
+
     (
       before.zip(lines).map(render),
-      after.zip(lines.drop(before.length)).map(render),
+      compress(after.zip(lines.drop(before.length))).map(render),
       maxLen
     )
   }
@@ -140,7 +157,7 @@ trait MessageRendering {
     *
     * @return aligned error message
     */
-  private def errorMsg(pos: SourcePosition, msg: String)(using Context, Level, Offset): String = {
+  private def errorMsg(pos: SourcePosition, msg: String, addLine: Boolean)(using Context, Level, Offset): String = {
     val padding = msg.linesIterator.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
       val maxPad = math.max(0, ctx.settings.pageWidth.value - offset - lineLength) - offset
@@ -149,9 +166,10 @@ trait MessageRendering {
       else pad
     }
 
-    msg.linesIterator
+    val msgStr = msg.linesIterator
       .map { line => offsetBox + (if line.isEmpty then "" else padding + line) }
       .mkString(EOL)
+    if addLine then msgStr ++ s"${EOL}$offsetBox" else msgStr
   }
 
   // file.path or munge it to normalize for testing
@@ -280,7 +298,7 @@ trait MessageRendering {
     if pos.exists && pos1.exists && pos1.source.file.exists then
       val (srcBefore, srcAfter, offset) = sourceLines(pos1)
       val marker = positionMarker(pos1)
-      val err = errorMsg(pos1, msg.message)
+      val err = errorMsg(pos1, msg.message, srcAfter.nonEmpty)
       sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
       if inlineStack.nonEmpty then
