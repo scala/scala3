@@ -9,9 +9,14 @@
    |             Separation failure: argument to consume parameter with type (io : Object^) refers to parameter io.
    |             The parameter needs to be annotated with consume to allow this.
 -- Error: tests/neg-custom-args/captures/sepchecks5.scala:20:24 --------------------------------------------------------
+Separation failure: Illegal access to (io : Object^), which was passed as a consume parameter to method g
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability in the type of parameter io
+19 |  val f2 = g(io)              // error
+   |             --
+   |             The capability was consumed here.
 20 |  par(f2)(() => println(io))  // error
    |                        ^^
-   |       Separation failure: Illegal access to (io : Object^), which was passed as a consume parameter to method g
-   |       on line 19 and therefore is no longer available.
-   |
-   |       where:    ^ refers to a fresh root capability in the type of parameter io
+   |                        Then, it was used here
+

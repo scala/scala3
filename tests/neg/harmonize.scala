@@ -79,9 +79,9 @@ object Test {
     val a4 = ArrayBuffer(1.0f, 1L)
     val b4: ArrayBuffer[Double] = a4 // error: no widening
     val a5 = ArrayBuffer(1.0f, 1L, f())
-    val b5: ArrayBuffer[Float | Long | Int] = a5
+    val b5: ArrayBuffer[Float | Long | Int] = a5 // error: no widening
     val a6 = ArrayBuffer(1.0f, 1234567890)
-    val b6: ArrayBuffer[Float | Int] = a6
+    val b6: ArrayBuffer[Float | Int] = a6 // error: no widening
 
   def totalDuration(results: List[Long], cond: Boolean): Long =
     results.map(r => if (cond) r else 0).sum
