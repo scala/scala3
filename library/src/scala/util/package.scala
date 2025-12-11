@@ -25,4 +25,5 @@ package object util {
     extension[A](x: A)
       inline def tap(inline f: A => Unit): x.type = { f(x); x }
       inline def pipe[B](inline f: A => B): B = f(x)
+      inline infix def |> [B](inline f: A => B): B = x.pipe(f)
 }
