@@ -100,12 +100,19 @@ class SnippetCompiler(
     arg: SnippetCompilerArg,
     sourceFile: SourceFile
   ): SnippetCompilationResult = {
-    val context = SnippetDriver.currentCtx.fresh
+    val baseContext = SnippetDriver.currentCtx.fresh
       .setSetting(
         SnippetDriver.currentCtx.settings.outputDir,
         target
       )
       .setReporter(new StoreReporter)
+    val context =
+      if arg.scalacOptions.isEmpty then baseContext
+      else
+        val args = arg.scalacOptions.toArray
+        SnippetDriver.setup(args, baseContext) match
+          case Some((_, ctx)) => ctx
+          case None => baseContext
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
 
