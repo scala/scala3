@@ -450,6 +450,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
       """|baz(): Unit
          |copy(): Bar
          |qux: Unit
+         |->[B](y: B): (Bar, B)
          |asInstanceOf[X0]: X0
          |canEqual(that: Any): Boolean
          |equals(x$0: Any): Boolean
@@ -464,7 +465,6 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |productPrefix: String
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |->[B](y: B): (Bar, B)
          |ensuring(cond: Boolean): Bar
          |ensuring(cond: Bar => Boolean): Bar
          |ensuring(cond: Boolean, msg: => Any): Bar

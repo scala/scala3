@@ -119,6 +119,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
+         |->[B](y: B): (List.type, B)
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
@@ -130,7 +131,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |isInstanceOf[X0]: Boolean
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |->[B](y: B): (List.type, B)
          |ensuring(cond: Boolean): List.type
          |ensuring(cond: List.type => Boolean): List.type
          |ensuring(cond: Boolean, msg: => Any): List.type
