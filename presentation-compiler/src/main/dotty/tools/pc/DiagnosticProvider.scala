@@ -15,7 +15,6 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.VirtualFileParams
 
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
-
   def diagnostics(): List[lsp4j.Diagnostic] =
     if params.shouldReturnDiagnostics then
       val diags = driver.run(params.uri().nn, params.text().nn)
@@ -25,9 +24,13 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
     Option.when(diag.pos.exists):
+      val message = 
+        if Diagnostic.shouldExplain(diag) then 
+          diag.msg.message + "\n\n# Explanation (enabled by `-explain`)\n\n" + diag.msg.explanation 
+        else diag.msg.message
       val lspDiag = lsp4j.Diagnostic(
         diag.pos.toLsp,
-        diag.msg.message,
+        message,
         toDiagnosticSeverity(diag.level),
         "presentation compiler",
       )
