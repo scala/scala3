@@ -300,7 +300,7 @@ object BitArray {
       new Position(bucket, offsetInBucket)
 
     /** Returns `true` iff `this` and `other` have an equivalent value. */
-    def eq(other: Position): Boolean =
+    infix def eq(other: Position): Boolean =
       (this.bucket == other.bucket) && (this.offsetInBucket == other.offsetInBucket)
 
     /** Hashes the salient parts of `self` into `hasher`. */
@@ -325,8 +325,8 @@ given BitArray.Position is Value:
     def copy(): BitArray.Position =
       self.copy()
 
-    def eq(other: BitArray.Position): Boolean =
-      self.eq(other)
+    infix def eq(other: BitArray.Position): Boolean =
+      self eq other
 
     def hashInto(hasher: Hasher): Hasher =
       self.hashInto(hasher)
