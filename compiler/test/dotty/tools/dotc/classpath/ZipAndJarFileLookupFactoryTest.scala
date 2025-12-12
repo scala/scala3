@@ -6,6 +6,7 @@ import org.junit.Test
 import java.nio.file._
 import java.nio.file.attribute.FileTime
 
+import dotty.tools.dotc.GlobalCache
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, ctx}
 import dotty.tools.io.AbstractFile
 
@@ -18,7 +19,9 @@ class ZipAndJarFileLookupFactoryTest {
     val f = Files.createTempFile("test-", ".jar")
     Files.delete(f)
 
-    given Context = new ContextBase().initialCtx
+    val freshContext = new ContextBase().initialCtx.fresh
+    freshContext.setGlobalCache(GlobalCache())
+    given Context = freshContext
     assert(!ctx.settings.YdisableFlatCpCaching.value) // we're testing with our JAR metadata caching enabled.
 
     def createCp = ZipAndJarClassPathFactory.create(AbstractFile.getFile(f))
