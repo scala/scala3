@@ -1935,11 +1935,6 @@ class Definitions {
       TypeOps.nestedPairs(tparams.map(_.typeRef)) :: parents.tail
   }
 
-  /** If it is BoxedUnit, remove `java.io.Serializable` from `parents`. */
-  def adjustForBoxedUnit(cls: ClassSymbol, parents: List[Type]): List[Type] =
-    if (isBoxedUnitClass(cls)) parents.filter(_.typeSymbol != JavaSerializableClass)
-    else parents
-
   private val HasProblematicGetClass: Set[Name] = Set(
     tpnme.AnyVal, tpnme.Byte, tpnme.Short, tpnme.Char, tpnme.Int, tpnme.Long, tpnme.Float, tpnme.Double,
     tpnme.Unit, tpnme.Boolean)
