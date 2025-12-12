@@ -1439,18 +1439,13 @@ object desugar {
    *             IrrefutableGenFrom:  sel with attachment `CheckIrrefutable -> checkMode`
    */
   def makeSelector(sel: Tree, checkMode: MatchCheck)(using Context): Tree =
+    import MatchCheck.*
     checkMode match
-    case MatchCheck.None =>
-      Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
-
-    case MatchCheck.Exhaustive =>
-      sel
-
-    case MatchCheck.IrrefutablePatDef | MatchCheck.IrrefutableGenFrom =>
+    case None               => Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
+    case Exhaustive         => sel
+    case IrrefutablePatDef
+       | IrrefutableGenFrom => sel.withAttachment(CheckIrrefutable, checkMode)
       // TODO: use `pushAttachment` and investigate duplicate attachment
-      sel.withAttachment(CheckIrrefutable, checkMode)
-      sel
-    end match
 
   case class TuplePatternInfo(arity: Int, varNum: Int, wildcardNum: Int)
   object TuplePatternInfo:
@@ -2284,7 +2279,12 @@ object desugar {
         case (gen: GenFrom) :: test :: rest =>
           val genFrom =
             val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
-            val mode = if sourceVersion.enablesBetterFors then GenCheckMode.Filtered else GenCheckMode.Ignore
+            val mode =
+              import GenCheckMode.*
+              if sourceVersion.enablesBetterFors then
+                if gen.checkMode eq FilterAlways then FilterAlways
+                else Filtered
+              else Ignore
             GenFrom(gen.pat, filtered, mode)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case enums @ GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
