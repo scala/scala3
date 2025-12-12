@@ -139,11 +139,11 @@ private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})
 // ================================================================================================
 
 /** Directive to specify to vulpix the options to pass to Dotty */
-private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
-private val directiveJavacOptions = raw"//> using javacOpt (.*)".r.unanchored
-private val directiveTargetOptions = raw"//> using target.platform (jvm|scala-js)".r.unanchored
-private val directiveUnsupported = raw"//> using (scala) (.*)".r.unanchored
-private val directiveUnknown = raw"//> using (.*)".r.unanchored
+private val directiveOptionsArg = raw"//> using options (.*)".r
+private val directiveJavacOptions = raw"//> using javacOpt (.*)".r
+private val directiveTargetOptions = raw"//> using target.platform (jvm|scala-js)".r
+private val directiveUnsupported = raw"//> using (scala) (.*)".r
+private val directiveUnknown = raw"//> using (.*)".r
 
 // Inspect the lines for compiler options of the form
 // `//> using options args`, `// scalajs: args`, `/* scalajs: args`, ` * scalajs: args` etc.
