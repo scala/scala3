@@ -6,54 +6,62 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 ## Scoped Universal Capabilities
 
-When discussing escape checking, we referred to a scoping discipline. That is, capture sets can contain only capabilities that are visible at the point where the set is defined. But that raises the question where a universal capability `cap` is defined? In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. Usually a `cap` refers to a universal capability defined in the scope where the `cap` appears.
+When discussing escape checking, we referred to a scoping discipline. That is, capture sets can contain only capabilities that are visible at the point where the set is defined. But that raises the question: where is a universal capability `cap` defined? In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. Usually a `cap` refers to a universal capability defined in the scope where the `cap` appears.
+
+A useful mental model is to think of `cap` as a "container" that can _absorb_ concrete capabilities. When you write `T^` (shorthand for `T^{cap}`), you're saying "this value may capture some capabilities that will flow into this `cap`." Different `cap` instances in different scopes are different containers: a capability that flows into one doesn't automatically flow into another. We will further expand on this idea later when discussing [separation checking](separation-checking.md).
+
+### Existential Binding
 
 Special rules apply to `cap`s in method and function parameters and results. For example, take this method:
 
 ```scala
-  def makeLogger(fs: FileSystem^): Logger^ = new Logger(fs)
+def makeLogger(fs: FileSystem^): Logger^ = new Logger(fs)
 ```
-This creates a `Logger` that captures `fs`.
-We could have been more specific in specifying `Logger^{fs}` as the return type of makeLogger, but the current definition is also valid, and might be preferable if we want to hide details what the returned logger captures. If we write it as above then certainly the implied `cap` in the return type of `Logger` should be able subsume the capability `fs`. This means that this `cap` has to be defined in a scope in which
-`fs` is visible.
+
+This creates a `Logger` that captures `fs`. We could have been more specific in specifying `Logger^{fs}` as the return type, but the current definition is also valid, and might be preferable if we want to hide details of what the returned logger captures. If we write it as above then certainly the implied `cap` in the return type should be able to absorb the capability `fs`. This means that this `cap` has to be defined in a scope in which `fs` is visible.
 
 In logic, the usual way to achieve this scoping is with an existential binder. We can express the type of `makeLogger` like this:
 ```scala
 makeLogger: (fs: ∃cap₁.FileSystem^{cap₁}): ∃cap₂. Logger^{cap₂}
 ```
-In words: `makeLogger` takes a parameter `fs` of type `Filesystem` capturing _some_ universal capability `cap` and returns a `Logger` capturing some other (possibly different) universal `cap`.
+In words: `makeLogger` takes a parameter `fs` of type `Filesystem` capturing _some_ universal capability `cap₁` and returns a `Logger` capturing some other (possibly different) universal `cap₂`.
 
-We can also turn the existential in the function parameter to a universal "forall"
-in the function itself. In that alternative notation, the type of makeLogger would read like this:
+We can also turn the existential in the function parameter to a universal "forall" in the function itself. In that alternative notation, the type of makeLogger would read like this:
 ```scala
 makeLogger: ∀cap₁.(fs: FileSystem^{cap₁}): ∃cap₂. Logger^{cap₂}
 ```
-There's a connection with [capture polymorphism](polymorphism.md) here. `cap`s in function parameters behave like additional
-capture parameters that can be instantiated at the call site to arbitrary capabilities.
+There's a connection with [capture polymorphism](polymorphism.md) here. `cap`s in function parameters behave like additional capture parameters that can be instantiated at the call site to arbitrary capabilities.
 
-The conventions for method types carry over to function types. A function type
-```scala
-  (x: T) -> U^
-```
-is interpreted as having an existentially bound `cap` in the result, like this
-```scala
-  (x: T) -> ∃cap.U^{cap}
-```
-The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `cap` can in this case
-subsume the function parameter `x` since it is locally bound in the function result.
+### Function Types
 
-However, the expansion of `cap` into an existentially bound variable only applies to functions that use
-the dependent function style syntax, with explicitly named parameters. Parametric functions such as
-`A => B^` or `(A₍, ..., Aₖ) -> B^` don't bind their result cap in an existential quantifier.
-For instance, the function
+The conventions for method types carry over to function types. A dependent function type
 ```scala
-  (x: A) -> B -> C^
+(x: T) -> U^
+```
+is interpreted as having an existentially bound `cap` in the result, like this:
+```scala
+(x: T) -> ∃cap.U^{cap}
+```
+The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `cap` can in this case absorb the function parameter `x` since `x` is locally bound in the function result.
+
+However, the expansion of `cap` into an existentially bound variable only applies to functions that use the dependent function style syntax, with explicitly named parameters. Parametric functions such as `A => B^` or
+`(A₁, ..., Aₖ) -> B^` don't bind the `cap` in their return types in an existential quantifier. For instance, the function
+```scala
+(x: A) -> B -> C^
 ```
 is interpreted as
 ```scala
-  (x: A) -> ∃cap.B -> C^{cap}
+(x: A) -> ∃cap.B -> C^{cap}
 ```
 In other words, existential quantifiers are only inserted in results of function arrows that follow an explicitly named parameter list.
+
+**Examples:**
+
+ - `A => B` is an alias type that expands to `A ->{cap} B`.
+ -  Therefore
+   `(x: T) -> A => B` expands to `(x: T) -> ∃c.(A ->{c} B)`.
+
+ - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃c.Iterator[A ->{c} B]`.
 
 To summarize:
 
@@ -65,58 +73,135 @@ To summarize:
   - Occurrences of `cap` elsewhere are not translated. They can be seen as representing an existential in the
     scope of the definition in which they appear.
 
-**Examples:**
+## Levels and Escape Prevention
 
- - `A => B` is an alias type that expands to `A ->{cap} B`, therefore
-   `(x: T) -> A => B` expands to `(x: T) -> ∃cap.(A ->{cap} B)`.
+Each capability has a _level_ corresponding to where it was defined. The level determines where a capability can flow: it can flow into `cap`s at the same level or more deeply nested, but not outward to enclosing scopes (which would mean a capability lives longer than its lexical lifetime). Later sections on [capability classifiers](classifiers.md) will add a controlled mechanism that permits escaping/flowing outward for situations
+where this would be desirable.
 
- - `(x: T) -> Iterator[A => B]` expands to `() -> ∃cap.Iterator[A ->{cap} B]`
-<!--
- - If we define `type Fun[T] = (y: B) -> T`, then `(x: A) -> Fun[C^]` expands to
-   `(y: B) -> ∃cap. Fun[C^{cap}]`, which dealiases to `(x: A) -> ∃cap.(y: B) -> C^{cap}`.
-   This demonstrates how aliases can be used to force existential binders to be in some specific outer scope.
+### How Levels Are Computed
 
-**Typing Rules:**
+A capability's level is determined by its _level owner_, which the compiler computes by walking up the ownership chain until reaching a symbol that represents a level boundary. Level boundaries are:
+- **Classes** (but not inner non-static module classes)
+- **Methods** (but not accessors or constructors)
 
- - When we typecheck the body of a method, any covariant occurrences of `cap` in the result type are bound with a fresh existential.
- - Conversely, when we typecheck the application of a function or method,
-  with an existential result type `Exists ex.T`, the result of the application is `T` where every occurrence of the existentially bound
-  variable `ex` is replaced by `cap`.
--->
+Consider this example:
 
-<!--
-## Reach Capabilities
-
-Say you have a method `f` that takes an impure function argument which gets stored in a `var`:
 ```scala
-def f(op: A => B)
-  var x: A ->{op} B = op
-  ...
-```
-This is legal even though `var`s cannot have types with `cap` or existential capabilities. The trick is that the type of the variable `x`
-is not `A => B` (this would be rejected), but is the "narrowed" type
-`A ->{op} B`. In other words, all capabilities retained by values of `x`
-are all also referred to by `op`, which justifies the replacement of `cap` by `op`.
+def outer(c1: Cap^) =                // level: outer
+  val x = 1                            // level: outer (vals don't create levels)
+  var ref: () => Unit = () => ()
 
-A more complicated situation is if we want to store successive values
-held in a list. Example:
-```scala
-def f(ops: List[A => B])
-  var xs = ops
-  var x: ??? = xs.head
-  while xs.nonEmpty do
-    xs = xs.tail
-    x = xs.head
-  ...
+  def inner(c2: Cap^) =                // level: inner
+    val y = 2                            // level: inner
+    val f = () => c2.use()
+    ref = f                              // Error: c2 would escape its level
+
+    class Local:                       // level: Local
+      def method(c3: Cap^) =             // level: method
+        val z = c3                         // level: method
 ```
-Here, `x` cannot be given a type with an `ops` capability. In fact, `ops` is pure, i.e. it's capture set is empty, so it cannot be used as the name of a capability. What we would like to express is that `x` refers to
-any operation "reachable" through `ops`. This can be expressed using a
-_reach capability_ `ops*`.
-```scala
-def f(ops: List[A => B])
-  var xs = ops
-  var x: A ->{ops*} B = xs.head
-  ...
+
+Local values like `x`, `y`, and `z` don't define their own levels. They inherit the level of their enclosing method or class. This means:
+- `c1` and `ref` are both at `outer`'s level
+- `c2` and `f` are both at `inner`'s level
+- `c3` and `z` are both at `method`'s level
+
+### The Level Check
+
+A capability can flow into a `cap` only if that `cap`'s scope is _contained in_ the capability's level owner. In the example above, `ref.set(f)` fails because:
+- `ref`'s type parameter has a `cap` that was instantiated at `outer`'s level
+- `f` captures `c2`, which is at `inner`'s level
+- `outer` is not contained in `inner`, so `c2` cannot flow into `ref`'s `cap`
+
+This ensures capabilities flow "inward" to more nested scopes, never "outward" to enclosing ones.
+
+### Comparison with Rust Lifetimes
+
+Readers familiar with Rust may notice similarities to lifetime checking. Both systems prevent
+references from escaping their valid scope. In Rust, a reference type `&'a T` carries an explicit
+lifetime parameter `'a`. In Scala's capture checking, the lifetime is folded into the capability
+name itself: `T^{x}` says "a `T` capturing `x`," and `x`'s level implicitly determines how long this
+reference is valid. A capture set then acts as an upper bound on the lifetimes of all the
+capabilities it contains.
+
+Consider a `withFile` pattern that ensures a file handle doesn't escape:
+
+```rust
+struct File;
+impl File { fn open(_path: &str) -> Option<File> { Some(File) } }
+
+// Rust: the closure receives a reference bounded by 'a
+fn with_file<R>(path: &str, f: impl for<'a> FnOnce(&'a File) -> R) -> R {
+    let file = File::open(path).unwrap();
+    f(&file)
+}
+
+fn main() {
+    let f = File;
+    let mut escaped: &File = &f;
+    with_file("test.txt", |file| {
+        escaped = file;  // Error: borrowed value does not live long enough
+    });
+}
 ```
-Reach capabilities take the form `x*` where `x` is syntactically a regular capability. If `x: T` then `x*` stands for any capability that appears covariantly in `T` and that is accessed through `x`. The least supertype of this capability is the set of all capabilities appearing covariantly in `T`.
--->
+
+```scala
+// Scala CC: the closure receives a capability whose level prevents escape
+def withFile[R](path: String)(f: File^ => R): R =
+  val file = File.open(path)
+  f(file)
+
+def main() =
+  var escaped: File^
+  withFile("test.txt"): file =>
+    escaped = file  // Error: file's level cannot escape to main's level
+```
+
+In both cases, the type system prevents the handle from escaping the callback. Rust achieves this by requiring `'a` to be contained within the closure's scope. Scala achieves it by checking that `file`'s level (tied to `withFile`) cannot flow into `escaped`'s level (at `main`).
+
+The key analogies are:
+- **Capability name ≈ Lifetime parameter**: Where Rust writes `&'a T`, Scala writes `T^{x}`. The capability `x` carries its lifetime implicitly via its level.
+- **Capture set ≈ Lifetime bound**: A capture set `{x, y}` bounds the lifetime of a value to be no longer than the shortest-lived capability it contains.
+- **Level containment ≈ Outlives**: Rust's `'a: 'b` (a outlives b) corresponds to Scala's level check (inner scopes are contained in outer ones).
+
+The key differences are:
+- **What's tracked**: Rust tracks memory validity (preventing dangling pointers). Scala CC tracks capability usage (preventing unauthorized effects).
+- **Explicit vs. implicit**: Rust lifetimes are explicit parameters (`&'a T`). Scala levels are computed automatically from program structure: you name the capability, not the lifetime.
+
+## Charging Captures to Enclosing Scopes
+
+When a capability is used, it must be checked for compatibility with the capture-set constraints of
+all enclosing scopes. This process is called _charging_ the capability to the environment.
+
+```scala
+def outer(fs: FileSystem^): Unit =
+  def inner(): () ->{fs} Unit =
+    () => fs.read()  // fs is used here
+  inner()
+```
+
+When the capture checker sees `fs.read()`, it verifies that `fs` can flow into each enclosing scope:
+1. The immediately enclosing closure `() => fs.read()` must permit `fs` in its capture set ✓
+2. The enclosing method `inner` must account for `fs` (it does, via its result type) ✓
+3. The enclosing method `outer` must account for `fs` (it does, via its parameter) ✓
+
+If any scope refuses to absorb the capability, capture checking fails:
+
+```scala
+def process(fs: FileSystem^): Unit =
+  val f: () -> Unit = () => fs.read()  // Error: fs cannot flow into {}
+```
+
+The closure is declared pure (`() -> Unit`), meaning its `cap` is the empty set. The capability `fs` cannot flow into an empty set, so this is rejected.
+
+### Visibility and Widening
+
+When capabilities flow outward to enclosing scopes, they must remain visible. A local capability cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to the smallest visible super capture set:
+
+```scala
+def test(fs: FileSystem^): Logger^ =
+  val localLogger = Logger(fs)
+  localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
+```
+
+Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set `{localLogger}` widens to `{fs}`, which covers it (since `localLogger` captures `fs`) and is visible outside `test`. In effect, `fs` flows into the result's `cap` instead of `localLogger`.
