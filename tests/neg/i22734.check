@@ -1,0 +1,8 @@
+-- Error: tests/neg/i22734.scala:4:7 -----------------------------------------------------------------------------------
+4 |object X extends T // error via refchecks
+  |       ^
+  |       object creation impossible, since def item: String in trait T is not defined
+-- Error: tests/neg/i22734.scala:7:7 -----------------------------------------------------------------------------------
+7 |  case Empty // error via refchecks
+  |       ^
+  |       object creation impossible, since def item: String in class Foo is not defined
