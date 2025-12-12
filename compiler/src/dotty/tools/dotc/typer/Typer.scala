@@ -1258,10 +1258,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
-        val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
         if ctx.mode.isQuotedPattern && tpt1.tpe.typeSymbol.isAllOf(Synthetic | Case) then
           val errorTp = errorType(CannotInstantiateQuotedTypeVar(tpt1.tpe.typeSymbol), tpt1.srcPos)
           return cpy.New(tree)(tpt1).withType(errorTp)
+        val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
         if tsym.is(Package) then
           report.error(em"$tsym cannot be instantiated", tpt1.srcPos)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
@@ -1271,7 +1271,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               report.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.srcPos)
           case _ =>
         }
-
         assignType(cpy.New(tree)(tpt1), tpt1)
     }
 
@@ -5025,7 +5024,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
     }
 
-    /** If `tree` is a constructor proxy reference, convert it to a `new` expression,
+    /** If `tree` is a constructor proxy reference, convert it to a `new` expression;
+     *  check if it is a reference to an exported type/companion pair;
      *  otherwise return EmptyTree.
      */
     def newExpr(tree: Tree): Tree =
@@ -5041,13 +5041,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
+      val tycon =
+        val exported =
+          if qual.symbol.isAllOf(SyntheticMethod | Exported) then
+            qual.symbol.owner.info.memberBasedOnFlags(qual.symbol.name.toTypeName, required = Exported)
+          else NoDenotation
+        if exported.exists then exported.symbol.typeRef
+        else ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
           nme.CONSTRUCTOR),
-        pt)
-        .showing(i"convert creator $tree -> $result", typr)
+        pt
+      ).showing(i"convert creator $tree -> $result", typr)
 
     /** If `tree` is a constructor proxy reference, return the type it constructs,
      *  otherwise return NoType.
@@ -5066,7 +5072,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // begin adapt1
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
-      case _ => tree.tpe.widen match {
+      case _ =>
+        tree.tpe.widen match
         case tp: FlexType =>
           ensureReported(tp)
           tree
@@ -5128,7 +5135,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)
           }
-      }
     }
   }
 
