@@ -24,7 +24,7 @@ import collection.mutable
 import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
-import cc.{isRetainsLike, CaptureAnnotation}
+import cc.RetainingAnnotation
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -187,7 +187,7 @@ object TreeChecker {
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
-        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike && !annot.isInstanceOf[CaptureAnnotation] =>
+        case tp @ AnnotatedType(underlying, annot: RetainingAnnotation) =>
           val underlying1 = this(underlying)
           val annot1 = insideRetainingAnnot:
             annot.mapWith(this)

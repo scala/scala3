@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike}
+import cc.{isCaptureChecking, RetainingAnnotation}
 import cc.Mutability.isUpdateMethod
 
 import collection.mutable
@@ -815,7 +815,7 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
-        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike =>
+        case tp @ AnnotatedType(underlying, annot: RetainingAnnotation) =>
           val underlying1 = this(underlying)
           val saved = inCaptureSet
           inCaptureSet = true

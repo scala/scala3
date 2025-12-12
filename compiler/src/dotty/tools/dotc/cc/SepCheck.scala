@@ -919,7 +919,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     assert(mtps.hasSameLengthAs(argss), i"diff for $fn: ${fn.symbol} /// $mtps /// $argss")
     val mtpsWithArgs = mtps.zip(argss)
     val argMap = mtpsWithArgs.toMap
-    val deps = mutable.HashMap[Tree, List[Tree]]().withDefaultValue(Nil)
+    val deps = mutable.LinkedHashMap[Tree, List[Tree]]().withDefaultValue(Nil)
 
     def argOfDep(dep: Capability): Option[Tree] =
       dep.stripReach match

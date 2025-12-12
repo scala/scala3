@@ -60,7 +60,7 @@ object CapturingType:
     case AnnotatedType(parent, ann: CaptureAnnotation)
     if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
-    case AnnotatedType(parent, ann) if ann.symbol.isRetains && alsoRetains =>
+    case AnnotatedType(parent, ann: RetainingAnnotation) if ann.isStrict && alsoRetains =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets
@@ -75,7 +75,7 @@ object CapturingType:
       //
       // TODO In other situations we expect that the type is already transformed to a
       // CapturingType and we should crash if this not the case.
-      try Some((parent, ann.tree.toCaptureSet))
+      try Some((parent, ann.toCaptureSet))
       catch case ex: IllegalCaptureRef => None
     case _ =>
       None

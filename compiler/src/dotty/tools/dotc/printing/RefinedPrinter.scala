@@ -705,7 +705,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextTemplate(tree)
       case Annotated(arg, annot) =>
         def captureSet =
-          annot.asInstanceOf[tpd.Tree].toCaptureSet
+          CaptureSet(annot.asInstanceOf[tpd.Tree].retainedSet.retainedElements*)
         def toTextAnnot =
           toTextLocal(arg) ~~ annotText(annot.symbol.enclosingClass, annot)
         def toTextRetainsAnnot =
@@ -1165,6 +1165,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
       case id @ Ident(tpnme.BOUNDTYPE_ANNOT) => "@" ~ toText(id.symbol.name)
       case New(tpt) => recur(tpt)
+      case t: tpd.TypeTree if t.tpe.isInstanceOf[AppliedType] => "@" ~ toText(t.tpe)
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)
         if annotSym.exists then annotText(annotSym) else s"@${t.show}"

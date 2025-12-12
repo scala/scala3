@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType}
+import cc.{CaptureSet, RetainingAnnotation}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -122,8 +122,9 @@ class Definitions {
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
-              tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      captureRoot.termRef)
+              tl => AnnotatedType(
+                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -1347,8 +1348,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refSet)
+      case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
+        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
