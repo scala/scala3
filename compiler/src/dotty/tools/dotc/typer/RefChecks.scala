@@ -1035,14 +1035,7 @@ object RefChecks {
           case Nil =>
             report.error(OverridesNothing(member), member.srcPos)
           case ms =>
-            // getClass in primitive value classes is defined in the standard library as:
-            //     override def getClass(): Class[Int] = ???
-            // However, it's not actually an override in Dotty because our Any#getClass
-            // is polymorphic (see `Definitions#Any_getClass`), so since we can't change
-            // the standard library, we need to drop the override flag without reporting
-            // an error.
-            if (!(member.name == nme.getClass_ && clazz.isPrimitiveValueClass))
-              report.error(OverridesNothingButNameExists(member, ms), member.srcPos)
+            report.error(OverridesNothingButNameExists(member, ms), member.srcPos)
         }
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
