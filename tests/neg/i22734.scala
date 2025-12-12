@@ -6,7 +6,10 @@ object X extends T // error via refchecks
 enum Foo {
   case Empty // error via refchecks
   case NonEmpty(item: String)
-  case Decoy // missing error
+  case Extender extends Foo // error missing error
+  case Another extends Foo // error missing error
+  case Decoy // error missing error
+  case NotSimple(item: String)
 
   def item: String
 }

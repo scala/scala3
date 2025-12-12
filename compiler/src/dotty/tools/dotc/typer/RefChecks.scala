@@ -930,10 +930,17 @@ object RefChecks {
         val isEnumAnonCls = // courtesy of Checking.checkEnum
           cls.isAnonymousClass
           && cls.owner.isTerm
-          && (cls.owner.flagsUNSAFE.isAllOf(EnumCase)
-            || ((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.flagsUNSAFE.isAllOf(Private | Synthetic)))
+          && {
+               cls.owner.flagsUNSAFE.isAllOf(EnumCase)
+            || (cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.flagsUNSAFE.isAllOf(Private | Synthetic)
+          }
         if isEnumAnonCls then
-          cls.parentSyms.head.children.filterNot(_.isClass).head.srcPos
+          println(i"CHK ${cls.owner.srcPos.sourcePos} or ${cls.owner.srcPos.span} in ${
+            cls.parentSyms.head.children.map(child => (child, child.srcPos.sourcePos, child.srcPos.span, child.info))
+          }")
+          //cls.parentSyms.head.children.filterNot(_.isClass).head.srcPos
+          //cls.parentSyms.head.children.find(_.srcPos.sourcePos `contains` cls.owner.srcPos.sourcePos)
+          cls.owner.srcPos
         else
           clazzNamePos
 
