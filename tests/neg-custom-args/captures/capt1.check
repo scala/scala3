@@ -41,6 +41,7 @@
    |  Required: A
    |
    |  Note that capability x is not included in capture set {}.
+   |
 28 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`

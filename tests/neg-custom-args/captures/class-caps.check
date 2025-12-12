@@ -5,6 +5,7 @@
    |                                       Required: (Int, Int) -> Int
    |
    |                                       Note that capability Test.this.console is not included in capture set {}.
+   |
 19 |    log(s"adding a ($a) to b ($b)")(using console)
 20 |    a + b
    |
@@ -16,6 +17,7 @@
    |                                      Required: (Int, Int) -> Int
    |
    |                                      Note that capability Test1.this.console is not included in capture set {}.
+   |
 29 |    log(s"adding a ($a) to b ($b)")(using console)
 30 |    a + b
    |
