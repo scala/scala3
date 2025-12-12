@@ -17,7 +17,7 @@ import xsbti.compile.DependencyChanges;
 import xsbti.compile.Output;
 
 public final class CompilerBridge implements CompilerInterface2 {
-  private final GlobalCache globalCache = new GlobalCache();
+  private final GlobalCache globalCache = GlobalCache.apply();
 
   @Override
   public void run(VirtualFile[] sources, DependencyChanges changes, String[] options, Output output,

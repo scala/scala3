@@ -779,6 +779,7 @@ object Contexts {
           .updated(notNullInfosLoc, Nil)
           .updated(compilationUnitLoc, NoCompilationUnit)
           .updated(profilerLoc, Profiler.NoOp)
+          .updated(globalCacheLoc, GlobalCache.NoGlobalCache)
       c._searchHistory = new SearchRoot
       c._gadtState = GadtState(GadtConstraint.empty)
       c

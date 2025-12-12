@@ -54,7 +54,7 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   public CompilerBridgeDriver(String[] scalacOptions, Output output) {
-    this(scalacOptions, output, new GlobalCache());
+    this(scalacOptions, output, GlobalCache.apply());
   }
 
   private static final String StopInfoError =
