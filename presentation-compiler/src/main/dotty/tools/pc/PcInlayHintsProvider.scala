@@ -529,7 +529,7 @@ object XRayModeHint:
         case apply @ Apply(inner, _)
             if !apply.span.isZeroExtent && inner.sourcePos.exists && !isParentOnSameLine &&
             !isParentApply && endsInSimpleSelect(apply) && isEndOfLine(tree.sourcePos) =>
-          Some((apply.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+          Some((apply.tpe.widen.finalResultType.deepDealiasAndSimplify, tree.sourcePos))
         /*
         innerTree
          .select
@@ -537,7 +537,10 @@ object XRayModeHint:
         case select @ Select(innerTree, _)
             if !select.span.isZeroExtent && innerTree.sourcePos.exists &&
             !isParentOnSameLine && !isParentApply && isEndOfLine(tree.sourcePos) =>
-          Some((select.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+          val tpe = parent match
+            case Some(ta: TypeApply) => ta.tpe
+            case _ => select.tpe
+          Some((tpe.widen.finalResultType.deepDealiasAndSimplify, tree.sourcePos))
         case _ => None
     else None
 
