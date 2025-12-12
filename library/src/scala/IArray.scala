@@ -306,7 +306,7 @@ object IArray:
     def stepper[S <: Stepper[?]](using StepperShape[T, S]): S = genericArrayOps(arr).stepper[S]
     def tails: Iterator[IArray[T]] = genericArrayOps(arr).tails
     def tapEach[U](f: (T) => U): IArray[T] =
-      arr.toSeq.foreach(f)
+      IArray.genericWrapArray(arr).foreach(f) // just to be sure it doesnt clone
       arr
     def transpose[U](implicit asArray: T => IArray[U]): IArray[IArray[U]] =
       genericArrayOps(arr).transpose(using asArray.asInstanceOf[T => Array[U]])
