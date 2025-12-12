@@ -1430,7 +1430,7 @@ class Definitions {
   )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
   private val compiletimePackageStringTypes: Set[Name] = Set(
-    tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt
+    tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt, tpnme.LT, tpnme.GT, tpnme.LE, tpnme.GE
   )
   private val compiletimePackageOpTypes: Set[Name] =
     Set(tpnme.S, tpnme.From)
