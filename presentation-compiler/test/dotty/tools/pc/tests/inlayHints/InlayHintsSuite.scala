@@ -1687,4 +1687,40 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |}
          |""".stripMargin
     )
+
+  @Test def `xray-metals-i8021` =
+    check(
+      """|object Main:
+         |
+         |  case class Order(id: String, amount: BigDecimal)
+         |  case class User(name: String, orders: List[Order])
+         |
+         |  val users = List(
+         |    User("Alice", List(Order("A1", 100), Order("A2", 50))),
+         |    User("Bob", List(Order("B1", 200)))
+         |  )
+         |
+         |  val total = users
+         |    .filter(_.name.startsWith("A"))
+         |    .flatMap(_.orders)
+         |    .map(_.amount)
+         |    .sum
+         |""".stripMargin,
+      """|object Main:
+         |
+         |  case class Order(id: String, amount: BigDecimal)
+         |  case class User(name: String, orders: List[Order])
+         |
+         |  val users/*: List<<scala/collection/immutable/List#>>[User<<(4:13)>>]*/ = List/*[User<<(4:13)>>]*/(
+         |    /*elems = */User(/*name = */"Alice", /*orders = */List/*[Order<<(3:13)>>]*/(/*elems = */Order(/*id = */"A1", /*int2bigDecimal<<scala/math/BigDecimal.int2bigDecimal().>>(*//*amount = */100/*)*/), Order(/*id = */"A2", /*int2bigDecimal<<scala/math/BigDecimal.int2bigDecimal().>>(*//*amount = */50/*)*/))),
+         |    User(/*name = */"Bob", /*orders = */List/*[Order<<(3:13)>>]*/(/*elems = */Order(/*id = */"B1", /*int2bigDecimal<<scala/math/BigDecimal.int2bigDecimal().>>(*//*amount = */200/*)*/)))
+         |  )
+         |
+         |  val total/*: BigDecimal<<scala/math/BigDecimal#>>*/ = users
+         |    .filter(/*p = */_.name.startsWith("A"))/*: List<<scala/collection/immutable/List#>>[User<<(4:13)>>]*/
+         |    .flatMap/*[Order<<(3:13)>>]*/(/*f = */_.orders)/*             : List<<scala/collection/immutable/List#>>[Order<<(3:13)>>]*/
+         |    .map/*[BigDecimal<<scala/math/BigDecimal#>>]*/(/*f = */_.amount)/*                 : List<<scala/collection/immutable/List#>>[BigDecimal<<scala/math/BigDecimal#>>]*/
+         |    .sum/*[BigDecimal<<scala/math/BigDecimal#>>]*//*(using BigDecimalIsFractional<<scala/math/Numeric.BigDecimalIsFractional.>>)*//*                           : BigDecimal<<scala/math/BigDecimal#>>*/
+         |""".stripMargin
+    )
 }
