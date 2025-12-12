@@ -1159,6 +1159,11 @@ class Definitions {
     "io.reactivex.annotations.NonNull" ::
     "org.jspecify.annotations.NonNull" :: Nil)
 
+  @tu lazy val NullableAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "javax.annotation.Nullable" ::
+    "org.jetbrains.annotations.Nullable" ::
+    "org.jspecify.annotations.Nullable" :: Nil)
+
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
