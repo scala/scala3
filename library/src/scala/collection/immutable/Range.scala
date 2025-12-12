@@ -219,7 +219,7 @@ sealed abstract class Range(
   final protected def copy(start: Int = start, end: Int = end, step: Int = step, isInclusive: Boolean = isInclusive): Range =
     if(isInclusive) new Range.Inclusive(start, end, step) else new Range.Exclusive(start, end, step)
 
-  /** Create a new range with the `start` and `end` values of this range and
+  /** Creates a new range with the `start` and `end` values of this range and
     *  a new `step`.
     *
     *  @return a new range with a different step
@@ -418,7 +418,7 @@ sealed abstract class Range(
     if (isEmpty) this
     else new Range.Inclusive(last, start, -step)
 
-  /** Make range inclusive.
+  /** Makes range inclusive.
     */
   final def inclusive: Range =
     if (isInclusive) this
@@ -617,21 +617,21 @@ object Range {
   def count(start: Int, end: Int, step: Int): Int =
     count(start, end, step, isInclusive = false)
 
-  /** Make a range from `start` until `end` (exclusive) with given step value.
+  /** Makes a range from `start` until `end` (exclusive) with given step value.
     * @note step != 0
     */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
-  /** Make a range from `start` until `end` (exclusive) with step value 1.
+  /** Makes a range from `start` until `end` (exclusive) with step value 1.
     */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
-  /** Make an inclusive range from `start` to `end` with given step value.
+  /** Makes an inclusive range from `start` to `end` with given step value.
     * @note step != 0
     */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
-  /** Make an inclusive range from `start` to `end` with step value 1.
+  /** Makes an inclusive range from `start` to `end` with step value 1.
     */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 

@@ -18,7 +18,7 @@ object Option {
 
   import scala.language.implicitConversions
 
-  /** An implicit conversion that converts an option to an iterable value */
+  /** An implicit conversion that converts an option to an iterable value. */
   implicit def option2Iterable[A](xo: Option[A]): Iterable[A] =
     if (xo.isEmpty) Iterable.empty else Iterable.single(xo.get)
 
@@ -36,14 +36,14 @@ object Option {
   def empty[A] : Option[A] = None
 
   /** When a given condition is true, evaluates the `a` argument and returns
-   *  Some(a). When the condition is false, `a` is not evaluated and None is
+   *  `Some(a)`. When the condition is false, `a` is not evaluated and `None` is
    *  returned.
    */
   def when[A](cond: Boolean)(a: => A): Option[A] =
     if (cond) Some(a) else None
 
   /** Unless a given condition is true, this will evaluate the `a` argument and
-   *  return Some(a). Otherwise, `a` is not evaluated and None is returned.
+   *  return `Some(a)`. Otherwise, `a` is not evaluated and `None` is returned.
    */
   @inline def unless[A](cond: Boolean)(a: => A): Option[A] =
     when(!cond)(a)
@@ -421,7 +421,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    */
   @inline final def forall(p: A => Boolean): Boolean = isEmpty || p(this.get)
 
-  /** Apply the given procedure $f to the option's value,
+  /** Applies the given procedure $f to the option's value,
    *  if it is nonempty. Otherwise, do nothing.
    *
    * This is equivalent to:

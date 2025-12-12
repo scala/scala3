@@ -14,7 +14,7 @@ import language.experimental.captureChecking
  */
 trait FromExpr[T] {
 
-  /** Return the value of the expression.
+  /** Returns the value of the expression.
    *
    *  Returns `None` if the expression does not represent a value or possibly contains side effects.
    *  Otherwise returns the `Some` of the value.
@@ -23,7 +23,7 @@ trait FromExpr[T] {
 
 }
 
-/** Default given instances of `FromExpr` */
+/** Default given instances of `FromExpr`. */
 object FromExpr {
 
   /** Default implementation of `FromExpr[Boolean]`
@@ -81,7 +81,7 @@ object FromExpr {
    */
   given StringFromExpr[T <: String]: FromExpr[T] = new PrimitiveFromExpr
 
-  /** Lift a quoted primitive value `'{ x }` into `x` */
+  /** Lift a quoted primitive value `'{ x }` into `x`. */
   private class PrimitiveFromExpr[T <: Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends FromExpr[T] {
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect.*

@@ -50,10 +50,10 @@ class DynamicVariable[T](init: T) {
    */
   private[this] var v = init
 
-  /** Retrieve the current value */
+  /** Retrieves the current value. */
   def value: T = v
 
-  /** Set the value of the variable while executing the specified
+  /** Sets the value of the variable while executing the specified
     * thunk.
     *
     * @param newval The value to which to set the variable
@@ -67,7 +67,7 @@ class DynamicVariable[T](init: T) {
     finally v = oldval
   }
 
-  /** Change the currently bound value, discarding the old value.
+  /** Changes the currently bound value, discarding the old value.
     * Usually withValue() gives better semantics.
     */
   def value_=(newval: T) = v = newval

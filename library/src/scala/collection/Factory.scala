@@ -41,7 +41,7 @@ trait Factory[-A, +C] extends Any { self =>
     */
   def fromSpecific(it: IterableOnce[A]^): C^{it}
 
-  /** Get a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
+  /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
     * Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections. */
   def newBuilder: Builder[A, C]
 }
@@ -93,7 +93,7 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
     */
   def from[A](source: IterableOnce[A]^): CC[A]^{source}
 
-  /** An empty $coll
+  /** An empty $coll.
     * @tparam A      the type of the ${coll}'s elements
     */
   def empty[A]: CC[A]
@@ -263,7 +263,7 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 object IterableFactory {
 
   /**
-    * Fixes the element type of `factory` to `A`
+    * Fixes the element type of `factory` to `A`.
     * @param factory The factory to fix the element type
     * @tparam A Type of elements
     * @tparam CC Collection type constructor of the factory (e.g. `Seq`, `List`)
@@ -387,7 +387,7 @@ trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
 trait MapFactory[+CC[_, _]] extends Serializable { self =>
 
   /**
-   * An empty Map
+   * An empty Map.
    */
   def empty[K, V]: CC[K, V]
 
@@ -415,7 +415,7 @@ trait MapFactory[+CC[_, _]] extends Serializable { self =>
 object MapFactory {
 
   /**
-    * Fixes the key and value types of `factory` to `K` and `V`, respectively
+    * Fixes the key and value types of `factory` to `K` and `V`, respectively.
     * @param factory The factory to fix the key and value types
     * @tparam K Type of keys
     * @tparam V Type of values
@@ -508,7 +508,7 @@ trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, caps.Pure {
 object EvidenceIterableFactory {
 
   /**
-    * Fixes the element type of `factory` to `A`
+    * Fixes the element type of `factory` to `A`.
     * @param factory The factory to fix the element type
     * @tparam A Type of elements
     * @tparam CC Collection type constructor of the factory (e.g. `TreeSet`)

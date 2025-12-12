@@ -45,7 +45,7 @@ object NonFatal {
     case _ => true
   }
   /**
-   * Returns Some(t) if NonFatal(t) == true, otherwise None
+   * Returns `Some`(t) if `NonFatal`(t) == true, otherwise `None`
    */
   def unapply(t: Throwable): Option[Throwable] = if (apply(t)) Some(t) else None
 }

@@ -98,13 +98,13 @@ trait Unscoped extends Stateful, Classifier
 @experimental
 trait Mutable extends Stateful, Separate, Unscoped
 
-/** Marker trait for classes with reader methods, typically extended by Mutable classes */
+/** Marker trait for classes with reader methods, typically extended by Mutable classes. */
 @experimental
 @deprecated
 trait Read extends Mutable
 
 
-/** Carrier trait for capture set type parameters */
+/** Carrier trait for capture set type parameters. */
 @experimental
 trait CapSet extends Any
 
@@ -233,7 +233,7 @@ object unsafe:
    */
   def unsafeAssumeSeparate(op: Any): op.type = op
 
-  /** A wrapper around code for which uses go unrecorded */
+  /** A wrapper around code for which uses go unrecorded. */
   def unsafeDiscardUses(op: Any): op.type = op
 
   /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the

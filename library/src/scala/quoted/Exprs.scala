@@ -4,7 +4,7 @@ import language.experimental.captureChecking
 
 object Exprs:
 
-  /** Matches literal sequence of literal constant value expressions and return a sequence of values.
+  /** Matches literal sequence of literal constant value expressions and returns a sequence of values.
    *
    *  Usage:
    *  ```scala

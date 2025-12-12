@@ -33,12 +33,12 @@ import scala.concurrent.Future
   */
 object FutureConverters {
   implicit class FutureOps[T](private val f: Future[T]) extends AnyVal {
-    /** Convert a Scala Future to a Java CompletionStage, see [[javaapi.FutureConverters.asJava]]. */
+    /** Converts a Scala Future to a Java CompletionStage, see [[javaapi.FutureConverters.asJava]]. */
     def asJava: CompletionStage[T] = javaapi.FutureConverters.asJava(f)
   }
 
   implicit class CompletionStageOps[T](private val cs: CompletionStage[T]) extends AnyVal {
-    /** Convert a Java CompletionStage to a Scala Future, see [[javaapi.FutureConverters.asScala]]. */
+    /** Converts a Java CompletionStage to a Scala Future, see [[javaapi.FutureConverters.asScala]]. */
     def asScala: Future[T] = javaapi.FutureConverters.asScala(cs)
   }
 }

@@ -573,7 +573,7 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
     if (r eq bigDecimal) this else new BigDecimal(r, this.mc)
   }
 
-  /** Returns a `BigDecimal` rounded according to its own `MathContext` */
+  /** Returns a `BigDecimal` rounded according to its own `MathContext`. */
   def rounded: BigDecimal = {
     val r = bigDecimal.round(mc)
     if (r eq bigDecimal) this else new BigDecimal(r, mc)

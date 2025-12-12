@@ -189,7 +189,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     */
   def intersect(that: Set[A]): C = this.filter(that)
 
-  /** Alias for `intersect` */
+  /** Alias for `intersect`. */
   @`inline` final def & (that: Set[A]): C = intersect(that)
 
   /** Computes the difference of this set and another set.
@@ -200,7 +200,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     */
   def diff(that: Set[A]): C
 
-  /** Alias for `diff` */
+  /** Alias for `diff`. */
   @`inline` final def &~ (that: Set[A]): C = this diff that
 
   @deprecated("Consider requiring an immutable Set", "2.13.0")
@@ -245,7 +245,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   def + (elem1: A, elem2: A, elems: A*): C = fromSpecific(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
 
-  /** Alias for `concat` */
+  /** Alias for `concat`. */
   @`inline` final def ++ (that: collection.IterableOnce[A]^): C = concat(that)
 
   /** Computes the union between of set and another set.
@@ -256,7 +256,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     */
   @`inline` final def union(that: Set[A]): C = concat(that)
 
-  /** Alias for `union` */
+  /** Alias for `union`. */
   @`inline` final def | (that: Set[A]): C = concat(that)
 }
 

@@ -31,14 +31,14 @@ import scala.reflect.ClassTag
 trait BuildFrom[-From, -A, +C] extends Any { self =>
   def fromSpecific(from: From)(it: IterableOnce[A]^): C^{it}
 
-  /** Get a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
+  /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
     * Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections. */
   def newBuilder(from: From): Builder[A, C]
 
   @deprecated("Use newBuilder() instead of apply()", "2.13.0")
   @`inline` def apply(from: From): Builder[A, C] = newBuilder(from)
 
-  /** Partially apply a BuildFrom to a Factory */
+  /** Partially apply a BuildFrom to a Factory. */
   def toFactory(from: From): Factory[A, C] = new Factory[A, C] {
     def fromSpecific(it: IterableOnce[A]^): C^{it} = self.fromSpecific(from)(it)
     def newBuilder: Builder[A, C] = self.newBuilder(from)
@@ -47,14 +47,14 @@ trait BuildFrom[-From, -A, +C] extends Any { self =>
 
 object BuildFrom extends BuildFromLowPriority1 {
 
-  /** Build the source collection type from a MapOps */
+  /** Builds the source collection type from a MapOps. */
   implicit def buildFromMapOps[CC[X, Y] <: Map[X, Y] & MapOps[X, Y, CC, ?], K0, V0, K, V]: BuildFrom[CC[K0, V0] & Map[K0, V0], (K, V), CC[K, V] & Map[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
     //TODO: Reuse a prototype instance
     def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: MapOps[K0, V0, CC, ?]).mapFactory.newBuilder[K, V]
     def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: MapOps[K0, V0, CC, ?]).mapFactory.from(it)
   }
 
-  /** Build the source collection type from a SortedMapOps */
+  /** Builds the source collection type from a SortedMapOps. */
   implicit def buildFromSortedMapOps[CC[X, Y] <: SortedMap[X, Y] & SortedMapOps[X, Y, CC, ?], K0, V0, K : Ordering, V]: BuildFrom[CC[K0, V0] & SortedMap[K0, V0], (K, V), CC[K, V] & SortedMap[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
     def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: SortedMapOps[K0, V0, CC, ?]).sortedMapFactory.newBuilder[K, V]
     def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: SortedMapOps[K0, V0, CC, ?]).sortedMapFactory.from(it)
@@ -94,7 +94,7 @@ object BuildFrom extends BuildFromLowPriority1 {
 
 trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
 
-  /** Build the source collection type from an Iterable with SortedOps */
+  /** Builds the source collection type from an Iterable with SortedOps. */
   // Restating the upper bound of CC in the result type seems redundant, but it serves to prune the
   // implicit search space for faster compilation and reduced change of divergence. See the compilation
   // test in test/junit/scala/collection/BuildFromTest.scala and discussion in https://github.com/scala/scala/pull/10209
@@ -111,7 +111,7 @@ trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
 }
 
 trait BuildFromLowPriority2 {
-  /** Build the source collection type from an IterableOps */
+  /** Builds the source collection type from an IterableOps. */
   implicit def buildFromIterableOps[CC[X] <: Iterable[X] & IterableOps[X, CC, ?], A0, A]: BuildFrom[CC[A0], A, CC[A]] = new BuildFrom[CC[A0], A, CC[A]] {
     //TODO: Reuse a prototype instance
     def newBuilder(from: CC[A0]): Builder[A, CC[A]] = (from: IterableOps[A0, CC, ?]).iterableFactory.newBuilder[A]

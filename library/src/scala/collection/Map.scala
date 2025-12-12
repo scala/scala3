@@ -21,7 +21,7 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.StringBuilder
 import scala.util.hashing.MurmurHash3
 
-/** Base Map type */
+/** Base Map type. */
 trait Map[K, +V]
   extends Iterable[(K, V)]
     with MapOps[K, V, Map, Map[K, V]]
@@ -268,7 +268,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     def next() = iter.next()._2
   }
 
-  /** Apply `f` to each key/value pair for its side effects
+  /** Applies `f` to each key/value pair for its side effects
    *  Note: [U] parameter needed to help scalac's type inference.
    */
   def foreachEntry[U](f: (K, V) => U): Unit = {
@@ -370,7 +370,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
 
   // Not final because subclasses refine the result type, e.g. in SortedMap, the result type is
   // SortedMap's CC, while Map's CC is fixed to Map
-  /** Alias for `concat` */
+  /** Alias for `concat`. */
   /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2]^{this, xs} = concat(xs)
 
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =

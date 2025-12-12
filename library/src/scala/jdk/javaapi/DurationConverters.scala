@@ -25,7 +25,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * code, it is recommended to use the extension methods defined in [[scala.jdk.DurationConverters]].
   */
 object  DurationConverters {
-  /** Convert a Java duration to a Scala duration. If the nanosecond part of the Java duration is
+  /** Converts a Java duration to a Scala duration. If the nanosecond part of the Java duration is
     * zero, the returned duration will have a time unit of seconds. If there is a nanoseconds part,
     * the Scala duration will have a time unit of nanoseconds.
     *
@@ -55,7 +55,7 @@ object  DurationConverters {
     }
   }
 
-  /** Convert a Scala `FiniteDuration` to a Java duration. Note that the Scala duration keeps the
+  /** Converts a Scala `FiniteDuration` to a Java duration. Note that the Scala duration keeps the
     * time unit it was created with, while a Java duration always is a pair of seconds and nanos,
     * so the unit it lost.
     */
