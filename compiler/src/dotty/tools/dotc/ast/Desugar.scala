@@ -703,6 +703,10 @@ object desugar {
     def isEnumCase = mods.isEnumCase
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
+    val isValhallaVC = isValueClass && mods.annotations.exists{ annot => annot match
+      case Apply(Select(New(Ident(annotName)), _), _) => annotName eq tpnme.valhalla
+      case _ => false
+    }
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
     val caseClassInScala2Library = isCaseClass && Feature.shouldBehaveAsScala2
 
@@ -1028,7 +1032,7 @@ object desugar {
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
-      else if isValueClass && !isObject then
+      else if isValueClass && !isObject && !isValhallaVC then
         companionDefs(anyRef, Nil)
       else Nil
 

@@ -415,6 +415,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         )
         cnode.fields.add(jfield)
         emitAnnotations(jfield, f.annotations)
+
+        if(f.denot.info.isValhallaValueClassType)
+          cnode.visitLoadableDescriptors(jfield.desc)
       }
 
     } // end of method addClassFields()
