@@ -9,11 +9,10 @@ object Test1:
     foo(transfer(_))
   def transfer(in: B): Unit = ???
 
-// TODO: need to fix callee type in typedFunctionValue
-// object Test2:
-//   def foo[T <: (B => Unit)](f: T) = ???
-//   def transfer(in: A): Unit =
-//     foo(in => transfer(in))
-//     foo(transfer)
-//     foo(transfer(_))
-//   def transfer(in: B): Unit = ???
+object Test2:
+  def foo[T <: (B => Unit)](f: T) = ???
+  def transfer(in: A): Unit =
+    foo(in => transfer(in))
+    foo(transfer)
+    foo(transfer(_))
+  def transfer(in: B): Unit = ???
