@@ -5,6 +5,8 @@
 
 package dotty.tools.xsbt;
 
+import dotty.tools.dotc.GlobalCache;
+
 import xsbti.AnalysisCallback;
 import xsbti.Logger;
 import xsbti.Reporter;
@@ -15,10 +17,12 @@ import xsbti.compile.DependencyChanges;
 import xsbti.compile.Output;
 
 public final class CompilerBridge implements CompilerInterface2 {
+  private final GlobalCache globalCache = new GlobalCache();
+
   @Override
   public void run(VirtualFile[] sources, DependencyChanges changes, String[] options, Output output,
     AnalysisCallback callback, Reporter delegate, CompileProgress progress, Logger log) {
-    CompilerBridgeDriver driver = new CompilerBridgeDriver(options, output);
+    CompilerBridgeDriver driver = new CompilerBridgeDriver(options, output, globalCache);
     driver.run(sources, callback, log, delegate, progress);
   }
 }

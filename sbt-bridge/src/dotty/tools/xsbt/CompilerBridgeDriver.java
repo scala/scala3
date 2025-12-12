@@ -7,6 +7,7 @@ package dotty.tools.xsbt;
 
 import dotty.tools.dotc.Compiler;
 import dotty.tools.dotc.Driver;
+import dotty.tools.dotc.GlobalCache;
 import dotty.tools.dotc.ScalacCommand;
 import dotty.tools.dotc.config.Properties;
 import dotty.tools.dotc.core.Contexts;
@@ -35,8 +36,9 @@ import java.util.Arrays;
 public class CompilerBridgeDriver extends Driver {
   private final String[] scalacOptions;
   private final String[] args;
+  private final GlobalCache globalCache;
 
-  public CompilerBridgeDriver(String[] scalacOptions, Output output) {
+  public CompilerBridgeDriver(String[] scalacOptions, Output output, GlobalCache globalCache) {
     super();
     this.scalacOptions = scalacOptions;
 
@@ -47,6 +49,12 @@ public class CompilerBridgeDriver extends Driver {
     System.arraycopy(scalacOptions, 0, args, 0, scalacOptions.length);
     args[scalacOptions.length] = "-d";
     args[scalacOptions.length + 1] = output.getSingleOutputAsPath().get().toAbsolutePath().toString();
+
+    this.globalCache = globalCache;
+  }
+
+  public CompilerBridgeDriver(String[] scalacOptions, Output output) {
+    this(scalacOptions, output, new GlobalCache());
   }
 
   private static final String StopInfoError =
@@ -59,6 +67,11 @@ public class CompilerBridgeDriver extends Driver {
   @Override
   public boolean sourcesRequired() {
     return false;
+  }
+
+  @Override
+  public GlobalCache globalCache() {
+    return this.globalCache;
   }
 
   private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
