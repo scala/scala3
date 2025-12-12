@@ -135,7 +135,7 @@ object Build {
   val mimaPreviousDottyVersion = "3.7.3" // for 3.8.0, we compare against 3.7.3
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.10.1"
+  val scalaCliLauncherVersion = "1.11.0"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.25-M19"
 
