@@ -7124,7 +7124,15 @@ object Types extends TypeUtils {
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
-      tp match {
+
+      val canonicTp = tp match
+        case AppliedType(_, args) if defn.isTupleNType(tp) =>
+          args.foldRight(defn.EmptyTupleClass.typeRef: Type) { (elemType, acc) =>
+            defn.PairClass.typeRef.appliedTo(elemType, acc)
+          }
+        case _ => tp
+
+      canonicTp match {
         case tp: AppliedType =>
           val tpNorm = tp.tryNormalize
           if tpNorm.exists then apply(n, tpNorm)
