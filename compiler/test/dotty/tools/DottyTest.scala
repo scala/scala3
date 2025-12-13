@@ -12,13 +12,15 @@ import dotc.core.Symbols._
 import Types._, Symbols._, Decorators._
 import dotc.core.Decorators._
 import dotc.ast.tpd
-import dotc.Compiler
+import dotc.{Compiler, GlobalCache}
 
 import dotc.core.Phases.Phase
 
 trait DottyTest extends ContextEscapeDetection {
 
   dotc.parsing.Scanners // initialize keywords
+
+  private val globalCache: GlobalCache = GlobalCache()
 
   implicit var ctx: Context = initialCtx
 
@@ -42,6 +44,7 @@ trait DottyTest extends ContextEscapeDetection {
     fc.setSetting(fc.settings.classpath, TestConfiguration.basicClasspath)
     fc.setSetting(fc.settings.language, List("experimental.erasedDefinitions").asInstanceOf)
     fc.setProperty(ContextDoc, new ContextDocstrings)
+    fc.setGlobalCache(globalCache)
   }
 
   protected def defaultCompiler: Compiler = new Compiler()

@@ -57,8 +57,9 @@ object Contexts {
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
   private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
+  private val (globalCacheLoc,      store12) = store11.newLocation[GlobalCache]()
 
-  private val initialStore = store11
+  private val initialStore = store12
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -188,6 +189,8 @@ object Contexts {
     inline def withProgressCallback(inline op: ProgressCallback => Unit): Unit =
       val local = progressCallback
       if local != null then op(local)
+
+    def globalCache: GlobalCache = store(globalCacheLoc)
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -712,6 +715,7 @@ object Contexts {
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
     def setProgressCallback(callback: ProgressCallback): this.type = updateStore(progressCallbackLoc, callback)
+    def setGlobalCache(globalCache: GlobalCache): this.type = updateStore(globalCacheLoc, globalCache)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
@@ -775,6 +779,7 @@ object Contexts {
           .updated(notNullInfosLoc, Nil)
           .updated(compilationUnitLoc, NoCompilationUnit)
           .updated(profilerLoc, Profiler.NoOp)
+          .updated(globalCacheLoc, GlobalCache.NoGlobalCache)
       c._searchHistory = new SearchRoot
       c._gadtState = GadtState(GadtConstraint.empty)
       c

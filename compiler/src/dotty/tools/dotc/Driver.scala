@@ -70,6 +70,8 @@ class Driver {
 
   protected def command: CompilerCommand = ScalacCommand
 
+  protected def globalCache: GlobalCache = GlobalCache()
+
   /** Setup context with initialized settings from CLI arguments, then check if there are any settings that
    *  would change the default behaviour of the compiler.
    *
@@ -81,6 +83,7 @@ class Driver {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
+    ictx.setGlobalCache(globalCache)
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
 
