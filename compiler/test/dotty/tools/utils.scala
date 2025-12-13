@@ -12,7 +12,7 @@ import scala.io.Source
 import scala.jdk.StreamConverters._
 import scala.reflect.ClassTag
 import scala.util.Using.{Releasable, resource}
-import scala.util.chaining.given
+import scala.util.chaining.*
 import scala.util.control.{ControlThrowable, NonFatal}
 
 import dotc.config.CommandLineParser
