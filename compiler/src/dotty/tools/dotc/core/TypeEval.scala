@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package core
 
+import scala.reflect.Typeable
+
 import Types.*, Contexts.*, Symbols.*, Constants.*, Decorators.*
 import config.Printers.typr
 import reporting.trace
@@ -26,33 +28,22 @@ object TypeEval:
             if tp1.isStable then tp1.fixForEvaluation else tp
           case tp => tp
 
-      def constValue(tp: Type): Option[Any] = tp.fixForEvaluation match
-        case ConstantType(Constant(n)) => Some(n)
-        case _ => None
+      extension (tp: Type) def constant[T: Typeable]: Option[T] =
+        TypeComparer.constValue(tp.fixForEvaluation).collect { case Constant(c: T) => c }
 
-      def boolValue(tp: Type): Option[Boolean] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Boolean)) => Some(n)
-        case _ => None
+      def constValue(tp: Type): Option[Any] = tp.constant[Any]
 
-      def intValue(tp: Type): Option[Int] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Int)) => Some(n)
-        case _ => None
+      def boolValue(tp: Type): Option[Boolean] = tp.constant[Boolean]
 
-      def longValue(tp: Type): Option[Long] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Long)) => Some(n)
-        case _ => None
+      def intValue(tp: Type): Option[Int] = tp.constant[Int]
 
-      def floatValue(tp: Type): Option[Float] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Float)) => Some(n)
-        case _ => None
+      def longValue(tp: Type): Option[Long] = tp.constant[Long]
 
-      def doubleValue(tp: Type): Option[Double] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Double)) => Some(n)
-        case _ => None
+      def floatValue(tp: Type): Option[Float] = tp.constant[Float]
 
-      def stringValue(tp: Type): Option[String] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: String)) => Some(n)
-        case _ => None
+      def doubleValue(tp: Type): Option[Double] = tp.constant[Double]
+
+      def stringValue(tp: Type): Option[String] = tp.constant[String]
 
       // Returns Some(true) if the type is a constant.
       // Returns Some(false) if the type is not a constant.
