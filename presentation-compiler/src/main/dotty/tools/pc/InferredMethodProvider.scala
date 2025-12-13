@@ -227,7 +227,25 @@ final class InferredMethodProvider(
                 s"\n$indent$signature",
               )
             ) ::: imports
-        case None => Nil
+        case None => 
+          extensionMethodEdits(signature, container)
+
+    def extensionMethodEdits(signature: String, container: Tree): List[TextEdit] =
+      val containerTypeStr = printType(container.tpe.widenDealias)
+      
+      val pos = insertPosition()
+      val indent = indentation(params.text(), pos.start - 1)
+      val extensionSignature = s"extension (x: $containerTypeStr)\n  $indent$signature"
+      
+      val lspPos = pos.toLsp
+      lspPos.setEnd(lspPos.getStart())
+
+      List(
+        TextEdit(
+          lspPos,
+          s"$extensionSignature\n$indent",
+        )
+      ) ::: imports
 
     path match
       /**
