@@ -6,6 +6,7 @@
    |
    |              Inferred type          : () ->{Counter.this.count} Unit
    |              Externally visible type: () -> Unit
+   |
 19 |    count.put(count.get + 1)
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:20:13 ----------------------------------------------------
 20 |  val decr = () => // error
@@ -15,6 +16,7 @@
    |
    |              Inferred type          : () ->{Counter.this.count} Unit
    |              Externally visible type: () -> Unit
+   |
 21 |    count.put(count.get - 1)
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:24:14 ----------------------------------------------------
 24 |  val count = Ref(): Object^ // error // error

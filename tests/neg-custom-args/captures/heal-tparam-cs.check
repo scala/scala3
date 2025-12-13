@@ -9,6 +9,7 @@
    |
    |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability
+   |
 11 |    () => { c.use() }
    |
    | longer explanation available when compiling with `-explain`
@@ -24,6 +25,7 @@
    |where:    =>        refers to a root capability associated with the result type of (c: Capp^): () => Unit
    |          =>² and ^ refer to the universal root capability
    |          cap       is a root capability associated with the result type of (x$0: Capp^'s4): () ->{x$0} Unit
+   |
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }
    |
@@ -35,6 +37,7 @@
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
    |
    |    Note that capability x$0 is not included in capture set {net}.
+   |
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
    |

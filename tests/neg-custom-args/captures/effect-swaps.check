@@ -6,6 +6,7 @@
    |      Required: Result[Future[T], Nothing]
    |
    |      Note that capability fr is not included in capture set {}.
+   |
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
@@ -27,6 +28,7 @@
    |
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
+   |
 70 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
@@ -40,6 +42,7 @@
    |
    |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
+   |
 74 |          Future: fut ?=>
 75 |            fr.await.ok
    |

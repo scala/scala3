@@ -12,4 +12,5 @@
    |               ^
    |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
    |               You could try to abstract the capabilities referred to by ops* in a capset variable.
+   |
 12 |    op()

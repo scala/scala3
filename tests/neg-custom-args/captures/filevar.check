@@ -11,6 +11,7 @@
    |          ^  refers to the universal root capability
    |          l  is a reference to a value parameter
    |          l² is a reference to a value parameter
+   |
 16 |    val o = Service()
 17 |    o.file = f
 18 |    o.log

@@ -5,9 +5,9 @@
    |                                Required: Unit ->{io} Unit
    |
    |                                Note that capability fs is not included in capture set {io}.
+   |
 18 |      expect[Cap^] {
-19 |        io.use()
-20 |        fs
+19 |...
 21 |      }
    |
    | longer explanation available when compiling with `-explain`
@@ -18,9 +18,9 @@
    |                                Required: Unit ->{fs} Unit
    |
    |                                Note that capability io is not included in capture set {fs}.
+   |
 24 |      expect[Cap^] {
-25 |        fs.use()
-26 |        io
+25 |...
 27 |      }
    |
    | longer explanation available when compiling with `-explain`
@@ -31,6 +31,7 @@
    |                              Required: Unit -> Unit
    |
    |                              Note that capability io is not included in capture set {}.
+   |
 36 |      expect[Cap^](io)
    |
    | longer explanation available when compiling with `-explain`
@@ -41,9 +42,9 @@
    |                           Required: Unit -> Unit
    |
    |                           Note that capability io is not included in capture set {}.
+   |
 39 |      expect[Cap^] {
-40 |        io.use()
-41 |        io
+40 |...
 42 |      }
    |
    | longer explanation available when compiling with `-explain`

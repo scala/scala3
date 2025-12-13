@@ -37,6 +37,7 @@
    |          ^    refers to the universal root capability
    |          cap  is a fresh root capability created in anonymous function of type (io3: IO^'s1): Unit of parameter parameter io3² of method $anonfun
    |          cap² is a fresh root capability in the type of variable myIO
+   |
 13 |      myIO = io3
    |
    | longer explanation available when compiling with `-explain`
