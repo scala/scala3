@@ -894,13 +894,15 @@ trait Applications extends Compatibility {
         // Class[? <: T] "applicable" where Class[T] is expected by checking if the
         // wildcard's upper bound is a subtype of the formal type parameter.
         def wildcardArgOK =
-          (argtpe, formal) match
-            case (AppliedType(tycon1, args1), AppliedType(tycon2, args2))
-            if tycon1 =:= tycon2 && args1.length == args2.length =>
-              args1.lazyZip(args2).forall {
-                case (TypeBounds(_, hi), formal) => hi relaxed_<:< formal
-                case (arg, formal) => arg =:= formal
-              }
+          argtpe match
+            case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
+              formal match
+                case AppliedType(tycon2, args2)
+                if tycon1 =:= tycon2 && args1.length == args2.length =>
+                  args1.lazyZip(args2).forall {
+                    case (TypeBounds(_, hi), formal) => hi relaxed_<:< formal
+                  }
+                case _ => false
             case _ => false
 
         isCompatible(argtpe, formal) || wildcardArgOK
