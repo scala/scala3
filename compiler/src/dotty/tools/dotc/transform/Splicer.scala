@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Denotations.staticRef
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
 
-import dotty.tools.dotc.quoted.Interpreter
+import dotty.tools.dotc.quoted.{Interpreter, TastyBasedInterpreter}
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SrcPos
@@ -54,11 +54,21 @@ object Splicer {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
           try {
-            val interpreter = new SpliceInterpreter(splicePos, classLoader)
+            val interpreter =
+              if ctx.settings.YtastyInterpreter.value then
+                new TastySpliceInterpreter(splicePos, classLoader)
+              else
+                new SpliceInterpreter(splicePos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
             val interpretedExpr = interpreter.interpret[Quotes => scala.quoted.Expr[Any]](tree)
             val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuotesImpl())))
+
+            // Print instrumentation stats if using TASTy interpreter with verbose logging
+            interpreter match
+              case tastyInterpreter: TastySpliceInterpreter if ctx.settings.Ylog.value.contains("interpreter") =>
+                println(tastyInterpreter.getStats)
+              case _ =>
 
             checkEscapedVariables(interpretedTree, macroOwner)
           } finally {
@@ -241,12 +251,39 @@ object Splicer {
   def inMacroExpansion(using Context) =
     ctx.owner.ownersIterator.exists(isMacroOwner)
 
-  /** Tree interpreter that evaluates the tree.
+  /** Tree interpreter that evaluates the tree using JVM reflection.
    *  Interpreter is assumed to start at quotation level -1.
    */
   private class SpliceInterpreter(pos: SrcPos, classLoader: ClassLoader)(using Context) extends Interpreter(pos, classLoader) {
 
-    override protected  def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
+    override protected def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
+      // Interpret level -1 quoted code `'{...}` (assumed without level 0 splices)
+      case Apply(Select(Quote(body, _), nme.apply), _) =>
+        val body1 = body match {
+          case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
+            // inline proxy for by-name parameter
+            expr.symbol.defTree.asInstanceOf[DefDef].rhs
+          case tree: Inlined if tree.inlinedFromOuterScope => tree.expansion
+          case _ => body
+        }
+        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
+
+      // Interpret level -1 `Type.of[T]`
+      case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
+        new TypeImpl(QuoteUtils.changeOwnerOfTree(quoted, ctx.owner), SpliceScope.getCurrent)
+
+      case _ =>
+        super.interpretTree(tree)
+    }
+  }
+
+  /** Tree interpreter that evaluates the tree using TASTy-based interpretation when available.
+   *  Falls back to JVM reflection for code without TASTy bodies.
+   *  Interpreter is assumed to start at quotation level -1.
+   */
+  private class TastySpliceInterpreter(pos: SrcPos, classLoader: ClassLoader)(using Context) extends TastyBasedInterpreter(pos, classLoader) {
+
+    override protected def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
       // Interpret level -1 quoted code `'{...}` (assumed without level 0 splices)
       case Apply(Select(Quote(body, _), nme.apply), _) =>
         val body1 = body match {

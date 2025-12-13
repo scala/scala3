@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scala Browser Interpreter Demo</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-muted: #388bfd;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+            --border: #30363d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Menlo', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), #a371f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: var(--bg-tertiary);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .panel-body {
+            padding: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 350px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            padding: 1rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        .output {
+            width: 100%;
+            height: 350px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow: auto;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        .output.success {
+            border-color: var(--success);
+        }
+
+        .output.error {
+            border-color: var(--error);
+        }
+
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--accent), var(--accent-muted));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .examples {
+            margin-top: 2rem;
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .example-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .example-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent);
+        }
+
+        .example-btn h3 {
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .example-btn p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .status-dot.ready {
+            background: var(--success);
+        }
+
+        .status-dot.running {
+            background: var(--accent);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .stats {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Scala Browser Interpreter</h1>
+            <p class="subtitle">Execute Scala code directly in your browser using TASTy-based interpretation</p>
+        </header>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">JSON AST Input</span>
+                    <span class="status">
+                        <span class="status-dot ready" id="statusDot"></span>
+                        <span id="statusText">Ready</span>
+                    </span>
+                </div>
+                <div class="panel-body">
+                    <textarea id="astInput" placeholder="Paste JSON AST here or select an example below..."></textarea>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">Output</span>
+                    <button class="secondary" onclick="clearOutput()" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Clear</button>
+                </div>
+                <div class="panel-body">
+                    <div class="output" id="output">
+                        <pre>Click "Run" to execute the program...</pre>
+                    </div>
+                    <div class="stats" id="stats" style="display: none;">
+                        <strong>Execution Stats</strong>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="statNodes">0</div>
+                                <div class="stat-label">Nodes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="statCalls">0</div>
+                                <div class="stat-label">Calls</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="statTime">0</div>
+                                <div class="stat-label">ms</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="statLines">0</div>
+                                <div class="stat-label">Output</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="runProgram()">▶ Run Program</button>
+            <button class="secondary" onclick="formatAst()">Format JSON</button>
+        </div>
+
+        <div class="examples">
+            <div class="panel-header" style="background: transparent; border: none; padding: 0;">
+                <span class="panel-title">Example Programs</span>
+            </div>
+            <div class="examples-grid">
+                <button class="example-btn" onclick="loadExample('hello')">
+                    <h3>👋 Hello World</h3>
+                    <p>Simple println</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('arithmetic')">
+                    <h3>🔢 Arithmetic</h3>
+                    <p>Math operations</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('fibonacci')">
+                    <h3>🔄 Fibonacci</h3>
+                    <p>Recursive function</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('patternMatch')">
+                    <h3>🎯 Pattern Match</h3>
+                    <p>Match expression</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('listOps')">
+                    <h3>📋 List Ops</h3>
+                    <p>Map, filter, fold</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('option')">
+                    <h3>📦 Option</h3>
+                    <p>Some/None handling</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('tryCatch')">
+                    <h3>⚠️ Try/Catch</h3>
+                    <p>Exception handling</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('higherOrder')">
+                    <h3>⚡ Higher-Order</h3>
+                    <p>Functions as values</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('factorial')">
+                    <h3>🎲 Factorial</h3>
+                    <p>Tail recursion</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('closures')">
+                    <h3>🔒 Closures</h3>
+                    <p>Captured variables</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Enhanced Browser Interpreter with Pattern Matching and Exceptions
+        window.BrowserInterpreter = (function() {
+            let nodeCount = 0;
+            let callCount = 0;
+
+            // Custom exception for Scala exceptions
+            class ScalaException extends Error {
+                constructor(type, message) {
+                    super(message);
+                    this.scalaType = type;
+                }
+            }
+
+            // Interpret the JSON AST
+            function interpret(jsonAst) {
+                const outputBuffer = [];
+                nodeCount = 0;
+                callCount = 0;
+
+                function emit(msg) {
+                    outputBuffer.push(String(msg));
+                }
+
+                function emitNoNewline(msg) {
+                    if (outputBuffer.length > 0) {
+                        outputBuffer[outputBuffer.length - 1] += String(msg);
+                    } else {
+                        outputBuffer.push(String(msg));
+                    }
+                }
+
+                // Pattern matching helper
+                function matchPattern(value, pattern, bindings = {}) {
+                    const tag = pattern.tag;
+
+                    switch (tag) {
+                        case 'Wildcard':
+                            return { matched: true, bindings };
+
+                        case 'Bind':
+                            const innerResult = pattern.inner
+                                ? matchPattern(value, pattern.inner, bindings)
+                                : { matched: true, bindings };
+                            if (innerResult.matched) {
+                                innerResult.bindings[pattern.name] = value;
+                            }
+                            return innerResult;
+
+                        case 'Literal':
+                            return { matched: value === pattern.value, bindings };
+
+                        case 'Typed':
+                            const typeMatch = checkType(value, pattern.type);
+                            if (!typeMatch) return { matched: false, bindings };
+                            return pattern.inner
+                                ? matchPattern(value, pattern.inner, bindings)
+                                : { matched: true, bindings };
+
+                        case 'Unapply':
+                            return matchUnapply(value, pattern, bindings);
+
+                        case 'Alternative':
+                            for (const alt of pattern.patterns) {
+                                const result = matchPattern(value, alt, {...bindings});
+                                if (result.matched) return result;
+                            }
+                            return { matched: false, bindings };
+
+                        default:
+                            return { matched: false, bindings };
+                    }
+                }
+
+                // Check type for pattern matching
+                function checkType(value, typeName) {
+                    switch (typeName) {
+                        case 'Int': return typeof value === 'number' && Number.isInteger(value);
+                        case 'Double': return typeof value === 'number';
+                        case 'String': return typeof value === 'string';
+                        case 'Boolean': return typeof value === 'boolean';
+                        case 'List': return Array.isArray(value);
+                        case 'Option': return value === null || (value && value._tag === 'Some');
+                        case 'Some': return value && value._tag === 'Some';
+                        case 'None': return value === null || value === undefined;
+                        case 'Throwable':
+                        case 'Exception':
+                        case 'RuntimeException':
+                            return value instanceof Error;
+                        default: return true;
+                    }
+                }
+
+                // Match unapply patterns (extractors)
+                function matchUnapply(value, pattern, bindings) {
+                    const className = pattern.class;
+                    const patterns = pattern.patterns || [];
+
+                    switch (className) {
+                        case 'Some':
+                            if (value && value._tag === 'Some') {
+                                if (patterns.length === 0) return { matched: true, bindings };
+                                return matchPattern(value.value, patterns[0], bindings);
+                            }
+                            return { matched: false, bindings };
+
+                        case 'None':
+                            return { matched: value === null || value === undefined, bindings };
+
+                        case '::':
+                        case 'Cons':
+                            if (Array.isArray(value) && value.length > 0) {
+                                if (patterns.length < 2) return { matched: true, bindings };
+                                const headResult = matchPattern(value[0], patterns[0], bindings);
+                                if (!headResult.matched) return headResult;
+                                return matchPattern(value.slice(1), patterns[1], headResult.bindings);
+                            }
+                            return { matched: false, bindings };
+
+                        case 'Nil':
+                            return { matched: Array.isArray(value) && value.length === 0, bindings };
+
+                        case 'Tuple2':
+                            if (Array.isArray(value) && value.length === 2) {
+                                let result = matchPattern(value[0], patterns[0], bindings);
+                                if (!result.matched) return result;
+                                return matchPattern(value[1], patterns[1], result.bindings);
+                            }
+                            return { matched: false, bindings };
+
+                        case 'Tuple3':
+                            if (Array.isArray(value) && value.length === 3) {
+                                let result = matchPattern(value[0], patterns[0], bindings);
+                                if (!result.matched) return result;
+                                result = matchPattern(value[1], patterns[1], result.bindings);
+                                if (!result.matched) return result;
+                                return matchPattern(value[2], patterns[2], result.bindings);
+                            }
+                            return { matched: false, bindings };
+
+                        default:
+                            return { matched: false, bindings };
+                    }
+                }
+
+                // Main evaluation function
+                function evalNode(node, env) {
+                    nodeCount++;
+                    const tag = node.tag;
+
+                    switch (tag) {
+                        case 'Literal':
+                            return node.value;
+
+                        case 'Ident':
+                            if (env.hasOwnProperty(node.name)) {
+                                return env[node.name];
+                            }
+                            // Built-in constants
+                            if (node.name === 'None') return null;
+                            if (node.name === 'Nil') return [];
+                            throw new Error(`Undefined variable: ${node.name}`);
+
+                        case 'Block': {
+                            let localEnv = {...env};
+                            for (const stat of node.stats) {
+                                if (stat.tag === 'ValDef') {
+                                    localEnv[stat.name] = evalNode(stat.rhs, localEnv);
+                                } else if (stat.tag === 'VarDef') {
+                                    localEnv[stat.name] = { _var: true, value: evalNode(stat.rhs, localEnv) };
+                                } else if (stat.tag === 'DefDef') {
+                                    localEnv[stat.name] = { ...stat, _defEnv: localEnv };
+                                } else {
+                                    evalNode(stat, localEnv);
+                                }
+                            }
+                            return evalNode(node.expr, localEnv);
+                        }
+
+                        case 'If':
+                            return evalNode(node.cond, env) ? evalNode(node.thenp, env) : evalNode(node.elsep, env);
+
+                        case 'While':
+                            while (evalNode(node.cond, env)) {
+                                evalNode(node.body, env);
+                            }
+                            return null;
+
+                        case 'Match': {
+                            const selector = evalNode(node.selector, env);
+                            for (const caseDef of node.cases) {
+                                const result = matchPattern(selector, caseDef.pattern);
+                                if (result.matched) {
+                                    // Check guard if present
+                                    if (caseDef.guard) {
+                                        const guardEnv = {...env, ...result.bindings};
+                                        if (!evalNode(caseDef.guard, guardEnv)) continue;
+                                    }
+                                    const caseEnv = {...env, ...result.bindings};
+                                    return evalNode(caseDef.body, caseEnv);
+                                }
+                            }
+                            throw new ScalaException('MatchError', `No case matched: ${JSON.stringify(selector)}`);
+                        }
+
+                        case 'Try': {
+                            try {
+                                const result = evalNode(node.block, env);
+                                if (node.finalizer) evalNode(node.finalizer, env);
+                                return result;
+                            } catch (e) {
+                                // Try to match catch cases
+                                for (const catchCase of (node.catches || [])) {
+                                    const result = matchPattern(e, catchCase.pattern);
+                                    if (result.matched) {
+                                        const catchEnv = {...env, ...result.bindings};
+                                        const catchResult = evalNode(catchCase.body, catchEnv);
+                                        if (node.finalizer) evalNode(node.finalizer, env);
+                                        return catchResult;
+                                    }
+                                }
+                                if (node.finalizer) evalNode(node.finalizer, env);
+                                throw e;
+                            }
+                        }
+
+                        case 'Throw': {
+                            const exc = evalNode(node.expr, env);
+                            if (exc instanceof Error) throw exc;
+                            throw new ScalaException('RuntimeException', String(exc));
+                        }
+
+                        case 'New': {
+                            const args = (node.args || []).map(a => evalNode(a, env));
+                            switch (node.class) {
+                                case 'RuntimeException':
+                                case 'Exception':
+                                    return new ScalaException(node.class, args[0] || '');
+                                case 'Some':
+                                    return { _tag: 'Some', value: args[0] };
+                                default:
+                                    throw new Error(`Cannot instantiate: ${node.class}`);
+                            }
+                        }
+
+                        case 'BinaryOp': {
+                            const lhs = evalNode(node.lhs, env);
+                            const rhs = evalNode(node.rhs, env);
+                            switch (node.op) {
+                                case '+': return (typeof lhs === 'string' || typeof rhs === 'string')
+                                    ? String(lhs) + String(rhs) : lhs + rhs;
+                                case '-': return lhs - rhs;
+                                case '*': return lhs * rhs;
+                                case '/': return lhs / rhs;
+                                case '%': return lhs % rhs;
+                                case '<': return lhs < rhs;
+                                case '>': return lhs > rhs;
+                                case '<=': return lhs <= rhs;
+                                case '>=': return lhs >= rhs;
+                                case '==': return lhs === rhs || deepEqual(lhs, rhs);
+                                case '!=': return lhs !== rhs && !deepEqual(lhs, rhs);
+                                case '&&': return lhs && rhs;
+                                case '||': return lhs || rhs;
+                                case '::': return [lhs, ...(Array.isArray(rhs) ? rhs : [rhs])];
+                                default: throw new Error(`Unknown operator: ${node.op}`);
+                            }
+                        }
+
+                        case 'UnaryOp': {
+                            const arg = evalNode(node.arg, env);
+                            switch (node.op) {
+                                case '-': return -arg;
+                                case '!': return !arg;
+                                default: throw new Error(`Unknown unary operator: ${node.op}`);
+                            }
+                        }
+
+                        case 'Apply': {
+                            callCount++;
+                            const fn = node.fn;
+
+                            // Lazy evaluation for certain cases
+                            if (fn.tag === 'Ident') {
+                                const name = fn.name;
+
+                                // Built-in functions
+                                switch (name) {
+                                    case 'println':
+                                        emit(node.args.length > 0 ? evalNode(node.args[0], env) : '');
+                                        return null;
+                                    case 'print':
+                                        emitNoNewline(evalNode(node.args[0], env));
+                                        return null;
+                                    case 'List':
+                                        return node.args.map(a => evalNode(a, env));
+                                    case 'Some':
+                                        return { _tag: 'Some', value: evalNode(node.args[0], env) };
+                                    case 'Tuple':
+                                    case 'Tuple2':
+                                    case 'Tuple3':
+                                        return node.args.map(a => evalNode(a, env));
+                                    case 'require':
+                                        if (!evalNode(node.args[0], env)) {
+                                            throw new ScalaException('IllegalArgumentException',
+                                                node.args[1] ? evalNode(node.args[1], env) : 'requirement failed');
+                                        }
+                                        return null;
+                                    case 'assert':
+                                        if (!evalNode(node.args[0], env)) {
+                                            throw new ScalaException('AssertionError',
+                                                node.args[1] ? evalNode(node.args[1], env) : 'assertion failed');
+                                        }
+                                        return null;
+                                }
+
+                                // Local function call
+                                if (env.hasOwnProperty(name)) {
+                                    const defn = env[name];
+                                    if (defn.tag === 'DefDef') {
+                                        const args = node.args.map(a => evalNode(a, env));
+                                        const localEnv = {...(defn._defEnv || env)};
+                                        defn.params.forEach((p, i) => { localEnv[p] = args[i]; });
+                                        // Support recursive calls
+                                        localEnv[name] = defn;
+                                        return evalNode(defn.body, localEnv);
+                                    }
+                                    if (defn.tag === 'Closure' || defn.tag === 'Lambda') {
+                                        const args = node.args.map(a => evalNode(a, env));
+                                        const localEnv = {...(defn.env || {}), ...env};
+                                        defn.params.forEach((p, i) => { localEnv[p] = args[i]; });
+                                        return evalNode(defn.body, localEnv);
+                                    }
+                                }
+                                throw new Error(`Unknown function: ${name}`);
+                            }
+
+                            if (fn.tag === 'Select') {
+                                const receiver = evalNode(fn.receiver, env);
+                                const method = fn.name;
+                                const args = node.args.map(a => evalNode(a, env));
+
+                                return callMethod(receiver, method, args, env);
+                            }
+
+                            throw new Error(`Unexpected function: ${JSON.stringify(fn)}`);
+                        }
+
+                        case 'Lambda':
+                        case 'Closure':
+                            return {
+                                tag: 'Closure',
+                                params: node.params,
+                                body: node.body,
+                                env: {...env}
+                            };
+
+                        case 'Select': {
+                            const receiver = evalNode(node.receiver, env);
+                            return getProperty(receiver, node.name);
+                        }
+
+                        case 'Assign': {
+                            const target = env[node.name];
+                            if (target && target._var) {
+                                target.value = evalNode(node.rhs, env);
+                            } else {
+                                env[node.name] = evalNode(node.rhs, env);
+                            }
+                            return null;
+                        }
+
+                        case 'ValDef':
+                        case 'VarDef':
+                        case 'DefDef':
+                            return null;
+
+                        default:
+                            throw new Error(`Unknown AST node: ${tag}`);
+                    }
+                }
+
+                // Call a method on an object
+                function callMethod(receiver, method, args, env) {
+                    // Null/None handling
+                    if (receiver === null || receiver === undefined) {
+                        if (method === 'isEmpty') return true;
+                        if (method === 'isDefined') return false;
+                        if (method === 'getOrElse') return evalClosure(args[0], [], env);
+                        throw new ScalaException('NullPointerException', `Cannot call ${method} on null`);
+                    }
+
+                    // String methods
+                    if (typeof receiver === 'string') {
+                        switch (method) {
+                            case 'length': return receiver.length;
+                            case 'toUpperCase': return receiver.toUpperCase();
+                            case 'toLowerCase': return receiver.toLowerCase();
+                            case 'trim': return receiver.trim();
+                            case 'charAt': return receiver.charAt(args[0]);
+                            case 'substring': return args.length === 1
+                                ? receiver.substring(args[0])
+                                : receiver.substring(args[0], args[1]);
+                            case 'contains': return receiver.includes(args[0]);
+                            case 'startsWith': return receiver.startsWith(args[0]);
+                            case 'endsWith': return receiver.endsWith(args[0]);
+                            case 'replace': return receiver.split(args[0]).join(args[1]);
+                            case 'split': return receiver.split(args[0]);
+                            case 'indexOf': return receiver.indexOf(args[0]);
+                            case 'isEmpty': return receiver.length === 0;
+                            case 'nonEmpty': return receiver.length > 0;
+                            case 'reverse': return receiver.split('').reverse().join('');
+                            case 'toInt': return parseInt(receiver, 10);
+                            case 'toDouble': return parseFloat(receiver);
+                            case 'toString': return receiver;
+                            case '+': return receiver + String(args[0]);
+                        }
+                    }
+
+                    // Number methods
+                    if (typeof receiver === 'number') {
+                        switch (method) {
+                            case 'toString': return String(receiver);
+                            case 'toInt': return Math.floor(receiver);
+                            case 'toDouble': return receiver;
+                            case 'abs': return Math.abs(receiver);
+                            case 'max': return Math.max(receiver, args[0]);
+                            case 'min': return Math.min(receiver, args[0]);
+                        }
+                    }
+
+                    // Array/List methods
+                    if (Array.isArray(receiver)) {
+                        switch (method) {
+                            case 'head':
+                                if (receiver.length === 0) throw new ScalaException('NoSuchElementException', 'head of empty list');
+                                return receiver[0];
+                            case 'tail':
+                                if (receiver.length === 0) throw new ScalaException('UnsupportedOperationException', 'tail of empty list');
+                                return receiver.slice(1);
+                            case 'last':
+                                if (receiver.length === 0) throw new ScalaException('NoSuchElementException', 'last of empty list');
+                                return receiver[receiver.length - 1];
+                            case 'init': return receiver.slice(0, -1);
+                            case 'isEmpty': return receiver.length === 0;
+                            case 'nonEmpty': return receiver.length > 0;
+                            case 'size':
+                            case 'length': return receiver.length;
+                            case 'reverse': return [...receiver].reverse();
+                            case 'apply': return receiver[args[0]];
+                            case 'take': return receiver.slice(0, args[0]);
+                            case 'drop': return receiver.slice(args[0]);
+                            case 'contains': return receiver.includes(args[0]);
+                            case 'indexOf': return receiver.indexOf(args[0]);
+                            case 'distinct': return [...new Set(receiver)];
+                            case 'sorted': return [...receiver].sort((a, b) => a - b);
+                            case 'sum': return receiver.reduce((a, b) => a + b, 0);
+                            case 'product': return receiver.reduce((a, b) => a * b, 1);
+                            case 'min': return Math.min(...receiver);
+                            case 'max': return Math.max(...receiver);
+                            case 'mkString':
+                                return args.length === 0 ? receiver.join('') :
+                                       args.length === 1 ? receiver.join(args[0]) :
+                                       args[0] + receiver.join(args[1]) + args[2];
+                            case 'toString': return `List(${receiver.join(', ')})`;
+                            case 'toList': return receiver;
+                            case 'zip': return receiver.map((x, i) => [x, args[0][i]]);
+                            case 'zipWithIndex': return receiver.map((x, i) => [x, i]);
+                            case 'map': return receiver.map(x => evalClosure(args[0], [x], env));
+                            case 'flatMap': return receiver.flatMap(x => evalClosure(args[0], [x], env));
+                            case 'filter': return receiver.filter(x => evalClosure(args[0], [x], env));
+                            case 'filterNot': return receiver.filter(x => !evalClosure(args[0], [x], env));
+                            case 'find': return receiver.find(x => evalClosure(args[0], [x], env)) ?? null;
+                            case 'exists': return receiver.some(x => evalClosure(args[0], [x], env));
+                            case 'forall': return receiver.every(x => evalClosure(args[0], [x], env));
+                            case 'count': return receiver.filter(x => evalClosure(args[0], [x], env)).length;
+                            case 'foreach':
+                                receiver.forEach(x => evalClosure(args[0], [x], env));
+                                return null;
+                            case 'foldLeft':
+                                return receiver.reduce((acc, x) => evalClosure(args[1], [acc, x], env), args[0]);
+                            case 'foldRight':
+                                return [...receiver].reverse().reduce((acc, x) => evalClosure(args[1], [x, acc], env), args[0]);
+                            case 'reduce':
+                                if (receiver.length === 0) throw new ScalaException('UnsupportedOperationException', 'empty.reduce');
+                                return receiver.reduce((acc, x) => evalClosure(args[0], [acc, x], env));
+                            case '::':
+                            case '$colon$colon':
+                                return [args[0], ...receiver];
+                            case '++':
+                            case '$plus$plus':
+                                return [...receiver, ...args[0]];
+                        }
+                    }
+
+                    // Option methods
+                    if (receiver && receiver._tag === 'Some') {
+                        switch (method) {
+                            case 'get': return receiver.value;
+                            case 'getOrElse': return receiver.value;
+                            case 'orElse': return receiver;
+                            case 'isEmpty': return false;
+                            case 'isDefined': return true;
+                            case 'nonEmpty': return true;
+                            case 'map': return { _tag: 'Some', value: evalClosure(args[0], [receiver.value], env) };
+                            case 'flatMap': return evalClosure(args[0], [receiver.value], env);
+                            case 'filter':
+                                return evalClosure(args[0], [receiver.value], env) ? receiver : null;
+                            case 'exists': return evalClosure(args[0], [receiver.value], env);
+                            case 'forall': return evalClosure(args[0], [receiver.value], env);
+                            case 'fold': return evalClosure(args[1], [receiver.value], env);
+                            case 'toList': return [receiver.value];
+                            case 'toString': return `Some(${receiver.value})`;
+                        }
+                    }
+
+                    // Tuple methods
+                    if (Array.isArray(receiver) && receiver.length >= 2 && receiver.length <= 22) {
+                        const tupleIndex = method.match(/^_(\d+)$/);
+                        if (tupleIndex) {
+                            const idx = parseInt(tupleIndex[1], 10) - 1;
+                            if (idx >= 0 && idx < receiver.length) return receiver[idx];
+                        }
+                    }
+
+                    // Generic methods
+                    switch (method) {
+                        case 'toString': return String(receiver);
+                        case 'hashCode': return hashCode(receiver);
+                        case 'equals': return deepEqual(receiver, args[0]);
+                        case 'getClass': return receiver?.constructor?.name || typeof receiver;
+                    }
+
+                    throw new Error(`Unknown method: ${method} on ${typeof receiver}`);
+                }
+
+                // Get a property from an object
+                function getProperty(receiver, name) {
+                    if (receiver === null || receiver === undefined) {
+                        throw new ScalaException('NullPointerException', `Cannot access ${name} on null`);
+                    }
+
+                    // Tuple accessors
+                    if (Array.isArray(receiver)) {
+                        const idx = name.match(/^_(\d+)$/);
+                        if (idx) return receiver[parseInt(idx[1], 10) - 1];
+                    }
+
+                    // Option accessors
+                    if (receiver._tag === 'Some' && name === 'value') {
+                        return receiver.value;
+                    }
+
+                    // String/Array properties
+                    if (name === 'length') {
+                        return receiver.length;
+                    }
+                    if (name === 'isEmpty') {
+                        return receiver.length === 0;
+                    }
+                    if (name === 'nonEmpty') {
+                        return receiver.length > 0;
+                    }
+                    if (name === 'head' && Array.isArray(receiver)) {
+                        return receiver[0];
+                    }
+                    if (name === 'tail' && Array.isArray(receiver)) {
+                        return receiver.slice(1);
+                    }
+
+                    throw new Error(`Cannot access ${name} on ${typeof receiver}`);
+                }
+
+                // Evaluate a closure with arguments
+                function evalClosure(closure, args, outerEnv) {
+                    if (!closure || !closure.params) {
+                        throw new Error(`Not a closure: ${JSON.stringify(closure)}`);
+                    }
+                    const localEnv = {...(closure.env || {}), ...outerEnv};
+                    closure.params.forEach((p, i) => { localEnv[p] = args[i]; });
+                    return evalNode(closure.body, localEnv);
+                }
+
+                // Deep equality check
+                function deepEqual(a, b) {
+                    if (a === b) return true;
+                    if (a === null || b === null) return false;
+                    if (typeof a !== typeof b) return false;
+                    if (Array.isArray(a) && Array.isArray(b)) {
+                        if (a.length !== b.length) return false;
+                        return a.every((x, i) => deepEqual(x, b[i]));
+                    }
+                    if (typeof a === 'object') {
+                        const keysA = Object.keys(a);
+                        const keysB = Object.keys(b);
+                        if (keysA.length !== keysB.length) return false;
+                        return keysA.every(k => deepEqual(a[k], b[k]));
+                    }
+                    return false;
+                }
+
+                // Simple hash code
+                function hashCode(obj) {
+                    const str = JSON.stringify(obj);
+                    let hash = 0;
+                    for (let i = 0; i < str.length; i++) {
+                        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    return hash;
+                }
+
+                // Main execution
+                try {
+                    const ast = JSON.parse(jsonAst);
+                    const result = evalNode(ast, {});
+
+                    return {
+                        success: true,
+                        output: outputBuffer.join('\n'),
+                        result: result,
+                        stats: { nodes: nodeCount, calls: callCount }
+                    };
+                } catch (e) {
+                    return {
+                        success: false,
+                        output: outputBuffer.join('\n'),
+                        error: e.message,
+                        stats: { nodes: nodeCount, calls: callCount }
+                    };
+                }
+            }
+
+            return { interpret };
+        })();
+
+        // Example programs
+        const examples = {
+            hello: {
+                tag: 'Apply',
+                fn: { tag: 'Ident', name: 'println' },
+                args: [{ tag: 'Literal', type: 'String', value: 'Hello, Browser Interpreter!' }]
+            },
+
+            arithmetic: {
+                tag: 'Block',
+                stats: [
+                    { tag: 'ValDef', name: 'a', rhs: { tag: 'Literal', value: 10 } },
+                    { tag: 'ValDef', name: 'b', rhs: { tag: 'Literal', value: 3 } },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+',
+                          lhs: { tag: 'Literal', value: 'a + b = ' },
+                          rhs: { tag: 'BinaryOp', op: '+', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+',
+                          lhs: { tag: 'Literal', value: 'a * b = ' },
+                          rhs: { tag: 'BinaryOp', op: '*', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+',
+                          lhs: { tag: 'Literal', value: 'a / b = ' },
+                          rhs: { tag: 'BinaryOp', op: '/', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+',
+                          lhs: { tag: 'Literal', value: 'a % b = ' },
+                          rhs: { tag: 'BinaryOp', op: '%', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            fibonacci: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'fib',
+                        params: ['n'],
+                        body: {
+                            tag: 'If',
+                            cond: { tag: 'BinaryOp', op: '<=', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 1 } },
+                            thenp: { tag: 'Ident', name: 'n' },
+                            elsep: {
+                                tag: 'BinaryOp', op: '+',
+                                lhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fib' }, args: [
+                                    { tag: 'BinaryOp', op: '-', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 1 } }
+                                ]},
+                                rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fib' }, args: [
+                                    { tag: 'BinaryOp', op: '-', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 2 } }
+                                ]}
+                            }
+                        }
+                    },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [{ tag: 'Literal', value: 'Fibonacci sequence:' }] },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'fib(10) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fib' }, args: [{ tag: 'Literal', value: 10 }] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            patternMatch: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'describe',
+                        params: ['x'],
+                        body: {
+                            tag: 'Match',
+                            selector: { tag: 'Ident', name: 'x' },
+                            cases: [
+                                { pattern: { tag: 'Literal', value: 0 }, body: { tag: 'Literal', value: 'zero' } },
+                                { pattern: { tag: 'Literal', value: 1 }, body: { tag: 'Literal', value: 'one' } },
+                                {
+                                    pattern: { tag: 'Bind', name: 'n' },
+                                    guard: { tag: 'BinaryOp', op: '<', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 0 } },
+                                    body: { tag: 'Literal', value: 'negative' }
+                                },
+                                {
+                                    pattern: { tag: 'Bind', name: 'n' },
+                                    guard: { tag: 'BinaryOp', op: '>', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 100 } },
+                                    body: { tag: 'Literal', value: 'large' }
+                                },
+                                { pattern: { tag: 'Wildcard' }, body: { tag: 'Literal', value: 'other' } }
+                            ]
+                        }
+                    },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'describe(0) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'describe' }, args: [{ tag: 'Literal', value: 0 }] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'describe(-5) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'describe' }, args: [{ tag: 'Literal', value: -5 }] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'describe(200) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'describe' }, args: [{ tag: 'Literal', value: 200 }] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'describe(42) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'describe' }, args: [{ tag: 'Literal', value: 42 }] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            listOps: {
+                tag: 'Block',
+                stats: [
+                    { tag: 'ValDef', name: 'nums', rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'List' }, args: [
+                        { tag: 'Literal', value: 1 }, { tag: 'Literal', value: 2 }, { tag: 'Literal', value: 3 },
+                        { tag: 'Literal', value: 4 }, { tag: 'Literal', value: 5 }
+                    ]}},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'Original: ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'nums' }, name: 'mkString' },
+                                 args: [{ tag: 'Literal', value: ', ' }] }
+                        }
+                    ]},
+                    { tag: 'ValDef', name: 'doubled', rhs: {
+                        tag: 'Apply',
+                        fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'nums' }, name: 'map' },
+                        args: [{ tag: 'Lambda', params: ['x'], body: { tag: 'BinaryOp', op: '*', lhs: { tag: 'Ident', name: 'x' }, rhs: { tag: 'Literal', value: 2 } } }]
+                    }},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'Doubled: ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'doubled' }, name: 'mkString' },
+                                 args: [{ tag: 'Literal', value: ', ' }] }
+                        }
+                    ]},
+                    { tag: 'ValDef', name: 'evens', rhs: {
+                        tag: 'Apply',
+                        fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'nums' }, name: 'filter' },
+                        args: [{ tag: 'Lambda', params: ['x'], body: { tag: 'BinaryOp', op: '==',
+                            lhs: { tag: 'BinaryOp', op: '%', lhs: { tag: 'Ident', name: 'x' }, rhs: { tag: 'Literal', value: 2 } },
+                            rhs: { tag: 'Literal', value: 0 } } }]
+                    }},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'Evens: ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'evens' }, name: 'mkString' },
+                                 args: [{ tag: 'Literal', value: ', ' }] }
+                        }
+                    ]},
+                    { tag: 'ValDef', name: 'sum', rhs: {
+                        tag: 'Apply',
+                        fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'nums' }, name: 'foldLeft' },
+                        args: [
+                            { tag: 'Literal', value: 0 },
+                            { tag: 'Lambda', params: ['acc', 'x'], body: { tag: 'BinaryOp', op: '+', lhs: { tag: 'Ident', name: 'acc' }, rhs: { tag: 'Ident', name: 'x' } } }
+                        ]
+                    }},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'Sum: ' }, rhs: { tag: 'Ident', name: 'sum' } }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            option: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'safeDivide',
+                        params: ['a', 'b'],
+                        body: {
+                            tag: 'If',
+                            cond: { tag: 'BinaryOp', op: '==', lhs: { tag: 'Ident', name: 'b' }, rhs: { tag: 'Literal', value: 0 } },
+                            thenp: { tag: 'Ident', name: 'None' },
+                            elsep: { tag: 'Apply', fn: { tag: 'Ident', name: 'Some' }, args: [
+                                { tag: 'BinaryOp', op: '/', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } }
+                            ]}
+                        }
+                    },
+                    { tag: 'ValDef', name: 'result1', rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'safeDivide' }, args: [
+                        { tag: 'Literal', value: 10 }, { tag: 'Literal', value: 2 }
+                    ]}},
+                    { tag: 'ValDef', name: 'result2', rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'safeDivide' }, args: [
+                        { tag: 'Literal', value: 10 }, { tag: 'Literal', value: 0 }
+                    ]}},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: '10 / 2 = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'result1' }, name: 'getOrElse' },
+                                 args: [{ tag: 'Lambda', params: [], body: { tag: 'Literal', value: 'undefined' } }] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: '10 / 0 = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'result2' }, name: 'getOrElse' },
+                                 args: [{ tag: 'Lambda', params: [], body: { tag: 'Literal', value: 'undefined' } }] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'result1.isDefined = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'result1' }, name: 'isDefined' }, args: [] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'result2.isEmpty = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'result2' }, name: 'isEmpty' }, args: [] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            tryCatch: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'riskyOp',
+                        params: ['x'],
+                        body: {
+                            tag: 'If',
+                            cond: { tag: 'BinaryOp', op: '<', lhs: { tag: 'Ident', name: 'x' }, rhs: { tag: 'Literal', value: 0 } },
+                            thenp: { tag: 'Throw', expr: { tag: 'New', class: 'RuntimeException', args: [{ tag: 'Literal', value: 'Negative value!' }] } },
+                            elsep: { tag: 'BinaryOp', op: '*', lhs: { tag: 'Ident', name: 'x' }, rhs: { tag: 'Literal', value: 2 } }
+                        }
+                    },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [{ tag: 'Literal', value: 'Testing try/catch:' }] },
+                    {
+                        tag: 'Try',
+                        block: {
+                            tag: 'Block',
+                            stats: [
+                                { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                                    { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'riskyOp(5) = ' },
+                                      rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'riskyOp' }, args: [{ tag: 'Literal', value: 5 }] }
+                                    }
+                                ]}
+                            ],
+                            expr: { tag: 'Literal', value: null }
+                        },
+                        catches: [
+                            { pattern: { tag: 'Bind', name: 'e', inner: { tag: 'Typed', type: 'Exception' } },
+                              body: { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                                  { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'Caught: ' },
+                                    rhs: { tag: 'Select', receiver: { tag: 'Ident', name: 'e' }, name: 'message' }
+                                  }
+                              ]}
+                            }
+                        ]
+                    },
+                    {
+                        tag: 'Try',
+                        block: {
+                            tag: 'Block',
+                            stats: [
+                                { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                                    { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'riskyOp(-3) = ' },
+                                      rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'riskyOp' }, args: [{ tag: 'Literal', value: -3 }] }
+                                    }
+                                ]}
+                            ],
+                            expr: { tag: 'Literal', value: null }
+                        },
+                        catches: [
+                            { pattern: { tag: 'Bind', name: 'e', inner: { tag: 'Typed', type: 'Exception' } },
+                              body: { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                                  { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'Caught: ' },
+                                    rhs: { tag: 'Select', receiver: { tag: 'Ident', name: 'e' }, name: 'message' }
+                                  }
+                              ]}
+                            }
+                        ]
+                    }
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            higherOrder: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'applyTwice',
+                        params: ['f', 'x'],
+                        body: {
+                            tag: 'Apply',
+                            fn: { tag: 'Ident', name: 'f' },
+                            args: [{ tag: 'Apply', fn: { tag: 'Ident', name: 'f' }, args: [{ tag: 'Ident', name: 'x' }] }]
+                        }
+                    },
+                    { tag: 'ValDef', name: 'addOne', rhs: {
+                        tag: 'Lambda', params: ['x'],
+                        body: { tag: 'BinaryOp', op: '+', lhs: { tag: 'Ident', name: 'x' }, rhs: { tag: 'Literal', value: 1 } }
+                    }},
+                    { tag: 'ValDef', name: 'double', rhs: {
+                        tag: 'Lambda', params: ['x'],
+                        body: { tag: 'BinaryOp', op: '*', lhs: { tag: 'Ident', name: 'x' }, rhs: { tag: 'Literal', value: 2 } }
+                    }},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'applyTwice(addOne, 5) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'applyTwice' }, args: [
+                              { tag: 'Ident', name: 'addOne' }, { tag: 'Literal', value: 5 }
+                          ]}
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'applyTwice(double, 3) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'applyTwice' }, args: [
+                              { tag: 'Ident', name: 'double' }, { tag: 'Literal', value: 3 }
+                          ]}
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            factorial: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'factorial',
+                        params: ['n'],
+                        body: {
+                            tag: 'If',
+                            cond: { tag: 'BinaryOp', op: '<=', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 1 } },
+                            thenp: { tag: 'Literal', value: 1 },
+                            elsep: {
+                                tag: 'BinaryOp', op: '*',
+                                lhs: { tag: 'Ident', name: 'n' },
+                                rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'factorial' }, args: [
+                                    { tag: 'BinaryOp', op: '-', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', value: 1 } }
+                                ]}
+                            }
+                        }
+                    },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [{ tag: 'Literal', value: 'Factorials:' }] },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: '5! = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'factorial' }, args: [{ tag: 'Literal', value: 5 }] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: '10! = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'factorial' }, args: [{ tag: 'Literal', value: 10 }] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            },
+
+            closures: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'makeCounter',
+                        params: ['start'],
+                        body: {
+                            tag: 'Block',
+                            stats: [
+                                { tag: 'VarDef', name: 'count', rhs: { tag: 'Ident', name: 'start' } }
+                            ],
+                            expr: {
+                                tag: 'Lambda', params: [],
+                                body: {
+                                    tag: 'Block',
+                                    stats: [
+                                        { tag: 'Assign', name: 'count', rhs: {
+                                            tag: 'BinaryOp', op: '+', lhs: { tag: 'Ident', name: 'count' }, rhs: { tag: 'Literal', value: 1 }
+                                        }}
+                                    ],
+                                    expr: { tag: 'Ident', name: 'count' }
+                                }
+                            }
+                        }
+                    },
+                    { tag: 'ValDef', name: 'counter', rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'makeCounter' }, args: [{ tag: 'Literal', value: 0 }] }},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [{ tag: 'Literal', value: 'Closure captures variable:' }] },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'counter() = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'counter' }, args: [] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'counter() = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'counter' }, args: [] }
+                        }
+                    ]},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', value: 'counter() = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'counter' }, args: [] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', value: null }
+            }
+        };
+
+        // UI functions
+        window.runProgram = function() {
+            const input = document.getElementById('astInput').value;
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            statusDot.className = 'status-dot running';
+            statusText.textContent = 'Running...';
+
+            const startTime = performance.now();
+
+            setTimeout(() => {
+                const result = BrowserInterpreter.interpret(input);
+                const elapsed = (performance.now() - startTime).toFixed(1);
+
+                if (result.success) {
+                    const outputText = result.output || (result.result !== null && result.result !== undefined
+                        ? `Result: ${JSON.stringify(result.result)}`
+                        : 'Program completed successfully');
+                    output.innerHTML = `<pre>${escapeHtml(outputText)}</pre>`;
+                    output.className = 'output success';
+                    statusDot.className = 'status-dot ready';
+                    statusText.textContent = 'Complete';
+                } else {
+                    const errorOutput = result.output
+                        ? `${result.output}\n\nError: ${result.error}`
+                        : `Error: ${result.error}`;
+                    output.innerHTML = `<pre style="color: var(--error)">${escapeHtml(errorOutput)}</pre>`;
+                    output.className = 'output error';
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Error';
+                }
+
+                // Update stats
+                stats.style.display = 'block';
+                document.getElementById('statNodes').textContent = result.stats.nodes;
+                document.getElementById('statCalls').textContent = result.stats.calls;
+                document.getElementById('statTime').textContent = elapsed;
+                document.getElementById('statLines').textContent = (result.output || '').split('\n').filter(l => l).length;
+            }, 50);
+        };
+
+        window.clearOutput = function() {
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            output.innerHTML = '<pre>Click "Run" to execute the program...</pre>';
+            output.className = 'output';
+            stats.style.display = 'none';
+        };
+
+        window.formatAst = function() {
+            const input = document.getElementById('astInput');
+            try {
+                const parsed = JSON.parse(input.value);
+                input.value = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        };
+
+        window.loadExample = function(name) {
+            const example = examples[name];
+            if (example) {
+                document.getElementById('astInput').value = JSON.stringify(example, null, 2);
+                window.clearOutput();
+            }
+        };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load hello world by default
+        window.loadExample('hello');
+    </script>
+</body>
+</html>

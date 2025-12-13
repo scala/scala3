@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Character Test</title>
+    <style>
+        body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+        pre { white-space: pre-wrap; }
+        .pass { color: #4ec9b0; }
+        .fail { color: #f44747; }
+    </style>
+</head>
+<body>
+    <h1>Character Method Test (H4 Validation)</h1>
+    <div id="output">Loading...</div>
+
+    <script type="module">
+        import { CharacterTest } from './js/target/scala-3.7.0/browser-interpreter-js-fastopt/main.js';
+
+        const output = document.getElementById('output');
+
+        try {
+            // Run validation
+            const result = CharacterTest.runValidation();
+
+            let html = `<h2>Validation Results</h2>`;
+            html += `<p>Passed: <span class="pass">${result.passed}</span> / ${result.total}</p>`;
+            html += `<p>Failed: <span class="${result.failed > 0 ? 'fail' : 'pass'}">${result.failed}</span></p>`;
+
+            if (result.failures.length > 0) {
+                html += `<h3 class="fail">Failures:</h3><ul>`;
+                for (const f of result.failures) {
+                    html += `<li class="fail">${f}</li>`;
+                }
+                html += `</ul>`;
+            }
+
+            html += `<h2>Detailed Output</h2>`;
+            html += `<pre>${CharacterTest.testAll()}</pre>`;
+
+            output.innerHTML = html;
+
+            // Also log for easy copy
+            console.log("H4 Validation:", result.success ? "PASSED" : "FAILED");
+            console.log(CharacterTest.testAll());
+        } catch (e) {
+            output.innerHTML = `<p class="fail">Error: ${e.message}</p><pre>${e.stack}</pre>`;
+        }
+    </script>
+</body>
+</html>
+
