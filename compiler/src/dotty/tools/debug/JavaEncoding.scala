@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
-import dotty.tools.dotc.util.NameTransformer
+import scala.reflect.NameTransformer
 
 // Inspired by https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/backend/sjs/JSEncoding.scala
 private object JavaEncoding:
@@ -26,7 +26,7 @@ private object JavaEncoding:
     else className(sym)
 
   def encode(name: TermName)(using Context): String =
-    NameTransformer.encode(name.toSimpleName).toString
+    NameTransformer.encode(name.toString)
 
   private def binaryName(tpe: Type)(using Context): String =
     tpe match

@@ -31,7 +31,6 @@ import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
-import util.chaining.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
@@ -53,7 +52,7 @@ import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
 import scala.annotation.{unchecked as _, *}
-import dotty.tools.dotc.util.chaining.*
+import scala.util.chaining.*
 import dotty.tools.dotc.ast.untpd.Mod
 
 object Typer {

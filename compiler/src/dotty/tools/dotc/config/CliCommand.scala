@@ -6,8 +6,8 @@ import core.Contexts.*
 import printing.Highlighting
 import reporting.NoExplanation
 
-import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
+import scala.util.chaining.*
 
 trait CliCommand:
 

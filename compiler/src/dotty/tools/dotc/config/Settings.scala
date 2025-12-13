@@ -12,7 +12,6 @@ import reflect.ClassTag
 import scala.util.{Success, Failure}
 
 import config.Settings.Setting.ChoiceWithHelp
-import util.chaining.*
 
 object Settings:
 

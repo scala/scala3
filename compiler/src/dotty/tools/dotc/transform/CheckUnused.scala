@@ -20,11 +20,11 @@ import typer.Deriving.OriginalTypeClass
 import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
 import util.{Property, Spans, SrcPos}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
-import util.chaining.*
 
 import java.util.IdentityHashMap
 
 import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
+import scala.util.chaining.*
 
 import CheckUnused.*
 

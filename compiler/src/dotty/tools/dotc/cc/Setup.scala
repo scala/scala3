@@ -13,7 +13,6 @@ import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
 import Synthetics.isExcluded
 import util.SimpleIdentitySet
-import util.chaining.*
 import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable

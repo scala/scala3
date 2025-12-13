@@ -17,7 +17,6 @@ import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.err
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
-import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
@@ -32,6 +31,7 @@ import Capabilities.*
 import Mutability.*
 import util.common.alwaysTrue
 import scala.annotation.constructorOnly
+import scala.util.chaining.*
 
 /** The capture checker */
 object CheckCaptures:

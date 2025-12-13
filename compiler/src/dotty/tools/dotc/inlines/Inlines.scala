@@ -21,10 +21,11 @@ import staging.StagingLevel
 import cc.CleanupRetains
 
 import collection.mutable
+import scala.util.chaining.*
+
 import reporting.{NotConstant, trace}
 import util.Spans.Span
 import dotty.tools.dotc.core.Periods.PhaseId
-import dotty.tools.dotc.util.chaining.*
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:

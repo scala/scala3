@@ -4,9 +4,12 @@ package parsing
 
 import scala.language.unsafeNulls
 
+import scala.annotation.tailrec
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
+import scala.util.chaining.*
+
 import util.{ SourceFile, SourcePosition, NoSourcePosition }
 import Tokens.*
 import Scanners.*
@@ -26,7 +29,6 @@ import Symbols.NoSymbol
 import ScriptParsers.*
 import Decorators.*
 import util.Chars
-import scala.annotation.tailrec
 import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
 import reporting.*
 import config.Feature
@@ -34,7 +36,6 @@ import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
-import dotty.tools.dotc.util.chaining.*
 import dotty.tools.dotc.config.Feature.ccEnabled
 
 object Parsers {

@@ -27,9 +27,8 @@ import java.io.PrintWriter
 import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
 
 import scala.collection.mutable
+import scala.util.chaining.*
 import scala.util.hashing.MurmurHash3
-import dotty.tools.dotc.util.chaining.*
-
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *
  *  This is used by sbt for incremental recompilation.
