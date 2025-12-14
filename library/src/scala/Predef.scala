@@ -113,8 +113,8 @@ object Predef extends LowPriorityImplicits {
    * the class literal `T.class` in Java.
    *
    * @example {{{
-   * val listClass = classOf[List[_]]
-   * // listClass is java.lang.Class[List[_]] = class scala.collection.immutable.List
+   * val listClass = classOf[List[?]]
+   * // listClass is java.lang.Class[List[?]] = class scala.collection.immutable.List
    *
    * val mapIntString = classOf[Map[Int,String]]
    * // mapIntString is java.lang.Class[Map[Int,String]] = interface scala.collection.immutable.Map
