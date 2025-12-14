@@ -94,7 +94,7 @@ jobs:
       - uses: VirtusLab/scala-cli-setup@v1
         with: 
           jvm: temurin:17
-          apps: scala-cli, sbt
+          apps: sbt
       - name: Publish compiler locally
         run: |
           version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped-new/version" | tail -n1)
