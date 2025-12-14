@@ -103,16 +103,13 @@ jobs:
 
           # Publish locally minimal set of artifacts that would be required to test snippets 
           sbt "set every doc := new File(\"unused\");\
-            all \
-              scala-library-bootstrapped/publishLocal \
-              scala3-compiler-bootstrapped-new/publishLocal \
-              scala3-interfaces/publishLocal \
-              scala3-library-bootstrapped-new/publishLocal \
-            "
+               scala3-bootstrapped-new/publishLocal
+              "
       - name: Test error code snippets
         shell: bash
         run: scala-cli test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
-      - if: failure()
+      - name: "[On failure] Print reproduction/fix steps"
+        if: failure()
         run: |
           cat << EOF >> $GITHUB_STEP_SUMMARY
           Snippets validation for error codes failed
