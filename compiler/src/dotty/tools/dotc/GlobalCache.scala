@@ -28,7 +28,6 @@ object GlobalCache:
 
   object NoGlobalCache extends GlobalCache:
     def getOrCreateClassPath(key: AbstractFile, createValue: => ClassPath)(using Context): ClassPath =
-      report.configurationWarning(em"Not GlobalCache set")
       createValue
 
 /** A cache for values associated with files on disk, that invalidates
