@@ -41,10 +41,9 @@ import caps.unsafe.untrackedCaptures
  * `String`.
  *
  * {{{
- *    import scala.collection.{Iterable, IterableOps}
  *    import scala.collection.generic.IsIterable
  *
- *    class ExtensionMethods[Repr, I <: IsIterable[Repr]](coll: Repr, it: I) {
+ *    extension [Repr, I <: IsIterable[Repr]](coll: Repr)(using it: I) {
  *      def mapReduce[B](mapper: it.A => B)(reducer: (B, B) => B): B = {
  *        val iter = it(coll).iterator
  *        var res = mapper(iter.next())
@@ -53,9 +52,6 @@ import caps.unsafe.untrackedCaptures
  *        res
  *      }
  *    }
- *
- *    implicit def withExtensions[Repr](coll: Repr)(implicit it: IsIterable[Repr]): ExtensionMethods[Repr, it.type] =
- *      new ExtensionMethods(coll, it)
  *
  *  // See it in action!
  *  List(1, 2, 3).mapReduce(_ * 2)(_ + _) // res0: Int = 12
@@ -87,10 +83,6 @@ import caps.unsafe.untrackedCaptures
  * of interactions described in the previous paragraph is set into action.
  * (See the `IsIterable` companion object, which contains a precise
  * specification of the available implicits.)
- *
- * ''Note'': Currently, it's not possible to combine the implicit conversion and
- * the class with the extension methods into an implicit class due to
- * limitations of type inference.
  *
  * ===Implementing `IsIterable` for New Types===
  *
