@@ -202,11 +202,11 @@ subsection:
       - page: reference/error-codes/E007.md
       - page: reference/error-codes/E008.md
       - page: reference/error-codes/E009.md
-      # - page: reference/error-codes/E010.md
+      - page: reference/error-codes/E010.md
       - page: reference/error-codes/E011.md
       - page: reference/error-codes/E012.md
       - page: reference/error-codes/E013.md
-      # - page: reference/error-codes/E014.md
+      - page: reference/error-codes/E014.md
       - page: reference/error-codes/E015.md
       - page: reference/error-codes/E016.md
       - page: reference/error-codes/E017.md
@@ -228,7 +228,7 @@ subsection:
       - page: reference/error-codes/E033.md
       - page: reference/error-codes/E034.md
       - page: reference/error-codes/E035.md
-      # - page: reference/error-codes/E036.md
+      - page: reference/error-codes/E036.md
       - page: reference/error-codes/E037.md
       - page: reference/error-codes/E038.md
       - page: reference/error-codes/E039.md
@@ -246,14 +246,14 @@ subsection:
       - page: reference/error-codes/E051.md
       - page: reference/error-codes/E052.md
       - page: reference/error-codes/E053.md
-      # - page: reference/error-codes/E054.md
+      - page: reference/error-codes/E054.md
       - page: reference/error-codes/E055.md
       - page: reference/error-codes/E056.md
       - page: reference/error-codes/E057.md
       - page: reference/error-codes/E058.md
       - page: reference/error-codes/E059.md
       - page: reference/error-codes/E060.md
-      # - page: reference/error-codes/E061.md
+      - page: reference/error-codes/E061.md
       - page: reference/error-codes/E062.md
       - page: reference/error-codes/E063.md
       - page: reference/error-codes/E064.md
@@ -271,8 +271,8 @@ subsection:
       - page: reference/error-codes/E076.md
       - page: reference/error-codes/E077.md
       - page: reference/error-codes/E078.md
-      # - page: reference/error-codes/E079.md
-      # - page: reference/error-codes/E080.md
+      - page: reference/error-codes/E079.md
+      - page: reference/error-codes/E080.md
       - page: reference/error-codes/E081.md
       - page: reference/error-codes/E082.md
       - page: reference/error-codes/E083.md
@@ -293,3 +293,125 @@ subsection:
       - page: reference/error-codes/E098.md
       - page: reference/error-codes/E099.md
       - page: reference/error-codes/E100.md
+      - page: reference/error-codes/E101.md
+      - page: reference/error-codes/E102.md
+      - page: reference/error-codes/E103.md
+      - page: reference/error-codes/E104.md
+      - page: reference/error-codes/E105.md
+      - page: reference/error-codes/E106.md
+      - page: reference/error-codes/E107.md
+      - page: reference/error-codes/E108.md
+      - page: reference/error-codes/E109.md
+      - page: reference/error-codes/E110.md
+      - page: reference/error-codes/E111.md
+      - page: reference/error-codes/E112.md
+      - page: reference/error-codes/E113.md
+      - page: reference/error-codes/E114.md
+      - page: reference/error-codes/E115.md
+      - page: reference/error-codes/E116.md
+      - page: reference/error-codes/E117.md
+      - page: reference/error-codes/E118.md
+      - page: reference/error-codes/E119.md
+      - page: reference/error-codes/E120.md
+      - page: reference/error-codes/E121.md
+      - page: reference/error-codes/E122.md
+      - page: reference/error-codes/E123.md
+      - page: reference/error-codes/E124.md
+      - page: reference/error-codes/E125.md
+      - page: reference/error-codes/E126.md
+      - page: reference/error-codes/E127.md
+      - page: reference/error-codes/E128.md
+      - page: reference/error-codes/E129.md
+      - page: reference/error-codes/E130.md
+      - page: reference/error-codes/E131.md
+      - page: reference/error-codes/E132.md
+      - page: reference/error-codes/E133.md
+      - page: reference/error-codes/E134.md
+      - page: reference/error-codes/E135.md
+      - page: reference/error-codes/E136.md
+      - page: reference/error-codes/E137.md
+      - page: reference/error-codes/E138.md
+      - page: reference/error-codes/E139.md
+      - page: reference/error-codes/E140.md
+      - page: reference/error-codes/E141.md
+      - page: reference/error-codes/E142.md
+      - page: reference/error-codes/E143.md
+      - page: reference/error-codes/E144.md
+      - page: reference/error-codes/E145.md
+      - page: reference/error-codes/E146.md
+      - page: reference/error-codes/E147.md
+      - page: reference/error-codes/E148.md
+      - page: reference/error-codes/E149.md
+      - page: reference/error-codes/E150.md
+      - page: reference/error-codes/E151.md
+      - page: reference/error-codes/E152.md
+      - page: reference/error-codes/E153.md
+      - page: reference/error-codes/E154.md
+      - page: reference/error-codes/E155.md
+      - page: reference/error-codes/E156.md
+      - page: reference/error-codes/E157.md
+      - page: reference/error-codes/E158.md
+      - page: reference/error-codes/E159.md
+      - page: reference/error-codes/E160.md
+      - page: reference/error-codes/E161.md
+      - page: reference/error-codes/E162.md
+      - page: reference/error-codes/E163.md
+      - page: reference/error-codes/E164.md
+      - page: reference/error-codes/E165.md
+      - page: reference/error-codes/E166.md
+      - page: reference/error-codes/E167.md
+      - page: reference/error-codes/E168.md
+      - page: reference/error-codes/E169.md
+      - page: reference/error-codes/E170.md
+      - page: reference/error-codes/E171.md
+      - page: reference/error-codes/E172.md
+      - page: reference/error-codes/E173.md
+      - page: reference/error-codes/E174.md
+      - page: reference/error-codes/E175.md
+      - page: reference/error-codes/E176.md
+      - page: reference/error-codes/E177.md
+      - page: reference/error-codes/E178.md
+      - page: reference/error-codes/E179.md
+      - page: reference/error-codes/E180.md
+      - page: reference/error-codes/E181.md
+      - page: reference/error-codes/E182.md
+      - page: reference/error-codes/E183.md
+      - page: reference/error-codes/E184.md
+      - page: reference/error-codes/E185.md
+      - page: reference/error-codes/E186.md
+      - page: reference/error-codes/E187.md
+      - page: reference/error-codes/E188.md
+      - page: reference/error-codes/E189.md
+      - page: reference/error-codes/E190.md
+      - page: reference/error-codes/E191.md
+      - page: reference/error-codes/E192.md
+      - page: reference/error-codes/E193.md
+      - page: reference/error-codes/E194.md
+      - page: reference/error-codes/E195.md
+      - page: reference/error-codes/E196.md
+      - page: reference/error-codes/E197.md
+      - page: reference/error-codes/E198.md
+      - page: reference/error-codes/E199.md
+      - page: reference/error-codes/E200.md
+      - page: reference/error-codes/E201.md
+      - page: reference/error-codes/E202.md
+      - page: reference/error-codes/E203.md
+      - page: reference/error-codes/E204.md
+      - page: reference/error-codes/E205.md
+      - page: reference/error-codes/E206.md
+      - page: reference/error-codes/E207.md
+      - page: reference/error-codes/E208.md
+      - page: reference/error-codes/E209.md
+      - page: reference/error-codes/E210.md
+      - page: reference/error-codes/E211.md
+      - page: reference/error-codes/E212.md
+      - page: reference/error-codes/E213.md
+      - page: reference/error-codes/E214.md
+      - page: reference/error-codes/E215.md
+      - page: reference/error-codes/E216.md
+      - page: reference/error-codes/E217.md
+      - page: reference/error-codes/E218.md
+      - page: reference/error-codes/E219.md
+      - page: reference/error-codes/E220.md
+      - page: reference/error-codes/E221.md
+      - page: reference/error-codes/E222.md
