@@ -2830,7 +2830,7 @@ object Build {
 
         val languageReferenceConfig = Def.task {
           Scala3.value
-            .add(OutputDir("scaladoc/output/reference"))
+            .add(OutputDir(file("scaladoc/output/reference").getAbsoluteFile.getAbsolutePath))
             .add(SiteRoot(docs.getAbsolutePath))
             .add(ProjectName("Scala 3 Reference"))
             .add(ProjectVersion(baseVersion))
@@ -2838,7 +2838,6 @@ object Build {
             .add(SourceLinks(List(
               s"${docs.getParentFile().getAbsolutePath}=github://scala/scala3/language-reference-stable"
             )))
-            .withTargets(List("___fake___.scala"))
         }
 
         val expectedLinksRegeneration = Def.task {
