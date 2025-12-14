@@ -35,10 +35,10 @@ object FlexmarkSnippetProcessor:
               None
           })
 
-        val scalacOptions = info
+        val scalacOptions: Seq[String] = info
           .filter(_.startsWith("sc-opts:"))
-          .map(_.stripPrefix("sc-opts:"))
-          .toSeq
+          .map(_.stripPrefix("sc-opts:").split(",").map(_.trim).toSeq)
+          .flatten
 
         val argOverride: Option[SnippetCompilerArg] =
           (flagOverride, scalacOptions) match {
