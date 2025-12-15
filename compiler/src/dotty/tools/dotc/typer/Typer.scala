@@ -1232,6 +1232,30 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else tree1
   }
 
+  /** Type a parent type reference in `new T { ... }` expressions.
+   *  This handles type aliases that need type parameter inference
+   *  by creating a synthetic constructor application, similar to
+   *  how class parents are handled in Namer.
+   */
+  def typedNewTemplateParent(tree: untpd.Tree, pt: Type)(using Context): Tree =
+    // First type with AnyTypeConstructorProto to check if it's a HKTypeLambda
+    val parentTpt = typedType(tree, AnyTypeConstructorProto)
+    val ptpe = parentTpt.tpe.dealias
+
+    ptpe match
+      case tl: HKTypeLambda
+          // Only handle type aliases where params appear in result (not type-lambda-as-result cases)
+          if tl.paramRefs.exists(pref => tl.resType.existsPart(_ == pref))
+             && !tl.resType.isInstanceOf[TypeLambda]
+             && tl.resType.underlyingClassRef(refinementOK = false).exists =>
+        // Found a type alias with type params whose result underlies a class.
+        // Create a synthetic constructor application to infer type arguments.
+        val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Nil)
+        val typedApp = typedExpr(app, pt)
+        TypeTree(typedApp.tpe).withSpan(tree.span)
+      case _ =>
+        inferTypeParams(typedType(tree), pt)
+
   def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
     tree.tpt match {
       case templ: untpd.Template =>
@@ -1248,7 +1272,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         then
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
         for case parent: RefTree <- templ1.parents do
-          typedAhead(parent, tree => inferTypeParams(typedType(tree), pt))
+          typedAhead(parent, typedNewTemplateParent(_, pt))
         val anon = tpnme.ANON_CLASS
         val clsDef = TypeDef(anon, templ1).withFlags(Final | Synthetic)
         typed(
