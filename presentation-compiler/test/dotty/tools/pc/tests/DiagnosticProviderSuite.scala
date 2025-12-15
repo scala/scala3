@@ -16,15 +16,29 @@ class DiagnosticProviderSuite extends BaseDiagnosticsSuite {
       """|object M:
          |  Int.maaxValue
          |""".stripMargin,
-      List(TestDiagnostic(12,25, "value maaxValue is not a member of object Int - did you mean Int.MaxValue?", DiagnosticSeverity.Error))
-    )  
+      List(
+        TestDiagnostic(
+          12,
+          25,
+          "value maaxValue is not a member of object Int - did you mean Int.MaxValue?",
+          DiagnosticSeverity.Error
+        )
+      )
+    )
 
   @Test def warning =
     check(
       """|object M:
          |  1 + 1
          |""".stripMargin,
-      List(TestDiagnostic(12, 17, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning))
+      List(
+        TestDiagnostic(
+          12,
+          17,
+          "A pure expression does nothing in statement position",
+          DiagnosticSeverity.Warning
+        )
+      )
     )
 
   @Test def mixed =
@@ -34,8 +48,18 @@ class DiagnosticProviderSuite extends BaseDiagnosticsSuite {
          |  1 + 1
          |""".stripMargin,
       List(
-        TestDiagnostic(12,25, "value maaxValue is not a member of object Int - did you mean Int.MaxValue?", DiagnosticSeverity.Error),
-        TestDiagnostic(28, 33, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning)
+        TestDiagnostic(
+          12,
+          25,
+          "value maaxValue is not a member of object Int - did you mean Int.MaxValue?",
+          DiagnosticSeverity.Error
+        ),
+        TestDiagnostic(
+          28,
+          33,
+          "A pure expression does nothing in statement position",
+          DiagnosticSeverity.Warning
+        )
       )
     )
 
@@ -45,12 +69,29 @@ class DiagnosticProviderSuite extends BaseDiagnosticsSuite {
          |  private private class Test
          |""".stripMargin,
       List(
-        TestDiagnostic(20, 27, "Repeated modifier private", DiagnosticSeverity.Error),
+        TestDiagnostic(
+          20,
+          27,
+          "Repeated modifier private",
+          DiagnosticSeverity.Error
+        )
       ),
       diags =>
-        val action = diags.head.getData().asInstanceOf[java.util.List[CodeAction]].asScala.head
-        assertWithDiff("Remove repeated modifier: \"private\"", action.getTitle(), false)
-        assertEquals(1, action.getEdit().getChanges().size(), "There should be one change")
+        val action = diags.head
+          .getData()
+          .asInstanceOf[java.util.List[CodeAction]]
+          .asScala
+          .head
+        assertWithDiff(
+          "Remove repeated modifier: \"private\"",
+          action.getTitle(),
+          false
+        )
+        assertEquals(
+          1,
+          action.getEdit().getChanges().size(),
+          "There should be one change"
+        )
     )
 
 }

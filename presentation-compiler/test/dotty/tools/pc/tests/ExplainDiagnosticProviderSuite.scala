@@ -11,7 +11,7 @@ import scala.meta.internal.jdk.CollectionConverters.*
 
 class ExplainDiagnosticProviderSuite extends BaseDiagnosticsSuite {
 
-  override def options : List[String] = List("-explain")
+  override def options: List[String] = List("-explain")
 
   @Test def error1 =
     check(
@@ -24,8 +24,9 @@ class ExplainDiagnosticProviderSuite extends BaseDiagnosticsSuite {
          |""".stripMargin,
       List(
         TestDiagnostic(
-        64,65,
-        """|Reference to m is ambiguous.
+          64,
+          65,
+          """|Reference to m is ambiguous.
            |It is both defined in object C
            |and inherited subsequently in object T
            |
@@ -48,8 +49,7 @@ class ExplainDiagnosticProviderSuite extends BaseDiagnosticsSuite {
            | - When importing, you can avoid naming conflicts by renaming:
            |   import scala.{m => mTick}
            |""".stripMargin,
-        DiagnosticSeverity.Error
-        
+          DiagnosticSeverity.Error
         )
       )
     )
