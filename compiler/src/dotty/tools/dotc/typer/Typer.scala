@@ -1238,7 +1238,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  how class parents are handled in Namer.
    */
   def typedNewTemplateParent(tree: untpd.Tree, pt: Type)(using Context): Tree =
-    // First type with AnyTypeConstructorProto to check if it's a HKTypeLambda
+    // Type with AnyTypeConstructorProto to detect type aliases (HKTypeLambda)
     val parentTpt = typedType(tree, AnyTypeConstructorProto)
     val ptpe = parentTpt.tpe.dealias
 
@@ -1254,7 +1254,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val typedApp = typedExpr(app, pt)
         TypeTree(typedApp.tpe).withSpan(tree.span)
       case _ =>
-        inferTypeParams(typedType(tree), pt)
+        // For regular class/trait references, reuse the typed tree.
+        // If type has params but isn't a TypeLambda, eta-expand for inferTypeParams.
+        val resultTpe = parentTpt.tpe
+        if resultTpe.typeParams.nonEmpty && !resultTpe.isInstanceOf[TypeLambda] then
+          inferTypeParams(parentTpt.withType(resultTpe.etaExpand), pt)
+        else
+          inferTypeParams(parentTpt, pt)
 
   def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
     tree.tpt match {
