@@ -186,18 +186,29 @@ class Objects(using Context @constructorOnly):
 
     def outerValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readOuter(this, sym)
 
+    def hasOuter(classSymbol: Symbol)(using Heap.MutableData): Boolean = Heap.hasOuter(this, classSymbol)
+
     def outer(using Heap.MutableData): Value = this.outerValue(klass)
 
     def outerEnv(using Heap.MutableData): Env.EnvSet = Heap.readOuterEnv(this)
   end Ref
 
-  /** A reference to a static object */
+  /** A reference to a static object
+   *
+   *  Invariant: The reference itself should not contain any state
+   *
+   *  Rationale: There can be multiple references to the same object. They must
+   *  share the same state.
+   */
   case class ObjectRef private (klass: ClassSymbol)(using Trace) extends Ref:
-    var afterSuperCall = false
+    /** Use the special outer to denote whether the super constructor of the
+     *  object has been called or not.
+     */
+    def isAfterSuperCall(using Heap.MutableData) =
+      this.hasOuter(klass.sourceModule)
 
-    def isAfterSuperCall = afterSuperCall
-
-    def setAfterSuperCall(): Unit = afterSuperCall = true
+    def setAfterSuperCall()(using Heap.MutableData): Unit =
+      this.initOuter(klass.sourceModule, Bottom)
 
     def owner = klass
 
@@ -706,6 +717,9 @@ class Objects(using Context @constructorOnly):
 
     def readOuter(ref: Ref, parent: Symbol)(using mutable: MutableData): Value =
       mutable.heap(ref).outersMap(parent)
+
+    def hasOuter(ref: Ref, parent: Symbol)(using mutable: MutableData): Boolean =
+      mutable.heap(ref).outersMap.contains(parent)
 
     def readOuterEnv(ref: Ref)(using mutable: MutableData): Env.EnvSet =
       mutable.heap(ref).outerEnvs
@@ -1701,7 +1715,7 @@ class Objects(using Context @constructorOnly):
         val args = evalArgs(elems.map(Arg.apply), thisV, klass)
         val arr = ArrayRef(State.currentObject, summon[Regions.Data])
         arr.writeElement(args.map(_.value).join)
-        call(ObjectRef(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
+        call(accessObject(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
         evalExprs(bindings, thisV, klass)
