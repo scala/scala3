@@ -156,7 +156,7 @@ class TypeUtils:
       else
         self
 
-    def isNamedTupleType(using Context): Boolean = self match
+    def isNamedTupleType(using Context): Boolean = self.normalized.dealias match
       case defn.NamedTuple(_, _) => true
       case _ => false
 
