@@ -1315,13 +1315,7 @@ class Objects(using Context @constructorOnly):
               Bottom
 
           else if ref.isObjectRef && ref.klass.hasSource then
-            if State.isQuotaExhausted(ref.asObjectRef) then
-              if !BestEffort then
-                report.warning("Access uninitialized field of quota exhausted object " + field.show + ". " + Trace.show, Trace.position)
-
-            else
-              report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
-
+            errorReadUninitializedField(ref.asObjectRef, field)
             Bottom
 
           else
@@ -1332,7 +1326,7 @@ class Objects(using Context @constructorOnly):
           ref.valValue(target)
 
         else if ref.isObjectRef && ref.klass.hasSource then
-          report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
+          errorReadUninitializedField(ref.asObjectRef, field)
           Bottom
 
         else
@@ -2324,3 +2318,10 @@ class Objects(using Context @constructorOnly):
         printTraceWhenMultiple(scope_trace)
 
       report.warning(msg, Trace.position)
+
+  def errorReadUninitializedField(obj: ObjectRef, field: Symbol)(using State.Data, Trace, Context): Unit =
+    if State.isQuotaExhausted(obj) then
+      if !BestEffort then
+        report.warning("Access uninitialized field of quota exhausted object " + field.show + ". " + Trace.show, Trace.position)
+    else
+      report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
