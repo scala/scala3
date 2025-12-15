@@ -2268,7 +2268,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end TypeBoundsTreeMethods
 
     /** Type tree representing wildcard type bounds written in the source.
-    *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
+    *  The wildcard type `?` (for example in in `List[?]`) will be a type tree that
     *  represents a type but has `TypeBounds` inside.
     */
     type WildcardTypeTree <: Tree
