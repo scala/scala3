@@ -59,4 +59,4 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
 
 object SnippetChecker:
   type LineOffset = Int
-  type SnippetCheckingFunc = (String, LineOffset, Option[SCFlags]) => Option[SnippetCompilationResult]
+  type SnippetCheckingFunc = (String, LineOffset, Option[SnippetCompilerArg]) => Option[SnippetCompilationResult]
