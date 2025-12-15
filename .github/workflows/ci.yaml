@@ -161,7 +161,7 @@ jobs:
 
       - name: Download MSI package
         if: false # TODO: Requires changes to dist targets, to be done before stable release
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: scala.msi
           path: .
