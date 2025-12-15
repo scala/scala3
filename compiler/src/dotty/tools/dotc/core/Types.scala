@@ -6796,13 +6796,19 @@ object Types extends TypeUtils {
             // non-range arguments L1, ..., Ln and H1, ..., Hn such that
             // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
             // ranges that appear in as co- or contravariant arguments.
-            // Fail for non-variant argument ranges (see use-site else branch below).
-            // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
+            // Fail for non-trivial non-variant argument ranges (see use-site else branch below).
+            // If successful, the L-arguments are in loBuf, the H-arguments in hiBuf.
             // @return  operation succeeded for all arguments.
             def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
               case Range(lo, hi) :: args1 =>
                 val v = tparams.head.paramVarianceSign
-                if (v == 0) false
+                if (v == 0) {
+                  if (lo == hi) {
+                    loBuf += lo; hiBuf += hi
+                    distributeArgs(args1, tparams.tail)
+                  }
+                  else false
+                }
                 else {
                   if (v > 0) { loBuf += lo; hiBuf += hi }
                   else { loBuf += hi; hiBuf += lo }
