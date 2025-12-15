@@ -77,8 +77,10 @@ we know that the type of `this` must be pure, since `this` is the right hand sid
 
 ### Traits and Open Classes
 
-The self-type inference behaves differently depending on whether all subclasses of a class are known. For a regular (non-open, non-abstract) class, all subclasses are known at compile time, so the capture checker can precisely infer the self-type. However, for traits, abstract classes, and [`open`](../../other-new-features/open-classes.md) classes, arbitrary subclasses may exist, so the capture checker conservatively assumes that `this` may capture arbitrary capabilities
+The self-type inference behaves differently depending on whether all subclasses of a class are known. For a regular (non-open, non-abstract) class, all subclasses are known at compile time,¹ so the capture checker can precisely infer the self-type. However, for traits, abstract classes, and [`open`](../../other-new-features/open-classes.md) classes, arbitrary subclasses may exist, so the capture checker conservatively assumes that `this` may capture arbitrary capabilities
 (i.e., it infers the universal capture set `cap`).
+
+¹We ignore here the possibility that non-open classes have subclasses in other compilation units (e.g. for testing) and assume that these subclasses do not change the inferred self type.
 
 For example (assuming all definitions are in the same file):
 ```scala
