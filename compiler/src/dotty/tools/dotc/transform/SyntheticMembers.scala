@@ -189,7 +189,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def productElement(index: Int): Any = index match {
      *    case 0 => this._1
      *    case 1 => this._2
-     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *    case _ => throw new IndexOutOfBoundsException(index)
      *  }
      *  ```
      */
@@ -215,7 +215,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def productElement(index: Int): Any = index match {
      *    case 0 => this.x
      *    case 1 => this.y
-     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *    case _ => throw new IndexOutOfBoundsException(index)
      *  }
      *  ```
      */
@@ -242,7 +242,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def productElementName(index: Int): String = index match {
      *    case 0 => "x"
      *    case 1 => "y"
-     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *    case _ => throw new IndexOutOfBoundsException(index)
      *  }
      *  ```
      */
@@ -255,20 +255,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       Match(index, (cases :+ generateIOBECase(index)).toList)
     }
 
+    /** Generate a tree equivalent to the following source level code:
+      * ```scala
+      *   case _: Int => throw new IndexOutOfBoundsException(index)
+      * ```
+      */
     def generateIOBECase(index: Tree): CaseDef = {
-      val ioob = defn.IndexOutOfBoundsException.typeRef
-      // Second constructor of ioob that takes a String argument
-      def filterStringConstructor(s: Symbol): Boolean = s.info match {
-        case m: MethodType if s.isConstructor && m.paramInfos.size == 1 =>
-          m.paramInfos.head.stripNull() == defn.StringType
-        case _ => false
-      }
-      val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor(_)).asTerm
-      val stringIndex = Apply(Select(index, nme.toString_), Nil)
-      val error = Throw(New(ioob, constructor, List(stringIndex)))
-
-      // case _ => throw new IndexOutOfBoundsException(i.toString)
-      CaseDef(Underscore(defn.IntType), EmptyTree, error)
+      val rhs = New(defn.IndexOutOfBoundsExceptionType)
+        .select(defn.IndexOutOfBoundsException_IntConstructor)
+        .appliedTo(index)
+      CaseDef(Underscore(defn.IntType), EmptyTree, Throw(rhs))
     }
 
     /** The class
