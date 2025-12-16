@@ -1,7 +1,7 @@
 extension (s: String)
-  def f_::(using DummyImplicit): String = s.reverse // error
+  def f_::(using DummyImplicit): String = s.reverse
   def g_::(x: (suffix: String, n: Int)): String = s"$s${x.suffix * x.n}"
-  def ok_::(using suffix: String, n: Int): String = s"$s${suffix * n}" // error
+  def ok_::(using suffix: String, n: Int): String = s"$s${suffix * n}"
   def no_::(suffix: String, n: Int): String = s"$s${suffix * n}" // error
 
 @main def Test =

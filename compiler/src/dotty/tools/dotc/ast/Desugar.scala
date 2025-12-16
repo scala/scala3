@@ -1193,37 +1193,37 @@ object desugar {
       val (rightTyParams, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
       paramss match
-      case rightParam :: paramss1 => // `rightParam` must have a single parameter and without `given` flag
-        rightParam match
-        case ValDefs(vparam :: Nil) =>
-          if !vparam.mods.is(Given) then
-            // we merge the extension parameters with the method parameters,
-            // swapping the operator arguments:
-            // e.g.
-            //   extension [A](using B)(c: C)(using D)
-            //     def %:[E](f: F)(g: G)(using H): Res = ???
-            // will be encoded as
-            //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
-            //
-            // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-            val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+      case (rightParam @ ValDefs(vparam :: Nil)) :: paramss if !vparam.mods.is(Given) =>
+        // must be a single parameter without `given` flag for rassoc rewrite
+        // we merge the extension parameters with the method parameters,
+        // swapping the operator arguments:
+        // e.g.
+        //   extension [A](using B)(c: C)(using D)
+        //     def %:[E](f: F)(g: G)(using H): Res = ???
+        // will be encoded as
+        //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
+        //
+        // If you change the names in the clauses below, also change them in right-associative-extension-methods.md
+        val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
 
-            val names = (for ps <- mdef.paramss; p <- ps yield p.name).toSet[Name]
+        val names = (for ps <- mdef.paramss; p <- ps yield p.name).toSet[Name]
 
-            val tt = new untpd.UntypedTreeTraverser:
-              def traverse(tree: Tree)(using Context): Unit = tree match
-                case tree: Ident if names.contains(tree.name) =>
-                  finish(s"cannot have a forward reference to ${tree.name}", tree.srcPos)
-                case _ => traverseChildren(tree)
+        val tt = new untpd.UntypedTreeTraverser:
+          def traverse(tree: Tree)(using Context): Unit = tree match
+            case tree: Ident if names.contains(tree.name) =>
+              finish(s"cannot have a forward reference to ${tree.name}", tree.srcPos)
+            case _ => traverseChildren(tree)
 
-            for ts <- leftParamAndTrailingUsing; t <- ts do
-              tt.traverse(t)
+        for ts <- leftParamAndTrailingUsing; t <- ts do
+          tt.traverse(t)
 
-            leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
-          else
-            finish("cannot start with using clause", mdef.srcPos)
-        case _ =>
-          finish("must start with a single parameter", mdef.srcPos)
+        leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss
+      case ValDefs(vparam :: _) :: _ =>
+        if vparam.mods.is(Given) then
+          // no explicit value parameters, so not an infix operator.
+          finish()
+        else
+          finish("must start with a single parameter, consider a tupled parameter instead", mdef.srcPos)
       case _ =>
         // no value parameters, so not an infix operator.
         finish()
