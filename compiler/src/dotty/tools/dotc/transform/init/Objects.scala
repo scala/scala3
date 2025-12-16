@@ -431,6 +431,7 @@ class Objects(using Context @constructorOnly):
               report.warning("Giving up checking initializatino of " + classSym + " due to exhausted budget", classSym.sourcePos)
             data.addQuotaExhausted(obj)
             data.addChecked(obj)
+            data.popChecking()
             return obj
 
           assert(data.checkingObjects.last.klass == classSym, "Expect = " + classSym.show + ", found = " + data.checkingObjects.last.klass)
