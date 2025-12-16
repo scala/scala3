@@ -130,6 +130,7 @@
    |
    |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
    |          ^  refers to the universal root capability
+   |
 29 |    () => println(io)
    |
    | longer explanation available when compiling with `-explain`

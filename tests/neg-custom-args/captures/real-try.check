@@ -12,9 +12,9 @@
    |  This is often caused by a locally generated exception capability leaking as part of its result.
    |
    |  where:    => refers to a fresh root capability classified as Control in the type of given instance canThrow$1
+   |
 15 |    () => foo(1)
-16 |  catch
-17 |    case _: Ex1 => ???
+16 |...
 18 |    case _: Ex2 => ???
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:21:4 --------------------------------------
 21 |    () => foo(1) // error
