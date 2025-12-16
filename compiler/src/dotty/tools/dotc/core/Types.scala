@@ -7125,6 +7125,8 @@ object Types extends TypeUtils {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
       tp match {
+        case tp: AppliedType if defn.isTupleNType(tp) =>
+          foldOver(n + 1, tp.toNestedPairs)
         case tp: AppliedType =>
           val tpNorm = tp.tryNormalize
           if tpNorm.exists then apply(n, tpNorm)
