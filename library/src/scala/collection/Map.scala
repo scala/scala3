@@ -427,7 +427,7 @@ object MapOps {
 
   /** The implementation class of the set returned by `keySet`, for pure maps.
     */
-  private class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
+  private[collection] class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
     def iterator: Iterator[K] = mp.keysIterator
     def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
     def contains(key: K): Boolean = mp.contains(key)
