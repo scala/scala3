@@ -277,13 +277,17 @@ object ImplicitParameters:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context) =
     if (params.implicitParameters()) {
       tree match
-        case Apply(fun, args)
-            if args.exists(isSyntheticArg) && !tree.sourcePos.span.isZeroExtent && !args.exists(isQuotes(_)) =>
-          val (implicitArgs, providedArgs) = args.partition(isSyntheticArg)
-          val pos = implicitArgs.head.sourcePos
-          Some(implicitArgs, pos)
+        case Apply(_, args) if hasImplicitArgs(tree, args) => implicitArgs(args)
+        case Inlined(Apply(_, args), _, _) if hasImplicitArgs(tree, args) => implicitArgs(args)
         case _ => None
     } else None
+
+  private def hasImplicitArgs(tree: Tree, args: List[Tree])(using Context): Boolean =
+    args.exists(isSyntheticArg) && !tree.sourcePos.span.isZeroExtent && !args.exists(isQuotes)
+
+  private def implicitArgs(args: List[Tree])(using Context): Option[(List[Tree], SourcePosition)] =
+    val found = args.filter(isSyntheticArg)
+    Option.when(found.nonEmpty)(found, found.head.sourcePos)
 
   @tailrec
   def isSyntheticArg(tree: Tree)(using Context): Boolean = tree match

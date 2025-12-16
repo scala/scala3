@@ -1723,4 +1723,38 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |    .sum/*[BigDecimal<<scala/math/BigDecimal#>>]*//*(using BigDecimalIsFractional<<scala/math/Numeric.BigDecimalIsFractional.>>)*//*                           : BigDecimal<<scala/math/BigDecimal#>>*/
          |""".stripMargin
     )
+
+  @Test def `implicit-params-metals-i8029` =
+    check(
+     """|trait Codec[T]
+        |object Main {
+        |  given intCodec: Codec[Int] = ???
+        |  val x = summon[Codec[Int]]
+        |}
+        |""".stripMargin,
+     """|trait Codec[T]
+        |object Main {
+        |  given intCodec: Codec[Int] = ???
+        |  val x/*: Codec<<(1:6)>>[Int<<scala/Int#>>]*/ = summon[Codec[Int]]/*(using intCodec<<(3:8)>>)*/
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `implicit-params-metals-i8029-2` =
+    check(
+     """|trait Codec[T]
+        |object Main {
+        |  implicit val intCodec: Codec[Int] = ???
+        |  val x = implicitly[Codec[Int]]
+        |  val y = summon[Codec[Int]]
+        |}
+        |""".stripMargin,
+     """|trait Codec[T]
+        |object Main {
+        |  implicit val intCodec: Codec[Int] = ???
+        |  val x/*: Codec<<(1:6)>>[Int<<scala/Int#>>]*/ = implicitly[Codec[Int]]/*(using intCodec<<(3:15)>>)*/
+        |  val y/*: Codec<<(1:6)>>[Int<<scala/Int#>>]*/ = summon[Codec[Int]]/*(using intCodec<<(3:15)>>)*/
+        |}
+        |""".stripMargin
+    )
 }
