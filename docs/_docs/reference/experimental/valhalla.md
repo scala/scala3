@@ -33,7 +33,7 @@ Valhalla traits can extend `Any` or universal traits.
 ```scala
 import scala.annotation.valhalla
 
-@valhalla trait(val x: Int, val y: Int) ValhallaTrait extends Any
+@valhalla trait ValhallaTrait(val x: Int, val y: Int) extends Any
 
 ```
 

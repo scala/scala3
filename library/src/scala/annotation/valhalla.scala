@@ -10,4 +10,5 @@ import scala.language.`2.13`
  * class as specified in https://openjdk.org/jeps/401.
  */
 
+@scala.annotation.experimental
 final class valhalla extends StaticAnnotation
