@@ -551,22 +551,19 @@ object GenericSignatures {
   private def collectUsedTypeParams(types: List[Type], initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
     val usedMethodTypeParamNames = collection.mutable.Set.empty[Name]
     val usedClassTypeParams = collection.mutable.Set.empty[Symbol]
-    val collector = new TypeTraverser:
-      def traverse(tp: Type) = tp.dealias match
-        case ref @ TypeParamRef(_: PolyType, _) =>
-          usedMethodTypeParamNames += ref.paramName
-        case TypeRef(pre, _) =>
-          val sym = tp.typeSymbol
-          if isTypeParameterInMethSig(sym, initialSymbol) then
-            usedMethodTypeParamNames += sym.name
-          else if sym.isTypeParam && sym.isContainedIn(initialSymbol.topLevelClass) then
-            usedClassTypeParams += sym
-          else
-            traverse(pre)
-        case _ =>
-          traverseChildren(tp)
 
-    types.foreach(collector.traverse)
+    def collect(tp: Type): Unit = tp.foreachPart:
+      case ref @ TypeParamRef(_: PolyType, _) =>
+        usedMethodTypeParamNames += ref.paramName
+      case tp: TypeRef =>
+        val sym = tp.typeSymbol
+        if isTypeParameterInMethSig(sym, initialSymbol) then
+          usedMethodTypeParamNames += sym.name
+        else if sym.isTypeParam && sym.isContainedIn(initialSymbol.topLevelClass) then
+          usedClassTypeParams += sym
+      case _ =>
+
+    types.foreach(collect)
     (usedMethodTypeParamNames.toSet, usedClassTypeParams.toSet)
   end collectUsedTypeParams
 }
