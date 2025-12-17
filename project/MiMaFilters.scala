@@ -9,6 +9,18 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
+
+        // against 3.8.0-RC1
+        // private[MapOps] MapOps.allKeys changing types
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.MapOps#GenKeySet.allKeys"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.MapOps#GenKeySet.scala$collection$MapOps$GenKeySet$_setter_$allKeys_="),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.MapOps#KeySet.allKeys"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.SortedMapOps#KeySortedSet.allKeys"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.SortedMapOps#ImmutableKeySortedSet.allKeys"),
+        // new private[collection] classes
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.SortedMapOps$LazyKeySortedSet"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.MapOps$LazyImmutableKeySet"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.SortedMapOps$LazyImmutableKeySortedSet"),
       ),
 
     )
