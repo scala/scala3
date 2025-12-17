@@ -41,11 +41,27 @@ public class ChildJVMMain {
     }
 
     public static void main(String[] args) throws Exception {
-      BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
+        BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
 
-      while (true) {
-          runMain(stdin.readLine());
-          System.out.println(MessageEnd);
-      }
+        while (true) {
+            var err = System.err;
+            var out = System.out;
+            var in  = System.in;
+            try {
+              runMain(stdin.readLine());
+            }
+            finally {
+              if (err != System.err) {
+                  System.setErr(err);
+              }
+              if (out != System.out) {
+                System.setOut(out);
+              }
+              if (in != System.in) {
+                System.setIn(in);
+              }
+            }
+            System.out.println(MessageEnd);
+        }
     }
 }
