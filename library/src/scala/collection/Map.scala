@@ -191,6 +191,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    *   - To ensure an independent strict collection, use `m.keysIterator.toSet`
    *   - To obtain a view on the keys, use `scala.collection.View.fromIteratorProvider(m.keysIterator)`
    *
+   *  Specifically, for mutable collections, it is **not** guaranteed that the set would reflect the changes made onto
+   *  the map, **nor** it is guaranteed that the set would _not_ reflect the changes. To guarantee either behavior,
+   *  obtain a strict collection or a view as above.
+   *
    *  @return a set representing the keys contained by this map
    */
   def keySet: Set[K] =
