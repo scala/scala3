@@ -30,8 +30,9 @@ enum MessageFilter:
     case SourcePattern(pattern) =>
       val source = message.position.orElse(NoSourcePosition).source()
       val path = source.jfile()
-        .map(_.toPath.toAbsolutePath.toUri.normalize().getRawPath)
+        .map(_.toPath.toAbsolutePath.normalize.toString)
         .orElse(source.path())
+        .replace("\\", "/")
       pattern.findFirstIn(path).nonEmpty
     case Origin(pattern) =>
       message match

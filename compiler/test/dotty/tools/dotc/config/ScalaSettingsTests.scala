@@ -10,8 +10,8 @@ import core.Decorators.toMessage
 import dotty.tools.io.{Path, PlainFile}
 
 import java.net.URI
-import java.nio.file.Files
-import scala.util.Using
+import java.nio.file.{Files, Paths}
+import scala.util.{Success, Using}
 
 import scala.annotation.nowarn
 
@@ -215,15 +215,16 @@ class ScalaSettingsTests:
     val wconf = reporting.WConf.fromSettings(wconfStr)
     wconf.map(_.action(warning))
 
+  private def diagnosticWarning(source: util.SourceFile) = reporting.Diagnostic.Warning(
+    "A warning".toMessage,
+    util.SourcePosition(source = source, span = util.Spans.Span(1L))
+  )
+
   @Test def `WConf src filter silences warnings from a matching path for virtual file`: Unit =
     val result = wconfSrcFilterTest(
       argsStr = "-Wconf:src=path/.*:s",
-      warning = reporting.Diagnostic.Warning(
-        "A warning".toMessage,
-        util.SourcePosition(
-          source = util.SourceFile.virtual(new URI("file:///some/path/file.scala"), ""),
-          span = util.Spans.Span(1L)
-        )
+      warning = diagnosticWarning(
+        util.SourceFile.virtual(new URI("file:///some/path/file.scala"), "")
       )
     )
     assertEquals(result, Right(reporting.Action.Silent))
@@ -231,12 +232,8 @@ class ScalaSettingsTests:
   @Test def `WConf src filter doesn't silence warnings from a non-matching path`: Unit =
     val result = wconfSrcFilterTest(
       argsStr = "-Wconf:src=another/.*:s",
-      warning = reporting.Diagnostic.Warning(
-        "A warning".toMessage,
-        util.SourcePosition(
-          source = util.SourceFile.virtual(new URI("file:///some/path/file.scala"), ""),
-          span = util.Spans.Span(1L)
-        )
+      warning = diagnosticWarning(
+        util.SourceFile.virtual(new URI("file:///some/path/file.scala"), "")
       )
     )
     assertEquals(result, Right(reporting.Action.Warning))
@@ -245,12 +242,8 @@ class ScalaSettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".scala").nn) { file =>
       wconfSrcFilterTest(
         argsStr = "-Wconf:src=myfile.*?\\.scala:s",
-        warning = reporting.Diagnostic.Warning(
-          "A warning".toMessage,
-          util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
-            span = util.Spans.Span(1L)
-          )
+        warning = diagnosticWarning(
+          util.SourceFile(new PlainFile(Path(file)), "UTF-8")
         )
       )
     }(using Files.deleteIfExists(_))
@@ -260,27 +253,58 @@ class ScalaSettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".scala").nn) { file =>
       wconfSrcFilterTest(
         argsStr = "-Wconf:src=another.*?\\.scala:s",
-        warning = reporting.Diagnostic.Warning(
-          "A warning".toMessage,
-          util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
-            span = util.Spans.Span(1L)
-          )
+        warning = diagnosticWarning(
+          util.SourceFile(new PlainFile(Path(file)), "UTF-8")
         )
       )
     }(using Files.deleteIfExists(_))
     assertEquals(result, Right(reporting.Action.Warning))
 
+  @Test def `Wconf src filter matches symbolic links without resolving them`: Unit =
+    val result = Using.Manager { use =>
+      def f(file: java.nio.file.Path) = use(file)(using Files.deleteIfExists(_))
+
+      val tempDir = f(Files.createTempDirectory("wconf-src-symlink-test"))
+      val externalDir = f(Files.createDirectory(Paths.get(tempDir.toString, "external")))
+      val cacheDir = f(Files.createDirectory(Paths.get(tempDir.toString, "cache")))
+      val actualFile = f(Files.createFile(Paths.get(cacheDir.toString, "myfile.scala")))
+      val symlinkPath = Paths.get(externalDir.toString, "myfile.scala")
+
+      // This may fail with an IOException if symlinks are disabled on Windows:
+      // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Files.html#createSymbolicLink-java.nio.file.Path-java.nio.file.Path-java.nio.file.attribute.FileAttribute...-
+      val symlink = f(Files.createSymbolicLink(symlinkPath, actualFile))
+
+      wconfSrcFilterTest(
+        argsStr = "-Wconf:src=external/.*\\.scala:s",
+        warning = diagnosticWarning(
+          util.SourceFile(new PlainFile(Path(symlink)), "UTF-8"),
+        )
+      )
+    }
+    assertEquals(result, Success(Right(reporting.Action.Silent)))
+
+  @Test def `Wconf src filter handles Windows paths`: Unit =
+    val path = Path("C:\\foo\\bar\\myfile.scala")
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=foo/bar/.*\\.scala:s",
+      warning = diagnosticWarning(util.SourceFile(new PlainFile(path), "UTF-8"))
+    )
+    assertEquals(result, Right(reporting.Action.Silent))
+
+  @Test def `Wconf src filter normalizes paths`: Unit =
+    val path = Path("foo/./bar/../quux/../baz/File.scala")
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=foo/baz/.*\\.scala:s",
+      warning = diagnosticWarning(util.SourceFile(new PlainFile(path), "UTF-8"))
+    )
+    assertEquals(result, Right(reporting.Action.Silent))
+
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =
     val result = wconfSrcFilterTest(
       argsStr = """-Wconf:src=\:s""",
-      warning = reporting.Diagnostic.Warning(
-        "A warning".toMessage,
-        util.SourcePosition(
-          source = util.SourceFile.virtual(new URI("file:///some/path/file.scala"), ""),
-          span = util.Spans.Span(1L)
-        )
-      ),
+      warning = diagnosticWarning(
+        util.SourceFile.virtual(new URI("file:///some/path/file.scala"), "")
+      )
     )
     assertTrue(
       result.left.exists(errors =>
