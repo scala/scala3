@@ -427,7 +427,7 @@ class Objects(using Context @constructorOnly):
           try
             init(tpl, obj, classSym)
           catch case _: OutOfQuotaException =>
-            report.warning("Giving up checking initializatino of " + classSym + " due to exhausted budget", classSym.sourcePos)
+            report.warning("Giving up checking initialization of " + classSym + " due to exhausted budget", classSym.sourcePos)
             data.addQuotaExhausted(obj)
             data.addChecked(obj)
             data.popChecking()
@@ -445,7 +445,7 @@ class Objects(using Context @constructorOnly):
             iterate()
           else
             if !BestEffort then
-              report.warning("Giving up checking initializatino of " + classSym + " due to iteration > = " + count, classSym.sourcePos)
+              report.warning("Giving up checking initialization of " + classSym + " due to iteration > = " + count, classSym.sourcePos)
             data.addChecked(obj)
             obj
         else
