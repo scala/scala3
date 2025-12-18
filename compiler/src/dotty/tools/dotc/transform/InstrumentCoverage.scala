@@ -61,7 +61,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     val coverageFilePath = Serializer.coverageFilePath(outputPath)
     val previousCoverage =
       if Files.exists(coverageFilePath) then
-        Serializer.deserialize(coverageFilePath)
+        Serializer.deserialize(coverageFilePath, ctx.settings.sourceroot.value)
       else Coverage()
 
     // Initialise a coverage object if it does not exist yet
@@ -72,6 +72,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
 
     ctx.base.coverage.nn.removeStatementsFromFile(ctx.compilationUnit.source.file.absolute.jpath)
+    ctx.base.coverage.nn.setNextStatementId(previousCoverage.nextStatementId())
+
     super.run
 
     val mergedCoverage = Coverage()

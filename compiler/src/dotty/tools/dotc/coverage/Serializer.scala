@@ -16,7 +16,7 @@ object Serializer:
   private val CoverageFileName = "scoverage.coverage"
   private val CoverageDataFormatVersion = "3.0"
 
-  def coverageFilePath(dataDir: String) =
+  def coverageFilePath(dataDir: String): Path =
     Paths.get(dataDir, CoverageFileName).toAbsolutePath
 
   /** Write out coverage data to the given data directory, using the default coverage filename */
@@ -90,12 +90,12 @@ object Serializer:
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
 
-  def deserialize(file: Path): Coverage =
+  def deserialize(file: Path, sourceRoot: String): Coverage =
     val source = Source.fromFile(file.toFile(), UTF_8.name())
-    try deserialize(source.getLines())
+    try deserialize(source.getLines(), Paths.get(sourceRoot).toAbsolutePath)
     finally source.close()
 
-  def deserialize(lines: Iterator[String]): Coverage =
+  def deserialize(lines: Iterator[String], sourceRoot: Path): Coverage =
     def toStatement(lines: Iterator[String]): Statement =
       val id: Int = lines.next().toInt
       val sourcePath = lines.next()
@@ -110,7 +110,7 @@ object Serializer:
         fullClassName,
         classType,
         method,
-        Paths.get(sourcePath)
+        sourceRoot.resolve(sourcePath)
       )
       val start: Int = lines.next().toInt
       val end: Int = lines.next().toInt

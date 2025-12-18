@@ -18,6 +18,7 @@ import scala.language.unsafeNulls
 import scala.collection.mutable.Buffer
 import dotty.tools.dotc.util.DiffUtil
 
+import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
@@ -127,6 +128,71 @@ class CoverageTests:
     )
   }
 
+  @Test
+  def checkIncrementalCoverage(): Unit =
+    val target = Files.createTempDirectory("coverage")
+    val sourceRoot = target.resolve("src")
+    Files.createDirectory(sourceRoot)
+    val sourceFile1 = sourceRoot.resolve("file1.scala")
+    Files.write(sourceFile1, "def file1() = 1".getBytes(StandardCharsets.UTF_8))
+
+    val coverageOut = target.resolve("coverage-out")
+    Files.createDirectory(coverageOut)
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.toString, "-sourceroot", sourceRoot.toString)
+    compileFile(sourceFile1.toString, options).checkCompile()
+
+    val scoverageFile = coverageOut.resolve("scoverage.coverage")
+    assert(Files.exists(scoverageFile), s"Expected scoverage file to exist at $scoverageFile")
+
+    locally {
+      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      assertEquals(Set("file1.scala"), filesWithCoverage)
+    }
+
+    val sourceFile2 = sourceRoot.resolve("file2.scala")
+    Files.write(sourceFile2, "def file2() = 2".getBytes(StandardCharsets.UTF_8))
+
+    compileFile(sourceFile2.toString, options).checkCompile()
+    locally {
+      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      assertEquals(Set("file1.scala", "file2.scala"), filesWithCoverage)
+    }
+
+  @Test
+  def `deleted source files should not be kept in incremental coverage`(): Unit =
+    val target = Files.createTempDirectory("coverage")
+    val sourceRoot = target.resolve("src")
+    Files.createDirectory(sourceRoot)
+    val sourceFile1 = sourceRoot.resolve("file1.scala")
+    Files.write(sourceFile1, "def file1() = 1".getBytes(StandardCharsets.UTF_8))
+
+    val coverageOut = target.resolve("coverage-out")
+    Files.createDirectory(coverageOut)
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.toString, "-sourceroot", sourceRoot.toString)
+    compileFile(sourceFile1.toString, options).checkCompile()
+
+    val scoverageFile = coverageOut.resolve("scoverage.coverage")
+    assert(Files.exists(scoverageFile), s"Expected scoverage file to exist at $scoverageFile")
+
+    locally {
+      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      assertEquals(Set("file1.scala"), filesWithCoverage)
+    }
+
+    val sourceFile2 = sourceRoot.resolve("file2.scala")
+    Files.write(sourceFile2, "def file2() = 2".getBytes(StandardCharsets.UTF_8))
+
+    Files.delete(sourceFile1)
+
+    compileFile(sourceFile2.toString, options).checkCompile()
+    locally {
+      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      assertEquals(Set("file2.scala"), filesWithCoverage)
+    }
 
 object CoverageTests extends ParallelTesting:
   import scala.concurrent.duration.*
