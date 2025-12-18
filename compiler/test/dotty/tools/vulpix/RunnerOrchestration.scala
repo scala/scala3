@@ -98,40 +98,35 @@ trait RunnerOrchestration {
 
       def readLine(): String =
         stdout.readLine() match
-          case s"Listening for transport dt_socket at address: $port" =>
-            throw new IOException(
-              s"Unexpected transport dt_socket message." +
-              " The port is going to be lost and no debugger will be able to connect."
-            )
-          case line => line
+        case s"Listening for transport dt_socket at address: $port" =>
+          throw IOException(
+            "Unexpected transport dt_socket message." +
+            " The port is going to be lost and no debugger will be able to connect."
+          )
+        case line => line
 
       def printLine(line: String): Unit = stdin.println(line)
 
       def getJdiPort(): Int =
         stdout.readLine() match
-          case s"Listening for transport dt_socket at address: $port" => port.toInt
-          case line => throw new IOException(s"Failed getting JDI port of child JVM: got $line")
+        case s"Listening for transport dt_socket at address: $port" => port.toInt
+        case line => throw IOException(s"Failed getting JDI port of child JVM: got $line")
 
-      export p.{exitValue, isAlive, destroy}
+      def isAlive: Boolean = p.isAlive // export p.isAlive sans parens
+
+      export p.{exitValue, destroy}
     end RunnerProcess
 
     private class Runner(private var process: RunnerProcess):
-      /** Checks if `process` is still alive
-       *
-       *  When `process.exitValue()` is called on an active process the caught
-       *  exception is thrown. As such we can know if the subprocess exited or
-       *  not.
-       */
-      def isAlive: Boolean =
-        try { process.exitValue(); false }
-        catch case _: IllegalThreadStateException => true
+      /** Checks whether the underlying process is still alive. */
+      def isAlive: Boolean = process.isAlive
 
-      /** Destroys the underlying process and kills IO streams */
+      /** Destroys the underlying process and kills IO streams. */
       def kill(): Unit =
-        if (process ne null) process.destroy()
+        if process ne null then process.destroy()
         process = null
 
-      /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
+      /** Blocks less than `maxDuration` while running `Test.main` from `dir`. */
       def runMain(classPath: String): Status =
         assert(process ne null, "Runner was killed and then reused without setting a new process")
         awaitStatusOrRespawn(startMain(classPath))
@@ -172,7 +167,7 @@ trait RunnerOrchestration {
             sb.append(childOutput).append(System.lineSeparator)
             childOutput = process.readLine()
 
-          if process.isAlive() && childOutput != null then Success(sb.toString)
+          if isAlive && childOutput != null then Success(sb.toString)
           else Failure(sb.toString)
       end startMain
 
@@ -198,7 +193,7 @@ trait RunnerOrchestration {
      *  scala library.
      */
     private def createProcess(): RunnerProcess =
-      val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
+      val url = classOf[ChildJVMMain.type].getProtectionDomain.getCodeSource.getLocation
       val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
       val args = Seq("-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
