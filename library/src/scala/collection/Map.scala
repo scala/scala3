@@ -191,6 +191,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    *   - To ensure an independent strict collection, use `m.keysIterator.toSet`
    *   - To obtain a view on the keys, use `scala.collection.View.fromIteratorProvider(m.keysIterator)`
    *
+   *  Specifically, for mutable collections, it is **not** guaranteed that the set would reflect the changes made onto
+   *  the map, **nor** it is guaranteed that the set would _not_ reflect the changes. To guarantee either behavior,
+   *  obtain a strict collection or a view as above.
+   *
    *  @return a set representing the keys contained by this map
    */
   def keySet: Set[K] =
@@ -216,7 +220,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     */
   protected trait GenKeySet { this: Set[K] =>
     // CC note: this is unavoidable to make the KeySet pure.
-    private[MapOps] val allKeys = MapOps.this.keysIterator.toList
+    private[MapOps] val allKeys = MapOps.this.keysIterator.to(mutable.LinkedHashSet)
     // We restore the lazy behavior in LazyKeySet
     def iterator: Iterator[K] =
       allKeys.iterator
@@ -426,7 +430,7 @@ object MapOps {
 
   /** The implementation class of the set returned by `keySet`, for pure maps.
     */
-  private class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
+  private[collection] class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
     def iterator: Iterator[K] = mp.keysIterator
     def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
     def contains(key: K): Boolean = mp.contains(key)
