@@ -106,7 +106,7 @@ results in the order in which the futures complete. Using an explicit capture va
 signature expresses that the cumulative capture set of the input futures is preserved in the
 resulting stream:
 ```scala
-def collect[T, C^](fs: Set[Future[T]]^{C})(using Async^): Stream[Future[T]^{C}] =
+def collect[T, C^](fs: Set[Future[T]^{C}])(using Async^): Stream[Future[T]^{C}] =
   val channel = Channel()
   fs.forEach.(_.onComplete(v => channel.send(v)))
   Stream.of(channel)
