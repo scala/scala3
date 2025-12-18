@@ -1,8 +1,6 @@
 package dotty.tools.scaladoc
 
-import scala.io.Source
 import scala.jdk.CollectionConverters._
-import scala.util.matching.Regex
 import dotty.tools.scaladoc.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
@@ -55,26 +53,6 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   )
 )
 
-def getScalaLibraryPath: String = {
-  val classpath: List[String] = System.getProperty("java.class.path").split(java.io.File.pathSeparatorChar).toList
-  // For an unclear reason, depending on if we pass the compiler context onto the tasty inspector
-  // the scala-2-library path needs to have its characters case fixed with new java.io.File(stdlib).getCanonicalPath()
-  classpath.find(_.contains("scala-library-2")).getOrElse("foobarbazz") // If we don't find the scala 2 library, the test will fail
-}
-
-class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExternalLocationProviderIntegrationTest(
-  "externalScaladoc2",
-  List(s"${getScalaLibraryPath}#https://www.scala-lang.org/api/current/"),
-  List(
-    "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
-    "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
-    "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):b.type",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
-  )
-)
-
-
 abstract class ExternalLocationProviderIntegrationTest(
   name: String,
   mappings: Seq[String],
@@ -113,17 +91,3 @@ abstract class ExternalLocationProviderIntegrationTest(
       reportError(reportMessage)
     }
   } :: Nil
-
-abstract class LegacyExternalLocationProviderIntegrationTest(
-  name: String,
-  mappings: Seq[String],
-  expectedLinks: Seq[String]
-) extends ExternalLocationProviderIntegrationTest(name, mappings, expectedLinks):
-
-  override def args = super.args.copy(
-      externalMappings = mappings.flatMap( s =>
-        ExternalDocLink.parseLegacy(s).fold(left => None, right => Some(right)
-      )
-    ).toList
-  )
-
