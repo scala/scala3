@@ -50,9 +50,9 @@ Each capability has a _level_ corresponding to the local `cap` of its defining s
 - **Methods** (but not accessors or constructors)
 
 Local values like `f1`, `f2`, `ref`, etc., don't define their own levels. They inherit the level of their enclosing method or class. For example, this means:
-- `f1` is at `Outer`'s level, i.e., `f` subcaptures local `cap₁`.
+- `f1` is at `Outer`'s level, i.e., `f1` subcaptures local `cap₁`.
 - `f2` and `ref` are both at `method`'s level, i.e., both subcapture local `cap₂`.
-- By lexical lifetime, `{cap₂} <: {cap₃}` holds, but it does **not** hold that `{cap₃} <: {cap₂}`. Hence,
+- By lexical nesting, `{cap₂} <: {cap₃}` holds, but it does **not** hold that `{cap₃} <: {cap₂}`. Hence,
 we cannot assign the closure to `ref`, because `{f3}` is subcapture-bounded by `{cap₃}`.
 
 ### Charging Captures
@@ -248,7 +248,7 @@ Here the closure's local `cap` can absorb `f` because both are nested within `ou
 
 ## Comparison with Rust Lifetimes
 
-Readers familiar with Rust may notice similarities to lifetime checking. Both systems prevent references from escaping their valid scope. In Rust, a reference type `&'a T` carries an explicit lifetime parameter `'a`. In Scala's capture checking, the lifetime is folded into the capability name itself: `T^{x}` says "a `T` capturing `x`," and `x`'s level implicitly determines how long this reference is valid. A capture set then acts as an upper bound on the lifetimes of all the capabilities it contains.
+Readers familiar with Rust may notice similarities to lifetime checking. Both systems prevent references from escaping their valid scope. In Rust, a reference type `&'a T` carries an explicit lifetime parameter `'a`. In Scala's capture checking, the lifetime is folded into the capability name itself: `T^{x}` says "a `T` capturing `x`," and `x`'s level implicitly determines how long this reference is valid. A capture set of a reference then acts as an upper bound of the reference itself: it only lives as long as all the capabilities it contains are visible.
 
 Consider a `withFile` pattern that ensures a file handle doesn't escape:
 
