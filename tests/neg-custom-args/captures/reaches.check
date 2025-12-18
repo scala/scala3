@@ -9,6 +9,7 @@
    |where:    =>  refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
    |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Unit of parameter parameter f² of method $anonfun
+   |
 21 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
@@ -23,6 +24,7 @@
    |where:    =>  refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
    |          cap is a fresh root capability created in anonymous function of type (f: File^'s3): Unit of parameter parameter f² of method $anonfun
+   |
 31 |    cur.set:
 32 |      (() => f.write()) :: Nil
    |
@@ -106,6 +108,7 @@
    |        Local cap created in type of parameter x leaks into capture scope of an enclosing function
    |
    |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
+   |
 61 |    val f1: File^{id*} = id(f)
 62 |    f1
 -- Error: tests/neg-custom-args/captures/reaches.scala:42:9 ------------------------------------------------------------
