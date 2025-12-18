@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableDelayedExpansion
+setlocal
 
 @rem paths are relative to the root project directory
 set "_PREFIX=dist\win-x86_64\target\universal\stage"
@@ -10,6 +10,10 @@ set "_OUT_DIR=out"
 @rem if-tests mimic the non-existing bash instruction 'set -e'.
 call "%_PREFIX%\bin\scalac.bat" "@project\scripts\options" "%_SOURCE%"
 if not %ERRORLEVEL%==0 endlocal& exit /b 1
+
+@rem Create output directory (scalac requires it to exist)
+if exist "%_OUT_DIR%" rmdir /s /q "%_OUT_DIR%"
+mkdir "%_OUT_DIR%"
 
 call "%_PREFIX%\bin\scalac.bat" -d "%_OUT_DIR%" "%_SOURCE%"
 if not %ERRORLEVEL%==0 endlocal& exit /b 1
