@@ -34,7 +34,7 @@ class Buf[A] extends Stateful:
       elems(end) = elem.asInstanceOf[AnyRef] // error
         // cannot call update method on Array[A] since it is read-only.
         // elems is of type Array[A] since the self type is pure, so this
-        // has type ArrayBuffer[A], which means that this.elems os read-only.
+        // has type ArrayBuffer[A], which means that this.elems is read-only.
       end += 1
       this
     }
