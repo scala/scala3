@@ -26,8 +26,8 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
 class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc2",
   List(
+    ".*externalStubs.*::scaladoc2::https://external.stubs/api/",
     ".*scala/.*::scaladoc2::https://www.scala-lang.org/api/current/",
-    ".*externalStubs.*::scaladoc2::https://external.stubs/api/"
   ),
   List(
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
@@ -43,8 +43,8 @@ class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationP
 class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc3",
   List(
+    ".*externalStubs.*::scaladoc3::https://external.stubs/api/",
     ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/",
-    ".*externalStubs.*::scaladoc3::https://external.stubs/api/"
   ),
   List(
     "https://dotty.epfl.ch/api/scala/collection/immutable/Map.html",
