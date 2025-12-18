@@ -42,6 +42,7 @@ trait DottyTest extends ContextEscapeDetection {
     fc.setSetting(fc.settings.classpath, TestConfiguration.basicClasspath)
     fc.setSetting(fc.settings.language, List("experimental.erasedDefinitions").asInstanceOf)
     fc.setProperty(ContextDoc, new ContextDocstrings)
+    fc.setGlobalCache(TestGlobalCache)
   }
 
   protected def defaultCompiler: Compiler = new Compiler()

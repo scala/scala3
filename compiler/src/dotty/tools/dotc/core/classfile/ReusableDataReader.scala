@@ -6,6 +6,9 @@ package classfile
 import java.io.{DataInputStream, InputStream}
 import java.nio.{BufferUnderflowException, ByteBuffer}
 
+import dotty.tools.io.AbstractFile
+import dotty.tools.dotc.core.Contexts.{ctx, Context}
+
 final class ReusableDataReader() extends DataReader {
   private var data = new Array[Byte](32768)
   private var bb: ByteBuffer = ByteBuffer.wrap(data)
@@ -33,49 +36,17 @@ final class ReusableDataReader() extends DataReader {
 
   private def nextPositivePowerOfTwo(target: Int): Int = 1 << -Integer.numberOfLeadingZeros(target - 1)
 
-  def reset(file: dotty.tools.io.AbstractFile): this.type = {
+  def reset(file: AbstractFile)(using Context): this.type = {
     this.size = 0
-    file.sizeOption match {
-      case Some(size) =>
-        if (size > data.length) {
-          data = new Array[Byte](nextPositivePowerOfTwo(size))
-        } else {
-          java.util.Arrays.fill(data, 0.toByte)
-        }
-        val input = file.input
-        try {
-          var endOfInput = false
-          while (!endOfInput) {
-            val remaining = data.length - this.size
-            if (remaining == 0) endOfInput = true
-            else {
-              val read = input.read(data, this.size, remaining)
-              if (read < 0) endOfInput = true
-              else this.size += read
-            }
-          }
-          bb = ByteBuffer.wrap(data, 0, size)
-        } finally {
-          input.close()
-        }
-      case None =>
-        val input = file.input
-        try {
-          var endOfInput = false
-          while (!endOfInput) {
-            val remaining = data.length - size
-            if (remaining == 0) {
-              data = java.util.Arrays.copyOf(data, nextPositivePowerOfTwo(size))
-            }
-            val read = input.read(data, this.size, data.length - this.size)
-            if (read < 0) endOfInput = true
-            else this.size += read
-          }
-          bb = ByteBuffer.wrap(data, 0, size)
-        } finally {
-          input.close()
-        }
+    val bytes = ctx.globalCache.getFileContent(file)
+    val size = bytes.length
+    if (size > data.length) {
+      data = new Array[Byte](nextPositivePowerOfTwo(size))
+    } else {
+      java.util.Arrays.fill(data, 0.toByte)
     }
+    System.arraycopy(bytes, 0, data, 0, size)
+    bb = ByteBuffer.wrap(data, 0, size)
     this
   }
 

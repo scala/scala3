@@ -304,11 +304,13 @@ object SourceFile {
   def isScript(file: AbstractFile | Null, content: Array[Char]): Boolean =
     ScriptSourceFile.hasScriptHeader(content)
 
-  def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
+  def apply(file: AbstractFile | Null, codec: Codec)(using Context): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
     // so cope with failure.
     val chars =
-      try new String(file.toByteArray, codec.charSet).toCharArray
+      try
+        val bytes = ctx.globalCache.getFileContent(file)
+        new String(bytes, codec.charSet).toCharArray
       catch
         case _: FileSystemException => Array.empty[Char]
 

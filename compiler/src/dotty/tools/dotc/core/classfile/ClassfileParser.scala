@@ -295,7 +295,7 @@ class ClassfileParser(
     throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
 
   def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+    implicit val reader2: ReusableDataReader = reader.reset(classfile)(using ctx)
     report.debuglog("[class] >> " + classRoot.fullName)
     classfileVersion = parseHeader(classfile)
     this.pool = new ConstantPool

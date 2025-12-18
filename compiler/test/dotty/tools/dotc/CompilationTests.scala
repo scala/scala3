@@ -406,6 +406,7 @@ object CompilationTests extends ParallelTesting {
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {
+    //TestGlobalCache.printCacheStats()
     super.cleanup()
     summaryReport.echoSummary()
   }

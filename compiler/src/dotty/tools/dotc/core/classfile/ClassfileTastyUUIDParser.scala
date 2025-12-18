@@ -28,7 +28,7 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   private var classfileVersion: Header.Version = Header.Version.Unknown
 
   def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+    implicit val reader2: ReusableDataReader = reader.reset(classfile)
     this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)

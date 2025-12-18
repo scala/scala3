@@ -6,6 +6,7 @@ import Settings._
 import dotty.tools.dotc.config.ScalaSettingCategories._
 import org.junit.Test
 import org.junit.Assert._
+import core.Contexts.NoContext
 import core.Decorators.toMessage
 import dotty.tools.io.{Path, PlainFile}
 
@@ -248,7 +249,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8")(using NoContext),
             span = util.Spans.Span(1L)
           )
         )
@@ -263,7 +264,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8")(using NoContext),
             span = util.Spans.Span(1L)
           )
         )
