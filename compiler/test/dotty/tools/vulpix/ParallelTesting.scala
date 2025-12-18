@@ -1292,21 +1292,19 @@ trait ParallelTesting extends RunnerOrchestration:
       this
     }
 
-    /** Extract `Failure` set and render from `Test` */
-    private def reasonsForFailure(test: Test): String = {
-      val failureReport =
-        if test.failureCount == 0 then ""
-        else s"encountered ${test.failureCount} test failure(s):\n"
-
-      failureReport + test.failureReasons.collect {
-        case test.TimeoutFailure(title) =>
-          s"  - test '$title' timed out"
-        case test.JavaCompilationFailure(msg) =>
-          s"  - java compilation failed with:\n${ msg.linesIterator.map("      " + _).mkString("\n") }"
-        case test.Generic =>
-           "  - generic failure (see test output)"
-      }.mkString("\n")
-    }
+    /** Extracts `Failure` set and renders from `Test`. */
+    private def reasonsForFailure(test: Test): String =
+      if test.failureCount == 0 then ""
+      else
+        test.failureReasons.collect:
+          case test.TimeoutFailure(title) =>
+            s"  - test '$title' timed out"
+          case test.JavaCompilationFailure(msg) =>
+            val header = "  - java compilation failed with:\n"
+            msg.linesIterator.map("      " + _).mkString(header, "\n", "")
+          case test.Generic =>
+             "  - generic failure (see test output)"
+        .mkString(s"encountered ${test.failureCount} test failure(s):\n", "\n", "")
 
     /** Copies `file` to `dir` - taking into account if `file` is a directory,
      *  and if so copying recursively
