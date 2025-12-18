@@ -89,7 +89,7 @@ abstract class SignatureTest(
       afterKind <- Option(kindMatch.after(0)) // to filter out nulls
       name <- if kind.contains("extension") then Some(signature) // The name of an extension will always be the signature itself
                     else identifierRegex.findFirstMatchIn(afterKind).map(_.group(1))
-    yield name
+    yield name.nn
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
     source.getLines.map(_.trim)
@@ -97,8 +97,8 @@ abstract class SignatureTest(
       .filterNot(l => l.startWithAnyOfThese("=",":","{","}", "//") && !l.startsWith("//expected:"))
       .toSeq
       .flatMap {
-        case unexpectedRegex(signature) => findName(signature, kinds).map(Unexpected(_))
-        case expectedRegex(signature) => findName(signature, kinds).map(Expected(_, signature))
+        case unexpectedRegex(signature) => findName(signature.nn, kinds).map(Unexpected(_))
+        case expectedRegex(signature) => findName(signature.nn, kinds).map(Expected(_, signature.nn))
         case signature =>
           findName(signature, kinds).map(
             Expected(_, commentRegex.replaceAllIn(signature, "")
@@ -107,7 +107,7 @@ abstract class SignatureTest(
       }
 
   private def signaturesFromDocumentation()(using DocContext): Seq[String] =
-    val output = summon[DocContext].args.output.toPath
+    val output = summon[DocContext].args.output.nn.toPath
     val signatures = List.newBuilder[String]
 
     def processFile(path: Path): Unit = if filterFunc(path) then

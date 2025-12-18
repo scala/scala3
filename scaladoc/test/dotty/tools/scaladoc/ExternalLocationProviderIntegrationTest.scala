@@ -89,7 +89,7 @@ abstract class ExternalLocationProviderIntegrationTest(
   )
 
   override def runTest = afterRendering {
-    val output = summon[DocContext].args.output.toPath
+    val output = summon[DocContext].args.output.nn.toPath
     val linksBuilder = List.newBuilder[String]
 
     def processFile(path: Path): Unit =
