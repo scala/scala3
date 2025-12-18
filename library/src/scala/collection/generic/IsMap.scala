@@ -31,10 +31,10 @@ import scala.collection.immutable.{IntMap, LongMap}
   */
 transparent trait IsMap[Repr] extends IsIterable[Repr] {
 
-  /** The type of keys */
+  /** The type of keys. */
   type K
 
-  /** The type of values */
+  /** The type of values. */
   type V
 
   type A = (K, V)

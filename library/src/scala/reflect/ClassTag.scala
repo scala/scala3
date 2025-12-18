@@ -57,10 +57,10 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
    */
   def runtimeClass: jClass[?]
 
-  /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]` */
+  /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]`. */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
 
-  /** Produces a new array with element type `T` and length `len` */
+  /** Produces a new array with element type `T` and length `len`. */
   def newArray(len: Int): Array[T] =
     java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
 

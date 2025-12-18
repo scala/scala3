@@ -66,7 +66,7 @@ object ArrayOps {
   /** A lazy filtered array. No filtering is applied until one of `foreach`, `map` or `flatMap` is called. */
   class WithFilter[A](p: A => Boolean, xs: Array[A]) {
 
-    /** Apply `f` to each element for its side effects.
+    /** Applies `f` to each element for its side effects.
       * Note: [U] parameter needed to help scalac's type inference.
       */
     def foreach[U](f: A => U): Unit = {
@@ -1317,7 +1317,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     }
   }
 
-  /** Apply `f` to each element for its side effects.
+  /** Applies `f` to each element for its side effects.
     * Note: [U] parameter needed to help scalac's type inference.
     */
   def foreach[U](f: A => U): Unit = {
@@ -1440,7 +1440,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   def toIndexedSeq: immutable.IndexedSeq[A] =
     immutable.ArraySeq.unsafeWrapArray(Array.copyOf(xs, xs.length))
 
-  /** Copy elements of this array to another array.
+  /** Copies elements of this array to another array.
     *  Fills the given array `xs` starting at index 0.
     *  Copying will stop once either all the elements of this array have been copied,
     *  or the end of the array is reached.
@@ -1450,7 +1450,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     */
   def copyToArray[B >: A](xs: Array[B]): Int = copyToArray(xs, 0)
 
-  /** Copy elements of this array to another array.
+  /** Copies elements of this array to another array.
     *  Fills the given array `xs` starting at index `start`.
     *  Copying will stop once either all the elements of this array have been copied,
     *  or the end of the array is reached.
@@ -1461,7 +1461,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     */
   def copyToArray[B >: A](xs: Array[B], start: Int): Int = copyToArray(xs, start, Int.MaxValue)
 
-  /** Copy elements of this array to another array.
+  /** Copies elements of this array to another array.
     *  Fills the given array `xs` starting at index `start` with at most `len` values.
     *  Copying will stop once either all the elements of this array have been copied,
     *  or the end of the array is reached, or `len` elements have been copied.
@@ -1479,7 +1479,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     copied
   }
 
-  /** Create a copy of this array with the specified element type. */
+  /** Creates a copy of this array with the specified element type. */
   def toArray[B >: A: ClassTag]: Array[B] = {
     val destination = new Array[B](xs.length)
     @annotation.unused val copied = copyToArray(destination, 0)
@@ -1487,7 +1487,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     destination
   }
 
-  /** Counts the number of elements in this array which satisfy a predicate */
+  /** Counts the number of elements in this array which satisfy a predicate. */
   def count(p: A => Boolean): Int = {
     var i, res = 0
     val len = xs.length

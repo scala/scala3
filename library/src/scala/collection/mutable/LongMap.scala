@@ -626,7 +626,7 @@ object LongMap {
   /** Creates a new empty `LongMap`. */
   def empty[V]: LongMap[V] = new LongMap[V]
 
-  /** Creates a new empty `LongMap` with the supplied default */
+  /** Creates a new empty `LongMap` with the supplied default. */
   def withDefault[V](default: Long -> V): LongMap[V] = new LongMap[V](default)
 
   /** Creates a new `LongMap` from an existing source collection. A source collection

@@ -109,8 +109,8 @@ class OpenHashMap[Key, Value](initialSize : Int)
     h ^ (h >>> 7) ^ (h >>> 4)
   }
 
-  /** Increase the size of the table.
-    * Copy only the occupied slots, effectively eliminating the deleted slots.
+  /** Increases the size of the table.
+    * Copies only the occupied slots, effectively eliminating the deleted slots.
     */
   private def growTable() = {
     val oldSize = mask + 1
@@ -124,7 +124,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     deleted = 0
   }
 
-  /** Return the index of the first slot in the hash table (in probe order)
+  /** Returns the index of the first slot in the hash table (in probe order)
     * that is, in order of preference, either occupied by the given key, deleted, or empty.
     *
     * @param hash hash value for `key`
@@ -187,7 +187,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     }
   }
 
-  /** Delete the hash table slot contained in the given entry. */
+  /** Deletes the hash table slot contained in the given entry. */
   @`inline`
   private def deleteSlot(entry: Entry) = {
     entry.key = null.asInstanceOf[Key]
@@ -267,7 +267,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     it
   }
 
-  /** Loop over the key, value mappings of this map.
+  /** Loops over the key, value mappings of this map.
     *
     *  The behaviour of modifying the map during an iteration is as follows:
     *  - Deleting a mapping is always permitted.

@@ -446,10 +446,10 @@ final abstract class Long private extends AnyVal {
 }
 
 object Long extends AnyValCompanion {
-  /** The smallest value representable as a Long. */
+  /** The smallest value representable as a `Long`. */
   final val MinValue = java.lang.Long.MIN_VALUE
 
-  /** The largest value representable as a Long. */
+  /** The largest value representable as a `Long`. */
   final val MaxValue = java.lang.Long.MAX_VALUE
 
   /** Transforms a value type into a boxed reference type.
@@ -473,9 +473,9 @@ object Long extends AnyValCompanion {
    */
   def unbox(x: java.lang.Object): Long = ???
 
-  /** The String representation of the scala.Long companion object. */
+  /** The `String` representation of the `scala.Long` companion object. */
   override def toString() = "object scala.Long"
-  /** Language mandated coercions from Long to "wider" types. */
+  /** Language mandated coercions from `Long` to "wider" types. */
   import scala.language.implicitConversions
   @deprecated("Implicit conversion from Long to Float is dangerous because it loses precision. Write `.toFloat` instead.", "2.13.1")
   implicit def long2float(x: Long): Float = x.toFloat

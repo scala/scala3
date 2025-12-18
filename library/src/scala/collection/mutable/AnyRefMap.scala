@@ -570,7 +570,7 @@ object AnyRefMap {
   /** Creates a new empty `AnyRefMap`. */
   def empty[K <: AnyRef, V]: AnyRefMap[K, V] = new AnyRefMap[K, V]
 
-  /** Creates a new empty `AnyRefMap` with the supplied default */
+  /** Creates a new empty `AnyRefMap` with the supplied default. */
   def withDefault[K <: AnyRef, V](default: K -> V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
 
   /** Creates a new `AnyRefMap` from an existing source collection. A source collection

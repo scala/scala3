@@ -102,7 +102,7 @@ import scala.concurrent.impl.Promise.DefaultPromise
  * thread. That is, the implementation may run multiple callbacks
  * in a batch within a single `execute()` and it may run
  * `execute()` either immediately or asynchronously.
- * Completion of the Future must *happen-before* the invocation of the callback.
+ * Completion of the `Future` must *happen-before* the invocation of the callback.
  */
 trait Future[+T] extends Awaitable[T] {
 

@@ -32,7 +32,7 @@ trait Shrinkable[-A] {
    */
   def subtractOne(elem: A): this.type
 
-  /** Alias for `subtractOne` */
+  /** Alias for `subtractOne`. */
   @`inline` final def -= (elem: A): this.type = subtractOne(elem)
 
   /** Removes two or more elements from this $coll.
@@ -75,7 +75,7 @@ trait Shrinkable[-A] {
     this
   }
 
-  /** Alias for `subtractAll` */
+  /** Alias for `subtractAll`. */
   @`inline` final def --= (xs: collection.IterableOnce[A]^): this.type = subtractAll(xs)
 
 }

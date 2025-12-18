@@ -107,7 +107,7 @@ import scala.runtime.ScalaRunTime.mapNull
  */
 object Predef extends LowPriorityImplicits {
   /**
-   * Retrieve the runtime representation of a class type. `classOf[T]` is equivalent to
+   * Retrieves the runtime representation of a class type. `classOf[T]` is equivalent to
    * the class literal `T.class` in Java.
    *
    * @example {{{
@@ -124,7 +124,7 @@ object Predef extends LowPriorityImplicits {
   def classOf[T]: Class[T] = null.asInstanceOf[Class[T]] // This is a stub method. The actual implementation is filled in by the compiler.
 
   /**
-   * Retrieve the single value of a type with a unique inhabitant.
+   * Retrieves the single value of a type with a unique inhabitant.
    *
    * @example {{{
    * object Foo
@@ -139,7 +139,7 @@ object Predef extends LowPriorityImplicits {
   @inline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
 
   /**
-   * Retrieve the single value of a type with a unique inhabitant.
+   * Retrieves the single value of a type with a unique inhabitant.
    *
    * @example {{{
    * object Foo

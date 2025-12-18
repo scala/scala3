@@ -9,7 +9,7 @@ import language.experimental.captureChecking
  *
  *  @param code The code to be type checked
  *
- *  @return false if the code has syntax error or type error in the current context, otherwise returns true.
+ *  @return `false` if the code has syntax error or type error in the current context, `true` otherwise.
  *
  *  The code should be a sequence of expressions or statements that may appear in a block.
  */

@@ -243,7 +243,7 @@ final class IntAccumulator
     r
   }
 
-  /** Copies the elements in this `IntAccumulator` into an `Array[Int]` */
+  /** Copies the elements in this `IntAccumulator` into an `Array[Int]`. */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Int] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -265,7 +265,7 @@ final class IntAccumulator
     a
   }
 
-  /** Copies the elements in this `IntAccumulator` to a `List` */
+  /** Copies the elements in this `IntAccumulator` to a `List`. */
   override def toList: List[Int] = {
     var ans: List[Int] = Nil
     var i = index - 1
@@ -287,7 +287,7 @@ final class IntAccumulator
   }
 
   /**
-   * Copy the elements in this `IntAccumulator` to a specified collection.
+   * Copies the elements in this `IntAccumulator` to a specified collection.
    * Note that the target collection is not specialized.
    * Usage example: `acc.to(Vector)`
    */

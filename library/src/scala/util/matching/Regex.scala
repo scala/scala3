@@ -346,7 +346,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
   //  @see UnanchoredRegex
   protected def runMatcher(m: Matcher): Boolean = m.matches()
 
-  /** Return all non-overlapping matches of this `Regex` in the given character
+  /** Returns all non-overlapping matches of this `Regex` in the given character
    *  sequence as a [[scala.util.matching.Regex.MatchIterator]],
    *  which is a special [[scala.collection.Iterator]] that returns the
    *  matched strings but can also be queried for more data about the last match,
@@ -387,7 +387,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    */
   def findAllIn(source: CharSequence): MatchIterator = new Regex.MatchIterator(source, this, groupNames)
 
-  /** Return all non-overlapping matches of this regexp in given character sequence as a
+  /** Returns all non-overlapping matches of this regexp in given character sequence as a
    *  [[scala.collection.Iterator]] of [[scala.util.matching.Regex.Match]].
    *
    *  @param source The text to match against.
@@ -405,7 +405,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
     }
   }
 
-  /** Return an optional first matching string of this `Regex` in the given character sequence,
+  /** Returns an optional first matching string of this `Regex` in the given character sequence,
    *  or None if there is no match.
    *
    *  @param source The text to match against.
@@ -417,23 +417,23 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
     if (m.find) Some(m.group) else None
   }
 
-  /** Return an optional first match of this `Regex` in the given character sequence,
-   *  or None if it does not exist.
+  /** Returns an optional first match of this `Regex` in the given character sequence,
+   *  or `None` if it does not exist.
    *
    *  If the match is successful, the [[scala.util.matching.Regex.Match]] can be queried for
    *  more data.
    *
    *  @param source The text to match against.
    *  @return       A [[scala.Option]] of [[scala.util.matching.Regex.Match]] of the first matching string in the text.
-   *  @example      {{{("""[a-z]""".r findFirstMatchIn "A simple example.") map (_.start) // returns Some(2), the index of the first match in the text}}}
+   *  @example      {{{("""[a-z]""".r findFirstMatchIn "A simple example.") map (_.start) // returns `Some(2)`, the index of the first match in the text}}}
    */
   def findFirstMatchIn(source: CharSequence): Option[Match] = {
     val m = pattern.matcher(source)
     if (m.find) Some(new Match(source, m, groupNames)) else None
   }
 
-  /** Return an optional match of this `Regex` at the beginning of the
-   *  given character sequence, or None if it matches no prefix
+  /** Returns an optional match of this `Regex` at the beginning of the
+   *  given character sequence, or `None` if it matches no prefix
    *  of the character sequence.
    *
    *  Unlike `findFirstIn`, this method will only return a match at
@@ -441,15 +441,15 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.Option]] of the matched prefix.
-   *  @example      {{{"""\p{Lower}""".r findPrefixOf "A simple example." // returns None, since the text does not begin with a lowercase letter}}}
+   *  @example      {{{"""\p{Lower}""".r findPrefixOf "A simple example." // returns `None`, since the text does not begin with a lowercase letter}}}
    */
   def findPrefixOf(source: CharSequence): Option[String] = {
     val m = pattern.matcher(source)
     if (m.lookingAt) Some(m.group) else None
   }
 
-  /** Return an optional match of this `Regex` at the beginning of the
-   *  given character sequence, or None if it matches no prefix
+  /** Returns an optional match of this `Regex` at the beginning of the
+   *  given character sequence, or `None` if it matches no prefix
    *  of the character sequence.
    *
    *  Unlike `findFirstMatchIn`, this method will only return a match at
@@ -457,7 +457,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.Option]] of the [[scala.util.matching.Regex.Match]] of the matched string.
-   *  @example      {{{"""\w+""".r findPrefixMatchOf "A simple example." map (_.after) // returns Some(" simple example.")}}}
+   *  @example      {{{"""\w+""".r findPrefixMatchOf "A simple example." map (_.after) // returns `Some(" simple example.")`}}}
    */
   def findPrefixMatchOf(source: CharSequence): Option[Match] = {
     val m = pattern.matcher(source)
@@ -565,7 +565,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
   def split(toSplit: CharSequence): Array[String] =
     pattern.split(toSplit)
 
-  /** Create a new Regex with the same pattern, but no requirement that
+  /** Creates a new Regex with the same pattern, but no requirement that
    *  the entire String matches in extractor patterns and [[Regex#matches]].
    *
    *  Normally, matching on `date` behaves as though the pattern were
@@ -595,7 +595,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
 
   def regex: String = pattern.pattern
 
-  /** The string defining the regular expression */
+  /** The string defining the regular expression. */
   override def toString(): String = regex
 }
 
@@ -621,10 +621,10 @@ object Regex {
     /** Basically, wraps a platform Matcher. */
     protected def matcher: Matcher
 
-    /** The source from which the match originated */
+    /** The source from which the match originated. */
     val source: CharSequence
 
-    /** The names of the groups, or an empty sequence if none defined */
+    /** The names of the groups, or an empty sequence if none defined. */
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String]
 
@@ -633,7 +633,7 @@ object Regex {
      */
     def groupCount: Int
 
-    /** The index of the first matched character, or -1 if nothing was matched */
+    /** The index of the first matched character, or -1 if nothing was matched. */
     def start: Int
 
     /** The index of the first matched character in group `i`,
@@ -814,7 +814,7 @@ object Regex {
     // 0 = not yet matched, 1 = matched, 2 = advanced to match, 3 = no more matches
     private var nextSeen = 0
 
-    /** Return true if `next` will find a match.
+    /** Returns true if `next` will find a match.
      *  As a side effect, advance the underlying matcher if necessary;
      *  queries about the current match data pertain to the underlying matcher.
      */
@@ -867,13 +867,13 @@ object Regex {
     /** The number of subgroups. */
     def groupCount: Int = { ensure() ; matcher.groupCount }
 
-    /** Convert to an iterator that yields MatchData elements instead of Strings. */
+    /** Converts to an iterator that yields MatchData elements instead of Strings. */
     def matchData: Iterator[Match] = new AbstractIterator[Match] {
       def hasNext = self.hasNext
       def next() = { self.next(); new Match(source, matcher, _groupNames).force }
     }
 
-    /** Convert to an iterator that yields MatchData elements instead of Strings and has replacement support. */
+    /** Converts to an iterator that yields MatchData elements instead of Strings and has replacement support. */
     private[matching] def replacementData = new AbstractIterator[Match] with Replacement {
       protected def matcher = self.matcher
       def hasNext = self.hasNext

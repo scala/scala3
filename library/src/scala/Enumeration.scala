@@ -149,11 +149,11 @@ abstract class Enumeration (initial: Int) extends Serializable {
     *  values in this enumeration. */
   final def maxId = topId
 
-  /** The value of this enumeration with given id `x`
+  /** The value of this enumeration with given id `x`.
    */
   final def apply(x: Int): Value = vmap(x)
 
-  /** Return a `Value` from this `Enumeration` whose name matches
+  /** Returns a `Value` from this `Enumeration` whose name matches
    *  the argument `s`.  The names are determined automatically via reflection.
    *
    * @param  s an `Enumeration` name
@@ -228,9 +228,9 @@ abstract class Enumeration (initial: Int) extends Serializable {
   /** The type of the enumerated values. */
   @SerialVersionUID(7091335633555234129L)
   abstract class Value extends Ordered[Value] with Serializable {
-    /** the id and bit location of this enumeration value */
+    /** The id and bit location of this enumeration value. */
     def id: Int
-    /** a marker so we can tell whose values belong to whom come reflective-naming time */
+    /** A marker so we can tell whose values belong to whom come reflective-naming time. */
     private[Enumeration] val outerEnum = thisenum
 
     override def compare(that: Value): Int =
@@ -243,7 +243,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     }
     override def hashCode(): Int = id.##
 
-    /** Create a ValueSet which contains this value and another one */
+    /** Creates a ValueSet which contains this value and another one. */
     def + (v: Value): ValueSet = ValueSet(this, v)
   }
 
@@ -276,7 +276,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     }
   }
 
-  /** An ordering by id for values of this set */
+  /** An ordering by id for values of this set. */
   implicit object ValueOrdering extends Ordering[Value] {
     def compare(x: Value, y: Value): Int = x compare y
   }
@@ -332,18 +332,18 @@ abstract class Enumeration (initial: Int) extends Serializable {
     @transient private[Enumeration] lazy val byName: Map[String, Value] = iterator.map( v => v.toString -> v).toMap
   }
 
-  /** A factory object for value sets */
+  /** A factory object for value sets. */
   @SerialVersionUID(3L)
   object ValueSet extends SpecificIterableFactory[Value, ValueSet] {
     private final val ordMsg = "No implicit Ordering[${B}] found to build a SortedSet[${B}]. You may want to upcast to a Set[Value] first by calling `unsorted`."
     private final val zipOrdMsg = "No implicit Ordering[${B}] found to build a SortedSet[(Value, ${B})]. You may want to upcast to a Set[Value] first by calling `unsorted`."
 
-    /** The empty value set */
+    /** The empty value set. */
     val empty: ValueSet = new ValueSet(immutable.BitSet.empty)
     /** A value set containing all the values for the zero-adjusted ids
      *  corresponding to the bits in an array */
     def fromBitMask(elems: Array[Long]): ValueSet = new ValueSet(immutable.BitSet.fromBitMask(elems))
-    /** A builder object for value sets */
+    /** A builder object for value sets. */
     def newBuilder: mutable.Builder[Value, ValueSet] = new mutable.Builder[Value, ValueSet] {
       private val b = new mutable.BitSet
       def addOne (x: Value) = { b += (x.id - bottomId); this }
