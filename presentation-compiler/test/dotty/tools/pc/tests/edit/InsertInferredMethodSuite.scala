@@ -537,6 +537,25 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |""".stripMargin,
     )
 
+  @Test def `extension-method-3` =
+    checkEdit(
+      """|import java.nio.file.Paths
+         |
+         |object Main:
+         |  val p = Paths.get("test")
+         |  p.<<newMethod>>
+         |""".stripMargin,
+      """|import java.nio.file.Paths
+         |import java.nio.file.Path
+         |
+         |object Main:
+         |  val p = Paths.get("test")
+         |  extension (x: Path)
+         |    def newMethod = ???
+         |  p.newMethod
+         |""".stripMargin,
+    )
+
   def checkEdit(
       original: String,
       expected: String
