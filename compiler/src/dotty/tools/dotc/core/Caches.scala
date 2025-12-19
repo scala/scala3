@@ -14,8 +14,23 @@ object Caches:
 
   /** Cache for values of type `V`, associated with keys of type `K`. */
   trait Cache[K, V]:
+
+    /** Get the value associated with `key` from the cache, or compute it using
+     *  the by-name parameter `value`.
+     *
+     *  The value is cached iff `mightContain(key) == true`.
+     */
     def apply(key: K, value: => V): V
+
+    /** Check whether the cache might contain a value for `key`.
+     *
+     *  `true` means that the cache will cache the value for `key` if requested
+     *  via [[apply]], not that it has already cached it.
+     */
+    def mightContain(key: K): Boolean
+
     def stats(): CacheStats
+
     override def toString: String =
       s"${this.getClass.getSimpleName}(stats() = ${stats()})"
 
@@ -33,6 +48,9 @@ object Caches:
     def apply(key: K, value: => V): V =
       total += 1
       value
+
+    def mightContain(key: K): Boolean =
+      false
 
     def stats(): CacheStats =
       CacheStats(total, misses = 0, uncached = total)
@@ -72,6 +90,9 @@ object Caches:
               map.put(key, (stamp, v))
               v
 
+    def mightContain(key: K): Boolean =
+      getStamp(key).isDefined
+
     def stats(): CacheStats =
       CacheStats(total, misses, uncached)
 
@@ -102,6 +123,9 @@ object Caches:
                 (stamp, value)
           )._2
 
+    def mightContain(key: K): Boolean =
+      getStamp(key).isDefined
+
     def stats(): CacheStats =
       CacheStats(total.longValue(), misses.longValue(), uncached.longValue())
 
@@ -122,26 +146,35 @@ object Caches:
   final class FileBasedCache[V]() extends Cache[AbstractFile, V]:
     private case class FileStamp(lastModified: FileTime, fileKey: Object)
 
-    private def getFileStamp(abstractFile: AbstractFile): Option[FileStamp] =
+    private def getPath(abstractFile: AbstractFile): Option[Path] =
       abstractFile.underlyingSource match
         case Some(underlyingSource) if underlyingSource ne abstractFile =>
-          getFileStamp(underlyingSource)
+          getPath(underlyingSource)
         case _ =>
-          val javaFile = abstractFile.file
-          if javaFile == null then
-            None
-          else
-            val attrs = Files.readAttributes(javaFile.toPath, classOf[BasicFileAttributes])
-            val lastModified = attrs.lastModifiedTime()
-            // This can be `null` on some platforms, but that's okay, we just use
-            // the last modified timestamp as our stamp in that case.
-            val fileKey = attrs.fileKey()
-            Some(FileStamp(lastModified, fileKey))
+          val javaPath = abstractFile.jpath
+          if javaPath != null then Some(javaPath) else None
+
+    private def getFileStamp(abstractFile: AbstractFile): Option[FileStamp] =
+      getPath(abstractFile) match
+        case Some(path) =>
+          val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+          val lastModified = attrs.lastModifiedTime()
+          // This can be `null` on some platforms, but that's okay, we just use
+          // the last modified timestamp as our stamp in that case.
+          val fileKey = attrs.fileKey()
+          Some(FileStamp(lastModified, fileKey))
+        case None =>
+          None
 
     private val underlying = SynchronizedMapCache[AbstractFile, FileStamp, V](getFileStamp)
 
     def apply(key: AbstractFile, value: => V): V =
       underlying(key, value)
+
+    def mightContain(key: AbstractFile): Boolean =
+      // We just check that a path exists here to avoi IO. `getFileStamp` will
+      // return `None` iff `getPath` returns `None`.
+      getPath(key).isDefined
 
     def stats(): CacheStats =
       underlying.stats()
@@ -174,6 +207,9 @@ object Caches:
         misses = baseStats.misses,
         uncached = baseStats.uncached + uncached.longValue()
       )
+
+    def mightContain(key: K): Boolean =
+      shouldCache(key) && underlying.mightContain(key)
 
     override def toString: String =
       s"FilteringCache(${underlying.toString}, uncached = ${uncached.longValue()})"

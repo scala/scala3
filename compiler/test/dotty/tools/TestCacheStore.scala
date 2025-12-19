@@ -8,6 +8,7 @@ object TestCacheStore extends CacheStore:
   /** Use the default global classpath cache. */
   val classPaths = DefaultCacheStore.classPaths
 
+  /** Standard library sources directory */
   private val stdLibDir = "library/src"
 
   /** Cache files across runs, without invalidation. */
@@ -20,3 +21,13 @@ object TestCacheStore extends CacheStore:
    *  a test run.
    */
   val sources = FilteringCache(SynchronizedMapCache(), _.canonicalPath.startsWith(stdLibDir))
+
+  /** Test output directory */
+  private val outDir = "out"
+
+  /** Cache class bytes across runs, except for classes in the `out` directory.
+   *
+   *  Classes in the `out` directory are generated during tests, so we do not
+   *  want to cache them.
+   */
+  val classBytes = FilteringCache(SynchronizedMapCache(), !_.canonicalPath.startsWith(outDir))

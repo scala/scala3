@@ -17,12 +17,14 @@ object CacheStores:
     def classPaths: Cache[AbstractFile, ClassPath]
     def files: Cache[TermName, AbstractFile]
     def sources: Cache[AbstractFile, SourceFile]
+    def classBytes: Cache[AbstractFile, Array[Byte]]
 
     override def toString: String =
       s"""CacheStore(
          |  classPaths = $classPaths,
          |  files = $files,
          |  sources = $sources
+         |  classBytes = $classBytes
          |)""".stripMargin
 
   /** Default, per-run cache store implementation. */
@@ -47,3 +49,9 @@ object CacheStores:
      *  `ContextBase.sources`. See also `Context.getSource`.
      */
     val sources = NoopCache()
+
+    /** By default, we do not cache class bytes across runs. */
+    val classBytes = NoopCache()
+
+    /** By default, we do not cache tasty loaders. */
+    val tastyLoaders = NoopCache()
