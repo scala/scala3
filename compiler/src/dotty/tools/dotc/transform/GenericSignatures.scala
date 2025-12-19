@@ -460,12 +460,6 @@ object GenericSignatures {
         (initialSymbol.is(Method) && initialSymbol.typeParams.contains(sym))
       )
 
-  private def isTypeParameterInMethSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
-    !sym.maybeOwner.isTypeParam &&
-      sym.isTypeParam && (
-        (initialSymbol.is(Method) && initialSymbol.typeParams.contains(sym))
-      )
-
   // @M #2585 when generating a java generic signature that includes
   // a selection of an inner class p.I, (p = `pre`, I = `cls`) must
   // rewrite to p'.I, where p' refers to the class that directly defines
@@ -549,6 +543,11 @@ object GenericSignatures {
 
   /** Collect type parameters that are actually used in the given types. */
   private def collectUsedTypeParams(types: List[Type], initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
+    assert(initialSymbol.is(Method))
+    def isTypeParameterInMethSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
+      !sym.maybeOwner.isTypeParam && // check if it's not higher order type param
+        sym.isTypeParam && sym.owner == initialSymbol
+
     val usedMethodTypeParamNames = collection.mutable.Set.empty[Name]
     val usedClassTypeParams = collection.mutable.Set.empty[Symbol]
 
@@ -557,9 +556,7 @@ object GenericSignatures {
         usedMethodTypeParamNames += ref.paramName
       case tp: TypeRef =>
         val sym = tp.typeSymbol
-        if isTypeParameterInMethSig(sym, initialSymbol) then
-          usedMethodTypeParamNames += sym.name
-        else if sym.isTypeParam && sym.isContainedIn(initialSymbol.topLevelClass) then
+        if sym.isTypeParam && sym.isContainedIn(initialSymbol.topLevelClass) then
           usedClassTypeParams += sym
       case _ =>
 
