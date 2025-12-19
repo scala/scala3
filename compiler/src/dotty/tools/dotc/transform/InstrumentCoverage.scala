@@ -275,7 +275,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         InstrumentedParts.singleExprTree(coverageCall, transformed)
 
     override def transform(tree: Tree)(using Context): Tree =
-      lastCompiledFiles += tree.sourcePos.source.file.absolute.jpath.toString
+      val path = tree.sourcePos.source.file.absolute.jpath
+      if path != null then lastCompiledFiles += path.toString
+
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
         tree match
           // simple cases

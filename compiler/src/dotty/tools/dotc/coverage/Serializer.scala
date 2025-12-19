@@ -110,7 +110,7 @@ object Serializer:
         fullClassName,
         classType,
         method,
-        sourceRoot.resolve(sourcePath)
+        sourceRoot.resolve(sourcePath).normalize()
       )
       val start: Int = lines.next().toInt
       val end: Int = lines.next().toInt
