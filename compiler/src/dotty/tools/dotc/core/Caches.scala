@@ -35,11 +35,11 @@ object Caches:
       s"${this.getClass.getSimpleName}(stats() = ${stats()})"
 
   /** Statistics about a cache */
-  final case class CacheStats(total: Long, misses: Long, uncached: Long):
+  final case class CacheStats(total: Long, misses: Long, size: Long, uncached: Long):
     val hits: Long = total - misses - uncached
 
     override def toString: String =
-      s"(total = $total, hits = $hits, misses = $misses, uncached = $uncached)"
+      s"(total = $total, hits = $hits, misses = $misses, size = $size, uncached = $uncached)"
 
   /** A no-op cache implementation that does not cache anything. */
   final class NoopCache[K, V] extends Cache[K, V]:
@@ -53,7 +53,7 @@ object Caches:
       false
 
     def stats(): CacheStats =
-      CacheStats(total, misses = 0, uncached = total)
+      CacheStats(total, misses = 0, size = 0, uncached = total)
 
   /** Default value for stamp function that indicates no stamping. */
   private def noStamp[K](key: K): Option[Unit] = Some(())
@@ -94,11 +94,17 @@ object Caches:
       getStamp(key).isDefined
 
     def stats(): CacheStats =
-      CacheStats(total, misses, uncached)
+      CacheStats(total, misses, map.size, uncached)
 
   /** A thread-safe cache implementation based on a Java [[ConcurrentHashMap]].
    *
    *  Entries are not evicted.
+   *
+   *  @param getStamp
+   *    Function to obtain a stamp for a given key. If the function returns
+   *    `None`, no caching is performed for that key. If the function returns
+   *    `Some(stamp)`, the stamp is used to validate cached entries: cache
+   *    values are only reused if the stamp matches the cached stamp.
    */
   final class SynchronizedMapCache[K, S, V](getStamp: K => Option[S] = noStamp) extends Cache[K, V]:
     private val map = ConcurrentHashMap[K, (S, V)]()
@@ -127,7 +133,7 @@ object Caches:
       getStamp(key).isDefined
 
     def stats(): CacheStats =
-      CacheStats(total.longValue(), misses.longValue(), uncached.longValue())
+      CacheStats(total.longValue(), misses.longValue(), map.size(), uncached.longValue())
 
   /** A cache where keys are [[AbstractFile]]s.
    *
@@ -205,6 +211,7 @@ object Caches:
       CacheStats(
         total = baseStats.total + uncached.longValue(),
         misses = baseStats.misses,
+        size = baseStats.size,
         uncached = baseStats.uncached + uncached.longValue()
       )
 
