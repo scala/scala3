@@ -87,9 +87,9 @@ abstract class SignatureTest(
       kindMatch <- kinds.flatMap(k =>s"\\b$k\\b".r.findFirstMatchIn(signature)).headOption
       kind <- Option(kindMatch.group(0)) // to filter out nulls
       afterKind <- Option(kindMatch.after(0)) // to filter out nulls
-      name <- if kind.contains("extension") then Some(signature) // The name of an extension will always be the signature itself
+      case name: String <- if kind.contains("extension") then Some(signature) // The name of an extension will always be the signature itself
                     else identifierRegex.findFirstMatchIn(afterKind).map(_.group(1))
-    yield name.nn
+    yield name
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
     source.getLines.map(_.trim)
@@ -97,8 +97,8 @@ abstract class SignatureTest(
       .filterNot(l => l.startWithAnyOfThese("=",":","{","}", "//") && !l.startsWith("//expected:"))
       .toSeq
       .flatMap {
-        case unexpectedRegex(signature) => findName(signature.nn, kinds).map(Unexpected(_))
-        case expectedRegex(signature) => findName(signature.nn, kinds).map(Expected(_, signature.nn))
+        case unexpectedRegex(signature: String) => findName(signature, kinds).map(Unexpected(_))
+        case expectedRegex(signature: String) => findName(signature, kinds).map(Expected(_, signature))
         case signature =>
           findName(signature, kinds).map(
             Expected(_, commentRegex.replaceAllIn(signature, "")

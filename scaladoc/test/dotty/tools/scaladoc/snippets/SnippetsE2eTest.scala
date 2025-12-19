@@ -146,16 +146,16 @@ object SnippetsE2eTest:
   case class Message(level: MessageLevel, offset: Offset)
   object SnippetInfo:
     def apply(str: String): SnippetInfo = str match {
-      case snippetInfoRegex(ol, oc, il, ic) => SnippetInfo(
-        Offset(ol.nn.toInt, oc.nn.toInt),
-        Offset(il.nn.toInt, ic.nn.toInt)
+      case snippetInfoRegex(ol: String, oc: String, il: String, ic: String) => SnippetInfo(
+        Offset(ol.toInt, oc.toInt),
+        Offset(il.toInt, ic.toInt)
       )
     }
 
   object Message:
     def apply(str: String): Message = str match {
-      case errorRegex(ln, cl) => Message(MessageLevel.Error, Offset(ln.nn.toInt, cl.nn.toInt))
-      case warningRegex(ln, cl) => Message(MessageLevel.Warning, Offset(ln.nn.toInt, cl.nn.toInt))
+      case errorRegex(ln: String, cl: String) => Message(MessageLevel.Error, Offset(ln.toInt, cl.toInt))
+      case warningRegex(ln: String, cl: String) => Message(MessageLevel.Warning, Offset(ln.toInt, cl.toInt))
     }
   val snippetInfoRegex = (raw"SNIPPET\(" +
     raw"OUTERLINEOFFSET:(\d+),OUTERCOLUMNOFFSET:(\d+)," +
