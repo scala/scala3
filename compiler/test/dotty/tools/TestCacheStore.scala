@@ -27,7 +27,10 @@ object TestCacheStore extends CacheStore:
 
   /** Cache class bytes across runs, except for classes in the `out` directory.
    *
-   *  Classes in the `out` directory are generated during tests, so we do not
-   *  want to cache them.
+   *  Files in the `out` directory are generated during tests, so we do not want
+   *  to cache them.
    */
   val classBytes = FilteringCache(SynchronizedMapCache(), !_.canonicalPath.startsWith(outDir))
+
+  /** Cache tasty bytes across runs, except for those in the `out` directory. */
+  val tastyBytes = FilteringCache(SynchronizedMapCache(), !_.canonicalPath.startsWith(outDir))

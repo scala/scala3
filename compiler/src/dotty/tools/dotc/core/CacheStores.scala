@@ -18,6 +18,7 @@ object CacheStores:
     def files: Cache[TermName, AbstractFile]
     def sources: Cache[AbstractFile, SourceFile]
     def classBytes: Cache[AbstractFile, Array[Byte]]
+    def tastyBytes: Cache[AbstractFile, Array[Byte]]
 
     override def toString: String =
       s"""CacheStore(
@@ -25,6 +26,7 @@ object CacheStores:
          |  files = $files,
          |  sources = $sources
          |  classBytes = $classBytes
+         |  tastyBytes = $tastyBytes
          |)""".stripMargin
 
   /** Default, per-run cache store implementation. */
@@ -50,8 +52,8 @@ object CacheStores:
      */
     val sources = NoopCache()
 
-    /** By default, we do not cache class bytes across runs. */
+    /** By default, we do not cache class bytes. */
     val classBytes = NoopCache()
 
-    /** By default, we do not cache tasty loaders. */
-    val tastyLoaders = NoopCache()
+    /** By default, we do not cache tasty bytes. */
+    val tastyBytes = NoopCache()
