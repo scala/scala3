@@ -20,7 +20,7 @@ object Caches:
       s"${this.getClass.getSimpleName}(stats() = ${stats()})"
 
   /** Statistics about a cache */
-  final class CacheStats(total: Long, misses: Long, uncached: Long):
+  final case class CacheStats(total: Long, misses: Long, uncached: Long):
     val hits: Long = total - misses - uncached
 
     override def toString: String =
@@ -37,6 +37,9 @@ object Caches:
     def stats(): CacheStats =
       CacheStats(total, misses = 0, uncached = total)
 
+  /** Default value for stamp function that indicates no stamping. */
+  private def noStamp[K](key: K): Option[Unit] = Some(())
+
   /** A thread-unsafe cache implementation based on a mutable [[Map]].
    *
    *  Entries are not evicted.
@@ -47,7 +50,7 @@ object Caches:
    *    `Some(stamp)`, the stamp is used to validate cached entries: cache
    *    values are only reused if the stamp matches the cached stamp.
    */
-  final class MapCache[K, S, V](getStamp: K => Option[S]) extends Cache[K, V]:
+  final class MapCache[K, S, V](getStamp: K => Option[S] = noStamp) extends Cache[K, V]:
     private val map = Map.empty[K, (S, V)]
     private var total = 0L
     private var misses = 0L
@@ -76,7 +79,7 @@ object Caches:
    *
    *  Entries are not evicted.
    */
-  final class SynchronizedMapCache[K, S, V](getStamp: K => Option[S]) extends Cache[K, V]:
+  final class SynchronizedMapCache[K, S, V](getStamp: K => Option[S] = noStamp) extends Cache[K, V]:
     private val map = ConcurrentHashMap[K, (S, V)]()
     private val total = LongAdder()
     private val misses = LongAdder()
@@ -146,4 +149,31 @@ object Caches:
     override def toString: String =
       s"FileBasedCache(${underlying.toString})"
 
+  /** Filtering cache wrapper that only caches values whose key satisfies a
+   *  given predicate.
+   *
+   *  @param underlying
+   *    Underlying cache
+   *  @param shouldCache
+   *    Should the value associated with the given key should be cached?
+   */
+  final class FilteringCache[K, V](underlying: Cache[K, V], shouldCache: K => Boolean) extends Cache[K, V]:
+    private val uncached = LongAdder()
 
+    def apply(key: K, value: => V): V =
+      if shouldCache(key) then
+        underlying(key, value)
+      else
+        uncached.increment()
+        value
+
+    def stats(): CacheStats =
+      val baseStats = underlying.stats()
+      CacheStats(
+        total = baseStats.total + uncached.longValue(),
+        misses = baseStats.misses,
+        uncached = baseStats.uncached + uncached.longValue()
+      )
+
+    override def toString: String =
+      s"FilteringCache(${underlying.toString}, uncached = ${uncached.longValue()})"

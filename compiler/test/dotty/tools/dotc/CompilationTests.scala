@@ -19,6 +19,7 @@ import TestSources.sources
 import reporting.TestReporter
 import vulpix._
 import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.core.CacheStores.DefaultCacheStore
 
 class CompilationTests {
   import ParallelTesting._
@@ -406,6 +407,7 @@ object CompilationTests extends ParallelTesting {
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {
+    println(s"Cache statistics: $TestCacheStore")
     super.cleanup()
     summaryReport.echoSummary()
   }
