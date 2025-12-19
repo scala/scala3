@@ -799,13 +799,12 @@ object SymDenotations {
       *
       * Note, (f: => T) is treated as a stable TermRef only in Capture Sets.
       */
-    final def isStableMember(using Context): Boolean = {
+    final def isStableMember(using Context): Boolean =
       def isUnstableValue =
         isOneOf(UnstableValueFlags)
-        || !ctx.mode.is(Mode.InCaptureSet) && info.isInstanceOf[ExprType]
+        || info.isInstanceOf[ExprType]
         || isAllOf(InlineParam)
       isType || is(StableRealizable) || exists && !isUnstableValue
-    }
 
     /** Is this a denotation of a real class that does not have - either direct or inherited -
      *  initialization code?

@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, RetainingAnnotation}
+import cc.{isCaptureChecking, RetainingAnnotation, isRetainsLike, isDisallowedInCapset}
 import cc.Mutability.isUpdateMethod
 
 import collection.mutable
@@ -1044,7 +1044,14 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit =
-    if !tp.isStable && !tp.isErroneous then report.error(NotAPath(tp, kind), pos)
+    def captureSetException = tp match
+      case tp: TermRef if ctx.mode.is(Mode.InCaptureSet) =>
+        tp.symbol.exists
+        && !tp.symbol.isDisallowedInCapset
+        && !tp.symbol.isAllOf(InlineParam)
+      case _ => false
+    if !tp.isStable && !tp.isErroneous && !captureSetException then
+      report.error(NotAPath(tp, kind), pos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SrcPos)(using Context): Unit = {

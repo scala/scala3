@@ -113,10 +113,13 @@ extension (tp: Type)
     case _: (ThisType | TermParamRef) => true
     case tp: TermRef =>
       !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
-      ||
-        ((tp.prefix eq NoPrefix)
-        || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
-        ) && !tp.symbol.isOneOf(UnstableValueFlags)
+      || {
+        if tp.prefix eq NoPrefix then
+          !tp.symbol.isDisallowedInCapset
+        else
+          tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
+          && !tp.symbol.isOneOf(UnstableValueFlags)
+      }
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
@@ -665,6 +668,9 @@ extension (sym: Symbol)
 
   def isArrayUnderStrictMut(using Context): Boolean =
     sym == defn.ArrayClass && ccConfig.strictMutability
+
+  def isDisallowedInCapset(using Context): Boolean =
+    sym.isOneOf(if ccConfig.newScheme && ccConfig.strictMutability then Method else UnstableValueFlags)
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
