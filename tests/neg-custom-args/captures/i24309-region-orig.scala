@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 import caps.*
-class Ref(private var x: Int):
+class Ref(@caps.unsafe.untrackedCaptures private var x: Int):
   def get = x
   def set(y: Int) = x = y
 trait Region extends SharedCapability:

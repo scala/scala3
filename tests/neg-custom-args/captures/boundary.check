@@ -46,6 +46,8 @@
    |
    |  Note that capability cap is not included in capture set {cap²}.
    |
+   |  The error occurred for a synthesized tree:  _
+   |
    |  where:    ^ and cap² refer to the universal root capability
    |            ^² and cap refer to a fresh root capability created in package <empty>
    |

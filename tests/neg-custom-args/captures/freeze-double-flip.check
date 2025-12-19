@@ -2,6 +2,6 @@
 15 |    (x: Ref^) => (op: Ref^ => IRef) => op(x) // error
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |    Found:    Ref^ -> (Ref^ => IRef) -> IRef
-   |    Required: scala.caps.Mutable
+   |    Required: scala.caps.Mutable | Array[?]
    |
    | longer explanation available when compiling with `-explain`

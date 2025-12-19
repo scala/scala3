@@ -1170,7 +1170,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   ""
               disallowBadRootsIn(
                 tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
-            if ccConfig.noUnsafeMutableFields
+            if ccConfig.strictMutability
                 && sym.owner.isClass
                 && !sym.owner.derivesFrom(defn.Caps_Stateful)
                 && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
@@ -1410,9 +1410,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         // (3) Capture set of self type includes capture sets of parameters
         for param <- cls.paramGetters do
-          if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
-              && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
-          then
+          if param.isTrackedParamAccessor then
             withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
               checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
 
@@ -1581,7 +1579,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
-      try testAdapted(actual, expected, tree, notes: List[Note])(err.typeMismatch)
+      try testAdapted(actual, expected, tree, notes)(err.typeMismatch)
       catch case ex: AssertionError =>
         println(i"error while checking $tree: $actual against $expected")
         throw ex
@@ -2147,26 +2145,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.isInstanceOf[InferredTypeTree] then
         checker.traverse(tree.nuType)
     end checkTypeParam
-
-    /** Under the unsealed policy: Arrays are like vars, check that their element types
-     *  do not contains `cap` (in fact it would work also to check on array creation
-     *  like we do under sealed).
-     */
-    def checkArraysAreSealedIn(tp: Type, pos: SrcPos)(using Context): Unit =
-      val check = new TypeTraverser:
-        def traverse(t: Type): Unit =
-          t match
-            case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.ArrayClass =>
-              if !(pos.span.isSynthetic && ctx.reporter.errorsReported)
-                && !arg.typeSymbol.name.is(WildcardParamName)
-              then
-                disallowBadRootsIn(arg, NoSymbol, "Array", "have element type", "", pos)
-              traverseChildren(t)
-            case defn.RefinedFunctionOf(rinfo: MethodType) =>
-              traverse(rinfo)
-            case _ =>
-              traverseChildren(t)
-      check.traverse(tp)
 
     /** Check that no uses refer to reach capabilities of parameters of enclosing
      *  methods or classes.

@@ -165,9 +165,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
       def mappedInfo =
-        if toBeUpdated.contains(sym)
-        then symd.info // don't transform symbols that will anyway be updated
-        else transformExplicitType(symd.info, sym)
+        if toBeUpdated.contains(sym) then
+          symd.info // don't transform symbols that will anyway be updated
+        else if sym.isArrayUnderStrictMut then
+          val cinfo: ClassInfo = sym.info.asInstanceOf
+          cinfo.derivedClassInfo(
+            declaredParents = cinfo.declaredParents :+ defn.Caps_Mutable.typeRef)
+        else
+          transformExplicitType(symd.info, sym)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -425,7 +430,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         then
           normalizeCaptures(mapOver(t)) match
             case t1 @ CapturingType(_, _) => t1
-            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1), boxed = false)
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1, sym, variance), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
