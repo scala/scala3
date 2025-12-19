@@ -23,6 +23,7 @@ PROG_HOME="$DIST_DIR/target/universal/stage"
 
 SOURCE="$ROOT/tests/pos/HelloWorld.scala"
 SOURCE_VERSION="$ROOT/project/scripts/native-integration/reportScalaVersion.scala"
+SOURCE_TEST_BOOTSTRAPPED="$ROOT/project/scripts/native-integration/testBootstrappedLibrary.scala"
 
 clear_cli_dotfiles()
 {
@@ -80,5 +81,17 @@ clear_cli_dotfiles "$ROOT/tests/pos"
 echo "testing run command (-with-compiler)"
 std_output=$("$PROG_HOME/bin/scala" run "$SOURCE_VERSION" -with-compiler --power --offline --server=false)
 test "$SCALA_VERSION" = "$std_output"
+clear_cli_dotfiles "$ROOT/project/scripts/native-integration"
+
+echo "testing REPL direct invocation with -repl-init-script"
+# Use scalac with REPL options to verify REPL functionality
+# -repl-init-script runs code on startup, -repl-quit-after-init exits after init
+std_output=$("$PROG_HOME/bin/scala" -repl-init-script 'println("REPL_INIT_OK"); assert(scala.util.Properties.versionNumberString.startsWith("3."))' -repl-quit-after-init --power --offline --server=false 2>&1)
+echo "$std_output" | grep -q "REPL_INIT_OK" || die "REPL init script test failed, output: $std_output"
+clear_cli_dotfiles "$ROOT"
+
+echo "testing bootstrapped standard library (scala-library-bootstrapped)"
+std_output=$("$PROG_HOME/bin/scala" run "$SOURCE_TEST_BOOTSTRAPPED" --power --offline --server=false)
+echo "$std_output" | grep -q "BOOTSTRAPPED_LIBRARY_TEST_PASSED" || die "Bootstrapped library test failed, output: $std_output"
 clear_cli_dotfiles "$ROOT/project/scripts/native-integration"
 
