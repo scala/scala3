@@ -37,6 +37,7 @@
    |      where:    ^     refers to the universal root capability
    |                cap3  is a reference to a value parameter
    |                cap3² is a parameter in an anonymous function in method test
+   |
 37 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 38 |    g
    |

@@ -6,7 +6,7 @@ import scala.reflect.ClassTag
 import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
 import caps.cap
-import caps.unsafe.unsafeAssumeSeparate
+import caps.unsafe.{unsafeAssumeSeparate, untrackedCaptures}
 
 import language.experimental.captureChecking
 
@@ -207,7 +207,7 @@ object CollectionStrawMan5 {
     def head: A
     def tail: List[A]
     def iterator = new Iterator[A] {
-      private var current = self
+      @untrackedCaptures private var current = self
       def hasNext = !current.isEmpty
       def next() = { val r = current.head; current = current.tail; r }
     }
@@ -230,7 +230,7 @@ object CollectionStrawMan5 {
       if (n > 0) tail.drop(n - 1) else this
   }
 
-  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance @uncheckedCaptures]) // sound because `next` is used only locally
+  case class Cons[+A](x: A, @untrackedCaptures private[collections] var next: List[A @uncheckedVariance @uncheckedCaptures]) // sound because `next` is used only locally
   extends List[A] {
     override def isEmpty = false
     override def head = x
@@ -254,8 +254,8 @@ object CollectionStrawMan5 {
   /** Concrete collection type: ListBuffer */
   class ListBuffer[A] extends Seq[A] with SeqLike[A] with Builder[A, List[A]] {
     type C[X] = ListBuffer[X]
-    private var first, last: List[A] = Nil
-    private var aliased = false
+    @untrackedCaptures private var first, last: List[A] = Nil
+    @untrackedCaptures private var aliased = false
     def iterator = first.iterator
     def fromIterable[B](coll: Iterable[B]^): ListBuffer[B] = ListBuffer.fromIterable(coll)
     def apply(i: Int) = first.apply(i)
@@ -295,14 +295,14 @@ object CollectionStrawMan5 {
   }
 
   /** Concrete collection type: ArrayBuffer */
-  class ArrayBuffer[A] private (initElems: Array[AnyRef], initLength: Int)
+  class ArrayBuffer[A] private (@untrackedCaptures initElems: Array[AnyRef]^, initLength: Int)
   extends Seq[A] with SeqLike[A] with Builder[A, ArrayBuffer[A]] {
-    this: ArrayBuffer[A] =>
+    //this: ArrayBuffer[A] =>
     type C[X] = ArrayBuffer[X]
     def this() = this(new Array[AnyRef](16), 0)
-    private var elems: Array[AnyRef] = initElems
-    private var start = 0
-    private var end = initLength
+    @untrackedCaptures private var elems: Array[AnyRef]^ = initElems
+    @untrackedCaptures private var start = 0
+    @untrackedCaptures private var end = initLength
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
     def length = end - start
     override def knownLength = length
@@ -358,7 +358,7 @@ object CollectionStrawMan5 {
       }
   }
 
-  class ArrayBufferView[A](val elems: Array[AnyRef], val start: Int, val end: Int) extends RandomAccessView[A] {
+  class ArrayBufferView[A](@untrackedCaptures val elems: Array[AnyRef]^, val start: Int, val end: Int) extends RandomAccessView[A] {
     this: ArrayBufferView[A] =>
     def apply(n: Int) = elems(start + n).asInstanceOf[A]
   }
@@ -424,7 +424,7 @@ object CollectionStrawMan5 {
     def end: Int
     def apply(i: Int): A
     def iterator: Iterator[A]^{this} = new Iterator[A] {
-      private var current = start
+      @untrackedCaptures private var current = start
       def hasNext = current < end
       def next(): A = {
         val r = apply(current)
@@ -533,8 +533,8 @@ object CollectionStrawMan5 {
       -1
     }
     def filter(p: A ->{cap, this} Boolean): Iterator[A]^{this, p} = new Iterator[A] {
-      private var hd: A = compiletime.uninitialized
-      private var hdDefined: Boolean = false
+      @untrackedCaptures private var hd: A = compiletime.uninitialized
+      @untrackedCaptures private var hdDefined: Boolean = false
 
       def hasNext: Boolean = hdDefined || {
         while {
@@ -560,7 +560,7 @@ object CollectionStrawMan5 {
     }
 
     def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new Iterator[B] {
-      private var myCurrent: Iterator[B]^{this, f} = Iterator.empty
+      @untrackedCaptures private var myCurrent: Iterator[B]^{this, f} = Iterator.empty
       private def current = {
         while (!myCurrent.hasNext && self.hasNext)
           myCurrent = f(self.next()).iterator
@@ -570,8 +570,8 @@ object CollectionStrawMan5 {
       def next() = current.next()
     }
     def ++[B >: A](xs: IterableOnce[B]^): Iterator[B]^{this, xs} = new Iterator[B] {
-      private var myCurrent: Iterator[B]^{self, xs} = self
-      private var first = true
+      @untrackedCaptures private var myCurrent: Iterator[B]^{self, xs} = self
+      @untrackedCaptures private var first = true
       private def current = {
         if (!myCurrent.hasNext && first) {
           myCurrent = xs.iterator

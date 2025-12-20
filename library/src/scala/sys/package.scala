@@ -21,19 +21,19 @@ import scala.jdk.CollectionConverters._
  *  world outside of it.
  */
 package object sys {
-  /** Throw a new RuntimeException with the supplied message.
+  /** Throws a new RuntimeException with the supplied message.
    *
    *  @return   Nothing.
    */
   def error(message: String): Nothing = throw new RuntimeException(message)
 
-  /** Exit the JVM with the default status code.
+  /** Exits the JVM with the default status code.
    *
    *  @return   Nothing.
    */
   def exit(): Nothing = exit(0)
 
-  /** Exit the JVM with the given status code.
+  /** Exits the JVM with the given status code.
    *
    *  @return   Nothing.
    */
@@ -63,7 +63,7 @@ package object sys {
    *  If lookup fails, use `System.getenv(_)` for case-insensitive lookup
    *  on a certain platform. If that also fails, throw `NoSuchElementException`.
    *
-   *  @return   a Map containing the system environment variables.
+   *  @return   a `Map` containing the system environment variables.
    */
   def env: Map[String, String] = Map.from(System.getenv().asScala).withDefault { v =>
     val s = System.getenv(v)
@@ -71,7 +71,7 @@ package object sys {
     s
   }
 
-  /** Register a shutdown hook to be run when the VM exits.
+  /** Registers a shutdown hook to be run when the VM exits.
    *  The hook is automatically registered: the returned value can be ignored,
    *  but is available in case the Thread requires further modification.
    *  It can also be unregistered by calling ShutdownHookThread#remove().

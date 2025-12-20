@@ -34,7 +34,7 @@ trait LinearSeq[+A] extends Seq[A]
 @SerialVersionUID(3L)
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](immutable.LinearSeq)
 
-/** Base trait for linear Seq operations */
+/** Base trait for linear Seq operations. */
 transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & LinearSeqOps[A, CC, C]] extends Any with SeqOps[A, CC, C] with caps.Pure { self =>
 
   /** @inheritdoc

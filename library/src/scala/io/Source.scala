@@ -102,7 +102,7 @@ object Source {
     )(using codec) withDescription s"file:${file.getAbsolutePath}"
   }
 
-  /** Create a `Source` from array of bytes, decoding
+  /** Creates a `Source` from array of bytes, decoding
    *  the bytes according to codec.
    *
    *  @return      the created `Source` instance.
@@ -113,7 +113,7 @@ object Source {
   def fromBytes(bytes: Array[Byte], enc: String): Source =
     fromBytes(bytes)(using Codec(enc))
 
-  /** Create a `Source` from array of bytes, assuming
+  /** Creates a `Source` from array of bytes, assuming
    *  one byte per character (ISO-8859-1 encoding.)
    */
   @deprecated("Use `fromBytes` and specify an encoding", since="2.13.9")
@@ -204,12 +204,12 @@ object Source {
  *
  */
 abstract class Source extends Iterator[Char] with Closeable {
-  /** the actual iterator */
+  /** The actual iterator. */
   protected val iter: Iterator[Char]
 
   // ------ public values
 
-  /** description of this source, default empty */
+  /** Description of this source, default empty. */
   var descr: String = ""
   var nerrors = 0
   var nwarnings = 0
@@ -263,14 +263,14 @@ abstract class Source extends Iterator[Char] with Closeable {
     /** the last character returned by next. */
     var ch: Char = compiletime.uninitialized
 
-    /** position of last character returned by next */
+    /** Position of last character returned by next. */
     var pos = 0
 
-    /** current line and column */
+    /** Current line and column. */
     var cline = 1
     var ccol = 1
 
-    /** default col increment for tabs '\t', set to 4 initially */
+    /** Default col increment for tabs '\t', set to 4 initially. */
     var tabinc = 4
 
     def next(): Char = {
@@ -317,7 +317,7 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, msg, out)
   }
 
-  private def spaces(n: Int) = List.fill(n)(' ').mkString
+  private def spaces(n: Int) = " ".repeat(n)
   /**
    *  @param pos the source position (line/column)
    *  @param msg the error message to report

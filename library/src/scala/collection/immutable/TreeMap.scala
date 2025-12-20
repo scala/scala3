@@ -171,7 +171,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
         adder.finalTree
     })
 
-  override def removedAll(keys: IterableOnce[K]^): TreeMap[K, V] = keys match {
+  override def removedAll(keys: IterableOnce[K]^): TreeMap[K, V] = (keys: @unchecked) match {
     case ts: TreeSet[K] if ordering == ts.ordering =>
       newMapOrSelf(RB.difference(tree, ts.tree))
     case _ => super.removedAll(keys)
@@ -313,7 +313,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
   def empty[K : Ordering, V]: TreeMap[K, V] = new TreeMap()
 
   def from[K, V](it: IterableOnce[(K, V)]^)(implicit ordering: Ordering[K]): TreeMap[K, V] =
-    it match {
+    (it: @unchecked) match {
       case tm: TreeMap[K, V] if ordering == tm.ordering => tm
       case sm: scala.collection.SortedMap[K, V] if ordering == sm.ordering =>
         new TreeMap[K, V](RB.fromOrderedEntries(sm.iterator, sm.size))
@@ -357,7 +357,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
     }
 
     override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
-      xs match {
+      (xs: @unchecked) match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
         // for the moment we have to force immutability before the union
         // which will waste some time and space

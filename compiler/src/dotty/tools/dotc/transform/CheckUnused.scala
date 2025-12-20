@@ -189,7 +189,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       register(tree)
     relax(tree.rhs, tree.tpt.tpe)
-    ctx
+    if tree.symbol.isAllOf(EnumCase) then ctx.outer else ctx
   override def transformValDef(tree: ValDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
     if tree.name.startsWith("derived$") && tree.hasType then
@@ -222,6 +222,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       resolveUsage(defn.Compiletime_deferred, nme.NO_NAME, NoPrefix)
     tree
 
+  override def prepareForTypeDef(tree: TypeDef)(using Context): Context =
+    if tree.symbol.isAllOf(EnumCase) then ctx.outer else ctx
   override def transformTypeDef(tree: TypeDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
     if !tree.symbol.is(Param) then // type parameter to do?
@@ -384,6 +386,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           if matches then sel else loop(sels)
         case nil => null
       loop(info.selectors)
+    end matchingSelector
 
     def checkMember(ctxsym: Symbol): Boolean =
       ctxsym.isClass && sym.owner.isClass
@@ -407,38 +410,37 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
         enclosed = true // found enclosing definition, don't record the reference
-      if isLocal then
-        if cur.owner eq sym.owner then
-          done = true // for local def, just checking that it is not enclosing
-      else
-        if cur.isImportContext then
-          val sel = matchingSelector(cur.importInfo.nn)
-          if sel != null then
-            if cur.importInfo.nn.isRootImport then
-              if precedence.weakerThan(OtherUnit) then
-                precedence = OtherUnit
-                candidate = cur
-                importer = sel
-              done = true
-            else if sel.isWildcard then
-              if precedence.weakerThan(Wildcard) then
-                precedence = Wildcard
-                candidate = cur
-                importer = sel
-            else
-              if precedence.weakerThan(NamedImport) then
-                precedence = NamedImport
-                candidate = cur
-                importer = sel
-        else if checkMember(cur.owner) then
-          if sym.is(Package) || sym.srcPos.sourcePos.source == ctx.source then
-            precedence = Definition
-            candidate = cur
-            importer = null // ignore import in same scope; we can't check nesting level
+      if cur.isImportContext then
+        val sel = matchingSelector(cur.importInfo.nn)
+        if sel != null then
+          if cur.importInfo.nn.isRootImport then
+            if precedence.weakerThan(OtherUnit) then
+              precedence = OtherUnit
+              candidate = cur
+              importer = sel
             done = true
-          else if precedence.weakerThan(OtherUnit) then
-            precedence = OtherUnit
-            candidate = cur
+          else if sel.isWildcard then
+            if precedence.weakerThan(Wildcard) then
+              precedence = Wildcard
+              candidate = cur
+              importer = sel
+          else
+            if precedence.weakerThan(NamedImport) then
+              precedence = NamedImport
+              candidate = cur
+              importer = sel
+      else if isLocal then
+        if cur.owner eq sym.owner then
+          done = true // local def or param
+      else if checkMember(cur.owner) then
+        if sym.is(Package) || sym.srcPos.sourcePos.source == ctx.source then
+          precedence = Definition
+          candidate = cur
+          importer = null // ignore import in same scope; we can't check nesting level
+          done = true
+        else if precedence.weakerThan(OtherUnit) then
+          precedence = OtherUnit
+          candidate = cur
     end while
     // record usage and possibly an import
     if !enclosed then

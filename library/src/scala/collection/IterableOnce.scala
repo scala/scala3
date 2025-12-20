@@ -59,11 +59,11 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
 
   /** Returns a [[scala.collection.Stepper]] for the elements of this collection.
     *
-    * The Stepper enables creating a Java stream to operate on the collection, see
-    * [[scala.jdk.StreamConverters]]. For collections holding primitive values, the Stepper can be
+    * The `Stepper` enables creating a Java stream to operate on the collection, see
+    * [[scala.jdk.StreamConverters]]. For collections holding primitive values, the `Stepper` can be
     * used as an iterator which doesn't box the elements.
     *
-    * The implicit [[scala.collection.StepperShape]] parameter defines the resulting Stepper type according to the
+    * The implicit [[scala.collection.StepperShape]] parameter defines the resulting `Stepper` type according to the
     * element type of this collection.
     *
     *   - For collections of `Int`, `Short`, `Byte` or `Char`, an [[scala.collection.IntStepper]] is returned
@@ -72,9 +72,9 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
     *   - For any other element type, an [[scala.collection.AnyStepper]] is returned
     *
     * Note that this method is overridden in subclasses and the return type is refined to
-    * `S with EfficientSplit`, for example [[scala.collection.IndexedSeqOps.stepper]]. For Steppers marked with
+    * `S with EfficientSplit`, for example [[scala.collection.IndexedSeqOps.stepper]]. For `Stepper`s marked with
     * [[scala.collection.Stepper.EfficientSplit]], the converters in [[scala.jdk.StreamConverters]]
-    * allow creating parallel streams, whereas bare Steppers can be converted only to sequential
+    * allow creating parallel streams, whereas bare `Stepper`s can be converted only to sequential
     * streams.
     */
   def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S^{this} = {

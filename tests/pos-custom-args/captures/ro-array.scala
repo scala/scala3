@@ -1,8 +1,8 @@
 import caps.*
 object Test
 
-class Arr[T: reflect.ClassTag](a: Async, len: Int) extends Mutable:
-  private val arr: Array[T] = new Array[T](len)
+class Arr[T: reflect.ClassTag](a: Async, len: Int) extends Stateful:
+  private val arr: Array[T]^ = new Array[T](len)
   def get(i: Int): T = arr(i)
   update def set(i: Int, x: T): Unit = arr(i) = x
 

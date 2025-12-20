@@ -40,7 +40,7 @@ object CheckCaptures:
   val name: String = "cc"
   val description: String = "capture checking"
 
-  enum EnvKind:
+  enum EnvKind derives CanEqual:
     case Regular        // normal case
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
                         // and does not have a different actual owner symbol
@@ -572,7 +572,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def checkReadOnlyMethod(included: CaptureSet, meth: Symbol): Unit =
         included.checkAddedElems: elem =>
-          if elem.isExclusive then
+          if elem.isExclusive() then
             report.error(
                 em"""Read-only $meth accesses exclusive capability $elem;
                     |$meth should be declared an update method to allow this.""",
@@ -597,7 +597,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
-                  && env.owner.owner.derivesFrom(defn.Caps_Mutable)
+                  && env.owner.owner.derivesFrom(defn.Caps_Stateful)
               then
                 checkReadOnlyMethod(included, env.owner)
               recur(included, nextEnv, env)
@@ -790,22 +790,29 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** Recheck applications, with special handling of unsafeAssumePure.
+    /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
+    def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
+      val arg :: Nil = tree.args: @unchecked
+      val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
+      val argType =
+        if argType0.captureSet.isAlwaysEmpty then argType0
+        else argType0.widen.stripCapturing
+      capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
+      super.recheckFinish(argType, tree, pt)
+
+    /** Recheck applications, with special handling of unsafeAssumePure,
+     *  unsafeDiscardUses, and freeze.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
-        val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
-        val argType =
-          if argType0.captureSet.isAlwaysEmpty then argType0
-          else argType0.widen.stripCapturing
-        capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
-        super.recheckFinish(argType, tree, pt)
+        applyAssumePure(tree, pt)
       else if meth == defn.Caps_unsafeDiscardUses then
         val arg :: Nil = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
+      else if meth == defn.Caps_freeze then
+        freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)
@@ -864,6 +871,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             && !resultType.isBoxedCapturing
             && !tree.fun.symbol.isConstructor
             && !resultType.captureSet.containsResultCapability
+            && !resultType.captureSet.elems.exists(_.derivesFromUnscoped)
             && qualCaptures.mightSubcapture(refs)
             && argCaptures.forall(_.mightSubcapture(refs)) =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
@@ -961,7 +969,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
      *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-     *  capabiltities. Class parameters are not counted. If the type is a mutable type,
+     *  capabiltities. Class parameters are not counted. If the type extends Separate,
      *  we add a fresh cap in any case -- this is because we can currently hide
      *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
      */
@@ -980,8 +988,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
         case cls: ClassSymbol =>
           var fieldClassifiers = knownFields(cls).flatMap(classifiersOfFreshInType)
-          if cls.typeRef.isMutableType then
-            fieldClassifiers = cls.classifier :: fieldClassifiers
           val parentClassifiers =
             cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
           if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
@@ -1164,12 +1170,12 @@ class CheckCaptures extends Recheck, SymTransformer:
                   ""
               disallowBadRootsIn(
                 tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
-            if ccConfig.noUnsafeMutableFields
+            if ccConfig.strictMutability
                 && sym.owner.isClass
-                && !sym.owner.derivesFrom(defn.Caps_Mutable)
+                && !sym.owner.derivesFrom(defn.Caps_Stateful)
                 && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
               report.error(
-                em"""Mutable $sym is defined in a class that does not extend `Mutable`.
+                em"""Mutable $sym is defined in a class that does not extend `Stateful`.
                     |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
                 tree.namePos)
 
@@ -1385,14 +1391,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      type arguments. Charge deep capture sets of type arguments to non-reserved typevars
      *      to the environment. Other generic parents are represented as TypeApplys, where the
      *      same check is already done in the TypeApply.
-     *   6. Consume parameters are only allowed for classes producing a fresh cap
-     *      for their constructor, and they don't contribute to the capture set. Example:
-     *
-     *        class A(consume val x: B^) extends caps.Separate
-     *        val a = A(b)
-     *
-     *      Here, `a` is of type A{val x: B^}^, and the outer `^` does not hide `b`.
-     *      That's necessary since we would otherwise get consume/use conflicts on `b`.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
@@ -1412,9 +1410,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         // (3) Capture set of self type includes capture sets of parameters
         for param <- cls.paramGetters do
-          if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
-              && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
-          then
+          if param.isTrackedParamAccessor then
             withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
               checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
 
@@ -1436,28 +1432,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
-
-        // (6) Check that consume parameters are covered by an implied FreshCap
-        for getter <- cls.paramGetters do
-          if !getter.is(Private) // Setup makes sure that getters with capture sets are not private
-            && getter.hasAnnotation(defn.ConsumeAnnot)
-          then
-            val implied = captureSetImpliedByFields(cls, cls.appliedRef)
-            val getterCS = getter.info.captureSet
-
-            val hasCoveringFresh = implied.elems.exists:
-              case fresh: FreshCap =>
-                getterCS.elems.forall: elem =>
-                  given VarState = VarState.Unrecorded // make sure we don't add to fresh's hidden set
-                  fresh.maxSubsumes(elem, canAddHidden = true)
-              case _ =>
-                false
-
-            if !hasCoveringFresh then
-              report.error(
-                  em"""A consume parameter is only allowed for classes producing a `cap` in their constructor.
-                      |This can be achieved by having the class extend caps.Separate.""",
-                  getter.srcPos)
 
         super.recheckClassDef(tree, impl, cls)
       finally
@@ -1605,7 +1579,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
-      try testAdapted(actual, expected, tree, notes: List[Note])(err.typeMismatch)
+      try testAdapted(actual, expected, tree, notes)(err.typeMismatch)
       catch case ex: AssertionError =>
         println(i"error while checking $tree: $actual against $expected")
         throw ex
@@ -1867,7 +1841,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if needsAdaptation && !insertBox then // we are unboxing
           val criticalSet =          // the set with which we unbox
             if covariant then
-              if expected.expectsReadOnly && actual.derivesFromMutable
+              if expected.expectsReadOnly && actual.derivesFromStateful
               then captures.readOnly
               else captures
             else expected.captureSet     // contravarant: we unbox with captures of epected type
@@ -2172,26 +2146,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         checker.traverse(tree.nuType)
     end checkTypeParam
 
-    /** Under the unsealed policy: Arrays are like vars, check that their element types
-     *  do not contains `cap` (in fact it would work also to check on array creation
-     *  like we do under sealed).
-     */
-    def checkArraysAreSealedIn(tp: Type, pos: SrcPos)(using Context): Unit =
-      val check = new TypeTraverser:
-        def traverse(t: Type): Unit =
-          t match
-            case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.ArrayClass =>
-              if !(pos.span.isSynthetic && ctx.reporter.errorsReported)
-                && !arg.typeSymbol.name.is(WildcardParamName)
-              then
-                disallowBadRootsIn(arg, NoSymbol, "Array", "have element type", "", pos)
-              traverseChildren(t)
-            case defn.RefinedFunctionOf(rinfo: MethodType) =>
-              traverse(rinfo)
-            case _ =>
-              traverseChildren(t)
-      check.traverse(tp)
-
     /** Check that no uses refer to reach capabilities of parameters of enclosing
      *  methods or classes.
      */
@@ -2242,29 +2196,28 @@ class CheckCaptures extends Recheck, SymTransformer:
       end for
     end checkEscapingUses
 
-    /** Check all parent class constructors of classes extending Mutable
-     *  either also extend Mutable or are read-only.
+    /** Check all parent class constructors of classes extending Stateful
+     *  either also extend Stateful or are read-only.
      *
      *  A parent class constructor is _read-only_ if the following conditions are met
      *   1. The class does not retain any exclusive capabilities from its environment.
      *   2. The constructor does not take arguments that retain exclusive capabilities.
      *   3. The class does not does not have fields that retain exclusive universal capabilities.
      */
-    def checkMutableInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
-      if cls.derivesFrom(defn.Caps_Mutable) then
+    def checkStatefulInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
+      if cls.derivesFrom(defn.Caps_Stateful) then
         for parent <- parents do
-          if !parent.tpe.derivesFromMutable then
+          if !parent.tpe.derivesFromStateful then
             val pcls = parent.nuType.classSymbol
             val parentIsExclusive =
               if parent.isType then
-                capturedVars(pcls).isExclusive
-                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive
-
-              else parent.nuType.captureSet.isExclusive
+                capturedVars(pcls).isExclusive()
+                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive()
+              else parent.nuType.captureSet.isExclusive()
             if parentIsExclusive then
               report.error(
-                em"""illegal inheritance: $cls which extends `Mutable` is not allowed to also extend $pcls
-                    |since $pcls retains exclusive capabilities but does not extend `Mutable`.""",
+                em"""illegal inheritance: $cls which extends `Stateful` is not allowed to also extend $pcls
+                    |since $pcls retains exclusive capabilities but does not extend `Stateful`.""",
                 parent.srcPos)
 
     /** Checks to run after the rechecking pass:
@@ -2272,8 +2225,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Check that no uses refer to reach capabilities of parameters of enclosing
      *     methods or classes.
      *   - Run the separation checker under language.experimental.separationChecking
-     *   - Check that classes extending Mutable do not extend other classes that do
-     *     not extend Mutable yet retain exclusive capabilities
+     *   - Check that classes extending Stateful do not extend other classes that do
+     *     not extend Stateful yet retain exclusive capabilities
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       val checker = new TreeTraverser:
@@ -2298,7 +2251,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case TypeDef(_, impl: Template) =>
-            checkMutableInheritance(tree.symbol.asClass, impl.parents)
+            checkStatefulInheritance(tree.symbol.asClass, impl.parents)
           case _ =>
       end checker
 

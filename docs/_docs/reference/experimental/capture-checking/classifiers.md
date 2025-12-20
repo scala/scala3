@@ -46,7 +46,8 @@ trait SharedCapability extends Capability Classifier
 trait Control extends SharedCapability, Classifier
 
 trait ExclusiveCapability extends Capability
-trait Unscoped extends ExclusiveCapability, Classifier
+trait Stateful extends ExclusiveCapability
+trait Unscoped extends Stateful, Classifier
 ```
 Here is a graph showing the hierarchy of predefined capability traits. Classifier traits are underlined.
 ```
@@ -58,7 +59,7 @@ Here is a graph showing the hierarchy of predefined capability traits. Classifie
  SharedCapability     ExclusiveCapability
  ----------------            |
         |                    |
-        |                    |
+        |                 Stateful
         |                    |
         |                    |
      Control              Unscoped
@@ -77,27 +78,6 @@ exclusive capabilities can have shared capabilities in their capture set but not
 
 These are all expressed by having their capability classes extend `Control`.
 
-### The Unscoped Classifier
-
-Capabilities classified as `Unscoped` can escape their environment. For instance, the following
-is permitted:
-```scala
-class Ref[T](init: T) extends Unscoped
-
-class File:
-  def read(): String = ...
-
-def withFile[T](op: (f: File^) => T): T =
-  op(new File)
-
-withFile: f =>
-  val r: Ref^ = Ref(f.read())
-  r
-```
-Here, `r` is a fresh reference that escapes the scope of `withFile`. That's OK only since
-`Ref` is classified as `Unscoped`. Since `Unscoped` is a classifier it means that `Ref` cannot
-possible capture `f`, which as a `File` is not classified as unscoped. So returning a `Ref`
-from a `withFile` does not affect the lifetime of `f`.
 
 ### Classifier Restriction
 

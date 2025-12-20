@@ -169,7 +169,7 @@ object Capabilities:
      */
     var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
 
-    //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
+    //assert(rootId != 4, i"fresh $prefix, $origin, ${ctx.owner}")
 
     /** Is this fresh cap (definitely) classified? If that's the case, the
      *  classifier cannot be changed anymore.
@@ -441,11 +441,13 @@ object Capabilities:
     /** An exclusive capability is a capability that derives
      *  indirectly from a maximal capability without going through
      *  a read-only capability or a capability classified as SharedCapability first.
+     *  @param required  if true, exclusivity can be obtained by setting the mutability
+     *                   status of some capture set variable from Ignored to Writer.
      */
-    final def isExclusive(using Context): Boolean =
+    final def isExclusive(required: Boolean = false)(using Context): Boolean =
       !isReadOnly
       && !classifier.derivesFrom(defn.Caps_SharedCapability)
-      && (isTerminalCapability || captureSetOfInfo.isExclusive)
+      && (isTerminalCapability || captureSetOfInfo.isExclusive(required))
 
     /** Similar to isExlusive, but also includes capabilties with capture
      *  set variables in their info whose status is still open.
@@ -564,8 +566,9 @@ object Capabilities:
       case _ => false
 
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-    def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
+    def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
     def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+    def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -924,7 +927,7 @@ object Capabilities:
    *    Unclassified     : No set exists since some parts of tcs are not classified
    *    ClassifiedAs(clss: All parts of tcss are classified with classes in clss
    */
-  enum Classifiers:
+  enum Classifiers derives CanEqual:
     case UnknownClassifier
     case Unclassified
     case ClassifiedAs(clss: List[ClassSymbol])
@@ -965,7 +968,7 @@ object Capabilities:
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics
    */
-  enum Origin:
+  enum Origin derives CanEqual:
     case InDecl(sym: Symbol)
     case TypeArg(tp: Type)
     case UnsafeAssumePure

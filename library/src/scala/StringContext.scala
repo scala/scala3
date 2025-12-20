@@ -205,7 +205,7 @@ object StringContext {
     * @param patternChunks The non-wildcard portions of the input pattern,
     *                      separated by wildcards
     * @param input The input you wish to match against
-    * @return None if there is no match, Some containing the sequence of matched
+    * @return `None` if there is no match, `Some` containing the sequence of matched
     *         wildcard strings if there is a match 
     */
   def glob(patternChunks: Seq[String], input: String): Option[Seq[String]] = {

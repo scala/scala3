@@ -18,7 +18,7 @@ import language.experimental.captureChecking
 
 import scala.language.`2.13`
 
-/** Base type of mutable Maps */
+/** Base type of mutable Maps. */
 trait Map[K, V]
   extends Iterable[(K, V)]
     with collection.Map[K, V]
@@ -109,7 +109,7 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
   def update(key: K, value: V): Unit = { coll += ((key, value)) }
 
   /**
-   * Update a mapping for the specified key and its current optionally mapped value
+   * Updates a mapping for the specified key and its current optionally mapped value
    * (`Some` if there is current mapping, `None` if not).
    *
    * If the remapping function returns `Some(v)`, the mapping is updated with the new value `v`.
@@ -117,7 +117,7 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
    * If the function itself throws an exception, the exception is rethrown, and the current mapping is left unchanged.
    *
    * @param key the key value
-   * @param remappingFunction a function that receives current optionally mapped value and return a new mapping
+   * @param remappingFunction a function that receives current optionally mapped value and returns a new mapping
    * @return the new value associated with the specified key
    */
   def updateWith(key: K)(remappingFunction: Option[V] => Option[V]): Option[V] = {

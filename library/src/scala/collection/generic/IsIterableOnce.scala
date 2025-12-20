@@ -27,17 +27,15 @@ import caps.unsafe.untrackedCaptures
  *
  *  Example usage,
  * {{{
- *    class FilterMapImpl[Repr, I <: IsIterableOnce[Repr]](coll: Repr, it: I) {
- *      final def filterMap[B, That](f: it.A => Option[B])(implicit bf: BuildFrom[Repr, B, That]): That = {
+ *    extension [Repr, I <: IsIterableOnce[Repr]](coll: Repr)(using it: I) {
+ *      final def filterMap[B, That](f: it.A => Option[B])(using bf: BuildFrom[Repr, B, That]): That = {
  *        val b = bf.newBuilder(coll)
- *        for(e <- it(coll).iterator) f(e) foreach (b +=)
+ *        for(e <- it(coll).iterator) f(e).foreach(b += _)
  *        b.result()
  *      }
  *    }
- *    implicit def filterMap[Repr](coll: Repr)(implicit it: IsIterableOnce[Repr]): FilterMapImpl[Repr, it.type] =
- *      new FilterMapImpl(coll, it)
  *
- *    List(1, 2, 3, 4, 5) filterMap (i => if(i % 2 == 0) Some(i) else None)
+ *    List(1, 2, 3, 4, 5).filterMap(i => if(i % 2 == 0) Some(i) else None)
  *    // == List(2, 4)
  * }}}
  */

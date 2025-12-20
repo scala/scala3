@@ -13,7 +13,7 @@ import tpd.*
 import Annotations.Annotation
 import CaptureSet.VarState
 import Capabilities.*
-import Mutability.isMutableType
+import Mutability.isStatefulType
 import StdNames.nme
 import config.Feature
 import NameKinds.TryOwnerName
@@ -394,10 +394,18 @@ extension (tp: Type)
     case _ =>
       false
 
-  def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-  def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-  def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
-  def derivesFromExclusive(using Context): Boolean = derivesFromCapTrait(defn.Caps_ExclusiveCapability)
+  def derivesFromCapability(using Context): Boolean =
+    derivesFromCapTrait(defn.Caps_Capability) || isArrayUnderStrictMut
+  def derivesFromStateful(using Context): Boolean =
+    derivesFromCapTrait(defn.Caps_Stateful) || isArrayUnderStrictMut
+  def derivesFromShared(using Context): Boolean =
+    derivesFromCapTrait(defn.Caps_SharedCapability)
+  def derivesFromUnscoped(using Context): Boolean =
+    derivesFromCapTrait(defn.Caps_Unscoped) || isArrayUnderStrictMut
+  def derivesFromMutable(using Context): Boolean =
+    derivesFromCapTrait(defn.Caps_Mutable) || isArrayUnderStrictMut
+
+  def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -487,7 +495,8 @@ extension (tp: Type)
       tp
 
   def inheritedClassifier(using Context): ClassSymbol =
-    tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
+    if tp.isArrayUnderStrictMut then defn.Caps_Unscoped
+    else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
@@ -531,7 +540,11 @@ extension (cls: ClassSymbol)
     else defn.AnyClass
 
   def isSeparate(using Context): Boolean =
-    cls.typeRef.isMutableType
+    cls.derivesFrom(defn.Caps_Separate)
+    || cls.typeRef.isStatefulType
+    || cls.paramGetters.exists: getter =>
+          !getter.is(Private) // Setup makes sure that getters with capture sets are not private
+          && getter.hasAnnotation(defn.ConsumeAnnot)
 
 extension (sym: Symbol)
 
@@ -548,10 +561,13 @@ extension (sym: Symbol)
    *   - or it is a value class
    *   - or it is an exception
    *   - or it is one of Nothing, Null, or String
+   *  Arrays are not pure under strict mutability even though their self type is declared pure
+   *  in Arrays.scala.
    */
   def isPureClass(using Context): Boolean = sym match
     case cls: ClassSymbol =>
-      cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls)
+      (cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls))
+      && !cls.isArrayUnderStrictMut
     case _ =>
       false
 
@@ -583,8 +599,8 @@ extension (sym: Symbol)
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
-  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures
-   *  and that is not a consume accessor.
+  /** It's a parameter accessor for a parameter that that is not annotated
+   *  @constructorOnly or @uncheckedCaptures and that is not a consume parameter.
    */
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
@@ -593,6 +609,17 @@ extension (sym: Symbol)
       !param.hasAnnotation(defn.ConstructorOnlyAnnot)
       && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
       && !param.hasAnnotation(defn.ConsumeAnnot)
+    }
+
+  /** It's a parameter accessor that is tracked for capture checking. Excluded are
+   *  accessors for parameters annotated with constructorOnly or @uncheckedCaptures.
+   */
+  def isTrackedParamAccessor(using Context): Boolean =
+    sym.is(ParamAccessor)
+    && {
+      val param = sym.owner.primaryConstructor.paramNamed(sym.name)
+      !param.hasAnnotation(defn.ConstructorOnlyAnnot)
+      && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
     }
 
   def hasTrackedParts(using Context): Boolean =
@@ -636,6 +663,9 @@ extension (sym: Symbol)
     else if sym.isAnonymousFunction then i"an enclosing function"
     else if sym.name.is(TryOwnerName) then i"an enclosing try expression"
     else sym.show
+
+  def isArrayUnderStrictMut(using Context): Boolean =
+    sym == defn.ArrayClass && ccConfig.strictMutability
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

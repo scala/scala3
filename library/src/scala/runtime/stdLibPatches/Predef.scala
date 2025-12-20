@@ -3,9 +3,12 @@ package scala.runtime.stdLibPatches
 import scala.language.experimental.captureChecking
 
 import scala.annotation.experimental
+import scala.annotation.publicInBinary
 import scala.annotation.internal.RuntimeChecked
 
-object Predef:
+@publicInBinary
+@deprecated(message = "Patches are not applied to the stdlib anymore", since = "3.8.0")
+private[scala] object Predef:
   import compiletime.summonFrom
 
   transparent inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
@@ -15,7 +18,7 @@ object Predef:
     if !assertion then scala.runtime.Scala3RunTime.assertFailed()
 
   /**
-   * Retrieve the single value of a type with a unique inhabitant.
+   * Retrieves the single value of a type with a unique inhabitant.
    *
    * @example {{{
    * object Foo

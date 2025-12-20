@@ -95,7 +95,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & SortedMapOps[X, 
 
   override def keySet: SortedSet[K] = new ImmutableKeySortedSet
 
-  /** The implementation class of the set returned by `keySet` */
+  /** The implementation class of the set returned by `keySet`. */
   protected class ImmutableKeySortedSet extends AbstractSet[K] with SortedSet[K] with GenKeySet with GenKeySortedSet {
     def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
       val map = self.rangeImpl(from, until)
@@ -137,7 +137,7 @@ transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & S
 @SerialVersionUID(3L)
 object SortedMap extends SortedMapFactory.Delegate[SortedMap](TreeMap) {
 
-  override def from[K: Ordering, V](it: IterableOnce[(K, V)]^): SortedMap[K, V] = it match {
+  override def from[K: Ordering, V](it: IterableOnce[(K, V)]^): SortedMap[K, V] = (it: @unchecked) match {
     case sm: SortedMap[K, V] if Ordering[K] == sm.ordering => sm
     case _ => super.from(it)
   }

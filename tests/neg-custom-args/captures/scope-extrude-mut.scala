@@ -1,9 +1,9 @@
 import language.experimental.captureChecking
 
-class A extends caps.Mutable:
+class A extends caps.Stateful:
   var x = 0
 
-class B:
+class B extends caps.Stateful:
   private var a: A^ = A()
   def b() =
     val a1 = A()

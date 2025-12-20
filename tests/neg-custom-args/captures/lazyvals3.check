@@ -5,10 +5,9 @@
    |                                           Required: Int ->{ev1, console} Boolean
    |
    |                                           Note that capability c is not included in capture set {ev1, console}.
+   |
 25 |        if n == 1 then
-26 |          console.println("CONSOLE: 1")
-27 |          true
-28 |        else
+26 |...
 29 |          ev1(n - 1)
    |
    | longer explanation available when compiling with `-explain`

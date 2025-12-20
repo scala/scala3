@@ -453,39 +453,9 @@ object Erasure {
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
-      /** Can the implementation parameter type `tp` be auto-adapted to a different
-       *  parameter type in the SAM?
-       *
-       *  For derived value classes, we always need to do the bridging manually.
-       *  For primitives, we cannot rely on auto-adaptation on the JVM because
-       *  the Scala spec requires null to be "unboxed" to the default value of
-       *  the value class, but the adaptation performed by LambdaMetaFactory
-       *  will throw a `NullPointerException` instead. See `lambda-null.scala`
-       *  for test cases.
-       *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/javase/8/docs/api/java/lang/invoke/LambdaMetafactory.html)
-       */
-      def autoAdaptedParam(tp: Type) =
-        !tp.isErasedValueType && !tp.isPrimitiveValueType
-
-      /** Can the implementation result type be auto-adapted to a different result
-       *  type in the SAM?
-       *
-       *  For derived value classes, it's the same story as for parameters.
-       *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
-       *  adaptation, because it only needs to box, not unbox, so no special
-       *  handling of null is required.
-       */
-      def autoAdaptedResult =
-        !implResultType.isErasedValueType && !implReturnsUnit
-
-      def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
-
-      val paramAdaptationNeeded =
-        implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && !autoAdaptedParam(implType))
-      val resultAdaptationNeeded =
-        !sameClass(implResultType, samResultType) && !autoAdaptedResult
+      // Check if bridging is needed using the common function from TypeErasure
+      val (paramAdaptationNeeded, resultAdaptationNeeded) =
+        additionalAdaptationNeeded(implParamTypes, implResultType, samParamTypes, samResultType)
 
       if paramAdaptationNeeded || resultAdaptationNeeded then
         // Instead of instantiating `scala.FunctionN`, see if we can instantiate
@@ -561,15 +531,15 @@ object Erasure {
           report.error(msg, tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
           case Some(annot) =>
-            val message = annot.argumentConstant(0) match
-              case Some(c) =>
+            val message = annot.argumentConstantString(0) match
+              case Some(msg) =>
                 val addendum = tree match
                   case tree: RefTree
                   if tree.symbol == defn.Compiletime_deferred && tree.name != nme.deferred =>
                     i".\nNote that `deferred` can only be used under its own name when implementing a given in a trait; `${tree.name}` is not accepted."
                   case _ =>
                     ""
-                (c.stringValue ++ addendum).toMessage
+                (msg + addendum).toMessage
               case _ =>
                 em"""Reference to ${tree.symbol.showLocated} should not have survived,
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
@@ -746,13 +716,8 @@ object Erasure {
         // Scala classes are always emitted as public, unless the
         // `private` modifier is used, but a non-private class can never
         // extend a private class, so such a class will never be a cast target.
-        !cls.is(Flags.JavaDefined) || {
-          // We can't rely on `isContainedWith` here because packages are
-          // not nested from the JVM point of view.
-          val boundary = cls.accessBoundary(cls.owner)(using preErasureCtx)
-          (boundary eq defn.RootClass) ||
-          (ctx.owner.enclosingPackageClass eq boundary)
-        }
+        !cls.is(Flags.JavaDefined) ||
+          cls.isAccessibleFrom(cls.owner.thisType)(using preErasureCtx)
 
       @tailrec
       def recur(qual: Tree): Tree =

@@ -416,7 +416,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   @deprecatedOverriding("Override lastIndexWhere(p, end) instead - lastIndexWhere(p) calls lastIndexWhere(p, Int.MaxValue)", "2.13.0")
   def lastIndexWhere(p: A => Boolean): Int = lastIndexWhere(p, Int.MaxValue)
 
-  @inline private def toGenericSeq: scala.collection.Seq[A] = this match {
+  @inline private def toGenericSeq: scala.collection.Seq[A] = (this: @unchecked) match {
     case s: scala.collection.Seq[A] => s
     case _ => toSeq
   }
@@ -1129,7 +1129,7 @@ object SeqOps {
     }
   }
 
-  /** Make sure a target sequence has fast, correctly-ordered indexing for KMP.
+  /** Makes sure a target sequence has fast, correctly-ordered indexing for KMP.
    *
    *  @param  W    The target sequence
    *  @param  n0   The first element in the target sequence that we should use
@@ -1167,7 +1167,7 @@ object SeqOps {
       }
   }
 
- /** Make a jump table for KMP search.
+ /** Makes a jump table for KMP search.
    *
    *  @param  Wopt The target sequence
    *  @param  wlen Just in case we're only IndexedSeq and not IndexedSeqOptimized

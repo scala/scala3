@@ -1,13 +1,13 @@
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 import caps.cap
-import scala.caps.Mutable
+import scala.caps.Stateful
 
 // Create a deeper nesting structure
 class D()
 class C(val d: D^)
 class B(val c: C^)
-class A(consume val b: B^) extends Mutable:
+class A(consume val b: B^) extends Stateful:
   update def use() = println("Using A")
 
 // Test 1: Accessing nested fields through a consumed path
@@ -23,11 +23,11 @@ def testNestedFieldsAfterConsume =
   println(a.b.c.d)   // OK - deeper nesting through consumed path
 
 // Test 2: Non-trivial prefix accessing a consumed field
-class Container(consume val a: A^) extends Mutable:
+class Container(consume val a: A^) extends Stateful:
   val other: A^ = A(B(C(D())))
   update def operate() = other.use()
 
-class Outer(consume val container: Container^) extends Mutable:
+class Outer(consume val container: Container^) extends Stateful:
   update def execute() = container.operate()
 
 def testComplexPrefix =
@@ -49,7 +49,7 @@ def testComplexPrefix =
   println(a1)         // error
 
 // Test 3: Multiple consume parameters with nested access
-class Multi(consume val b1: B^, consume val b2: B^) extends Mutable:
+class Multi(consume val b1: B^, consume val b2: B^) extends Stateful:
   val b3: B^ = B(C(D()))
   update def combine() = ()
 
@@ -71,7 +71,7 @@ def testMultipleConsume =
   println(b2) // error
 
 // Test 4: Consume at multiple levels with complex paths
-class Top(consume val outer: Outer^) extends Mutable:
+class Top(consume val outer: Outer^) extends Stateful:
   update def topAction() = outer.execute()
 
 def testMultiLevelConsume =

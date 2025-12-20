@@ -735,7 +735,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     }
   }
 
-  /** Alias for `concat` */
+  /** Alias for `concat`. */
   @inline final def ++ [B >: A](suffix: IterableOnce[B]^): CC[B]^{this, suffix} = concat(suffix)
 
   /** Returns a $ccoll formed from this $coll and another iterable collection

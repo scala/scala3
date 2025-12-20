@@ -8,14 +8,14 @@ class Ref(x: Int) extends Mutable:
   update def set(newValue: Int): Unit = value = newValue
 
 // For testing types other than functions
-class Wrapper(val ref: Ref^) extends Mutable:
+class Wrapper(val ref: Ref^) extends Stateful:
   def compute(): Int = ref.get()
   update def mutate(x: Int): Unit = ref.set(x)
 
 class WrapperRd(val ref: Ref^{cap.rd}):
   def compute(): Int = ref.get()
 
-class TestClass extends Mutable:
+class TestClass extends Stateful:
   val r: Ref^ = Ref(0)
   val r2: Ref^ = Ref(42)
 
@@ -118,6 +118,6 @@ def test =
 
   lazy val lazyVal2: () ->{r.rd} Int =
     val current = r2.get()
-    r.set(current * 100)  // ok, lazy vals outside Mutable can access exclusive capabilities
+    r.set(current * 100)  // ok, lazy vals outside Stateful can access exclusive capabilities
     () => r.get()
 

@@ -1,4 +1,4 @@
-import caps.{cap, Mutable}
+import caps.{cap, Stateful}
 
 class B
 
@@ -8,8 +8,8 @@ class A1(val b: B^):
 class A2(consume val b: B^):
   val bb: B^ = B()
 
-class A3(consume val b: B^) // error
-class A4(consume val b: B^) extends Mutable { var x: Int = 1 } // ok
+class A3(consume val b: B^) // was error now ok
+class A4(consume val b: B^) extends Stateful { var x: Int = 1 } // ok
 def Test =
   val b: B^ = B()
   val a1 = A1(b)

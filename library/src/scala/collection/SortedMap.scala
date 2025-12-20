@@ -18,7 +18,7 @@ import language.experimental.captureChecking
 
 import scala.annotation.{implicitNotFound, nowarn}
 
-/** A Map whose keys are sorted according to a [[scala.math.Ordering]]*/
+/** A Map whose keys are sorted according to a [[scala.math.Ordering]]. */
 trait SortedMap[K, +V]
   extends Map[K, V]
     with SortedMapOps[K, V, SortedMap, SortedMap[K, V]]
@@ -109,13 +109,13 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   def firstKey: K = head._1
   def lastKey: K = last._1
 
-  /** Find the element with smallest key larger than or equal to a given key.
+  /** Finds the element with smallest key larger than or equal to a given key.
     * @param key The given key.
     * @return `None` if there is no such node.
     */
   def minAfter(key: K): Option[(K, V)] = rangeFrom(key).headOption
 
-  /** Find the element with largest key less than a given key.
+  /** Finds the element with largest key less than a given key.
     * @param key The given key.
     * @return `None` if there is no such node.
     */
@@ -134,7 +134,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
 
   override def keySet: SortedSet[K] = new KeySortedSet
 
-  /** The implementation class of the set returned by `keySet` */
+  /** The implementation class of the set returned by `keySet`. */
   protected class KeySortedSet extends SortedSet[K] with GenKeySet with GenKeySortedSet {
     def diff(that: Set[K]): SortedSet[K] = fromSpecific(view.filterNot(that))
     def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
@@ -143,7 +143,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
     }
   }
 
-  /** A generic trait that is reused by sorted keyset implementations */
+  /** A generic trait that is reused by sorted keyset implementations. */
   protected trait GenKeySortedSet extends GenKeySet { this: SortedSet[K] =>
     implicit def ordering: Ordering[K] = SortedMapOps.this.ordering
     def iteratorFrom(start: K): Iterator[K] = SortedMapOps.this.keysIteratorFrom(start)
@@ -185,7 +185,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
     case _ => iterator.concat(suffix.iterator)
   })(using ordering)
 
-  /** Alias for `concat` */
+  /** Alias for `concat`. */
   @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")

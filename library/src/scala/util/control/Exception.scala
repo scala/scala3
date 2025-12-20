@@ -30,7 +30,7 @@ import scala.language.implicitConversions
  *
  *  === Examples ===
  *
- *  Create a `Catch` which handles specified exceptions.
+ *  Creates a `Catch` which handles specified exceptions.
  *  {{{
  *  import scala.util.control.Exception._
  *  import java.net._
@@ -52,7 +52,7 @@ import scala.language.implicitConversions
  *  val x4: URL = failAsValue(classOf[MalformedURLException])(defaultUrl)(new URL("htt/xx"))
  *  }}}
  *
- *  Create a `Catch` which logs exceptions using `handling` and `by`.
+ *  Creates a `Catch` which logs exceptions using `handling` and `by`.
  *  {{{
  *  def log(t: Throwable): Unit = t.printStackTrace
  *
@@ -219,11 +219,11 @@ object Exception {
 
     protected val name = "Catch"
 
-    /** Create a new Catch with additional exception handling logic. */
+    /** Creates a new Catch with additional exception handling logic. */
     def or[U >: T](pf2: Catcher[U]): Catch[U] = new Catch(pf orElse pf2, fin, rethrow)
     def or[U >: T](other: Catch[U]): Catch[U] = or(other.pf)
 
-    /** Apply this catch logic to the supplied body. */
+    /** Applies this catch logic to the supplied body. */
     def apply[U >: T](body: => U): U =
       try body
       catch {
@@ -232,7 +232,7 @@ object Exception {
       }
       finally fin foreach (_.invoke())
 
-    /** Create a new Catch container from this object and the supplied finally body.
+    /** Creates a new Catch container from this object and the supplied finally body.
      *  @param body The additional logic to apply after all existing finally bodies
      */
     def andFinally(body: => Unit): Catch[T] = {
@@ -240,23 +240,23 @@ object Exception {
       new Catch(pf, Some(appendedFin), rethrow)
     }
 
-    /** Apply this catch logic to the supplied body, mapping the result
+    /** Applies this catch logic to the supplied body, mapping the result
      *  into `Option[T]` - `None` if any exception was caught, `Some(T)` otherwise.
      */
     def opt[U >: T](body: => U): Option[U] = toOption(Some(body))
 
-    /** Apply this catch logic to the supplied body, mapping the result
+    /** Applies this catch logic to the supplied body, mapping the result
      *  into `Either[Throwable, T]` - `Left(exception)` if an exception was caught,
      *  `Right(T)` otherwise.
      */
     def either[U >: T](body: => U): Either[Throwable, U] = toEither(Right(body))
 
-    /** Apply this catch logic to the supplied body, mapping the result
+    /** Applies this catch logic to the supplied body, mapping the result
      * into `Try[T]` - `Failure` if an exception was caught, `Success(T)` otherwise.
      */
     def withTry[U >: T](body: => U): scala.util.Try[U] = toTry(Success(body))
 
-    /** Create a `Catch` object with the same `isDefinedAt` logic as this one,
+    /** Creates a `Catch` object with the same `isDefinedAt` logic as this one,
       * but with the supplied `apply` method replacing the current one. */
     def withApply[U](f: Throwable => U): Catch[U] = {
       val pf2 = new Catcher[U] {
@@ -366,7 +366,7 @@ object Exception {
     catching(exceptions*) withApply (x => throw unwrap(x))
   }
 
-  /** Private **/
+  /** Private. */
   private def wouldMatch(x: Throwable, classes: scala.collection.Seq[Class[?]]): Boolean =
     classes exists (_.isAssignableFrom(x.getClass))
 

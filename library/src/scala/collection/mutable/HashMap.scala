@@ -43,7 +43,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     with MapFactoryDefaults[K, V, HashMap, Iterable]
     with Serializable {
 
-  /* The HashMap class holds the following invariant:
+  /* The `HashMap` class holds the following invariant:
    * - For each i between  0 and table.length, the bucket at table(i) only contains keys whose hash-index is i.
    * - Every bucket is sorted in ascendent hash order
    * - The sum of the lengths of all buckets is equal to contentSize.
@@ -62,7 +62,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   override def size: Int = contentSize
 
-  /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash*/
+  /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash. */
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
   /** Computes the improved hash of an original (`any.##`) hash. */
@@ -77,7 +77,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     originalHash ^ (originalHash >>> 16)
   }
 
-  /** Computes the improved hash of this key */
+  /** Computes the improved hash of this key. */
   @`inline` private def computeHash(o: K): Int = improveHash(o.##)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
@@ -100,7 +100,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs)
 
-    xs match {
+    (xs: @unchecked) match {
       case hm: immutable.HashMap[K, V] =>
         hm.foreachWithHash((k, v, h) => put0(k, v, improveHash(h), getOld = false))
         this
@@ -193,7 +193,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       return this
     }
 
-    xs match {
+    (xs: @unchecked) match {
       case hs: immutable.HashSet[K] =>
         hs.foreachWithHashWhile { (k, h) =>
           remove0(k, improveHash(h))
@@ -345,7 +345,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     }
 
 
-  /** Returns an iterator over the nodes stored in this HashMap */
+  /** Returns an iterator over the nodes stored in this HashMap. */
   private[collection] def nodeIterator: Iterator[Node[K, V]] =
     if(size == 0) Iterator.empty
     else new HashMapIterator[Node[K, V]] {
@@ -617,10 +617,10 @@ object HashMap extends MapFactory[HashMap] {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
 
-  /** The default load factor for the hash table */
+  /** The default load factor for the hash table. */
   final def defaultLoadFactor: Double = 0.75
 
-  /** The default initial capacity for the hash table */
+  /** The default initial capacity for the hash table. */
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)

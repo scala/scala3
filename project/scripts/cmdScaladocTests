@@ -7,9 +7,6 @@ clear_out "$OUT"
 clear_out "$OUT1"
 
 
-STDLIB_COMMAND="$SBT \"eval println(Build.stdlibVersion(Modes.NonBootstrapped))\""
-STDLIB_VERSION=$(eval $STDLIB_COMMAND | tail -n 2 | head -n 1)
-
 DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyNonBootstrappedVersion)\""
 DOTTY_NONBOOTSTRAPPED_VERSION=$(eval $DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
@@ -23,8 +20,6 @@ SOURCE_LINKS_VERSION="${GITHUB_SHA:-$DOTTY_BOOTSTRAPPED_VERSION}"
 dist/target/universal/stage/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
-  -source-links:out/bootstrap/scala2-library-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \
-  -source-links:out/bootstrap/scala2-library-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/dotty-library-src=github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}"\#library/src \
   -source-links:github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}" \
   "-external-mappings:.*scala/.*::scaladoc3::https://dotty.epfl.ch/api/,.*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
   "-skip-by-regex:.+\.internal($|\..+)" \

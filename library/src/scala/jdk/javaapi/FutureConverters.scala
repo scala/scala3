@@ -46,7 +46,7 @@ object FutureConverters {
     *         CompletableFuture interface
     */
   def asJava[T](f: Future[T]): CompletionStage[T] = {
-    f match {
+    (f: @unchecked) match {
       case p: P[T] => p.wrapped
       // in theory not safe (could be `class C extends Future[A] with CompletionStage[B]`):
       case c: CompletionStage[T @unchecked] => c

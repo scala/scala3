@@ -1,6 +1,6 @@
 import reflect.ClassTag
 
-class Buffer[A]
+class Buffer[A] extends caps.Mutable
 
 class ArrayBuffer[A: ClassTag] extends Buffer[A]:
   var elems: Array[A] = new Array[A](10)

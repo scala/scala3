@@ -41,6 +41,7 @@ class CompilationTests {
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
+      compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -69,7 +70,8 @@ class CompilationTests {
       compileFile("tests/rewrites/private-this.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/alphanumeric-infix-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/filtering-fors.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
-      compileFile("tests/rewrites/refutable-pattern-bindings.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
+      compileFile("tests/rewrites/refutable-pattern-bindings-old.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
+      compileFile("tests/rewrites/refutable-pattern-bindings.scala", defaultOptions.and("-rewrite", "-source", "3.8-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite")),
@@ -255,7 +257,7 @@ class CompilationTests {
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
   }.checkRuns()
 
-  // initialization tests
+  // initialization tests for global objects
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
@@ -264,6 +266,20 @@ class CompilationTests {
       compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
       compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     end if
+
+    locally {
+      val group = TestGroup("checkInitGlobal/tastySource")
+      val tastSourceOptions = defaultOptions.and("-Ysafe-init-global")
+      val outDirLib = defaultOutputDir + group + "/A/tastySource/A"
+
+      // Set -sourceroot such that the source code cannot be found by the compiler
+      val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
+      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(group).keepOutput.checkCompile()
+
+      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(group).checkWarnings()
+
+      lib.delete()
+    }
   }
 
   // initialization tests

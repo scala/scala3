@@ -4,6 +4,7 @@ package caps
 import language.experimental.captureChecking
 
 import annotation.{experimental, compileTimeOnly, retainsCap}
+import annotation.meta.*
 
 /**
  * Base trait for classes that represent capabilities in the
@@ -78,22 +79,33 @@ type Exclusive = ExclusiveCapability
  */
 trait Control extends SharedCapability, Classifier
 
-/** Marker trait for classes with methods that require an exclusive reference. */
+/** Marker trait for classes that can consult and change the global program state.
+ *  These  classes typically contain mutable variables and/or update methods.
+ */
 @experimental
-trait Mutable extends ExclusiveCapability
+trait Stateful extends ExclusiveCapability
 
-/** Marker trait for classes with reader methods, typically extended by Mutable classes */
+/** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
+ *  extending Separate is created, a fresh `cap` is automatically added to the value's capture set.
+ */
+@experimental
+trait Separate extends Stateful
+
+/** Marker trait for classes that are not subject to scoping restrictions of captured capabilities.
+ */
+@experimental
+trait Unscoped extends Stateful, Classifier
+
+@experimental
+trait Mutable extends Stateful, Separate, Unscoped
+
+/** Marker trait for classes with reader methods, typically extended by Mutable classes. */
 @experimental
 @deprecated
 trait Read extends Mutable
 
-/** Marker trait for classes that are not subject to scoping restrictions
- *  of captured capabilities.
- */
-@experimental
-trait Unscoped extends ExclusiveCapability, Classifier
 
-/** Carrier trait for capture set type parameters */
+/** Carrier trait for capture set type parameters. */
 @experimental
 trait CapSet extends Any
 
@@ -130,6 +142,7 @@ final class reserve extends annotation.StaticAnnotation
  *  environment.
  */
 @experimental
+@deprecated(since = "3.8.0")
 final class use extends annotation.StaticAnnotation
 
 /** A trait that used to allow expressing existential types. Replaced by
@@ -145,6 +158,7 @@ object internal:
   /** An annotation to reflect that a parameter or method carries the `consume`
    *  soft modifier.
    */
+  @getter @param
   final class consume extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
@@ -179,16 +193,24 @@ object internal:
 
 end internal
 
+/** A wrapper that strips all covariant capture sets from Mutable types in the
+ *  result of pure operation `op`, turning them into immutable types.
+ *  Array[?] is also included since it counts as a Mutable type for
+ *  separation checking.
+ */
+@experimental
+def freeze(@internal.consume x: Mutable | Array[?]): x.type = x
+
 @experimental
 object unsafe:
-  /** Two usages:
+  /** Three usages:
    *
    *   1. Marks the constructor parameter as untracked.
    *      The capture set of this parameter will not be included in
    *      the capture set of the constructed object.
    *
-   *   2. Marks a class field that has a cap in its capture set, so that
-   *      the cap is not contributed to the class instance.
+   *   2. Marks a class field that has a root capability in its capture set, so
+   *      that the root capability is not contributed to the class instance.
    *      Example:
    *
    *          class A { val b B^ = ... }; new A()
@@ -199,9 +221,13 @@ object unsafe:
    *
    *      has type A. The `b` field does not contribute its cap.
    *
+   *   3. Allows a field to be declarewd in a class that does not extend Stateful,
+   *      and suppresses checks for updates to the field.
+   *
    * @note This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
+  @getter @param
   final class untrackedCaptures extends annotation.StaticAnnotation
 
   extension [T](x: T)
@@ -215,7 +241,7 @@ object unsafe:
    */
   def unsafeAssumeSeparate(op: Any): op.type = op
 
-  /** A wrapper around code for which uses go unrecorded */
+  /** A wrapper around code for which uses go unrecorded. */
   def unsafeDiscardUses(op: Any): op.type = op
 
   /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the

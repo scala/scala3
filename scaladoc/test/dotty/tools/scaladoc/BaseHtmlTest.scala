@@ -39,7 +39,7 @@ class BaseHtmlTest:
         projectVersion = Some(projectVersion)
       ))
       Scaladoc.run(args)(using testContext)
-      op(using ProjectContext(args.output.toPath))
+      op(using ProjectContext(args.output.nn.toPath))
 
     finally IO.delete(dest)
   end withGeneratedDoc

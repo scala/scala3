@@ -164,7 +164,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
-  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
+  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = (that: @unchecked) match {
     case hm: HashMap[K, V1] =>
       if (isEmpty) hm
       else {
@@ -242,7 +242,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
           }
         }
       }
-      that match {
+      (that: @unchecked) match {
         case thatMap: Map[K, V1] =>
           if (thatMap.isEmpty) this
           else {
@@ -273,7 +273,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   override def foreachEntry[U](f: (K, V) => U): Unit = rootNode.foreachEntry(f)
 
-  /** Applies a function to each key, value, and **original** hash value in this Map */
+  /** Applies a function to each key, value, and **original** hash value in this Map. */
   @inline private[collection] def foreachWithHash(f: (K, V, Int) => Unit): Unit = rootNode.foreachWithHash(f)
 
   override def equals(that: Any): Boolean =
@@ -391,7 +391,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     if (isEmpty) {
       this
     } else {
-      keys match {
+      (keys: @unchecked) match {
         case hashSet: HashSet[K] =>
           if (hashSet.isEmpty) {
             this
@@ -615,7 +615,7 @@ private[immutable] sealed abstract class MapNode[K, +V] extends Node[MapNode[K, 
     */
   def getTuple(key: K, originalHash: Int, hash: Int, shift: Int): (K, V)
 
-  /** Adds all key-value pairs to a builder */
+  /** Adds all key-value pairs to a builder. */
   def buildTo[V1 >: V](builder: HashMapBuilder[K, V1]): Unit
 }
 
@@ -874,7 +874,7 @@ private final class BitmapIndexedMapNode[K, +V](
       if (key0 == key) {
         if (this.payloadArity == 2 && this.nodeArity == 0) {
           /*
-           * Create new node with remaining pair. The new node will a) either become the new root
+           * Creates new node with remaining pair. The new node will a) either become the new root
            * returned, or b) unwrapped and inlined during returning.
            */
           val newDataMap = if (shift == 0) (dataMap ^ bitpos) else bitposFrom(maskFrom(keyHash, 0))
@@ -2170,9 +2170,9 @@ private final class MapKeyValueTupleHashIterator[K, V](rootNode: MapNode[K, V])
   }
 }
 
-/** Used in HashMap[K, V]#removeAll(HashSet[K]) */
+/** Used in HashMap[K, V]#removeAll(HashSet[K]). */
 private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) extends ChampBaseIterator[K, SetNode[K]](rootSetNode) {
-  /** Returns the result of immutably removing all keys in `rootSetNode` from `rootMapNode` */
+  /** Returns the result of immutably removing all keys in `rootSetNode` from `rootMapNode`. */
   def removeAll[V](rootMapNode: BitmapIndexedMapNode[K, V]): BitmapIndexedMapNode[K, V] = {
     var curr = rootMapNode
     while (curr.size > 0 && hasNext) {
@@ -2207,19 +2207,19 @@ object HashMap extends MapFactory[HashMap] {
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
   def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
-    source match {
+    (source: @unchecked) match {
       case hs: HashMap[K, V] => hs
       case _ => (newBuilder[K, V] ++= source).result()
     }
 
-  /** Create a new Builder which can be reused after calling `result()` without an
+  /** Creates a new Builder which can be reused after calling `result()` without an
     * intermediate call to `clear()` in order to build multiple related results.
     */
   def newBuilder[K, V]: ReusableBuilder[(K, V), HashMap[K, V]] = new HashMapBuilder[K, V]
 }
 
 
-/** A Builder for a HashMap.
+/** A `Builder` for a `HashMap`.
   * $multipleResults
   */
 private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, V), HashMap[K, V]] {
@@ -2246,7 +2246,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
       rootNode.getOrElse(key, originalHash, improve(originalHash), 0, value)
     }
 
-  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems */
+  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems. */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
     if (ix < 0) throw new ArrayIndexOutOfBoundsException
     if (ix > as.length) throw new ArrayIndexOutOfBoundsException
@@ -2257,7 +2257,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     result
   }
 
-  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair */
+  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair. */
   private def insertValue[V1 >: V](bm: BitmapIndexedMapNode[K, V],bitpos: Int, key: K, originalHash: Int, keyHash: Int, value: V1): Unit = {
     val dataIx = bm.dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -2280,7 +2280,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     bm.cachedJavaKeySetHashCode += keyHash
   }
 
-  /** Upserts a key/value pair into mapNode, mutably */
+  /** Upserts a key/value pair into mapNode, mutably. */
   private[immutable] def update(mapNode: MapNode[K, V], key: K, value: V, originalHash: Int, keyHash: Int, shift: Int): Unit = {
     mapNode match {
       case bm: BitmapIndexedMapNode[K, V] =>
@@ -2324,13 +2324,13 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     }
   }
 
-  /** If currently referencing aliased structure, copy elements to new mutable structure */
+  /** If currently referencing aliased structure, copy elements to new mutable structure. */
   private def ensureUnaliased() = {
     if (isAliased) copyElems()
     aliased = null
   }
 
-  /** Copy elements to new mutable structure */
+  /** Copies elements to new mutable structure. */
   private def copyElems(): Unit = {
     rootNode = rootNode.copy()
   }
@@ -2373,7 +2373,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
 
   override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     ensureUnaliased()
-    xs match {
+    (xs: @unchecked) match {
       case hm: HashMap[K, V] =>
         new ChampBaseIterator[(K, V), MapNode[K, V]](hm.rootNode) {
           while(hasNext) {

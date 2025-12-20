@@ -10,6 +10,7 @@ import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
 import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
+import core.NameKinds.DefaultGetterName
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
@@ -554,6 +555,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
       && !(sym.isClassConstructor && isSecondaryCtorDelegateCall)
+      && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
           /* If the last expression in a block is a context function, we'll try to
@@ -590,6 +592,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       && sym.info.isParameterless
       && !isCompilerIntrinsicMethod(sym)
       && !sym.info.typeSymbol.name.isContextFunction // exclude context functions like in canInstrumentApply
+      && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
 
     /** Does sym refer to a "compiler intrinsic" method, which only exist during compilation,
       * like Any.isInstanceOf?

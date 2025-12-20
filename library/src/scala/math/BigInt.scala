@@ -616,7 +616,7 @@ final class BigInt private (
     if (isValidLong && (-(1L << 53) <= _long && _long <= (1L << 53))) _long.toDouble
     else this.bigInteger.doubleValue
 
-  /** Create a `NumericRange[BigInt]` in range `[start;end)`
+  /** Creates a `NumericRange[BigInt]` in range `[start;end)`
    *  with the specified step, where start is the target BigInt.
    *
    *  @param end    the end value of the range (exclusive)

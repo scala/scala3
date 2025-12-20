@@ -78,7 +78,7 @@ import caps.unsafe.untrackedCaptures
 trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Iterator[A]] {
   self: Iterator[A]^ =>
 
-  /** Check if there is a next element available.
+  /** Checks if there is a next element available.
     *
     * @return `true` if there is a next element, `false` otherwise
     * @note   Reuse: $preservesIterator
@@ -88,7 +88,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   @deprecated("hasDefiniteSize on Iterator is the same as isEmpty", "2.13.0")
   @`inline` override final def hasDefiniteSize = isEmpty
 
-  /** Return the next element and advance the iterator.
+  /** Returns the next element and advance the iterator.
     *
     * @throws NoSuchElementException if there is no next element.
     * @return the next element.
@@ -218,11 +218,11 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       this
     }
 
-    /** Eagerly fetch `size` elements to buffer.
+    /** Eagerly fetches `size` elements to buffer.
      *
      *  If buffer is dirty and stepping, copy prefix.
      *  If skipping, skip ahead.
-     *  Fetch remaining elements.
+     *  Fetches remaining elements.
      *  If unable to deliver size, then pad if padding enabled, otherwise drop segment.
      *  Returns true if successful in delivering `count` elements,
      *  or padded segment, or partial segment.
@@ -602,7 +602,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
   def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new AbstractIterator[B] {
     private var cur: Iterator[B]^{f} = Iterator.empty
-    /** Trillium logic boolean: -1 = unknown, 0 = false, 1 = true */
+    /** Trillium logic boolean: -1 = unknown, 0 = false, 1 = true. */
     private var _hasNext: Int = -1
 
     def nextCur(): Unit = {
@@ -899,7 +899,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       // type testing does not discriminate based on origin.
       private def compareGap(queue: scala.collection.mutable.Queue[A]) = gap eq queue
       override def hashCode() = gap.hashCode()
-      override def equals(other: Any) = other match {
+      override def equals(other: Any) = (other: @unchecked) match {
         case x: Partner   => x.compareGap(gap) && gap.isEmpty
         case _            => super.equals(other)
       }
@@ -1138,7 +1138,7 @@ object Iterator extends IterableFactory[Iterator] {
     *             the end of the collection)
     * @tparam A   Type of the elements
     * @tparam S   Type of the internal state
-    * @return an Iterator that produces elements using `f` until `f` returns `None`
+    * @return an `Iterator` that produces elements using `f` until `f` returns `None`
     */
   override def unfold[A, S](init: S)(f: S => Option[(A, S)]): Iterator[A]^{f} = new UnfoldIterator(init)(f)
 

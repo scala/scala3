@@ -23,7 +23,7 @@ import scala.collection.immutable.Map.Map4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 import SeqMap.{SeqMap1, SeqMap2, SeqMap3, SeqMap4}
 
-/** Base type of immutable Maps */
+/** Base type of immutable Maps. */
 trait Map[K, +V]
   extends Iterable[(K, V)]
      with collection.Map[K, V]
@@ -76,7 +76,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
     */
   def removed(key: K): C
 
-  /** Alias for `removed` */
+  /** Alias for `removed`. */
   @`inline` final def - (key: K): C = removed(key)
 
   @deprecated("Use -- with an explicit collection", "2.13.0")
@@ -93,7 +93,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
     */
   def removedAll(keys: IterableOnce[K]^): C = keys.iterator.foldLeft[C](coll)(_ - _)
 
-  /** Alias for `removedAll` */
+  /** Alias for `removedAll`. */
   @`inline` final override def -- (keys: IterableOnce[K]^): C = removedAll(keys)
 
   /** Creates a new map obtained by updating this map with a given key/value pair.
@@ -105,7 +105,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
   def updated[V1 >: V](key: K, value: V1): CC[K, V1]
 
   /**
-   * Update a mapping for the specified key and its current optionally mapped value
+   * Updates a mapping for the specified key and its current optionally mapped value
    * (`Some` if there is current mapping, `None` if not).
    *
    * If the remapping function returns `Some(v)`, the mapping is updated with the new value `v`.
@@ -113,7 +113,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    * If the function itself throws an exception, the exception is rethrown, and the current mapping is left unchanged.
    *
    * @param key the key value
-   * @param remappingFunction a function that receives current optionally mapped value and return a new mapping
+   * @param remappingFunction a function that receives current optionally mapped value and returns a new mapping
    * @return A new map with the updated mapping with the key
    */
   def updatedWith[V1 >: V](key: K)(remappingFunction: Option[V] => Option[V1]): CC[K,V1] = {
@@ -145,7 +145,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
 
   override def keySet: Set[K] = new ImmutableKeySet
 
-  /** The implementation class of the set returned by `keySet` */
+  /** The implementation class of the set returned by `keySet`. */
   protected[immutable] class ImmutableKeySet extends AbstractSet[K] with GenKeySet with DefaultSerializable {
     def incl(elem: K): Set[K] = if (this(elem)) this else empty ++ this + elem
     def excl(elem: K): Set[K] = if (this(elem)) empty ++ this - elem else this
@@ -212,7 +212,7 @@ object Map extends MapFactory[Map] {
   def empty[K, V]: Map[K, V] = EmptyMap.asInstanceOf[Map[K, V]]
 
   def from[K, V](it: IterableOnce[(K, V)]^): Map[K, V] =
-    it match {
+    (it: @unchecked) match {
       case it: Iterable[_] if it.isEmpty => empty[K, V]
       // Since IterableOnce[(K, V)] launders the variance of K,
       // identify only our implementations which can be soundly substituted.
@@ -253,7 +253,7 @@ object Map extends MapFactory[Map] {
     override def valuesIterator: Iterator[Nothing] = Iterator.empty
     def updated [V1] (key: Any, value: V1): Map[Any, V1] = new Map1(key, value)
     def removed(key: Any): Map[Any, Nothing] = this
-    override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]^): Map[Any, V2] = suffix match {
+    override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]^): Map[Any, V2] = (suffix: @unchecked) match {
       case m: immutable.Map[Any, V2] => m
       case _ => super.concat(suffix)
     }

@@ -1101,7 +1101,7 @@ object Types extends TypeUtils {
      * methods of [[java.lang.Object]], that also does not count toward the interface's
      * abstract method count.
      *
-     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     * @see https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/FunctionalInterface.html
      *
      * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
      *
@@ -1956,6 +1956,11 @@ object Types extends TypeUtils {
     /** If this is a proto type, WildcardType, otherwise the type itself */
     def dropIfProto: Type = this
 
+    /** If this is a (possibly applied) selection proto type, ignore the
+     *  selection part
+     */
+    def ignoreSelectionProto(using Context): Type = this
+
     /** If this is an AndType, the number of factors, 1 for all other types */
     def andFactorCount: Int = 1
 
@@ -2307,7 +2312,7 @@ object Types extends TypeUtils {
 
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
-    def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
+    def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T
     def map(tm: TypeMap)(using Context): ProtoType
 
@@ -5899,8 +5904,9 @@ object Types extends TypeUtils {
 
     override def underlying(using Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): AnnotatedType =
+    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): Type =
       if ((parent eq this.parent) && (annot eq this.annot)) this
+      else if annot == EmptyAnnotation then parent
       else AnnotatedType(parent, annot)
 
     override def stripTypeVar(using Context): Type =
@@ -6274,12 +6280,12 @@ object Types extends TypeUtils {
 
   end BiTypeMap
 
-  /** A typemap that follows aliases and keeps their transformed results if
-  *  there is a change.
-  */
+  /** A typemap that follows non-opaque aliases and keeps their transformed
+   *  results if there is a change.
+   */
   trait FollowAliasesMap(using Context) extends TypeMap:
     def mapFollowingAliases(t: Type): Type =
-      val t1 = t.dealiasKeepAnnots
+      val t1 = t.dealiasKeepAnnotsAndOpaques
       if t1 ne t then
         val t2 = apply(t1)
         if t2 ne t1 then t2
@@ -6478,10 +6484,7 @@ object Types extends TypeUtils {
           mapCapturingType(tp, parent, refs, variance)
 
         case tp @ AnnotatedType(underlying, annot) =>
-          val underlying1 = this(underlying)
-          val annot1 = annot.mapWith(this)
-          if annot1 eq EmptyAnnotation then underlying1
-          else derivedAnnotatedType(tp, underlying1, annot1)
+          derivedAnnotatedType(tp, this(underlying), annot.mapWith(this))
 
         case _: ThisType
           | _: BoundType
@@ -7122,6 +7125,8 @@ object Types extends TypeUtils {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
       tp match {
+        case tp: AppliedType if defn.isTupleNType(tp) =>
+          foldOver(n + 1, tp.toNestedPairs)
         case tp: AppliedType =>
           val tpNorm = tp.tryNormalize
           if tpNorm.exists then apply(n, tpNorm)

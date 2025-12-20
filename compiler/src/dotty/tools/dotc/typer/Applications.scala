@@ -29,6 +29,7 @@ import util.chaining.tap
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
+import inlines.Inlines
 import TypeApplications.*
 import Annotations.Annotation
 
@@ -39,7 +40,6 @@ import annotation.threadUnsafe
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import dotty.tools.dotc.cc.isRetains
-import dotty.tools.dotc.inlines.Inlines
 
 object Applications {
   import tpd.*
@@ -883,7 +883,29 @@ trait Applications extends Compatibility {
             case SAMType(samMeth, samParent) => argtpe <:< samMeth.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
             case _ => false
 
-        isCompatible(argtpe, formal)
+        // For overload resolution, allow wildcard upper bounds to match their bound type.
+        // For example, given:
+        //   def blub[T](a: Class[? <: T]): String = "a"
+        //   def blub[T](a: Class[T], ints: Int*): String = "b"
+        //   blub(classOf[Object])
+        //
+        // The non-varargs overload should be preferred. While Class[? <: T] is not a
+        // subtype of Class[T] (Class is invariant), for overload resolution we consider
+        // Class[? <: T] "applicable" where Class[T] is expected by checking if the
+        // wildcard's upper bound is a subtype of the formal type parameter.
+        def wildcardArgOK =
+          argtpe match
+            case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
+              formal match
+                case AppliedType(tycon2, args2)
+                if tycon1 =:= tycon2 && args1.length == args2.length =>
+                  args1.lazyZip(args2).forall {
+                    case (TypeBounds(_, hi), formal) => hi relaxed_<:< formal
+                  }
+                case _ => false
+            case _ => false
+
+        isCompatible(argtpe, formal) || wildcardArgOK
         // Only allow SAM-conversion to PartialFunction if implicit conversions
         // are enabled. This is necessary to avoid ambiguity between an overload
         // taking a PartialFunction and one taking a Function1 because
@@ -1032,11 +1054,33 @@ trait Applications extends Compatibility {
       isPureExpr(arg)
       || arg.isInstanceOf[RefTree | Apply | TypeApply] && arg.symbol.name.is(DefaultGetterName)
 
-    val result:   Tree = {
+    def defaultsAddendum(args: List[Tree]): Unit =
+      def usesDefault(arg: Tree): Boolean = arg match
+        case TypeApply(Select(_, name), _) => name.is(DefaultGetterName)
+        case Apply(Select(_, name), _) => name.is(DefaultGetterName)
+        case Apply(fun, _) => usesDefault(fun)
+        case _ => false
+      ctx.reporter.mapBufferedMessages:
+        case dia: Diagnostic.Error =>
+          dia.msg match
+          case msg: TypeMismatch
+          if msg.inTree.exists: t =>
+            args.exists(arg => arg.span == t.span && usesDefault(arg))
+          =>
+            val noteText = i"Error occurred in an application involving default arguments."
+            val explained = i"Expanded application: ${cpy.Apply(app)(normalizedFun, args)}"
+            Diagnostic.Error(msg.append(s"\n$noteText").appendExplanation(s"\n\n$explained"), dia.pos)
+          case msg => dia
+        case dia => dia
+
+    val result: Tree = {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if !success then app0.withType(UnspecifiedErrorType)
+        if !success then
+          if typedArgs.exists(_.tpe.isError) then
+            defaultsAddendum(typedArgs)
+          app0.withType(UnspecifiedErrorType)
         else {
           if isJavaAnnotConstr(methRef.symbol) then
             // #19951 Make sure all arguments are NamedArgs for Java annotations
@@ -1422,7 +1466,7 @@ trait Applications extends Compatibility {
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
 
-    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
+    typedExpr(tree.fun, PolyProto(typedArgs, pt.ignoreSelectionProto)) match
       case fun: TypeApply if !ctx.isAfterTyper =>
         val function = fun.fun
         val args = (fun.args ++ tree.args).map(_.show).mkString(", ")
@@ -1446,7 +1490,6 @@ trait Applications extends Compatibility {
         }
         if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
         else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
-    }
   }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.

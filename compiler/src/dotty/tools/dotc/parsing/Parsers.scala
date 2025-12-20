@@ -411,7 +411,9 @@ object Parsers {
       false
     }
 
-    def errorTermTree(start: Offset): Tree = atSpan(Span(start, in.offset)) { unimplementedExpr }
+    def errorTermTree(start: Offset): Tree =
+      val end = if in.token == OUTDENT then start else in.offset
+      atSpan(Span(start, end)) { unimplementedExpr }
 
     private var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {
@@ -1137,7 +1139,11 @@ object Parsers {
           lookahead.skipParens()
           isArrowIndent()
         else if lookahead.token == CASE && in.featureEnabled(Feature.relaxedLambdaSyntax) then
-          Some(() => singleCaseMatch())
+          Some: () =>
+            inSepRegion(SingleLineLambda(_)):
+              singleCaseMatch()
+            .tap: _ =>
+              accept(ENDlambda)
         else
           None
       isParamsAndArrow()
@@ -3228,6 +3234,9 @@ object Parsers {
       val body = tok match
         case ARROW => atSpan(in.skipToken()):
           if exprOnly then
+            if in.token == ENDlambda then
+              in.token = NEWLINE
+              in.observeIndented()
             if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
               warning(em"""Misleading indentation: this expression forms part of the preceding case.
                           |If this is intended, it should be indented for clarity.

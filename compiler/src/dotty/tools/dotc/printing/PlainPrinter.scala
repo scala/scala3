@@ -288,7 +288,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if elideCapabilityCaps
             && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && (!parent.derivesFromExclusive || refs.isReadOnly)
+            && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refSet) =>
@@ -361,9 +361,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch {
-            case ex: Throwable => Str("...")
-          }
+          catch case _: Throwable => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)

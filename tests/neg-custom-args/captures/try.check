@@ -35,6 +35,7 @@
    |
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
+   |
 37 |      () =>
 38 |        raise(new Exception)(using x)
 39 |        22
@@ -51,6 +52,7 @@
    |
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
+   |
 49 |    () =>
 50 |      raise(new Exception)(using x)
 51 |      22

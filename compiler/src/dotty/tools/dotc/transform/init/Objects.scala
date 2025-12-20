@@ -81,13 +81,33 @@ class Objects(using Context @constructorOnly):
   val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap,
     ManifestFactory_ObjectTYPE, ManifestFactory_NothingTYPE, ManifestFactory_NullTYPE)
 
+  /**
+   * Whether the analysis work in best-effort mode in contrast to aggressive mode.
+   *
+   * - In best-effort mode, the analysis tries to be fast, useful and unobtrusive.
+   * - In the aggressive mode, the analysis tries to be sound and verbose by spending more check time.
+   *
+   * In both mode, there is a worst-case guarantee based on a quota on the
+   * number of method calls in initializing a global object.
+   *
+   * We use a patch to set `BestEffort` to `false` in testing community projects.
+   */
+  val BestEffort: Boolean = true
+
+  /** The analysis has run out of quota */
+  class OutOfQuotaException(count: Int) extends Exception
+
+  def checkCost(count: Int): Unit =
+    if count > 500 && BestEffort || count > 2000 && !BestEffort then
+      throw new OutOfQuotaException(count)
+
   // ----------------------------- abstract domain -----------------------------
 
   /** Syntax for the data structure abstraction used in abstract domain:
    *
    * ve ::= ObjectRef(class)                                             // global object
-   *      | InstanceRef(class, ownerObject, ctor, regions)                   // instance of a class
-   *      | ArrayRef(ownerObject, regions)                                // represents values of native array class in Array.scala
+   *      | InstanceRef(class, ownerObject, ctor, regions)               // instance of a class
+   *      | ArrayRef(ownerObject, regions)                               // represents values of native array class in Array.scala
    *      | Fun(code, thisV, scope)                                      // value elements that can be contained in ValueSet
    *      | SafeValue                                                    // values on which method calls and field accesses won't cause warnings. Int, String, etc.
    *      | UnknownValue                                                 // values whose source are unknown at compile time
@@ -100,8 +120,8 @@ class Objects(using Context @constructorOnly):
    * EnvRef(tree, ownerObject)                                           // represents environments for evaluating methods, functions, or lazy/by-name values
    * EnvSet ::= Set(EnvRef)
    * InstanceBody ::= (valsMap: Map[Symbol, Value],
-                       outersMap: Map[ClassSymbol, Value],
-                       outerEnv: EnvSet)                                 // represents combined information of all instances represented by a ref
+   *                   outersMap: Map[ClassSymbol, Value],
+   *                   outerEnv: EnvSet)                                 // represents combined information of all instances represented by a ref
    * Heap ::= Ref -> InstanceBody                                        // heap is mutable
    * EnvBody ::= (valsMap: Map[Symbol, Value],
    *              thisV: Value,
@@ -173,18 +193,29 @@ class Objects(using Context @constructorOnly):
 
     def outerValue(sym: Symbol)(using Heap.MutableData): Value = Heap.readOuter(this, sym)
 
+    def hasOuter(classSymbol: Symbol)(using Heap.MutableData): Boolean = Heap.hasOuter(this, classSymbol)
+
     def outer(using Heap.MutableData): Value = this.outerValue(klass)
 
     def outerEnv(using Heap.MutableData): Env.EnvSet = Heap.readOuterEnv(this)
   end Ref
 
-  /** A reference to a static object */
+  /** A reference to a static object
+   *
+   *  Invariant: The reference itself should not contain any state
+   *
+   *  Rationale: There can be multiple references to the same object. They must
+   *  share the same state.
+   */
   case class ObjectRef private (klass: ClassSymbol)(using Trace) extends Ref:
-    var afterSuperCall = false
+    /** Use the special outer to denote whether the super constructor of the
+     *  object has been called or not.
+     */
+    def isAfterSuperCall(using Heap.MutableData) =
+      this.hasOuter(klass.sourceModule)
 
-    def isAfterSuperCall = afterSuperCall
-
-    def setAfterSuperCall(): Unit = afterSuperCall = true
+    def setAfterSuperCall()(using Heap.MutableData): Unit =
+      this.initOuter(klass.sourceModule, Bottom)
 
     def owner = klass
 
@@ -340,9 +371,38 @@ class Objects(using Context @constructorOnly):
       private[State] val checkingObjects = new mutable.ArrayBuffer[ObjectRef]
       private[State] val checkedObjects = new mutable.ArrayBuffer[ObjectRef]
       private[State] val pendingTraces = new mutable.ArrayBuffer[Trace]
+
+      /** It records how many calls have being analyzed for the current object under check */
+      private[State] val checkingCosts = new mutable.ArrayBuffer[Int]
+
+      private[State] val quotaExhaustedObjects = new mutable.ArrayBuffer[ObjectRef]
+
+      def addChecking(obj: ObjectRef): Unit =
+        this.checkingObjects += obj
+        this.checkingCosts += 0
+
+      def popChecking(): Unit =
+        val index = this.checkingObjects.size - 1
+        checkingObjects.remove(index)
+        checkingCosts.remove(index)
+
+      def addChecked(obj: ObjectRef): Unit =
+        this.checkedObjects += obj
+
+      def addQuotaExhausted(obj: ObjectRef): Unit =
+        this.quotaExhaustedObjects += obj
     end Data
 
     def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last.klass
+
+    def recordCall()(using data: Data): Unit =
+      val lastIndex = data.checkingCosts.size - 1
+      val callCount = data.checkingCosts(lastIndex) + 1
+      data.checkingCosts(lastIndex) = callCount
+      checkCost(callCount)
+
+    def isQuotaExhausted(obj: ObjectRef)(using data: Data): Boolean =
+      data.quotaExhaustedObjects.contains(obj)
 
     private def doCheckObject(classSym: ClassSymbol)(using ctx: Context, data: Data, heap: Heap.MutableData, envMap: EnvMap.EnvMapMutableData) =
       val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -362,18 +422,34 @@ class Objects(using Context @constructorOnly):
         val obj = ObjectRef(classSym)
         given Scope = obj
         log("Iteration " + count) {
-          data.checkingObjects += obj
-          init(tpl, obj, classSym)
+          data.addChecking(obj)
+
+          try
+            init(tpl, obj, classSym)
+          catch case _: OutOfQuotaException =>
+            report.warning("Giving up checking initialization of " + classSym + " due to exhausted budget", classSym.sourcePos)
+            data.addQuotaExhausted(obj)
+            data.addChecked(obj)
+            data.popChecking()
+            return obj
+
           assert(data.checkingObjects.last.klass == classSym, "Expect = " + classSym.show + ", found = " + data.checkingObjects.last.klass)
-          data.checkingObjects.remove(data.checkingObjects.size - 1)
+
+          data.popChecking()
         }
 
         val hasError = ctx.reporter.pendingMessages.nonEmpty
         if cache.hasChanged && !hasError then
-          cache.prepareForNextIteration()
-          iterate()
+          if count <= 3 then
+            cache.prepareForNextIteration()
+            iterate()
+          else
+            if !BestEffort then
+              report.warning("Giving up checking initialization of " + classSym + " due to iteration > = " + count, classSym.sourcePos)
+            data.addChecked(obj)
+            obj
         else
-          data.checkedObjects += obj
+          data.addChecked(obj)
           obj
       end iterate
 
@@ -688,6 +764,9 @@ class Objects(using Context @constructorOnly):
     def readOuter(ref: Ref, parent: Symbol)(using mutable: MutableData): Value =
       mutable.heap(ref).outersMap(parent)
 
+    def hasOuter(ref: Ref, parent: Symbol)(using mutable: MutableData): Boolean =
+      mutable.heap(ref).outersMap.contains(parent)
+
     def readOuterEnv(ref: Ref)(using mutable: MutableData): Env.EnvSet =
       mutable.heap(ref).outerEnvs
 
@@ -959,15 +1038,11 @@ class Objects(using Context @constructorOnly):
       if !map.contains(sym) then map.updated(sym, value)
       else map.updated(sym, map(sym).join(value))
 
-  /** Check if the checker option reports warnings about unknown code
-   */
-  val reportUnknown: Boolean = false
-
   def reportWarningForUnknownValue(msg: => String, pos: SrcPos)(using Context): Value =
-    if reportUnknown then
-      report.warning(msg, pos)
+    if BestEffort then
       Bottom
     else
+      report.warning(msg, pos)
       UnknownValue
 
   /** Handle method calls `e.m(args)`.
@@ -1081,6 +1156,7 @@ class Objects(using Context @constructorOnly):
 
           val env2 = Env.ofDefDef(ddef, args.map(_.value), thisV, outerEnv)
           extendTrace(ddef) {
+            State.recordCall()
             given Scope = env2
             cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
               Returns.installHandler(meth)
@@ -1115,14 +1191,17 @@ class Objects(using Context @constructorOnly):
               case env: Env.EnvRef => Env.ofDefDef(ddef, args.map(_.value), thisVOfClosure, Env.EnvSet(Set(env)))
             }
             given Scope = funEnv
-            extendTrace(code) { eval(ddef.rhs, thisVOfClosure, klass, cacheResult = true) }
+            extendTrace(code) {
+              State.recordCall()
+              eval(ddef.rhs, thisVOfClosure, klass, cacheResult = true)
+            }
           else
             // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
             if meth.owner == defn.AnyClass || meth.owner == defn.ObjectClass then
               value
             else
               // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
-              // For now, return `UnknownValue` to ensure soundness and trigger a warning when reportUnknown = true.
+              // For now, return `UnknownValue` to ensure soundness and trigger a warning when BestEffort = false.
               UnknownValue
             end if
           end if
@@ -1158,6 +1237,7 @@ class Objects(using Context @constructorOnly):
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
         else
           extendTrace(ddef) { // The return values for secondary constructors can be ignored
+            State.recordCall()
             Returns.installHandler(ctor)
             eval(ddef.rhs, ref, cls, cacheResult = true)
             Returns.popHandler(ctor)
@@ -1212,34 +1292,43 @@ class Objects(using Context @constructorOnly):
       if target.is(Flags.Lazy) then // select a lazy field
         if ref.hasVal(target) then
           ref.valValue(target)
+
         else if target.hasSource then
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
           given Scope = Env.ofByName(target, rhs, ref, Env.NoEnv)
           val result = eval(rhs, ref, target.owner.asClass, cacheResult = true)
           ref.initVal(target, result)
           result
+
         else
           UnknownValue
+
       else if target.exists then
         def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name.toString == "next"
         if target.isMutableVarOrAccessor && !isNextFieldOfColonColon then
           if ref.hasVar(target) then
             if ref.owner == State.currentObject then
               ref.varValue(target)
+
             else
               errorReadOtherStaticObject(State.currentObject, ref)
               Bottom
+
           else if ref.isObjectRef && ref.klass.hasSource then
-            report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
+            errorReadUninitializedField(ref.asObjectRef, field)
             Bottom
+
           else
             // initialization error, reported by the initialization checker
             Bottom
+
         else if ref.hasVal(target) then
           ref.valValue(target)
+
         else if ref.isObjectRef && ref.klass.hasSource then
-          report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
+          errorReadUninitializedField(ref.asObjectRef, field)
           Bottom
+
         else
           // initialization error, reported by the initialization checker
           Bottom
@@ -1686,7 +1775,7 @@ class Objects(using Context @constructorOnly):
         val args = evalArgs(elems.map(Arg.apply), thisV, klass)
         val arr = ArrayRef(State.currentObject, summon[Regions.Data])
         arr.writeElement(args.map(_.value).join)
-        call(ObjectRef(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
+        call(accessObject(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
         evalExprs(bindings, thisV, klass)
@@ -2229,3 +2318,10 @@ class Objects(using Context @constructorOnly):
         printTraceWhenMultiple(scope_trace)
 
       report.warning(msg, Trace.position)
+
+  def errorReadUninitializedField(obj: ObjectRef, field: Symbol)(using State.Data, Trace, Context): Unit =
+    if State.isQuotaExhausted(obj) then
+      if !BestEffort then
+        report.warning("Access uninitialized field of quota exhausted object " + field.show + ". " + Trace.show, Trace.position)
+    else
+      report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)

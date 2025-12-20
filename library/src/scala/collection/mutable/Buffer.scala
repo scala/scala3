@@ -58,7 +58,7 @@ trait Buffer[A]
    */
   @`inline` final def appendAll(@deprecatedName("xs") elems: IterableOnce[A]^): this.type = addAll(elems)
 
-  /** Alias for `prepend` */
+  /** Alias for `prepend`. */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
 
   /** Prepends the elements contained in a iterable object to this buffer.
@@ -70,7 +70,7 @@ trait Buffer[A]
   @deprecated("Use prependAll instead", "2.13.0")
   @`inline` final def prepend(elems: A*): this.type = prependAll(elems)
 
-  /** Alias for `prependAll` */
+  /** Alias for `prependAll`. */
   @inline final def ++=:(elems: IterableOnce[A]^): this.type = prependAll(elems)
 
   /** Inserts a new element at a given index into this buffer.
@@ -236,7 +236,7 @@ trait Buffer[A]
     if (idx < 0) this else takeInPlace(idx)
   }
 
-  /** Append the given element to this $coll until a target length is reached.
+  /** Appends the given element to this $coll until a target length is reached.
    *
    *  @param   len   the target length
    *  @param   elem  the padding value
@@ -258,7 +258,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
-  /** Replace the contents of this $coll with the flatmapped result.
+  /** Replaces the contents of this $coll with the flatmapped result.
    *
    *  @param f the mapping function
    *  @return this $coll
@@ -275,7 +275,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     this
   }
 
-  /** Replace the contents of this $coll with the filtered result.
+  /** Replaces the contents of this $coll with the filtered result.
    *
    *  @param f the filtering function
    *  @return this $coll

@@ -41,7 +41,7 @@ object CapturingType:
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
         val refs1 =
-          if parent.derivesFromMutable then refs.associateWithMutable() else refs
+          if parent.derivesFromStateful then refs.associateWithStateful() else refs
         refs1.adoptClassifier(parent.inheritedClassifier)
         AnnotatedType(parent, CaptureAnnotation(refs1, boxed)(defn.RetainsAnnot))
 

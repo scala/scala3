@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.0-RC1"
+  val referenceVersion = "3.8.0-RC3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -134,9 +134,9 @@ object Build {
   val mimaPreviousDottyVersion = "3.8.0-RC1" // temporary until 3.8.0 is released
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.10.1"
+  val scalaCliLauncherVersion = "1.11.0"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M19"
+  val coursierJarVersion = "2.1.25-M21"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -198,12 +198,12 @@ object Build {
       "-encoding", "UTF8",
       "-language:implicitConversions",
       s"--java-output-version:${Versions.minimumJVMVersion}",
-      "-Yexplicit-nulls", 
+      "-Yexplicit-nulls",
       "-Wsafe-init"
     ),
 
     (Compile / compile / javacOptions) ++= Seq(
-      "-Xlint:unchecked", 
+      "-Xlint:unchecked",
       "-Xlint:deprecation",
       "--release", Versions.minimumJVMVersion
     ),
@@ -447,6 +447,39 @@ object Build {
       "-default-template", "static-site-main"
     ) ++ extMap
   }
+
+  val enableBspAllProjects = sys.env.get("ENABLE_BSP_ALL_PROJECTS").map(_.toBoolean).getOrElse{
+    val enableBspAllProjectsFile = file(".enable_bsp_all_projects")
+    enableBspAllProjectsFile.exists()
+  }
+
+  // Setups up doc / scalaInstance to use in the bootstrapped projects instead of the default one
+  lazy val scaladocDerivedInstanceSettings = Def.settings(
+    // We cannot include scaladoc in the regular `scalaInstance` task because
+    // it's a bootstrapped-only project, so we would run into a loop since we
+    // need the output of that task to compile scaladoc. But we can include it
+    // in the `scalaInstance` of the `doc` task which allows us to run
+    // `scala3-library-bootstrapped/doc` for example.
+    doc / scalaInstance := {
+      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
+      val docJars = Array(scalaDoc) ++ externalDeps
+
+      val base = scalaInstance.value
+      val docScalaInstance = Defaults.makeScalaInstance(
+        version = base.version,
+        libraryJars = base.libraryJars,
+        allCompilerJars = base.compilerJars,
+        allDocJars = docJars,
+        state.value,
+        scalaInstanceTopLoader.value
+      )
+      // assert that sbt reuses the same compiler class loader
+      assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
+      docScalaInstance
+    },
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
+  )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
@@ -931,7 +964,7 @@ object Build {
         ),
       // Packaging configuration of `scala3-sbt-bridge`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -963,6 +996,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -989,7 +1023,7 @@ object Build {
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1018,6 +1052,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1045,7 +1080,7 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1074,6 +1109,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1098,7 +1134,7 @@ object Build {
       Test    / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1138,6 +1174,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1202,19 +1239,13 @@ object Build {
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
-      Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions ++= Seq(
+      Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
       // Packaging configuration of the stdlib
-      Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
-      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // non-bootstrapped stdlib is publishable (only locally)
-      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
       // Add configuration for MiMa
@@ -1225,7 +1256,8 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := false,
       // Generate library.properties, used by scala.util.Properties
-      Compile / resourceGenerators += generateLibraryProperties.taskValue
+      Compile / resourceGenerators += generateLibraryProperties.taskValue,
+      Compile / mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1255,25 +1287,18 @@ object Build {
       Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
       Test / test    := (`scala-library-nonbootstrapped` / Test / test).value,
-      // Claim that the classes generated by this project are the same as the one we get from `scala-library-nonbootstrapped`
-      Compile / classDirectory := (`scala-library-nonbootstrapped` / Compile / classDirectory).value,
       // Packaging configuration of the stdlib
-      Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
-      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
+      Compile / mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
-    .settings(disableDocSetting) // TODO now produces empty JAR to satisfy Sonatype, see https://github.com/scala/scala3/issues/24434
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -1292,19 +1317,13 @@ object Build {
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
-      Compile / scalacOptions += "-Yno-stdlib-patches",
-      Compile / scalacOptions ++= Seq(
+      Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
       // Packaging configuration of the stdlib
-      Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
-      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-bootstrapped",
       // we do not need sbt to create a managed instance for us, we do it manually in the next setting
@@ -1332,6 +1351,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1344,7 +1364,8 @@ object Build {
       keepSJSIR := false,
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
+      Compile / mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1376,19 +1397,13 @@ object Build {
       Test / compile := (`scala-library-bootstrapped` / Test / compile).value,
       Test / doc     := (`scala-library-bootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-bootstrapped` / Test / run).evaluated,
-      // Claim that the classes generated by this project are the same as the one we get from `scala-library-bootstrapped`
-      Compile / classDirectory := (`scala-library-bootstrapped` / Compile / classDirectory).value,
       // Packaging configuration of the stdlib
-      Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
-      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
+      Compile / mainClass := None,
     )
 
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
@@ -1423,9 +1438,8 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-      Compile / scalacOptions += "-Yno-stdlib-patches",
       // Configure the source maps to point to GitHub for releases
-      Compile / scalacOptions ++= {
+      Compile / compile / scalacOptions ++= {
         if (isRelease) {
           val baseURI = (LocalRootProject / baseDirectory).value.toURI
           val dottyVersion = version.value
@@ -1435,13 +1449,8 @@ object Build {
         }
       },
       // Packaging configuration of the stdlib
-      Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
-      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := false,
       // Take into account the source files from the `library` folder
       // but give the priority to the files in `library-js` that override files in `library`
       Compile / sources := {
@@ -1497,6 +1506,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1518,6 +1528,7 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := true,
       bspEnabled := false,
+      Compile / mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
@@ -1550,16 +1561,12 @@ object Build {
       Test / doc     := (`scala-library-sjs` / Test / doc).value,
       Test / run     := (`scala-library-sjs` / Test / run).evaluated,
       // Packaging configuration of the stdlib
-      Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
-      Compile / packageSrc / publishArtifact := true,
-      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library",
       bspEnabled := false,
+      Compile / mainClass := None,
     )
 
   // ==============================================================================================
@@ -1647,7 +1654,7 @@ object Build {
       ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1679,6 +1686,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1871,7 +1879,7 @@ object Build {
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1905,6 +1913,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1982,7 +1991,7 @@ object Build {
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   // ==============================================================================================
@@ -2019,7 +2028,7 @@ object Build {
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2033,6 +2042,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings,
       // Configure to use the non-bootstrapped compiler
       managedScalaInstance := false,
+      scaladocDerivedInstanceSettings,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -2058,7 +2068,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
@@ -2129,13 +2139,16 @@ object Build {
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
   }
 
   lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
     .dependsOn(`scala3-compiler-bootstrapped-new`)
-    .settings(commonBootstrappedSettings)
+    .settings(
+      commonBootstrappedSettings,
+      bspEnabled := enableBspAllProjects,
+    )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-repl`).
@@ -2920,7 +2933,7 @@ object Build {
     publishConfiguration ~= (_.withOverwrite(true)),
     publishLocalConfiguration ~= (_.withOverwrite(true)),
     projectID ~= {id =>
-      val line = "scala.versionLine" -> versionLine
+      val line = "info.scala.versionLine" -> versionLine
       id.withExtraAttributes(id.extraAttributes + line)
     },
     Test / publishArtifact := false,
@@ -2937,7 +2950,7 @@ object Build {
     ),
   )
 
-  /*lazy val commonDistSettings = Seq(
+  lazy val commonDistSettings = Seq(
     publishArtifact := false,
     republishRepo := target.value / "republish",
     Universal / packageName := packageName.value,
@@ -2959,12 +2972,12 @@ object Build {
     Universal / mappings ++= directory(republishRepo.value / "libexec"),
     Universal / mappings +=  (republishRepo.value / "VERSION") -> "VERSION",
     // ========
-    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
-    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
-    republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
-  )*/
+    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-repl")),
+    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "scala3-repl", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!scala-library", "^!tasty-core")),
+    republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
+  )
 
-  /*lazy val dist = project.asDist(Bootstrapped)
+  lazy val dist = project.asDist
     .settings(packageName := "scala3-" + dottyVersion)
     .settings(
       republishLibexecDir := baseDirectory.value / "libexec",
@@ -2972,9 +2985,9 @@ object Build {
         ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
       republishLaunchers +=
         ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
-    )*/
+    )
 
-  /*lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
+  lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist
     .settings(packageName := (dist / packageName).value + "-x86_64-apple-darwin")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -2982,9 +2995,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
-    )*/
+    )
 
-  /*lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+  lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist
     .settings(packageName := (dist / packageName).value + "-aarch64-apple-darwin")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -2992,9 +3005,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
-    )*/
+    )
 
-  /*lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
+  lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist
     .enablePlugins(WindowsPlugin) // TO GENERATE THE `.msi` installer
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-win32")
     .settings(
@@ -3019,9 +3032,9 @@ object Build {
       wixProductId := "*",                                                        // Unique ID for each generated MSI; will change for each generated msi
       wixProductUpgradeId := "3E5A1A82-CA67-4353-94FE-5BDD400AF66B",              // Unique ID to identify the package; used to manage the upgrades
       wixProductLicense := Some(dist.base / "LICENSE.rtf")                        // Link to the LICENSE to show during the installation (keep in sync with ../LICENSE)
-    )*/
+    )
 
-  /*lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
+  lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3029,9 +3042,9 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
-    )*/
+    )
 
-  /*lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+  lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist
     .settings(packageName := (dist / packageName).value + "-aarch64-pc-linux")
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
@@ -3039,7 +3052,7 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
-    )*/
+    )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
@@ -3057,23 +3070,25 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)*/
 
-    /*def asDist(implicit mode: Mode): Project = project.
-      enablePlugins(UniversalPlugin, RepublishPlugin).
-      withCommonSettings.
-      settings(commonDistSettings).
-      dependsOn(
+    def asDist: Project = project
+      .enablePlugins(UniversalPlugin, RepublishPlugin)
+      .settings(commonBootstrappedSettings)
+      .settings(commonDistSettings)
+      .dependsOn(
+        `scala-library-bootstrapped`,
+        `scala3-compiler-bootstrapped-new`,
         `scala3-interfaces`,
-        dottyCompiler,
-        dottyLibrary,
-        tastyCore,
-        `scala3-staging`,
-        `scala3-tasty-inspector`,
-        scaladoc,
-        `scala3-sbt-bridge`, // for scala-cli
-      ).
-      bootstrappedSettings(
+        `scala3-library-bootstrapped-new`,
+        `scala3-repl`,
+        `scala3-sbt-bridge-bootstrapped`, // for scala-cli
+        `scala3-staging-new`,
+        `scala3-tasty-inspector-new`,
+        `scaladoc-new`,
+        `tasty-core-bootstrapped-new`,
+      )
+      .settings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
-      )*/
+      )
 
   }
 

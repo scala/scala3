@@ -896,16 +896,12 @@ class Namer { typer: Typer =>
           original.mods.withAnnotations:
             original.mods.annotations.mapConserve: annotTree =>
               val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
-              if (cls eq sym)
-                report.error(em"An annotation class cannot be annotated with iself", annotTree.srcPos)
-                annotTree
-              else
-                val ann =
-                  if cls.is(JavaDefined) then Checking.checkNamedArgumentForJavaAnnotation(annotTree, cls.asClass)
-                  else annotTree
-                val ann1 = Annotation.deferred(cls)(typedAheadExpr(ann)(using annotCtx))
-                sym.addAnnotation(ann1)
-                ann
+              val ann =
+                if cls.is(JavaDefined) then Checking.checkNamedArgumentForJavaAnnotation(annotTree, cls.asClass)
+                else annotTree
+              val ann1 = Annotation.deferred(cls)(typedAheadExpr(ann)(using annotCtx))
+              sym.addAnnotation(ann1)
+              ann
       case _ =>
     }
 
@@ -1001,7 +997,7 @@ class Namer { typer: Typer =>
     private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
       if denot.is(Method)
           && denot.hasAnnotation(defn.ConsumeAnnot)
-          && denot.owner.derivesFrom(defn.Caps_Mutable)
+          && denot.owner.derivesFrom(defn.Caps_Stateful)
       then
         denot.setFlag(Mutable)
 
@@ -1266,8 +1262,8 @@ class Namer { typer: Typer =>
             n += 1
 
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
-        *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
-        */
+       *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
+       */
       def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
 
         def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
@@ -1783,7 +1779,6 @@ class Namer { typer: Typer =>
       cls.setStableConstructor()
       enterParentRefinementSyms(parentRefinements.toList)
       processExports(using localCtx)
-      defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
       cleanup()
     }

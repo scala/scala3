@@ -1012,9 +1012,11 @@ class Definitions {
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
     @tu lazy val Caps_ExclusiveCapability: ClassSymbol = requiredClass("scala.caps.ExclusiveCapability")
     @tu lazy val Caps_Control: ClassSymbol = requiredClass("scala.caps.Control")
+    @tu lazy val Caps_Stateful: ClassSymbol = requiredClass("scala.caps.Stateful")
+    @tu lazy val Caps_Separate: ClassSymbol = requiredClass("scala.caps.Separate")
+    @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_Read: ClassSymbol = requiredClass("scala.caps.Read")
-    @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
     @tu lazy val Caps_erasedValue: Symbol = CapsInternalModule.requiredMethod("erasedValue")
@@ -1026,6 +1028,7 @@ class Definitions {
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_freeze: TermSymbol = CapsModule.requiredMethod("freeze")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
@@ -1452,116 +1455,6 @@ class Definitions {
       || sym.owner == CompiletimeOpsBooleanModuleClass && compiletimePackageBooleanTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsStringModuleClass && compiletimePackageStringTypes.contains(sym.name)
     )
-
-  // ----- Scala-2 library patches --------------------------------------
-
-  /** The `scala.runtime.stdLibPacthes` package contains objects
-   *  that contain defnitions that get added as members to standard library
-   *  objects with the same name.
-   */
-  @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
-  @tu private lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
-  @tu private lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
-
-  /** If `sym` is a patched library class, the source file of its patch class,
-   *  otherwise `NoSource`
-   */
-  def patchSource(sym: Symbol)(using Context): SourceFile =
-    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
-    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
-    else NoSource
-
-  /** A finalizer that patches standard library classes.
-   *  It copies all non-private, non-synthetic definitions from `patchCls`
-   *  to `denot` while changing their owners to `denot`. Before that it deletes
-   *  any definitions of `denot` that have the same name as one of the copied
-   *  definitions.
-   *
-   *  If an object is present in both the original class and the patch class,
-   *  it is not overwritten. Instead its members are copied recursively.
-   *
-   *  To avpid running into cycles on bootstrap, patching happens only if `patchCls`
-   *  is read from a classfile.
-   */
-  def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
-    // Do not patch the stdlib files if we explicitly disable it
-    // This is only to be used during the migration of the stdlib
-    if ctx.settings.YnoStdlibPatches.value then
-      return
-
-    def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
-      val scope = denot.info.decls.openForMutations
-
-      def recurse(patch: Symbol) = patch.is(Module) && scope.lookup(patch.name).exists
-
-      def makeClassSymbol(patch: Symbol, parents: List[Type], selfInfo: TypeOrSymbol) =
-        newClassSymbol(
-          owner = denot.symbol,
-          name = patch.name.asTypeName,
-          flags = patch.flags,
-          // need to rebuild a fresh ClassInfo
-          infoFn = cls => ClassInfo(
-            prefix = denot.symbol.thisType,
-            cls = cls,
-            declaredParents = parents, // assume parents in patch don't refer to symbols in the patch
-            decls = newScope,
-            selfInfo =
-              if patch.is(Module)
-              then TermRef(denot.symbol.thisType, patch.name.sourceModuleName)
-              else selfInfo // assume patch self type annotation does not refer to symbols in the patch
-          ),
-          privateWithin = patch.privateWithin,
-          coord = denot.symbol.coord,
-          compUnitInfo = denot.symbol.compilationUnitInfo
-        )
-
-      def makeNonClassSymbol(patch: Symbol) =
-        if patch.is(Inline) then
-          // Inline symbols contain trees in annotations, which is coupled
-          // with the underlying symbol.
-          // Changing owner for inline symbols is a simple workaround.
-          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
-          patch
-        else
-          // change `info` which might contain reference to the patch
-          patch.copy(
-            owner = denot.symbol,
-            info =
-              if patch.is(Module)
-              then TypeRef(denot.symbol.thisType, patch.name.moduleClassName)
-              else patch.info // assume non-object info does not refer to symbols in the patch
-          )
-
-      if patchCls.exists then
-        val patches = patchCls.info.decls.filter(patch =>
-          !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
-        for patch <- patches if !recurse(patch) do
-          val e = scope.lookupEntry(patch.name)
-          if e != null then scope.unlink(e)
-        for patch <- patches do
-          patch.ensureCompleted()
-          if !recurse(patch) then
-            val sym =
-              patch.info match
-              case ClassInfo(_, _, parents, _, selfInfo) =>
-                makeClassSymbol(patch, parents, selfInfo)
-              case _ =>
-                makeNonClassSymbol(patch)
-              end match
-            sym.annotations = patch.annotations
-            scope.enter(sym)
-          if patch.isClass then
-            patch2(scope.lookup(patch.name).asClass, patch)
-
-    def patchWith(patchCls: Symbol) =
-      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
-      patch2(denot, patchCls)
-
-    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
-      patchWith(ScalaPredefModuleClassPatch)
-    else if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
-      patchWith(LanguageModuleClassPatch)
-  end patchStdLibClass
 
   // ----- Symbol sets ---------------------------------------------------
 
@@ -2092,11 +1985,11 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
-    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped,
+    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
     RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
-    CapsUnsafeModule, CapsUnsafeModule.moduleClass,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
@@ -2491,14 +2384,14 @@ class Definitions {
     """.stripMargin)
 
     add(Object_wait,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()]].
       | *
       | *  @note   not specified by SLS as a member of AnyRef
       | */
     """.stripMargin)
 
     add(Object_waitL,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)]].
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @note not specified by SLS as a member of AnyRef
@@ -2506,7 +2399,7 @@ class Definitions {
     """.stripMargin)
 
     add(Object_waitLI,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]]
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)]]
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @param nanos   additional time, in nanoseconds range 0-999999.
