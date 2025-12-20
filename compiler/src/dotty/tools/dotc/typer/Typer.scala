@@ -4482,8 +4482,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               implicitArgs(formals2, argIndex + 1, pt)
 
             val pt1 = pt.deepenProtoTrans
-            val approxPt = withMode(Mode.TypevarsMissContext):
-              wildApprox(pt1)
             val containsUninst = new TypeAccumulator[Boolean]:
               def apply(need: Boolean, tp: Type): Boolean =
                 need || tp.match
@@ -4493,10 +4491,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     foldOver(need, tp)
             if (pt1 `ne` pt)
               && (pt1 ne sharpenedPt)
-              && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
-              && !isFullyDefined(formal, ForceDegree.none)
+              && !ctx.mode.is(Mode.ImplicitExploration)
+              && !ctx.mode.is(Mode.TypevarsMissContext)
               && !containsUninst(false, formal)
-              && !ctx.mode.is(Mode.ImplicitExploration) then
+              && !isFullyDefined(formal, ForceDegree.none) then
               constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
