@@ -4495,7 +4495,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && (pt1 ne sharpenedPt)
               && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
               && !isFullyDefined(formal, ForceDegree.none)
-              && !containsUninst(false, formal) then
+              && !containsUninst(false, formal)
+              && !ctx.mode.is(Mode.ImplicitExploration) then
               constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
