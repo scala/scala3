@@ -38,7 +38,6 @@ import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
-import dotty.tools.dotc.util.chaining.*
 import java.util.{Timer, TimerTask}
 
 /** A compiler run. Exports various methods to compile source files */

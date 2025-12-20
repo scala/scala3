@@ -10,7 +10,7 @@ import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
-import dotty.tools.dotc.util.chaining.*
+import scala.util.chaining.*
 
 import java.util.zip.Deflater
 

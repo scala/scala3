@@ -3,7 +3,6 @@ package dotc
 package core
 
 import scala.io.Codec
-import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
@@ -11,6 +10,7 @@ import config.Config
 import util.{LinearMap, HashSet}
 
 import scala.annotation.internal.sharable
+import scala.reflect.NameTransformer
 
 object Names {
   import NameKinds.*
@@ -346,10 +346,10 @@ object Names {
     override def encode: SimpleName = {
       val dontEncode =
         this == StdNames.nme.CONSTRUCTOR || this == StdNames.nme.STATIC_CONSTRUCTOR
-      if (dontEncode) this else NameTransformer.encode(this)
+      if (dontEncode) this else termName(NameTransformer.encode(this.toString))
     }
 
-    override def decode: SimpleName = NameTransformer.decode(this)
+    override def decode: SimpleName = termName(NameTransformer.decode(this.toString))
 
     override def isEmpty: Boolean = length == 0
 
