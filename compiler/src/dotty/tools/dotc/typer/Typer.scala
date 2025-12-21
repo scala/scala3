@@ -4482,15 +4482,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               implicitArgs(formals2, argIndex + 1, pt)
 
             val pt1 = pt.deepenProtoTrans
-            val containsUninst = new TypeAccumulator[Boolean]:
-              def apply(need: Boolean, tp: Type): Boolean =
-                need || tp.match
-                  case tvar: TypeVar => !tvar.isInstantiated
-                  case _ => foldOver(need, tp)
             if (pt1 `ne` pt)
               && (pt1 ne sharpenedPt)
               && !ctx.mode.is(Mode.ImplicitExploration)
-              && !containsUninst(false, formal)
+              && !formal.isProvisional
               && !isFullyDefined(formal, ForceDegree.none) then
               NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
