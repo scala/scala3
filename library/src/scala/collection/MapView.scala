@@ -76,9 +76,9 @@ trait MapView[K, +V]
 
 object MapView extends MapViewFactory {
 
-  /** An `IterableOps` whose collection type and collection type constructor are unknown */
+  /** An `IterableOps` whose collection type and collection type constructor are unknown. */
   type SomeIterableConstr[X, Y] = IterableOps[?, AnyConstr, ?]
-  /** A `MapOps` whose collection type and collection type constructor are (mostly) unknown */
+  /** A `MapOps` whose collection type and collection type constructor are (mostly) unknown. */
   type SomeMapOps[K, +V] = MapOps[K, V, SomeIterableConstr, ?]
 
   @SerialVersionUID(3L)

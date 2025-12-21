@@ -138,15 +138,15 @@ object Console extends AnsiColor {
   protected def setErrDirect(err: PrintStream): Unit  = errVar.value = err
   protected def setInDirect(in: BufferedReader): Unit = inVar.value = in
 
-  /** The default output, can be overridden by `withOut`
+  /** The default output, can be overridden by `withOut`.
    *  @group io-default
    */
   def out = outVar.value
-  /** The default error, can be overridden by `withErr`
+  /** The default error, can be overridden by `withErr`.
    *  @group io-default
    */
   def err = errVar.value
-  /** The default input, can be overridden by `withIn`
+  /** The default input, can be overridden by `withIn`.
    *  @group io-default
    */
   def in = inVar.value
@@ -181,7 +181,7 @@ object Console extends AnsiColor {
   def withOut[T](out: OutputStream)(thunk: =>T): T =
     withOut(new PrintStream(out))(thunk)
 
-  /** Set the default error stream for the duration
+  /** Sets the default error stream for the duration
    *  of execution of one thunk.
    *  @example {{{
    *  withErr(Console.out) { err.println("This goes to default _out_") }

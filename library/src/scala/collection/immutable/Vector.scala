@@ -67,7 +67,7 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
   def newBuilder[A]: ReusableBuilder[A, Vector[A]] = new VectorBuilder[A]
 
-  /** Create a Vector with the same element at each index.
+  /** Creates a Vector with the same element at each index.
     *
     * Unlike `fill`, which takes a by-name argument for the value and can thereby
     * compute different values for each index, this method guarantees that all
@@ -259,14 +259,14 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   override def tail: Vector[A] = slice(1, length)
   override def init: Vector[A] = slice(0, length-1)
 
-  /** Like slice but parameters must be 0 <= lo < hi < length */
+  /** Like slice but parameters must be 0 <= lo < hi < length. */
   protected def slice0(lo: Int, hi: Int): Vector[A]
 
-  /** Number of slices */
+  /** Number of slices. */
   protected[immutable] def vectorSliceCount: Int
-  /** Slice at index */
+  /** Slices at index. */
   protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null]
-  /** Length of all slices up to and including index */
+  /** Length of all slices up to and including index. */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
@@ -317,7 +317,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
 }
 
 
-/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way */
+/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way. */
 private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_prefix1) {
 
   override final def slice(from: Int, until: Int): Vector[A] = {
@@ -330,7 +330,7 @@ private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_
 }
 
 
-/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this */
+/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this. */
 private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] val suffix1: Arr1, private[immutable] val length0: Int) extends VectorImpl[A](_prefix1) {
 
   protected[immutable] final def foreachRest[U](f: A => U): Unit = {
@@ -344,7 +344,7 @@ private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] v
 }
 
 
-/** Empty vector */
+/** Empty vector. */
 private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
 
   def apply(index: Int): Nothing = throw ioob(index)
@@ -385,7 +385,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
     new IndexOutOfBoundsException(s"$index is out of bounds (empty vector)")
 }
 
-/** Flat ArraySeq-like structure */
+/** Flat ArraySeq-like structure. */
 private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
   @inline def apply(index: Int): A = {
@@ -443,7 +443,7 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 }
 
 
-/** 2-dimensional radix-balanced finger tree */
+/** 2-dimensional radix-balanced finger tree. */
 private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val data2: Arr2,
                                  _suffix1: Arr1,
@@ -543,7 +543,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 3-dimensional radix-balanced finger tree */
+/** 3-dimensional radix-balanced finger tree. */
 private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val data3: Arr3,
@@ -666,7 +666,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 4-dimensional radix-balanced finger tree */
+/** 4-dimensional radix-balanced finger tree. */
 private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -810,7 +810,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 5-dimensional radix-balanced finger tree */
+/** 5-dimensional radix-balanced finger tree. */
 private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -975,7 +975,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 6-dimensional radix-balanced finger tree */
+/** 6-dimensional radix-balanced finger tree. */
 private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -1348,7 +1348,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensure prefix is not empty */
+  /** Ensures prefix is not empty. */
   private def balancePrefix(n: Int): Unit = {
     if(slices(prefixIdx(n)) eq null) {
       if(n == maxDim) {
@@ -1369,7 +1369,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensure suffix is not empty */
+  /** Ensures suffix is not empty. */
   private def balanceSuffix(n: Int): Unit = {
     if(slices(suffixIdx(n)) eq null) {
       if(n == maxDim) {
@@ -2016,7 +2016,7 @@ private[immutable] object VectorInline {
   type Arr5 = Array[Array[Array[Array[Array[AnyRef]]]]]
   type Arr6 = Array[Array[Array[Array[Array[Array[AnyRef]]]]]]
 
-  /** Dimension of the slice at index */
+  /** Dimension of the slice at index. */
   @inline def vectorSliceDim(count: Int, idx: Int): Int = {
     val c = count/2
     c+1-abs(idx-c)

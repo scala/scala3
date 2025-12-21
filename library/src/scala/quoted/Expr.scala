@@ -8,7 +8,7 @@ import language.experimental.captureChecking
  */
 abstract class Expr[+T] private[scala] ()
 
-/** Constructors for expressions */
+/** Constructors for expressions. */
 object Expr {
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
@@ -67,11 +67,11 @@ object Expr {
     Block(statements.map(asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
   }
 
-  /** Creates an expression that will construct the value `x` */
+  /** Creates an expression that will construct the value `x`. */
   def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
     scala.Predef.summon[ToExpr[T]].apply(x)
 
-  /** Get `Some` of a copy of the value if the expression contains a literal constant or constructor of `T`.
+  /** Gets `Some` of a copy of the value if the expression contains a literal constant or constructor of `T`.
    *  Otherwise returns `None`.
    *
    *  Usage:
@@ -268,8 +268,8 @@ object Expr {
     ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
   }
 
-  /** Find a given instance of type `T` in the current scope.
-   *  Return `Some` containing the expression of the implicit or
+  /** Finds a given instance of type `T` in the current scope.
+   *  Returns `Some` containing the expression of the implicit or
    * `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
@@ -282,9 +282,9 @@ object Expr {
     }
   }
 
-  /** Find a given instance of type `T` in the current scope,
+  /** Finds a given instance of type `T` in the current scope,
    *  while excluding certain symbols from the initial implicit search.
-   *  Return `Some` containing the expression of the implicit or
+   *  Returns `Some` containing the expression of the implicit or
    * `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter

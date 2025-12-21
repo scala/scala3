@@ -26,7 +26,7 @@ import scala.util.Try
 import scala.util.chaining._
 import scala.util.control.ControlThrowable
 
-/** Wrappers for exposing Scala collections as Java collections and vice-versa */
+/** Wrappers for exposing Scala collections as Java collections and vice-versa. */
 @SerialVersionUID(3L)
 // not private[convert] because `WeakHashMap` uses JMapWrapper
 private[collection] object JavaCollectionWrappers extends Serializable {

@@ -46,7 +46,7 @@ object Seq extends SeqFactory.Delegate[Seq](List) {
   }
 }
 
-/** Base trait for immutable indexed sequences that have efficient `apply` and `length` */
+/** Base trait for immutable indexed sequences that have efficient `apply` and `length`. */
 trait IndexedSeq[+A] extends Seq[A]
                         with collection.IndexedSeq[A]
                         with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
@@ -119,7 +119,7 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
   }
 }
 
-/** Base trait for immutable indexed Seq operations */
+/** Base trait for immutable indexed `Seq` operations. */
 transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]
     with collection.IndexedSeqOps[A, CC, C] {
@@ -132,7 +132,7 @@ transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
 
 }
 
-/** Base trait for immutable linear sequences that have efficient `head` and `tail` */
+/** Base trait for immutable linear sequences that have efficient `head` and `tail`. */
 trait LinearSeq[+A]
   extends Seq[A]
     with collection.LinearSeq[A]

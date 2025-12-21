@@ -476,9 +476,9 @@ object Char extends AnyValCompanion {
    */
   def unbox(x: java.lang.Object): Char = ???
 
-  /** The String representation of the scala.Char companion object. */
+  /** The `String` representation of the `scala.Char` companion object. */
   override def toString() = "object scala.Char"
-  /** Language mandated coercions from Char to "wider" types. */
+  /** Language mandated coercions from `Char` to "wider" types. */
   import scala.language.implicitConversions
   implicit def char2int(x: Char): Int = x.toInt
   implicit def char2long(x: Char): Long = x.toLong

@@ -18,7 +18,7 @@ import language.experimental.captureChecking
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.annotation.unchecked.uncheckedVariance
 
-/** Base type of sorted sets */
+/** Base type of sorted sets. */
 trait SortedSet[A] extends Set[A]
     with SortedSetOps[A, SortedSet, SortedSet[A]]
     with SortedSetFactoryDefaults[A, SortedSet, Set] {
@@ -79,13 +79,13 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   def firstKey: A = head
   def lastKey: A = last
 
-  /** Find the smallest element larger than or equal to a given key.
+  /** Finds the smallest element larger than or equal to a given key.
     * @param key The given key.
     * @return `None` if there is no such node.
     */
   def minAfter(key: A): Option[A] = rangeFrom(key).headOption
 
-  /** Find the largest element less than a given key.
+  /** Finds the largest element less than a given key.
     * @param key The given key.
     * @return `None` if there is no such node.
     */

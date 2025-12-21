@@ -52,7 +52,7 @@ trait Buffer[A]
   @`inline` final def appendAll(xs: IterableOnce[A]): this.type = addAll(xs)
 
 
-  /** Alias for `prepend` */
+  /** Alias for `prepend`. */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
 
   def prependAll(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
@@ -60,7 +60,7 @@ trait Buffer[A]
   @deprecated("Use prependAll instead", "2.13.0")
   @`inline` final def prepend(elems: A*): this.type = prependAll(elems)
 
-  /** Alias for `prependAll` */
+  /** Alias for `prependAll`. */
   @inline final def ++=:(elems: IterableOnce[A]): this.type = prependAll(elems)
 
   /** Inserts a new element at a given index into this buffer.
