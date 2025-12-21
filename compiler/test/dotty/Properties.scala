@@ -52,31 +52,31 @@ object Properties {
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
   /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
+  def dottyCompilerManagedSources: Path = Paths.get(requireNonEmptyProperty("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
-  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
+  def dottyInterfaces: String = requireNonEmptyProperty("dotty.tests.classes.dottyInterfaces")
 
   /** dotty-compiler jar */
-  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
+  def dottyCompiler: String = requireNonEmptyProperty("dotty.tests.classes.dottyCompiler")
 
   /** dotty-repl jar */
-  def dottyRepl: String = sys.props("dotty.tests.classes.dottyRepl")
+  def dottyRepl: String = requireNonEmptyProperty("dotty.tests.classes.dottyRepl")
 
   /** dotty-staging jar */
-  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
+  def dottyStaging: String = requireNonEmptyProperty("dotty.tests.classes.dottyStaging")
 
   /** dotty-tasty-inspector jar */
-  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector")
+  def dottyTastyInspector: String = requireNonEmptyProperty("dotty.tests.classes.dottyTastyInspector")
 
   /** tasty-core jar */
-  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")
+  def tastyCore: String = requireNonEmptyProperty("dotty.tests.classes.tastyCore")
 
   /** compiler-interface jar */
-  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
+  def compilerInterface: String = requireNonEmptyProperty("dotty.tests.classes.compilerInterface")
 
   /** scala-library jar */
-  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
+  def scalaLibrary: String = requireNonEmptyProperty("dotty.tests.classes.scalaLibrary")
 
   // TODO: Remove this once we migrate the test suite
   def usingScalaLibraryCCTasty: Boolean = true
@@ -85,20 +85,27 @@ object Properties {
   def usingScalaLibraryTasty: Boolean = true
 
   /** scala-asm jar */
-  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
+  def scalaAsm: String = requireNonEmptyProperty("dotty.tests.classes.scalaAsm")
 
   /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
+  def jlineTerminal: String = requireNonEmptyProperty("dotty.tests.classes.jlineTerminal")
 
   /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+  def jlineReader: String = requireNonEmptyProperty("dotty.tests.classes.jlineReader")
 
   /** scalajs-javalib jar */
-  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
+  def scalaJSJavalib: String = requireNonEmptyProperty("dotty.tests.classes.scalaJSJavalib")
 
   /** scalajs-scalalib jar */
-  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib")
+  def scalaJSScalalib: String = requireNonEmptyProperty("dotty.tests.classes.scalaJSScalalib")
 
   /** scalajs-library jar */
-  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
+  def scalaJSLibrary: String = requireNonEmptyProperty("dotty.tests.classes.scalaJSLibrary")
+
+  private def requireNonEmptyProperty(name: String): String = {
+    sys.props(name).ensuring(
+      value => value != null && value.nonEmpty,
+      s"Property $name is not set"
+    )
+  }
 }

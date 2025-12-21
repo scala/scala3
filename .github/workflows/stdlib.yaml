@@ -221,6 +221,8 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-staging`
         run: ./project/scripts/sbt scala3-staging-new/compile
+      - name: Test `scala3-staging`
+        run: ./project/scripts/sbt scala3-staging-new/test
 
   scala3-tasty-inspector:
     runs-on: ubuntu-latest

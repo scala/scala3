@@ -1009,6 +1009,7 @@ object Build {
     // when compiling a project that depends on scala3-staging (see sbt-test/sbt-dotty/quoted-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
     .dependsOn(`scala3-compiler-bootstrapped-new` % "provided; compile->runtime; test->test")
+    .dependsOn(`scala3-repl` % "provided; compile->runtime; test->test")
     .settings(publishSettings)
     .settings(
       name          := "scala3-staging",
@@ -1021,6 +1022,7 @@ object Build {
       // Add the source directories for the sbt-bridge (boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      Test    / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := true,
@@ -1055,6 +1057,21 @@ object Build {
       scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      Test / javaOptions ++= {
+        val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
+        Seq(
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(`scala3-compiler-bootstrapped-new` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyRepl=${(`scala3-repl` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyStaging=${(ThisProject / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.jlineReader=${findArtifactPath(externalDeps, "jline-reader")}",
+          s"-Ddotty.tests.classes.jlineTerminal=${findArtifactPath(externalDeps, "jline-terminal")}",
+          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped-new` / Compile / packageBin).value}",
+        )
       },
       bspEnabled := false,
     )
