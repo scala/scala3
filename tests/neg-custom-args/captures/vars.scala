@@ -8,6 +8,7 @@ def test(cap1: Cap, cap2: Cap) =
   var x = f
   val y = x
   val z = () => if x("") == "" then "a" else "b"
+  val _: () ->{} String = z  // error
   val zc: () ->{cap1} String = z
   val z2 = () => { x = identity }
   val z2c: () -> Unit = z2

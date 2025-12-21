@@ -690,8 +690,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Lazy vals are like parameterless methods: accessing them may trigger initialization
         // that uses captured references.
         includeCallCaptures(sym, sym.info, tree)
-      else if sym.exists && !sym.isStatic then
-        markPathFree(sym.termRef, pt, tree)
+      else
+        if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
+          // When we have `var x: A^{c} = ...` where `x` is a local variable then
+          // when dereferencing `x` we also need to charge `c`.
+          // For fields it's not a problem since `c` would already have been
+          // charged for the prefix `p` in `p.x`.
+          markFree(sym.info.captureSet, tree)
+        if sym.exists && !sym.isStatic then
+          markPathFree(sym.termRef, pt, tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
     override def recheckThis(tree: This, pt: Type)(using Context): Type =

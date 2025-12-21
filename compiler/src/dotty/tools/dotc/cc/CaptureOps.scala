@@ -113,13 +113,10 @@ extension (tp: Type)
     case _: (ThisType | TermParamRef) => true
     case tp: TermRef =>
       !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
-      || {
-        if tp.prefix eq NoPrefix then
-          !tp.symbol.isDisallowedInCapset
-        else
-          tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
-          && !tp.symbol.isOneOf(UnstableValueFlags)
-      }
+      ||
+        ((tp.prefix eq NoPrefix)
+        || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
+        ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
