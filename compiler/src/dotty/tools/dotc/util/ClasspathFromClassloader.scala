@@ -7,6 +7,13 @@ import dotty.tools.io.AbstractFileClassLoader
 
 object ClasspathFromClassloader {
 
+  // Class name of the REPL classloader.
+  // We can't import AbstractFileClassLoader directly because the REPL module
+  // depends on compiler, not vice-versa. The class name comparison is required
+  // anyway because the REPL classloader class is normally loaded with a different
+  // classloader (see the comment below at the usage site).
+  private final val ReplAbstractFileClassLoaderName = "dotty.tools.repl.AbstractFileClassLoader"
+
   /** Attempt to recreate a classpath from a classloader.
    *
    *  BEWARE: with exotic enough classloaders, this may not work at all or do
@@ -30,7 +37,8 @@ object ClasspathFromClassloader {
             collectClassLoaderPaths(cl.getParent)
             classpathBuff ++= af.searchLocations.filter(!_.isVirtual).map(_.path)
           case _ =>
-            if cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
+            if cl.getClass.getName == ReplAbstractFileClassLoaderName ||
+               cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
               // HACK: We can't just collect the classpath from arbitrary parent
               // classloaders since the current classloader might intentionally
               // filter loading classes from its parent (for example
