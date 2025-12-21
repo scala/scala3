@@ -3,6 +3,8 @@ package dotty.tools.dotc.reporting
 //////////////////////////////////////////////////////////////////////////
 // IMPORTANT                                                            //
 // Only add new IDs at end of the enumeration list and never remove IDs //
+  // When adding a new ID, also update the reference documentation at     //
+// docs/_docs/reference/error-codes/                                    //
 //////////////////////////////////////////////////////////////////////////
 
 /** Unique IDs identifying the messages, this will be used to reference documentation online.
@@ -116,7 +118,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MissingEmptyArgumentListID // errorNumber: 100
   case DuplicateNamedTypeParameterID // errorNumber: 101
   case UndefinedNamedTypeParameterID // errorNumber: 102
-  case IllegalStartOfStatementID // errorNumber: 1033
+  case IllegalStartOfStatementID // errorNumber: 103
   case TraitIsExpectedID // errorNumber: 104
   case TraitRedefinedFinalMethodFromAnyRefID extends ErrorMessageID(isActive = false) // errorNumber: 105
   case PackageNameAlreadyDefinedID // errorNumber: 106
@@ -126,7 +128,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case CyclicInheritanceID // errorNumber: 110
   case BadSymbolicReferenceID // errorNumber: 111
   case UnableToExtendSealedClassID // errorNumber: 112
-  case SymbolHasUnparsableVersionNumberID // errorNumber: 113 
+  case SymbolHasUnparsableVersionNumberID // errorNumber: 113
   case SymbolChangedSemanticsInVersionID // errorNumber: 114
   case UnableToEmitSwitchID // errorNumber: 115
   case MissingCompanionForStaticID // errorNumber: 116

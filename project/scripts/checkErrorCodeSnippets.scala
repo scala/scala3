@@ -21,7 +21,6 @@
   */
 object NonReproducibleErrorCodes:
   val codes: Set[Int] = Set(
-    25, // E025: IdentifierExpectedID - triggered by parser in specific contexts, needs investigation
     27, // E027: VarArgsParamMustComeLastID - triggered when varargs not last, needs correct syntax
     28, // E028: IllegalLiteralID - triggered by invalid literals, needs investigation
     33, // E033: PkgDuplicateSymbolID - requires package statements (not compatible with Scaladoc snippets)
