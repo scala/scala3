@@ -1960,7 +1960,7 @@ object Build {
         "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13).excludeAll(("org.scala-lang" % "scala-reflect")),
       ),
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
