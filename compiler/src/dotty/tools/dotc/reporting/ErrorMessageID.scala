@@ -3,6 +3,8 @@ package dotty.tools.dotc.reporting
 //////////////////////////////////////////////////////////////////////////
 // IMPORTANT                                                            //
 // Only add new IDs at end of the enumeration list and never remove IDs //
+// When adding a new ID, also update the reference documentation at     //
+// docs/_docs/reference/error-codes/                                    //
 //////////////////////////////////////////////////////////////////////////
 
 /** Unique IDs identifying the messages, this will be used to reference documentation online.
@@ -98,7 +100,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case SuperCallsNotAllowedInlineableID // errorNumber: 82
   case NotAPathID // errorNumber: 83
   case WildcardOnTypeArgumentNotAllowedOnNewID // errorNumber: 84
-  case FunctionTypeNeedsNonEmptyParameterListID extends ErrorMessageID(isActive = false) // errorNumber: 85
+  case FunctionTypeNeedsNonEmptyParameterListID // errorNumber: 85
   case WrongNumberOfParametersID // errorNumber: 86
   case DuplicatePrivateProtectedQualifierID // errorNumber: 87
   case ExpectedStartOfTopLevelDefinitionID // errorNumber: 88
@@ -107,7 +109,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case ReturnOutsideMethodDefinitionID // errorNumber: 91
   case UncheckedTypePatternID // errorNumber: 92
   case ExtendFinalClassID // errorNumber: 93
-  case EnumCaseDefinitionInNonEnumOwnerID extends ErrorMessageID(isActive = false) // errorNumber: 94
+  case EnumCaseDefinitionInNonEnumOwnerID // errorNumber: 94
   case ExpectedTypeBoundOrEqualsID // errorNumber: 95
   case ClassAndCompanionNameClashID // errorNumber: 96
   case TailrecNotApplicableID // errorNumber: 97
@@ -116,9 +118,9 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MissingEmptyArgumentListID // errorNumber: 100
   case DuplicateNamedTypeParameterID // errorNumber: 101
   case UndefinedNamedTypeParameterID // errorNumber: 102
-  case IllegalStartOfStatementID // errorNumber: 1033
+  case IllegalStartOfStatementID // errorNumber: 103
   case TraitIsExpectedID // errorNumber: 104
-  case TraitRedefinedFinalMethodFromAnyRefID extends ErrorMessageID(isActive = false) // errorNumber: 105
+  case TraitRedefinedFinalMethodFromAnyRefID // errorNumber: 105
   case PackageNameAlreadyDefinedID // errorNumber: 106
   case UnapplyInvalidNumberOfArgumentsID // errorNumber: 107
   case UnapplyInvalidReturnTypeID // errorNumber: 108
@@ -126,7 +128,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case CyclicInheritanceID // errorNumber: 110
   case BadSymbolicReferenceID // errorNumber: 111
   case UnableToExtendSealedClassID // errorNumber: 112
-  case SymbolHasUnparsableVersionNumberID // errorNumber: 113 
+  case SymbolHasUnparsableVersionNumberID // errorNumber: 113
   case SymbolChangedSemanticsInVersionID // errorNumber: 114
   case UnableToEmitSwitchID // errorNumber: 115
   case MissingCompanionForStaticID // errorNumber: 116
@@ -155,7 +157,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnknownNamedEnclosingClassOrObjectID // errorNumber: 139
   case IllegalCyclicTypeReferenceID // errorNumber: 140
   case MissingTypeParameterInTypeAppID // errorNumber: 141
-  case SkolemInInferredID extends ErrorMessageID(isActive = false) // errorNumber: 142
+  case SkolemInInferredID // errorNumber: 142
   case ErasedTypesCanOnlyBeFunctionTypesID // errorNumber: 143
   case CaseClassMissingNonImplicitParamListID // errorNumber: 144
   case EnumerationsShouldNotBeEmptyID // errorNumber: 145
@@ -163,9 +165,9 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case RedundantModifierID // errorNumber: 147
   case TypedCaseDoesNotExplicitlyExtendTypedEnumID // errorNumber: 148
   case IllegalRedefinitionOfStandardKindID // errorNumber: 149
-  case NoExtensionMethodAllowedID extends ErrorMessageID(isActive = false) // errorNumber: 150
-  case ExtensionMethodCannotHaveTypeParamsID extends ErrorMessageID(isActive = false) // errorNumber: 151
-  case ExtensionCanOnlyHaveDefsID extends ErrorMessageID(isActive = false) // errorNumber: 152
+  case NoExtensionMethodAllowedID // errorNumber: 150
+  case ExtensionMethodCannotHaveTypeParamsID // errorNumber: 151
+  case ExtensionCanOnlyHaveDefsID // errorNumber: 152
   case UnexpectedPatternForSummonFromID // errorNumber: 153
   case AnonymousInstanceCannotBeEmptyID // errorNumber: 154
   case TypeSpliceInValPatternID extends ErrorMessageID(isActive = false) // errorNumber: 155
@@ -209,7 +211,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case VolatileOnValID // errorNumber: 193
   case ExtensionNullifiedByMemberID // errorNumber: 194
   case PhantomSymbolNotValueID // errorNumber: 195
-  case ContextBoundCompanionNotValueID extends ErrorMessageID(isActive = false) // errorNumber: 196
+  case ContextBoundCompanionNotValueID // errorNumber: 196
   case InlinedAnonClassWarningID // errorNumber: 197
   case UnusedSymbolID // errorNumber: 198
   case TailrecNestedCallID //errorNumber: 199
@@ -235,7 +237,6 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case CannotInstantiateQuotedTypeVarID // errorNumber: 219
   case DefaultShadowsGivenID // errorNumber: 220
   case RecurseWithDefaultID // errorNumber: 221
-  case EncodedPackageNameID // errorNumber: 222
 
   def errorNumber = ordinal - 1
 
