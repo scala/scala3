@@ -15,13 +15,12 @@ import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
 
-import scala.collection.mutable
+import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
-import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts.*
@@ -332,8 +331,7 @@ trait ParallelTesting extends RunnerOrchestration:
       if (reporters.exists(reporterFailed)) Some(s"Compilation failed for: '${testSource.title}'")
       else None
 
-    /**
-     * If the test has compiled successfully, this callback will be called. You can still fail the test from this callback.
+    /** Callback on successful compilation. May be overridden for further checks that may fail the test.
      */
     def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = ()
 
@@ -347,6 +345,7 @@ trait ParallelTesting extends RunnerOrchestration:
       failTestSource(testSource)
     }
   }
+  end CompilationLogic
 
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
@@ -365,7 +364,7 @@ trait ParallelTesting extends RunnerOrchestration:
        */
       def checkTestSource(): Unit
 
-      private val logBuffer = mutable.ArrayBuffer.empty[String]
+      private val logBuffer = ArrayBuffer.empty[String]
       def log(msg: String): Unit = logBuffer.append(msg)
 
       def logReporterContents(reporter: TestReporter): Unit =
@@ -437,12 +436,12 @@ trait ParallelTesting extends RunnerOrchestration:
     }
 
     /** Instructions on how to reproduce failed test source compilations */
-    private val reproduceInstructions = mutable.ArrayBuffer.empty[String]
+    private val reproduceInstructions = ArrayBuffer.empty[String]
     protected final def addFailureInstruction(ins: String): Unit =
       synchronized { reproduceInstructions.append(ins) }
 
     /** The test sources that failed according to the implementing subclass */
-    private val failedTestSources = mutable.ArrayBuffer.empty[FailedTestInfo]
+    private val failedTestSources = ArrayBuffer.empty[FailedTestInfo]
     protected final def failTestSource(testSource: TestSource, reason: Failure = Generic) = synchronized {
       val extra = reason match {
         case TimeoutFailure(title) => s", test '$title' timed out"
@@ -748,7 +747,7 @@ trait ParallelTesting extends RunnerOrchestration:
         pool.shutdown()
 
         if !pool.awaitTermination(20, TimeUnit.MINUTES) then
-          val remaining = new ListBuffer[TestSource]
+          val remaining = ListBuffer.empty[TestSource]
           for (src, res) <- filteredSources.lazyZip(eventualResults) do
             if !res.isDone then
               remaining += src
@@ -788,6 +787,7 @@ trait ParallelTesting extends RunnerOrchestration:
       if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
       else Array(f)
   }
+  end Test
 
   private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
@@ -1181,10 +1181,10 @@ trait ParallelTesting extends RunnerOrchestration:
      *  compiler
      */
     def checkCompile()(using SummaryReporting): this.type =
-      checkPass(new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Pos")
+      checkPass(new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
     def checkWarnings()(using SummaryReporting): this.type =
-      checkPass(new WarnTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Warn")
+      checkPass(new WarnTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
     /** Creates a "neg" test run, which makes sure that each test manages successful
      *  best-effort compilation, without any errors related to pickling/unpickling
@@ -1229,7 +1229,7 @@ trait ParallelTesting extends RunnerOrchestration:
      *  expected output
      */
     def checkRuns()(using SummaryReporting): this.type =
-      checkPass(new RunTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Run")
+      checkPass(new RunTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
     /** Tests `-rewrite`, which makes sure that the rewritten files still compile
      *  and agree with the expected result (if specified).
@@ -1259,15 +1259,20 @@ trait ParallelTesting extends RunnerOrchestration:
       checkFail(test, "Rewrite")
     }
 
-    def checkPass(test: Test, desc: String): this.type =
+    extension (test: Test) def description =
+      test.getClass.getSimpleName.stripSuffix("Test") match
+      case ""   => "Test"
+      case name => name
+
+    def checkPass(test: Test): this.type =
       test.executeTestSuite()
 
       cleanup()
 
       if !shouldFail && test.didFail then
-        fail(s"$desc test failed, but should not, reasons:\n${reasonsForFailure(test)}")
+        fail(s"${test.description} test failed, but should not, reasons:\n${reasonsForFailure(test)}")
       else if shouldFail && !test.didFail && test.skipCount == 0 then
-        fail(s"$desc test should have failed, but didn't")
+        fail(s"${test.description} test should have failed, but didn't")
 
       this
 
@@ -1285,7 +1290,7 @@ trait ParallelTesting extends RunnerOrchestration:
 
     /** Deletes output directories and files */
     private def cleanup(): this.type = {
-      if (shouldDelete) delete()
+      if shouldDelete then delete()
       this
     }
 
@@ -1359,13 +1364,10 @@ trait ParallelTesting extends RunnerOrchestration:
     /** Delete all output files generated by this `CompilationTest` */
     def delete(): Unit = targets.foreach(t => delete(t.outDir))
 
-    private def delete(file: JFile): Unit = {
-      if (file.isDirectory) file.listFiles.foreach(delete)
+    private def delete(file: JFile): Unit =
+      if file.isDirectory then file.listFiles.foreach(delete)
       try Files.delete(file.toPath)
-      catch {
-        case _: NoSuchFileException => // already deleted, everything's fine
-      }
-    }
+      catch case _: NoSuchFileException => () // already deleted, everything's fine
   }
 
   object CompilationTest:

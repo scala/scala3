@@ -23,7 +23,7 @@ import dotty.tools.dotc.config.ScalaSettings
 class CompilationTests {
   import ParallelTesting.*
   import TestConfiguration.*
-  import CompilationTests.*
+  import CompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
@@ -409,7 +409,8 @@ object CompilationTests extends ParallelTesting {
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()
