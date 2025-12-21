@@ -43,15 +43,14 @@ trait SummaryReporting {
 
 /** A summary report that doesn't do anything */
 final class NoSummaryReport extends SummaryReporting {
-  def reportFailed(): Unit = ()
-  def reportPassed(): Unit = ()
-  def addFailedTest(msg: FailedTestInfo): Unit = ()
-  def addReproduceInstruction(instr: String): Unit = ()
-  def addStartingMessage(msg: String): Unit = ()
-  def echoSummary(): Unit = ()
-  def echoToLog(msg: String): Unit = ()
-  def echoToLog(it: Iterator[String]): Unit = ()
-  def updateCheckFiles: Boolean = false
+  override def reportFailed(): Unit = ()
+  override def reportPassed(): Unit = ()
+  override def addFailedTest(msg: FailedTestInfo): Unit = ()
+  override def addReproduceInstruction(instr: String): Unit = ()
+  override def addStartingMessage(msg: String): Unit = ()
+  override def echoSummary(): Unit = ()
+  override def echoToLog(msg: String): Unit = ()
+  override def echoToLog(it: Iterator[String]): Unit = ()
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
@@ -67,23 +66,23 @@ final class SummaryReport extends SummaryReporting {
   private var passed = 0
   private var failed = 0
 
-  def reportFailed(): Unit =
+  override def reportFailed(): Unit =
     failed += 1
 
-  def reportPassed(): Unit =
+  override def reportPassed(): Unit =
     passed += 1
 
-  def addFailedTest(msg: FailedTestInfo): Unit =
+  override def addFailedTest(msg: FailedTestInfo): Unit =
     failedTests.add(msg)
 
-  def addReproduceInstruction(instr: String): Unit =
+  override def addReproduceInstruction(instr: String): Unit =
     reproduceInstructions.add(instr)
 
-  def addStartingMessage(msg: String): Unit =
+  override def addStartingMessage(msg: String): Unit =
     startingMessages.add(msg)
 
   /** Both echoes the summary to stdout and prints to file */
-  def echoSummary(): Unit = {
+  override def echoSummary(): Unit = {
     import SummaryReport._
 
     val rep = new StringBuilder
@@ -128,10 +127,10 @@ final class SummaryReport extends SummaryReporting {
   private def removeColors(msg: String): String =
     msg.replaceAll("\u001b\\[.*?m", "")
 
-  def echoToLog(msg: String): Unit =
+  override def echoToLog(msg: String): Unit =
     TestReporter.logPrintln(removeColors(msg))
 
-  def echoToLog(it: Iterator[String]): Unit = {
+  override def echoToLog(it: Iterator[String]): Unit = {
     it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
     TestReporter.logFlush()
   }
