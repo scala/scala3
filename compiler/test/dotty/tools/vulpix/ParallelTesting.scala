@@ -64,7 +64,7 @@ trait ParallelTesting extends RunnerOrchestration:
   protected def testPlatform: TestPlatform = TestPlatform.JVM
 
   /** A test source whose files or directory of files is to be compiled
-   *  in a specific way defined by the `Test`
+   *  in a specific way defined by the `Test`.
    */
   sealed trait TestSource { self =>
     def name: String
@@ -72,6 +72,7 @@ trait ParallelTesting extends RunnerOrchestration:
     def flags: TestFlags
     def sourceFiles: Array[JFile]
     def checkFileBasePathCandidates: Array[String]
+    def group: TestGroup
 
     final def checkFile: Option[JFile] =
       checkFileBasePathCandidates
@@ -95,18 +96,18 @@ trait ParallelTesting extends RunnerOrchestration:
       val newFlags = newFlags0.toArray
       if (!flags.options.containsSlice(newFlags)) self match {
         case self: JointCompilationSource =>
-          self.copy(flags = flags.and(newFlags*))
+          self.copy(flags = flags.and(newFlags*))(using self.group)
         case self: SeparateCompilationSource =>
-          self.copy(flags = flags.and(newFlags*))
+          self.copy(flags = flags.and(newFlags*))(using self.group)
       }
       else self
     }
 
     def withoutFlags(flags1: String*): TestSource = self match {
       case self: JointCompilationSource =>
-        self.copy(flags = flags.without(flags1*))
+        self.copy(flags = flags.without(flags1*))(using self.group)
       case self: SeparateCompilationSource =>
-        self.copy(flags = flags.without(flags1*))
+        self.copy(flags = flags.without(flags1*))(using self.group)
     }
 
     lazy val allToolArgs: ToolArgs =
@@ -188,7 +189,7 @@ trait ParallelTesting extends RunnerOrchestration:
     outDir: JFile,
     fromTasty: FromTastyCompilationMode = NotFromTasty,
     decompilation: Boolean = false
-  ) extends TestSource {
+  )(using val group: TestGroup) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
 
     def checkFileBasePathCandidates: Array[String] =
@@ -203,7 +204,7 @@ trait ParallelTesting extends RunnerOrchestration:
     dir: JFile,
     flags: TestFlags,
     outDir: JFile
-  ) extends TestSource {
+  )(using val group: TestGroup) extends TestSource {
     case class Group(ordinal: Int, compiler: String)
 
     lazy val compilationGroups: List[(Group, Array[JFile])] =
@@ -352,7 +353,7 @@ trait ParallelTesting extends RunnerOrchestration:
    */
   protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
-    import summaryReport.{addFailedTest, addReproduceInstruction, reportFailed, reportPassed}
+    import summaryReport.{addFailedTest, addReproduceInstruction, addSkippedTest, reportFailed, reportPassed}
 
     protected final val realStdout: PrintStream = System.out
     protected final val realStderr: PrintStream = System.err
@@ -773,11 +774,13 @@ trait ParallelTesting extends RunnerOrchestration:
           failedTestSources.toSet.foreach(addFailedTest)
           reproduceInstructions.foreach(addReproduceInstruction)
         else reportPassed()
-      else echo {
-        testFilter match
-          case _ :: _ => s"""No files matched "${testFilter.mkString(",")}" in test"""
-          case _      => "No tests available under target - erroneous test?"
-      }
+      else
+        val groupInfo = testSources.map(_.group).distinct.mkString(",")
+        if testFilter.isEmpty then
+          reportFailed()
+          addFailedTest(FailedTestInfo(groupInfo, "No tests available under target - erroneous test?"))
+        else
+          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${testFilter.mkString(",")}" in test"""))
 
       this
     }
@@ -786,6 +789,11 @@ trait ParallelTesting extends RunnerOrchestration:
     private def flattenFiles(f: JFile): Array[JFile] =
       if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
       else Array(f)
+
+    def description =
+      this.getClass.getSimpleName.stripSuffix("Test") match
+      case ""   => "Test"
+      case name => name
   }
   end Test
 
@@ -1249,20 +1257,15 @@ trait ParallelTesting extends RunnerOrchestration:
             if (checkFile.exists) checkFileMap = checkFileMap.updated(dest, checkFile)
             dest
           }
-          target.copy(files = files2)
+          target.copy(files = files2)(using target.group)
         case target @ SeparateCompilationSource(_, dir, _, outDir) =>
-          target.copy(dir = copyToDir(outDir, dir))
+          target.copy(dir = copyToDir(outDir, dir))(using target.group)
       }
 
       val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput)
 
       checkFail(test, "Rewrite")
     }
-
-    extension (test: Test) def description =
-      test.getClass.getSimpleName.stripSuffix("Test") match
-      case ""   => "Test"
-      case name => name
 
     def checkPass(test: Test): this.type =
       test.executeTestSuite()

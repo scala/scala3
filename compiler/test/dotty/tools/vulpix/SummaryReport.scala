@@ -5,6 +5,7 @@ package vulpix
 import scala.language.unsafeNulls
 import scala.collection.mutable
 import dotc.reporting.TestReporter
+import java.util.concurrent.ConcurrentLinkedDeque
 
 /** `SummaryReporting` can be used by unit tests by utilizing `@AfterClass` to
  *  call `echoSummary`
@@ -23,6 +24,9 @@ trait SummaryReporting {
 
   /** Add the name of the failed test */
   def addFailedTest(msg: FailedTestInfo): Unit
+
+  /** Add a skipped test. */
+  def addSkippedTest(msg: FailedTestInfo): Unit
 
   /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
@@ -46,6 +50,7 @@ final class NoSummaryReport extends SummaryReporting {
   override def reportFailed(): Unit = ()
   override def reportPassed(): Unit = ()
   override def addFailedTest(msg: FailedTestInfo): Unit = ()
+  override def addSkippedTest(msg: FailedTestInfo): Unit = ()
   override def addReproduceInstruction(instr: String): Unit = ()
   override def addStartingMessage(msg: String): Unit = ()
   override def echoSummary(): Unit = ()
@@ -59,9 +64,10 @@ final class NoSummaryReport extends SummaryReporting {
 final class SummaryReport extends SummaryReporting {
   import scala.jdk.CollectionConverters._
 
-  private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
-  private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[FailedTestInfo]
-  private val reproduceInstructions = new java.util.concurrent.ConcurrentLinkedDeque[String]
+  private val startingMessages = new ConcurrentLinkedDeque[String]
+  private val failedTests = new ConcurrentLinkedDeque[FailedTestInfo]
+  private val skippedTests = new ConcurrentLinkedDeque[FailedTestInfo]
+  private val reproduceInstructions = new ConcurrentLinkedDeque[String]
 
   private var passed = 0
   private var failed = 0
@@ -74,6 +80,9 @@ final class SummaryReport extends SummaryReporting {
 
   override def addFailedTest(msg: FailedTestInfo): Unit =
     failedTests.add(msg)
+
+  override def addSkippedTest(msg: FailedTestInfo): Unit =
+    skippedTests.add(msg)
 
   override def addReproduceInstruction(instr: String): Unit =
     reproduceInstructions.add(instr)
@@ -101,10 +110,11 @@ final class SummaryReport extends SummaryReporting {
     failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
     TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
 
-    // If we're compiling locally, we don't need instructions on how to
-    // reproduce failures
+    // If we're compiling locally, we don't need to see instructions on how to
+    // reproduce failures on stdout, only a pointer to the log file.
     if (isInteractive) {
       println(rep.toString)
+      skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.foreach(println)
       if (failed > 0) println {
         s"""|
             |--------------------------------------------------------------------------------
@@ -139,3 +149,5 @@ final class SummaryReport extends SummaryReporting {
 object SummaryReport {
   val isInteractive = Properties.testsInteractive && !Properties.isRunByCI
 }
+
+case class FailedTestInfo(title: String, extra: String)
