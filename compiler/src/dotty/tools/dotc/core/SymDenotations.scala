@@ -1088,10 +1088,10 @@ object SymDenotations {
      */
     def matchNullaryLoosely(using Context): Boolean = {
       def test(sym: Symbol) =
-        sym.is(JavaDefined) ||
-        sym.owner == defn.AnyClass ||
-        sym == defn.Object_clone ||
-        sym.owner.is(Scala2x)
+           sym.is(JavaDefined)
+        || sym.owner == defn.AnyClass
+        || sym == defn.Object_clone
+        || sym.owner.is(Scala2x)
       this.exists && (test(symbol) || allOverriddenSymbols.exists(test))
     }
 
