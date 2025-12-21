@@ -236,7 +236,14 @@ trait TypesSupport:
               paramList ++ (plain(" ") :: arrow) ++ (plain(" ") :: resType)
             else
               val sym = defn.FunctionClass(m.paramTypes.length, isCtx)
-              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)
+              val inCC = inCC0 match
+                case None if ccEnabled =>
+                  // For CC, we assume an impure function and hence force the capture set to `^`.
+                  // Otherwise, the function will be rendered as pure. We hit this case here when
+                  // dealing with polymorphic function types, e.g., the A => Int part of [A] => A => Int.
+                  Some(List(CaptureDefs.captureRoot.termRef))
+                case other => other
+              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = inCC)
           case other => noSupported("Dependent function type without MethodType refinement")
         }
 
@@ -276,10 +283,10 @@ trait TypesSupport:
         ++ inParens(inner(rhs, skipThisTypePrefix), shouldWrapInParens(rhs, t, false))
 
       case t @ AppliedType(tpe, args) if t.isFunctionType =>
-        val dealiased = t.dealiasKeepOpaques
-        if t == dealiased then
+        lazy val dealiased = t.dealiasKeepOpaques
+        if tpe.isAnyFunctionType || t == dealiased then
           functionType(tpe, args, skipThisTypePrefix)
-        else
+        else // i23456
           val AppliedType(tpe, args) = dealiased.asInstanceOf[AppliedType]
           functionType(tpe, args, skipThisTypePrefix)
 
