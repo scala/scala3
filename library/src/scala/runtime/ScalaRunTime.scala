@@ -297,15 +297,15 @@ object ScalaRunTime {
   // which led to a ticket in Scala 3 (scala/scala3#24204). The argument may be null:
   //   - When calling a Scala `@varargs` method from Java
   //   - When using an array as sequence argument in Scala 3: `foo((null: Array[X])*)`
-  def genericWrapArray[T](xs: Array[T]): ArraySeq[T]                 = if (xs ne null) ArraySeq.unsafeWrapArray(xs) else null.asInstanceOf[ArraySeq[T]]
-  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T]    = if (xs ne null) new ArraySeq.ofRef[T](xs) else null.asInstanceOf[ArraySeq[T]]
-  def wrapIntArray(xs: Array[Int]): ArraySeq[Int]                    = if (xs ne null) new ArraySeq.ofInt(xs) else null.asInstanceOf[ArraySeq[Int]]
-  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double]           = if (xs ne null) new ArraySeq.ofDouble(xs) else null.asInstanceOf[ArraySeq[Double]]
-  def wrapLongArray(xs: Array[Long]): ArraySeq[Long]                 = if (xs ne null) new ArraySeq.ofLong(xs) else null.asInstanceOf[ArraySeq[Long]]
-  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float]              = if (xs ne null) new ArraySeq.ofFloat(xs) else null.asInstanceOf[ArraySeq[Float]]
-  def wrapCharArray(xs: Array[Char]): ArraySeq[Char]                 = if (xs ne null) new ArraySeq.ofChar(xs) else null.asInstanceOf[ArraySeq[Char]]
-  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte]                 = if (xs ne null) new ArraySeq.ofByte(xs) else null.asInstanceOf[ArraySeq[Byte]]
-  def wrapShortArray(xs: Array[Short]): ArraySeq[Short]              = if (xs ne null) new ArraySeq.ofShort(xs) else null.asInstanceOf[ArraySeq[Short]]
-  def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean]        = if (xs ne null) new ArraySeq.ofBoolean(xs) else null.asInstanceOf[ArraySeq[Boolean]]
-  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit]                 = if (xs ne null) new ArraySeq.ofUnit(xs) else null.asInstanceOf[ArraySeq[Unit]]
+  def genericWrapArray[T](xs: Array[T]): ArraySeq[T]              = mapNull(xs, ArraySeq.unsafeWrapArray(xs))
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = mapNull(xs, new ArraySeq.ofRef[T](xs))
+  def wrapIntArray(xs: Array[Int]): ArraySeq[Int]                 = mapNull(xs, new ArraySeq.ofInt(xs))
+  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double]        = mapNull(xs, new ArraySeq.ofDouble(xs))
+  def wrapLongArray(xs: Array[Long]): ArraySeq[Long]              = mapNull(xs, new ArraySeq.ofLong(xs))
+  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float]           = mapNull(xs, new ArraySeq.ofFloat(xs))
+  def wrapCharArray(xs: Array[Char]): ArraySeq[Char]              = mapNull(xs, new ArraySeq.ofChar(xs))
+  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte]              = mapNull(xs, new ArraySeq.ofByte(xs))
+  def wrapShortArray(xs: Array[Short]): ArraySeq[Short]           = mapNull(xs, new ArraySeq.ofShort(xs))
+  def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean]     = mapNull(xs, new ArraySeq.ofBoolean(xs))
+  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit]              = mapNull(xs, new ArraySeq.ofUnit(xs))
 }
