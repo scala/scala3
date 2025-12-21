@@ -4,7 +4,7 @@ import com.sun.jdi.*
 import dotty.Properties
 import dotty.tools.dotc.reporting.TestReporter
 import dotty.tools.io.JFile
-import dotty.tools.vulpix.*
+import dotty.tools.vulpix.*, Status.{Failure, Success, Timeout}
 import org.junit.AfterClass
 import org.junit.Test
 

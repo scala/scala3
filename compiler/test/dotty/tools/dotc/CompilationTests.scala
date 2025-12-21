@@ -4,32 +4,32 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
-import org.junit.Assert._
-import org.junit.Assume._
+import org.junit.{Test, BeforeClass, AfterClass, Ignore}
+import org.junit.Assert.*
+import org.junit.Assume.*
 import org.junit.experimental.categories.Category
 
 import java.io.File
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters._
+import java.nio.file.*
+import java.util.stream.Stream as JStream
+import scala.jdk.CollectionConverters.*
 import scala.util.matching.Regex
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import TestSources.sources
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 import dotty.tools.dotc.config.ScalaSettings
 
 class CompilationTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import CompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import CompilationTests.*
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
 
   @Test def pos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePos")
+    given TestGroup = TestGroup("compilePos")
     var tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),

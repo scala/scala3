@@ -18,7 +18,7 @@ import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors
 import scala.collection.mutable
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
-import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
+import scala.util.{Random, Try, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
 import scala.collection.mutable.ListBuffer
@@ -43,7 +43,7 @@ import dotty.tools.vulpix.TestConfiguration.defaultOptions
  */
 trait ParallelTesting extends RunnerOrchestration:
   import ParallelTesting.*
-  export Status.{Failure, Success, Timeout}
+  import Status.{Failure, Success, Timeout}
 
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback
@@ -174,11 +174,10 @@ trait ParallelTesting extends RunnerOrchestration:
     }
   }
 
-  private sealed trait FromTastyCompilationMode
-  private case object NotFromTasty extends FromTastyCompilationMode
-  private case object FromTasty extends FromTastyCompilationMode
-  private case object FromBestEffortTasty extends FromTastyCompilationMode
-  private case class WithBestEffortTasty(bestEffortDir: JFile) extends FromTastyCompilationMode
+  private enum FromTastyCompilationMode:
+    case NotFromTasty, FromTasty, FromBestEffortTasty
+    case WithBestEffortTasty(bestEffortDir: JFile)
+  import FromTastyCompilationMode.*
 
   /** A group of files that may all be compiled together, with the same flags
    *  and output directory
@@ -305,8 +304,8 @@ trait ParallelTesting extends RunnerOrchestration:
     private final def onComplete(testSource: TestSource, reportersOrCrash: Try[Seq[TestReporter]], logger: LoggedRunnable): Unit =
       try
         reportersOrCrash match
-          case TryFailure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
-          case TrySuccess(reporters) if !reporters.exists(_.skipped) =>
+          case util.Failure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
+          case util.Success(reporters) if !reporters.exists(_.skipped) =>
             maybeFailureMessage(testSource, reporters) match {
               case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
               case None => onSuccess(testSource, reporters, logger)
@@ -352,9 +351,9 @@ trait ParallelTesting extends RunnerOrchestration:
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
+  protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
-    import summaryReport._
+    import summaryReport.{addFailedTest, addReproduceInstruction, reportFailed, reportPassed}
 
     protected final val realStdout: PrintStream = System.out
     protected final val realStderr: PrintStream = System.err
@@ -790,10 +789,10 @@ trait ParallelTesting extends RunnerOrchestration:
       else Array(f)
   }
 
-  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
 
-  private final class WarnTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class WarnTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput):
     override def suppressErrors = true
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
@@ -874,7 +873,7 @@ trait ParallelTesting extends RunnerOrchestration:
     end getMissingExpectedWarnings
   end WarnTest
 
-  private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       testSource.sourceFiles.foreach { file =>
@@ -896,7 +895,7 @@ trait ParallelTesting extends RunnerOrchestration:
       verifyOutput(testSource, reporters, logger)
   }
 
-  protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private var didAddNoRunWarning = false
     protected def addNoRunWarning() = if (!didAddNoRunWarning) {
@@ -933,7 +932,7 @@ trait ParallelTesting extends RunnerOrchestration:
       verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
   }
 
-  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
 
@@ -1026,13 +1025,13 @@ trait ParallelTesting extends RunnerOrchestration:
     end getMissingExpectedErrors
   }
 
-  private final class NoCrashTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class NoCrashTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] = None
   }
 
-  private final class NoBestEffortErrorsTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class NoBestEffortErrorsTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
@@ -1169,8 +1168,6 @@ trait ParallelTesting extends RunnerOrchestration:
     def this(targets: List[TestSource]) =
       this(targets, 1, true, None, false, false)
 
-    def checkFiles: List[JFile] = targets.flatMap(_.checkFile)
-
     def copy(targets: List[TestSource],
       times: Int = times,
       shouldDelete: Boolean = shouldDelete,
@@ -1183,17 +1180,17 @@ trait ParallelTesting extends RunnerOrchestration:
      *  compilation without generating errors and that they do not crash the
      *  compiler
      */
-    def checkCompile()(implicit summaryReport: SummaryReporting): this.type =
+    def checkCompile()(using SummaryReporting): this.type =
       checkPass(new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Pos")
 
-    def checkWarnings()(implicit summaryReport: SummaryReporting): this.type =
+    def checkWarnings()(using SummaryReporting): this.type =
       checkPass(new WarnTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Warn")
 
     /** Creates a "neg" test run, which makes sure that each test manages successful
      *  best-effort compilation, without any errors related to pickling/unpickling
      *  of betasty files.
      */
-    def checkNoBestEffortError()(implicit summaryReport: SummaryReporting): this.type = {
+    def checkNoBestEffortError()(using SummaryReporting): this.type = {
       val test = new NoBestEffortErrorsTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       cleanup()
@@ -1209,7 +1206,7 @@ trait ParallelTesting extends RunnerOrchestration:
      *  correct number of errors at the correct positions. It also makes sure
      *  that none of these tests crashes the compiler.
      */
-    def checkExpectedErrors()(implicit summaryReport: SummaryReporting): this.type =
+    def checkExpectedErrors()(using SummaryReporting): this.type =
       val test = new NegTest(targets, times, threadLimit, shouldSuppressOutput).executeTestSuite()
 
       cleanup()
@@ -1223,7 +1220,7 @@ trait ParallelTesting extends RunnerOrchestration:
     end checkExpectedErrors
 
     /** Creates a "fuzzy" test run, which makes sure that each test compiles (or not) without crashing */
-    def checkNoCrash()(implicit summaryReport: SummaryReporting): this.type =
+    def checkNoCrash()(using SummaryReporting): this.type =
       checkFail(new NoCrashTest(targets, times, threadLimit, shouldSuppressOutput), "Fuzzy")
 
     /** Creates a "run" test run, which is a superset of "pos". In addition to
@@ -1231,7 +1228,7 @@ trait ParallelTesting extends RunnerOrchestration:
      *  the compiler; it also makes sure that all tests can run with the
      *  expected output
      */
-    def checkRuns()(implicit summaryReport: SummaryReporting): this.type =
+    def checkRuns()(using SummaryReporting): this.type =
       checkPass(new RunTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Run")
 
     /** Tests `-rewrite`, which makes sure that the rewritten files still compile
@@ -1239,7 +1236,7 @@ trait ParallelTesting extends RunnerOrchestration:
      *
      *  Check files are only supported for joint compilation sources.
      */
-    def checkRewrites()(implicit summaryReport: SummaryReporting): this.type = {
+    def checkRewrites()(using SummaryReporting): this.type = {
       // use the original check file, to simplify update of check files
       var checkFileMap = Map.empty[JFile, JFile]
 
@@ -1760,7 +1757,7 @@ trait ParallelTesting extends RunnerOrchestration:
     def keepOutput: TastyCompilationTest =
       new TastyCompilationTest(step1, step2, shouldDelete)
 
-    def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
+    def checkCompile()(using SummaryReporting): this.type = {
       step1.checkCompile() // Compile all files to generate the class files with tasty
       step2.checkCompile() // Compile from tasty
 
@@ -1770,7 +1767,7 @@ trait ParallelTesting extends RunnerOrchestration:
       this
     }
 
-    def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
+    def checkRuns()(using SummaryReporting): this.type = {
       step1.checkCompile() // Compile all files to generate the class files with tasty
       step2.checkRuns() // Compile from tasty
 
@@ -1783,7 +1780,7 @@ trait ParallelTesting extends RunnerOrchestration:
 
   class BestEffortOptionsTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: List[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
-    def checkNoCrash()(implicit summaryReport: SummaryReporting): this.type = {
+    def checkNoCrash()(using SummaryReporting): this.type = {
       step1.checkNoBestEffortError() // Compile all files to generate the class files with best effort tasty
       step2.checkNoBestEffortError() // Compile with best effort tasty
 
@@ -1802,7 +1799,7 @@ trait ParallelTesting extends RunnerOrchestration:
       this
     }
 
-    def noCrashWithCompilingDependencies()(implicit summaryReport: SummaryReporting): this.type = {
+    def noCrashWithCompilingDependencies()(using SummaryReporting): this.type = {
       step1.checkNoBestEffortError() // Compile all files to generate the class files with best effort tasty
       step2.checkNoBestEffortError() // Compile with best effort tasty
 
