@@ -9,6 +9,8 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
+        // scala/scala3#24545 / scala/scala3#24788
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
       ),
 
     )
