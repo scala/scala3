@@ -274,7 +274,7 @@ class TyperState() {
 
     if oldState != null && oldState.isCommittable then
       throw BadTyperStateAssertion(
-        i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
+        i"$this attempted to take ownership of $tvar which is already owned by committable $oldState. Location: ${ctx.owner.showLocated}")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 
