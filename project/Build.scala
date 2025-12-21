@@ -453,6 +453,30 @@ object Build {
     enableBspAllProjectsFile.exists()
   }
 
+  // Creates a scalaInstance by fetching the compiler from Maven.
+  // Used by non-bootstrapped projects that need a published compiler.
+  def fetchedScalaInstanceSettings(version: Def.Initialize[String]) = Def.settings(
+    // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+    // as a workaround, we build it manually by only adding the compiler
+    scalaInstance := {
+      val lm = dependencyResolution.value
+      val log = streams.value.log
+      val ver = version.value
+      val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / ver
+      val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+        ver, scalaModuleInfo = None, retrieveDir, log)
+        .fold(w => throw w.resolveException, identity)
+      Defaults.makeScalaInstance(
+        ver,
+        Array.empty,
+        comp.toSeq,
+        Seq.empty,
+        state.value,
+        scalaInstanceTopLoader.value,
+      )
+    },
+  )
+
   // Common scalaInstance settings for bootstrapped projects compiled with the non-bootstrapped compiler.
   lazy val bootstrappedScalaInstanceSettings = Def.settings(
     managedScalaInstance := false,
@@ -803,23 +827,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-nonbootstrapped",
-      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
-      // as a workaround, I build it manually by only adding the compiler
-      scalaInstance := {
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Defaults.makeScalaInstance(
-          scalaVersion.value,
-          Array.empty,
-          comp.toSeq,
-          Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value,
-        )},
+      fetchedScalaInstanceSettings(scalaVersion),
     )
 
   // ==============================================================================================
@@ -1453,23 +1461,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-nonbootstrapped",
-      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
-      // as a workaround, I build it manually by only adding the compiler
-      scalaInstance := {
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Defaults.makeScalaInstance(
-          scalaVersion.value,
-          Array.empty,
-          comp.toSeq,
-          Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value,
-        )},
+      fetchedScalaInstanceSettings(scalaVersion),
       // Add configuration of the test
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
@@ -1572,21 +1564,7 @@ object Build {
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       managedScalaInstance := false,
-      scalaInstance := {
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / referenceVersion
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          referenceVersion, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Defaults.makeScalaInstance(
-          referenceVersion,
-          Array.empty,
-          comp.toSeq,
-          Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value,
-        )},
+      fetchedScalaInstanceSettings(Def.setting(referenceVersion)),
       scalaCompilerBridgeBinaryJar := {
         val lm = dependencyResolution.value
         val log = streams.value.log
