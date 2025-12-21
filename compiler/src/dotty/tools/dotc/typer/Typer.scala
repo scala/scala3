@@ -4485,18 +4485,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val containsUninst = new TypeAccumulator[Boolean]:
               def apply(need: Boolean, tp: Type): Boolean =
                 need || tp.match
-                  case tvar: TypeVar =>
-                    ctx.typerState.constraint.contains(tvar) || tvar.instanceOpt.isInstanceOf[TypeVar]
-                  case _ =>
-                    foldOver(need, tp)
+                  case tvar: TypeVar => !tvar.isInstantiated
+                  case _ => foldOver(need, tp)
             if (pt1 `ne` pt)
               && (pt1 ne sharpenedPt)
               && !ctx.mode.is(Mode.ImplicitExploration)
-              && !ctx.mode.is(Mode.TypevarsMissContext)
               && !containsUninst(false, formal)
               && !isFullyDefined(formal, ForceDegree.none) then
-              try NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
-              catch case ex: TyperState.BadTyperStateAssertion => report.error(s"Bad typer state: ${ex.getMessage}", tree.srcPos.endPos)
+              NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             lazy val defaultArg = findDefaultArgument(argIndex)
