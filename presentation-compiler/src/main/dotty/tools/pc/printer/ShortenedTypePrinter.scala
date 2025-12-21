@@ -143,7 +143,7 @@ class ShortenedTypePrinter(
             case None => Some(Missing(owner, rename, prefixAfterRename))
         }
       currentRenamesSearchResult orElse configRenamesSearchResult
-    }.nextOption
+    }.nextOption()
 
   private def isAccessibleStatically(sym: Symbol): Boolean =
     sym.isStatic || // Java static
