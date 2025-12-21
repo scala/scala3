@@ -4495,7 +4495,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && !ctx.mode.is(Mode.TypevarsMissContext)
               && !containsUninst(false, formal)
               && !isFullyDefined(formal, ForceDegree.none) then
-              constrainResult(tree.symbol, wtp, pt1)
+              try NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
+              catch case ex: TyperState.BadTyperStateAssertion => report.error(s"Bad typer state: ${ex.getMessage}", tree.srcPos.endPos)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             lazy val defaultArg = findDefaultArgument(argIndex)
