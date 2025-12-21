@@ -44,3 +44,15 @@ Valhalla traits can have self-type of any trait without mutable fields.
 ## CanEqual with Valhalla
 
 Valhalla value classes can be null, so the CanEqual of `null` and a valhalla value class returns `true`.
+
+## Using Value Classes
+
+Use the `--Yvalue-classes` and `-experimental` compiler options when compiling value classes in the scala compiler.
+
+## Getting Started
+
+1. Install [Project Valhalla JVM](https://jdk.java.net/valhalla/) or alternatively clone the [source code](https://github.com/openjdk/valhalla). For the latter, follow the [build instructions](https://github.com/openjdk/jdk/blob/master/doc/building.md).
+
+2. Clone [scala-asm](https://github.com/lidaisy/scala-asm) and run `sbt publishLocal` to use it locally.
+
+3. Run `sbt scala-library-nonbootstrapped/publishLocal` in scala3 to use the local library that includes the value class annotation.
