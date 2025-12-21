@@ -29,25 +29,25 @@ object Properties {
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
 
   /** dotty-interfaces jar */
-  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn
+  def dottyInterfaces: String = requireNonEmptyProperty("dotty.tests.classes.dottyInterfaces")
 
   /** dotty-compiler jar */
-  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler").nn
+  def dottyCompiler: String = requireNonEmptyProperty("dotty.tests.classes.dottyCompiler")
 
   /** dotty-staging jar */
-  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging").nn
+  def dottyStaging: String = requireNonEmptyProperty("dotty.tests.classes.dottyStaging")
 
   /** dotty-tasty-inspector jar */
-  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector").nn
+  def dottyTastyInspector: String = requireNonEmptyProperty("dotty.tests.classes.dottyTastyInspector")
 
   /** tasty-core jar */
-  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore").nn
+  def tastyCore: String = requireNonEmptyProperty("dotty.tests.classes.tastyCore")
 
   /** compiler-interface jar */
-  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface").nn
+  def compilerInterface: String = requireNonEmptyProperty("dotty.tests.classes.compilerInterface")
 
   /** scala-library jar */
-  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary").nn
+  def scalaLibrary: String = requireNonEmptyProperty("dotty.tests.classes.scalaLibrary")
 
   // TODO: Remove this once we migrate the test suite
   def usingScalaLibraryCCTasty: Boolean = true
@@ -56,7 +56,7 @@ object Properties {
   def usingScalaLibraryTasty: Boolean = true
 
   /** main ASM jar */
-  def asm: String = sys.props("dotty.tests.classes.asm").nn
+  def asm: String = requireNonEmptyProperty("dotty.tests.classes.asm")
 
   /** all the ASM jars */
   def asmAll: Seq[String] =
@@ -67,11 +67,16 @@ object Properties {
           .replaceFirst(Pattern.quote(sep + "asm" + suffix + sep), Matcher.quoteReplacement(sep + "asm" + sep)))
 
   /** scalajs-javalib jar */
-  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib").nn
+  def scalaJSJavalib: String = requireNonEmptyProperty("dotty.tests.classes.scalaJSJavalib")
 
   /** scalajs-scalalib jar */
-  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib").nn
+  def scalaJSScalalib: String = requireNonEmptyProperty("dotty.tests.classes.scalaJSScalalib")
 
   /** scalajs-library jar */
-  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary").nn
+  def scalaJSLibrary: String = requireNonEmptyProperty("dotty.tests.classes.scalaJSLibrary")
+
+  private def requireNonEmptyProperty(name: String): String =
+    val value = sys.props(name)
+    assert(value != null && value.nonEmpty, s"Property $name is not set")
+    value
 }
