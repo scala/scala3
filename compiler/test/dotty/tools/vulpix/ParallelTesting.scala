@@ -1574,7 +1574,9 @@ trait ParallelTesting extends RunnerOrchestration:
 
     val filteredFiles = testFilter match
       case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
-      case _      => Nil
+      case _      => files
+
+    assert(filteredFiles.nonEmpty)
 
     class JointCompilationSourceFromTasty(
        name: String,
