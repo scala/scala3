@@ -88,28 +88,28 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    */
   def compare(x: T, y: T): Int
 
-  /** Return true if `x` <= `y` in the ordering. */
+  /** Returns true if `x` <= `y` in the ordering. */
   override def lteq(x: T, y: T): Boolean = compare(x, y) <= 0
 
-  /** Return true if `x` >= `y` in the ordering. */
+  /** Returns true if `x` >= `y` in the ordering. */
   override def gteq(x: T, y: T): Boolean = compare(x, y) >= 0
 
-  /** Return true if `x` < `y` in the ordering. */
+  /** Returns true if `x` < `y` in the ordering. */
   override def lt(x: T, y: T): Boolean = compare(x, y) < 0
 
-  /** Return true if `x` > `y` in the ordering. */
+  /** Returns true if `x` > `y` in the ordering. */
   override def gt(x: T, y: T): Boolean = compare(x, y) > 0
 
-  /** Return true if `x` == `y` in the ordering. */
+  /** Returns true if `x` == `y` in the ordering. */
   override def equiv(x: T, y: T): Boolean = compare(x, y) == 0
 
-  /** Return `x` if `x` >= `y`, otherwise `y`. */
+  /** Returns `x` if `x` >= `y`, otherwise `y`. */
   def max[U <: T](x: U, y: U): U = if (gteq(x, y)) x else y
 
-  /** Return `x` if `x` <= `y`, otherwise `y`. */
+  /** Returns `x` if `x` <= `y`, otherwise `y`. */
   def min[U <: T](x: U, y: U): U = if (lteq(x, y)) x else y
 
-  /** Return the opposite ordering of this one.
+  /** Returns the opposite ordering of this one.
     *
     * Implementations overriding this method MUST override [[isReverseOf]]
     * as well if they change the behavior at all (for example, caching does
@@ -243,7 +243,7 @@ object Ordering extends LowPriorityOrderingImplicits {
     override final def isReverseOf(other: Ordering[?]): Boolean = other eq _reverse
   }
 
-  /** A reverse ordering */
+  /** A reverse ordering. */
   private final class Reverse[T](private[Ordering] val outer: Ordering[T]) extends Ordering[T] {
     override def reverse: Ordering[T]                   = outer
     override def isReverseOf(other: Ordering[?]): Boolean = other == outer
@@ -311,7 +311,7 @@ object Ordering extends LowPriorityOrderingImplicits {
   /** An object containing implicits which are not in the default scope. */
   object Implicits extends ExtraImplicits { }
 
-  /** Construct an Ordering[T] given a function `lt`. */
+  /** Constructs an Ordering[T] given a function `lt`. */
   def fromLessThan[T](cmp: (T, T) => Boolean): Ordering[T] = new Ordering[T] {
     def compare(x: T, y: T) = if (cmp(x, y)) -1 else if (cmp(y, x)) 1 else 0
     // overrides to avoid multiple comparisons

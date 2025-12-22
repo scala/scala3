@@ -84,7 +84,7 @@ object View extends IterableFactory[View] {
 
   override def apply[A](xs: A*): View[A] = new Elems(xs*)
 
-  /** The empty view */
+  /** The empty view. */
   @SerialVersionUID(3L)
   case object Empty extends AbstractView[Nothing] {
     def iterator = Iterator.empty
@@ -92,7 +92,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = true
   }
 
-  /** A view with exactly one element */
+  /** A view with exactly one element. */
   @SerialVersionUID(3L)
   class Single[A](a: A) extends AbstractView[A] {
     def iterator: Iterator[A] = Iterator.single(a)
@@ -100,7 +100,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = false
   }
 
-  /** A view with given elements */
+  /** A view with given elements. */
   @SerialVersionUID(3L)
   class Elems[A](xs: A*) extends AbstractView[A] {
     def iterator = xs.iterator
@@ -124,7 +124,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = n <= 0
   }
 
-  /** A view containing repeated applications of a function to a start value */
+  /** A view containing repeated applications of a function to a start value. */
   @SerialVersionUID(3L)
   class Iterate[A](start: A, len: Int)(f: A => A) extends AbstractView[A] {
     def iterator: Iterator[A]^{f} = Iterator.iterate(start)(f).take(len)
@@ -140,7 +140,7 @@ object View extends IterableFactory[View] {
     def iterator: Iterator[A]^{f} = Iterator.unfold(initial)(f)
   }
 
-  /** An `IterableOps` whose collection type and collection type constructor are unknown */
+  /** An `IterableOps` whose collection type and collection type constructor are unknown. */
   type SomeIterableOps[A] = IterableOps[A, AnyConstr, ?]
 
   /** A view that filters an underlying collection. */
@@ -163,7 +163,7 @@ object View extends IterableFactory[View] {
       }
   }
 
-  /** A view that removes the duplicated elements as determined by the transformation function `f` */
+  /** A view that removes the duplicated elements as determined by the transformation function `f`. */
   @SerialVersionUID(3L)
   class DistinctBy[A, B](underlying: SomeIterableOps[A]^, f: A -> B) extends AbstractView[A] {
     def iterator: Iterator[A]^{underlying} = underlying.iterator.distinctBy(f)
@@ -370,7 +370,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = underlying.isEmpty && other.isEmpty
   }
 
-  /** A view that appends an element to its elements */
+  /** A view that appends an element to its elements. */
   @SerialVersionUID(3L)
   class Appended[+A](underlying: SomeIterableOps[A]^, elem: A) extends AbstractView[A] {
     def iterator = new Concat(underlying, new View.Single(elem)).iterator
@@ -381,7 +381,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = false
   }
 
-  /** A view that prepends an element to its elements */
+  /** A view that prepends an element to its elements. */
   @SerialVersionUID(3L)
   class Prepended[+A](elem: A, underlying: SomeIterableOps[A]^) extends AbstractView[A] {
     def iterator = new Concat(new View.Single(elem), underlying).iterator

@@ -210,11 +210,11 @@ import scala.language.`2.13`
     */
   @annotation.nowarn("msg=package object inheritance")
   object `package` extends ProcessImplicits {
-    /** The input stream of this process */
+    /** The input stream of this process. */
     def stdin: java.io.InputStream = java.lang.System.in
-    /** The output stream of this process */
+    /** The output stream of this process. */
     def stdout: java.io.PrintStream = java.lang.System.out
-    /** The error stream of this process */
+    /** The error stream of this process. */
     def stderr: java.io.PrintStream = java.lang.System.err
   }
   // private val shell: String => Array[String] =

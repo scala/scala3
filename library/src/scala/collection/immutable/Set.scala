@@ -20,7 +20,7 @@ import language.experimental.captureChecking
 import scala.collection.immutable.Set.Set4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 
-/** Base trait for immutable set collections */
+/** Base trait for immutable set collections. */
 trait Set[A] extends Iterable[A]
     with collection.Set[A]
     with SetOps[A, Set, Set[A]]
@@ -45,7 +45,7 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     */
   def incl(elem: A): C
 
-  /** Alias for `incl` */
+  /** Alias for `incl`. */
   override final def + (elem: A): C = incl(elem) // like in collection.Set but not deprecated
 
   /** Creates a new set with a given element removed from this set.
@@ -56,7 +56,7 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     */
   def excl(elem: A): C
 
-  /** Alias for `excl` */
+  /** Alias for `excl`. */
   @`inline` final override def - (elem: A): C = excl(elem)
 
   def diff(that: collection.Set[A]): C =
@@ -70,7 +70,7 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     */
   def removedAll(that: IterableOnce[A]^): C = that.iterator.foldLeft[C](coll)(_ - _)
 
-  /** Alias for removedAll */
+  /** Alias for removedAll. */
   override final def -- (that: IterableOnce[A]^): C = removedAll(that)
 }
 
@@ -118,7 +118,7 @@ object Set extends IterableFactory[Set] {
 
   def newBuilder[A]: Builder[A, Set[A]] = new SetBuilderImpl[A]
 
-  /** An optimized representation for immutable empty sets */
+  /** An optimized representation for immutable empty sets. */
   @SerialVersionUID(3L)
   private object EmptySet extends AbstractSet[Any] with Serializable {
     override def size: Int = 0
@@ -163,7 +163,7 @@ object Set extends IterableFactory[Set] {
     }
   }
 
-  /** An optimized representation for immutable sets of size 1 */
+  /** An optimized representation for immutable sets of size 1. */
   @SerialVersionUID(3L)
   final class Set1[A] private[collection] (elem1: A) extends AbstractSet[A] with StrictOptimizedIterableOps[A, Set, Set[A]] with Serializable {
     override def size: Int = 1
@@ -190,7 +190,7 @@ object Set extends IterableFactory[Set] {
     override def tail: Set[A] = Set.empty
   }
 
-  /** An optimized representation for immutable sets of size 2 */
+  /** An optimized representation for immutable sets of size 2. */
   @SerialVersionUID(3L)
   final class Set2[A] private[collection] (elem1: A, elem2: A) extends AbstractSet[A] with StrictOptimizedIterableOps[A, Set, Set[A]] with Serializable {
     override def size: Int = 2
@@ -239,7 +239,7 @@ object Set extends IterableFactory[Set] {
     override def tail: Set[A] = new Set1(elem2)
   }
 
-  /** An optimized representation for immutable sets of size 3 */
+  /** An optimized representation for immutable sets of size 3. */
   @SerialVersionUID(3L)
   final class Set3[A] private[collection] (elem1: A, elem2: A, elem3: A) extends AbstractSet[A] with StrictOptimizedIterableOps[A, Set, Set[A]] with Serializable {
     override def size: Int = 3
@@ -293,7 +293,7 @@ object Set extends IterableFactory[Set] {
     override def tail: Set[A] = new Set2(elem2, elem3)
   }
 
-  /** An optimized representation for immutable sets of size 4 */
+  /** An optimized representation for immutable sets of size 4. */
   @SerialVersionUID(3L)
   final class Set4[A] private[collection] (elem1: A, elem2: A, elem3: A, elem4: A) extends AbstractSet[A] with StrictOptimizedIterableOps[A, Set, Set[A]] with Serializable {
     override def size: Int = 4

@@ -186,7 +186,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   override def foreach[U](f: A => U): Unit = rootNode.foreach(f)
 
-  /** Applies a function f to each element, and its corresponding **original** hash, in this Set */
+  /** Applies a function f to each element, and its corresponding **original** hash, in this Set. */
   @`inline` private[collection] def foreachWithHash(f: (A, Int) => Unit): Unit = rootNode.foreachWithHash(f)
 
   /** Applies a function f to each element, and its corresponding **original** hash, in this Set
@@ -1755,7 +1755,7 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
     }
 
   /**
-    * Remove an element from the hash collision node.
+    * Removes an element from the hash collision node.
     *
     * When after deletion only one element remains, we return a bit-mapped indexed node with a
     * singleton element and a hash-prefix for trie level 0. This node will be then a) either become
@@ -1946,7 +1946,7 @@ object HashSet extends IterableFactory[HashSet] {
       case _ => (newBuilder[A] ++= source).result()
     }
 
-  /** Create a new Builder which can be reused after calling `result()` without an
+  /** Creates a new Builder which can be reused after calling `result()` without an
     * intermediate call to `clear()` in order to build multiple related results.
     */
   def newBuilder[A]: ReusableBuilder[A, HashSet[A]] = new HashSetBuilder
@@ -1972,7 +1972,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
   /** The root node of the partially built hashmap. */
   private var rootNode: BitmapIndexedSetNode[A] = newEmptyRootNode
 
-  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems */
+  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems. */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
     if (ix < 0) throw new ArrayIndexOutOfBoundsException
     if (ix > as.length) throw new ArrayIndexOutOfBoundsException
@@ -1983,7 +1983,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     result
   }
 
-  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair */
+  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair. */
   private def insertValue[A1 >: A](bm: BitmapIndexedSetNode[A], bitpos: Int, key: A, originalHash: Int, keyHash: Int): Unit = {
     val dataIx = bm.dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -2005,7 +2005,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     bm.cachedJavaKeySetHashCode += keyHash
   }
 
-  /** Mutates `bm` to replace inline data at bit position `bitpos` with updated key/value */
+  /** Mutates `bm` to replace inline data at bit position `bitpos` with updated key/value. */
   private def setValue[A1 >: A](bm: BitmapIndexedSetNode[A], bitpos: Int, elem: A): Unit = {
     val dataIx = bm.dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -2050,13 +2050,13 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
         }
     }
 
-  /** If currently referencing aliased structure, copy elements to new mutable structure */
+  /** If currently referencing aliased structure, copy elements to new mutable structure. */
   private def ensureUnaliased():Unit = {
     if (isAliased) copyElems()
     aliased = null
   }
 
-  /** Copy elements to new mutable structure */
+  /** Copies elements to new mutable structure. */
   private def copyElems(): Unit = {
     rootNode = rootNode.copy()
   }

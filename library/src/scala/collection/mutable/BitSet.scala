@@ -369,7 +369,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   def newBuilder: Builder[Int, BitSet] = new GrowableBuilder(empty)
 
-  /** A bitset containing all the bits in an array */
+  /** A bitset containing all the bits in an array. */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty

@@ -450,7 +450,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     case _ => iterator.concat(suffix.iterator)
   })
 
-  /** Alias for `concat` */
+  /** Alias for `concat`. */
   @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
@@ -761,10 +761,10 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
 
-  /** The default load factor for the hash table */
+  /** The default load factor for the hash table. */
   final def defaultLoadFactor: Double = 0.75
 
-  /** The default initial capacity for the hash table */
+  /** The default initial capacity for the hash table. */
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)

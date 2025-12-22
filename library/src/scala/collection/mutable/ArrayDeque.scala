@@ -342,7 +342,7 @@ class ArrayDeque[A] protected (
   }
 
   /**
-    * Remove all elements from this collection and return the elements while emptying this data structure
+    * Removes all elements from this collection and returns the elements while emptying this data structure.
     * @return
     */
   def removeAll(): scala.collection.immutable.Seq[A] = {
@@ -355,7 +355,7 @@ class ArrayDeque[A] protected (
   }
 
   /**
-    * Remove all elements from this collection and return the elements in reverse while emptying this data structure
+    * Removes all elements from this collection and returns the elements in reverse while emptying this data structure.
     * @return
     */
   def removeAllReverse(): scala.collection.immutable.Seq[A] = {

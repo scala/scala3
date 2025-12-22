@@ -44,10 +44,10 @@ class DynamicVariable[T](init: T) {
     override def initialValue: T & AnyRef = init.asInstanceOf[T & AnyRef]
   }
 
-  /** Retrieve the current value */
+  /** Retrieves the current value. */
   def value: T = tl.get.asInstanceOf[T]
 
-  /** Set the value of the variable while executing the specified
+  /** Sets the value of the variable while executing the specified
     * thunk.
     *
     * @param newval The value to which to set the variable

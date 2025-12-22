@@ -27,11 +27,11 @@ import annotation.internal.preview
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
   self =>
-    /** Convert value `x` of type `T` to type `U` */
+    /** Converts value `x` of type `T` to type `U`. */
     def apply(x: T): U
 
     extension (x: T)
-      /** `x.convert` converts a value `x` of type `T` to type `U` */
+      /** `x.convert` converts a value `x` of type `T` to type `U`. */
       def convert = this(x)
 
 object Conversion:
@@ -45,7 +45,7 @@ object Conversion:
   @preview
   opaque type into[+T] >: T = T
 
-  /** Unwrap an `into` */
+  /** Unwraps an `into`. */
   extension [T](x: into[T])
     @preview
     def underlying: T = x

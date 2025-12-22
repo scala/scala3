@@ -46,7 +46,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[T]`
   extension [T](self: Expr[T])
-    /** Show a source code like representation of this expression */
+    /** Shows a source code like representation of this expression. */
     def show: String
 
     /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
@@ -59,7 +59,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     def matches(that: Expr[Any]): Boolean
 
-    /** Return the value of this expression.
+    /** Returns the value of this expression.
      *
      *  Returns `None` if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the `Some` of the value.
@@ -68,7 +68,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       given Quotes = Quotes.this
       summon[FromExpr[T]].unapply(self)
 
-    /** Return the value of this expression.
+    /** Returns the value of this expression.
      *
      *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
@@ -82,7 +82,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       given Quotes = Quotes.this
       fromExpr.unapply(self).getOrElse(reportError)
 
-    /** Return the value of this expression.
+    /** Returns the value of this expression.
      *
      *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
@@ -93,10 +93,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[Any]` that take another explicit type parameter
   extension (self: Expr[Any])
-    /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
+    /** Checks is the `quoted.Expr[?]` is valid expression of type `X`. */
     def isExprOf[X](using Type[X]): Boolean
 
-    /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
+    /** Converts this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws. */
     def asExprOf[X](using Type[X]): Expr[X]
   end extension
 
@@ -250,10 +250,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    */
   trait reflectModule { self: reflect.type =>
 
-    /** Module object of `type CompilationInfo`  */
+    /** Module object of `type CompilationInfo`. */
     val CompilationInfo: CompilationInfoModule
 
-    /** Methods of the module object `val CompilationInfo` */
+    /** Methods of the module object `val CompilationInfo`. */
     trait CompilationInfoModule { this: CompilationInfo.type =>
       /** Are we expanding a `inline` macro while typing the program?
        *
@@ -272,7 +272,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
 
-    /** Returns the `Term` representation this expression */
+    /** Returns the `Term` representation this expression. */
     extension (expr: Expr[Any])
       def asTerm: Term
 
@@ -280,44 +280,44 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     //   TREES   //
     ///////////////
 
-    /** Tree representing code written in the source */
+    /** Tree representing code written in the source. */
     type Tree <: AnyRef
 
-    /** Module object of `type Tree`  */
+    /** Module object of `type Tree`. */
     val Tree: TreeModule
 
-    /** Methods of the module object `val Tree` */
+    /** Methods of the module object `val Tree`. */
     trait TreeModule { this: Tree.type => }
 
-    /** Makes extension methods on `Tree` available without any imports */
+    /** Makes extension methods on `Tree` available without any imports. */
     given TreeMethods: TreeMethods
 
-    /** Extension methods of `Tree` */
+    /** Extension methods of `Tree`. */
     trait TreeMethods {
 
       extension (self: Tree)
-        /** Position in the source code */
+        /** Position in the source code. */
         def pos: Position
 
-        /** Symbol of defined or referred by this tree */
+        /** Symbol of defined or referred by this tree. */
         def symbol: Symbol
 
-        /** Shows the tree as String */
+        /** Shows the tree as String. */
         def show(using Printer[Tree]): String
 
         /** Does this tree represent a valid expression? */
         def isExpr: Boolean
 
-        /** Convert this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
+        /** Converts this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws. */
         def asExpr: Expr[Any]
       end extension
 
-      /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
+      /** Converts this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws. */
       extension (self: Tree)
         def asExprOf[T](using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree)
-        /** Changes the owner of the symbols in the tree */
+        /** Changes the owner of the symbols in the tree. */
         def changeOwner(newOwner: Symbol): ThisTree
       end extension
 
@@ -340,31 +340,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type PackageClause <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `PackageClause` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `PackageClause`. */
     given PackageClauseTypeTest: TypeTest[Tree, PackageClause]
 
-    /** Module object of `type PackageClause`  */
+    /** Module object of `type PackageClause`. */
     val PackageClause: PackageClauseModule
 
-    /** Methods of the module object `val PackageClause` */
+    /** Methods of the module object `val PackageClause`. */
     trait PackageClauseModule { this: PackageClause.type =>
-      /** Create a package clause `package pid { stats }` */
+      /** Creates a package clause `package pid { stats }`. */
       def apply(pid: Ref, stats: List[Tree]): PackageClause
-      /** Copy a package clause `package pid { stats }` */
+      /** Copies a package clause `package pid { stats }`. */
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
-      /** Matches a package clause `package pid { stats }` and extracts the `pid` and `stats` */
+      /** Matches a package clause `package pid { stats }` and extracts the `pid` and `stats`. */
       def unapply(tree: PackageClause): (Ref, List[Tree])
     }
 
-    /** Makes extension methods on `PackageClause` available without any imports */
+    /** Makes extension methods on `PackageClause` available without any imports. */
     given PackageClauseMethods: PackageClauseMethods
 
-    /** Extension methods of `PackageClause` */
+    /** Extension methods of `PackageClause`. */
     trait PackageClauseMethods:
       extension (self: PackageClause)
-        /** Tree containing the package name */
+        /** Tree containing the package name. */
         def pid: Ref
-        /** Definitions, imports or exports within the package */
+        /** Definitions, imports or exports within the package. */
         def stats: List[Tree]
       end extension
     end PackageClauseMethods
@@ -375,29 +375,29 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Import <: Statement
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Import` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Import`. */
     given ImportTypeTest: TypeTest[Tree, Import]
 
-    /** Module object of `type Import`  */
+    /** Module object of `type Import`. */
     val Import: ImportModule
 
-    /** Methods of the module object `val Import` */
+    /** Methods of the module object `val Import`. */
     trait ImportModule { this: Import.type =>
-      /** Create an `Import` with the given qualifier and selectors */
+      /** Creates an `Import` with the given qualifier and selectors. */
       def apply(expr: Term, selectors: List[Selector]): Import
-      /** Copy an `Import` with the given qualifier and selectors */
+      /** Copies an `Import` with the given qualifier and selectors. */
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import
-      /** Matches an `Import` and extracts the qualifier and selectors */
+      /** Matches an `Import` and extracts the qualifier and selectors. */
       def unapply(tree: Import): (Term, List[Selector])
     }
 
-    /** Makes extension methods on `Import` available without any imports */
+    /** Makes extension methods on `Import` available without any imports. */
     given ImportMethods: ImportMethods
 
-    /** Extension methods of `Import` */
+    /** Extension methods of `Import`. */
     trait ImportMethods:
       extension (self: Import)
-        /** Qualifier of the import */
+        /** Qualifier of the import. */
         def expr: Term
         /** List selectors of the import
          *
@@ -412,25 +412,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Export <: Statement
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Export` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Export`. */
     given ExportTypeTest: TypeTest[Tree, Export]
 
-    /** Module object of `type Export`  */
+    /** Module object of `type Export`. */
     val Export: ExportModule
 
-    /** Methods of the module object `val Export` */
+    /** Methods of the module object `val Export`. */
     trait ExportModule { this: Export.type =>
-      /** Matches an `Export` and extracts the qualifier and selectors */
+      /** Matches an `Export` and extracts the qualifier and selectors. */
       def unapply(tree: Export): (Term, List[Selector])
     }
 
-    /** Makes extension methods on `Export` available without any imports */
+    /** Makes extension methods on `Export` available without any imports. */
     given ExportMethods: ExportMethods
 
-    /** Extension methods of `Export` */
+    /** Extension methods of `Export`. */
     trait ExportMethods:
       extension (self: Export)
-        /** Qualifier of the export */
+        /** Qualifier of the export. */
         def expr: Term
         /** List selectors of the export
          *
@@ -440,51 +440,51 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ExportMethods
 
-    /** Tree representing a statement in the source code */
+    /** Tree representing a statement in the source code. */
     type Statement <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Statement` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Statement`. */
     given StatementTypeTest: TypeTest[Tree, Statement]
 
     // ----- Definitions ----------------------------------------------
 
-    /** Tree representing a definition in the source code. It can be `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
+    /** Tree representing a definition in the source code. It can be `ClassDef`, `TypeDef`, `DefDef` or `ValDef`. */
     type Definition <: Statement
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Definition` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Definition`. */
     given DefinitionTypeTest: TypeTest[Tree, Definition]
 
-    /** Module object of `type Definition`  */
+    /** Module object of `type Definition`. */
     val Definition: DefinitionModule
 
-    /** Methods of the module object `val Definition` */
+    /** Methods of the module object `val Definition`. */
     trait DefinitionModule { this: Definition.type => }
 
-    /** Makes extension methods on `Definition` available without any imports */
+    /** Makes extension methods on `Definition` available without any imports. */
     given DefinitionMethods: DefinitionMethods
 
-    /** Extension methods of `Definition` */
+    /** Extension methods of `Definition`. */
     trait DefinitionMethods:
       extension (self: Definition)
-        /** Name of the definition */
+        /** Name of the definition. */
         def name: String
       end extension
     end DefinitionMethods
 
     // ClassDef
 
-    /** Tree representing a class definition. This includes anonymous class definitions and the class of a module object */
+    /** Tree representing a class definition. This includes anonymous class definitions and the class of a module object. */
     type ClassDef <: Definition
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ClassDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ClassDef`. */
     given ClassDefTypeTest: TypeTest[Tree, ClassDef]
 
-    /** Module object of `type ClassDef`  */
+    /** Module object of `type ClassDef`. */
     val ClassDef: ClassDefModule
 
-    /** Methods of the module object `val ClassDef` */
+    /** Methods of the module object `val ClassDef`. */
     trait ClassDefModule { this: ClassDef.type =>
-      /** Create a class definition tree
+      /** Creates a class definition tree
        *
        *  @param cls The class symbol. A new class symbol can be created using `Symbol.newClass`.
        *  @param parents The parents trees class. The trees must align with the parent types of `cls`.
@@ -499,7 +499,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
 
 
-      /** Create the ValDef and ClassDef of a module (equivalent to an `object` declaration in source code).
+      /** Creates the ValDef and ClassDef of a module (equivalent to an `object` declaration in source code).
        *
        *  Equivalent to
        *  ```
@@ -523,13 +523,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
     }
 
-    /** Makes extension methods on `ClassDef` available without any imports */
+    /** Makes extension methods on `ClassDef` available without any imports. */
     given ClassDefMethods: ClassDefMethods
 
-    /** Extension methods of `ClassDef` */
+    /** Extension methods of `ClassDef`. */
     trait ClassDefMethods:
       extension (self: ClassDef)
-        /** The primary constructor of this class */
+        /** The primary constructor of this class. */
         def constructor: DefDef
         /** List of extended parent classes or traits.
          *  The first parent is always a class.
@@ -566,36 +566,36 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type ValOrDefDef <: Definition
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValOrDefDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValOrDefDef`. */
     given ValOrDefDefTypeTest: TypeTest[Tree, ValOrDefDef]
 
-    /** Makes extension methods on `ValOrDefDef` available without any imports */
+    /** Makes extension methods on `ValOrDefDef` available without any imports. */
     given ValOrDefDefMethods: ValOrDefDefMethods
 
-    /** Extension methods of `ValOrDefDef` */
+    /** Extension methods of `ValOrDefDef`. */
     trait ValOrDefDefMethods:
       extension (self: ValOrDefDef)
-        /** The type tree of this `val` or `def` definition */
+        /** The type tree of this `val` or `def` definition. */
         def tpt: TypeTree
-        /** The right-hand side of this `val` or `def` definition */
+        /** The right-hand side of this `val` or `def` definition. */
         def rhs: Option[Term]
       end extension
     end ValOrDefDefMethods
 
     // DefDef
 
-    /** Tree representing a method definition in the source code */
+    /** Tree representing a method definition in the source code. */
     type DefDef <: ValOrDefDef
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `DefDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `DefDef`. */
     given DefDefTypeTest: TypeTest[Tree, DefDef]
 
-    /** Module object of `type DefDef`  */
+    /** Module object of `type DefDef`. */
     val DefDef: DefDefModule
 
-    /** Methods of the module object `val DefDef` */
+    /** Methods of the module object `val DefDef`. */
     trait DefDefModule { this: DefDef.type =>
-      /** Create a method definition `def f[..](...)` with the signature defined in the symbol.
+      /** Creates a method definition `def f[..](...)` with the signature defined in the symbol.
        *
        *  The `rhsFn` is a function that receives references to its parameters, and should return
        *  `Some` containing the implementation of the method, or `None` if the method has no implementation.
@@ -610,13 +610,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term])
     }
 
-    /** Makes extension methods on `DefDef` available without any imports */
+    /** Makes extension methods on `DefDef` available without any imports. */
     given DefDefMethods: DefDefMethods
 
-    /** Extension methods of `DefDef` */
+    /** Extension methods of `DefDef`. */
     trait DefDefMethods:
       extension (self: DefDef)
-        /** List of type and term parameter clauses */
+        /** List of type and term parameter clauses. */
         def paramss: List[ParamClause]
 
         /** List of leading type parameters or Nil if the method does not have leading type parameters.
@@ -633,7 +633,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def leadingTypeParams: List[TypeDef]
 
         /** List of parameter clauses following the leading type parameters or all clauses.
-         *  Return all parameter clauses if there are no leading type parameters.
+         *  Returns all parameter clauses if there are no leading type parameters.
          *
          *  Non leading type parameters can be found in extension methods such as
          *  ```scala
@@ -646,10 +646,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def trailingParamss: List[ParamClause]
 
-        /** List of term parameter clauses */
+        /** List of term parameter clauses. */
         def termParamss: List[TermParamClause]
 
-        /** The tree of the return type of this `def` definition */
+        /** The tree of the return type of this `def` definition. */
         def returnTpt: TypeTree
 
         /** The tree of the implementation of the method.
@@ -664,15 +664,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Tree representing a value definition in the source code. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
     type ValDef <: ValOrDefDef
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef`. */
     given ValDefTypeTest: TypeTest[Tree, ValDef]
 
-    /** Module object of `type ValDef`  */
+    /** Module object of `type ValDef`. */
     val ValDef: ValDefModule
 
-    /** Methods of the module object `val ValDef` */
+    /** Methods of the module object `val ValDef`. */
     trait ValDefModule { this: ValDef.type =>
-      /** Create a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
+      /** Creates a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
        *
        *  The `rhs` should return `Some` containing the implementation of the method,
        *  or `None` if the method has no implementation.
@@ -741,44 +741,44 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def let(owner: Symbol, terms: List[Term])(body: List[Ref] => Term): Term
     }
 
-    /** Makes extension methods on `ValDef` available without any imports */
+    /** Makes extension methods on `ValDef` available without any imports. */
     given ValDefMethods: ValDefMethods
 
-    /** Extension methods of `ValDef` */
+    /** Extension methods of `ValDef`. */
     trait ValDefMethods:
       extension (self: ValDef)
-        /** The type tree of this `val` definition */
+        /** The type tree of this `val` definition. */
         def tpt: TypeTree
-        /** The right-hand side of this `val` definition */
+        /** The right-hand side of this `val` definition. */
         def rhs: Option[Term]
       end extension
     end ValDefMethods
 
     // TypeDef
 
-    /** Tree representing a type (parameter or member) definition in the source code */
+    /** Tree representing a type (parameter or member) definition in the source code. */
     type TypeDef <: Definition
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeDef`. */
     given TypeDefTypeTest: TypeTest[Tree, TypeDef]
 
-    /** Module object of `type TypeDef`  */
+    /** Module object of `type TypeDef`. */
     val TypeDef: TypeDefModule
 
-    /** Methods of the module object `val TypeDef` */
+    /** Methods of the module object `val TypeDef`. */
     trait TypeDefModule { this: TypeDef.type =>
       def apply(symbol: Symbol): TypeDef
       def copy(original: Tree)(name: String, rhs: Tree): TypeDef
       def unapply(tdef: TypeDef): (String, Tree)
     }
 
-    /** Makes extension methods on `TypeDef` available without any imports */
+    /** Makes extension methods on `TypeDef` available without any imports. */
     given TypeDefMethods: TypeDefMethods
 
-    /** Extension methods of `TypeDef` */
+    /** Extension methods of `TypeDef`. */
     trait TypeDefMethods:
       extension (self: TypeDef)
-        /** The type bounds on the right-hand side of this `type` definition */
+        /** The type bounds on the right-hand side of this `type` definition. */
         def rhs: Tree
       end extension
     end TypeDefMethods
@@ -786,16 +786,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- Terms ----------------------------------------------------
 
-    /** Tree representing an expression in the source code */
+    /** Tree representing an expression in the source code. */
     type Term <: Statement
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Term` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Term`. */
     given TermTypeTest: TypeTest[Tree, Term]
 
-    /** Module object of `type Term`  */
+    /** Module object of `type Term`. */
     val Term: TermModule
 
-    /** Methods of the module object `val Term` */
+    /** Methods of the module object `val Term`. */
     trait TermModule { this: Term.type =>
 
      /** Returns a term that is functionally equivalent to `t`,
@@ -844,17 +844,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     }
 
-    /** Makes extension methods on `Term` available without any imports */
+    /** Makes extension methods on `Term` available without any imports. */
     given TermMethods: TermMethods
 
-    /** Extension methods of `Term` */
+    /** Extension methods of `Term`. */
     trait TermMethods {
       extension (self: Term)
 
-        /** TypeRepr of this term */
+        /** TypeRepr of this term. */
         def tpe: TypeRepr
 
-        /** Replace Inlined nodes and InlineProxy references to underlying arguments.
+        /** Replaces Inlined nodes and InlineProxy references to underlying arguments.
          *  The resulting tree is useful for inspection of the value or content of a non-inline argument.
          *
          *  Warning: This tree may contain references that are out of scope and should not be used in the generated code.
@@ -862,7 +862,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def underlyingArgument: Term
 
-        /** Replace Ident nodes references to the underlying tree that defined them.
+        /** Replaces Ident nodes references to the underlying tree that defined them.
          *  The resulting tree is useful for inspection of the definition of some bindings.
          *
          *  Warning: This tree may contain references that are out of scope and should not be used in the generated code.
@@ -870,16 +870,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def underlying: Term
 
-        /** Converts a partially applied term into a lambda expression */
+        /** Converts a partially applied term into a lambda expression. */
         def etaExpand(owner: Symbol): Term
 
-        /** A unary apply node with given argument: `tree(arg)` */
+        /** A unary apply node with given argument: `tree(arg)`. */
         def appliedTo(arg: Term): Term
 
-        /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
+        /** An apply node with given arguments: `tree(arg, args0, ..., argsN)`. */
         def appliedTo(arg: Term, args: Term*): Term
 
-        /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
+        /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))`. */
         def appliedToArgs(args: List[Term]): Apply
 
         /** The current tree applied to given argument lists:
@@ -887,19 +887,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         */
         def appliedToArgss(argss: List[List[Term]]): Term
 
-        /** The current tree applied to (): `tree()` */
+        /** The current tree applied to (): `tree()`. */
         def appliedToNone: Apply
 
-        /** The current tree applied to `()` unless the tree's widened type is parameterless or expects type parameters */
+        /** The current tree applied to `()` unless the tree's widened type is parameterless or expects type parameters. */
         def ensureApplied: Term
 
-        /** The current tree applied to given type argument: `tree[targ]` */
+        /** The current tree applied to given type argument: `tree[targ]`. */
         def appliedToType(targ: TypeRepr): Term
 
-        /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
+        /** The current tree applied to given type arguments: `tree[targ0, ..., targN]`. */
         def appliedToTypes(targs: List[TypeRepr]): Term
 
-        /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
+        /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]`. */
         def appliedToTypeTrees(targs: List[TypeTree]): Term
 
         /** A select node that selects the given symbol. */
@@ -909,22 +909,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     }
 
-    /** Tree representing a reference to definition */
+    /** Tree representing a reference to definition. */
     type Ref <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Ref` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Ref`. */
     given RefTypeTest: TypeTest[Tree, Ref]
 
-    /** Module object of `type Ref`  */
+    /** Module object of `type Ref`. */
     val Ref: RefModule
 
-    /** Methods of the module object `val Ref` */
+    /** Methods of the module object `val Ref`. */
     trait RefModule { this: Ref.type =>
 
-      /** A tree representing the same reference as the given type */
+      /** A tree representing the same reference as the given type. */
       def term(tp: TermRef): Ref
 
-      /** Create a reference tree from a symbol
+      /** Creates a reference tree from a symbol
       *
       *  If `sym` refers to a class member `foo` in class `C`,
       *  returns a tree representing `C.this.foo`.
@@ -945,32 +945,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def apply(sym: Symbol): Ref
     }
 
-    /** Tree representing a reference to definition with a given name */
+    /** Tree representing a reference to definition with a given name. */
     type Ident <: Ref
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Ident` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Ident`. */
     given IdentTypeTest: TypeTest[Tree, Ident]
 
-    /** Module object of `type Ident`  */
+    /** Module object of `type Ident`. */
     val Ident: IdentModule
 
-    /** Methods of the module object `val Ident` */
+    /** Methods of the module object `val Ident`. */
     trait IdentModule { this: Ident.type =>
       def apply(tmref: TermRef): Term
 
       def copy(original: Tree)(name: String): Ident
 
-      /** Matches a term identifier and returns its name */
+      /** Matches a term identifier and returns its name. */
       def unapply(tree: Ident): Some[String]
     }
 
-    /** Makes extension methods on `Ident` available without any imports */
+    /** Makes extension methods on `Ident` available without any imports. */
     given IdentMethods: IdentMethods
 
-    /** Extension methods of `Ident` */
+    /** Extension methods of `Ident`. */
     trait IdentMethods:
       extension (self: Ident)
-        /** Name of this `Ident` */
+        /** Name of this `Ident`. */
         def name: String
       end extension
     end IdentMethods
@@ -978,35 +978,35 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Pattern representing a `_` wildcard. */
     type Wildcard <: Ident
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Wildcard` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Wildcard`. */
     given WildcardTypeTest: TypeTest[Tree, Wildcard]
 
-    /** Module object of `type Wildcard`  */
+    /** Module object of `type Wildcard`. */
     val Wildcard: WildcardModule
 
-    /** Methods of the module object `val Wildcard` */
+    /** Methods of the module object `val Wildcard`. */
     trait WildcardModule { this: Wildcard.type =>
-      /** Create a tree representing a `_` wildcard. */
+      /** Creates a tree representing a `_` wildcard. */
       def apply(): Wildcard
-      /** Match a tree representing a `_` wildcard. */
+      /** Matches a tree representing a `_` wildcard. */
       def unapply(wildcard: Wildcard): true
     }
 
-    /** Tree representing a selection of definition with a given name on a given prefix */
+    /** Tree representing a selection of definition with a given name on a given prefix. */
     type Select <: Ref
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Select` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Select`. */
     given SelectTypeTest: TypeTest[Tree, Select]
 
-    /** Module object of `type Select`  */
+    /** Module object of `type Select`. */
     val Select: SelectModule
 
-    /** Methods of the module object `val Select` */
+    /** Methods of the module object `val Select`. */
     trait SelectModule { this: Select.type =>
-      /** Select a term member by symbol */
+      /** Selects a term member by symbol. */
       def apply(qualifier: Term, symbol: Symbol): Select
 
-      /** Select a field or a non-overloaded method by name
+      /** Selects a field or a non-overloaded method by name
       *
       *  @note The method will produce an assertion error if the selected
       *        method is overloaded. The method `overloaded` should be used
@@ -1014,90 +1014,90 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def unique(qualifier: Term, name: String): Select
 
-      /** Call an overloaded method with the given type and term parameters */
+      /** Calls an overloaded method with the given type and term parameters. */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term
 
-      /** Call an overloaded method with the given type and term parameters */
+      /** Calls an overloaded method with the given type and term parameters. */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term
 
       def copy(original: Tree)(qualifier: Term, name: String): Select
 
-      /** Matches `<qualifier: Term>.<name: String>` */
+      /** Matches `<qualifier: Term>.<name: String>`. */
       def unapply(x: Select): (Term, String)
     }
 
-    /** Makes extension methods on `Select` available without any imports */
+    /** Makes extension methods on `Select` available without any imports. */
     given SelectMethods: SelectMethods
 
-    /** Extension methods of `Select` */
+    /** Extension methods of `Select`. */
     trait SelectMethods:
       extension (self: Select)
-        /** Qualifier of the `qualifier.name` */
+        /** Qualifier of the `qualifier.name`. */
         def qualifier: Term
-        /** Name of this `Select` */
+        /** Name of this `Select`. */
         def name: String
-        /** Signature of this method */
+        /** Signature of this method. */
         def signature: Option[Signature]
       end extension
     end SelectMethods
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Literal` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Literal`. */
     given LiteralTypeTest: TypeTest[Tree, Literal]
 
-    /** Tree representing a literal value in the source code */
+    /** Tree representing a literal value in the source code. */
     type Literal <: Term
 
-    /** Module object of `type Literal`  */
+    /** Module object of `type Literal`. */
     val Literal: LiteralModule
 
-    /** Methods of the module object `val Literal` */
+    /** Methods of the module object `val Literal`. */
     trait LiteralModule { this: Literal.type =>
 
-      /** Create a literal constant */
+      /** Creates a literal constant. */
       def apply(constant: Constant): Literal
 
       def copy(original: Tree)(constant: Constant): Literal
 
-      /** Matches a literal constant */
+      /** Matches a literal constant. */
       def unapply(x: Literal): Some[Constant]
     }
 
-    /** Makes extension methods on `Literal` available without any imports */
+    /** Makes extension methods on `Literal` available without any imports. */
     given LiteralMethods: LiteralMethods
 
-    /** Extension methods of `Literal` */
+    /** Extension methods of `Literal`. */
     trait LiteralMethods:
       extension (self: Literal)
-        /** Value of this literal */
+        /** Value of this literal. */
         def constant: Constant
       end extension
     end LiteralMethods
 
-    /** Tree representing `this` or `C.this` in the source code */
+    /** Tree representing `this` or `C.this` in the source code. */
     type This <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `This` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `This`. */
     given ThisTypeTest: TypeTest[Tree, This]
 
-    /** Module object of `type This`  */
+    /** Module object of `type This`. */
     val This: ThisModule
 
-    /** Methods of the module object `val This` */
+    /** Methods of the module object `val This`. */
     trait ThisModule { this: This.type =>
 
-      /** Create a `C.this` for `C` pointing to `cls` */
+      /** Creates a `C.this` for `C` pointing to `cls`. */
       def apply(cls: Symbol): This
 
       def copy(original: Tree)(qual: Option[String]): This
 
-      /** Matches `this` or `qual.this` and returns the name of `qual` */
+      /** Matches `this` or `qual.this` and returns the name of `qual`. */
       def unapply(x: This): Some[Option[String]]
     }
 
-    /** Makes extension methods on `This` available without any imports */
+    /** Makes extension methods on `This` available without any imports. */
     given ThisMethods: ThisMethods
 
-    /** Extension methods of `This` */
+    /** Extension methods of `This`. */
     trait ThisMethods:
       extension (self: This)
         /** Returns `C` if the underlying tree is of the form `C.this`
@@ -1108,68 +1108,68 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ThisMethods
 
-    /** Tree representing `new` in the source code */
+    /** Tree representing `new` in the source code. */
     type New <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `New` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `New`. */
     given NewTypeTest: TypeTest[Tree, New]
 
-    /** Module object of `type New`  */
+    /** Module object of `type New`. */
     val New: NewModule
 
-    /** Methods of the module object `val New` */
+    /** Methods of the module object `val New`. */
     trait NewModule { this: New.type =>
 
-      /** Create a `new <tpt: TypeTree>` */
+      /** Creates a `new <tpt: TypeTree>`. */
       def apply(tpt: TypeTree): New
 
       def copy(original: Tree)(tpt: TypeTree): New
 
-      /** Matches `new <tpt: TypeTree>` */
+      /** Matches `new <tpt: TypeTree>`. */
       def unapply(x: New): Some[TypeTree]
     }
 
-    /** Makes extension methods on `New` available without any imports */
+    /** Makes extension methods on `New` available without any imports. */
     given NewMethods: NewMethods
 
-    /** Extension methods of `New` */
+    /** Extension methods of `New`. */
     trait NewMethods:
       extension (self: New)
-        /** Returns the type tree of this `new` */
+        /** Returns the type tree of this `new`. */
         def tpt: TypeTree
       end extension
     end NewMethods
 
-    /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
+    /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)`. */
     type NamedArg <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `NamedArg` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `NamedArg`. */
     given NamedArgTypeTest: TypeTest[Tree, NamedArg]
 
-    /** Module object of `type NamedArg`  */
+    /** Module object of `type NamedArg`. */
     val NamedArg: NamedArgModule
 
-    /** Methods of the module object `val NamedArg` */
+    /** Methods of the module object `val NamedArg`. */
     trait NamedArgModule { this: NamedArg.type =>
 
-      /** Create a named argument `<name: String> = <value: Term>` */
+      /** Creates a named argument `<name: String> = <value: Term>`. */
       def apply(name: String, arg: Term): NamedArg
 
       def copy(original: Tree)(name: String, arg: Term): NamedArg
 
-      /** Matches a named argument `<name: String> = <value: Term>` */
+      /** Matches a named argument `<name: String> = <value: Term>`. */
       def unapply(x: NamedArg): (String, Term)
     }
 
-    /** Makes extension methods on `NamedArg` available without any imports */
+    /** Makes extension methods on `NamedArg` available without any imports. */
     given NamedArgMethods: NamedArgMethods
 
-    /** Extension methods of `NamedArg` */
+    /** Extension methods of `NamedArg`. */
     trait NamedArgMethods:
       extension (self: NamedArg)
-        /** The name part of `name = arg` */
+        /** The name part of `name = arg`. */
         def name: String
-        /** The argument part of `name = arg` */
+        /** The argument part of `name = arg`. */
         def value: Term
       end extension
     end NamedArgMethods
@@ -1179,28 +1179,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Apply <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Apply` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Apply`. */
     given ApplyTypeTest: TypeTest[Tree, Apply]
 
-    /** Module object of `type Apply`  */
+    /** Module object of `type Apply`. */
     val Apply: ApplyModule
 
-    /** Methods of the module object `val Apply` */
+    /** Methods of the module object `val Apply`. */
     trait ApplyModule { this: Apply.type =>
 
-      /** Create a function application `<fun: Term>(<args: List[Term]>)` */
+      /** Creates a function application `<fun: Term>(<args: List[Term]>)`. */
       def apply(fun: Term, args: List[Term]): Apply
 
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply
 
-      /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
+      /** Matches a function application `<fun: Term>(<args: List[Term]>)`. */
       def unapply(x: Apply): (Term, List[Term])
     }
 
-    /** Makes extension methods on `Apply` available without any imports */
+    /** Makes extension methods on `Apply` available without any imports. */
     given ApplyMethods: ApplyMethods
 
-    /** Extension methods of `Apply` */
+    /** Extension methods of `Apply`. */
     trait ApplyMethods:
       extension (self: Apply)
         /** The `fun` part of an (implicit) application like `fun(args)`
@@ -1228,31 +1228,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ApplyMethods
 
-    /** Tree representing an application of type arguments */
+    /** Tree representing an application of type arguments. */
     type TypeApply <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeApply` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeApply`. */
     given TypeApplyTypeTest: TypeTest[Tree, TypeApply]
 
-    /** Module object of `type TypeApply`  */
+    /** Module object of `type TypeApply`. */
     val TypeApply: TypeApplyModule
 
-    /** Methods of the module object `val TypeApply` */
+    /** Methods of the module object `val TypeApply`. */
     trait TypeApplyModule { this: TypeApply.type =>
 
-      /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
+      /** Creates a function type application `<fun: Term>[<args: List[TypeTree]>]`. */
       def apply(fun: Term, args: List[TypeTree]): TypeApply
 
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply
 
-      /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
+      /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]`. */
       def unapply(x: TypeApply): (Term, List[TypeTree])
     }
 
-    /** Makes extension methods on `TypeApply` available without any imports */
+    /** Makes extension methods on `TypeApply` available without any imports. */
     given TypeApplyMethods: TypeApplyMethods
 
-    /** Extension methods of `TypeApply` */
+    /** Extension methods of `TypeApply`. */
     trait TypeApplyMethods:
       extension (self: TypeApply)
         /** The `fun` part of an (inferred) type application like `fun[Args]`
@@ -1294,31 +1294,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TypeApplyMethods
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Super` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Super`. */
     given SuperTypeTest: TypeTest[Tree, Super]
 
-    /** Tree representing `super` in the source code */
+    /** Tree representing `super` in the source code. */
     type Super <: Term
 
-    /** Module object of `type Super`  */
+    /** Module object of `type Super`. */
     val Super: SuperModule
 
-    /** Methods of the module object `val Super` */
+    /** Methods of the module object `val Super`. */
     trait SuperModule { this: Super.type =>
 
-      /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
+      /** Creates a `<qualifier: Term>.super[<id: Option[Id]>`. */
       def apply(qual: Term, mix: Option[String]): Super
 
       def copy(original: Tree)(qual: Term, mix: Option[String]): Super
 
-      /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
+      /** Matches a `<qualifier: Term>.super[<id: Option[Id]>`. */
       def unapply(x: Super): (Term, Option[String])
     }
 
-    /** Makes extension methods on `Super` available without any imports */
+    /** Makes extension methods on `Super` available without any imports. */
     given SuperMethods: SuperMethods
 
-    /** Extension methods of `Super` */
+    /** Extension methods of `Super`. */
     trait SuperMethods:
       extension (self: Super)
         def qualifier: Term
@@ -1327,7 +1327,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end SuperMethods
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Typed` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Typed`. */
     given TypedTypeTest: TypeTest[Tree, Typed]
 
     /** Tree representing a type ascription `x: T` in the source code.
@@ -1337,25 +1337,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Typed <: Term & TypedOrTest
 
-    /** Module object of `type Typed`  */
+    /** Module object of `type Typed`. */
     val Typed: TypedModule
 
-    /** Methods of the module object `val Typed` */
+    /** Methods of the module object `val Typed`. */
     trait TypedModule { this: Typed.type =>
 
-      /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
+      /** Creates a type ascription `<x: Term>: <tpt: TypeTree>`. */
       def apply(expr: Term, tpt: TypeTree): Typed
 
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed
 
-      /** Matches `<expr: Term>: <tpt: TypeTree>` */
+      /** Matches `<expr: Term>: <tpt: TypeTree>`. */
       def unapply(x: Typed): (Term, TypeTree)
     }
 
-    /** Makes extension methods on `Typed` available without any imports */
+    /** Makes extension methods on `Typed` available without any imports. */
     given TypedMethods: TypedMethods
 
-    /** Extension methods of `Typed` */
+    /** Extension methods of `Typed`. */
     trait TypedMethods:
       extension (self: Typed)
         def expr: Term
@@ -1363,31 +1363,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TypedMethods
 
-    /** Tree representing an assignment `x = y` in the source code */
+    /** Tree representing an assignment `x = y` in the source code. */
     type Assign <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Assign` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Assign`. */
     given AssignTypeTest: TypeTest[Tree, Assign]
 
-    /** Module object of `type Assign`  */
+    /** Module object of `type Assign`. */
     val Assign: AssignModule
 
-    /** Methods of the module object `val Assign` */
+    /** Methods of the module object `val Assign`. */
     trait AssignModule { this: Assign.type =>
 
-      /** Create an assignment `<lhs: Term> = <rhs: Term>` */
+      /** Creates an assignment `<lhs: Term> = <rhs: Term>`. */
       def apply(lhs: Term, rhs: Term): Assign
 
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign
 
-      /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
+      /** Matches an assignment `<lhs: Term> = <rhs: Term>`. */
       def unapply(x: Assign): (Term, Term)
     }
 
-    /** Makes extension methods on `Assign` available without any imports */
+    /** Makes extension methods on `Assign` available without any imports. */
     given AssignMethods: AssignMethods
 
-    /** Extension methods of `Assign` */
+    /** Extension methods of `Assign`. */
     trait AssignMethods:
       extension (self: Assign)
         def lhs: Term
@@ -1395,31 +1395,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AssignMethods
 
-    /** Tree representing a block `{ ... }` in the source code */
+    /** Tree representing a block `{ ... }` in the source code. */
     type Block <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Block` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Block`. */
     given BlockTypeTest: TypeTest[Tree, Block]
 
-    /** Module object of `type Block`  */
+    /** Module object of `type Block`. */
     val Block: BlockModule
 
-    /** Methods of the module object `val Block` */
+    /** Methods of the module object `val Block`. */
     trait BlockModule { this: Block.type =>
 
-      /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
+      /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }`. */
       def apply(stats: List[Statement], expr: Term): Block
 
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block
 
-      /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
+      /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }`. */
       def unapply(x: Block): (List[Statement], Term)
     }
 
-    /** Makes extension methods on `Block` available without any imports */
+    /** Makes extension methods on `Block` available without any imports. */
     given BlockMethods: BlockMethods
 
-    /** Extension methods of `Block` */
+    /** Extension methods of `Block`. */
     trait BlockMethods:
       extension (self: Block)
         def statements: List[Statement]
@@ -1427,7 +1427,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end BlockMethods
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Closure` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Closure`. */
     given ClosureTypeTest: TypeTest[Tree, Closure]
 
     /** A lambda `(...) => ...` in the source code is represented as
@@ -1441,10 +1441,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Closure <: Term
 
-    /** Module object of `type Closure`  */
+    /** Module object of `type Closure`. */
     val Closure: ClosureModule
 
-    /** Methods of the module object `val Closure` */
+    /** Methods of the module object `val Closure`. */
     trait ClosureModule { this: Closure.type =>
 
       def apply(meth: Term, tpe: Option[TypeRepr]): Closure
@@ -1454,10 +1454,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: Closure): (Term, Option[TypeRepr])
     }
 
-    /** Makes extension methods on `Closure` available without any imports */
+    /** Makes extension methods on `Closure` available without any imports. */
     given ClosureMethods: ClosureMethods
 
-    /** Extension methods of `Closure` */
+    /** Extension methods of `Closure`. */
     trait ClosureMethods:
       extension (self: Closure)
         def meth: Term
@@ -1480,7 +1480,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     val Lambda: LambdaModule
 
-    /** Methods of the module object `val Lambda` */
+    /** Methods of the module object `val Lambda`. */
     trait LambdaModule { this: Lambda.type =>
       /** Matches a lambda definition of the form
        *  ```scala sc:nocompile
@@ -1523,31 +1523,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `If` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `If`. */
     given IfTypeTest: TypeTest[Tree, If]
 
-    /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
+    /** Tree representing an if/then/else `if (...) ... else ...` in the source code. */
     type If <: Term
 
-    /** Module object of `type If` */
+    /** Module object of `type If`. */
     val If: IfModule
 
-    /** Methods of the module object `val If` */
+    /** Methods of the module object `val If`. */
     trait IfModule { this: If.type =>
 
-      /** Create an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
+      /** Creates an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>`. */
       def apply(cond: Term, thenp: Term, elsep: Term): If
 
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If
 
-      /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
+      /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>`. */
       def unapply(tree: If): (Term, Term, Term)
     }
 
-    /** Makes extension methods on `If` available without any imports */
+    /** Makes extension methods on `If` available without any imports. */
     given IfMethods: IfMethods
 
-    /** Extension methods of `If` */
+    /** Extension methods of `If`. */
     trait IfMethods:
       extension (self: If)
         def cond: Term
@@ -1557,31 +1557,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end IfMethods
 
-    /** Tree representing a pattern match `x match  { ... }` in the source code */
+    /** Tree representing a pattern match `x match  { ... }` in the source code. */
     type Match <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Match` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Match`. */
     given MatchTypeTest: TypeTest[Tree, Match]
 
-    /** Module object of `type Match`  */
+    /** Module object of `type Match`. */
     val Match: MatchModule
 
-    /** Methods of the module object `val Match` */
+    /** Methods of the module object `val Match`. */
     trait MatchModule { this: Match.type =>
 
-      /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
+      /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }`. */
       def apply(selector: Term, cases: List[CaseDef]): Match
 
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match
 
-      /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
+      /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }`. */
       def unapply(x: Match): (Term, List[CaseDef])
     }
 
-    /** Makes extension methods on `Match` available without any imports */
+    /** Makes extension methods on `Match` available without any imports. */
     given MatchMethods: MatchMethods
 
-    /** Extension methods of `Match` */
+    /** Extension methods of `Match`. */
     trait MatchMethods:
       extension (self: Match)
         def scrutinee: Term
@@ -1590,62 +1590,62 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchMethods
 
-    /** Tree representing a summoning match `summonFrom { ... }` in the source code */
+    /** Tree representing a summoning match `summonFrom { ... }` in the source code. */
     type SummonFrom <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `SummonFrom` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `SummonFrom`. */
     given SummonFromTypeTest: TypeTest[Tree, SummonFrom]
 
-    /** Module object of `type SummonFrom`  */
+    /** Module object of `type SummonFrom`. */
     val SummonFrom: SummonFromModule
 
-    /** Methods of the module object `val SummonFrom` */
+    /** Methods of the module object `val SummonFrom`. */
     trait SummonFromModule { this: SummonFrom.type =>
 
-      /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
+      /** Creates a pattern match `given match { <cases: List[CaseDef]> }`. */
       def apply(cases: List[CaseDef]): SummonFrom
 
       def copy(original: Tree)(cases: List[CaseDef]): SummonFrom
 
-      /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
+      /** Matches a pattern match `given match { <cases: List[CaseDef]> }`. */
       def unapply(x: SummonFrom): Some[List[CaseDef]]
     }
 
-    /** Makes extension methods on `SummonFrom` available without any imports */
+    /** Makes extension methods on `SummonFrom` available without any imports. */
     given SummonFromMethods: SummonFromMethods
 
-    /** Extension methods of `SummonFrom` */
+    /** Extension methods of `SummonFrom`. */
     trait SummonFromMethods:
       extension (self: SummonFrom)
         def cases: List[CaseDef]
       end extension
     end SummonFromMethods
 
-    /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
+    /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code. */
     type Try <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Try` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Try`. */
     given TryTypeTest: TypeTest[Tree, Try]
 
-    /** Module object of `type Try`  */
+    /** Module object of `type Try`. */
     val Try: TryModule
 
-    /** Methods of the module object `val Try` */
+    /** Methods of the module object `val Try`. */
     trait TryModule { this: Try.type =>
 
-      /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
+      /** Creates a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>`. */
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
-      /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
+      /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>`. */
       def unapply(x: Try): (Term, List[CaseDef], Option[Term])
     }
 
-    /** Makes extension methods on `Try` available without any imports */
+    /** Makes extension methods on `Try` available without any imports. */
     given TryMethods: TryMethods
 
-    /** Extension methods of `Try` */
+    /** Extension methods of `Try`. */
     trait TryMethods:
       extension (self: Try)
         def body: Term
@@ -1654,31 +1654,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TryMethods
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Return` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Return`. */
     given ReturnTypeTest: TypeTest[Tree, Return]
 
-    /** Tree representing a `return` in the source code */
+    /** Tree representing a `return` in the source code. */
     type Return <: Term
 
-    /** Module object of `type Return`  */
+    /** Module object of `type Return`. */
     val Return: ReturnModule
 
-    /** Methods of the module object `val Return` */
+    /** Methods of the module object `val Return`. */
     trait ReturnModule { this: Return.type =>
 
-      /** Creates `return <expr: Term>` */
+      /** Creates `return <expr: Term>`. */
       def apply(expr: Term, from: Symbol): Return
 
       def copy(original: Tree)(expr: Term, from: Symbol): Return
 
-      /** Matches `return <expr: Term>` and extracts the expression and symbol of the method */
+      /** Matches `return <expr: Term>` and extracts the expression and symbol of the method. */
       def unapply(x: Return): (Term, Symbol)
     }
 
-    /** Makes extension methods on `Return` available without any imports */
+    /** Makes extension methods on `Return` available without any imports. */
     given ReturnMethods: ReturnMethods
 
-    /** Extension methods of `Return` */
+    /** Extension methods of `Return`. */
     trait ReturnMethods:
       extension (self: Return)
         def expr: Term
@@ -1713,26 +1713,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Repeated <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Repeated` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Repeated`. */
     given RepeatedTypeTest: TypeTest[Tree, Repeated]
 
-    /** Module object of `type Repeated`  */
+    /** Module object of `type Repeated`. */
     val Repeated: RepeatedModule
 
-    /** Methods of the module object `val Repeated` */
+    /** Methods of the module object `val Repeated`. */
     trait RepeatedModule { this: Repeated.type =>
-      /** Create a literal sequence of elements */
+      /** Creates a literal sequence of elements. */
       def apply(elems: List[Term], tpt: TypeTree): Repeated
-      /** Copy a literal sequence of elements */
+      /** Copies a literal sequence of elements. */
       def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
-      /** Matches a literal sequence of elements */
+      /** Matches a literal sequence of elements. */
       def unapply(x: Repeated): (List[Term], TypeTree)
     }
 
-    /** Makes extension methods on `Repeated` available without any imports */
+    /** Makes extension methods on `Repeated` available without any imports. */
     given RepeatedMethods: RepeatedMethods
 
-    /** Extension methods of `Repeated` */
+    /** Extension methods of `Repeated`. */
     trait RepeatedMethods:
       extension (self: Repeated)
         def elems: List[Term]
@@ -1740,26 +1740,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RepeatedMethods
 
-    /** Tree representing the scope of an inlined tree */
+    /** Tree representing the scope of an inlined tree. */
     type Inlined <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Inlined` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Inlined`. */
     given InlinedTypeTest: TypeTest[Tree, Inlined]
 
-    /** Module object of `type Inlined`  */
+    /** Module object of `type Inlined`. */
     val Inlined: InlinedModule
 
-    /** Methods of the module object `val Inlined` */
+    /** Methods of the module object `val Inlined`. */
     trait InlinedModule { this: Inlined.type =>
       def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
       def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term)
     }
 
-    /** Makes extension methods on `Inlined` available without any imports */
+    /** Makes extension methods on `Inlined` available without any imports. */
     given InlinedMethods: InlinedMethods
 
-    /** Extension methods of `Inlined` */
+    /** Extension methods of `Inlined`. */
     trait InlinedMethods:
       extension (self: Inlined)
         def call: Option[Tree /* Term | TypeTree */]
@@ -1768,26 +1768,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end InlinedMethods
 
-    /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
+    /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees. */
     type SelectOuter <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `SelectOuter` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `SelectOuter`. */
     given SelectOuterTypeTest: TypeTest[Tree, SelectOuter]
 
-    /** Module object of `type SelectOuter`  */
+    /** Module object of `type SelectOuter`. */
     val SelectOuter: SelectOuterModule
 
-    /** Methods of the module object `val SelectOuter` */
+    /** Methods of the module object `val SelectOuter`. */
     trait SelectOuterModule { this: SelectOuter.type =>
       def apply(qualifier: Term, name: String, levels: Int): SelectOuter
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
       def unapply(x: SelectOuter): (Term, String, Int)
     }
 
-    /** Makes extension methods on `SelectOuter` available without any imports */
+    /** Makes extension methods on `SelectOuter` available without any imports. */
     given SelectOuterMethods: SelectOuterMethods
 
-    /** Extension methods of `SelectOuter` */
+    /** Extension methods of `SelectOuter`. */
     trait SelectOuterMethods:
       extension (self: SelectOuter)
         def qualifier: Term
@@ -1796,31 +1796,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end SelectOuterMethods
 
-    /** Tree representing a while loop */
+    /** Tree representing a while loop. */
     type While <: Term
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `While` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `While`. */
     given WhileTypeTest: TypeTest[Tree, While]
 
-    /** Module object of `type While`  */
+    /** Module object of `type While`. */
     val While: WhileModule
 
-    /** Methods of the module object `val While` */
+    /** Methods of the module object `val While`. */
     trait WhileModule { this: While.type =>
 
-      /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>) */
+      /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>). */
       def apply(cond: Term, body: Term): While
 
       def copy(original: Tree)(cond: Term, body: Term): While
 
-      /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
+      /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>). */
       def unapply(x: While): (Term, Term)
     }
 
-    /** Makes extension methods on `While` available without any imports */
+    /** Makes extension methods on `While` available without any imports. */
     given WhileMethods: WhileMethods
 
-    /** Extension methods of `While` */
+    /** Extension methods of `While`. */
     trait WhileMethods:
       extension (self: While)
         def cond: Term
@@ -1828,31 +1828,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end WhileMethods
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypedOrTest` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypedOrTest`. */
     given TypedOrTestTypeTest: TypeTest[Tree, TypedOrTest]
 
     /** Tree representing a type ascription or type test pattern `x: T` in the source code. */
     type TypedOrTest <: Tree
 
-    /** Module object of `type TypedOrTest`  */
+    /** Module object of `type TypedOrTest`. */
     val TypedOrTest: TypedOrTestModule
 
-    /** Methods of the module object `val TypedOrTest` */
+    /** Methods of the module object `val TypedOrTest`. */
     trait TypedOrTestModule { this: TypedOrTest.type =>
 
-      /** Create a type ascription `<x: Tree>: <tpt: TypeTree>` */
+      /** Creates a type ascription `<x: Tree>: <tpt: TypeTree>`. */
       def apply(expr: Tree, tpt: TypeTree): TypedOrTest
 
       def copy(original: Tree)(expr: Tree, tpt: TypeTree): TypedOrTest
 
-      /** Matches `<expr: Tree>: <tpt: TypeTree>` */
+      /** Matches `<expr: Tree>: <tpt: TypeTree>`. */
       def unapply(x: TypedOrTest): (Tree, TypeTree)
     }
 
-    /** Makes extension methods on `TypedOrTest` available without any imports */
+    /** Makes extension methods on `TypedOrTest` available without any imports. */
     given TypedOrTestMethods: TypedOrTestMethods
 
-    /** Extension methods of `TypedOrTest` */
+    /** Extension methods of `TypedOrTest`. */
     trait TypedOrTestMethods:
       extension (self: TypedOrTest)
         def tree: Tree
@@ -1862,18 +1862,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- TypeTrees ------------------------------------------------
 
-    /** Type tree representing a type written in the source */
+    /** Type tree representing a type written in the source. */
     type TypeTree <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeTree` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeTree`. */
     given TypeTreeTypeTest: TypeTest[Tree, TypeTree]
 
-    /** Module object of `type TypeTree`  */
+    /** Module object of `type TypeTree`. */
     val TypeTree: TypeTreeModule
 
-    /** Methods of the module object `val TypeTree` */
+    /** Methods of the module object `val TypeTree`. */
     trait TypeTreeModule { this: TypeTree.type =>
-      /** Returns the tree of type or kind (TypeTree) of T */
+      /** Returns the tree of type or kind (TypeTree) of T. */
       def of[T <: AnyKind](using Type[T]): TypeTree
 
       /** Returns a type tree reference to the symbol
@@ -1883,79 +1883,79 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def ref(typeSymbol: Symbol): TypeTree
     }
 
-    /** Makes extension methods on `TypeTree` available without any imports */
+    /** Makes extension methods on `TypeTree` available without any imports. */
     given TypeTreeMethods: TypeTreeMethods
 
-    /** Extension methods of `TypeTree` */
+    /** Extension methods of `TypeTree`. */
     trait TypeTreeMethods:
       extension (self: TypeTree)
-        /** TypeRepr of this type tree */
+        /** TypeRepr of this type tree. */
         def tpe: TypeRepr
       end extension
     end TypeTreeMethods
 
-    /** Type tree representing an inferred type */
+    /** Type tree representing an inferred type. */
     type Inferred <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Inferred` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Inferred`. */
     given InferredTypeTest: TypeTest[Tree, Inferred]
 
-    /** Module object of `type Inferred`  */
+    /** Module object of `type Inferred`. */
     val Inferred: InferredModule
 
-    /** Methods of the module object `val Inferred` */
+    /** Methods of the module object `val Inferred`. */
     trait InferredModule { this: Inferred.type =>
       def apply(tpe: TypeRepr): Inferred
-      /** Matches a TypeTree containing an inferred type */
+      /** Matches a TypeTree containing an inferred type. */
       def unapply(x: Inferred): true
     }
 
-    /** Type tree representing a reference to definition with a given name */
+    /** Type tree representing a reference to definition with a given name. */
     type TypeIdent <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeIdent` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeIdent`. */
     given TypeIdentTypeTest: TypeTest[Tree, TypeIdent]
 
-    /** Module object of `type TypeIdent`  */
+    /** Module object of `type TypeIdent`. */
     val TypeIdent: TypeIdentModule
 
-    /** Methods of the module object `val TypeIdent` */
+    /** Methods of the module object `val TypeIdent`. */
     trait TypeIdentModule { this: TypeIdent.type =>
       def apply(sym: Symbol): TypeTree
       def copy(original: Tree)(name: String): TypeIdent
       def unapply(x: TypeIdent): Some[String]
     }
 
-    /** Makes extension methods on `TypeIdent` available without any imports */
+    /** Makes extension methods on `TypeIdent` available without any imports. */
     given TypeIdentMethods: TypeIdentMethods
 
-    /** Extension methods of `TypeIdent` */
+    /** Extension methods of `TypeIdent`. */
     trait TypeIdentMethods:
       extension (self: TypeIdent)
         def name: String
       end extension
     end TypeIdentMethods
 
-    /** Type tree representing a selection of definition with a given name on a given term prefix */
+    /** Type tree representing a selection of definition with a given name on a given term prefix. */
     type TypeSelect <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeSelect` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeSelect`. */
     given TypeSelectTypeTest: TypeTest[Tree, TypeSelect]
 
-    /** Module object of `type TypeSelect`  */
+    /** Module object of `type TypeSelect`. */
     val TypeSelect: TypeSelectModule
 
-    /** Methods of the module object `val TypeSelect` */
+    /** Methods of the module object `val TypeSelect`. */
     trait TypeSelectModule { this: TypeSelect.type =>
       def apply(qualifier: Term, name: String): TypeSelect
       def copy(original: Tree)(qualifier: Term, name: String): TypeSelect
       def unapply(x: TypeSelect): (Term, String)
     }
 
-    /** Makes extension methods on `TypeSelect` available without any imports */
+    /** Makes extension methods on `TypeSelect` available without any imports. */
     given TypeSelectMethods: TypeSelectMethods
 
-    /** Extension methods of `TypeSelect` */
+    /** Extension methods of `TypeSelect`. */
     trait TypeSelectMethods:
       extension (self: TypeSelect)
         def qualifier: Term
@@ -1963,26 +1963,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TypeSelectMethods
 
-    /** Type tree representing a selection of definition with a given name on a given type prefix */
+    /** Type tree representing a selection of definition with a given name on a given type prefix. */
     type TypeProjection <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeProjection` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeProjection`. */
     given TypeProjectionTypeTest: TypeTest[Tree, TypeProjection]
 
-    /** Module object of `type TypeProjection`  */
+    /** Module object of `type TypeProjection`. */
     val TypeProjection: TypeProjectionModule
 
-    /** Methods of the module object `val TypeProjection` */
+    /** Methods of the module object `val TypeProjection`. */
     trait TypeProjectionModule { this: TypeProjection.type =>
       def apply(qualifier: TypeTree, name: String): TypeProjection
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection
       def unapply(x: TypeProjection): (TypeTree, String)
     }
 
-    /** Makes extension methods on `TypeProjection` available without any imports */
+    /** Makes extension methods on `TypeProjection` available without any imports. */
     given TypeProjectionMethods: TypeProjectionMethods
 
-    /** Extension methods of `TypeProjection` */
+    /** Extension methods of `TypeProjection`. */
     trait TypeProjectionMethods:
       extension (self: TypeProjection)
         def qualifier: TypeTree
@@ -1990,42 +1990,42 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TypeProjectionMethods
 
-    /** Type tree representing a singleton type */
+    /** Type tree representing a singleton type. */
     type Singleton <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Singleton` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Singleton`. */
     given SingletonTypeTest: TypeTest[Tree, Singleton]
 
-    /** Module object of `type Singleton`  */
+    /** Module object of `type Singleton`. */
     val Singleton: SingletonModule
 
-    /** Methods of the module object `val Singleton` */
+    /** Methods of the module object `val Singleton`. */
     trait SingletonModule { this: Singleton.type =>
       def apply(ref: Term): Singleton
       def copy(original: Tree)(ref: Term): Singleton
       def unapply(x: Singleton): Some[Term]
     }
 
-    /** Makes extension methods on `Singleton` available without any imports */
+    /** Makes extension methods on `Singleton` available without any imports. */
     given SingletonMethods: SingletonMethods
 
-    /** Extension methods of `Singleton` */
+    /** Extension methods of `Singleton`. */
     trait SingletonMethods:
       extension (self: Singleton)
         def ref: Term
       end extension
     end SingletonMethods
 
-    /** Type tree representing a type refinement */
+    /** Type tree representing a type refinement. */
     type Refined <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Refined` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Refined`. */
     given RefinedTypeTest: TypeTest[Tree, Refined]
 
-    /** Module object of `type Refined`  */
+    /** Module object of `type Refined`. */
     val Refined: RefinedModule
 
-    /** Methods of the module object `val Refined` */
+    /** Methods of the module object `val Refined`. */
     trait RefinedModule { this: Refined.type =>
       /** Creates and types a Refined AST node.
         * @param tpt - parent type being refined
@@ -2038,10 +2038,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: Refined): (TypeTree, List[Definition])
     }
 
-    /** Makes extension methods on `Refined` available without any imports */
+    /** Makes extension methods on `Refined` available without any imports. */
     given RefinedMethods: RefinedMethods
 
-    /** Extension methods of `Refined` */
+    /** Extension methods of `Refined`. */
     trait RefinedMethods:
       extension (self: Refined)
         def tpt: TypeTree
@@ -2049,26 +2049,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RefinedMethods
 
-    /** Type tree representing a type application */
+    /** Type tree representing a type application. */
     type Applied <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Applied` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Applied`. */
     given AppliedTypeTest: TypeTest[Tree, Applied]
 
-    /** Module object of `type Applied`  */
+    /** Module object of `type Applied`. */
     val Applied: AppliedModule
 
-    /** Methods of the module object `val Applied` */
+    /** Methods of the module object `val Applied`. */
     trait AppliedModule { this: Applied.type =>
       def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
       def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])
     }
 
-    /** Makes extension methods on `Applied` available without any imports */
+    /** Makes extension methods on `Applied` available without any imports. */
     given AppliedMethods: AppliedMethods
 
-    /** Extension methods of `Applied` */
+    /** Extension methods of `Applied`. */
     trait AppliedMethods:
       extension (self: Applied)
         def tpt: TypeTree
@@ -2076,26 +2076,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AppliedMethods
 
-    /** Type tree representing an annotated type */
+    /** Type tree representing an annotated type. */
     type Annotated <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Annotated` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Annotated`. */
     given AnnotatedTypeTest: TypeTest[Tree, Annotated]
 
-    /** Module object of `type Annotated`  */
+    /** Module object of `type Annotated`. */
     val Annotated: AnnotatedModule
 
-    /** Methods of the module object `val Annotated` */
+    /** Methods of the module object `val Annotated`. */
     trait AnnotatedModule { this: Annotated.type =>
       def apply(arg: TypeTree, annotation: Term): Annotated
       def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
       def unapply(x: Annotated): (TypeTree, Term)
     }
 
-    /** Makes extension methods on `Annotated` available without any imports */
+    /** Makes extension methods on `Annotated` available without any imports. */
     given AnnotatedMethods: AnnotatedMethods
 
-    /** Extension methods of `Annotated` */
+    /** Extension methods of `Annotated`. */
     trait AnnotatedMethods:
       extension (self: Annotated)
         def arg: TypeTree
@@ -2103,26 +2103,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AnnotatedMethods
 
-    /** Type tree representing a type match */
+    /** Type tree representing a type match. */
     type MatchTypeTree <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `MatchTypeTree` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `MatchTypeTree`. */
     given MatchTypeTreeTypeTest: TypeTest[Tree, MatchTypeTree]
 
-    /** Module object of `type MatchTypeTree`  */
+    /** Module object of `type MatchTypeTree`. */
     val MatchTypeTree: MatchTypeTreeModule
 
-    /** Methods of the module object `val MatchTypeTree` */
+    /** Methods of the module object `val MatchTypeTree`. */
     trait MatchTypeTreeModule { this: MatchTypeTree.type =>
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
       def unapply(x: MatchTypeTree): (Option[TypeTree], TypeTree, List[TypeCaseDef])
     }
 
-    /** Makes extension methods on `MatchTypeTree` available without any imports */
+    /** Makes extension methods on `MatchTypeTree` available without any imports. */
     given MatchTypeTreeMethods: MatchTypeTreeMethods
 
-    /** Extension methods of `MatchTypeTree` */
+    /** Extension methods of `MatchTypeTree`. */
     trait MatchTypeTreeMethods:
       extension (self: MatchTypeTree)
         def bound: Option[TypeTree]
@@ -2131,52 +2131,52 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchTypeTreeMethods
 
-    /** Type tree representing a by name parameter */
+    /** Type tree representing a by name parameter. */
     type ByName <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ByName` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ByName`. */
     given ByNameTypeTest: TypeTest[Tree, ByName]
 
-    /** Module object of `type ByName`  */
+    /** Module object of `type ByName`. */
     val ByName: ByNameModule
 
-    /** Methods of the module object `val ByName` */
+    /** Methods of the module object `val ByName`. */
     trait ByNameModule { this: ByName.type =>
       def apply(result: TypeTree): ByName
       def copy(original: Tree)(result: TypeTree): ByName
       def unapply(x: ByName): Some[TypeTree]
     }
 
-    /** Makes extension methods on `ByName` available without any imports */
+    /** Makes extension methods on `ByName` available without any imports. */
     given ByNameMethods: ByNameMethods
 
-    /** Extension methods of `ByName` */
+    /** Extension methods of `ByName`. */
     trait ByNameMethods:
       extension (self: ByName)
         def result: TypeTree
       end extension
     end ByNameMethods
 
-    /** Type tree representing a lambda abstraction type */
+    /** Type tree representing a lambda abstraction type. */
     type LambdaTypeTree <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `LambdaTypeTree` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `LambdaTypeTree`. */
     given LambdaTypeTreeTypeTest: TypeTest[Tree, LambdaTypeTree]
 
-    /** Module object of `type LambdaTypeTree`  */
+    /** Module object of `type LambdaTypeTree`. */
     val LambdaTypeTree: LambdaTypeTreeModule
 
-    /** Methods of the module object `val LambdaTypeTree` */
+    /** Methods of the module object `val LambdaTypeTree`. */
     trait LambdaTypeTreeModule { this: LambdaTypeTree.type =>
       def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
       def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)
     }
 
-    /** Makes extension methods on `LambdaTypeTree` available without any imports */
+    /** Makes extension methods on `LambdaTypeTree` available without any imports. */
     given LambdaTypeTreeMethods: LambdaTypeTreeMethods
 
-    /** Extension methods of `LambdaTypeTree` */
+    /** Extension methods of `LambdaTypeTree`. */
     trait LambdaTypeTreeMethods:
       extension (self: LambdaTypeTree)
         def tparams: List[TypeDef]
@@ -2184,25 +2184,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end LambdaTypeTreeMethods
 
-    /** Type tree representing a type binding */
+    /** Type tree representing a type binding. */
     type TypeBind <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBind` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBind`. */
     given TypeBindTypeTest: TypeTest[Tree, TypeBind]
 
-    /** Module object of `type TypeBind`  */
+    /** Module object of `type TypeBind`. */
     val TypeBind: TypeBindModule
 
-    /** Methods of the module object `val TypeBind` */
+    /** Methods of the module object `val TypeBind`. */
     trait TypeBindModule { this: TypeBind.type =>
       def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
       def unapply(x: TypeBind): (String, Tree /*TypeTree | TypeBoundsTree*/)
     }
 
-    /** Makes extension methods on `TypeBind` available without any imports */
+    /** Makes extension methods on `TypeBind` available without any imports. */
     given TypeBindMethods: TypeBindMethods
 
-    /** Extension methods of `TypeBind` */
+    /** Extension methods of `TypeBind`. */
     trait TypeBindMethods:
       extension (self: TypeBind)
         def name: String
@@ -2210,26 +2210,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TypeBindMethods
 
-    /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
+    /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }`. */
     type TypeBlock <: TypeTree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBlock` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBlock`. */
     given TypeBlockTypeTest: TypeTest[Tree, TypeBlock]
 
-    /** Module object of `type TypeBlock`  */
+    /** Module object of `type TypeBlock`. */
     val TypeBlock: TypeBlockModule
 
-    /** Methods of the module object `val TypeBlock` */
+    /** Methods of the module object `val TypeBlock`. */
     trait TypeBlockModule { this: TypeBlock.type =>
       def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
       def unapply(x: TypeBlock): (List[TypeDef], TypeTree)
     }
 
-    /** Makes extension methods on `TypeBlock` available without any imports */
+    /** Makes extension methods on `TypeBlock` available without any imports. */
     given TypeBlockMethods: TypeBlockMethods
 
-    /** Extension methods of `TypeBlock` */
+    /** Extension methods of `TypeBlock`. */
     trait TypeBlockMethods:
       extension (self: TypeBlock)
         def aliases: List[TypeDef]
@@ -2239,26 +2239,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- TypeBoundsTrees ------------------------------------------------
 
-    /** Type tree representing a type bound written in the source */
+    /** Type tree representing a type bound written in the source. */
     type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBoundsTree` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBoundsTree`. */
     given TypeBoundsTreeTypeTest: TypeTest[Tree, TypeBoundsTree]
 
-    /** Module object of `type TypeBoundsTree`  */
+    /** Module object of `type TypeBoundsTree`. */
     val TypeBoundsTree: TypeBoundsTreeModule
 
-    /** Methods of the module object `val TypeBoundsTree` */
+    /** Methods of the module object `val TypeBoundsTree`. */
     trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
       def apply(low: TypeTree, hi: TypeTree): TypeBoundsTree
       def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree
       def unapply(x: TypeBoundsTree): (TypeTree, TypeTree)
     }
 
-    /** Makes extension methods on `TypeBoundsTree` available without any imports */
+    /** Makes extension methods on `TypeBoundsTree` available without any imports. */
     given TypeBoundsTreeMethods: TypeBoundsTreeMethods
 
-    /** Extension methods of `TypeBoundsTree` */
+    /** Extension methods of `TypeBoundsTree`. */
     trait TypeBoundsTreeMethods:
       extension (self: TypeBoundsTree)
         def tpe: TypeBounds
@@ -2273,23 +2273,23 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     type WildcardTypeTree <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `WildcardTypeTree` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `WildcardTypeTree`. */
     given WildcardTypeTreeTypeTest: TypeTest[Tree, WildcardTypeTree]
 
-    /** Module object of `type WildcardTypeTree`  */
+    /** Module object of `type WildcardTypeTree`. */
     val WildcardTypeTree: WildcardTypeTreeModule
 
-    /** Methods of the module object `val WildcardTypeTree` */
+    /** Methods of the module object `val WildcardTypeTree`. */
     trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
       def apply(tpe: TypeRepr): WildcardTypeTree
-      /** Matches a TypeBoundsTree containing wildcard type bounds */
+      /** Matches a TypeBoundsTree containing wildcard type bounds. */
       def unapply(x: WildcardTypeTree): true
     }
 
-    /** Makes extension methods on `WildcardTypeTree` available without any imports */
+    /** Makes extension methods on `WildcardTypeTree` available without any imports. */
     given WildcardTypeTreeMethods: WildcardTypeTreeMethods
 
-    /** Extension methods of `WildcardTypeTree` */
+    /** Extension methods of `WildcardTypeTree`. */
     trait WildcardTypeTreeMethods:
       extension (self: WildcardTypeTree)
         def tpe: TypeRepr
@@ -2298,26 +2298,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- CaseDefs ------------------------------------------------
 
-    /** Branch of a pattern match or catch clause */
+    /** Branch of a pattern match or catch clause. */
     type CaseDef <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `CaseDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `CaseDef`. */
     given CaseDefTypeTest: TypeTest[Tree, CaseDef]
 
-    /** Module object of `type CaseDef`  */
+    /** Module object of `type CaseDef`. */
     val CaseDef: CaseDefModule
 
-    /** Methods of the module object `val CaseDef` */
+    /** Methods of the module object `val CaseDef`. */
     trait CaseDefModule { this: CaseDef.type =>
       def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
       def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
       def unapply(x: CaseDef): (Tree, Option[Term], Term)
     }
 
-    /** Makes extension methods on `CaseDef` available without any imports */
+    /** Makes extension methods on `CaseDef` available without any imports. */
     given CaseDefMethods: CaseDefMethods
 
-    /** Extension methods of `CaseDef` */
+    /** Extension methods of `CaseDef`. */
     trait CaseDefMethods:
       extension (self: CaseDef)
         def pattern: Tree
@@ -2326,26 +2326,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end CaseDefMethods
 
-    /** Branch of a type pattern match */
+    /** Branch of a type pattern match. */
     type TypeCaseDef <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeCaseDef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeCaseDef`. */
     given TypeCaseDefTypeTest: TypeTest[Tree, TypeCaseDef]
 
-    /** Module object of `type TypeCaseDef`  */
+    /** Module object of `type TypeCaseDef`. */
     val TypeCaseDef: TypeCaseDefModule
 
-    /** Methods of the module object `val TypeCaseDef` */
+    /** Methods of the module object `val TypeCaseDef`. */
     trait TypeCaseDefModule { this: TypeCaseDef.type =>
       def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
       def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
       def unapply(tree: TypeCaseDef): (TypeTree, TypeTree)
     }
 
-    /** Makes extension methods on `TypeCaseDef` available without any imports */
+    /** Makes extension methods on `TypeCaseDef` available without any imports. */
     given TypeCaseDefMethods: TypeCaseDefMethods
 
-    /** Extension methods of `TypeCaseDef` */
+    /** Extension methods of `TypeCaseDef`. */
     trait TypeCaseDefMethods:
       extension (self: TypeCaseDef)
         def pattern: TypeTree
@@ -2358,23 +2358,23 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Pattern representing a `_ @ _` binding. */
     type Bind <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Bind` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Bind`. */
     given BindTypeTest: TypeTest[Tree, Bind]
 
-    /** Module object of `type Bind`  */
+    /** Module object of `type Bind`. */
     val Bind: BindModule
 
-    /** Methods of the module object `val Bind` */
+    /** Methods of the module object `val Bind`. */
     trait BindModule { this: Bind.type =>
       def apply(sym: Symbol, pattern: Tree): Bind
       def copy(original: Tree)(name: String, pattern: Tree): Bind
       def unapply(pattern: Bind): (String, Tree)
     }
 
-    /** Makes extension methods on `Bind` available without any imports */
+    /** Makes extension methods on `Bind` available without any imports. */
     given BindMethods: BindMethods
 
-    /** Extension methods of `Bind` */
+    /** Extension methods of `Bind`. */
     trait BindMethods:
       extension (self: Bind)
         def name: String
@@ -2385,26 +2385,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Pattern representing a `Xyz(...)` unapply. */
     type Unapply <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Unapply` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Unapply`. */
     given UnapplyTypeTest: TypeTest[Tree, Unapply]
 
-    /** Module object of `type Unapply`  */
+    /** Module object of `type Unapply`. */
     val Unapply: UnapplyModule
 
-    /** Methods of the module object `val Unapply` */
+    /** Methods of the module object `val Unapply`. */
     trait UnapplyModule { this: Unapply.type =>
-      /** Create an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
+      /** Creates an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)`. */
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
-      /** Copy an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
+      /** Copies an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)`. */
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
-      /** Matches an `Unapply(fun, implicits, patterns)` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
+      /** Matches an `Unapply(fun, implicits, patterns)` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)`. */
       def unapply(x: Unapply): (Term, List[Term], List[Tree])
     }
 
-    /** Makes extension methods on `Unapply` available without any imports */
+    /** Makes extension methods on `Unapply` available without any imports. */
     given UnapplyMethods: UnapplyMethods
 
-    /** Extension methods of `Unapply` */
+    /** Extension methods of `Unapply`. */
     trait UnapplyMethods:
       extension (self: Unapply)
         /** The extractor function of the pattern.
@@ -2413,9 +2413,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  partially applied tree containing type parameters and leading given parameters.
          */
         def fun: Term
-        /** Training implicit parameters of the `unapply` method */
+        /** Training implicit parameters of the `unapply` method. */
         def implicits: List[Term]
-        /** List of nested patterns */
+        /** List of nested patterns. */
         def patterns: List[Tree]
       end extension
     end UnapplyMethods
@@ -2423,23 +2423,23 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Pattern representing `X | Y | ...` alternatives. */
     type Alternatives <: Tree
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Alternatives` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Alternatives`. */
     given AlternativesTypeTest: TypeTest[Tree, Alternatives]
 
-    /** Module object of `type Alternatives`  */
+    /** Module object of `type Alternatives`. */
     val Alternatives: AlternativesModule
 
-    /** Methods of the module object `val Alternatives` */
+    /** Methods of the module object `val Alternatives`. */
     trait AlternativesModule { this: Alternatives.type =>
       def apply(patterns: List[Tree]): Alternatives
       def copy(original: Tree)(patterns: List[Tree]): Alternatives
       def unapply(x: Alternatives): Some[List[Tree]]
     }
 
-    /** Makes extension methods on `Alternatives` available without any imports */
+    /** Makes extension methods on `Alternatives` available without any imports. */
     given AlternativesMethods: AlternativesMethods
 
-    /** Extension methods of `Alternatives` */
+    /** Extension methods of `Alternatives`. */
     trait AlternativesMethods:
       extension (self: Alternatives)
         def patterns: List[Tree]
@@ -2468,20 +2468,20 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type ParamClause <: AnyRef
 
-    /** Module object of `type ParamClause`  */
+    /** Module object of `type ParamClause`. */
     val ParamClause: ParamClauseModule
 
-    /** Methods of the module object `val ParamClause` */
+    /** Methods of the module object `val ParamClause`. */
     trait ParamClauseModule { this: ParamClause.type =>
     }
 
-    /** Makes extension methods on `ParamClause` available without any imports */
+    /** Makes extension methods on `ParamClause` available without any imports. */
     given ParamClauseMethods: ParamClauseMethods
 
-    /** Extension methods of `ParamClause` */
+    /** Extension methods of `ParamClause`. */
     trait ParamClauseMethods:
       extension (self: ParamClause)
-        /** List of parameters of the clause */
+        /** List of parameters of the clause. */
         def params: List[ValDef] | List[TypeDef]
     end ParamClauseMethods
 
@@ -2490,63 +2490,63 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type TermParamClause <: ParamClause
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `ParamClause` is a `TermParamClause` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `ParamClause` is a `TermParamClause`. */
     given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause]
 
-    /** Module object of `type TermParamClause`  */
+    /** Module object of `type TermParamClause`. */
     val TermParamClause: TermParamClauseModule
 
-    /** Methods of the module object `val TermParamClause` */
+    /** Methods of the module object `val TermParamClause`. */
     trait TermParamClauseModule { this: TermParamClause.type =>
       def apply(params: List[ValDef]): TermParamClause
       def unapply(x: TermParamClause): Some[List[ValDef]]
     }
 
-    /** Makes extension methods on `TermParamClause` available without any imports */
+    /** Makes extension methods on `TermParamClause` available without any imports. */
     given TermParamClauseMethods: TermParamClauseMethods
 
-    /** Extension methods of `TermParamClause` */
+    /** Extension methods of `TermParamClause`. */
     trait TermParamClauseMethods:
       extension (self: TermParamClause)
-        /** List of parameters of the clause */
+        /** List of parameters of the clause. */
         def params: List[ValDef]
-        /** Is this an implicit parameter clause `(implicit x1: X1, ..., xn: Xn)` */
+        /** Is this an implicit parameter clause `(implicit x1: X1, ..., xn: Xn)`. */
         def isImplicit: Boolean
-        /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)`. */
         def isGiven: Boolean
-        /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)`. */
         @deprecated("Use `hasErasedArgs` and `erasedArgs`", "3.4")
         def isErased: Boolean
-        /** List of `erased` flags for each parameter of the clause */
+        /** List of `erased` flags for each parameter of the clause. */
         @experimental
         def erasedArgs: List[Boolean]
-        /** Whether the clause has any erased parameters */
+        /** Whether the clause has any erased parameters. */
         @experimental
         def hasErasedArgs: Boolean
     end TermParamClauseMethods
 
-    /** A type parameter clause `[X1, ..., Xn]` */
+    /** A type parameter clause `[X1, ..., Xn]`. */
     type TypeParamClause <: ParamClause
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `ParamClause` is a `TypeParamClause` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `ParamClause` is a `TypeParamClause`. */
     given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause]
 
-    /** Module object of `type TypeParamClause`  */
+    /** Module object of `type TypeParamClause`. */
     val TypeParamClause: TypeParamClauseModule
 
-    /** Methods of the module object `val TypeParamClause` */
+    /** Methods of the module object `val TypeParamClause`. */
     trait TypeParamClauseModule { this: TypeParamClause.type =>
       def apply(params: List[TypeDef]): TypeParamClause
       def unapply(x: TypeParamClause): Some[List[TypeDef]]
     }
 
-    /** Makes extension methods on `TypeParamClause` available without any imports */
+    /** Makes extension methods on `TypeParamClause` available without any imports. */
     given TypeParamClauseMethods: TypeParamClauseMethods
 
-    /** Extension methods of `TypeParamClause` */
+    /** Extension methods of `TypeParamClause`. */
     trait TypeParamClauseMethods:
       extension (self: TypeParamClause)
-        /** List of parameters of the clause */
+        /** List of parameters of the clause. */
         def params: List[TypeDef]
     end TypeParamClauseMethods
 
@@ -2562,31 +2562,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Selector <: AnyRef
 
-    /** Module object of `type Selector`  */
+    /** Module object of `type Selector`. */
     val Selector: SelectorModule
 
-    /** Methods of the module object `val Selector` */
+    /** Methods of the module object `val Selector`. */
     trait SelectorModule { this: Selector.type => }
 
-    /** Simple import/export selector: `.bar` in `import foo.bar` */
+    /** Simple import/export selector: `.bar` in `import foo.bar`. */
     type SimpleSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `SimpleSelector` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `SimpleSelector`. */
     given SimpleSelectorTypeTest: TypeTest[Selector, SimpleSelector]
 
-    /** Module object of `type SimpleSelector`  */
+    /** Module object of `type SimpleSelector`. */
     val SimpleSelector: SimpleSelectorModule
 
-    /** Methods of the module object `val SimpleSelector` */
+    /** Methods of the module object `val SimpleSelector`. */
     trait SimpleSelectorModule { this: SimpleSelector.type =>
       @experimental def apply(name: String): SimpleSelector
       def unapply(x: SimpleSelector): Some[String]
     }
 
-    /** Makes extension methods on `SimpleSelector` available without any imports */
+    /** Makes extension methods on `SimpleSelector` available without any imports. */
     given SimpleSelectorMethods: SimpleSelectorMethods
 
-    /** Extension methods of `SimpleSelector` */
+    /** Extension methods of `SimpleSelector`. */
     trait SimpleSelectorMethods:
       extension (self: SimpleSelector)
         def name: String
@@ -2594,25 +2594,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end SimpleSelectorMethods
 
-    /** Rename import/export selector: `.{bar => baz}` in `import foo.{bar => baz}` */
+    /** Rename import/export selector: `.{bar => baz}` in `import foo.{bar => baz}`. */
     type RenameSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `RenameSelector` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `RenameSelector`. */
     given RenameSelectorTypeTest: TypeTest[Selector, RenameSelector]
 
-    /** Module object of `type RenameSelector`  */
+    /** Module object of `type RenameSelector`. */
     val RenameSelector: RenameSelectorModule
 
-    /** Methods of the module object `val RenameSelector` */
+    /** Methods of the module object `val RenameSelector`. */
     trait RenameSelectorModule { this: RenameSelector.type =>
       @experimental def apply(fromName: String, toName: String): RenameSelector
       def unapply(x: RenameSelector): (String, String)
     }
 
-    /** Makes extension methods on `RenameSelector` available without any imports */
+    /** Makes extension methods on `RenameSelector` available without any imports. */
     given RenameSelectorMethods: RenameSelectorMethods
 
-    /** Extension methods of `RenameSelector` */
+    /** Extension methods of `RenameSelector`. */
     trait RenameSelectorMethods:
       extension (self: RenameSelector)
         def fromName: String
@@ -2622,50 +2622,50 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RenameSelectorMethods
 
-    /** Omit import/export selector: `.{bar => _}` in `import foo.{bar => _}` */
+    /** Omit import/export selector: `.{bar => _}` in `import foo.{bar => _}`. */
     type OmitSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is an `OmitSelector` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is an `OmitSelector`. */
     given OmitSelectorTypeTest: TypeTest[Selector, OmitSelector]
 
-    /** Module object of `type OmitSelector`  */
+    /** Module object of `type OmitSelector`. */
     val OmitSelector: OmitSelectorModule
 
-    /** Methods of the module object `val OmitSelector` */
+    /** Methods of the module object `val OmitSelector`. */
     trait OmitSelectorModule { this: OmitSelector.type =>
       @experimental def apply(name: String): OmitSelector
       def unapply(x: OmitSelector): Some[String]
     }
 
-    /** Makes extension methods on `OmitSelector` available without any imports */
+    /** Makes extension methods on `OmitSelector` available without any imports. */
     given OmitSelectorMethods: OmitSelectorMethods
 
-    /** Extension methods of `OmitSelector` */
+    /** Extension methods of `OmitSelector`. */
     trait OmitSelectorMethods:
       extension (self: OmitSelector)
         def name: String
         def namePos: Position
     end OmitSelectorMethods
 
-    /** given import/export selector: `.given`/`.{given T}` in `import foo.given`/`export foo.{given T}` */
+    /** given import/export selector: `.given`/`.{given T}` in `import foo.given`/`export foo.{given T}`. */
     type GivenSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `Selector` is a `GivenSelector` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `Selector` is a `GivenSelector`. */
     given GivenSelectorTypeTest: TypeTest[Selector, GivenSelector]
 
-    /** Module object of `type GivenSelector`  */
+    /** Module object of `type GivenSelector`. */
     val GivenSelector: GivenSelectorModule
 
-    /** Methods of the module object `val GivenSelector` */
+    /** Methods of the module object `val GivenSelector`. */
     trait GivenSelectorModule { this: GivenSelector.type =>
       @experimental def apply(bound: Option[TypeTree]): GivenSelector
       def unapply(x: GivenSelector): Some[Option[TypeTree]]
     }
 
-    /** Makes extension methods on `GivenSelector` available without any imports */
+    /** Makes extension methods on `GivenSelector` available without any imports. */
     given GivenSelectorMethods: GivenSelectorMethods
 
-    /** Extension methods of `GivenSelector` */
+    /** Extension methods of `GivenSelector`. */
     trait GivenSelectorMethods:
       extension (self: GivenSelector)
         def bound: Option[TypeTree]
@@ -2677,32 +2677,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- Types ----------------------------------------------------
 
-    /** A type, type constructors, type bounds or NoPrefix */
+    /** A type, type constructors, type bounds or NoPrefix. */
     type TypeRepr <: Matchable
 
-    /** Module object of `type TypeRepr`  */
+    /** Module object of `type TypeRepr`. */
     val TypeRepr: TypeReprModule
 
-    /** Methods of the module object `val TypeRepr` */
+    /** Methods of the module object `val TypeRepr`. */
     trait TypeReprModule { this: TypeRepr.type =>
-      /** Returns the type or kind (TypeRepr) of T */
+      /** Returns the type or kind (TypeRepr) of T. */
       def of[T <: AnyKind](using Type[T]): TypeRepr
 
-      /** Returns the type constructor of the runtime (erased) class */
+      /** Returns the type constructor of the runtime (erased) class. */
       def typeConstructorOf(clazz: Class[?]): TypeRepr
     }
 
-    /** Makes extension methods on `TypeRepr` available without any imports */
+    /** Makes extension methods on `TypeRepr` available without any imports. */
     given TypeReprMethods: TypeReprMethods
 
-    /** Extension methods of `TypeRepr` */
+    /** Extension methods of `TypeRepr`. */
     trait TypeReprMethods {
       extension (self: TypeRepr)
 
-        /** Shows the type as a String */
+        /** Shows the type as a String. */
         def show(using Printer[TypeRepr]): String
 
-        /** Convert this `TypeRepr` to an `Type[?]`
+        /** Converts this `TypeRepr` to an `Type[?]`
         *
         *  Usage:
         *  ```scala
@@ -2823,60 +2823,60 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def isTupleN: Boolean
 
-        /** The type <this . sym>, reduced if possible */
+        /** The type <this . sym>, reduced if possible. */
         def select(sym: Symbol): TypeRepr
 
-        /** The current type applied to given type arguments: `this[targ]` */
+        /** The current type applied to given type arguments: `this[targ]`. */
         def appliedTo(targ: TypeRepr): TypeRepr
 
-        /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
+        /** The current type applied to given type arguments: `this[targ0, ..., targN]`. */
         def appliedTo(targs: List[TypeRepr]): TypeRepr
 
-        /** Substitute all types that refer in their symbol attribute to
+        /** Substitutes all types that refer in their symbol attribute to
          *  one of the symbols in `from` by the corresponding types in `to`.
          */
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
-        /** The applied type arguments (empty if there is no such arguments) */
+        /** The applied type arguments (empty if there is no such arguments). */
         def typeArgs: List[TypeRepr]
       end extension
     }
 
-    /** A singleton type representing a known constant value */
+    /** A singleton type representing a known constant value. */
     type ConstantType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ConstantType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ConstantType`. */
     given ConstantTypeTypeTest: TypeTest[TypeRepr, ConstantType]
 
-    /** Module object of `type ConstantType`  */
+    /** Module object of `type ConstantType`. */
     val ConstantType: ConstantTypeModule
 
-    /** Methods of the module object `val Type` */
+    /** Methods of the module object `val Type`. */
     trait ConstantTypeModule { this: ConstantType.type =>
       def apply(x : Constant): ConstantType
       def unapply(x: ConstantType): Some[Constant]
     }
 
-    /** Makes extension methods on `ConstantType` available without any imports */
+    /** Makes extension methods on `ConstantType` available without any imports. */
     given ConstantTypeMethods: ConstantTypeMethods
 
-    /** Extension methods of `ConstantType` */
+    /** Extension methods of `ConstantType`. */
     trait ConstantTypeMethods:
       extension (self: ConstantType)
         def constant: Constant
       end extension
     end ConstantTypeMethods
 
-    /** Type of a reference to a type or term symbol */
+    /** Type of a reference to a type or term symbol. */
     type NamedType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `NamedType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `NamedType`. */
     given NamedTypeTypeTest: TypeTest[TypeRepr, NamedType]
 
-    /** Makes extension methods on `NamedType` available without any imports */
+    /** Makes extension methods on `NamedType` available without any imports. */
     given NamedTypeMethods: NamedTypeMethods
 
-    /** Extension methods of `NamedType` */
+    /** Extension methods of `NamedType`. */
     trait NamedTypeMethods:
       extension (self: NamedType)
         def qualifier: TypeRepr
@@ -2884,39 +2884,39 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end NamedTypeMethods
 
-    /** Type of a reference to a term symbol */
+    /** Type of a reference to a term symbol. */
     type TermRef <: NamedType
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TermRef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TermRef`. */
     given TermRefTypeTest: TypeTest[TypeRepr, TermRef]
 
-    /** Module object of `type TermRef`  */
+    /** Module object of `type TermRef`. */
     val TermRef: TermRefModule
 
-    /** Methods of the module object `val TermRef` */
+    /** Methods of the module object `val TermRef`. */
     trait TermRefModule { this: TermRef.type =>
       def apply(qual: TypeRepr, name: String): TermRef
       def unapply(x: TermRef): (TypeRepr, String)
     }
 
-    /** Type of a reference to a type symbol */
+    /** Type of a reference to a type symbol. */
     type TypeRef <: NamedType
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeRef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeRef`. */
     given TypeRefTypeTest: TypeTest[TypeRepr, TypeRef]
 
-    /** Module object of `type TypeRef`  */
+    /** Module object of `type TypeRef`. */
     val TypeRef: TypeRefModule
 
-    /** Methods of the module object `val TypeRef` */
+    /** Methods of the module object `val TypeRef`. */
     trait TypeRefModule { this: TypeRef.type =>
       def unapply(x: TypeRef): (TypeRepr, String)
     }
 
-    /** Makes extension methods on `TypeRef` available without any imports */
+    /** Makes extension methods on `TypeRef` available without any imports. */
     given TypeRefMethods: TypeRefMethods
 
-    /** Extension methods of `TypeRef` */
+    /** Extension methods of `TypeRef`. */
     trait TypeRefMethods:
       extension (self: TypeRef)
         def isOpaqueAlias: Boolean
@@ -2924,25 +2924,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end TypeRefMethods
 
-    /** Type of a `super` reference */
+    /** Type of a `super` reference. */
     type SuperType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `SuperType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `SuperType`. */
     given SuperTypeTypeTest: TypeTest[TypeRepr, SuperType]
 
-    /** Module object of `type SuperType`  */
+    /** Module object of `type SuperType`. */
     val SuperType: SuperTypeModule
 
-    /** Methods of the module object `val SuperType` */
+    /** Methods of the module object `val SuperType`. */
     trait SuperTypeModule { this: SuperType.type =>
       def apply(thistpe: TypeRepr, supertpe: TypeRepr): SuperType
       def unapply(x: SuperType): (TypeRepr, TypeRepr)
     }
 
-    /** Makes extension methods on `SuperType` available without any imports */
+    /** Makes extension methods on `SuperType` available without any imports. */
     given SuperTypeMethods: SuperTypeMethods
 
-    /** Extension methods of `SuperType` */
+    /** Extension methods of `SuperType`. */
     trait SuperTypeMethods { this: SuperTypeMethods =>
       extension (self: SuperType)
         def thistpe: TypeRepr
@@ -2950,25 +2950,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     }
 
-    /** A type with a type refinement `T { type U }` */
+    /** A type with a type refinement `T { type U }`. */
     type Refinement <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `Refinement` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `Refinement`. */
     given RefinementTypeTest: TypeTest[TypeRepr, Refinement]
 
-    /** Module object of `type Refinement`  */
+    /** Module object of `type Refinement`. */
     val Refinement: RefinementModule
 
-    /** Methods of the module object `val Refinement` */
+    /** Methods of the module object `val Refinement`. */
     trait RefinementModule { this: Refinement.type =>
       def apply(parent: TypeRepr, name: String, info: TypeRepr): Refinement
       def unapply(x: Refinement): (TypeRepr, String, TypeRepr)
     }
 
-    /** Makes extension methods on `Refinement` available without any imports */
+    /** Makes extension methods on `Refinement` available without any imports. */
     given RefinementMethods: RefinementMethods
 
-    /** Extension methods of `Refinement` */
+    /** Extension methods of `Refinement`. */
     trait RefinementMethods:
       extension (self: Refinement)
         def parent: TypeRepr
@@ -2977,26 +2977,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RefinementMethods
 
-    /** A higher kinded type applied to some types `T[U]` */
+    /** A higher kinded type applied to some types `T[U]`. */
     type AppliedType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AppliedType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AppliedType`. */
     given AppliedTypeTypeTest: TypeTest[TypeRepr, AppliedType]
 
-    /** Module object of `type AppliedType`  */
+    /** Module object of `type AppliedType`. */
     val AppliedType: AppliedTypeModule
 
-    /** Methods of the module object `val AppliedType` */
+    /** Methods of the module object `val AppliedType`. */
     trait AppliedTypeModule { this: AppliedType.type =>
-      /** Applied the type constructor `T` to a list of type arguments `T_1,..,T_n` to create `T[T_1,..,T_n]` */
+      /** Applied the type constructor `T` to a list of type arguments `T_1,..,T_n` to create `T[T_1,..,T_n]`. */
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
     }
 
-    /** Makes extension methods on `AppliedType` available without any imports */
+    /** Makes extension methods on `AppliedType` available without any imports. */
     given AppliedTypeMethods: AppliedTypeMethods
 
-    /** Extension methods of `AppliedType` */
+    /** Extension methods of `AppliedType`. */
     trait AppliedTypeMethods:
       extension (self: AppliedType)
         def tycon: TypeRepr
@@ -3007,22 +3007,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** A type with an annotation `T @foo` */
     type AnnotatedType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AnnotatedType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AnnotatedType`. */
     given AnnotatedTypeTypeTest: TypeTest[TypeRepr, AnnotatedType]
 
-    /** Module object of `type AnnotatedType`  */
+    /** Module object of `type AnnotatedType`. */
     val AnnotatedType: AnnotatedTypeModule
 
-    /** Methods of the module object `val AnnotatedType` */
+    /** Methods of the module object `val AnnotatedType`. */
     trait AnnotatedTypeModule { this: AnnotatedType.type =>
       def apply(underlying: TypeRepr, annot: Term): AnnotatedType
       def unapply(x: AnnotatedType): (TypeRepr, Term)
     }
 
-    /** Makes extension methods on `AnnotatedType` available without any imports */
+    /** Makes extension methods on `AnnotatedType` available without any imports. */
     given AnnotatedTypeMethods: AnnotatedTypeMethods
 
-    /** Extension methods of `AnnotatedType` */
+    /** Extension methods of `AnnotatedType`. */
     trait AnnotatedTypeMethods:
       extension (self: AnnotatedType)
         def underlying: TypeRepr
@@ -3031,16 +3031,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end AnnotatedTypeMethods
 
 
-    /** Intersection type `T & U` or an union type `T | U` */
+    /** Intersection type `T & U` or an union type `T | U`. */
     type AndOrType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndOrType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndOrType`. */
     given AndOrTypeTypeTest: TypeTest[TypeRepr, AndOrType]
 
-    /** Makes extension methods on `AndOrType` available without any imports */
+    /** Makes extension methods on `AndOrType` available without any imports. */
     given AndOrTypeMethods: AndOrTypeMethods
 
-    /** Extension methods of `AndOrType` */
+    /** Extension methods of `AndOrType`. */
     trait AndOrTypeMethods:
       extension (self: AndOrType)
         def left: TypeRepr
@@ -3048,55 +3048,55 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AndOrTypeMethods
 
-    /** Intersection type `T & U` */
+    /** Intersection type `T & U`. */
     type AndType <: AndOrType
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndType`. */
     given AndTypeTypeTest: TypeTest[TypeRepr, AndType]
 
-    /** Module object of `type AndType`  */
+    /** Module object of `type AndType`. */
     val AndType: AndTypeModule
 
-    /** Methods of the module object `val AndType` */
+    /** Methods of the module object `val AndType`. */
     trait AndTypeModule { this: AndType.type =>
       def apply(lhs: TypeRepr, rhs: TypeRepr): AndType
       def unapply(x: AndType): (TypeRepr, TypeRepr)
     }
 
-    /** Union type `T | U` */
+    /** Union type `T | U`. */
     type OrType <: AndOrType
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `OrType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `OrType`. */
     given OrTypeTypeTest: TypeTest[TypeRepr, OrType]
 
-    /** Module object of `type OrType`  */
+    /** Module object of `type OrType`. */
     val OrType: OrTypeModule
 
-    /** Methods of the module object `val OrType` */
+    /** Methods of the module object `val OrType`. */
     trait OrTypeModule { this: OrType.type =>
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType
       def unapply(x: OrType): (TypeRepr, TypeRepr)
     }
 
-    /** Type match `T match { case U => ... }` */
+    /** Type match `T match { case U => ... }`. */
     type MatchType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchType`. */
     given MatchTypeTypeTest: TypeTest[TypeRepr, MatchType]
 
-    /** Module object of `type MatchType`  */
+    /** Module object of `type MatchType`. */
     val MatchType: MatchTypeModule
 
-    /** Methods of the module object `val MatchType` */
+    /** Methods of the module object `val MatchType`. */
     trait MatchTypeModule { this: MatchType.type =>
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType
       def unapply(x: MatchType): (TypeRepr, TypeRepr, List[TypeRepr])
     }
 
-    /** Makes extension methods on `MatchType` available without any imports */
+    /** Makes extension methods on `MatchType` available without any imports. */
     given MatchTypeMethods: MatchTypeMethods
 
-    /** Extension methods of `MatchType` */
+    /** Extension methods of `MatchType`. */
     trait MatchTypeMethods:
       extension (self: MatchType)
         def bound: TypeRepr
@@ -3122,46 +3122,46 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type ByNameType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ByNameType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ByNameType`. */
     given ByNameTypeTypeTest: TypeTest[TypeRepr, ByNameType]
 
-    /** Module object of `type ByNameType`  */
+    /** Module object of `type ByNameType`. */
     val ByNameType: ByNameTypeModule
 
-    /** Methods of the module object `val ByNameType` */
+    /** Methods of the module object `val ByNameType`. */
     trait ByNameTypeModule { this: ByNameType.type =>
       def apply(underlying: TypeRepr): TypeRepr
       def unapply(x: ByNameType): Some[TypeRepr]
     }
 
-    /** Makes extension methods on `ByNameType` available without any imports */
+    /** Makes extension methods on `ByNameType` available without any imports. */
     given ByNameTypeMethods: ByNameTypeMethods
 
-    /** Extension methods of `ByNameType` */
+    /** Extension methods of `ByNameType`. */
     trait ByNameTypeMethods:
       extension (self: ByNameType)
         def underlying: TypeRepr
       end extension
     end ByNameTypeMethods
 
-    /** Type of a parameter reference */
+    /** Type of a parameter reference. */
     type ParamRef <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ParamRef` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ParamRef`. */
     given ParamRefTypeTest: TypeTest[TypeRepr, ParamRef]
 
-    /** Module object of `type ParamRef`  */
+    /** Module object of `type ParamRef`. */
     val ParamRef: ParamRefModule
 
-    /** Methods of the module object `val ParamRef` */
+    /** Methods of the module object `val ParamRef`. */
     trait ParamRefModule { this: ParamRef.type =>
       def unapply(x: ParamRef): (TypeRepr, Int)
     }
 
-    /** Makes extension methods on `ParamRef` available without any imports */
+    /** Makes extension methods on `ParamRef` available without any imports. */
     given ParamRefMethods: ParamRefMethods
 
-    /** Extension methods of `ParamRef` */
+    /** Extension methods of `ParamRef`. */
     trait ParamRefMethods:
       extension (self: ParamRef)
         def binder: TypeRepr
@@ -3169,67 +3169,67 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ParamRefMethods
 
-    /** Type of `this` */
+    /** Type of `this`. */
     type ThisType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ThisType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ThisType`. */
     given ThisTypeTypeTest: TypeTest[TypeRepr, ThisType]
 
-    /** Module object of `type ThisType`  */
+    /** Module object of `type ThisType`. */
     val ThisType: ThisTypeModule
 
-    /** Methods of the module object `val ThisType` */
+    /** Methods of the module object `val ThisType`. */
     trait ThisTypeModule { this: ThisType.type =>
       def unapply(x: ThisType): Some[TypeRepr]
     }
 
-    /** Makes extension methods on `ThisType` available without any imports */
+    /** Makes extension methods on `ThisType` available without any imports. */
     given ThisTypeMethods: ThisTypeMethods
 
-    /** Extension methods of `ThisType` */
+    /** Extension methods of `ThisType`. */
     trait ThisTypeMethods:
       extension (self: ThisType)
         def tref: TypeRepr
       end extension
     end ThisTypeMethods
 
-    /** A type that is recursively defined `this` */
+    /** A type that is recursively defined `this`. */
     type RecursiveThis <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `RecursiveThis` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `RecursiveThis`. */
     given RecursiveThisTypeTest: TypeTest[TypeRepr, RecursiveThis]
 
-    /** Module object of `type RecursiveThis`  */
+    /** Module object of `type RecursiveThis`. */
     val RecursiveThis: RecursiveThisModule
 
-    /** Methods of the module object `val RecursiveThis` */
+    /** Methods of the module object `val RecursiveThis`. */
     trait RecursiveThisModule { this: RecursiveThis.type =>
       def unapply(x: RecursiveThis): Some[RecursiveType]
     }
 
-    /** Makes extension methods on `RecursiveThis` available without any imports */
+    /** Makes extension methods on `RecursiveThis` available without any imports. */
     given RecursiveThisMethods: RecursiveThisMethods
 
-    /** Extension methods of `RecursiveThis` */
+    /** Extension methods of `RecursiveThis`. */
     trait RecursiveThisMethods:
       extension (self: RecursiveThis)
         def binder: RecursiveType
       end extension
     end RecursiveThisMethods
 
-    /** A type that is recursively defined */
+    /** A type that is recursively defined. */
     type RecursiveType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `RecursiveType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `RecursiveType`. */
     given RecursiveTypeTypeTest: TypeTest[TypeRepr, RecursiveType]
 
-    /** Module object of `type RecursiveType`  */
+    /** Module object of `type RecursiveType`. */
     val RecursiveType: RecursiveTypeModule
 
-    /** Methods of the module object `val RecursiveType` */
+    /** Methods of the module object `val RecursiveType`. */
     trait RecursiveTypeModule { this: RecursiveType.type =>
 
-      /** Create a RecType, normalizing its contents. This means:
+      /** Creates a RecType, normalizing its contents. This means:
       *
       *   1. Nested Rec types on the type's spine are merged with the outer one.
       *   2. Any refinement of the form `type T = z.T` on the spine of the type
@@ -3242,10 +3242,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: RecursiveType): Some[TypeRepr]
     }
 
-    /** Makes extension methods on `RecursiveType` available without any imports */
+    /** Makes extension methods on `RecursiveType` available without any imports. */
     given RecursiveTypeMethods: RecursiveTypeMethods
 
-    /** Extension methods of `RecursiveType` */
+    /** Extension methods of `RecursiveType`. */
     trait RecursiveTypeMethods:
       extension (self: RecursiveType)
         def underlying: TypeRepr
@@ -3253,16 +3253,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RecursiveTypeMethods
 
-    /** Type of the definition of a method taking a single list of type or term parameters */
+    /** Type of the definition of a method taking a single list of type or term parameters. */
     type LambdaType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `LambdaType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `LambdaType`. */
     given LambdaTypeTypeTest: TypeTest[TypeRepr, LambdaType]
 
-    /** Makes extension methods on `LambdaType` available without any imports */
+    /** Makes extension methods on `LambdaType` available without any imports. */
     given LambdaTypeMethods: LambdaTypeMethods
 
-    /** Extension methods of `LambdaType` */
+    /** Extension methods of `LambdaType`. */
     trait LambdaTypeMethods:
       extension (self: LambdaType)
         def paramNames: List[String]
@@ -3271,56 +3271,56 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end LambdaTypeMethods
 
-    /** Type of the definition of a method taking a single list of type or term parameters */
+    /** Type of the definition of a method taking a single list of type or term parameters. */
     type MethodOrPoly <: LambdaType
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodOrPoly` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodOrPoly`. */
     given MethodOrPolyTypeTest: TypeTest[TypeRepr, MethodOrPoly]
 
     /** Type which decides on the kind of parameter list represented by `MethodType`. */
     enum MethodTypeKind:
-      /** Represents a parameter list without any implicitness of parameters, like (x1: X1, x2: X2, ...) */
+      /** Represents a parameter list without any implicitness of parameters, like (x1: X1, x2: X2, ...). */
       case Plain
-      /** Represents a parameter list with implicit parameters, like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)`, `(using x1: X1, ..., xn: Xn)` */
+      /** Represents a parameter list with implicit parameters, like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)`, `(using x1: X1, ..., xn: Xn)`. */
       case Implicit
-      /** Represents a parameter list of a contextual method, like `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+      /** Represents a parameter list of a contextual method, like `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)`. */
       case Contextual
 
     /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
     type MethodType <: MethodOrPoly
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodType`. */
     given MethodTypeTypeTest: TypeTest[TypeRepr, MethodType]
 
-    /** Module object of `type MethodType`  */
+    /** Module object of `type MethodType`. */
     val MethodType: MethodTypeModule
 
-    /** Methods of the module object `val MethodType` */
+    /** Methods of the module object `val MethodType`. */
     trait MethodTypeModule { this: MethodType.type =>
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
       def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
-    /** Makes extension methods on `MethodType` available without any imports */
+    /** Makes extension methods on `MethodType` available without any imports. */
     given MethodTypeMethods: MethodTypeMethods
 
-    /** Extension methods of `MethodType` */
+    /** Extension methods of `MethodType`. */
     trait MethodTypeMethods:
       extension (self: MethodType)
-        /** Is this the type of parameter clause like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        /** Is this the type of parameter clause like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)`. */
         def isImplicit: Boolean
-        /** Is this the type of parameter clause like `(using X1, ..., Xn)` or `(using x1: X1, x2: X2, ... )` */
+        /** Is this the type of parameter clause like `(using X1, ..., Xn)` or `(using x1: X1, x2: X2, ... )`. */
         def isContextual: Boolean
         /** Returns a MethodTypeKind object representing the implicitness of the MethodType parameter clause. */
         def methodTypeKind: MethodTypeKind
-        /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)`. */
         @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
         def isErased: Boolean
-        /** List of `erased` flags for each parameters of the clause */
+        /** List of `erased` flags for each parameters of the clause. */
         @experimental
         def erasedParams: List[Boolean]
-        /** Whether the clause has any erased parameters */
+        /** Whether the clause has any erased parameters. */
         @experimental
         def hasErasedParams: Boolean
         def param(idx: Int): TypeRepr
@@ -3330,22 +3330,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
     type PolyType <: MethodOrPoly
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `PolyType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `PolyType`. */
     given PolyTypeTypeTest: TypeTest[TypeRepr, PolyType]
 
-    /** Module object of `type PolyType`  */
+    /** Module object of `type PolyType`. */
     val PolyType: PolyTypeModule
 
-    /** Methods of the module object `val PolyType` */
+    /** Methods of the module object `val PolyType`. */
     trait PolyTypeModule { this: PolyType.type =>
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType
       def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr)
     }
 
-    /** Makes extension methods on `PolyType` available without any imports */
+    /** Makes extension methods on `PolyType` available without any imports. */
     given PolyTypeMethods: PolyTypeMethods
 
-    /** Extension methods of `PolyType` */
+    /** Extension methods of `PolyType`. */
     trait PolyTypeMethods:
       extension (self: PolyType)
         def param(idx: Int): TypeRepr
@@ -3356,27 +3356,27 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
     type TypeLambda <: LambdaType
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeLambda` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeLambda`. */
     given TypeLambdaTypeTest: TypeTest[TypeRepr, TypeLambda]
 
-    /** Module object of `type TypeLambda`  */
+    /** Module object of `type TypeLambda`. */
     val TypeLambda: TypeLambdaModule
 
-    /** Methods of the module object `val TypeLambda` */
+    /** Methods of the module object `val TypeLambda`. */
     trait TypeLambdaModule { this: TypeLambda.type =>
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda
       def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr)
     }
 
-    /** Makes extension methods on `TypeLambda` available without any imports */
+    /** Makes extension methods on `TypeLambda` available without any imports. */
     given TypeLambdaMethods: TypeLambdaMethods
 
-    /** Extension methods of `TypeLambda` */
+    /** Extension methods of `TypeLambda`. */
     trait TypeLambdaMethods:
       extension (self: TypeLambda)
-        /** Reference to the i-th parameter */
+        /** Reference to the i-th parameter. */
         def param(idx: Int) : TypeRepr
-        /** Type bounds of the i-th parameter */
+        /** Type bounds of the i-th parameter. */
         def paramBounds: List[TypeBounds]
         /** Variance flags for the i-th parameter
          *
@@ -3392,13 +3392,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type MatchCase <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchCase` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchCase`. */
     given MatchCaseTypeTest: TypeTest[TypeRepr, MatchCase]
 
-    /** Module object of `type MatchCase`  */
+    /** Module object of `type MatchCase`. */
     val MatchCase: MatchCaseModule
 
-    /** Methods of the module object `val MatchCase` */
+    /** Methods of the module object `val MatchCase`. */
     trait MatchCaseModule { this: MatchCase.type =>
       /* Create match type case `case <pattern> => <rhs>` */
       def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase
@@ -3406,15 +3406,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: MatchCase): (TypeRepr, TypeRepr)
     }
 
-    /** Makes extension methods on `MatchCase` available without any imports */
+    /** Makes extension methods on `MatchCase` available without any imports. */
     given MatchCaseMethods: MatchCaseMethods
 
-    /** Extension methods of `MatchCase` */
+    /** Extension methods of `MatchCase`. */
     trait MatchCaseMethods:
       extension (self: MatchCase)
-        /** Pattern `P` of `case P => R` in a `MatchType` */
+        /** Pattern `P` of `case P => R` in a `MatchType`. */
         def pattern: TypeRepr
-        /** RHS `R` of `case P => R` in a `MatchType` */
+        /** RHS `R` of `case P => R` in a `MatchType`. */
         def rhs: TypeRepr
       end extension
     end MatchCaseMethods
@@ -3422,16 +3422,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- TypeBounds -----------------------------------------------
 
-    /** Type bounds */
+    /** Type bounds. */
     type TypeBounds <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeBounds` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeBounds`. */
     given TypeBoundsTypeTest: TypeTest[TypeRepr, TypeBounds]
 
-    /** Module object of `type TypeBounds`  */
+    /** Module object of `type TypeBounds`. */
     val TypeBounds: TypeBoundsModule
 
-    /** Methods of the module object `val TypeBounds` */
+    /** Methods of the module object `val TypeBounds`. */
     trait TypeBoundsModule { this: TypeBounds.type =>
       def apply(low: TypeRepr, hi: TypeRepr): TypeBounds
       def unapply(x: TypeBounds): (TypeRepr, TypeRepr)
@@ -3440,10 +3440,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def lower(lo: TypeRepr): TypeBounds
     }
 
-    /** Makes extension methods on `TypeBounds` available without any imports */
+    /** Makes extension methods on `TypeBounds` available without any imports. */
     given TypeBoundsMethods: TypeBoundsMethods
 
-    /** Extension methods of `TypeBounds` */
+    /** Extension methods of `TypeBounds`. */
     trait TypeBoundsMethods:
       extension (self: TypeBounds)
         def low: TypeRepr
@@ -3453,41 +3453,41 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- NoPrefix -------------------------------------------------
 
-    /** NoPrefix for a type selection */
+    /** NoPrefix for a type selection. */
     type NoPrefix <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `NoPrefix` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `NoPrefix`. */
     given NoPrefixTypeTest: TypeTest[TypeRepr, NoPrefix]
 
-    /** Module object of `type NoPrefix`  */
+    /** Module object of `type NoPrefix`. */
     val NoPrefix: NoPrefixModule
 
-    /** Methods of the module object `val NoPrefix` */
+    /** Methods of the module object `val NoPrefix`. */
     trait NoPrefixModule { this: NoPrefix.type =>
       def unapply(x: NoPrefix): true
     }
 
     // ----- Flexible Type --------------------------------------------
 
-    /** Flexible types for explicit nulls */
+    /** Flexible types for explicit nulls. */
     type FlexibleType <: TypeRepr
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `FlexibleType` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `FlexibleType`. */
     given FlexibleTypeTypeTest: TypeTest[TypeRepr, FlexibleType]
 
-    /** Module object of `type FlexibleType`  */
+    /** Module object of `type FlexibleType`. */
     val FlexibleType: FlexibleTypeModule
 
-    /** Methods of the module object `val FlexibleType` */
+    /** Methods of the module object `val FlexibleType`. */
     trait FlexibleTypeModule { this: FlexibleType.type =>
       def apply(tp: TypeRepr): FlexibleType
       def unapply(x: FlexibleType): Option[TypeRepr]
     }
 
-    /** Makes extension methods on `FlexibleType` available without any imports */
+    /** Makes extension methods on `FlexibleType` available without any imports. */
     given FlexibleTypeMethods: FlexibleTypeMethods
 
-    /** Extension methods of `FlexibleType` */
+    /** Extension methods of `FlexibleType`. */
     trait FlexibleTypeMethods:
       extension (self: FlexibleType)
         def underlying: TypeRepr
@@ -3500,234 +3500,234 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // CONSTANTS //
     ///////////////
 
-    /** Constant value represented as the constant itself */
+    /** Constant value represented as the constant itself. */
     type Constant <: AnyRef
 
-    /** Constant value represented as the constant itself */
+    /** Constant value represented as the constant itself. */
     val Constant: ConstantModule
 
-    /** Constant value represented as the constant itself */
+    /** Constant value represented as the constant itself. */
     trait ConstantModule { this: Constant.type => }
 
-    /** Makes extension methods on `Constant` available without any imports */
+    /** Makes extension methods on `Constant` available without any imports. */
     given ConstantMethods: ConstantMethods
 
-    /** Extension methods of `Constant` */
+    /** Extension methods of `Constant`. */
     trait ConstantMethods {
       extension (self: Constant)
-        /** Returns the value of the constant */
+        /** Returns the value of the constant. */
         def value: Any
 
-        /** Shows the constant as a String */
+        /** Shows the constant as a String. */
         def show(using Printer[Constant]): String
 
       end extension
     }
 
-    /** Constant Boolean value */
+    /** Constant Boolean value. */
     type BooleanConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `BooleanConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `BooleanConstant`. */
     given BooleanConstantTypeTest: TypeTest[Constant, BooleanConstant]
 
-    /** Module object of `type BooleanConstant` */
+    /** Module object of `type BooleanConstant`. */
     val BooleanConstant: BooleanConstantModule
 
-    /** Methods of the module object `val BooleanConstant` */
+    /** Methods of the module object `val BooleanConstant`. */
     trait BooleanConstantModule { this: BooleanConstant.type =>
-      /** Create a constant Boolean value */
+      /** Creates a constant Boolean value. */
       def apply(x: Boolean): BooleanConstant
-      /** Match Boolean value constant and extract its value */
+      /** Match Boolean value constant and extract its value. */
       def unapply(constant: BooleanConstant): Some[Boolean]
     }
 
-    /** Constant Byte value */
+    /** Constant Byte value. */
     type ByteConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ByteConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ByteConstant`. */
     given ByteConstantTypeTest: TypeTest[Constant, ByteConstant]
 
-    /** Module object of `type ByteConstant` */
+    /** Module object of `type ByteConstant`. */
     val ByteConstant: ByteConstantModule
 
-    /** Methods of the module object `val ByteConstant` */
+    /** Methods of the module object `val ByteConstant`. */
     trait ByteConstantModule { this: ByteConstant.type =>
-      /** Create a constant Byte value */
+      /** Creates a constant Byte value. */
       def apply(x: Byte): ByteConstant
-      /** Match Byte value constant and extract its value */
+      /** Match Byte value constant and extract its value. */
       def unapply(constant: ByteConstant): Some[Byte]
     }
 
-    /** Constant Short value */
+    /** Constant Short value. */
     type ShortConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ShortConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ShortConstant`. */
     given ShortConstantTypeTest: TypeTest[Constant, ShortConstant]
 
-    /** Module object of `type ShortConstant` */
+    /** Module object of `type ShortConstant`. */
     val ShortConstant: ShortConstantModule
 
-    /** Methods of the module object `val Short` */
+    /** Methods of the module object `val Short`. */
     trait ShortConstantModule { this: ShortConstant.type =>
-      /** Create a constant Short value */
+      /** Creates a constant Short value. */
       def apply(x: Short): ShortConstant
-      /** Match Short value constant and extract its value */
+      /** Match Short value constant and extract its value. */
       def unapply(constant: ShortConstant): Some[Short]
     }
 
-    /** Constant Int value */
+    /** Constant Int value. */
     type IntConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `IntConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `IntConstant`. */
     given IntConstantTypeTest: TypeTest[Constant, IntConstant]
 
-    /** Module object of `type IntConstant` */
+    /** Module object of `type IntConstant`. */
     val IntConstant: IntConstantModule
 
-    /** Methods of the module object `val IntConstant` */
+    /** Methods of the module object `val IntConstant`. */
     trait IntConstantModule { this: IntConstant.type =>
-      /** Create a constant Int value */
+      /** Creates a constant Int value. */
       def apply(x: Int): IntConstant
-      /** Match Int value constant and extract its value */
+      /** Match Int value constant and extract its value. */
       def unapply(constant: IntConstant): Some[Int]
     }
 
-    /** Constant Long value */
+    /** Constant Long value. */
     type LongConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `LongConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `LongConstant`. */
     given LongConstantTypeTest: TypeTest[Constant, LongConstant]
 
-    /** Module object of `type LongConstant` */
+    /** Module object of `type LongConstant`. */
     val LongConstant: LongConstantModule
 
-    /** Methods of the module object `val LongConstant` */
+    /** Methods of the module object `val LongConstant`. */
     trait LongConstantModule { this: LongConstant.type =>
-      /** Create a constant Long value */
+      /** Creates a constant Long value. */
       def apply(x: Long): LongConstant
-      /** Match Long value constant and extract its value */
+      /** Match Long value constant and extract its value. */
       def unapply(constant: LongConstant): Some[Long]
     }
 
-    /** Constant Float value */
+    /** Constant Float value. */
     type FloatConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `FloatConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `FloatConstant`. */
     given FloatConstantTypeTest: TypeTest[Constant, FloatConstant]
 
-    /** Module object of `type FloatConstant` */
+    /** Module object of `type FloatConstant`. */
     val FloatConstant: FloatConstantModule
 
-    /** Methods of the module object `val FloatConstant` */
+    /** Methods of the module object `val FloatConstant`. */
     trait FloatConstantModule { this: FloatConstant.type =>
-      /** Create a constant Float value */
+      /** Creates a constant Float value. */
       def apply(x: Float): FloatConstant
-      /** Match Float value constant and extract its value */
+      /** Match Float value constant and extract its value. */
       def unapply(constant: FloatConstant): Some[Float]
     }
 
-    /** Constant Double value */
+    /** Constant Double value. */
     type DoubleConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `DoubleConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `DoubleConstant`. */
     given DoubleConstantTypeTest: TypeTest[Constant, DoubleConstant]
 
-    /** Module object of `type DoubleConstant` */
+    /** Module object of `type DoubleConstant`. */
     val DoubleConstant: DoubleConstantModule
 
-    /** Methods of the module object `val DoubleConstant` */
+    /** Methods of the module object `val DoubleConstant`. */
     trait DoubleConstantModule { this: DoubleConstant.type =>
-      /** Create a constant Double value */
+      /** Creates a constant Double value. */
       def apply(x: Double): DoubleConstant
-      /** Match Double value constant and extract its value */
+      /** Match Double value constant and extract its value. */
       def unapply(constant: DoubleConstant): Some[Double]
     }
 
-    /** Constant Char value */
+    /** Constant Char value. */
     type CharConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `CharConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `CharConstant`. */
     given CharConstantTypeTest: TypeTest[Constant, CharConstant]
 
-    /** Module object of `type CharConstant` */
+    /** Module object of `type CharConstant`. */
     val CharConstant: CharConstantModule
 
-    /** Methods of the module object `val CharConstant` */
+    /** Methods of the module object `val CharConstant`. */
     trait CharConstantModule { this: CharConstant.type =>
-      /** Create a constant Char value */
+      /** Creates a constant Char value. */
       def apply(x: Char): CharConstant
-      /** Match Char value constant and extract its value */
+      /** Match Char value constant and extract its value. */
       def unapply(constant: CharConstant): Some[Char]
     }
 
-    /** Constant String value */
+    /** Constant String value. */
     type StringConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `StringConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `StringConstant`. */
     given StringConstantTypeTest: TypeTest[Constant, StringConstant]
 
-    /** Module object of `type StringConstant` */
+    /** Module object of `type StringConstant`. */
     val StringConstant: StringConstantModule
 
-    /** Methods of the module object `val StringConstant` */
+    /** Methods of the module object `val StringConstant`. */
     trait StringConstantModule { this: StringConstant.type =>
-      /** Create a constant String value
+      /** Creates a constant String value
        *
        *  @throw `IllegalArgumentException` if the argument is `null`
        */
       def apply(x: String): StringConstant
-      /** Match String value constant and extract its value */
+      /** Match String value constant and extract its value. */
       def unapply(constant: StringConstant): Some[String]
     }
 
-    /** Constant Unit value */
+    /** Constant Unit value. */
     type UnitConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `UnitConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `UnitConstant`. */
     given UnitConstantTypeTest: TypeTest[Constant, UnitConstant]
 
-    /** Module object of `type UnitConstant` */
+    /** Module object of `type UnitConstant`. */
     val UnitConstant: UnitConstantModule
 
-    /** Methods of the module object `val UnitConstant` */
+    /** Methods of the module object `val UnitConstant`. */
     trait UnitConstantModule { this: UnitConstant.type =>
-      /** Create a constant Unit value */
+      /** Creates a constant Unit value. */
       def apply(): UnitConstant
-      /** Match Unit value constant */
+      /** Match Unit value constant. */
       def unapply(constant: UnitConstant): true
     }
 
-    /** Constant null value */
+    /** Constant null value. */
     type NullConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `NullConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `NullConstant`. */
     given NullConstantTypeTest: TypeTest[Constant, NullConstant]
 
-    /** Module object of `type NullConstant` */
+    /** Module object of `type NullConstant`. */
     val NullConstant: NullConstantModule
 
-    /** Methods of the module object `val NullConstant` */
+    /** Methods of the module object `val NullConstant`. */
     trait NullConstantModule { this: NullConstant.type =>
-      /** Create a constant null value */
+      /** Creates a constant null value. */
       def apply(): NullConstant
-      /** Match null value constant */
+      /** Matches null value constant. */
       def unapply(constant: NullConstant): Boolean
     }
 
-    /** Constant class value representing a `classOf[T]` */
+    /** Constant class value representing a `classOf[T]`. */
     type ClassOfConstant <: Constant
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ClassOfConstant` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ClassOfConstant`. */
     given ClassOfConstantTypeTest: TypeTest[Constant, ClassOfConstant]
 
-    /** Module object of `type ClassOfConstant` */
+    /** Module object of `type ClassOfConstant`. */
     val ClassOfConstant: ClassOfConstantModule
 
-    /** Methods of the module object `val ClassOf` */
+    /** Methods of the module object `val ClassOf`. */
     trait ClassOfConstantModule { this: ClassOfConstant.type =>
-      /** Create a constant class value representing `classOf[<tpe>]` */
+      /** Creates a constant class value representing `classOf[<tpe>]`. */
       def apply(tpe: TypeRepr): ClassOfConstant
-      /** Match a class value constant representing `classOf[<tpe>]` and extract its type */
+      /** Matches a class value constant representing `classOf[<tpe>]` and extracts its type. */
       def unapply(constant: ClassOfConstant): Option[TypeRepr]
     }
 
@@ -3735,21 +3735,21 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // IMPLICIT SEARCH //
     /////////////////////
 
-    /** Module object of `type Implicits`  */
+    /** Module object of `type Implicits`. */
     val Implicits: ImplicitsModule
 
-    /** Methods of the module object `val Implicits` */
+    /** Methods of the module object `val Implicits`. */
     trait ImplicitsModule { self: Implicits.type =>
-      /** Find a given instance of type `T` in the current scope provided by the current enclosing splice.
-      *  Return an `ImplicitSearchResult`.
+      /** Finds a given instance of type `T` in the current scope provided by the current enclosing splice.
+      *  Returns an `ImplicitSearchResult`.
       *
       *  @param tpe type of the implicit parameter
       */
       def search(tpe: TypeRepr): ImplicitSearchResult
 
-      /** Find a given instance of type `T` in the current scope provided by the current enclosing splice,
+      /** Finds a given instance of type `T` in the current scope provided by the current enclosing splice,
       *  while excluding certain symbols from the initial implicit search.
-      *  Return an `ImplicitSearchResult`.
+      *  Returns an `ImplicitSearchResult`.
       *
       *  @param tpe type of the implicit parameter
       *  @param ignored Symbols ignored during the initial implicit search
@@ -3760,18 +3760,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
     }
 
-    /** Result of a given instance search */
+    /** Result of a given instance search. */
     type ImplicitSearchResult <: AnyRef
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `ImplicitSearchSuccess` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `ImplicitSearchSuccess`. */
     given ImplicitSearchSuccessTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
 
     type ImplicitSearchSuccess <: ImplicitSearchResult
 
-    /** Makes extension methods on `ImplicitSearchSuccess` available without any imports */
+    /** Makes extension methods on `ImplicitSearchSuccess` available without any imports. */
     given ImplicitSearchSuccessMethods: ImplicitSearchSuccessMethods
 
-    /** Extension methods of `ImplicitSearchSuccess` */
+    /** Extension methods of `ImplicitSearchSuccess`. */
     trait ImplicitSearchSuccessMethods:
       extension (self: ImplicitSearchSuccess)
         def tree: Term
@@ -3780,13 +3780,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     type ImplicitSearchFailure <: ImplicitSearchResult
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `ImplicitSearchFailure` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `ImplicitSearchFailure`. */
     given ImplicitSearchFailureTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
 
-    /** Makes extension methods on `ImplicitSearchFailure` available without any imports */
+    /** Makes extension methods on `ImplicitSearchFailure` available without any imports. */
     given ImplicitSearchFailureMethods: ImplicitSearchFailureMethods
 
-    /** Extension methods of `ImplicitSearchFailure` */
+    /** Extension methods of `ImplicitSearchFailure`. */
     trait ImplicitSearchFailureMethods:
       extension (self: ImplicitSearchFailure)
         def explanation: String
@@ -3795,17 +3795,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     type DivergingImplicit <: ImplicitSearchFailure
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is a `DivergingImplicit` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is a `DivergingImplicit`. */
     given DivergingImplicitTypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit]
 
     type NoMatchingImplicits <: ImplicitSearchFailure
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is a `NoMatchingImplicits` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is a `NoMatchingImplicits`. */
     given NoMatchingImplicitsTypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits]
 
     type AmbiguousImplicits <: ImplicitSearchFailure
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `AmbiguousImplicits` */
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `AmbiguousImplicits`. */
     given AmbiguousImplicitsTypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
     /////////////
@@ -3817,10 +3817,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     type Symbol <: AnyRef
 
-    /** Module object of `type Symbol`  */
+    /** Module object of `type Symbol`. */
     val Symbol: SymbolModule
 
-    /** Methods of the module object `val Symbol` */
+    /** Methods of the module object `val Symbol`. */
     trait SymbolModule { this: Symbol.type =>
 
       /** Symbol of the definition that encloses the current splicing context.
@@ -3834,19 +3834,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def spliceOwner: Symbol
 
-      /** Get package symbol if package is either defined in current compilation run or present on classpath. */
+      /** Gets package symbol if package is either defined in current compilation run or present on classpath. */
       def requiredPackage(path: String): Symbol
 
-      /** Get class symbol if class is either defined in current compilation run or present on classpath. */
+      /** Gets class symbol if class is either defined in current compilation run or present on classpath. */
       def requiredClass(path: String): Symbol
 
-      /** Get module symbol if module is either defined in current compilation run or present on classpath. */
+      /** Gets module symbol if module is either defined in current compilation run or present on classpath. */
       def requiredModule(path: String): Symbol
 
-      /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
+      /** Gets method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
       def requiredMethod(path: String): Symbol
 
-      /** The class Symbol of a global class definition */
+      /** The class Symbol of a global class definition. */
       def classSymbol(fullName: String): Symbol
 
       /** Generates a new class symbol for a class with a public parameterless constructor.
@@ -4111,7 +4111,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param modFlags extra flags with which the module symbol should be constructed
        *  @param clsFlags extra flags with which the module class symbol should be constructed
        *  @param parents A function that takes the symbol of the module class as input and returns the parent classes of the class. The first parent must not be a trait.
-       *  @param decls A function that takes the symbol of the module class as input and return the symbols of its declared members
+       *  @param decls A function that takes the symbol of the module class as input and returns the symbols of its declared members
        *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
        *
        *  This symbol starts without an accompanying definition.
@@ -4190,7 +4190,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // Keep: `flags` doc aligned with QuotesImpl's `validBindFlags`
       def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol
 
-      /** Generate a new type symbol for a type alias with the given parent, name and type
+      /** Generates a new type symbol for a type alias with the given parent, name and type
         *
         *  This symbol starts without an accompanying definition.
         *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
@@ -4208,7 +4208,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // Keep: `flags` doc aligned with QuotesImpl's `validTypeAliasFlags`
       def newTypeAlias(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr, privateWithin: Symbol): Symbol
 
-      /** Generate a new type symbol for a type bounds with the given parent, name and type
+      /** Generates a new type symbol for a type bounds with the given parent, name and type
         *
         *  This symbol starts without an accompanying definition.
         *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
@@ -4226,7 +4226,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // Keep: `flags` doc aligned with QuotesImpl's `validBoundedTypeFlags`
       def newBoundedType(parent: Symbol, name: String, flags: Flags, tpe: TypeBounds, privateWithin: Symbol): Symbol
 
-      /** Definition not available */
+      /** Definition not available. */
       def noSymbol: Symbol
 
       /** A fresh name for class or member symbol names.
@@ -4241,10 +4241,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def freshName(prefix: String): String
     }
 
-    /** Makes extension methods on `Symbol` available without any imports */
+    /** Makes extension methods on `Symbol` available without any imports. */
     given SymbolMethods: SymbolMethods
 
-    /** Extension methods of `Symbol` */
+    /** Extension methods of `Symbol`. */
     trait SymbolMethods {
       extension (self: Symbol)
 
@@ -4254,29 +4254,29 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
         def maybeOwner: Symbol
 
-        /** Flags of this symbol */
+        /** Flags of this symbol. */
         def flags: Flags
 
-        /** This symbol is private within the resulting type */
+        /** This symbol is private within the resulting type. */
         def privateWithin: Option[TypeRepr]
 
-        /** This symbol is protected within the resulting type */
+        /** This symbol is protected within the resulting type. */
         def protectedWithin: Option[TypeRepr]
 
-        /** The name of this symbol */
+        /** The name of this symbol. */
         def name: String
 
-        /** The full name of this symbol up to the root package */
+        /** The full name of this symbol up to the root package. */
         def fullName: String
 
-        /** Type of the definition */
+        /** Type of the definition. */
         @experimental
         def info: TypeRepr
 
-        /** The position of this symbol */
+        /** The position of this symbol. */
         def pos: Option[Position]
 
-        /** The documentation for this symbol, if any */
+        /** The documentation for this symbol, if any. */
         def docstring: Option[String]
 
         /** Tree of this definition
@@ -4310,10 +4310,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is the annotation defined with `annotSym` attached to this symbol? */
         def hasAnnotation(annotSym: Symbol): Boolean
 
-        /** Get the annotation defined with `annotSym` attached to this symbol */
+        /** Gets the annotation defined with `annotSym` attached to this symbol. */
         def getAnnotation(annotSym: Symbol): Option[Term]
 
-        /** Annotations attached to this symbol */
+        /** Annotations attached to this symbol. */
         def annotations: List[Term]
 
         /** Does this symbol come from a currently compiled source file? */
@@ -4357,7 +4357,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this the definition of a ClassDef tree? */
         def isClassDef: Boolean
 
-        /** Is this the definition of a TypeDef tree */
+        /** Is this the definition of a TypeDef tree. */
         def isTypeDef: Boolean
 
         /** Is this the definition of a ValDef tree? */
@@ -4375,67 +4375,67 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Does this symbol represent a definition? */
         def exists: Boolean
 
-        /** Field with the given name directly declared in the class */
+        /** Field with the given name directly declared in the class. */
         def declaredField(name: String): Symbol
 
-        /** Fields directly declared in the class */
+        /** Fields directly declared in the class. */
         def declaredFields: List[Symbol]
 
-        /** Get named non-private fields declared or inherited */
+        /** Gets named non-private fields declared or inherited. */
         @deprecated("Use fieldMember", "3.1.0")
         def memberField(name: String): Symbol
 
-        /** Get named non-private fields declared or inherited */
+        /** Gets named non-private fields declared or inherited. */
         def fieldMember(name: String): Symbol
 
-        /** Get all non-private fields declared or inherited */
+        /** Gets all non-private fields declared or inherited. */
         @deprecated("Use fieldMembers", "3.1.0")
         def memberFields: List[Symbol]
 
-        /** Get all non-private fields declared or inherited */
+        /** Gets all non-private fields declared or inherited. */
         def fieldMembers: List[Symbol]
 
-        /** Get non-private named methods defined directly inside the class */
+        /** Gets non-private named methods defined directly inside the class. */
         def declaredMethod(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, excluding constructors */
+        /** Gets all non-private methods defined directly inside the class, excluding constructors. */
         def declaredMethods: List[Symbol]
 
-        /** Get named non-private methods declared or inherited */
+        /** Gets named non-private methods declared or inherited. */
         @deprecated("Use methodMember", "3.1.0")
         def memberMethod(name: String): List[Symbol]
 
-        /** Get named non-private methods declared or inherited */
+        /** Gets named non-private methods declared or inherited. */
         def methodMember(name: String): List[Symbol]
 
-        /** Get all non-private methods declared or inherited */
+        /** Gets all non-private methods declared or inherited. */
         @deprecated("Use methodMembers", "3.1.0")
         def memberMethods: List[Symbol]
 
-        /** Get all non-private methods declared or inherited */
+        /** Gets all non-private methods declared or inherited. */
         def methodMembers: List[Symbol]
 
-        /** Get non-private named type defined directly inside the class */
+        /** Gets non-private named type defined directly inside the class. */
         def declaredType(name: String): List[Symbol]
 
-        /** Get all non-private types defined directly inside the class */
+        /** Gets all non-private types defined directly inside the class. */
         def declaredTypes: List[Symbol]
 
-        /** Type member with the given name directly declared in the class */
+        /** Type member with the given name directly declared in the class. */
         @deprecated("Use declaredType or typeMember", "3.1.0")
         def memberType(name: String): Symbol
 
-        /** Type member with the given name declared or inherited in the class */
+        /** Type member with the given name declared or inherited in the class. */
         def typeMember(name: String): Symbol
 
-        /** Type member directly declared in the class */
+        /** Type member directly declared in the class. */
         @deprecated("Use declaredTypes or typeMembers", "3.1.0")
         def memberTypes: List[Symbol]
 
-        /** Type member directly declared or inherited in the class */
+        /** Type member directly declared or inherited in the class. */
         def typeMembers: List[Symbol]
 
-        /** All members directly declared in the class */
+        /** All members directly declared in the class. */
         def declarations: List[Symbol]
 
         /** The symbols of each type parameter list and value parameter list of this
@@ -4455,10 +4455,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
         def primaryConstructor: Symbol
 
-        /** Fields of a case class type -- only the ones declared in primary constructor */
+        /** Fields of a case class type -- only the ones declared in primary constructor. */
         def caseFields: List[Symbol]
 
-        /** Is this the symbol of a type parameter */
+        /** Is this the symbol of a type parameter. */
         def isTypeParam: Boolean
 
         /** Variance flags for of this type parameter.
@@ -4468,16 +4468,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def paramVariance: Flags
 
-        /** Signature of this definition */
+        /** Signature of this definition. */
         def signature: Signature
 
-        /** The class symbol of the companion module class */
+        /** The class symbol of the companion module class. */
         def moduleClass: Symbol
 
-        /** The symbol of the companion class */
+        /** The symbol of the companion class. */
         def companionClass: Symbol
 
-        /** The symbol of the companion module */
+        /** The symbol of the companion module. */
         def companionModule: Symbol
 
         /** Case class or case object children of a sealed trait or cases of an `enum`. */
@@ -4540,22 +4540,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // SIGNATURES //
     ////////////////
 
-    /** The signature of a method */
+    /** The signature of a method. */
     type Signature <: AnyRef
 
-    /** Module object of `type Signature`  */
+    /** Module object of `type Signature`. */
     val Signature: SignatureModule
 
-    /** Methods of the module object `val Signature` */
+    /** Methods of the module object `val Signature`. */
     trait SignatureModule { this: Signature.type =>
       /** Matches the method signature and returns its parameters and result type. */
       def unapply(sig: Signature): (List[String | Int], String)
     }
 
-    /** Makes extension methods on `Signature` available without any imports */
+    /** Makes extension methods on `Signature` available without any imports. */
     given SignatureMethods: SignatureMethods
 
-    /** Extension methods of `Signature` */
+    /** Extension methods of `Signature`. */
     trait SignatureMethods {
       extension (self: Signature)
 
@@ -4568,7 +4568,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           */
         def paramSigs: List[String | Int]
 
-        /** The signature of the result type */
+        /** The signature of the result type. */
         def resultSig: String
 
       end extension
@@ -4578,10 +4578,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // STANDARD DEFINITIONS //
     //////////////////////////
 
-    /** A value containing all standard definitions */
+    /** A value containing all standard definitions. */
     val defn: defnModule
 
-    /** Methods of the module object `val defn` */
+    /** Methods of the module object `val defn`. */
     trait defnModule { self: defn.type =>
 
       /** The module symbol of root package `_root_`. */
@@ -4602,7 +4602,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The class symbol of core class `scala.Any`. */
       def AnyClass: Symbol
 
-      /** The class symbol of core trait `scala.Matchable` */
+      /** The class symbol of core trait `scala.Matchable`. */
       def MatchableClass: Symbol
 
       /** The class symbol of core class `scala.AnyVal`. */
@@ -4687,7 +4687,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def RepeatedParamClass: Symbol
 
-      /** The class symbol of class `scala.annotation.reflection.Repeated` */
+      /** The class symbol of class `scala.annotation.reflection.Repeated`. */
       def RepeatedAnnot: Symbol
 
       /** The class symbol of class `scala.Option`. */
@@ -4699,7 +4699,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The module symbol of module `scala.Some`. */
       def SomeModule: Symbol
 
-      /** Function-like object that maps arity to symbols for classes `scala.Product` */
+      /** Function-like object that maps arity to symbols for classes `scala.Product`. */
       def ProductClass: Symbol
 
       /** Function-like object that maps arity to symbols for classes `scala.FunctionX`.
@@ -4740,7 +4740,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def TupleClass(arity: Int): Symbol
 
-      /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22` */
+      /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22`. */
       def isTupleClass(sym: Symbol): Boolean
 
       /** Contains Scala primitive value classes:
@@ -4773,16 +4773,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     //   FLAGS   //
     ///////////////
 
-    /** Flags of a Symbol */
+    /** Flags of a Symbol. */
     type Flags
 
-    /** Module object of `type Flags`  */
+    /** Module object of `type Flags`. */
     val Flags: FlagsModule
 
-    /** Methods of the module object `val Flags` */
+    /** Methods of the module object `val Flags`. */
     trait FlagsModule { this: Flags.type =>
 
-      /** Is this symbol `abstract` */
+      /** Is this symbol `abstract`. */
       def Abstract: Flags
 
       /** Is this an abstract override method?
@@ -4797,156 +4797,156 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def Artifact: Flags
 
-      /** Is this symbol `case` */
+      /** Is this symbol `case`. */
       def Case: Flags
 
-      /** Is this symbol a getter for case class parameter */
+      /** Is this symbol a getter for case class parameter. */
       def CaseAccessor: Flags
 
-      /** Is this symbol a type parameter marked as contravariant `-` */
+      /** Is this symbol a type parameter marked as contravariant `-`. */
       def Contravariant: Flags
 
-      /** Is this symbol a type parameter marked as covariant `+` */
+      /** Is this symbol a type parameter marked as covariant `+`. */
       def Covariant: Flags
 
-      /** Is a declared, but not defined member */
+      /** Is a declared, but not defined member. */
       def Deferred: Flags
 
-      /** The empty set of flags */
+      /** The empty set of flags. */
       def EmptyFlags: Flags
 
-      /** Is this symbol an enum */
+      /** Is this symbol an enum. */
       def Enum: Flags
 
-      /** Is this symbol `erased` */
+      /** Is this symbol `erased`. */
       def Erased: Flags
 
-      /** Is this symbol exported from provided instance */
+      /** Is this symbol exported from provided instance. */
       def Exported: Flags
 
-      /** Is this symbol a `def` defined in an `extension` */
+      /** Is this symbol a `def` defined in an `extension`. */
       def ExtensionMethod: Flags
 
-      /** Is this symbol a getter or a setter */
+      /** Is this symbol a getter or a setter. */
       def FieldAccessor: Flags
 
-      /** Is this symbol `final` */
+      /** Is this symbol `final`. */
       def Final: Flags
 
-      /** Is this symbol an inferable ("given") parameter */
+      /** Is this symbol an inferable ("given") parameter. */
       def Given: Flags
 
       /** Is this symbol a parameter with a default value? */
       def HasDefault: Flags
 
-      /** Is this symbol `implicit` */
+      /** Is this symbol `implicit`. */
       def Implicit: Flags
 
-      /** Is an infix method or type */
+      /** Is an infix method or type. */
       def Infix: Flags
 
-      /** Is this symbol `inline` */
+      /** Is this symbol `inline`. */
       def Inline: Flags
 
       /** Is this symbol invisible when typechecking? */
       def Invisible: Flags
 
-      /** Is this symbol defined in a Java class */
+      /** Is this symbol defined in a Java class. */
       def JavaDefined: Flags
 
-      /** Is implemented as a Java static */
+      /** Is implemented as a Java static. */
       def JavaStatic: Flags
 
-      /** Is this an annotation defined in Java */
+      /** Is this an annotation defined in Java. */
       def JavaAnnotation: Flags
 
-      /** Is this symbol `lazy` */
+      /** Is this symbol `lazy`. */
       def Lazy: Flags
 
-      /** Is this symbol local? Used in conjunction with private/private[T] to mean private[this] extends Modifier protected[this] */
+      /** Is this symbol local? Used in conjunction with private/private[T] to mean private[this] extends Modifier protected[this]. */
       def Local: Flags
 
-      /** Is this symbol marked as a macro. An inline method containing top level splices */
+      /** Is this symbol marked as a macro. An inline method containing top level splices. */
       def Macro: Flags
 
-      /** Is this symbol `def` */
+      /** Is this symbol `def`. */
       def Method: Flags
 
-      /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
+      /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively). */
       def Module: Flags
 
-      /** Is this symbol a `var` (when used on a ValDef) */
+      /** Is this symbol a `var` (when used on a ValDef). */
       def Mutable: Flags
 
       /** Trait does not have fields or initialization code. */
       def NoInits: Flags
 
-      /** Is this symbol `opaque` */
+      /** Is this symbol `opaque`. */
       def Opaque: Flags
 
-      /** Is this symbol `open` */
+      /** Is this symbol `open`. */
       def Open: Flags
 
-      /** Is this symbol `override` */
+      /** Is this symbol `override`. */
       def Override: Flags
 
-      /** Is this symbol a package */
+      /** Is this symbol a package. */
       def Package: Flags
 
-      /** Is this symbol a parameter */
+      /** Is this symbol a parameter. */
       def Param: Flags
 
-      /** Is this symbol a parameter accessor */
+      /** Is this symbol a parameter accessor. */
       def ParamAccessor: Flags
 
-      /** Is this symbol `private` */
+      /** Is this symbol `private`. */
       def Private: Flags
 
-      /** Is this symbol labeled private[this] */
+      /** Is this symbol labeled private[this]. */
       def PrivateLocal: Flags
 
-      /** Is this symbol `protected` */
+      /** Is this symbol `protected`. */
       def Protected: Flags
 
-      /** Was this symbol imported from Scala2.x */
+      /** Was this symbol imported from Scala2.x. */
       def Scala2x: Flags
 
-      /** Is this symbol `sealed` */
+      /** Is this symbol `sealed`. */
       def Sealed: Flags
 
-      /** Is this symbol member that is assumed to be stable and realizable */
+      /** Is this symbol member that is assumed to be stable and realizable. */
       def StableRealizable: Flags
 
-      /** Is this symbol marked as static. Mapped to static Java member */
+      /** Is this symbol marked as static. Mapped to static Java member. */
       @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags
 
-      /** Is this symbol to be tagged Java Synthetic */
+      /** Is this symbol to be tagged Java Synthetic. */
       def Synthetic: Flags
 
-      /** Is this symbol a trait */
+      /** Is this symbol a trait. */
       def Trait: Flags
 
-      /** Is a transparent inline method or trait */
+      /** Is a transparent inline method or trait. */
       def Transparent: Flags
 
     }
 
-    /** Makes extension methods on `Flags` available without any imports */
+    /** Makes extension methods on `Flags` available without any imports. */
     given FlagsMethods: FlagsMethods
 
-    /** Extension methods of `Flags` */
+    /** Extension methods of `Flags`. */
     trait FlagsMethods {
       extension (self: Flags)
-        /** Is the given flag set a subset of this flag sets */
+        /** Is the given flag set a subset of this flag sets. */
         def is(that: Flags): Boolean
 
-        /** Union of the two flag sets */
+        /** Union of the two flag sets. */
         def |(that: Flags): Flags
 
-        /** Intersection of the two flag sets */
+        /** Intersection of the two flag sets. */
         def &(that: Flags): Flags
 
-        /** Shows the flags as a String */
+        /** Shows the flags as a String. */
         def show: String
 
       end extension
@@ -4958,81 +4958,81 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     ///////////////
 
 
-    /** Position in a source file */
+    /** Position in a source file. */
     type Position <: AnyRef
 
-    /** Module object of `type Position`  */
+    /** Module object of `type Position`. */
     val Position: PositionModule
 
-    /** Methods of the module object `val Position` */
+    /** Methods of the module object `val Position`. */
     trait PositionModule { this: Position.type =>
-      /** Position of the expansion site of the macro */
+      /** Position of the expansion site of the macro. */
       def ofMacroExpansion: Position
 
-      /** Create a new position in the source with the given range. The range must be contained in the file. */
+      /** Creates a new position in the source with the given range. The range must be contained in the file. */
       def apply(sourceFile: SourceFile, start: Int, end: Int): Position
     }
 
-    /** Makes extension methods on `Position` available without any imports */
+    /** Makes extension methods on `Position` available without any imports. */
     given PositionMethods: PositionMethods
 
-    /** Extension methods of `Position` */
+    /** Extension methods of `Position`. */
     trait PositionMethods {
       extension (self: Position)
 
-        /** The start offset in the source file */
+        /** The start offset in the source file. */
         def start: Int
 
-        /** The end offset in the source file */
+        /** The end offset in the source file. */
         def end: Int
 
-        /** Source file in which this position is located */
+        /** Source file in which this position is located. */
         def sourceFile: SourceFile
 
-        /** The start line in the source file */
+        /** The start line in the source file. */
         def startLine: Int
 
-        /** The end line in the source file */
+        /** The end line in the source file. */
         def endLine: Int
 
-        /** The start column in the source file */
+        /** The start column in the source file. */
         def startColumn: Int
 
-        /** The end column in the source file */
+        /** The end column in the source file. */
         def endColumn: Int
 
-        /** Source code within the position */
+        /** Source code within the position. */
         def sourceCode: Option[String]
 
       end extension
     }
 
-    /** Scala source file */
+    /** Scala source file. */
     type SourceFile <: AnyRef
 
-    /** Module object of `type SourceFile`  */
+    /** Module object of `type SourceFile`. */
     val SourceFile: SourceFileModule
 
-    /** Methods of the module object `val SourceFile` */
+    /** Methods of the module object `val SourceFile`. */
     trait SourceFileModule { this: SourceFile.type =>
       /** Returns the source file being compiled. The path is relative to the current working directory. */
       def current: SourceFile
     }
 
-    /** Makes extension methods on `SourceFile` available without any imports */
+    /** Makes extension methods on `SourceFile` available without any imports. */
     given SourceFileMethods: SourceFileMethods
 
-    /** Extension methods of `SourceFile` */
+    /** Extension methods of `SourceFile`. */
     trait SourceFileMethods {
       extension (self: SourceFile)
-        /** Path to this source file. May be `null` for virtual files such as in the REPL.  */
+        /** Path to this source file. May be `null` for virtual files such as in the REPL. */
         @deprecated("Use getJPath, name, or path instead of jpath", "3.0.2")
         def jpath: java.nio.file.Path
 
         /** Path to this source file. May be `None` for virtual files such as in the REPL. */
         def getJPath: Option[java.nio.file.Path]
 
-        /** Name of the source file */
+        /** Name of the source file. */
         def name: String
 
         /** Path of the source file.
@@ -5042,7 +5042,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def path: String
 
-        /** Content of this source file */
+        /** Content of this source file. */
         def content: Option[String]
       end extension
     }
@@ -5054,55 +5054,55 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Module containing error and warning reporting. */
     val report: reportModule
 
-    /** Methods of the module object `val report` */
+    /** Methods of the module object `val report`. */
     trait reportModule { self: report.type =>
 
-      /** Report an error at the position of the macro expansion */
+      /** Report an error at the position of the macro expansion. */
       def error(msg: String): Unit
 
-      /** Report an error at the position of `expr` */
+      /** Report an error at the position of `expr`. */
       def error(msg: String, expr: Expr[Any]): Unit
 
-      /** Report an error message at the given position */
+      /** Report an error message at the given position. */
       def error(msg: String, pos: Position): Unit
 
-      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion. */
       def errorAndAbort(msg: String): Nothing
 
-      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion. */
       def errorAndAbort(msg: String, expr: Expr[Any]): Nothing
 
-      /** Report an error message at the given position and throw a StopMacroExpansion */
+      /** Report an error message at the given position and throw a StopMacroExpansion. */
       def errorAndAbort(msg: String, pos: Position): Nothing
 
-      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion. */
       @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String): Nothing
 
-      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion. */
       @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
-      /** Report an error message at the given position and throw a StopMacroExpansion */
+      /** Report an error message at the given position and throw a StopMacroExpansion. */
       @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, pos: Position): Nothing
 
-      /** Report a warning at the position of the macro expansion */
+      /** Report a warning at the position of the macro expansion. */
       def warning(msg: String): Unit
 
-      /** Report a warning at the position of `expr` */
+      /** Report a warning at the position of `expr`. */
       def warning(msg: String, expr: Expr[Any]): Unit
 
-      /** Report a warning message at the given position */
+      /** Report a warning message at the given position. */
       def warning(msg: String, pos: Position): Unit
 
-      /** Report an info at the position of the macro expansion */
+      /** Report an info at the position of the macro expansion. */
       def info(msg: String): Unit
 
-      /** Report an info message at the position of `expr` */
+      /** Report an info message at the position of `expr`. */
       def info(msg: String, expr: Expr[Any]): Unit
 
-      /** Report an info message at the given position */
+      /** Report an info message at the given position. */
       def info(msg: String, pos: Position): Unit
 
     }
@@ -5450,19 +5450,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     end TreeMap
 
-    /** Type class used in `show` methods to provide customizable `String` representations */
+    /** Type class used in `show` methods to provide customizable `String` representations. */
     trait Printer[T]:
-      /** Show the arguments as a `String` */
+      /** Shows the arguments as a `String`. */
       def show(x: T): String
     end Printer
 
-    /** Default pinter for `Tree` used when calling `tree.show` */
+    /** Default pinter for `Tree` used when calling `tree.show`. */
     given TreePrinter: Printer[Tree] = Printer.TreeCode
 
-    /** Default pinter for `TypeRepr` used when calling `tpe.show` */
+    /** Default pinter for `TypeRepr` used when calling `tpe.show`. */
     given TypeReprPrinter: Printer[TypeRepr] = Printer.TypeReprCode
 
-    /** Default pinter for `Constant` used when calling `const.show` */
+    /** Default pinter for `Constant` used when calling `const.show`. */
     given ConstantPrinter: Printer[Constant] = Printer.ConstantCode
 
     /** Module object of `type Printer`.
@@ -5470,7 +5470,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     val Printer: PrinterModule
 
-    /** Methods of the module object `val Printer` */
+    /** Methods of the module object `val Printer`. */
     trait PrinterModule { self: Printer.type =>
       /** Prints fully elaborated version of the source code. */
       def TreeCode: Printer[Tree]

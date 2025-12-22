@@ -101,10 +101,10 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   def clear(): Unit = underlying.setLength(0)
 
-  /** Overloaded version of `addAll` that takes a string */
+  /** Overloaded version of `addAll` that takes a string. */
   def addAll(s: String): this.type = { underlying.append(s); this }
 
-  /** Alias for `addAll` */
+  /** Alias for `addAll`. */
   def ++= (s: String): this.type = addAll(s)
 
   def result() = underlying.toString
@@ -225,7 +225,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     this
   }
 
-  /** Append the String representation of the given primitive type
+  /** Appends the String representation of the given primitive type
     *  to this sequence.  The argument is converted to a String with
     *  String.valueOf.
     *
@@ -241,7 +241,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
   def append(x: Double): this.type = { underlying.append(x) ; this }
   def append(x: Char): this.type = { underlying.append(x) ; this }
 
-  /** Remove a subsequence of Chars from this sequence, starting at the
+  /** Removes a subsequence of Chars from this sequence, starting at the
     *  given start index (inclusive) and extending to the end index (exclusive)
     *  or to the end of the String, whichever comes first.
     *
@@ -308,21 +308,21 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     this
   }
 
-  /** Inserts the given Seq[Char] into this sequence at the given index.
+  /** Inserts the given `Seq[Char]` into this sequence at the given index.
     *
     *  @param  index the index at which to insert.
-    *  @param  xs    the Seq[Char].
-    *  @return       this StringBuilder.
+    *  @param  xs    the `Seq[Char]`.
+    *  @return       this `StringBuilder`.
     *  @throws StringIndexOutOfBoundsException  if the index is out of bounds.
     */
   def insertAll(index: Int, xs: IterableOnce[Char]^): this.type =
     insertAll(index, (ArrayBuilder.make[Char] ++= xs).result())
 
-  /** Inserts the given Array[Char] into this sequence at the given index.
+  /** Inserts the given `Array[Char]` into this sequence at the given index.
     *
     *  @param  index the index at which to insert.
-    *  @param  xs    the Array[Char].
-    *  @return       this StringBuilder.
+    *  @param  xs    the `Array[Char]`.
+    *  @return       this `StringBuilder`.
     *  @throws StringIndexOutOfBoundsException  if the index is out of bounds.
     */
   def insertAll(index: Int, xs: Array[Char]): this.type = {
@@ -382,7 +382,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    */
   def capacity: Int = underlying.capacity
 
-  /** Ensure that the capacity is at least the given argument.
+  /** Ensures that the capacity is at least the given argument.
    *  If the argument is greater than the current capacity, new
    *  storage will be allocated with size equal to the given
    *  argument or to `(2 * capacity + 2)`, whichever is larger.
@@ -411,7 +411,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     this
   }
 
-  /** Update the sequence at the given index to hold the specified Char.
+  /** Updates the sequence at the given index to hold the specified Char.
    *
    *  @param  index   the index to modify.
    *  @param  ch      the new Char.

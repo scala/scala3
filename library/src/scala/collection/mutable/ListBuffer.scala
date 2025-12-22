@@ -180,7 +180,7 @@ class ListBuffer[A]
     this
   }
 
-  /** Reduce the length of the buffer, and null out last0
+  /** Reduces the length of the buffer, and nulls out last0
     *  if this reduces the length to 0.
     */
   private def reduceLengthBy(num: Int): Unit = {
@@ -301,7 +301,7 @@ class ListBuffer[A]
     len -= n
   }
 
-  /** Replace the contents of this $coll with the mapped result.
+  /** Replaces the contents of this $coll with the mapped result.
    *
    *  @param f the mapping function
    *  @return this $coll
@@ -316,7 +316,7 @@ class ListBuffer[A]
     this
   }
 
-  /** Replace the contents of this $coll with the flatmapped result.
+  /** Replaces the contents of this $coll with the flatmapped result.
    *
    *  @param f the mapping function
    *  @return this $coll
@@ -342,7 +342,7 @@ class ListBuffer[A]
     this
   }
 
-  /** Replace the contents of this $coll with the filtered result.
+  /** Replaces the contents of this $coll with the filtered result.
    *
    *  @param p the filtering predicate
    *  @return this $coll

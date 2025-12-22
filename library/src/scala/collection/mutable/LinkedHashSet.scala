@@ -152,7 +152,7 @@ class LinkedHashSet[A]
 
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
-  /** Computes the improved hash of this key */
+  /** Computes the improved hash of this key. */
   @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
@@ -180,7 +180,7 @@ class LinkedHashSet[A]
     e
   }
 
-  /** Delete the entry from the LinkedHashSet, set the `earlier` and `later` pointers correctly */
+  /** Deletes the entry from the LinkedHashSet, set the `earlier` and `later` pointers correctly. */
   private def deleteEntry(e: Entry): Unit = {
     if (e.earlier eq null) firstEntry = e.later
     else e.earlier.later = e.later
@@ -343,9 +343,9 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
       else next.findEntry(k, h)
   }
 
-  /** The default load factor for the hash table */
+  /** The default load factor for the hash table. */
   private[collection] final def defaultLoadFactor: Double = 0.75
 
-  /** The default initial capacity for the hash table */
+  /** The default initial capacity for the hash table. */
   private[collection] final def defaultinitialSize: Int = 16
 }

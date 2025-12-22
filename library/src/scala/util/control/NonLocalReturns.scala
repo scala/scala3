@@ -38,7 +38,7 @@ object NonLocalReturns {
   def throwReturn[T](result: T)(using returner: ReturnThrowable[? >: T]): Nothing =
     returner.throwReturn(result)
 
-  /** Enable nonlocal returns in `op`. */
+  /** Enables nonlocal returns in `op`. */
   @deprecated("Use scala.util.boundary instead", "3.3")
   def returning[T](op: ReturnThrowable[T] ?=> T): T = {
     val returner = new ReturnThrowable[T]
