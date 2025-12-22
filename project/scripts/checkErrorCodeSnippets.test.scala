@@ -126,6 +126,32 @@ class ErrorCodeSnippetsTest extends munit.FunSuite:
       fail(s"Found documentation for non-existent error codes: $invalid")
   }
 
+  test("All documented error codes must be listed in sidebar.yml") {
+    val sidebarPath = os.pwd / "docs" / "sidebar.yml"
+    assert(os.exists(sidebarPath), s"sidebar.yml not found at $sidebarPath")
+
+    val sidebarContent = os.read(sidebarPath)
+
+    // Extract error codes from sidebar.yml entries like "- page: reference/error-codes/E001.md"
+    val sidebarErrorCodePattern = """page:\s*reference/error-codes/E(\d+)\.md""".r
+    val sidebarErrorCodes: Set[Int] = sidebarErrorCodePattern
+      .findAllMatchIn(sidebarContent)
+      .map(_.group(1).toInt)
+      .toSet
+
+    // Check that all documented error codes are in the sidebar
+    val missingFromSidebar = documentedErrorCodes.keys.toSet -- sidebarErrorCodes
+    if missingFromSidebar.nonEmpty then
+      val missing = missingFromSidebar.toSeq.sorted.map(formatErrorCode).mkString("\n  - ")
+      fail(s"Error codes documented but missing from docs/sidebar.yml:\n  - $missing")
+
+    // Check that all sidebar entries have corresponding documentation files
+    val missingDocs = sidebarErrorCodes -- documentedErrorCodes.keys.toSet
+    if missingDocs.nonEmpty then
+      val missing = missingDocs.toSeq.sorted.map(formatErrorCode).mkString("\n  - ")
+      fail(s"Error codes in docs/sidebar.yml but missing documentation files:\n  - $missing")
+  }
+
   // Generate two tests for each error code file
   errorCodeFiles.foreach { mdFile =>
     val fileName = mdFile.last
