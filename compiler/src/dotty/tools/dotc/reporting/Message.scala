@@ -427,12 +427,14 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   def mapMsg(f: String => String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = f(self.msg)
+    override def msgPostscript(using Context) = self.msgPostscript
     def explain(using Context) = self.explain
     override def canExplain = self.canExplain
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = self.msg
+    override def msgPostscript(using Context) = self.msgPostscript
     def explain(using Context) = self.explain ++ suffix
     override def canExplain = true
 

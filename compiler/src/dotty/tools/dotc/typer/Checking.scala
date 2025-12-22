@@ -1054,8 +1054,9 @@ trait Checking {
   }
 
   /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
-   *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
-   *  pattern's type. If pattern is an UnApply, also check that the extractor is
+   *  This means `sel` is either marked `: @RuntimeChecked`, `: @unchecked` (old style),
+   *  or `sel.tpe` conforms to the pattern's type. If pattern is an Unapply,
+   *  also check that the extractor is
    *  irrefutable, and do the check recursively.
    */
   def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
@@ -1068,7 +1069,7 @@ trait Checking {
       import Reason.*
       val message = reason match
         case NonConforming =>
-          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot).dropAnnot(defn.RuntimeCheckedAnnot)
           if !pat.tpe.isSingleton then reportedPt = reportedPt.widen
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
           em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
@@ -1084,7 +1085,10 @@ trait Checking {
           else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
-        if isPatDef then "adding `: @unchecked` after the expression"
+        if isPatDef then
+          val patchText =
+            if sourceVersion.isAtLeast(`3.8`) then ".runtimeChecked" else ": @unchecked"
+          s"adding `$patchText` after the expression"
         else "adding the `case` keyword before the full pattern"
       val addendum =
         if isPatDef then "may result in a MatchError at runtime"
@@ -1097,7 +1101,9 @@ trait Checking {
           case NonConforming => sel.srcPos
           case RefutableExtractor => pat.source.atSpan(pat.span `union` sel.span)
         else pat.srcPos
-      def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
+      def rewriteMsg = Message.rewriteNotice("This patch",
+        if isPatDef && sourceVersion.isAtLeast(`3.8`) then `3.8-migration` else `3.2-migration`
+      )
       report.errorOrMigrationWarning(
         message.append(
           i"""|
@@ -1106,7 +1112,7 @@ trait Checking {
               |which $addendum.$rewriteMsg"""),
         pos,
         // we tighten for-comprehension without `case` to error in 3.4,
-        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // but we keep pat-defs as warnings for now (".runtimeChecked"),
         // until we propose an alternative way to assert exhaustivity to the typechecker.
         if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
         else MigrationVersion.ForComprehensionPatternWithoutCase
@@ -1129,6 +1135,8 @@ trait Checking {
       !sourceVersion.isAtLeast(`3.2`)
       || pt.hasAnnotation(defn.UncheckedAnnot)
       || pt.hasAnnotation(defn.RuntimeCheckedAnnot)
+      || pat.tpe.isErroneous // avoid spurious warning
+      || pt.isErroneous
       || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match
