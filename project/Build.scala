@@ -1406,7 +1406,6 @@ object Build {
   lazy val `scala3-library-bootstrapped-new` = project.in(file("library"))
     .dependsOn(`scala-library-bootstrapped`)
     .settings(publishSettings)
-    .settings(emptyJarPackageSettings)
     .settings(
       name          := "scala3-library-bootstrapped",
       moduleName    := "scala3-library",
@@ -1418,20 +1417,10 @@ object Build {
       crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
       // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
       autoScalaLibrary := false,
-      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
-      managedScalaInstance := false,
+      // Configure to use the non-bootstrapped compiler
+      bootstrappedScalaInstanceSettings,
       // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-bootstrapped`
-      Compile / sources := Seq(),
-      Compile / resources := Seq(),
-      Test / sources := Seq(),
-      Test / resources := Seq(),
-      // Bridge the common task to call the ones of the actual library project
-      Compile / compile := (`scala-library-bootstrapped` / Compile / compile).value,
-      Compile / doc     := (`scala-library-bootstrapped` / Compile / doc).value,
-      Compile / run     := (`scala-library-bootstrapped` / Compile / run).evaluated,
-      Test / compile := (`scala-library-bootstrapped` / Test / compile).value,
-      Test / doc     := (`scala-library-bootstrapped` / Test / doc).value,
-      Test / run     := (`scala-library-bootstrapped` / Test / run).evaluated,
+      emptyJarPackageSettings,
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1589,20 +1578,10 @@ object Build {
       crossPaths    := true, // org.scala-lang:scala3-library_sjs1 has a crosspath
       // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
       autoScalaLibrary := false,
-      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
-      managedScalaInstance := false,
+      // Configure to use the non-bootstrapped compiler
+      bootstrappedScalaInstanceSettings,
       // This Project only has a dependency to `org.scala-js:scalajs-scalalib:*.**.**-bootstrapped`
-      Compile / sources := Seq(),
-      Compile / resources := Seq(),
-      Test / sources := Seq(),
-      Test / resources := Seq(),
-      // Bridge the common task to call the ones of the actual library project
-      Compile / compile := (`scala-library-sjs` / Compile / compile).value,
-      Compile / doc     := (`scala-library-sjs` / Compile / doc).value,
-      Compile / run     := (`scala-library-sjs` / Compile / run).evaluated,
-      Test / compile := (`scala-library-sjs` / Test / compile).value,
-      Test / doc     := (`scala-library-sjs` / Test / doc).value,
-      Test / run     := (`scala-library-sjs` / Test / run).evaluated,
+      emptyJarPackageSettings
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -3194,6 +3173,7 @@ object Build {
         assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
     }
   }
+
   /** Helper to validate JAR contents */
   private def validateJarIsEmpty(jar: File): File = {
     val jarFile = new java.util.jar.JarFile(jar)
@@ -3351,5 +3331,6 @@ object ScaladocConfigs {
       .add(ApiSubdirectory(true))
       .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))
   }
+
 
 }
