@@ -438,23 +438,21 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t @ CapturingType(parent, refs) =>
             checkRetainsOK:
               t.derivedCapturingType(stripImpliedCaptureSet(this(parent)), refs)
-          case t @ AnnotatedType(parent, ann) =>
-            val parent1 = this(parent)
-            if ann.symbol.isRetains then
-              val parent2 = stripImpliedCaptureSet(parent1)
+          case t @ AnnotatedType(parent, ann: RetainingAnnotation) if ann.isStrict =>
+            val parent1 = stripImpliedCaptureSet(this(parent))
+            if !tptToCheck.isEmpty then
+              checkWellformedLater(parent1, ann, tptToCheck)
+            try
+              checkRetainsOK:
+                CapturingType(parent1, ann.toCaptureSet)
+            catch case ex: IllegalCaptureRef =>
               if !tptToCheck.isEmpty then
-                checkWellformedLater(parent2, ann.tree, tptToCheck)
-              try
-                checkRetainsOK:
-                  CapturingType(parent2, ann.tree.toCaptureSet)
-              catch case ex: IllegalCaptureRef =>
-                if !tptToCheck.isEmpty then
-                  report.error(em"Illegal capture reference: ${ex.getMessage}", tptToCheck.srcPos)
-                parent2
-            else if ann.symbol == defn.UncheckedCapturesAnnot then
-              makeUnchecked(apply(parent))
-            else
-              t.derivedAnnotatedType(parent1, ann)
+                report.error(em"Illegal capture reference: ${ex.getMessage}", tptToCheck.srcPos)
+              parent1
+          case t @ AnnotatedType(parent, ann) =>
+            if ann.symbol == defn.UncheckedCapturesAnnot
+            then makeUnchecked(this(parent))
+            else t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
           case t @ AppliedType(tycon, args)
@@ -820,10 +818,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private def instanceCanBeImpure(tp: Type)(using Context): Boolean = {
     tp.dealiasKeepAnnots match
-      case CapturingType(_, refs) =>
+      case CapturingOrRetainsType(_, refs) =>
         !refs.isAlwaysEmpty
-      case RetainingType(parent, refs) =>
-        !refs.retainedElements.isEmpty
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass
@@ -863,15 +859,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(tp.tp1) && needsVariable(tp.tp2)
       case tp: OrType =>
         needsVariable(tp.tp1) || needsVariable(tp.tp2)
-      case CapturingType(parent, refs) =>
+      case CapturingOrRetainsType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
-      case RetainingType(parent, refs) =>
-        needsVariable(parent)
-        && !refs.retainedElements.exists:
-            case ref: TermRef => ref.isCapRef
-            case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
@@ -977,15 +968,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  @param ann      the original retains annotation
    *  @param tpt      the tree for which an error or warning should be reported
    */
-  private def checkWellformed(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
-    capt.println(i"checkWF post $parent ${ann.retainedSet} in $tpt")
+  private def checkWellformed(parent: Type, ann: RetainingAnnotation, tpt: Tree)(using Context): Unit =
+    capt.println(i"checkWF post $parent ${ann.retainedType} in $tpt")
     try
-      var retained = ann.retainedSet.retainedElements.toArray
+      var retained = ann.retainedType.retainedElements.toArray
       for i <- 0 until retained.length do
         val ref = retained(i)
-        def pos =
-          if ann.span.exists then ann.srcPos
-          else tpt.srcPos
+        def pos = tpt.srcPos
 
         def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
           if others.accountsFor(ref) then
@@ -1018,7 +1007,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  recheck because we find out only then whether capture sets are empty or
    *  capabilities are redundant.
    */
-  private def checkWellformedLater(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
+  private def checkWellformedLater(parent: Type, ann: RetainingAnnotation, tpt: Tree)(using Context): Unit =
     if !tpt.span.isZeroExtent && enclosingInlineds.isEmpty then
       todoAtPostCheck += (ctx1 =>
         checkWellformed(parent, ann, tpt)(using ctx1.withOwner(ctx.owner)))

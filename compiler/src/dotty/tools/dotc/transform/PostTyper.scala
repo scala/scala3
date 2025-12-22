@@ -201,8 +201,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try
-        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
-          then ctx.addMode(Mode.InCaptureSet) else ctx
+        val annotCtx =
+          if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet)
+          else ctx
         transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }

@@ -536,10 +536,6 @@ sealed abstract class CaptureSet extends Showable:
   /** More info enabled by -Y flags */
   def optionalInfo(using Context): String = ""
 
-  /** A regular @retains or @retainsByName annotation with the elements of this set as arguments. */
-  def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
-    Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
-
   override def toText(printer: Printer): Text =
     printer.toTextCaptureSet(this) ~~ description
 
@@ -1696,10 +1692,8 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case CapturingType(parent, refs) =>
+        case CapturingOrRetainsType(parent, refs) =>
           recur(parent) ++ refs
-        case tp @ AnnotatedType(parent, ann) if ann.symbol.isRetains =>
-          recur(parent) ++ ann.tree.toCaptureSet
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result

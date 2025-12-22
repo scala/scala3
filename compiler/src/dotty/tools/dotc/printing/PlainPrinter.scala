@@ -291,10 +291,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
-      case tp @ RetainingType(parent, refSet) =>
-        if Feature.ccEnabledSomewhere then
-          toTextCapturing(parent, refSet.retainedElementsRaw, "") ~ Str("R").provided(printDebug)
-        else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
       case tp: ErrorType =>
@@ -317,8 +313,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
-          case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            ann.tree.retainedSet.retainedElementsRaw match
+          case AnnotatedType(parent, ann: RetainingAnnotation) if !ann.isStrict =>
+            ann.retainedType.retainedElementsRaw match
               case ref :: Nil if ref.isCapRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
@@ -335,12 +331,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        if defn.SilentAnnots.contains(annot.symbol) && !printDebug then
-          toText(tpe)
-        else if annot.isInstanceOf[CaptureAnnotation] then
-          toTextLocal(tpe) ~ "^" ~ toText(annot)
-        else
-          toTextLocal(tpe) ~ " " ~ toText(annot)
+        annot match
+          case annot: RetainingAnnotation =>
+            if Feature.ccEnabledSomewhere then
+              toTextCapturing(tpe, annot.retainedType.retainedElementsRaw, "")
+              ~ Str("R").provided(printDebug)
+            else toText(tpe)
+          case annot: CaptureAnnotation =>
+            toTextLocal(tpe) ~ "^" ~ toText(annot)
+          case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
+            toText(tpe)
+          case _ =>
+            toTextLocal(tpe) ~ " " ~ toText(annot)
       case FlexibleType(_, tpe) =>
         "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
