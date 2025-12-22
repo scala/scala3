@@ -1184,19 +1184,9 @@ object Build {
       autoScalaLibrary := false,
       // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
       managedScalaInstance := false,
+      fetchedScalaInstanceSettings(scalaVersion),
       // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-nonbootstrapped`
-      Compile / sources := Seq(),
-      Compile / resources := Seq(),
-      Test / sources := Seq(),
-      Test / resources := Seq(),
-      // Bridge the common task to call the ones of the actual library project
-      Compile / compile := (`scala-library-nonbootstrapped` / Compile / compile).value,
-      Compile / doc     := (`scala-library-nonbootstrapped` / Compile / doc).value,
-      Compile / run     := (`scala-library-nonbootstrapped` / Compile / run).evaluated,
-      Test / compile := (`scala-library-nonbootstrapped` / Test / compile).value,
-      Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
-      Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
-      Test / test    := (`scala-library-nonbootstrapped` / Test / test).value,
+      emptyPublishedJarSettings,  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1396,7 +1386,7 @@ object Build {
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
       // This Project only has a dependency to `org.scala-js:scalajs-scalalib:*.**.**-bootstrapped`
-      emptyPublishedJarSettings  // Validate JAR is empty (only META-INF)
+      emptyPublishedJarSettings,  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1544,7 +1534,7 @@ object Build {
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       managedScalaInstance := false,
-      fetchedScalaInstanceSettings(Def.setting(referenceVersion)),
+      fetchedScalaInstanceSettings(scalaVersion),
       scalaCompilerBridgeBinaryJar := {
         val lm = dependencyResolution.value
         val log = streams.value.log
