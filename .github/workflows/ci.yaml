@@ -51,6 +51,12 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
+  # Run stdlib tests before publishing a release
+  stdlib-tests:
+    uses: ./.github/workflows/stdlib.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
@@ -76,6 +82,7 @@ jobs:
         shell: cmd
 
   publish_release:
+    needs: [stdlib-tests]  # Wait for stdlib tests to pass before publishing
     permissions:
       contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
