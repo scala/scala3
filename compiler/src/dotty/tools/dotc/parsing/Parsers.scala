@@ -3426,9 +3426,8 @@ object Parsers {
         if (in.token == LPAREN)
           p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
         p match
-        case nt: NameTree if isVarPattern(nt) => checkName(nt)
-        case _ =>
-        p
+        case nt: NameTree if isVarPattern(nt) => nt.checkName
+        case p => p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      *                      |  NamedPattern {‘,’ NamedPattern}
@@ -4115,9 +4114,12 @@ object Parsers {
         else EmptyTree
       lhs match {
         case IdPattern(id, t) :: Nil if t.isEmpty =>
-          val vdef = ValDef(id.name.asTermName, tpt, rhs)
-          if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
-          else checkName(id)
+          val vdef =
+            if isBackquoted(id) then
+              ValDef(id.name.asTermName, tpt, rhs)
+              .tap(_.pushAttachment(Backquoted, ()))
+            else
+              ValDef(id.checkName.name.asTermName, tpt, rhs)
           finalizeDef(vdef, mods, start)
         case _ =>
           def isAllIds = lhs.forall {
