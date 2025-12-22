@@ -495,6 +495,67 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |""".stripMargin,
     )
 
+  @Test def `extension-method` =
+    checkEdit(
+      """|object Main:
+         |  val x = 1
+         |  x.<<incr>>
+         |""".stripMargin,
+      """|object Main:
+         |  val x = 1
+         |  extension (x: Int)
+         |    def incr = ???
+         |  x.incr
+         |""".stripMargin,
+    )
+
+  @Test def `extension-method-1` =
+    checkEdit(
+      """|object Main:
+         |  val x = 1
+         |  x.<<add>>(2)
+         |""".stripMargin,
+      """|object Main:
+         |  val x = 1
+         |  extension (x: Int)
+         |    def add(arg0: Int) = ???
+         |  x.add(2)
+         |""".stripMargin,
+    )
+
+  @Test def `extension-method-2` =
+    checkEdit(
+      """|object Main:
+         |  val s = "hello"
+         |  s.<<shout>>
+         |""".stripMargin,
+      """|object Main:
+         |  val s = "hello"
+         |  extension (x: String)
+         |    def shout = ???
+         |  s.shout
+         |""".stripMargin,
+    )
+
+  @Test def `extension-method-3` =
+    checkEdit(
+      """|import java.nio.file.Paths
+         |
+         |object Main:
+         |  val p = Paths.get("test")
+         |  p.<<newMethod>>
+         |""".stripMargin,
+      """|import java.nio.file.Paths
+         |import java.nio.file.Path
+         |
+         |object Main:
+         |  val p = Paths.get("test")
+         |  extension (x: Path)
+         |    def newMethod = ???
+         |  p.newMethod
+         |""".stripMargin,
+    )
+
   def checkEdit(
       original: String,
       expected: String
