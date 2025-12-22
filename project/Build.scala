@@ -453,6 +453,60 @@ object Build {
     enableBspAllProjectsFile.exists()
   }
 
+  // Creates a scalaInstance by fetching the compiler from Maven.
+  // Used by non-bootstrapped projects that need a published compiler.
+  def fetchedScalaInstanceSettings(version: Def.Initialize[String]) = Def.settings(
+    // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+    // as a workaround, we build it manually by only adding the compiler
+    scalaInstance := {
+      val lm = dependencyResolution.value
+      val log = streams.value.log
+      val ver = version.value
+      val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / ver
+      val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+        ver, scalaModuleInfo = None, retrieveDir, log)
+        .fold(w => throw w.resolveException, identity)
+      Defaults.makeScalaInstance(
+        ver,
+        Array.empty,
+        comp.toSeq,
+        Seq.empty,
+        state.value,
+        scalaInstanceTopLoader.value,
+      )
+    },
+  )
+
+  // Common scalaInstance settings for bootstrapped projects compiled with the non-bootstrapped compiler.
+  lazy val bootstrappedScalaInstanceSettings = Def.settings(
+    managedScalaInstance := false,
+    scalaInstance := {
+      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+      // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+      // just directories containing classfiles because sbt maintains a cache of
+      // compiler instances. This cache is invalidated based on timestamps
+      // however this is only implemented on jars, directories are never
+      // invalidated.
+      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+      val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+      Defaults.makeScalaInstance(
+        dottyNonBootstrappedVersion,
+        libraryJars     = Array(scalaLibrary),
+        allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+        allDocJars      = Seq.empty,
+        state.value,
+        scalaInstanceTopLoader.value
+      )
+    },
+    scalaCompilerBridgeBinaryJar := {
+      Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+    },
+  ) ++ scaladocDerivedInstanceSettings
+
   // Setups up doc / scalaInstance to use in the bootstrapped projects instead of the default one
   lazy val scaladocDerivedInstanceSettings = Def.settings(
     // We cannot include scaladoc in the regular `scalaInstance` task because
@@ -531,34 +585,10 @@ object Build {
         scalaInstanceTopLoader.value
       )
     },
-    // We cannot include scaladoc in the regular `scalaInstance` task because
-    // it's a bootstrapped-only project, so we would run into a loop since we
-    // need the output of that task to compile scaladoc. But we can include it
-    // in the `scalaInstance` of the `doc` task which allows us to run
-    // `scala3-library-bootstrapped/doc` for example.
-    doc / scalaInstance := {
-      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
-      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
-      val docJars = Array(scalaDoc) ++ externalDeps
-
-      val base = scalaInstance.value
-      val docScalaInstance = Defaults.makeScalaInstance(
-        version = base.version,
-        libraryJars = base.libraryJars,
-        allCompilerJars = base.compilerJars,
-        allDocJars = docJars,
-        state.value,
-        scalaInstanceTopLoader.value
-      )
-      // assert that sbt reuses the same compiler class loader
-      assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
-      docScalaInstance
-    },
-    Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
     // force recompilation of bootstrapped modules when the compiler changes
     Compile / extraDevelocityCacheInputFiles ++=
       (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
-  )
+  ) ++ scaladocDerivedInstanceSettings
 
   /*lazy val commonBenchmarkSettings = Seq(
     Jmh / bspEnabled := false,
@@ -797,23 +827,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-nonbootstrapped",
-      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
-      // as a workaround, I build it manually by only adding the compiler
-      scalaInstance := {
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Defaults.makeScalaInstance(
-          scalaVersion.value,
-          Array.empty,
-          comp.toSeq,
-          Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value,
-        )},
+      fetchedScalaInstanceSettings(scalaVersion),
     )
 
   // ==============================================================================================
@@ -973,33 +987,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-bootstrapped",
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       bspEnabled := false,
     )
 
@@ -1029,33 +1017,7 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       bspEnabled := false,
     )
 
@@ -1086,33 +1048,7 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       bspEnabled := false,
     )
 
@@ -1151,33 +1087,7 @@ object Build {
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       Test / javaOptions ++= {
         val log = streams.value.log
         val managedSrcDir = {
@@ -1326,35 +1236,8 @@ object Build {
       Test    / publishArtifact := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-bootstrapped",
-      // we do not need sbt to create a managed instance for us, we do it manually in the next setting
-      managedScalaInstance := false,
       // Configure the nonbootstrapped compiler
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       // Add configuration for MiMa
       commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
@@ -1481,35 +1364,9 @@ object Build {
       libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library",
-      managedScalaInstance := false,
       autoScalaLibrary := false,
       // Configure the nonbootstrapped compiler
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       // See https://stackoverflow.com/a/51416386
       pomPostProcess := { (node: XmlNode) =>
         new RuleTransformer(new RewriteRule {
@@ -1604,23 +1461,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-nonbootstrapped",
-      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
-      // as a workaround, I build it manually by only adding the compiler
-      scalaInstance := {
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Defaults.makeScalaInstance(
-          scalaVersion.value,
-          Array.empty,
-          comp.toSeq,
-          Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value,
-        )},
+      fetchedScalaInstanceSettings(scalaVersion),
       // Add configuration of the test
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
@@ -1663,33 +1504,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-bootstrapped",
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       // Add configuration of the test
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
@@ -1749,21 +1564,7 @@ object Build {
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       managedScalaInstance := false,
-      scalaInstance := {
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / referenceVersion
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          referenceVersion, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Defaults.makeScalaInstance(
-          referenceVersion,
-          Array.empty,
-          comp.toSeq,
-          Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value,
-        )},
+      fetchedScalaInstanceSettings(Def.setting(referenceVersion)),
       scalaCompilerBridgeBinaryJar := {
         val lm = dependencyResolution.value
         val log = streams.value.log
@@ -1890,33 +1691,7 @@ object Build {
       // Generate compiler.properties, used by sbt
       Compile / resourceGenerators += generateCompilerProperties.taskValue,
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scaladocDerivedInstanceSettings,
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its
@@ -2041,33 +1816,7 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoDefaultSettings,
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scaladocDerivedInstanceSettings,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       bspEnabled := enableBspAllProjects,
     )
 
@@ -2196,31 +1945,7 @@ object Build {
     // Don't publish
     publish / skip := false,
     // Configure to use the non-bootstrapped compiler
-    scalaInstance := {
-      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-      // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-      // just directories containing classfiles because sbt maintains a cache of
-      // compiler instances. This cache is invalidated based on timestamps
-      // however this is only implemented on jars, directories are never
-      // invalidated.
-      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-      val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-      Defaults.makeScalaInstance(
-        dottyNonBootstrappedVersion,
-        libraryJars     = Array(scalaLibrary),
-        allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-        allDocJars      = Seq.empty,
-        state.value,
-        scalaInstanceTopLoader.value
-      )
-    },
-    scalaCompilerBridgeBinaryJar := {
-      Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-    },
+    bootstrappedScalaInstanceSettings,
   )
 
   /** A sandbox to play with the Scala.js back-end of dotty.
@@ -2491,32 +2216,7 @@ object Build {
         )
       },
       // Configure to use the non-bootstrapped compiler
-      managedScalaInstance := false,
-      scalaInstance := {
-        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-
-        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-        // just directories containing classfiles because sbt maintains a cache of
-        // compiler instances. This cache is invalidated based on timestamps
-        // however this is only implemented on jars, directories are never
-        // invalidated.
-        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
-        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
-        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
-
-        Defaults.makeScalaInstance(
-          dottyNonBootstrappedVersion,
-          libraryJars     = Array(scalaLibrary),
-          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
-          allDocJars      = Seq.empty,
-          state.value,
-          scalaInstanceTopLoader.value
-        )
-      },
-      scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
-      },
+      bootstrappedScalaInstanceSettings,
       Test / forkOptions := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
       bspEnabled := false,
     )
