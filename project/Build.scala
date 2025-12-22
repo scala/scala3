@@ -1255,6 +1255,7 @@ object Build {
   lazy val `scala3-library-bootstrapped-new` = project.in(file("library"))
     .dependsOn(`scala-library-bootstrapped`)
     .settings(publishSettings)
+    .settings(emptyJarPackageSettings)
     .settings(
       name          := "scala3-library-bootstrapped",
       moduleName    := "scala3-library",
@@ -1392,6 +1393,7 @@ object Build {
   lazy val `scala3-library-sjs` = project.in(file("library-js"))
     .dependsOn(`scala-library-sjs`)
     .settings(publishSettings)
+    .settings(emptyJarPackageSettings) // Validate JAR is empty (only META-INF)
     .settings(
       name          := "scala3-library-sjs",
       moduleName    := "scala3-library_sjs1",
@@ -2831,6 +2833,43 @@ object Build {
         assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
     }
   }
+  /** Helper to validate JAR contents */
+  private def validateJarIsEmpty(jar: File): File = {
+    val jarFile = new java.util.jar.JarFile(jar)
+    try {
+      import scala.jdk.CollectionConverters._
+      val nonMetaInfEntries = jarFile.entries().asScala
+        .map(_.getName)
+        .filterNot(name => name.startsWith("META-INF/") || name == "META-INF")
+        .toList
+
+      if (nonMetaInfEntries.nonEmpty) {
+        val entriesList = nonMetaInfEntries.take(10).mkString("\n  - ", "\n  - ", "")
+        val truncated = if (nonMetaInfEntries.size > 10) s"\n  ... and ${nonMetaInfEntries.size - 10} more" else ""
+        sys.error(
+          s"""JAR ${jar.getName} should only contain META-INF entries but found ${nonMetaInfEntries.size} other entries:$entriesList$truncated
+             |
+             |This artifact is intended to be an empty placeholder that only declares dependencies.
+             |If you need to add content, please verify this is intentional.""".stripMargin
+        )
+      }
+    } finally jarFile.close()
+    jar
+  }
+
+  /** Settings for projects that should produce empty JARs (only META-INF allowed).
+   *  These are dependency placeholder projects like scala3-library-bootstrapped-new and scala3-library-sjs.
+   *  Validates: .jar, -sources.jar, and -javadoc.jar
+   */
+  lazy val emptyJarPackageSettings = Def.settings(
+    Compile / sources := Seq(),
+    Compile / resources := Seq(),
+    Test / sources := Seq(),
+    Test / resources := Seq(),
+    Compile / packageBin := (Compile / packageBin).map(validateJarIsEmpty).value,
+    Compile / packageSrc := (Compile / packageSrc).map(validateJarIsEmpty).value,
+    Compile / packageDoc := (Compile / packageDoc).map(validateJarIsEmpty).value,
+  )
 }
 
 object ScaladocConfigs {
