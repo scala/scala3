@@ -1538,9 +1538,10 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         val lm = dependencyResolution.value
         val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-sbt-bridge" / referenceVersion
+        val version = scalaVersion.value
+        val retrieveDir = streams.value.cacheDirectory / "scala3-sbt-bridge" / version
         val comp = lm.retrieve("org.scala-lang" % "scala3-sbt-bridge" %
-          referenceVersion, scalaModuleInfo = None, retrieveDir, log)
+          version, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
         Some(comp(0))
       },
