@@ -1,10 +1,19 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:26 -----------------------------------------
 11 |  val _: () ->{} String = z  // error
    |                          ^
-   |                          Found:    (z : () ->{cap1} String)
+   |                          Found:    (z : () ->{cap1, x.rd} String)
    |                          Required: () -> String
    |
    |                          Note that capability cap1 is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:14:24 -----------------------------------------
+14 |  val z2c: () -> Unit = z2 // error
+   |                        ^^
+   |                        Found:    (z2 : () ->{x} Unit)
+   |                        Required: () -> Unit
+   |
+   |                        Note that capability x is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------

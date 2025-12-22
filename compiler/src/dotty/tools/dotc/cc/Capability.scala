@@ -459,6 +459,18 @@ object Capabilities:
       case self: CoreCapability => self.isTrackableRef
       case _ => true
 
+    /** Under separatiion checking: Is this a mutable var owned by a term that is
+     *  not annotated with @untrackedCaptures? Such mutable variables need to be
+     *  tracked as capabilities. Since mutable variables are not trackable, we do
+     *  this by adding a varMirror symbol to such variables which represents the capability.
+     */
+    final def isLocalMutable(using Context): Boolean = this match
+      case tp @ TermRef(NoPrefix, _) =>
+        ccConfig.newScheme && ccConfig.strictMutability
+        && tp.symbol.isMutableVar
+        && !tp.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
+      case _ => false
+
     /** The non-derived capability underlying this capability */
     final def core: CoreCapability | RootCapability = this match
       case self: (CoreCapability | RootCapability) => self

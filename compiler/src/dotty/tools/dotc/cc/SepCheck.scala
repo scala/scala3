@@ -744,7 +744,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val captured = genPart.deepCaptureSet.elems
       val hiddenSet = captured.transHiddenSet.pruned
       val clashSet = otherPart.deepCaptureSet.elems
-      val deepClashSet = clashSet.completeFootprint.nonPeaks.pruned
+      var deepClashSet = clashSet.completeFootprint.nonPeaks.pruned
+      if deepClashSet.isEmpty then
+        deepClashSet = clashSet.completeFootprint.pruned
       report.error(
         em"""Separation failure in ${role.description} $tpe.
             |One part,  $genPart, hides capabilities  ${CaptureSet(hiddenSet)}.

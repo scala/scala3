@@ -121,7 +121,7 @@ object Mutability:
         && (!tp.isStatefulType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
 
   extension (ref: TermRef | ThisType)
-    /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
+    /** Map `ref` to `ref.readOnly` if its type extends Mutable, and one of the
      *  following is true:
      *    - it appears in a non-exclusive context,
      *    - the expected type is a value type that is not a stateful type,

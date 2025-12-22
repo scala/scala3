@@ -566,9 +566,7 @@ object TypeOps:
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
-      def toAvoid(tp: NamedType) =
-        val sym = tp.symbol
-        forbidden.contains(sym)
+      def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
 
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>

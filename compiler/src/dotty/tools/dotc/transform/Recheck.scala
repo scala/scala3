@@ -392,10 +392,13 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
+    protected def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+      TypeOps.avoid(tp, symsToAvoid)
+
     private def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =
       recheckStats(stats)
       val exprType = recheck(expr, pt)
-      TypeOps.avoid(exprType, localSyms(stats).filterConserve(_.isTerm))
+      avoidLocals(exprType, localSyms(stats).filterConserve(_.isTerm))
 
     def recheckBlock(tree: Block, pt: Type)(using Context): Type = tree match
       case Block((mdef : DefDef) :: Nil, closure: Closure) =>
@@ -439,7 +442,7 @@ abstract class Recheck extends Phase, SymTransformer:
       // for blocks since a case branch is of the form `return[MatchResultN] { ... }`
       // For source-level returns from methods, there's nothing to avoid, since the
       // result type of a method with a return must be given explicitly.
-      def avoidMap = new TypeOps.AvoidMap:
+      val avoidMap = new TypeOps.AvoidMap:
         def toAvoid(tp: NamedType) =
            tp.symbol.is(Case) && tp.symbol.owner.isContainedIn(ctx.owner)
 

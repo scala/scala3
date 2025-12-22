@@ -79,6 +79,11 @@ class CCState:
   object Unrecorded extends VarState.Unrecorded
   object ClosedUnrecorded extends VarState.ClosedUnrecorded
 
+  // ----- Mirrors for local vars -------------------------
+
+  /** A cache for mirrors of local mutable vars */
+  val varMirrors = util.EqHashMap[Symbol, Symbol]()
+
   // ------ Context info accessed from companion object when isCaptureCheckingOrSetup is true
 
   private var openExistentialScopes: List[MethodType] = Nil

@@ -9,9 +9,9 @@ def test(cap1: Cap, cap2: Cap) =
   val y = x
   val z = () => if x("") == "" then "a" else "b"
   val _: () ->{} String = z  // error
-  val zc: () ->{cap1} String = z
+  val zc: () ->{cap1, x.rd} String = z
   val z2 = () => { x = identity }
-  val z2c: () -> Unit = z2
+  val z2c: () -> Unit = z2 // error
   var a = f
 
   var b: List[String ->{cap1, cap2} String] = Nil
