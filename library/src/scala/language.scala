@@ -167,8 +167,8 @@ object language {
    *  types of methods. If `existentials` is not enabled, those cases will trigger
    *  a warning from the compiler.
    *
-   *  Existential types with wildcard type syntax such as `List[_]`,
-   *  or `Map[String, _]` are not affected.
+   *  Existential types with wildcard type syntax such as `List[?]`,
+   *  or `Map[String, ?]` are not affected.
    *
    *  '''Why keep the feature?''' Existential types are needed to make sense of Java’s wildcard
    *  types and raw types and the erased types of run-time values.
