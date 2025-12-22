@@ -1420,7 +1420,7 @@ object Build {
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
       // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-bootstrapped`
-      emptyJarPackageSettings,
+      emptyPublishedJarSettings,  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1566,7 +1566,6 @@ object Build {
   lazy val `scala3-library-sjs` = project.in(file("library-js"))
     .dependsOn(`scala-library-sjs`)
     .settings(publishSettings)
-    .settings(emptyJarPackageSettings) // Validate JAR is empty (only META-INF)
     .settings(
       name          := "scala3-library-sjs",
       moduleName    := "scala3-library_sjs1",
@@ -1581,7 +1580,7 @@ object Build {
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
       // This Project only has a dependency to `org.scala-js:scalajs-scalalib:*.**.**-bootstrapped`
-      emptyJarPackageSettings
+      emptyPublishedJarSettings  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -3202,7 +3201,7 @@ object Build {
    *  These are dependency placeholder projects like scala3-library-bootstrapped-new and scala3-library-sjs.
    *  Validates: .jar, -sources.jar, and -javadoc.jar
    */
-  lazy val emptyJarPackageSettings = Def.settings(
+  lazy val emptyPublishedJarSettings = Def.settings(
     Compile / sources := Seq(),
     Compile / resources := Seq(),
     Test / sources := Seq(),
