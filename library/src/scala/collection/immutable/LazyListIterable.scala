@@ -1264,13 +1264,26 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     if (it.hasNext) eagerCons(it.next(), newLL(eagerHeadFromIterator(it)))
     else Empty
 
+  // TODO This should be (xss: (collection.Iterable[A]^)*)
   override def concat[A](xss: collection.Iterable[A]*): LazyListIterable[A] =
     if (xss.knownSize == 0) empty
     else newLL(eagerHeadConcatIterators(xss.iterator))
 
-  private def eagerHeadConcatIterators[A](it: Iterator[collection.Iterable[A]^]^): LazyListIterable[A]^{it} =
-    if (!it.hasNext) Empty
-    else eagerHeadPrependIterator(it.next().iterator)(eagerHeadConcatIterators(it))
+  /* TODO This should be:
+  private def eagerHeadConcatIterators[A](it: Iterator[collection.Iterable[A]^]^): LazyListIterable[A]^{it*} =
+    if !it.hasNext then Empty
+    else
+      eagerHeadPrependIterator
+          (caps.unsafe.unsafeDiscardUses(it.next()).iterator)
+          (eagerHeadConcatIterators(it))
+  */
+
+  private def eagerHeadConcatIterators[A](it: Iterator[collection.Iterable[A]]^): LazyListIterable[A]^{it} =
+    if !it.hasNext then Empty
+    else
+      eagerHeadPrependIterator
+          (it.next().iterator)
+          (eagerHeadConcatIterators(it))
 
   /** An infinite LazyListIterable that repeatedly applies a given function to a start value.
     *
