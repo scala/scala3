@@ -455,13 +455,13 @@ object Build {
 
   // Creates a scalaInstance by fetching the compiler from Maven.
   // Used by non-bootstrapped projects that need a published compiler.
-  def fetchedScalaInstanceSettings(version: Def.Initialize[String]) = Def.settings(
+  def fetchedScalaInstanceSettings = Def.settings(
     // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
     // as a workaround, we build it manually by only adding the compiler
     scalaInstance := {
       val lm = dependencyResolution.value
       val log = streams.value.log
-      val ver = version.value
+      val ver = scalaVersion.value
       val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / ver
       val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
         ver, scalaModuleInfo = None, retrieveDir, log)
@@ -827,7 +827,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-nonbootstrapped",
-      fetchedScalaInstanceSettings(scalaVersion),
+      fetchedScalaInstanceSettings,
     )
 
   // ==============================================================================================
@@ -1184,7 +1184,7 @@ object Build {
       autoScalaLibrary := false,
       // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
       managedScalaInstance := false,
-      fetchedScalaInstanceSettings(scalaVersion),
+      fetchedScalaInstanceSettings,
       // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-nonbootstrapped`
       emptyPublishedJarSettings,  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
@@ -1431,7 +1431,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-nonbootstrapped",
-      fetchedScalaInstanceSettings(scalaVersion),
+      fetchedScalaInstanceSettings,
       // Add configuration of the test
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
@@ -1534,7 +1534,7 @@ object Build {
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       managedScalaInstance := false,
-      fetchedScalaInstanceSettings(scalaVersion),
+      fetchedScalaInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         val lm = dependencyResolution.value
         val log = streams.value.log
