@@ -26,7 +26,7 @@ jobs:
           cache: 'sbt'
       - name: Setup PGP Key
         run: |
-          echo -n "$PGP_SECRET" | base64 --decode | gpg --batch --import
+          echo -n "$PGP_SECRET" | gpg --batch --import
         env:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
       - uses: sbt/setup-sbt@v1
