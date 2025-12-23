@@ -29,6 +29,12 @@ jobs:
           echo -n "$PGP_SECRET" | gpg --batch --import
         env:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
+      - name: Setup SBT PGP
+        run: |
+          mkdir -p "~/.sbt/gpg"
+          echo "$PGP_SECRET" > "~/.sbt/gpg/secring.asc"
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
       - uses: sbt/setup-sbt@v1
       - name: Publish Artifacts to the Maven Repository
         run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
