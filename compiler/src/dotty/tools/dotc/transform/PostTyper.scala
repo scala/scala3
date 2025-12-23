@@ -651,7 +651,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-          Checking.checkRealizable(ref.tpe, ref.srcPos)
+          if !ctx.mode.is(Mode.InCaptureSet) then
+            Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
         case tree: TypeBoundsTree =>
           val TypeBoundsTree(lo, hi, alias) = tree

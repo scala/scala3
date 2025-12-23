@@ -74,6 +74,8 @@ extension (tp: Type)
       GlobalCap
     case ref: Capability if ref.isTrackableRef =>
       ref
+    case ref: TermRef if ref.isLocalMutable =>
+      ref.mapLocalMutable
     case _ =>
       // if this was compiled from cc syntax, problem should have been reported at Typer
       throw IllegalCaptureRef(tp)
@@ -493,6 +495,12 @@ extension (tp: MethodType)
   def marksExistentialScope(using Context): Boolean =
     !tp.resType.isInstanceOf[MethodOrPoly]
 
+extension (ref: TermRef | ThisType)
+  /** Map a local mutable var to its mirror */
+  def mapLocalMutable(using Context): TermRef | ThisType = ref match
+    case ref: TermRef if ref.isLocalMutable => ref.symbol.varMirror.termRef
+    case _ => ref
+
 extension (cls: ClassSymbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
@@ -665,6 +673,16 @@ extension (sym: Symbol)
 
   def isArrayUnderStrictMut(using Context): Boolean =
     sym == defn.ArrayClass && ccConfig.strictMutability
+
+  def isDisallowedInCapset(using Context): Boolean =
+    sym.isOneOf(if ccConfig.newScheme && ccConfig.strictMutability then Method else UnstableValueFlags)
+
+  def varMirror(using Context): Symbol =
+    ccState.varMirrors.getOrElseUpdate(sym,
+      sym.copy(
+        flags = Flags.EmptyFlags,
+        info = defn.Caps_Var.typeRef.appliedTo(sym.info)
+            .capturing(FreshCap(sym, Origin.InDecl(sym)))))
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

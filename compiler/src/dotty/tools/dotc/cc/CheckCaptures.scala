@@ -106,14 +106,14 @@ object CheckCaptures:
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
    */
-  def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
+  def checkWellformedRetains(parent: Tree, ann: Tree)(using Context): Unit =
     def check(elem: Type): Unit = elem match
       case ref: TypeRef =>
         val refSym = ref.symbol
         if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
           report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
       case ref: CoreCapability =>
-        if !ref.isTrackableRef && !ref.isCapRef then
+        if !ref.isTrackableRef && !ref.isCapRef && !ref.isLocalMutable then
           report.error(em"$elem cannot be tracked since it is not a parameter or local value", ann.srcPos)
       case ReachCapability(ref) =>
         check(ref)
@@ -306,7 +306,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private val useInfos = mutable.ArrayBuffer[(Tree, CaptureSet, Env)]()
 
-    private var usedSet = util.EqHashMap[Tree, CaptureSet]()
+    private val usedSet = util.EqHashMap[Tree, CaptureSet]()
 
     /** The set of symbols that were rechecked via a completer */
     private val completed = new mutable.HashSet[Symbol]
@@ -690,8 +690,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Lazy vals are like parameterless methods: accessing them may trigger initialization
         // that uses captured references.
         includeCallCaptures(sym, sym.info, tree)
-      else if sym.exists && !sym.isStatic then
-        markPathFree(sym.termRef, pt, tree)
+      else
+        if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
+          // When we have `var x: A^{c} = ...` where `x` is a local variable then
+          // when dereferencing `x` we also need to charge `c`.
+          // For fields it's not a problem since `c` would already have been
+          // charged for the prefix `p` in `p.x`.
+          markFree(sym.info.captureSet, tree)
+        if sym.exists && !sym.isStatic then
+          markPathFree(sym.termRef, pt, tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
     override def recheckThis(tree: This, pt: Type)(using Context): Type =
@@ -713,7 +720,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val sel = ref.select(pt.selector).asInstanceOf[TermRef]
         markPathFree(sel, pt.pt, pt.select)
       case _ =>
-        markFree(ref.adjustReadOnly(pt), tree)
+        markFree(ref.mapLocalMutable.adjustReadOnly(pt), tree)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
@@ -1062,7 +1069,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       lhsType match
         case lhsType @ TermRef(qualType, _)
-        if (qualType ne NoPrefix) && !lhsType.symbol.hasAnnotation(defn.UntrackedCapturesAnnot) =>
+        if !lhsType.symbol.hasAnnotation(defn.UntrackedCapturesAnnot) =>
           checkUpdate(qualType, tree.srcPos)(i"Cannot assign to field ${lhsType.name} of ${qualType.showRef}")
         case _ =>
       defn.UnitType
@@ -1134,6 +1141,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       finally
         openClosures = openClosures.tail
     end recheckClosureBlock
+
+    /** Add var mirrors to the list of block-local symbols to avoid */
+    override def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+      val locals = symsToAvoid
+      val varMirrors = locals.collect:
+        case local if local.termRef.isLocalMutable => local.varMirror
+      super.avoidLocals(tp, varMirrors ++ locals)
 
     /** Elements of a SeqLiteral instantiate a Seq or Array parameter, so they
      *  should be boxed.

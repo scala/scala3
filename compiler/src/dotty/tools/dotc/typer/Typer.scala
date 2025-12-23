@@ -2664,15 +2664,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       errorTree(tree,
         em"Illegal context bound: ${tycon.tpe} does not take type parameters$selfNote.")
 
-  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): Tree = {
-    val ref1 = typedExpr(tree.ref, SingletonTypeProto)
-    if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.isDummyCaptureParam then
-      // When a dummy term capture variable is found, it is replaced with
-      // the corresponding type references (stored in the underling types).
-      return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)
-    checkStable(ref1.tpe, tree.srcPos, "singleton type")
-    assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
-  }
+  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree, pt: Type)(using Context): Tree =
+    tree.ref match
+      case Annotated(parent, ann) if ctx.mode.is(Mode.InCaptureSet) =>
+        // Types of the form `(ref @ann).type` arise as a result of parsing capabilities
+        // in capture sets. Convert them to types `ref.type @ ann`. This is needed since
+        // otherwise we try to type the widened type of `ref` which gives an error in `checkStable`.
+        typedAnnotated(cpy.Annotated(tree)(untpd.SingletonTypeTree(parent), ann), pt)
+      case _ =>
+        val ref1 = typedExpr(tree.ref, SingletonTypeProto)
+        if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.isDummyCaptureParam then
+          // When a dummy term capture variable is found, it is replaced with
+          // the corresponding type references (stored in the underling types).
+          return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)
+        checkStable(ref1.tpe, tree.srcPos, "singleton type")
+        assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
 
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree = {
     val tpt1 = if tree.tpt == EmptyTree then TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
@@ -3596,7 +3602,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
       if Feature.ccEnabled && cls.isRetainsLike then
-        CheckCaptures.checkWellformed(arg1, annot1)
+        CheckCaptures.checkWellformedRetains(arg1, annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
       else
@@ -3806,7 +3812,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
           case tree: untpd.Inlined => typedInlined(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
-          case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
+          case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree, pt)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(using ctx.localContext(tree, NoSymbol).setNewScope)

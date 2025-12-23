@@ -1,9 +1,10 @@
--- Error: tests/neg-custom-args/captures/i24309-region-orig.scala:17:36 ------------------------------------------------
-17 |    val x = r1.subregion[Ref^{r1.R}]: r2 =>  // error, limitation
-   |            ^
-   |            Local reach capability r1.R leaks into capture scope of an enclosing function.
-   |            You could try to abstract the capabilities referred to by r1.R in a capset variable.
-   |
-18 |      var a: Ref^{r1.R} = r1.alloc(0)
-19 |...
-21 |      a
+-- Error: tests/neg-custom-args/captures/i24309-region-orig.scala:20:26 ------------------------------------------------
+20 |      val c: Ref^{r1.R} = b     // error, limitation
+   |                          ^
+   |                          Local reach capability r2.R leaks into capture scope of an enclosing function.
+   |                          You could try to abstract the capabilities referred to by r2.R in a capset variable.
+-- Error: tests/neg-custom-args/captures/i24309-region-orig.scala:21:6 -------------------------------------------------
+21 |      a                         // error, limitation
+   |      ^
+   |      Local reach capability r1.R leaks into capture scope of an enclosing function.
+   |      You could try to abstract the capabilities referred to by r1.R in a capset variable.

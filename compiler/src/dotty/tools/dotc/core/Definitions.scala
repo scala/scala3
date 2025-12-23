@@ -1027,9 +1027,11 @@ class Definitions {
     @tu lazy val Caps_unsafeDiscardUses: Symbol = CapsUnsafeModule.requiredMethod("unsafeDiscardUses")
     @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
+    @tu lazy val Caps_Shared: TypeSymbol = CapsModule.requiredType("Shared")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_freeze: TermSymbol = CapsModule.requiredMethod("freeze")
+    @tu lazy val Caps_Var: ClassSymbol = requiredClass("scala.caps.internal.Var")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
@@ -1988,10 +1990,10 @@ class Definitions {
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
     Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
-    RequiresCapabilityAnnot,
+    Caps_Shared, RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
-    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 

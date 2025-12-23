@@ -191,6 +191,12 @@ object internal:
    */
   def erasedValue[T]: T = ???
 
+  /** A trait for capabilities representing usage of mutable vars in capture sets.
+   */
+  trait Var[T] extends Mutable:
+    def get: T
+    update def set(x: T): Unit
+
 end internal
 
 /** A wrapper that strips all covariant capture sets from Mutable types in the
