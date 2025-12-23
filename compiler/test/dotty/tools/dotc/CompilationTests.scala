@@ -149,7 +149,7 @@ class CompilationTests {
 
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
-    aggregateTests(
+    var tests = List(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
@@ -160,7 +160,13 @@ class CompilationTests {
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures),
-    ).checkExpectedErrors()
+    )
+
+    // i20491: Test JDK version mismatch error - only run on JDK < 21
+    if !scala.util.Properties.isJavaAtLeast("21") then
+      tests ::= compileFile("tests/neg-custom-args/i20491/Test.scala", defaultOptions.withClasspath("tests/neg-custom-args/i20491/cp"))
+
+    aggregateTests(tests*).checkExpectedErrors()
   }
 
   @Test def fuzzyAll: Unit = {
