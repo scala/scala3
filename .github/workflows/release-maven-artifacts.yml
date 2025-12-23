@@ -45,12 +45,17 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: scala/scala3-lts
-          ref: lts-3.3
+          ref: lts-3.3-test
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 8
           cache: 'sbt'
+      - name: Setup PGP Key
+        run: |
+          echo -n "$PGP_SECRET" | base64 --decode | gpg --batch --import
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
       - uses: sbt/setup-sbt@v1
       - name: Publish Artifacts to the Maven Repository
         run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
