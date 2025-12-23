@@ -459,7 +459,7 @@ object Capabilities:
       case self: CoreCapability => self.isTrackableRef
       case _ => true
 
-    /** Under separatiion checking: Is this a mutable var owned by a term that is
+    /** Under separation checking: Is this a mutable var owned by a term that is
      *  not annotated with @untrackedCaptures? Such mutable variables need to be
      *  tracked as capabilities. Since mutable variables are not trackable, we do
      *  this by adding a varMirror symbol to such variables which represents the capability.
