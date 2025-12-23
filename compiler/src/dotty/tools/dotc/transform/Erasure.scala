@@ -20,6 +20,7 @@ import core.Decorators.*
 import core.Constants.*
 import core.Definitions.*
 import core.Annotations.BodyAnnotation
+import core.MissingType
 import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
@@ -49,7 +50,7 @@ class Erasure extends Phase with DenotTransformer {
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
 
-  def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = try ref match {
     case ref: SymDenotation =>
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
@@ -130,7 +131,10 @@ class Erasure extends Phase with DenotTransformer {
         ref.symbol, transformInfo(ref.symbol, ref.symbol.info), currentStablePeriod, ref.prefix)
     case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
-  }
+  } catch case ex: MissingType =>
+    // Handle missing types from dependencies (e.g., JDK version mismatch)
+    report.error(ex.toMessage, ref.symbol.srcPos)
+    ref  // Keep old denotation on error
 
   private val eraser = new Erasure.Typer(this)
 
