@@ -29,10 +29,12 @@ jobs:
           echo -n "$PGP_SECRET" | gpg --batch --import
         env:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
+      - name: Setup SBT PGP directory
+        run: |
+          mkdir -p "/home/runner/.sbt/gpg"
       - name: Setup SBT PGP
         run: |
-          mkdir -p "~/.sbt/gpg"
-          echo "$PGP_SECRET" > "~/.sbt/gpg/secring.asc"
+          echo "$PGP_SECRET" > "/home/runner/.sbt/gpg/secring.asc"
         env:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
       - uses: sbt/setup-sbt@v1
