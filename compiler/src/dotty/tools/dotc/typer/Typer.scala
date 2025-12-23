@@ -4492,7 +4492,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && !ctx.mode.is(Mode.ImplicitExploration)
               && !containsUninst(false, formal)
               && !isFullyDefined(formal, ForceDegree.none) then
-              NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
+              constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             lazy val defaultArg = findDefaultArgument(argIndex)
@@ -4516,8 +4516,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // searching more arguments to instantiate implicits (PR #23532). A failing project
             // is described in issue #23609.
             def tryConstrainResult(pt: Type): Boolean =
-              try constrainResult(tree.symbol, wtp, pt)
-              catch case ex: TyperState.BadTyperStateAssertion => false
+              constrainResult(tree.symbol, wtp, pt)
 
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
