@@ -664,6 +664,7 @@ object StdNames {
     val valueOf : N             = "valueOf"
     val fromOrdinal: N          = "fromOrdinal"
     val values: N               = "values"
+    val valhalla: N             = "valhalla"
     val view_ : N               = "view"
     val varargGetter : N        = "varargGetter"
     val wait_ : N               = "wait"

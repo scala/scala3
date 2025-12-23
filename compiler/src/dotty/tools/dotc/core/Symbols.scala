@@ -217,6 +217,10 @@ object Symbols extends SymUtils {
     final def isStatic(using Context): Boolean =
       lastDenot.initial.isStatic
 
+    /** Overridden by ClassSymbol */
+    def isValhallaValueClass(using Context): Boolean =
+      false
+
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type = {
       if (this.owner.isClass) {
@@ -536,6 +540,9 @@ object Symbols extends SymUtils {
             }
       mySource
     }
+
+    override final def isValhallaValueClass(using Context): Boolean =
+      classDenot.isValhallaValueClass
 
     final def classDenot(using Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]

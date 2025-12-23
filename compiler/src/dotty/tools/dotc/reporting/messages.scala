@@ -3749,3 +3749,27 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+class ValueClassCannotExtendIdentityClass(valueClass: Symbol, parent: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendIdentityClassID) {
+  def msg(using Context) = i"""A Valhalla value class cannot extend Identity Class ($parent)}"""
+  def explain(using Context) = ""
+}
+
+class ValueClassMustNotExtendTraitWithMutableField(parentClass: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassMustNotExtendTraitWithMutableFieldID) {
+  def msg(using Context) = i"""A Valhalla value class/trait cannot extend $parentClass with mutable field ($field)"""
+  def explain(using Context) = ""
+}
+
+class IncorrectValueClassDeclaration(isClass: Boolean)(using Context)
+  extends SyntaxMsg(IncorrectValueClassDeclarationID) {
+  def msg(using Context) = i"""Incorrect Valhalla value class declaration: Valhalla ${if isClass then "value classes" else "traits"} must extend ${if isClass then "AnyVal" else "Any"}."""
+  def explain(using Context) = "Valhalla Value Classes and Traits need to extend AnyVal or Any respectively."
+}
+
+class ValhallaTraitsMayNotHaveSelfTypesWithVars(selfTypeSym: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(ValhallaTraitsMayNotHaveSelfTypesWithVarsID) {
+  def msg(using Context) = i"""A Valhalla trait may not have a self type ($selfTypeSym) with mutable field ($field)."""
+  def explain(using Context) = ""
+}
