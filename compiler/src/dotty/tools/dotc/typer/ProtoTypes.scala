@@ -657,11 +657,29 @@ object ProtoTypes {
    *  [](args): resultType, where args are known to be typed
    */
   class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
-  extends FunProto(args, resultType)(typer, applyKind):
+    extends FunProto(args, resultType)(typer, applyKind) {
     override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): List[tpd.Tree] = args
     override def typedArg(arg: untpd.Tree, formal: Type)(using Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
     override def allArgTypesAreCurrent()(using Context): Boolean = true
     override def withContext(ctx: Context): FunProtoTyped = this
+
+    override def map(tm: TypeMap)(using Context): FunProtoTyped =
+      derivedFunProtoTyped(args, tm(resultType), typer)
+
+    override def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
+      ta(ta.foldOver(x, typedArgs().tpes), resultType)
+
+    def derivedFunProtoTyped(
+        args: List[tpd.Tree] = this.args,
+        resultType: Type = this.resultType,
+        typer: Typer = this.typer): FunProtoTyped =
+      if (args eq this.args)
+        && (resultType eq this.resultType)
+        && (typer eq this.typer)
+      then this
+      else FunProtoTyped(args, resultType)(typer, applyKind)
+  }
+
 
   /** A prototype for implicitly inferred views:
    *
