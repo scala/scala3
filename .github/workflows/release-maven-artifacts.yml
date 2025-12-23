@@ -39,10 +39,10 @@ jobs:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
       - uses: sbt/setup-sbt@v1
       - name: Publish Artifacts to the Maven Repository
-        run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
+        run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned"
         env:
-          SONATYPE_USER         : ${{ secrets.MAVEN_REPOSITORY_USER }}
-          SONATYPE_PW           : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
+          MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
+          MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
           MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
           MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
           MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
