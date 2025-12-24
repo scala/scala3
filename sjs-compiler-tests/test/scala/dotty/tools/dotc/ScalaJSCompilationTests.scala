@@ -8,6 +8,7 @@ import org.junit.experimental.categories.Category
 import scala.concurrent.duration._
 import reporting.TestReporter
 import vulpix._
+import org.junit.Ignore
 
 @Category(Array(classOf[ScalaJSCompilationTests]))
 class ScalaJSCompilationTests {
@@ -38,7 +39,7 @@ object ScalaJSCompilationTests extends ParallelTesting {
 
   // Test suite configuration --------------------------------------------------
   def maxDuration = 60.seconds
-  def numberOfSlaves = 5
+  def numberOfWorkers = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

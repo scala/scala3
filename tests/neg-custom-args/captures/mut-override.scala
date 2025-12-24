@@ -1,19 +1,19 @@
-import caps.Mutable
+import caps.Stateful
 
-trait IterableOnce[T] extends Mutable:
+trait IterableOnce[T] extends Stateful:
   def iterator: Iterator[T]^{this}
-  mut def foreach(op: T => Unit): Unit
+  update def foreach(op: T => Unit): Unit
 
 trait Iterator[T] extends IterableOnce[T]:
   def iterator = this
   def hasNext: Boolean
-  mut def next(): T
-  mut def foreach(op: T => Unit): Unit = ???
-  override mut def toString = ???   // error
+  update def next(): T
+  update def foreach(op: T => Unit): Unit = ???
+  override update def toString = ???   // error
 
 trait Iterable[T] extends IterableOnce[T]:
   def iterator: Iterator[T] = ???
   def foreach(op: T => Unit) = iterator.foreach(op)
 
 trait BadIterator[T] extends Iterator[T]:
-  override mut def hasNext: Boolean  // error
+  override update def hasNext: Boolean  // error

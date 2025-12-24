@@ -2,33 +2,33 @@ import language.experimental.captureChecking
 import annotation.experimental
 import caps.{CapSet, SharedCapability}
 import caps.use
+import caps.unsafe.untrackedCaptures
 
 @experimental object Test:
 
   class Async extends SharedCapability
 
-  def listener(async: Async): Listener^{async} = ???
+  def listener[C^](async: Async^{C}): Listener^{async} = ???
 
   class Listener
 
   class Source[X^]:
-    private var listeners: Set[Listener^{X}] = Set.empty
+    @untrackedCaptures private var listeners: Set[Listener^{X}] = Set.empty
     def register(x: Listener^{X}): Unit =
       listeners += x
 
     def allListeners: Set[Listener^{X}] = listeners
 
-  def test1(async1: Async, @use others: List[Async]) =
-    val src = Source[{async1, others*}]
-    val _: Set[Listener^{async1, others*}] = src.allListeners
+  def test1[C^](async1: Async, others: List[Async^{C}]) =
+    val src = Source[{async1, C}]
+    val _: Set[Listener^{async1, C}] = src.allListeners
     val lst1 = listener(async1)
-    val lsts = others.map(listener)
-    val _: List[Listener^{others*}] = lsts
+    val lsts = others.map(listener[C])
+    val _: List[Listener^{C}] = lsts
     src.register{lst1}
     src.register(listener(async1))
     lsts.foreach(src.register(_)) // TODO: why we need to use _ explicitly here?
-    others.map(listener).foreach(src.register(_))
+    others.map(listener[C]).foreach(src.register(_))
     val ls = src.allListeners
-    val _: Set[Listener^{async1, others*}] = ls
-
+    val _: Set[Listener^{async1, C}] = ls
 

@@ -20,6 +20,8 @@ import StdNames.*
 import config.Feature
 import inlines.Inlines.inInlineMethod
 import util.Property
+import inlines.Inlines
+import reporting.InlinedAnonClassWarning
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -206,6 +208,11 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
         if (c) tree.thenp else tree.elsep
       case _ => tree
     }
+
+  override def transformTypeDef(tree: TypeDef)(using Context): Tree =
+    if tree.symbol.isAnonymousClass && Inlines.inInlineMethod then
+      report.warning(InlinedAnonClassWarning(), tree.symbol.sourcePos)
+    tree
 
   /** Perform one of the following simplification if applicable:
    *

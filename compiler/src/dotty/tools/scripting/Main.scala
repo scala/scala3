@@ -1,7 +1,5 @@
 package dotty.tools.scripting
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin
@@ -80,7 +78,7 @@ object Main:
       writer.close()
   end writeJarfile
 
-  def pathsep = sys.props("path.separator")
+  def pathsep: String = sys.props("path.separator").nn
 
   extension(path: String) {
     // Normalize path separator, convert relative path to absolute
@@ -104,4 +102,4 @@ object Main:
     def secondChar: String = path.take(2).drop(1).mkString("")
   }
 
-  lazy val userDir = sys.props("user.dir").norm
+  lazy val userDir: String = sys.props("user.dir").nn.norm

@@ -4,51 +4,66 @@ import sbt.*
 import sbt.Keys.*
 import scala.jdk.CollectionConverters.*
 import java.nio.file.Files
+import xsbti.VirtualFileRef
+import sbt.internal.inc.Stamper
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
-  val fetchScala2ClassFiles = taskKey[(Set[File], File)]("Fetch the files to use that were compiled with Scala 2")
-  //val scala2LibraryVersion  = settingKey[String]("Version of the Scala 2 Standard Library")
+  private val scala2Version = "2.13.16"
+
+  object autoImport {
+    val keepSJSIR = settingKey[Boolean]("Should we patch .sjsir too?")
+  }
+
+  import autoImport._
 
   override def projectSettings = Seq (
-    fetchScala2ClassFiles := {
-      val stream = streams.value
-      val cache  = stream.cacheDirectory
-      val target = cache / "scala-library-classes"
-      val report = update.value
-
-      val scalaLibraryBinaryJar = report.select(
-        configuration = configurationFilter(),
-        module = (_: ModuleID).name == "scala-library",
-        artifact = artifactFilter(`type` = "jar")).headOption.getOrElse {
-          sys.error(s"Could not fetch scala-library binary JAR")
-        }
-
-      if (!target.exists()) {
-        IO.createDirectory(target)
-      }
-
-      (FileFunction.cached(cache / "fetch-scala-library-classes", FilesInfo.lastModified, FilesInfo.exists) { _ =>
-        stream.log.info(s"Unpacking scala-library binaries to persistent directory: ${target.getAbsolutePath}")
-        IO.unzip(scalaLibraryBinaryJar, target)
-        (target ** "*.class").get.toSet
-      } (Set(scalaLibraryBinaryJar)), target)
-
-    },
-    (Compile / compile) := {
+    (Compile / manipulateBytecode) := {
       val stream = streams.value
       val target = (Compile / classDirectory).value
-      val (files, reference) = fetchScala2ClassFiles.value;
-      val analysis = (Compile / compile).value
-      stream.log.info(s"Copying files from Scala 2 Standard Library to $target")
-      for (file <- files; id <- file.relativeTo(reference).map(_.toString())) {
-        if (filesToCopy(id)) {
-          stream.log.debug(s"Copying file '${id}' to ${target / id}")
-          IO.copyFile(file, target / id)
-        }
+      val lm = dependencyResolution.value
+      val log = stream.log
+      val cache  = stream.cacheDirectory
+      val retrieveDir = cache / "scalajs-scalalib" / scalaVersion.value
+
+      val comp = lm.retrieve("org.scala-js" % "scalajs-scalalib_2.13" % s"$scala2Version+$scalaJSVersion", scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+          .filterNot(_.getPath().contains("javalib"))
+          .filter(!_.getPath().contains("scalajs-scalalib_2.13") || keepSJSIR.value)
+          .distinct
+
+      // Fetch classfiles and sjsir files
+      val patches: Seq[(Set[File], File)] = comp.map(fetch(stream, _))
+
+      val previous = (Compile / manipulateBytecode).value
+
+      val analysis = previous.analysis match {
+        case analysis: sbt.internal.inc.Analysis => analysis
+        case _ => sys.error("Unexpected analysis type")
       }
+      var stamps = analysis.stamps
+
+      // Patch the files that are in the list
+      for {
+        (files, reference) <- patches
+        file <- files
+        id <- file.relativeTo(reference)
+        path = id.toString().replace("\\", "/").stripSuffix(".class").stripSuffix(".sjsir")
+        if filesToCopy.exists(s => path == s || path.startsWith(s + '$')) // Only Override Some Very Specific Files
+        dest = target / (id.toString)
+        ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
+      } {
+        // Copy the files to the classDirectory
+        IO.copyFile(file, dest)
+        // Update the timestamp in the analysis
+        stamps = stamps.markProduct(
+          VirtualFileRef.of(s"$${BASE}/$ref"),
+          Stamper.forFarmHashP(dest.toPath()))
+      }
+
 
       val overwrittenBinaries = Files.walk((Compile / classDirectory).value.toPath())
         .iterator()
@@ -56,53 +71,77 @@ object ScalaLibraryPlugin extends AutoPlugin {
         .map(_.toFile)
         .map(_.relativeTo((Compile / classDirectory).value).get)
         .toSet
-      val diff = files.filterNot(_.relativeTo(reference).exists(overwrittenBinaries))
 
-      IO.copy(diff.map { file =>
-        file -> (Compile / classDirectory).value / file.relativeTo(reference).get.getPath
-      })
+      for ((files, reference) <- patches) {
+        val diff = files.filterNot(file => overwrittenBinaries.contains(file.relativeTo(reference).get))
+        // Copy all the specialized classes in the stdlib
+        // no need to update any stamps as these classes exist nowhere in the analysis
+        for (orig <- diff; dest <- orig.relativeTo(reference)) {
+          IO.copyFile(orig, ((Compile / classDirectory).value / dest.toString()))
+        }
+      }
 
-      analysis
+      previous
+        .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
+        .withHasModified(true)  // mark it as updated for sbt to update its caches
+
     }
   )
 
+  def fetch(stream: TaskStreams, jar: File) = {
+    val cache  = stream.cacheDirectory
+    val target = cache / jar.getName()
+
+    if (!target.exists()) {
+      IO.createDirectory(target)
+    }
+
+    (FileFunction.cached(cache / "fetch-scala-library-classes", FilesInfo.lastModified, FilesInfo.exists) { _ =>
+      stream.log.info(s"Unpacking scala-library binaries to persistent directory: ${target.getAbsolutePath}")
+      IO.unzip(jar, target)
+      (target ** "*.class").get.toSet ++ (target ** "*.sjsir").get.toSet
+    } (Set(jar)), target)
+  }
+
   private lazy val filesToCopy = Set(
-    "scala/Tuple1.class",
-    "scala/Tuple2.class",
-    "scala/collection/DoubleStepper.class",
-    "scala/collection/IntStepper.class",
-    "scala/collection/LongStepper.class",
-    "scala/collection/immutable/DoubleVectorStepper.class",
-    "scala/collection/immutable/IntVectorStepper.class",
-    "scala/collection/immutable/LongVectorStepper.class",
-    "scala/jdk/DoubleAccumulator.class",
-    "scala/jdk/IntAccumulator.class",
-    "scala/jdk/LongAccumulator.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleBinaryOperator.class",
-    "scala/jdk/FunctionWrappers$FromJavaBooleanSupplier.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleConsumer.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoublePredicate.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleSupplier.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleToIntFunction.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleToLongFunction.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntBinaryOperator.class",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleUnaryOperator.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntPredicate.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntConsumer.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntSupplier.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntToDoubleFunction.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntToLongFunction.class",
-    "scala/jdk/FunctionWrappers$FromJavaIntUnaryOperator.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongBinaryOperator.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongConsumer.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongPredicate.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongSupplier.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongToDoubleFunction.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction.class",
-    "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator.class",
-    "scala/collection/ArrayOps$ReverseIterator.class",
-    "scala/runtime/NonLocalReturnControl.class",
-    "scala/util/Sorting.class", "scala/util/Sorting$.class",  // Contains @specialized annotation
+    "scala/Tuple1",
+    "scala/Tuple2",
+    "scala/collection/Stepper",
+    "scala/collection/DoubleStepper",
+    "scala/collection/IntStepper",
+    "scala/collection/LongStepper",
+    "scala/collection/immutable/DoubleVectorStepper",
+    "scala/collection/immutable/IntVectorStepper",
+    "scala/collection/immutable/LongVectorStepper",
+    "scala/collection/immutable/Range",
+    "scala/jdk/DoubleAccumulator",
+    "scala/jdk/IntAccumulator",
+    "scala/jdk/LongAccumulator",
+    "scala/jdk/FunctionWrappers$FromJavaDoubleBinaryOperator",
+    "scala/jdk/FunctionWrappers$FromJavaBooleanSupplier",
+    "scala/jdk/FunctionWrappers$FromJavaDoubleConsumer",
+    "scala/jdk/FunctionWrappers$FromJavaDoublePredicate",
+    "scala/jdk/FunctionWrappers$FromJavaDoubleSupplier",
+    "scala/jdk/FunctionWrappers$FromJavaDoubleToIntFunction",
+    "scala/jdk/FunctionWrappers$FromJavaDoubleToLongFunction",
+    "scala/jdk/FunctionWrappers$FromJavaIntBinaryOperator",
+    "scala/jdk/FunctionWrappers$FromJavaDoubleUnaryOperator",
+    "scala/jdk/FunctionWrappers$FromJavaIntPredicate",
+    "scala/jdk/FunctionWrappers$FromJavaIntConsumer",
+    "scala/jdk/FunctionWrappers$FromJavaIntSupplier",
+    "scala/jdk/FunctionWrappers$FromJavaIntToDoubleFunction",
+    "scala/jdk/FunctionWrappers$FromJavaIntToLongFunction",
+    "scala/jdk/FunctionWrappers$FromJavaIntUnaryOperator",
+    "scala/jdk/FunctionWrappers$FromJavaLongBinaryOperator",
+    "scala/jdk/FunctionWrappers$FromJavaLongConsumer",
+    "scala/jdk/FunctionWrappers$FromJavaLongPredicate",
+    "scala/jdk/FunctionWrappers$FromJavaLongSupplier",
+    "scala/jdk/FunctionWrappers$FromJavaLongToDoubleFunction",
+    "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction",
+    "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator",
+    "scala/collection/ArrayOps$ReverseIterator",
+    "scala/runtime/NonLocalReturnControl",
+    "scala/util/Sorting",
     )
 
 }

@@ -1,13 +1,14 @@
-import language.experimental.into
+//> using options -preview
+import Conversion.into
 
 class BigInt(x: Int):
-  def + (other: into BigInt): BigInt = ???
-  def * (other: into BigInt): BigInt = ???
+  def + (other: into[BigInt]): BigInt = ???
+  def * (other: into[BigInt]): BigInt = ???
 
 object BigInt:
   given Conversion[Int, BigInt] = BigInt(_)
 
-  extension (x: into BigInt)
+  extension (x: into[BigInt])
     def + (other: BigInt): BigInt = ???
     def * (other: BigInt): BigInt = ???
 

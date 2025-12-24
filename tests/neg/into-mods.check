@@ -1,0 +1,16 @@
+-- Error: tests/neg/into-mods.scala:11:11 ------------------------------------------------------------------------------
+11 |  into def foo = 22 // error
+   |           ^
+   |            values cannot be into
+-- [E156] Syntax Error: tests/neg/into-mods.scala:8:12 -----------------------------------------------------------------
+8 |into object M   // error
+  |^^^^^^^^^^^^^
+  |Modifier into is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/into-mods.scala:13:2 -----------------------------------------------------------------
+13 |  into type T = Int // error
+   |  ^^^^
+   |  Modifier into is not allowed for this definition
+-- Error: tests/neg/into-mods.scala:12:11 ------------------------------------------------------------------------------
+12 |  into val x = 33   // error
+   |  ^^^^^^^^^^^^^^^
+   |  modifier(s) `into` incompatible with value definition

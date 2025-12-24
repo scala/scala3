@@ -1,5 +1,7 @@
 package scala.runtime.coverage
 
+import language.experimental.captureChecking
+
 import scala.annotation.internal.sharable
 import scala.annotation.nowarn
 import scala.collection.concurrent.TrieMap

@@ -1,21 +1,36 @@
--- [E164] Declaration Error: tests/neg/into-override.scala:16:15 -------------------------------------------------------
-16 |  override def f(x: into X) = super.f(x)    // error
-   |               ^
-   |               error overriding method f in trait A of type (x: X): Unit;
-   |                 method f of type (x: into X): Unit has different occurrences of `into` modifiers
+-- [E120] Naming Error: tests/neg/into-override.scala:15:6 -------------------------------------------------------------
+15 |trait C[X] extends A[X]:  // error
+   |      ^
+   |      Name clash between defined and inherited member:
+   |      def f(x: X): Unit in trait A at line 10 and
+   |      override def f(x: Conversion.into[X]): Unit in trait C at line 16
+   |      have the same type (x: Object): Unit after erasure.
+   |
+   |      Consider adding a @targetName annotation to one of the conflicting definitions
+   |      for disambiguation.
    |
    | longer explanation available when compiling with `-explain`
--- [E164] Declaration Error: tests/neg/into-override.scala:18:6 --------------------------------------------------------
+-- [E120] Naming Error: tests/neg/into-override.scala:18:6 -------------------------------------------------------------
 18 |class D[X] extends B[X], C[X] // error
    |      ^
-   |      error overriding method f in trait B of type (x: X): Unit;
-   |        method f in trait C of type (x: into X): Unit has different occurrences of `into` modifiers
+   |      Name clash between inherited members:
+   |      override def f(x: X): Unit in trait B at line 13 and
+   |      override def f(x: Conversion.into[X]): Unit in trait C at line 16
+   |      have the same type (x: Object): Unit after erasure.
+   |
+   |      Consider adding a @targetName annotation to one of the conflicting definitions
+   |      for disambiguation.
    |
    | longer explanation available when compiling with `-explain`
--- [E164] Declaration Error: tests/neg/into-override.scala:21:15 -------------------------------------------------------
-21 |  override def f(x: X) = super.f(x) // error
-   |               ^
-   |               error overriding method f in trait C of type (x: into X): Unit;
-   |                 method f of type (x: X): Unit has different occurrences of `into` modifiers
+-- [E120] Naming Error: tests/neg/into-override.scala:20:6 -------------------------------------------------------------
+20 |trait E[X] extends C[X]: // error
+   |      ^
+   |      Name clash between defined and inherited member:
+   |      override def f(x: Conversion.into[X]): Unit in trait C at line 16 and
+   |      override def f(x: X): Unit in trait E at line 21
+   |      have the same type (x: Object): Unit after erasure.
+   |
+   |      Consider adding a @targetName annotation to one of the conflicting definitions
+   |      for disambiguation.
    |
    | longer explanation available when compiling with `-explain`

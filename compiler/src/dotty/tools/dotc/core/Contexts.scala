@@ -42,6 +42,7 @@ import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
+import scala.annotation.tailrec
 
 object Contexts {
 
@@ -180,7 +181,7 @@ object Contexts {
       val local = incCallback
       local != null && local.enabled || forceRun
 
-    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    /** The Zinc compile progress callback implementation if we are run from Zinc or used by presentation compiler, null otherwise */
     def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
 
     /** Run `op` if there exists a Zinc progress callback */
@@ -233,7 +234,7 @@ object Contexts {
             else Nil
           val outerImplicits =
             if (isImportContext && importInfo.nn.unimported.exists)
-              outer.implicits exclude importInfo.nn.unimported
+              outer.implicits.exclude(importInfo.nn.unimported)
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -376,7 +377,7 @@ object Contexts {
     def isImportContext: Boolean =
       (this ne NoContext)
       && (outer ne NoContext)
-      && (this.importInfo nen outer.importInfo)
+      && (this.importInfo ne outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -401,8 +402,8 @@ object Contexts {
      *
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
-     *  - as scope: type parameters, the parameter accessors, and
-     *    the context bound companions in the class context,
+     *  - as scope: type parameters, the parameter accessors,
+     *    the dummy capture parameters and the context bound companions in the class context,
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -419,7 +420,7 @@ object Contexts {
     def superCallContext: Context =
       val locals = owner.typeParams
           ++ owner.asClass.unforcedDecls.filter: sym =>
-              sym.is(ParamAccessor) || sym.isContextBoundCompanion
+              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.
@@ -478,6 +479,9 @@ object Contexts {
 
     /** Is the flexible types option set? */
     def flexibleTypes: Boolean = base.settings.YexplicitNulls.value && !base.settings.YnoFlexibleTypes.value
+
+    /** Is the flexify tasty option set? */
+    def flexifyTasty: Boolean = base.settings.YexplicitNulls.value && base.settings.YflexifyTasty.value
 
     /** Is the best-effort option set? */
     def isBestEffort: Boolean = base.settings.YbestEffort.value
@@ -776,6 +780,14 @@ object Contexts {
       c
   end FreshContext
 
+  extension (ctx: Context)
+    /** Get the original compilation unit, ignoring any highlighting wrappers. */
+    @tailrec
+    def originalCompilationUnit: CompilationUnit =
+      val cu = ctx.compilationUnit
+      if cu.source.name == SyntaxHighlighting.VirtualSourceName then ctx.outer.originalCompilationUnit
+      else cu
+
   extension (c: Context)
     def addNotNullInfo(info: NotNullInfo) =
       if c.explicitNulls then c.withNotNullInfos(c.notNullInfos.extendWith(info)) else c
@@ -787,24 +799,22 @@ object Contexts {
       if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
-  extension (c: Context) {
+  extension (c: Context)
     final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
     final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
-  }
 
-  extension (c: FreshContext) {
+  extension (c: FreshContext)
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
-  }
 
-  /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated context that has an ExploreTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
     exploreInFreshCtx(op)
 
-  /** Run `op` with a pool-allocated FreshContext that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated FreshContext that has an ExploreTyperState. */
   inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val pool = ctx.base.exploreContextPool
     val nestedCtx = pool.next()
@@ -862,6 +872,13 @@ object Contexts {
       base.comparersInUse += 1
       result.init(ctx)
       result
+
+  def currentComparer(using Context): TypeComparer =
+    val base = ctx.base
+    if base.comparersInUse > 0 then
+      base.comparers(base.comparersInUse - 1)
+    else
+      comparer
 
   inline def comparing[T](inline op: TypeComparer => T)(using Context): T =
     util.Stats.record("comparing")

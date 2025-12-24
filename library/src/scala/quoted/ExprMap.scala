@@ -1,11 +1,13 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 trait ExprMap:
 
-  /** Map an expression `e` with a type `T` */
+  /** Maps an expression `e` with a type `T`. */
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]
 
-  /** Map sub-expressions an expression `e` with a type `T` */
+  /** Maps sub-expressions an expression `e` with a type `T`. */
   def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     import quotes.reflect.*
     final class MapChildren() {

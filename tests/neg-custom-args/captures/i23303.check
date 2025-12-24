@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/i23303.scala:6:36 -------------------------------------------------------------
+6 |    def execute: Unit = ops.foreach(f => f()) // error
+  |                                    ^^^^^^^^
+  |                  Local reach capability Runner.this.ops* leaks into capture scope of class Runner.
+  |                  You could try to abstract the capabilities referred to by Runner.this.ops* in a capset variable.
+-- Error: tests/neg-custom-args/captures/i23303.scala:9:22 -------------------------------------------------------------
+9 |    () => ops.foreach(f => f()) // error
+  |                      ^^^^^^^^
+  |                      Local reach capability ops* leaks into capture scope of method Runner2.
+  |                      You could try to abstract the capabilities referred to by ops* in a capset variable.

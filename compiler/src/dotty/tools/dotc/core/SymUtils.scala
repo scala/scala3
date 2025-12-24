@@ -88,7 +88,10 @@ class SymUtils:
     }
 
     def isContextBoundCompanion(using Context): Boolean =
-      self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
+      self.is(Synthetic) && self.infoOrCompleter.isContextBoundCompanion
+
+    def isDummyCaptureParam(using Context): Boolean =
+      self.is(PhantomSymbol) && self.infoOrCompleter.typeSymbol != defn.CBCompanion
 
     /** Is this a case class for which a product mirror is generated?
     *  Excluded are value classes, abstract classes and case classes with more than one
@@ -117,6 +120,16 @@ class SymUtils:
     end whyNotGenericProduct
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
+
+    def sanitizedDescription(using Context): String =
+      if self.isConstructor then
+        i"constructor of ${self.owner.sanitizedDescription}"
+      else if self.isAnonymousFunction then
+        i"anonymous function of type ${self.info}"
+      else if self.name.toString.contains('$') then
+        self.owner.sanitizedDescription
+      else
+        self.show
 
     /** Is this an old style implicit conversion?
      *  @param directOnly            only consider explicitly written methods
@@ -300,7 +313,7 @@ class SymUtils:
       }
 
     def isField(using Context): Boolean =
-      self.isTerm && !self.is(Method)
+      self.isTerm && !self.isOneOf(Method | PhantomSymbol | NonMember)
 
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)
@@ -359,7 +372,6 @@ class SymUtils:
     /** Is symbol assumed or declared as an infix symbol? */
     def isDeclaredInfix(using Context): Boolean =
       self.is(Infix)
-      || defn.isInfix(self)
       || self.name.isUnapplyName
         && self.owner.is(Module)
         && self.owner.linkedClass.is(Case)

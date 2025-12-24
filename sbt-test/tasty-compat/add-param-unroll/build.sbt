@@ -29,7 +29,7 @@ lazy val c = project.in(file("c"))
   .settings(commonSettings)
   .settings(printSettings)
   .settings(
-    // scalacOptions ++= Seq("-from-tasty", "-Ycheck:readTasty", "-Xfatal-warnings", "-Xprint:readTasty", "-Xprint-types"),
+    // scalacOptions ++= Seq("-from-tasty", "-Ycheck:readTasty", "-Werror", "-Vprint:readTasty", "-Xprint-types"),
     // Compile / sources := Seq(new java.io.File("c-input/B.tasty")),
     Compile / unmanagedClasspath += (ThisBuild / baseDirectory).value / "c-input",
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-output"

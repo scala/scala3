@@ -2,11 +2,11 @@ package dotty.tools.dotc
 package config
 
 import dotty.tools.dotc.config.PathResolver.Defaults
-import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory, Deprecation}
+import dotty.tools.dotc.config.Settings.{Setting, SettingAlias, SettingGroup, SettingCategory, Deprecation}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
@@ -30,17 +30,17 @@ object ScalaSettings extends ScalaSettings
 
 // Kept as seperate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[SettingCategory, List[Setting[_]]] =
+  val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
     allSettings.groupBy(_.category)
       .view.mapValues(_.toList).toMap
       .withDefaultValue(Nil)
   def categories: List[SettingCategory] = settingsByCategory.keys.toList.sortBy(_.prefixLetter)
-  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting).sortBy(_.name)
-  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting).sortBy(_.name)
-  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting).sortBy(_.name)
-  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
-  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting).sortBy(_.name)
-  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+  val rootSettings: List[Setting[?]] = settingsByCategory(RootSetting).sortBy(_.name)
+  val warningSettings: List[Setting[?]] = settingsByCategory(WarningSetting).sortBy(_.name)
+  val forkSettings: List[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
+  val advancedSettings: List[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
+  val verboseSettings: List[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
+  val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_.name -> s)).toMap
 
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
@@ -124,10 +124,12 @@ trait CommonScalaSettings:
 
   /* Other settings */
   val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
-  val usejavacp: Setting[Boolean] = BooleanSetting(RootSetting, "usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
   val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
   val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
   val replQuitAfterInit: Setting[Boolean] = BooleanSetting(RootSetting, "repl-quit-after-init", "Quit REPL after evaluating the init script.", aliases = List("--repl-quit-after-init"))
+
+  /* YSettings shared with scaladoc */
+  val Yusejavacp: Setting[Boolean] = BooleanSetting(ForkSetting, "Yusejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path", "-usejavacp", "--usejavacp"))
 end CommonScalaSettings
 
 /** -P "plugin" settings. Various tools might support plugins. */
@@ -144,8 +146,8 @@ private sealed trait PluginSettings:
 private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
-  val Xprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = List("-Xprint"))
-  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = List("-Xshow-phases"))
+  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = SettingAlias("-Xprint", Deprecation()) :: Nil)
+  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = SettingAlias("-Xshow-phases", Deprecation()) :: Nil)
 
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
@@ -159,7 +161,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
-  val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = SettingAlias("-Xfatal-warnings", Deprecation()) :: Nil)
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
@@ -167,6 +169,9 @@ private sealed trait WarningSettings:
   private val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
   private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   private val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
+  private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
+  private val WwrongArrow = BooleanSetting(WarningSetting, "Wwrong-arrow", "Warn if function arrow was used instead of context literal ?=>.")
+  private val WinferUnion = BooleanSetting(WarningSetting, "Winfer-union", "Warn if type argument was inferred as union type.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -184,12 +189,6 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
-      ChoiceWithHelp(
-        name = "strict-no-implicit-warn",
-        description = """Same as -Wunused:imports, only for imports of explicit named members.
-                        |NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all""".stripMargin
-      ),
-      ChoiceWithHelp("unsafe-warn-patvars", "Deprecated alias for `patvars`"),
     ),
     default = Nil
   )
@@ -291,14 +290,18 @@ private sealed trait WarningSettings:
   )
 
   object WshadowHas:
-    def allOr(s: String)(using Context) =
-      Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
+    // Is any choice set for -Wshadow?
+    def any(using Context): Boolean = Wall.value || Wshadow.value.nonEmpty
+
+    def allOr(s: String)(using Context): Boolean =
+      Wall.value || Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
     def privateShadow(using Context) =
       allOr("private-shadow")
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
+  end WshadowHas
 
-  val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+  val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
 
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
@@ -309,7 +312,10 @@ private sealed trait WarningSettings:
     def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
     def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
     def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
-    def checkInit(using Context): Boolean = allOr(WcheckInit)
+    def recurseWithDefault(using Context): Boolean = allOr(WrecurseWithDefault)
+    def wrongArrow(using Context): Boolean = allOr(WwrongArrow)
+    def inferUnion(using Context): Boolean = allOr(WinferUnion)
+    def safeInit(using Context): Boolean = allOr(WsafeInit)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
@@ -327,6 +333,13 @@ private sealed trait XSettings:
   val XprintSuspension: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprint-suspension", "Show when code is suspended until macros are compiled.")
   val Xprompt: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprompt", "Display a prompt after each error (debugging option).")
   val XreplDisableDisplay: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xrepl-disable-display", "Do not display definitions in REPL.")
+  val XreplInterruptInstrumentation: Setting[String] = StringSetting(
+    AdvancedSetting,
+    "Xrepl-interrupt-instrumentation",
+    "true|false|local",
+    "pass `false` to disable bytecode instrumentation for interrupt handling in REPL, or `local` to limit interrupt support to only REPL-defined classes",
+    "true"
+  )
   val XverifySignatures: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xverify-signatures", "Verify generic signatures in generated bytecode.")
   val XignoreScala2Macros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xignore-scala2-macros", "Ignore errors when compiling code that calls Scala2 macros, these will fail at runtime.")
   val XimportSuggestionTimeout: Setting[Int] = IntSetting(AdvancedSetting, "Ximport-suggestion-timeout", "Timeout (in ms) for searching for import suggestions when errors are reported.", 8000)
@@ -360,7 +373,7 @@ private sealed trait XSettings:
     AdvancedSetting,
     name    = "Xmixin-force-forwarders",
     helpArg = "mode",
-    descr   = "Generate forwarder methods in classes inhering concrete methods from traits.",
+    descr   = "Generate forwarder methods in classes inheriting concrete methods from traits.",
     choices = List("true", "junit", "false"),
     default = "true")
 
@@ -372,7 +385,7 @@ private sealed trait XSettings:
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
   @deprecated(message = "Superseded by -Wshadow, Scheduled for removal", since = "3.5.0")
-  val Xlint: Setting[_] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
+  val Xlint: Setting[?] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
 
 end XSettings
 
@@ -397,6 +410,8 @@ private sealed trait YSettings:
   val Ylog: Setting[List[String]] = PhasesSetting(ForkSetting, "Ylog", "Log operations during")
   val YlogClasspath: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting(ForkSetting, "YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
+
+  val Yreporter: Setting[String] = StringSetting(ForkSetting, name = "Yreporter", helpArg = "<class>", descr = "Specify a dotty.tools.dotc.reporting.Reporter", default = "dotty.tools.dotc.reporting.ConsoleReporter")
 
   val Yscala2Unpickler: Setting[String] = StringSetting(ForkSetting, "Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
@@ -443,12 +458,15 @@ private sealed trait YSettings:
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
 
+  val YmagicOffsetHeader: Setting[String] = StringSetting(ForkSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START. Then, in the source, the magic comment `///SOURCE_CODE_START:<ORIGINAL_FILE_PATH>` marks the start of user code. The comment should be suffixed by `:<ORIGINAL_FILE_PATH>` to indicate the original file.", "")
+
   // Experimental language features
   @deprecated(message = "This flag has no effect and will be removed in a future version.", since = "3.7.0")
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism. (This flag has no effect)", deprecation = Deprecation.removed())
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
-  val YcheckInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
+  val YflexifyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yflexify-tasty", "Apply flexification to Scala code compiled without -Yexplicit-nulls, when reading from tasty.")
+  val YsafeInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
@@ -464,6 +482,7 @@ private sealed trait YSettings:
 
   val Yinstrument: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
+  val YimplicitToGiven: Setting[Boolean] = BooleanSetting(ForkSetting, "Yimplicit-to-given", "Allows to rewrite the implicit keywords to their scala-3 given counterparts. Does not adjust imports. Use in conjunction with --rewrite.")
 
   // Deprecated: lifted from -Y to -X
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")

@@ -20,7 +20,6 @@ class SpecializeTuples extends MiniPhase:
 
   override def phaseName: String                 = SpecializeTuples.name
   override def description: String               = SpecializeTuples.description
-  override def isEnabled(using Context): Boolean = !ctx.settings.scalajs.value
 
   override def transformApply(tree: Apply)(using Context): Tree = tree match
     case Apply(TypeApply(fun: NameTree, targs), args)

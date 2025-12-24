@@ -4,20 +4,26 @@
    |         Found:    String => String
    |         Required: String ->{cap1, cap2} String
    |
-   |         where:    => refers to a fresh root capability created in method scope
+   |         Note that capability cap is not included in capture set {cap1, cap2}.
+   |
+   |         where:    => and cap refer to a fresh root capability created in method scope
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:16:8 -----------------------------------
 16 |    a = g  // error
    |        ^
    |        Found:    (x: String) ->{cap3} String
-   |        Required: (x: String) ->{cap1, cap2} String
+   |        Required: String ->{cap1, cap2} String
+   |
+   |        Note that capability cap3 is not included in capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:17:12 ----------------------------------
 17 |    b = List(g) // error
    |        ^^^^^^^
-   |        Found:    List[box String ->{cap3} String]
-   |        Required: List[box String ->{cap1, cap2} String]
+   |        Found:    List[String ->{cap3} String]
+   |        Required: List[String ->{cap1, cap2} String]
+   |
+   |        Note that capability cap3 is not included in capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`

@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 /** A concrete subclass of `scala.deriving.Mirror.Product`, enabling reduction of bytecode size.
  *  as we do not need to synthesize an anonymous Mirror class at every callsite.
  */

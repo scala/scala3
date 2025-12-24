@@ -6,39 +6,37 @@ Language design draft
 ## Capability Kinds
 
 A capability is called
-  - _exclusive_ if it is `cap` or it has an exclusive capability in its capture set.
-  - _shared_ otherwise.
-
-There is a new top capability `shared` which can be used as a capability for deriving shared capture sets. Other shared capabilities are created as read-only versions of exclusive capabilities.
+  - _shared_ if it is classified as a `SharedCapability`
+  - _exclusive_ otherwise.
 
 ## Update Methods
 
 We introduce a new trait
 ```scala
-trait Mutable
+trait Mutable extends ExclusiveCapability, Classifier
 ```
 It is used as a base trait for types that define _update methods_ using
-a new modifier `mut`.
+a new soft modifier `update`.
 
-`mut` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are  defined locally or passed to it in parameters.
+`update` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are defined locally or passed to it in parameters.
 
 **Example:**
 ```scala
 class Ref(init: Int) extends Mutable:
   private var current = init
   def get: Int = current
-  mut def put(x: Int): Unit = current = x
+  update def put(x: Int): Unit = current = x
 ```
 Here, `put` needs to be declared as an update method since it accesses the exclusive write capability of the variable `current` in its environment.
-`mut` can also be used on an inner class of a class or object extending `Mutable`. It gives all code in the class the right
+`update` can also be used on an inner class of a class or object extending `Mutable`. It gives all code in the class the right
 to  access exclusive capabilities in the class environment. Normal classes
 can only access exclusive capabilities defined in the class or passed to it in parameters.
 
 ```scala
 object Registry extends Mutable:
   var count = 0
-  mut class Counter:
-    mut def next: Int =
+  update class Counter:
+    update def next: Int =
       count += 1
       count
 ```
@@ -79,22 +77,22 @@ Consider trait `IterableOnce` from the standard library.
 ```scala
 trait IterableOnce[+T] extends Mutable:
   def iterator: Iterator[T]^{this}
-  mut def foreach(op: T => Unit): Unit
-  mut def exists(op: T => Boolean): Boolean
+  update def foreach(op: T => Unit): Unit
+  update def exists(op: T => Boolean): Boolean
   ...
 ```
-The trait is a mutable type with many update methods, among them `foreach` and `exists`. These need to be classified as `mut` because their implementation in the subtrait `Iterator` uses the update method `next`.
+The trait is a mutable type with many update methods, among them `foreach` and `exists`. These need to be classified as `update` because their implementation in the subtrait `Iterator` uses the update method `next`.
 ```scala
 trait Iterator[T] extends IterableOnce[T]:
   def iterator = this
   def hasNext: Boolean
-  mut def next(): T
-  mut def foreach(op: T => Unit): Unit = ...
-  mut def exists(op; T => Boolean): Boolean = ...
+  update def next(): T
+  update def foreach(op: T => Unit): Unit = ...
+  update def exists(op; T => Boolean): Boolean = ...
   ...
 ```
 But there are other implementations of `IterableOnce` that are not mutable types (even though they do indirectly extend the `Mutable` trait). Notably, collection classes implement `IterableOnce` by creating a fresh
-`iterator` each time one is required. The mutation via `next()` is then restricted to the state of that iterator, whereas the underlying collection is unaffected. These implementations would implement each `mut` method in `IterableOnce` by a normal method without the `mut` modifier.
+`iterator` each time one is required. The mutation via `next()` is then restricted to the state of that iterator, whereas the underlying collection is unaffected. These implementations would implement each `update` method in `IterableOnce` by a normal method without the `update` modifier.
 
 ```scala
 trait Iterable[T] extends IterableOnce[T]:
@@ -115,11 +113,6 @@ a method that accesses exclusive capabilities.
 
 If `x` is an exclusive capability of a type extending `Mutable`, `x.rd` is its associated, shared _read-only_ capability.
 
-`shared` can be understood as the read-only capability corresponding to `cap`.
-```scala
-  shared = cap.rd
-```
-
 A _top capability_ is either `cap` or `shared`.
 
 
@@ -134,13 +127,13 @@ The meaning of `^` and `=>` is the same as before:
 
 **Implicitly added capture sets**
 
-A reference to a type extending any of the traits `Capability` or `Mutable` gets an implicit capture set `{shared}` in case no explicit capture set is given.
+A reference to a type extending trait `Mutable` gets an implicit capture set `{cap.rd}` provided no explicit capture set is given.
 
 For instance, a matrix multiplication method can be expressed as follows:
 
 ```scala
 class Matrix(nrows: Int, ncols: Int) extends Mutable:
-  mut def update(i: Int, j: Int, x: Double): Unit = ...
+  update def update(i: Int, j: Int, x: Double): Unit = ...
   def apply(i: Int, j: Int): Double = ...
 
 def mul(a: Matrix, b: Matrix, c: Matrix^): Unit =
@@ -148,7 +141,7 @@ def mul(a: Matrix, b: Matrix, c: Matrix^): Unit =
 ```
 Here, `a` and `b` are implicitly read-only, and `c`'s type has capture set `cap`. I.e. with explicit capture sets this would read:
 ```scala
-def mul(a: Matrix^{shared}, b: Matrix^{shared}, c: Matrix^{cap}): Unit
+def mul(a: Matrix^{cap.rd}, b: Matrix^{cap.rd}, c: Matrix^{cap}): Unit
 ```
 Separation checking will then make sure that `a` and `b` must be different from `c`.
 
@@ -172,8 +165,6 @@ The read-only function `ro` maps capture sets to read-only capture sets. It is d
  - `ro ({ x1, ..., xn } _) = { ro(x1), ..., ro(xn) }`
  - `ro(x)    =  x` if `x` is shared
  - `ro(x)    =  x.rd` if `x` is exclusive
-
-
 
 ## Subcapturing
 
@@ -271,7 +262,7 @@ A reference `p.m` to an update method or class `m` of a mutable type is allowed 
 
 If `e` is an expression of a type `T^cs` extending `Mutable` and the expected type is a value type that is not a mutable type, then the type of `e` is mapped to `T^ro(cs)`.
 
-
+<!--
 ## Expression Typing
 
 An expression's type should never contain a top capability in its deep capture set. This is achieved by the following rules:
@@ -301,7 +292,6 @@ An expression's type should never contain a top capability in its deep capture s
    ```
    where the capture set of `x` contains a top capability,
    replace `x` by a fresh skolem `val sk: T`. Alternatively: keep it as is, but don't widen it.
-
 
 ## Post Processing Right Hand Sides
 
@@ -340,7 +330,7 @@ Since expression types can't mention cap, widening happens only
 
 **Definitions:**
 
- - The _transitive capture set_ `tcs(c)` of a capability `c` with underlying capture set `C` is `c` itself, plus the transitive capture set of `C`, but excluding `cap` or `shared`.
+ - The _transitive capture set_ `tcs(c)` of a capability `c` with underlying capture set `C` is `c` itself, plus the transitive capture set of `C`.
 
  - The _transitive capture set_ `tcs(C)` of a capture set C is the union
    of `tcs(c)` for all elements `c` of `C`.
@@ -356,7 +346,9 @@ Since expression types can't mention cap, widening happens only
 
 **Algorithm outline:**
 
- - Associate _shadowed sets_ with blocks, template statement sequences, applications, and val symbols. The idea is that a shadowed set gets populated when a capture reference is widened to cap. In that case the original references that were widened get added to the set.
+
+
+ Associate _shadowed sets_ with blocks, template statement sequences, applications, and val symbols. The idea is that a shadowed set gets populated when a capture reference is widened to cap. In that case the original references that were widened get added to the set.
 
  - After processing a `val x: T2 = t` with `t: T1` after post-processing:
 
@@ -435,7 +427,7 @@ we'd deal with
 ```scala
 val x$ = Ref[T](init)
 def x = x$.get
-mut def x_=(y: T) = x$.put(y)
+update def x_=(y: T) = x$.put(y)
 ```
 
 There should be a way to exclude a mutable variable or field from tracking. Maybe an annotation or modifier such as `transparent` or `untracked`?

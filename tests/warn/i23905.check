@@ -1,0 +1,16 @@
+-- Deprecation Warning: tests/warn/i23905/Test_2.scala:3:0 -------------------------------------------------------------
+3 |@DeprecatedAnnotation // warn
+  |^^^^^^^^^^^^^^^^^^^^^
+  |class DeprecatedAnnotation is deprecated
+-- Deprecation Warning: tests/warn/i23905/Test_2.scala:6:0 -------------------------------------------------------------
+6 |@DeprecatedAnnotation // warn
+  |^^^^^^^^^^^^^^^^^^^^^
+  |class DeprecatedAnnotation is deprecated
+-- Deprecation Warning: tests/warn/i23905/Test_2.scala:9:0 -------------------------------------------------------------
+9 |@DeprecatedAnnotation // warn
+  |^^^^^^^^^^^^^^^^^^^^^
+  |class DeprecatedAnnotation is deprecated
+-- Deprecation Warning: tests/warn/i23905/Test_2.scala:12:0 ------------------------------------------------------------
+12 |@DeprecatedAnnotation // warn
+   |^^^^^^^^^^^^^^^^^^^^^
+   |class DeprecatedAnnotation is deprecated

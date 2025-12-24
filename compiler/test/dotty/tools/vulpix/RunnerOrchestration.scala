@@ -16,7 +16,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 
-/** Vulpix spawns JVM subprocesses (`numberOfSlaves`) in order to run tests
+/** Vulpix spawns JVM subprocesses (`numberOfWorkers`) in order to run tests
  *  without compromising the main JVM
  *
  *  These need to be orchestrated in a safe manner with a simple protocol. This
@@ -38,7 +38,7 @@ import scala.compiletime.uninitialized
 trait RunnerOrchestration {
 
   /** The maximum amount of active runners, which contain a child JVM */
-  def numberOfSlaves: Int
+  def numberOfWorkers: Int
 
   /** The maximum duration the child process is allowed to consume before
    *  getting destroyed
@@ -215,7 +215,7 @@ trait RunnerOrchestration {
     private val busyRunners = mutable.Set.empty[Runner]
 
     private def getRunner(): Runner = synchronized {
-      while (freeRunners.isEmpty && busyRunners.size >= numberOfSlaves) wait()
+      while (freeRunners.isEmpty && busyRunners.size >= numberOfWorkers) wait()
 
       val runner =
         if (freeRunners.isEmpty) new Runner(createProcess())

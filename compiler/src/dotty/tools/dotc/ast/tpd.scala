@@ -143,6 +143,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def InlineMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
     ta.assignType(untpd.InlineMatch(selector, cases), selector, cases)
 
+  def SubMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
+    ta.assignType(untpd.SubMatch(selector, cases), selector, cases)
+
   def Labeled(bind: Bind, expr: Tree)(using Context): Labeled =
     ta.assignType(untpd.Labeled(bind, expr))
 
@@ -249,7 +252,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       sym)
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(using Context): DefDef =
-    ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
+    ta.assignType(DefDef(sym, Function.const(rhs)), sym)
 
   /** A DefDef with given method symbol `sym`.
    *  @rhsFn  A function from parameter references
@@ -301,7 +304,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.erasedParams).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
@@ -375,7 +378,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *      new parents { termForwarders; typeAliases }
    *
    *  @param parents        a non-empty list of class types
-   *  @param termForwarders a non-empty list of forwarding definitions specified by their name and the definition they forward to.
+   *  @param termForwarders a non-empty list of forwarding definitions specified by their name
+   *                        and the definition they forward to.
    *  @param typeMembers    a possibly-empty list of type members specified by their name and their right hand side.
    *  @param adaptVarargs   if true, allow matching a vararg superclass constructor
    *                        with a missing argument in superArgs, and synthesize an
@@ -388,7 +392,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       termForwarders: List[(TermName, TermSymbol)],
       typeMembers: List[(TypeName, TypeBounds)],
       adaptVarargs: Boolean)(using Context): Block = {
-    AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ union _), adaptVarargs) { cls =>
+    AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ `union` _), adaptVarargs) { cls =>
       def forwarder(name: TermName, fn: TermSymbol) = {
         val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
         for overridden <- fwdMeth.allOverriddenSymbols do
@@ -469,15 +473,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
-    if (tp.isType) TypeTree(tp)
-    else if (prefixIsElidable(tp)) Ident(tp)
-    else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
+    if tp.isType then TypeTree(tp)
+    else if prefixIsElidable(tp) then Ident(tp)
+    else if tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass) then
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
-    else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
+    else if tp.symbol.hasAnnotation(defn.ScalaStaticAnnot) then
       Ident(tp)
     else
+      // Throw an error here if we detect a skolem to improve the error message in tests/neg/i8623.scala
+      def checkNoSkolemInPrefix(pre: Type): Unit = pre.dealias match
+        case pre: SkolemType =>
+          throw TypeError(em"cannot construct a tree referring to $tp because of skolem prefix $pre")
+        case pre: TermRef => checkNoSkolemInPrefix(pre.prefix)
+        case _ =>
+
       val pre = tp.prefix
-      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias, needLoad)).select(tp)
+      checkNoSkolemInPrefix(tp)
+      if pre.isSingleton then followOuterLinks(singleton(pre.dealias, needLoad)).select(tp)
       else
         val res = Select(TypeTree(pre), tp)
         if needLoad && !res.symbol.isStatic then
@@ -513,9 +525,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def singleton(tp: Type, needLoad: Boolean = true)(using Context): Tree = tp.dealias match {
     case tp: TermRef => ref(tp, needLoad)
     case tp: ThisType => This(tp.cls)
-    case tp: SkolemType => singleton(tp.narrow, needLoad)
     case SuperType(qual, _) => singleton(qual, needLoad)
     case ConstantType(value) => Literal(value)
+    case tp: SkolemType =>
+      throw TypeError(em"cannot construct a tree referring to skolem $tp")
   }
 
   /** A tree representing a `newXYZArray` operation of the right
@@ -597,7 +610,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def ModuleDef(sym: TermSymbol, body: List[Tree])(using Context): tpd.Thicket = {
     val modcls = sym.moduleClass.asClass
-    val constrSym = modcls.primaryConstructor orElse newDefaultConstructor(modcls).entered
+    val constrSym = modcls.primaryConstructor `orElse` newDefaultConstructor(modcls).entered
     val constr = DefDef(constrSym.asTerm, EmptyTree)
     val clsdef = ClassDef(modcls, constr, body)
     val valdef = ValDef(sym, New(modcls.typeRef).select(constrSym).appliedToNone)
@@ -610,14 +623,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def defaultValue(tpe: Type)(using Context): Tree = {
     val tpw = tpe.widen
 
-    if (tpw isRef defn.IntClass) Literal(Constant(0))
-    else if (tpw isRef defn.LongClass) Literal(Constant(0L))
-    else if (tpw isRef defn.BooleanClass) Literal(Constant(false))
-    else if (tpw isRef defn.CharClass) Literal(Constant('\u0000'))
-    else if (tpw isRef defn.FloatClass) Literal(Constant(0f))
-    else if (tpw isRef defn.DoubleClass) Literal(Constant(0d))
-    else if (tpw isRef defn.ByteClass) Literal(Constant(0.toByte))
-    else if (tpw isRef defn.ShortClass) Literal(Constant(0.toShort))
+    if tpw.isRef(defn.IntClass) then Literal(Constant(0))
+    else if tpw.isRef(defn.LongClass) then Literal(Constant(0L))
+    else if tpw.isRef(defn.BooleanClass) then Literal(Constant(false))
+    else if tpw.isRef(defn.CharClass) then Literal(Constant('\u0000'))
+    else if tpw.isRef(defn.FloatClass) then Literal(Constant(0f))
+    else if tpw.isRef(defn.DoubleClass) then Literal(Constant(0d))
+    else if tpw.isRef(defn.ByteClass) then Literal(Constant(0.toByte))
+    else if tpw.isRef(defn.ShortClass) then Literal(Constant(0.toShort))
     else nullLiteral.select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
 
@@ -1378,18 +1391,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   // convert a numeric with a toXXX method
-  def primitiveConversion(tree: Tree, numericCls: Symbol)(using Context): Tree = {
+  def primitiveConversion(tree: Tree, numericCls: Symbol)(using Context): Tree =
     val mname      = "to".concat(numericCls.name)
-    val conversion = tree.tpe member(mname)
-    if (conversion.symbol.exists)
+    val conversion = tree.tpe.member(mname)
+    if conversion.symbol.exists then
       tree.select(conversion.symbol.termRef).ensureApplied
-    else if (tree.tpe.widen isRef numericCls)
+    else if tree.tpe.widen.isRef(numericCls) then
       tree
-    else {
+    else
       report.warning(em"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
-    }
-  }
 
   /** A tree that corresponds to `Predef.classOf[$tp]` in source */
   def clsOf(tp: Type)(using Context): Tree =

@@ -1,12 +1,12 @@
 
-import caps.consume
+
 import caps.unsafe.unsafeAssumeSeparate
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def eff(using Cap): Unit = ()
 
-def test(using @consume cc: Cap) =
+def test(using consume cc: Cap) =
 
   class C(val x: () => Int):
     val y: C^ = this

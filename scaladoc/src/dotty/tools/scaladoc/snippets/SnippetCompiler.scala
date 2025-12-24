@@ -13,7 +13,7 @@ import dotty.tools.dotc.reporting.{ Diagnostic, StoreReporter }
 import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.{ Compiler, Run }
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.interfaces.Diagnostic._
 import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile, NoSource }
@@ -48,7 +48,7 @@ class SnippetCompiler(
 
   private def newRun(using ctx: Context): Run = scala3Compiler.newRun
 
-  private def nullableMessage(msgOrNull: String): String =
+  private def nullableMessage(msgOrNull: String | Null): String =
     if (msgOrNull == null) "" else msgOrNull
 
   private def createReportMessage(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, diagnostics: Seq[Diagnostic], sourceFile: SourceFile): Seq[SnippetCompilerMessage] = {
@@ -86,7 +86,9 @@ class SnippetCompiler(
 
   private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, sourceFile: SourceFile, context: Context): Seq[SnippetCompilerMessage] = {
       Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
-        SnippetCompilerMessage(None, "Snippet should not compile but compiled successfully", MessageLevel.Error)
+        SnippetCompilerMessage(
+          Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
+          "Snippet should not compile but compiled successfully", MessageLevel.Error)
       ).toList
   }
 
@@ -100,12 +102,19 @@ class SnippetCompiler(
     arg: SnippetCompilerArg,
     sourceFile: SourceFile
   ): SnippetCompilationResult = {
-    val context = SnippetDriver.currentCtx.fresh
+    val baseContext = SnippetDriver.currentCtx.fresh
       .setSetting(
         SnippetDriver.currentCtx.settings.outputDir,
         target
       )
       .setReporter(new StoreReporter)
+    val context =
+      if arg.scalacOptions.isEmpty then baseContext
+      else
+        val args = arg.scalacOptions.toArray
+        SnippetDriver.setup(args, baseContext) match
+          case Some((_, ctx)) => ctx
+          case None => baseContext
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
 

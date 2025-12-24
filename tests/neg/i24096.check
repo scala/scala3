@@ -1,0 +1,10 @@
+-- [E007] Type Mismatch Error: tests/neg/i24096.scala:10:31 ------------------------------------------------------------
+10 |        case r: Terminal[?] => r // error
+   |                               ^
+   |                   Found:    (r : Pull.Terminal[_] & Pull[F, O, Unit])
+   |                   Required: Pull[F2, O2, Unit]
+   |
+   |                   where:    F  is a type in class StreamPullOps with bounds <: [_²] =>> Any
+   |                             F2 is a type in method flatMapOutput with bounds >: [x] =>> F[x] and <: [x] =>> Any
+   |
+   | longer explanation available when compiling with `-explain`

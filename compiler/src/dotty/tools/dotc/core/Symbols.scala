@@ -45,7 +45,7 @@ object Symbols extends SymUtils {
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
-    extends Designator, ParamInfo, SrcPos, printing.Showable {
+    extends ParamInfo, SrcPos, printing.Showable {
 
     type ThisName <: Name
 
@@ -84,8 +84,8 @@ object Symbols extends SymUtils {
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.Whas.checkInit ||       // initialization check
-      ctx.settings.YcheckInitGlobal.value
+      ctx.settings.Whas.safeInit ||        // initialization check
+      ctx.settings.YsafeInitGlobal.value
 
     /** The last denotation of this symbol */
     private var lastDenot: SymDenotation = uninitialized
@@ -520,14 +520,12 @@ object Symbols extends SymUtils {
         val file = associatedFile
         if file != null && !file.isScalaBinary then
           mySource = ctx.getSource(file)
-        else
-          mySource = defn.patchSource(this)
-          if !mySource.exists then
-            val compUnitInfo = compilationUnitInfo
-            if compUnitInfo != null then
-              compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
-                case Some(path) => mySource = ctx.getSource(path)
-                case _ =>
+        else if !mySource.exists then
+          val compUnitInfo = compilationUnitInfo
+          if compUnitInfo != null then
+            compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
+              case Some(path) => mySource = ctx.getSource(path)
+              case _ =>
           if !mySource.exists then
             mySource = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
@@ -900,8 +898,8 @@ object Symbols extends SymUtils {
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type)(using Context): TermSymbol =
-    newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(owner: Symbol, tp: Type)(using Context): TermSymbol =
+    newSymbol(owner, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: Message)(using Context): Symbol = {
     val errType = ErrorType(msg)

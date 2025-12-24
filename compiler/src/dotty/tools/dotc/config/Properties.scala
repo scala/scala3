@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-import scala.language.unsafeNulls
 
 import scala.annotation.internal.sharable
 
@@ -30,9 +29,9 @@ trait PropertiesTrait {
   /** The loaded properties */
   @sharable protected lazy val scalaProps: java.util.Properties = {
     val props = new java.util.Properties
-    val stream = pickJarBasedOn getResourceAsStream propFilename
+    val stream = pickJarBasedOn.getResourceAsStream(propFilename)
     if (stream ne null)
-      quietlyDispose(props load stream, stream.close)
+      quietlyDispose(props.load(stream), stream.close)
 
     props
   }
@@ -45,16 +44,16 @@ trait PropertiesTrait {
 
   def propIsSet(name: String): Boolean                  = System.getProperty(name) != null
   def propIsSetTo(name: String, value: String): Boolean = propOrNull(name) == value
-  def propOrElse(name: String, alt: => String): String  = Option(System.getProperty(name)).getOrElse(alt)
+  def propOrNone(name: String): Option[String]          = Option[String](System.getProperty(name))
+  def propOrElse(name: String, alt: => String): String  = propOrNone(name).getOrElse(alt)
   def propOrEmpty(name: String): String                 = propOrElse(name, "")
-  def propOrNull(name: String): String                  = propOrElse(name, null)
-  def propOrNone(name: String): Option[String]          = Option(propOrNull(name))
+  def propOrNull(name: String): String|Null             = propOrNone(name).orNull
   def propOrFalse(name: String): Boolean                = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
   def setProp(name: String, value: String): String      = System.setProperty(name, value)
   def clearProp(name: String): String                   = System.clearProperty(name)
 
-  def envOrElse(name: String, alt: => String): String   = Option(System getenv name) getOrElse alt
-  def envOrNone(name: String): Option[String]           = Option(System getenv name)
+  def envOrElse(name: String, alt: => String): String   = Option(System.getenv(name)).getOrElse(alt)
+  def envOrNone(name: String): Option[String]           = Option(System.getenv(name))
 
   // for values based on propFilename
   def scalaPropOrElse(name: String, alt: => String): String = scalaProps.getProperty(name, alt)
@@ -123,8 +122,8 @@ trait PropertiesTrait {
 
   /** Some derived values.
    */
-  def isWin: Boolean                = osName startsWith "Windows"
-  def isMac: Boolean                = javaVendor startsWith "Apple"
+  def isWin: Boolean                = osName.startsWith("Windows")
+  def isMac: Boolean                = javaVendor.startsWith("Apple")
 
   // This is looking for javac, tools.jar, etc.
   // Tries JDK_HOME first, then the more common but likely jre JAVA_HOME,

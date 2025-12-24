@@ -27,12 +27,14 @@ class CompletionTest {
 
   @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }"
-      .completion(("summon", Method, "[T](using x: T): x.type"))
+      .completion(("summon", Method, "[T](using x: T): (x : T)"))
   }
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "Conversion"))
+      .completion(
+        ("Conversion", Class, "Conversion"),
+        ("Conversion", Module, "Conversion"))
   }
 
   @Test def implicitSearchCrash: Unit =
@@ -942,7 +944,7 @@ class CompletionTest {
     code"""object A {
           |  Array.concat${m1}
           |}"""
-      .completion(("concat", Method, "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"))
+      .completion(("concat", Method, "[T](xss: Array[T]*)(using evidence$1: scala.reflect.ClassTag[T]): Array[T]"))
   }
 
   @Test def i12465_hkt: Unit =

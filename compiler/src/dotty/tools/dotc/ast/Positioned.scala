@@ -3,7 +3,8 @@ package dotc
 package ast
 
 import util.Spans.*
-import util.{SourceFile, SourcePosition, SrcPos}
+import util.{SourceFile, SourcePosition, SrcPos, WrappedSourceFile}
+import WrappedSourceFile.MagicHeaderInfo, MagicHeaderInfo.*
 import core.Contexts.*
 import core.Decorators.*
 import core.NameOps.*
@@ -51,7 +52,15 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 
   def source: SourceFile = mySource
 
-  def sourcePos(using Context): SourcePosition = source.atSpan(span)
+  def sourcePos(using Context): SourcePosition =
+    val info = WrappedSourceFile.locateMagicHeader(source)
+    info match
+      // This span is in user code
+      case HasHeader(offset, originalFile)
+        if span.exists && span.start >= offset =>
+          originalFile.atSpan(span.shift(-offset))
+      // Otherwise, return the source position in the wrapper code
+      case _ => source.atSpan(span)
 
   /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
    *  position, typically for error reporting.
@@ -133,8 +142,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     newpd
   }
 
-  def contains(that: Positioned): Boolean = {
-    def isParent(x: Any): Boolean = x match {
+  def contains(that: Positioned): Boolean =
+    def isParent(x: Any): Boolean = x match
       case x: Positioned =>
         x.contains(that)
       case m: untpd.Modifiers =>
@@ -143,18 +152,18 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         xs.exists(isParent)
       case _ =>
         false
-    }
-    (this eq that) ||
-      (this.span contains that.span) && {
+
+    (this eq that)
+    || this.span.contains(that.span)
+      && {
         var n = productArity
         var found = false
-        while (!found && n > 0) {
+        while !found && n > 0 do
           n -= 1
           found = isParent(productElement(n))
-        }
         found
-    }
-  }
+      }
+  end contains
 
   private class LastPosRef:
     var positioned: Positioned | Null = null
@@ -169,7 +178,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     val last = LastPosRef()
     def check(p: Any): Unit = p match {
       case p: Positioned =>
-        assert(span contains p.span,
+        assert(span.contains(p.span),
           i"""position error, parent span does not contain child span
              |parent      = $this # $uniqueId,
              |parent span = $span,

@@ -3,18 +3,18 @@ import caps.*
 
 
 def main() =
-  trait Channel[T] extends caps.Capability:
+  trait Channel[T] extends caps.SharedCapability:
     def send(msg: T): Unit
     def recv(): T
 
-  trait Logger extends caps.Capability:
+  trait Logger extends caps.SharedCapability:
     def log(msg: String): Unit
 
   // we can close over anything subsumed by the 'trusted' brand capability, but nothing else
-  def runSecure[C >: {trusted} <: {trusted}](block: () ->{C} Unit): Unit = block()
+  def runSecure[C^ >: {trusted} <: {trusted}](block: () ->{C} Unit): Unit = block()
 
   // This is a 'brand" capability to mark what can be mentioned in trusted code
-  object trusted extends caps.Capability
+  object trusted extends caps.SharedCapability
 
   val trustedLogger: Logger^{trusted} = ???
   val trustedChannel: Channel[String]^{trusted} = ???

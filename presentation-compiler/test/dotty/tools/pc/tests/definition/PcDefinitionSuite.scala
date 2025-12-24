@@ -647,3 +647,34 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |    export scala.collection.immutable.V/*scala/collection/immutable/Vector. Vector.scala*/@@ector
          |""".stripMargin
     )
+
+  @Test def i7763 =
+    check(
+      """|case class MyItem(<<name>>: String)
+         |
+         |def handle(item: MyItem) =
+         |  item match {
+         |    case MyItem(na@@me = n2) => println(n2)
+         |  }
+         |""".stripMargin
+    )
+
+  @Test def `i7763-neg` =
+    check(
+      """|object MyItem:
+        |  def unapply(name: String): Option[Int] = ???
+        |
+        |def handle(item: String) =
+        |  item match {
+        |    case MyItem(na@@me = n2) => println(n2)
+        |  }
+        |""".stripMargin
+    )
+
+  @Test def `i7763-apply` =
+    check(
+      """|case class MyItem(<<name>>: String)
+         |
+         |def handle(item: String) = MyItem(na@@me = item)
+         |""".stripMargin
+    )

@@ -18,6 +18,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
+import cc.CleanupRetains
 
 import collection.mutable
 import reporting.{NotConstant, trace}
@@ -96,23 +97,37 @@ object Inlines:
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
-   *  @param pt     The expected type of the call.
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree)(using Context): Tree =
-    if tree.symbol.denot != SymDenotations.NoDenotation
-      && tree.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
+  def inlineCall(tree: Tree)(using Context): Tree = ctx.profiler.onInlineCall(tree.symbol):
+
+    /** Strip @retains annotations from inferred types in the call tree */
+    val stripRetains = CleanupRetains()
+    val stripper = new TreeTypeMap(
+      treeMap = {
+        case tree: InferredTypeTree =>
+          val stripped = stripRetains(tree.tpe)
+          if stripped ne tree.tpe then tree.withType(stripped)
+          else tree
+        case tree => tree
+      }
+    )
+
+    val tree0 = stripper.transform(tree)
+
+    if tree0.symbol.denot.exists
+      && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
-      if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
-      if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
+      if (tree0.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
+      if (tree0.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
 
     if ctx.isAfterTyper then
       // During typer we wait with cross version checks until PostTyper, in order
       // not to provoke cyclic references. See i16116 for a test case.
-      CrossVersionChecks.checkRef(tree.symbol, tree.srcPos)
+      CrossVersionChecks.checkRef(tree0.symbol, tree0.srcPos)
 
-    if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
+    if tree0.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary
@@ -160,17 +175,17 @@ object Inlines:
         tree
     }
 
-    // assertAllPositioned(tree)   // debug
-    val tree1 = liftBindings(tree, identity)
+    // assertAllPositioned(tree0)   // debug
+    val tree1 = liftBindings(tree0, identity)
     val tree2  =
       if bindings.nonEmpty then
-        cpy.Block(tree)(bindings.toList, inlineCall(tree1))
+        cpy.Block(tree0)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
-          try bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+          try bodyToInline(tree0.symbol) // can typecheck the tree and thereby produce errors
           catch case _: MissingInlineInfo =>
             throw CyclicReference(ctx.owner)
-        new InlineCall(tree).expand(body)
+        new InlineCall(tree0).expand(body)
       else
         ctx.base.stopInlining = true
         val (reason, setting) =
@@ -301,12 +316,12 @@ object Inlines:
 
         inContext(ctx.withSource(curSource)) {
           tree match
-            case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
-            case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
-            case tree: This => finalize(untpd.This(tree.qual)(curSource))
-            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
+            case tree: Ident => finalize(untpd.Ident(tree.name)(using curSource))
+            case tree: Literal => finalize(untpd.Literal(tree.const)(using curSource))
+            case tree: This => finalize(untpd.This(tree.qual)(using curSource))
+            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(using curSource))
             case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
             case tree: DefTree => super.transform(tree).setDefTree
             case EmptyTree => tree
@@ -573,12 +588,47 @@ object Inlines:
       // different for bindings from arguments and bindings from body.
       val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies then inlined
+      val hasOpaquesInResultFromCallWithTransparentContext =
+        val owners = call.symbol.ownersIterator.toSet
+        call.tpe.widenTermRefExpr.existsPart(
+          part => part.typeSymbol.is(Opaque) && owners.contains(part.typeSymbol.owner)
+        )
+
+      /** Remap ThisType nodes that are incorrect in the inlined context.
+       * Incorrect ThisType nodes can cause unwanted opaque type dealiasing later.
+       * E.g. if inlined in a `<root>.Foo` package (but outside of <root>.Foo.Bar object) we will map
+       *   `TermRef(ThisType(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),Bar$)),MyOpaque$)),one)`
+       * into
+       *   `TermRef(TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),object Bar),object MyOpaque),val one)`
+       * See test i13461-d
+       */
+      def fixThisTypeModuleClassReferences(tpe: Type): Type =
+        val owners = ctx.owner.ownersIterator.toSet
+        TreeTypeMap(
+          typeMap = new TypeMap:
+            override def stopAt = StopAt.Package
+            def apply(t: Type) = mapOver {
+              t match
+                case ThisType(tref @ TypeRef(prefix, _)) if tref.symbol.flags.is(Module) && !owners.contains(tref.symbol) =>
+                  TermRef(apply(prefix), tref.symbol.companionModule)
+                case _ => mapOver(t)
+            }
+        ).typeMap(tpe)
+
+      if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
-        val target =
-          if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
-          else call.tpe
-        inlined.ensureConforms(target)
+        val (target, forceCast) =
+          if inlinedMethod.is(Transparent) then
+            val unpacked = unpackProxiesFromResultType(inlined)
+            val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
+            (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
+          else (call.tpe, false)
+        if forceCast then
+          // we need to force the cast for issues with ThisTypes, as ensureConforms will just
+          // check subtyping and then choose not to cast, leaving the previous, incorrect type
+          inlined.cast(target)
+        else
+          inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is

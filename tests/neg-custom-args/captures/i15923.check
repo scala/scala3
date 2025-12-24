@@ -1,23 +1,16 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |                     ^^^^^^^^^^^^^^^^
-   |Found:    (lcap: scala.caps.Capability^{cap.rd}) ?->? Cap^{lcap} ->? box Id[box Cap^{cap².rd}]^?
-   |Required: (lcap: scala.caps.Capability^{cap.rd}) ?-> Cap^{lcap} => box Id[box Cap^?]^?
+   |Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
+   |The leakage occurred when trying to match the following types:
    |
-   |where:    =>   refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^{cap.rd}): Cap^{lcap} => box Id[box Cap^?]^?
-   |          cap  is the universal root capability
-   |          cap² is a root capability associated with the result type of (x$0: Cap^{lcap}): box Id[box Cap^{cap².rd}]^?
+   |Found:    (lcap: scala.caps.Capability^) ?->'s2 Cap^'s3 ->'s4 Id[Cap^'s5]^'s6
+   |Required: (lcap²: scala.caps.Capability^) ?-> Cap^{lcap²} => Id[Cap^'s1]^'s7
    |
-   |
-   |Note that reference <cap of (x$0: Cap^{lcap}): box Id[box Cap^{cap.rd}]^?>.rd
-   |cannot be included in outer capture set ?
+   |where:    =>    refers to a root capability associated with the result type of (using lcap²: scala.caps.Capability^): Cap^{lcap²} => Id[Cap^'s1]^'s7
+   |          ^     refers to the universal root capability
+   |          cap   is a root capability associated with the result type of (x$0: Cap^'s3): Id[Cap^'s5]^'s6
+   |          lcap  is a reference to a value parameter
+   |          lcap² is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg-custom-args/captures/i15923.scala:21:56 ----------------------------------------------------------
-21 |    def withCap[X](op: (lcap: caps.Capability) ?-> Cap^{lcap} => X): X = {
-   |                                                        ^^^^
-   |                                                     redundant capture: test2.Cap already accounts for lcap.type
--- Warning: tests/neg-custom-args/captures/i15923.scala:6:54 -----------------------------------------------------------
-6 |  def withCap[X](op: (lcap: caps.Capability) ?-> Cap^{lcap} => X): X = {
-  |                                                      ^^^^
-  |                                                      redundant capture: Cap already accounts for lcap.type

@@ -16,11 +16,9 @@ class SyntaxHighlightingTests extends DottyTest {
       .replace(NoColor,         ">")
       .replace(CommentColor,    "<C|")
       .replace(KeywordColor,    "<K|")
-      .replace(ValDefColor,     "<V|")
+      .replace(DefinitionColor, "<D|")
       .replace(LiteralColor,    "<L|")
-      .replace(StringColor,     "<S|")
-      .replace(TypeColor,       "<T|")
-      // .replace(AnnotationColor, "<A|") // is the same color as type color
+      // .replace(TypeColor,       "<L|") Same as LiteralColor
 
     if (expected != highlighted) {
       // assertEquals produces weird expected/found message
@@ -39,13 +37,13 @@ class SyntaxHighlightingTests extends DottyTest {
 
   @Test
   def types = {
-    test("type Foo", "<K|type> <T|Foo>")
-    test("type Foo =", "<K|type> <T|Foo> =")
-    test("type Foo = Int", "<K|type> <T|Foo> = <T|Int>")
-    test("type A = String | Int", "<K|type> <T|A> = <T|String> <T||> <T|Int>")
-    test("type B = String & Int", "<K|type> <T|B> = <T|String> <T|&> <T|Int>")
-    test("type Id[A] = A", "<K|type> <T|Id>[<T|A>] = <T|A>")
-    test("type Foo = [X] =>> List[X]", "<K|type> <T|Foo> = [<T|X>] =>> <T|List>[<T|X>]")
+    test("type Foo", "<K|type> <D|Foo>")
+    test("type Foo =", "<K|type> <D|Foo> =")
+    test("type Foo = Int", "<K|type> <D|Foo> = <L|Int>")
+    test("type A = String | Int", "<K|type> <D|A> = <L|String> <L||> <L|Int>")
+    test("type B = String & Int", "<K|type> <D|B> = <L|String> <L|&> <L|Int>")
+    test("type Id[A] = A", "<K|type> <D|Id>[<D|A>] = <L|A>")
+    test("type Foo = [X] =>> List[X]", "<K|type> <D|Foo> = [<D|X>] =>> <L|List>[<L|X>]")
   }
 
   @Test
@@ -74,11 +72,11 @@ class SyntaxHighlightingTests extends DottyTest {
 
   @Test
   def annotations = {
-    test("@deprecated class Foo", "<T|@deprecated> <K|class> <T|Foo>")
-    test("@Test() class Foo", "<T|@Test()> <K|class> <T|Foo>")
-    test("@Test(\"Hello\") class Foo", "<T|@Test(\"Hello\")> <K|class> <T|Foo>")
-    test("@Test(\"Hello\")(\"World\") class Foo", "<T|@Test(\"Hello\")(\"World\")> <K|class> <T|Foo>")
-    test("@annotation.tailrec def foo = 1", "<T|@annotation.tailrec> <K|def> <V|foo> = <L|1>")
+    test("@deprecated class Foo", "<L|@deprecated> <K|class> <D|Foo>")
+    test("@Test() class Foo", "<L|@Test()> <K|class> <D|Foo>")
+    test("@Test(\"Hello\") class Foo", "<L|@Test(\"Hello\")> <K|class> <D|Foo>")
+    test("@Test(\"Hello\")(\"World\") class Foo", "<L|@Test(\"Hello\")(\"World\")> <K|class> <D|Foo>")
+    test("@annotation.tailrec def foo = 1", "<L|@annotation.tailrec> <K|def> <D|foo> = <L|1>")
   }
 
   @Test
@@ -90,37 +88,37 @@ class SyntaxHighlightingTests extends DottyTest {
   @Test
   def valOrDefDef = {
     test("val",           "<K|val>")
-    test("val foo",       "<K|val> <V|foo>")
-    test("val foo =",     "<K|val> <V|foo> =")
-    test("val foo = 123", "<K|val> <V|foo> = <L|123>")
+    test("val foo",       "<K|val> <D|foo>")
+    test("val foo =",     "<K|val> <D|foo> =")
+    test("val foo = 123", "<K|val> <D|foo> = <L|123>")
     test(
       "val foo: List[List[Int]] = List(List(1))",
-      "<K|val> <V|foo>: <T|List>[<T|List>[<T|Int>]] = List(List(<L|1>))"
+      "<K|val> <D|foo>: <L|List>[<L|List>[<L|Int>]] = <K|List>(<K|List>(<L|1>))"
     )
 
     test("var",                "<K|var>")
-    test("var foo",            "<K|var> <V|foo>")
-    test("var foo:",           "<K|var> <V|foo>:")
-    test("var foo: Int",       "<K|var> <V|foo>: <T|Int>")
-    test("var foo: Int =",     "<K|var> <V|foo>: <T|Int> =")
-    test("var foo: Int = 123", "<K|var> <V|foo>: <T|Int> = <L|123>")
+    test("var foo",            "<K|var> <D|foo>")
+    test("var foo:",           "<K|var> <D|foo>:")
+    test("var foo: Int",       "<K|var> <D|foo>: <L|Int>")
+    test("var foo: Int =",     "<K|var> <D|foo>: <L|Int> =")
+    test("var foo: Int = 123", "<K|var> <D|foo>: <L|Int> = <L|123>")
 
     test("def",                          "<K|def>")
-    test("def foo",                      "<K|def> <V|foo>")
-    test("def foo(",                     "<K|def> <V|foo>(")
-    test("def foo(bar",                  "<K|def> <V|foo>(<V|bar>")
-    test("def foo(bar:",                 "<K|def> <V|foo>(<V|bar>:")
-    test("def foo(bar: Int",             "<K|def> <V|foo>(<V|bar>: <T|Int>")
-    test("def foo(bar: Int)",            "<K|def> <V|foo>(<V|bar>: <T|Int>)")
-    test("def foo(bar: Int):",           "<K|def> <V|foo>(<V|bar>: <T|Int>):")
-    test("def foo(bar: Int): Int",       "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int>")
-    test("def foo(bar: Int): Int =",     "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int> =")
-    test("def foo(bar: Int): Int = 123", "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int> = <L|123>")
+    test("def foo",                      "<K|def> <D|foo>")
+    test("def foo(",                     "<K|def> <D|foo>(")
+    test("def foo(bar",                  "<K|def> <D|foo>(<D|bar>")
+    test("def foo(bar:",                 "<K|def> <D|foo>(<D|bar>:")
+    test("def foo(bar: Int",             "<K|def> <D|foo>(<D|bar>: <L|Int>")
+    test("def foo(bar: Int)",            "<K|def> <D|foo>(<D|bar>: <L|Int>)")
+    test("def foo(bar: Int):",           "<K|def> <D|foo>(<D|bar>: <L|Int>):")
+    test("def foo(bar: Int): Int",       "<K|def> <D|foo>(<D|bar>: <L|Int>): <L|Int>")
+    test("def foo(bar: Int): Int =",     "<K|def> <D|foo>(<D|bar>: <L|Int>): <L|Int> =")
+    test("def foo(bar: Int): Int = 123", "<K|def> <D|foo>(<D|bar>: <L|Int>): <L|Int> = <L|123>")
 
-    test("def f1(x: Int) = 123", "<K|def> <V|f1>(<V|x>: <T|Int>) = <L|123>")
-    test("def f2[T](x: T) = { 123 }", "<K|def> <V|f2>[<T|T>](<V|x>: <T|T>) = { <L|123> }")
+    test("def f1(x: Int) = 123", "<K|def> <D|f1>(<D|x>: <L|Int>) = <L|123>")
+    test("def f2[T](x: T) = { 123 }", "<K|def> <D|f2>[<D|T>](<D|x>: <L|T>) = { <L|123> }")
 
-    test("def f3[T[_", "<K|def> <V|f3>[<T|T>[_")
+    test("def f3[T[_", "<K|def> <D|f3>[<D|T>[_")
   }
 
   @Test
@@ -133,47 +131,47 @@ class SyntaxHighlightingTests extends DottyTest {
 
   @Test
   def softKeywords = {
-    test("inline def foo = 1", "<K|inline> <K|def> <V|foo> = <L|1>")
-    test("@inline def foo = 1", "<T|@inline> <K|def> <V|foo> = <L|1>")
-    test("class inline", "<K|class> <T|inline>")
-    test("val inline = 2", "<K|val> <V|inline> = <L|2>")
-    test("def inline = 2", "<K|def> <V|inline> = <L|2>")
-    test("def foo(inline: Int) = 2", "<K|def> <V|foo>(<V|inline>: <T|Int>) = <L|2>")
+    test("inline def foo = 1", "<K|inline> <K|def> <D|foo> = <L|1>")
+    test("@inline def foo = 1", "<L|@inline> <K|def> <D|foo> = <L|1>")
+    test("class inline", "<K|class> <D|inline>")
+    test("val inline = 2", "<K|val> <D|inline> = <L|2>")
+    test("def inline = 2", "<K|def> <D|inline> = <L|2>")
+    test("def foo(inline: Int) = 2", "<K|def> <D|foo>(<D|inline>: <L|Int>) = <L|2>")
     test(
       """enum Foo:
         |  case foo
         |end Foo""".stripMargin,
-      """<K|enum> <T|Foo>:
-        |  <K|case> <T|foo>
-        |<K|end> <T|Foo>""".stripMargin
+      """<K|enum> <D|Foo>:
+        |  <K|case> <D|foo>
+        |<K|end> <D|Foo>""".stripMargin
     )
     test(
       """class Foo:
         |end Foo""".stripMargin,
-      """<K|class> <T|Foo>:
-        |<K|end> <T|Foo>""".stripMargin
+      """<K|class> <D|Foo>:
+        |<K|end> <D|Foo>""".stripMargin
     )
     test(
       """object Foo:
         |end Foo""".stripMargin,
-      """<K|object> <T|Foo>:
-        |<K|end> <T|Foo>""".stripMargin
+      """<K|object> <D|Foo>:
+        |<K|end> <D|Foo>""".stripMargin
     )
     test(
       """def foo =
         |  ()
         |end foo""".stripMargin,
-      """<K|def> <V|foo> =
+      """<K|def> <D|foo> =
         |  ()
-        |<K|end> <V|foo>""".stripMargin
+        |<K|end> <D|foo>""".stripMargin
     )
     test(
       """val foo =
         |  ()
         |end foo""".stripMargin,
-      """<K|val> <V|foo> =
+      """<K|val> <D|foo> =
         |  ()
-        |<K|end> <V|foo>""".stripMargin
+        |<K|end> <D|foo>""".stripMargin
     )
   }
 }

@@ -16,16 +16,7 @@ package object tools {
      */
     transparent inline def uncheckedNN: T = x.asInstanceOf[T]
 
-    inline def toOption: Option[T] =
-      if x == null then None else Some(x.asInstanceOf[T])
   end extension
-
-  /** Nullable eq and ne. */
-  extension [T <: AnyRef](x: T | Null)
-    inline def eqn (y: T | Null) =
-      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
-
-    inline def nen(y: T | Null): Boolean = !eqn(y)
 
   object resultWrapper {
     opaque type WrappedResult[T] = T

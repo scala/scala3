@@ -14,6 +14,7 @@ import java.util.zip.*
 import scala.collection.*
 import scala.io.Codec
 
+import dotty.tools.dotc.sbt.interfaces.ProgressCallback
 import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
@@ -29,6 +30,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd.*
 
   override def sourcesRequired: Boolean = false
+
+  private var myProgressCallback: ProgressCallback = new ProgressCallback:
+    override def isCancelled(): Boolean = Thread.interrupted()
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
@@ -151,7 +155,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
-      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
+      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter).setProgressCallback(myProgressCallback))
       myCtx = run.runContext.withRootImports
 
       given Context = myCtx
@@ -169,8 +173,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       myCtx = myCtx.fresh.setPhase(myInitCtx.base.typerPhase)
 
       reporter.removeBufferedMessages
-    }
-    catch {
+    } catch {
       case ex: FatalError  =>
         myCtx = previousCtx
         close(uri)
@@ -234,7 +237,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit =
     try
       Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
-        override def visitFile(path: Path, attrs: BasicFileAttributes) = {
+        override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
           if (!attrs.isDirectory) {
             val name = path.getFileName.toString
             if name.endsWith(tastySuffix) then

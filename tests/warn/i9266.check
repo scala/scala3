@@ -1,5 +1,13 @@
--- Migration Warning: tests/warn/i9266.scala:5:22 ----------------------------------------------------------------------
-5 |def test = { implicit x: Int => x + x } // warn
-  |                      ^
-  |                      This syntax is no longer supported; parameter needs to be enclosed in (...)
-  |                      This construct can be rewritten automatically under -rewrite -source future-migration.
+-- Migration Warning: tests/warn/i9266.scala:5:14 ----------------------------------------------------------------------
+5 |def test1 = { implicit (x: Int) => x + x } // warn
+  |              ^
+  |              `implicit` lambdas are no longer supported, use a lambda with `?=>` instead
+-- Migration Warning: tests/warn/i9266.scala:7:14 ----------------------------------------------------------------------
+7 |def test2 = { implicit x: Int => x + x } // warn // warn
+  |              ^
+  |              `implicit` lambdas are no longer supported, use a lambda with `?=>` instead
+-- Migration Warning: tests/warn/i9266.scala:7:23 ----------------------------------------------------------------------
+7 |def test2 = { implicit x: Int => x + x } // warn // warn
+  |                       ^
+  |                       This syntax is no longer supported; parameter needs to be enclosed in (...)
+  |                       This construct can be rewritten automatically under -rewrite -source future-migration.

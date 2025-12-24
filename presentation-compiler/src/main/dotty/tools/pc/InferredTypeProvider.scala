@@ -182,8 +182,7 @@ final class InferredTypeProvider(
           typeNameEdit ::: imports
 
         rhs match
-          case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -223,8 +222,7 @@ final class InferredTypeProvider(
           while i >= 0 && sourceText(i) != ':' do i -= 1
           i
         rhs match
-          case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(

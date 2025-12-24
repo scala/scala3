@@ -1,5 +1,6 @@
 package scala
 
+import language.experimental.captureChecking
 
 /** A marker trait for objects that support structural selection via
  *  `selectDynamic` and `applyDynamic`
@@ -17,7 +18,7 @@ package scala
  *  list of `java.lang.Class` arguments, i.e. it may alternatively have the
  *  signature
  *  {{{
- *    def applyDynamic(name: String, paramClasses: Class[_]*)(args: Any*): Any
+ *    def applyDynamic(name: String, paramClasses: Class[?]*)(args: Any*): Any
  *  }}}
  *  In this case the call will synthesize `Class` arguments for the erasure of
  *  all formal parameter types of the method in the structural type.
@@ -40,7 +41,7 @@ object Selectable:
    *  that precise parameter types are not needed for method dispatch. That is,
    *  a class inheriting from this trait and implementing
    *  {{{
-   *     def applyDynamic(name: String, paramTypes: Class[_]*)(args: Any*)
+   *     def applyDynamic(name: String, paramTypes: Class[?]*)(args: Any*)
    *  }}}
    *  should dispatch to a method with the given `name` without having to rely
    *  on the precise `paramTypes`. Subtypes of `WithoutPreciseParameterTypes`

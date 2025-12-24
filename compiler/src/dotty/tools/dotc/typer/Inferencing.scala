@@ -13,6 +13,7 @@ import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
 import reporting.*
+import TypeAssigner.SkolemizedArgs
 import collection.mutable
 import scala.annotation.internal.sharable
 
@@ -444,7 +445,9 @@ object Inferencing {
   }
 
   /** The instantiation decision for given poly param computed from the constraint. */
-  enum Decision { case Min; case Max; case ToMax; case Skip; case Fail }
+  enum Decision:
+    case Min, Max, ToMax, Skip, Fail
+
   private def instDecision(tvar: TypeVar, v: Int, minimizeSelected: Boolean, ifBottom: IfBottom)(using Context): Decision =
     import Decision.*
     val direction = instDirection(tvar.origin)
@@ -623,11 +626,13 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
+    case tp: FlexibleType => tp.derivedFlexibleType(captureWildcards(tp.hi))
     case _ => tp
   }
 
   def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
     case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
+    case tp: FlexibleType => hasCaptureConversionArg(tp.hi)
     case _ => false
 }
 
@@ -839,22 +844,33 @@ trait Inferencing { this: Typer =>
     if tvar.origin.paramName.is(NameKinds.DepParamName) then
       representedParamRef(tvar.origin) match
         case ref: TermParamRef =>
-          def findArg(tree: Tree)(using Context): Tree = tree match
-            case Apply(fn, args) =>
+          def findArg(tree: Tree)(using Context): Option[(Tree, Apply)] = tree match
+            case app @ Apply(fn, args) =>
               if fn.tpe.widen eq ref.binder then
-                if ref.paramNum < args.length then args(ref.paramNum)
-                else EmptyTree
+                if ref.paramNum < args.length then Some((args(ref.paramNum), app))
+                else None
               else findArg(fn)
             case TypeApply(fn, _) => findArg(fn)
             case Block(_, expr) => findArg(expr)
             case Inlined(_, _, expr) => findArg(expr)
-            case _ => EmptyTree
+            case _ => None
 
-          val arg = findArg(call)
-          if !arg.isEmpty then
-            var argType = arg.tpe.widenIfUnstable
-            if !argType.isSingleton then argType = SkolemType(argType)
-            argType <:< tvar
+          findArg(call) match
+            case Some((arg, app)) =>
+              var argType = arg.tpe.widenIfUnstable
+              if !argType.isSingleton then
+                argType = app.getAttachment(SkolemizedArgs) match
+                  case Some(mapping) =>
+                    mapping.get(arg) match
+                      case Some(sk @ SkolemType(at)) =>
+                        assert(argType frozen_=:= at)
+                        sk
+                      case _ =>
+                        SkolemType(argType)
+                  case _ =>
+                    SkolemType(argType)
+              argType <:< tvar
+            case _ =>
         case _ =>
   end constrainIfDependentParamRef
 }

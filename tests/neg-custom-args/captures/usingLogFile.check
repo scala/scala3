@@ -1,56 +1,52 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:27 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:29 ---------------------------------
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.FileOutputStream^) ->? box () ->{f} Unit
-   |Required: (f: java.io.FileOutputStream^) => box () ->? Unit
+   |                             ^^^^^^^^^^^^^^^^^^^^^
+   |Capability f outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: java.io.FileOutputStream^'s2) ->'s3 () ->{f} Unit
+   |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
-   |
-   |Note that reference f.type
-   |cannot be included in outer capture set ?
-   |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:36 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:38 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.FileOutputStream^) ->? box Test2.Cell[box () ->{f} Unit]^?
-   |Required: (f: java.io.FileOutputStream^) => box Test2.Cell[box () ->? Unit]^?
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Capability f outlives its scope: it leaks into outer capture set 's4 which is owned by value later2.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 Test2.Cell[() ->{f} Unit]^'s7
+   |Required: java.io.FileOutputStream^ => Test2.Cell[() ->'s4 Unit]^'s8
    |
    |where:    => refers to a fresh root capability created in value later2 when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
-   |
-   |
-   |Note that reference f.type
-   |cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
 43 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.OutputStream^) ->? box Int ->{f} Unit
-   |Required: (f: java.io.OutputStream^) => box Int ->? Unit
+   |Capability f outlives its scope: it leaks into outer capture set 's9 which is owned by value later.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: java.io.OutputStream^'s10) ->'s11 Int ->{f} Unit
+   |Required: java.io.OutputStream^ => Int ->'s9 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
-   |
-   |
-   |Note that reference f.type
-   |cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:52:6 ----------------------------------
 52 |      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (_$1: java.io.OutputStream^) ->? box () ->{_$1} Unit
-   |Required: (_$1: java.io.OutputStream^) => box () ->? Unit
+   |Capability _$1 outlives its scope: it leaks into outer capture set 's12 which is owned by value later.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (_$1: java.io.OutputStream^'s13) ->'s14 () ->{_$1} Unit
+   |Required: java.io.OutputStream^ => () ->'s12 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
-   |
-   |
-   |Note that reference _$1.type
-   |cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`

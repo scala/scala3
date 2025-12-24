@@ -11,7 +11,7 @@ import java.nio.file.{Files, Path => JPath}
 import scala.io.Source
 import scala.jdk.StreamConverters._
 import scala.reflect.ClassTag
-import scala.util.Using.resource
+import scala.util.Using.{Releasable, resource}
 import scala.util.chaining.given
 import scala.util.control.{ControlThrowable, NonFatal}
 
@@ -33,7 +33,7 @@ def scriptsDir(path: String): File = {
   dir
 }
 
-extension (f: File) def absPath =
+extension (f: File) def absPath: String =
   f.getAbsolutePath.replace('\\', '/')
 
 extension (str: String) def dropExtension =
@@ -43,6 +43,24 @@ private
 def withFile[T](file: File)(action: Source => T): T = resource(Source.fromFile(file, UTF_8.name))(action)
 def readLines(f: File): List[String]                = withFile(f)(_.getLines().toList)
 def readFile(f: File): String                       = withFile(f)(_.mkString)
+
+// Make common types useable with Using.
+object Useables:
+  import java.io.IOException
+  import java.nio.file.{FileVisitResult, SimpleFileVisitor}, FileVisitResult.CONTINUE as Continue
+  import java.nio.file.attribute.*
+  import scala.util.Properties
+
+  // delete the result of createTempDirectory
+  given Releasable[JPath] with
+    override def release(released: JPath) = if !Properties.isWin then remove(released)
+  private def remove(path: JPath): Unit = if Files.isDirectory(path) then removeRecursively(path) else Files.delete(path)
+  private def removeRecursively(path: JPath): Unit = Files.walkFileTree(path, ZappingFileVisitor())
+  private class ZappingFileVisitor extends SimpleFileVisitor[JPath]:
+    private def zap(path: JPath) = { Files.delete(path) ; Continue }
+    override def postVisitDirectory(path: JPath, e: IOException): FileVisitResult = if e != null then throw e else zap(path)
+    override def visitFile(path: JPath, attrs: BasicFileAttributes): FileVisitResult = zap(path)
+end Useables
 
 private object Unthrown extends ControlThrowable
 

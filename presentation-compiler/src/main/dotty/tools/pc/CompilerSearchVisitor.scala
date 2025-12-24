@@ -19,7 +19,7 @@ class CompilerSearchVisitor(
 )(using ctx: Context, reports: ReportContext)
     extends SymbolSearchVisitor:
 
-  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName().nn).nn
+  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName()).nn
 
   private def isAccessibleImplicitClass(sym: Symbol) =
     val owner = sym.maybeOwner

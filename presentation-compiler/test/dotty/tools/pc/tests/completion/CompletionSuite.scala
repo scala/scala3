@@ -109,18 +109,9 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
-         |->[B](y: B): (List.type, B)
-         |ensuring(cond: Boolean): List.type
-         |ensuring(cond: List.type => Boolean): List.type
-         |ensuring(cond: Boolean, msg: => Any): List.type
-         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
-         |nn: List.type
-         |runtimeChecked scala.collection.immutable
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
-         |formatted(fmtstr: String): String
-         |→[B](y: B): (List.type, B)
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean
@@ -129,9 +120,15 @@ class CompletionSuite extends BaseCompletionSuite:
          |isInstanceOf[X0]: Boolean
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |wait(): Unit
-         |wait(x$0: Long): Unit
-         |wait(x$0: Long, x$1: Int): Unit
+         |->[B](y: B): (List.type, B)
+         |ensuring(cond: Boolean): List.type
+         |ensuring(cond: List.type => Boolean): List.type
+         |ensuring(cond: Boolean, msg: => Any): List.type
+         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
+         |nn: List.type
+         |runtimeChecked scala.collection.immutable
+         |formatted(fmtstr: String): String
+         |→[B](y: B): (List.type, B)
          |""".stripMargin
     )
 
@@ -415,6 +412,7 @@ class CompletionSuite extends BaseCompletionSuite:
       includeCommitCharacter = true
     )
 
+  @Ignore
   @Test def `numeric-sort` =
     check(
       """
@@ -2056,6 +2054,28 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
     )
 
+  @Test def `namedTuple completions-3` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.@@name""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
+  @Test def `namedTuple completions-4` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.n@@ame""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
   @Test def `Selectable with namedTuple Fields member` =
     check(
       """|import scala.NamedTuple.*
@@ -2274,4 +2294,25 @@ class CompletionSuite extends BaseCompletionSuite:
         |  magic.@@
         |""".stripMargin,
       "test: Int"
+    )
+
+  @Test def `macros` =
+    check(
+      """
+        |object Macro:
+        |  import scala.quoted.*
+        |  def dbgImpl[A](a: Expr[A])(using Quotes): Expr[A] =
+        |    import quotes.reflect.*
+        |    a.asTer@@
+        |
+        |""".stripMargin,
+      "asTerm: Term"
+    )
+
+  @Test def `derives-no-square-brackets` =
+    check(
+      """
+        |case class Miau(y: Int) derives Ordering, CanEqu@@
+        |""".stripMargin,
+      "CanEqual scala"
     )

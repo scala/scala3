@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package printing
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.StdNames.*
@@ -18,6 +16,9 @@ import java.util.Arrays
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
 
+  /** The name of the virtual source file used for highlighting */
+  val VirtualSourceName = "<highlighting>"
+
   /** if true, log erroneous positions being highlighted */
   private inline val debug = true
 
@@ -25,17 +26,15 @@ object SyntaxHighlighting {
   val NoColor: String         = Console.RESET
   val CommentColor: String    = Console.BLUE
   val KeywordColor: String    = Console.YELLOW
-  val ValDefColor: String     = Console.CYAN
-  val LiteralColor: String    = Console.RED
-  val StringColor: String     = Console.GREEN
-  val TypeColor: String       = Console.MAGENTA
-  val AnnotationColor: String = Console.MAGENTA
+  val DefinitionColor: String = Console.CYAN
+  val LiteralColor: String    = Console.GREEN
+  val TypeColor: String       = Console.GREEN
 
   def highlight(in: String)(using Context): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
-      val source = SourceFile.virtual("<highlighting>", in)
+      val source = SourceFile.virtual(VirtualSourceName, in)
 
       given Context = freshCtx
         .setCompilationUnit(CompilationUnit(source, mustExist = false)(using freshCtx))
@@ -79,6 +78,9 @@ object SyntaxHighlighting {
           case IDENTIFIER if name == nme.??? =>
             highlightRange(start, end, Console.RED_B)
 
+          case IDENTIFIER if name.head.isUpper && name.exists(!_.isUpper) =>
+            highlightRange(start, end, KeywordColor)
+
           case _ =>
         }
       }
@@ -97,7 +99,7 @@ object SyntaxHighlighting {
 
         def highlightAnnotations(tree: MemberDef): Unit =
           for (annotation <- tree.rawMods.annotations)
-            highlightPosition(annotation.span, AnnotationColor)
+            highlightPosition(annotation.span, TypeColor)
 
         def highlight(trees: List[Tree])(using Context): Unit =
           trees.foreach(traverse)
@@ -108,14 +110,16 @@ object SyntaxHighlighting {
               ()
             case tree: ValOrDefDef =>
               highlightAnnotations(tree)
-              highlightPosition(tree.nameSpan, ValDefColor)
-              highlightPosition(tree.endSpan, ValDefColor)
+              highlightPosition(tree.nameSpan, DefinitionColor)
+              highlightPosition(tree.endSpan, DefinitionColor)
             case tree: MemberDef /* ModuleDef | TypeDef */ =>
               highlightAnnotations(tree)
-              highlightPosition(tree.nameSpan, TypeColor)
-              highlightPosition(tree.endSpan, TypeColor)
+              highlightPosition(tree.nameSpan, DefinitionColor)
+              highlightPosition(tree.endSpan, DefinitionColor)
             case tree: Ident if tree.isType =>
               highlightPosition(tree.span, TypeColor)
+            case tree: Select if tree.isType =>
+              highlightPosition(tree.nameSpan, TypeColor)
             case _: TypeTree =>
               highlightPosition(tree.span, TypeColor)
             case _ =>

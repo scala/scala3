@@ -1,4 +1,4 @@
-//> using options  -Wunused:implicits
+//> using options -Wunused:implicits
 
 /* This goes around the "trivial method" detection */
 val default_int = 1
@@ -28,7 +28,7 @@ object Example:
   import scala.quoted.*
   given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with
     def unapply(x: Expr[Option[T]])(using Quotes) = x match
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
       case '{ None } => Some(None)
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None
@@ -37,7 +37,7 @@ object ExampleWithoutWith:
   import scala.quoted.*
   given [T] => (Type[T], FromExpr[T]) => FromExpr[Option[T]]:
     def unapply(x: Expr[Option[T]])(using Quotes) = x match
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
       case '{ None } => Some(None)
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None
@@ -67,6 +67,8 @@ package givens:
   trait Y:
     def doY: String
 
+  trait Z
+
   given X:
     def doX = 7
 
@@ -84,6 +86,9 @@ package givens:
 
   given namely: (x: X) => Y: // warn protected param to given class
     def doY = "8"
+
+  def f(using => X) = println() // warn
+  def g(using => Z) = println() // nowarn marker trait
 end givens
 
 object i22895:

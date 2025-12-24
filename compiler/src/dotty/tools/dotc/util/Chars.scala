@@ -3,7 +3,8 @@ package dotty.tools.dotc.util
 import scala.annotation.switch
 import Character.{LETTER_NUMBER, LOWERCASE_LETTER, OTHER_LETTER, TITLECASE_LETTER, UPPERCASE_LETTER}
 import Character.{MATH_SYMBOL, OTHER_SYMBOL}
-import Character.{isJavaIdentifierPart, isUnicodeIdentifierStart, isUnicodeIdentifierPart}
+import Character.{isISOControl as isControl, isJavaIdentifierPart, isUnicodeIdentifierStart, isUnicodeIdentifierPart}
+import java.lang.StringBuilder
 
 /** Contains constants and classifier methods for characters */
 object Chars:
@@ -110,3 +111,59 @@ object Chars:
 
   /** Would the character be encoded by `NameTransformer.encode`? */
   def willBeEncoded(c: Char): Boolean = !isJavaIdentifierPart(c)
+
+  private inline def requiresFormat(c: Char): Boolean = (c: @switch) match
+    case '\b' | '\t' | '\n' | '\f' | '\r' | '"' | '\'' | '\\' => true
+    case c => isControl(c)
+
+  def escapedString(text: String, quoted: Boolean): String =
+    inline def doBuild: String =
+      val b = StringBuilder(text.length + 16)
+      if quoted then
+        b.append('"')
+      var i = 0
+      while i < text.length do
+        escapedChar(b, text.charAt(i))
+        i += 1
+      if quoted then
+        b.append('"')
+      b.toString
+    var i = 0
+    while i < text.length do
+      if requiresFormat(text.charAt(i)) then return doBuild
+      i += 1
+    if quoted then "\"" + text + "\""
+    else text
+
+  def escapedChar(ch: Char): String =
+    if requiresFormat(ch) then
+      val b = StringBuilder().append('\'')
+      escapedChar(b, ch)
+      b.append('\'').toString
+    else
+      "'" + ch + "'"
+
+  private def escapedChar(b: StringBuilder, c: Char): Unit =
+    inline def quadNibble(x: Int, i: Int): Unit =
+      if i < 4 then
+        quadNibble(x >> 4, i + 1)
+        val n = x & 0xF
+        val c = if (n < 10) '0' + n else 'a' + (n - 10)
+        b.append(c.toChar)
+    val replace = (c: @switch) match
+      case '\b' => "\\b"
+      case '\t' => "\\t"
+      case '\n' => "\\n"
+      case '\f' => "\\f"
+      case '\r' => "\\r"
+      case '"'  => "\\\""
+      case '\'' => "\\\'"
+      case '\\' => "\\\\"
+      case c =>
+        if isControl(c) then
+          b.append("\\u")
+          quadNibble(c.toInt, 0)
+        else
+          b.append(c)
+        return
+    b.append(replace)

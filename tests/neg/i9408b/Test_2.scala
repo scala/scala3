@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 import language.`3.0-migration`
 import scala.language.implicitConversions

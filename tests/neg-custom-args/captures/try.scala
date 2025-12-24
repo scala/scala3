@@ -2,8 +2,8 @@ import annotation.retains
 import language.experimental.erasedDefinitions
 
 class CT[E <: Exception]
-type CanThrow[E <: Exception] = CT[E] @retains(caps.cap)
-type Top  = Any @retains(caps.cap)
+type CanThrow[E <: Exception] = CT[E] @retains[caps.cap.type]
+type Top  = Any @retains[caps.cap.type]
 
 infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?=> R
 
@@ -20,20 +20,20 @@ def handle[E <: Exception,  R <: Top](op: CT[E]^ => R)(handler: E => R): R =
   catch case ex: E => handler(ex)
 
 def test =
-  val a = handle[Exception, CanThrow[Exception]] { // error // error
-    (x: CanThrow[Exception]) => x
+  val a = handle[Exception, CanThrow[Exception]] {
+    (x: CanThrow[Exception]) => x // error
   }{
     (ex: Exception) => ???
   }
 
-  val b = handle[Exception, () -> Nothing] { // error
-    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
+  val b = handle[Exception, () -> Nothing] {
+    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
   } {
     (ex: Exception) => ???
   }
 
-  val xx = handle {  // error
-    (x: CanThrow[Exception]) =>
+  val xx = handle {
+    (x: CanThrow[Exception]) => // error
       () =>
         raise(new Exception)(using x)
         22
@@ -44,8 +44,8 @@ def test =
   yy // OK
 
 
-val global: () -> Int = handle { // error
-  (x: CanThrow[Exception]) =>
+val global: () -> Int = handle {
+  (x: CanThrow[Exception]) =>  // error
     () =>
       raise(new Exception)(using x)
       22

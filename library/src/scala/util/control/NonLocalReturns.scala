@@ -1,5 +1,7 @@
 package scala.util.control
 
+import language.experimental.captureChecking
+
 import scala.compiletime.uninitialized
 
 /** Library implementation of nonlocal return.
@@ -22,7 +24,7 @@ import scala.compiletime.uninitialized
 @deprecated("Use scala.util.boundary instead", "3.3")
 object NonLocalReturns {
   @deprecated("Use scala.util.boundary.Break instead", "3.3")
-  class ReturnThrowable[T] extends ControlThrowable {
+  class ReturnThrowable[T] extends ControlThrowable, caps.Control {
     private var myResult: T = uninitialized
     def throwReturn(result: T): Nothing = {
       myResult = result
@@ -36,7 +38,7 @@ object NonLocalReturns {
   def throwReturn[T](result: T)(using returner: ReturnThrowable[? >: T]): Nothing =
     returner.throwReturn(result)
 
-  /** Enable nonlocal returns in `op`. */
+  /** Enables nonlocal returns in `op`. */
   @deprecated("Use scala.util.boundary instead", "3.3")
   def returning[T](op: ReturnThrowable[T] ?=> T): T = {
     val returner = new ReturnThrowable[T]

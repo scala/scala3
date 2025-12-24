@@ -1,4 +1,5 @@
-import language.experimental.into
+//> using options -preview
+import Conversion.into
 
 type Input = List[String]
 
@@ -12,7 +13,7 @@ def empty[T](x: T) = Parser(in => Success(x, in))
 def fail(msg: String) = Parser(in => Failure(msg))
 
 class ParserOps[T](p: Parser[T]):
-  def ~ [U](q: => into Parser[U]): Parser[(T, U)] = Parser(in =>
+  def ~ [U](q: => into[Parser[U]]): Parser[(T, U)] = Parser(in =>
       p.parse(in) match
         case Success(x, in1) =>
           q.parse(in1) match
@@ -20,7 +21,7 @@ class ParserOps[T](p: Parser[T]):
             case fail: Failure => fail
         case fail: Failure => fail
     )
-  def | [U](q: => into Parser[T]): Parser[T] = Parser(in =>
+  def | [U](q: => into[Parser[T]]): Parser[T] = Parser(in =>
       p.parse(in) match
         case s: Success[_] => s
         case fail: Failure => q.parse(in)
@@ -30,9 +31,9 @@ class ParserOps[T](p: Parser[T]):
         case Success(x, in1) => Success(f(x), in1)
         case fail: Failure => fail
     )
-  def ~> [U](q: => into Parser[U]): Parser[U] =
+  def ~> [U](q: => into[Parser[U]]): Parser[U] =
     (p ~ q).map(_(1))
-  def <~ [U](q: => into Parser[U]): Parser[T] =
+  def <~ [U](q: => into[Parser[U]]): Parser[T] =
     (p ~ q).map(_(0))
   def parseAll(in: Input): ParseResult[T] =
     p.parse(in) match
@@ -64,10 +65,10 @@ def token(p: String => Boolean, expected: String): Parser[String] = Parser {
 
 def token(str: String): Parser[String] = token(str == _, s"`$str`")
 
-def opt[T](p: into Parser[T]): Parser[Option[T]] =
+def opt[T](p: into[Parser[T]]): Parser[Option[T]] =
   p.map(Some(_)) | empty(None)
 
-def rep[T](p: into Parser[T]): Parser[List[T]] =
+def rep[T](p: into[Parser[T]]): Parser[List[T]] =
     (p ~ rep(p)).map(_ :: _)
   | empty(Nil)
 

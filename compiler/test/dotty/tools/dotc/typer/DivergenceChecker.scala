@@ -50,8 +50,8 @@ class DivergenceCheckerTests extends DottyTest {
           1,
           1,
           1,
-          3,
-          5
+          4,
+          6
         )
 
         tpes.lazyZip(expectedSizes).lazyZip(expectedCoveringSets).foreach {

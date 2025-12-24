@@ -10,16 +10,17 @@ import annotation.threadUnsafe
 import annotation.constructorOnly
 import annotation.internal.sharable
 import reporting.trace
+import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property}
-import typer.ErrorReporting.Addenda
-import util.common.alwaysTrue
+import util.{SimpleIdentitySet, Property, EqHashMap}
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
 import Capabilities.*
+import Names.Name
+import NameKinds.CapsetName
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -43,11 +44,30 @@ import Capabilities.*
  */
 sealed abstract class CaptureSet extends Showable:
   import CaptureSet.*
+  import Mutability.*
 
   /** The elements of this capture set. For capture variables,
    *  the elements known so far.
    */
   def elems: Refs
+
+  protected var myMut : Mutability = Ignored
+
+  /** The access kind of this CaptureSet. */
+  def mutability(using Context): Mutability = myMut
+
+  def mutability_=(x: Mutability): Unit =
+    myMut = x
+
+  /** Mark this capture set as belonging to a Stateful type. Called when a new
+   *  CapturingType is formed. This is different from the setter `mutability_=`
+   *  in that it can be defined with different behaviors:
+   *
+   *   - set mutability to Writer (for normal Vars)
+   *   - take mutability from the set's sources (for DerivedVars)
+   *   - compute mutability on demand based on mutability of elements (for Consts)
+   */
+  def associateWithStateful()(using Context): CaptureSet
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -62,14 +82,17 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this set provisionally solved, so that another cc run might unfreeze it? */
   def isProvisionallySolved(using Context): Boolean
 
-  /** An optional level limit, or undefinedLevel if none exists. All elements of the set
-   *  must be at levels equal or smaller than the level of the set, if it is defined.
-   */
-  def level: Level
-
   /** An optional owner, or NoSymbol if none exists. Used for diagnstics
    */
   def owner: Symbol
+
+  /** If this set is a variable: Drop capabilities that are known to be empty
+   *  This is called during separation checking so that capabilities that turn
+   *  out to be always empty because of conflicting clasisifiers don't contribute
+   *  to peaks. We can't do it before that since classifiers are set during
+   *  capture checking.
+   */
+  def dropEmpties()(using Context): this.type
 
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
@@ -102,16 +125,56 @@ sealed abstract class CaptureSet extends Showable:
   final def containsTerminalCapability(using Context) =
     elems.exists(_.isTerminalCapability)
 
+  /** Does this capture set contain a ResultCap element? */
+  final def containsResultCapability(using Context) =
+    elems.exists(_.core.isInstanceOf[ResultCap])
+
+  /** Does this capture set contain a GlobalCap or FreshCap, and at the same time
+   *  does not contain a ResultCap?
+   */
+  final def containsCapOrFresh(using Context) =
+    !containsResultCapability
+    && elems.exists: elem =>
+      elem.core match
+        case GlobalCap => true
+        case _: FreshCap => true
+        case _ => false
+
   final def containsCap(using Context) =
     elems.exists(_.core eq GlobalCap)
 
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
 
-  final def isExclusive(using Context): Boolean =
-    elems.exists(_.isExclusive)
+  final def isAlwaysReadOnly(using Context): Boolean = isConst && isReadOnly
+
+  /** Is capture set exclusive? If `required` is true, a variable capture set
+   *  is forced to Writer mutability which makes it exclusive. Otherwise a set
+   *  is exclusive if one of its elements is exclusive.
+   *  Possible issue: If required is true, and the set is a constant, with
+   *  multiple elements that each have a variable capture set, then we make
+   *  the set exclusive by updating the first such variable capture set with
+   *  Ignore mutability to have Write mutability. That makes the effect
+   *  order dependent.
+   */
+  def isExclusive(required: Boolean = false)(using Context): Boolean =
+    if required && !isConst && mutability == Ignored then
+      mutability = Writer
+    mutability == Writer
+    || elems.exists(_.isExclusive(required))
+
+  /** Similar to isExclusive, but also includes capture set variables
+   *  with unknown status.
+   */
+  final def maybeExclusive(using Context): Boolean = reporting.trace(i"mabe exclusive $this"):
+    if isConst then elems.exists(_.maybeExclusive)
+    else mutability != Reader
 
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
+
+  def failWith(note: Note)(using Context): false =
+    TypeComparer.addErrorNote(note)
+    false
 
   /** Try to include an element in this capture set.
    *  @param elem    The element to be added
@@ -132,14 +195,15 @@ sealed abstract class CaptureSet extends Showable:
    *  element is not the root capability, try instead to include its underlying
    *  capture set.
    */
-  protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult = reporting.trace(i"try include $elem in $this # ${maybeId}"):
-    if accountsFor(elem) then CompareResult.OK
-    else addNewElem(elem)
+  protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
+    accountsFor(elem) || addNewElem(elem)
 
   /** Try to include all element in `refs` to this capture set. */
-  protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-    (CompareResult.OK /: newElems): (r, elem) =>
-      r.andAlso(tryInclude(elem, origin))
+  protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
+    newElems.forall(tryInclude(_, origin))
+
+  protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+    if mutability == Writer then toReader() else true
 
   /** Add an element to this capture set, assuming it is not already accounted for,
    *  and omitting any mapping or filtering.
@@ -148,34 +212,32 @@ sealed abstract class CaptureSet extends Showable:
    *  element is not the root capability, try instead to include its underlying
    *  capture set.
    */
-  protected final def addNewElem(elem: Capability)(using ctx: Context, vs: VarState): CompareResult =
-    if elem.isTerminalCapability || !vs.isOpen then
-      addThisElem(elem)
-    else
-      addThisElem(elem).orElse:
-        val underlying = elem.captureSetOfInfo
-        tryInclude(underlying.elems, this).andAlso:
-          underlying.addDependent(this)
-          CompareResult.OK
-
-  /** Add new elements one by one using `addNewElem`, abort on first failure */
-  protected final def addNewElems(newElems: Refs)(using Context, VarState): CompareResult =
-    (CompareResult.OK /: newElems): (r, elem) =>
-      r.andAlso(addNewElem(elem))
+  protected final def addNewElem(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
+    addThisElem(elem)
+    || !elem.isTerminalCapability
+        && vs.isOpen
+        && {
+          val underlying = elem.captureSetOfInfo
+          val res = tryInclude(underlying.elems, this)
+          if res then underlying.addDependent(this)
+          res
+        }
 
   /** Add a specific element, assuming it is not already accounted for,
    *  and omitting any mapping or filtering, without possibility to backtrack
    *  to the underlying capture set.
    */
-  protected def addThisElem(elem: Capability)(using Context, VarState): CompareResult
+  protected def addThisElem(elem: Capability)(using Context, VarState): Boolean
 
-  protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): CompareResult =
-    if elems.exists(_.maxSubsumes(elem, canAddHidden = true))
-    then CompareResult.OK
-    else CompareResult.Fail(this :: Nil)
+  protected def toReader()(using Context): Boolean
+
+  protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
+    elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    || elem.isKnownEmpty
+    || failWith(IncludeFailure(this, elem))
 
   /** If this is a variable, add `cs` as a dependent set */
-  protected def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult
+  protected def addDependent(cs: CaptureSet)(using Context, VarState): Boolean
 
   /** If `cs` is a variable, add this capture set as one of its dependent sets */
   protected def addAsDependentTo(cs: CaptureSet)(using Context): this.type =
@@ -192,14 +254,15 @@ sealed abstract class CaptureSet extends Showable:
       i"$this accountsFor $x$suffix"
 
     def test(using Context) = reporting.trace(debugInfo):
-      elems.exists(_.subsumes(x))
-      || // Even though subsumes already follows captureSetOfInfo, this is not enough.
-         // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
-        !x.isTerminalCapability
-        && !x.coreType.derivesFrom(defn.Caps_CapSet)
-        && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
-           // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
-        && x.captureSetOfInfo.subCaptures(this, VarState.Separate).isOK
+      TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
+        elems.exists(_.subsumes(x))
+        || // Even though subsumes already follows captureSetOfInfo, this is not enough.
+           // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
+          !x.isTerminalCapability
+          && !x.coreType.derivesFrom(defn.Caps_CapSet)
+          && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
+            // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
+          && x.captureSetOfInfo.subCaptures(this, VarState.Separate)
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -215,12 +278,19 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      CCState.withCollapsedFresh: // OK here since we opportunistically choose an alternative which gets checked later
-        elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
+      CCState.withCollapsedFresh:
+        // withCollapsedFresh should be dropped. The problem is that since our level checking
+        // does not deal with classes well, we get false negatives here. Observed in the line
+        //
+        //     stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state))))
+        //
+        // in cc-lib's LazyListIterable.scala.
+        TypeComparer.noNotes:
+          elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
         && {
-          val elems = x.captureSetOfInfo.elems
-          !elems.isEmpty && elems.forall(mightAccountFor)
+          val xelems = x.captureSetOfInfo.elems
+          !xelems.isEmpty && xelems.forall(mightAccountFor)
         }
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
@@ -233,34 +303,42 @@ sealed abstract class CaptureSet extends Showable:
     && !that.elems.forall(this.mightAccountFor)
 
   /** The subcapturing test, taking an explicit VarState. */
-  final def subCaptures(that: CaptureSet, vs: VarState)(using Context): CompareResult =
+  final def subCaptures(that: CaptureSet, vs: VarState)(using Context): Boolean =
     subCaptures(that)(using ctx, vs)
 
   /** The subcapturing test, using a given VarState */
-  final def subCaptures(that: CaptureSet)(using ctx: Context, vs: VarState = VarState()): CompareResult =
-    val result = that.tryInclude(elems, this)
-    if result.isOK then
-      addDependent(that)
-    else
-      result.levelError.foreach(ccState.addNote)
-      varState.rollBack()
-      result
-      //.showing(i"subcaptures $this <:< $that = ${result.show}", capt)
+  final def subCaptures(that: CaptureSet)(using ctx: Context, vs: VarState = VarState()): Boolean =
+    TypeComparer.inNestedLevel:
+      val this1 = if vs.isOpen then this.adaptMutability(that) else this
+      if this1 == null then false
+      else if this1 ne this then
+        capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
+        this1.subCaptures(that, vs)
+      else
+        that.tryInclude(elems, this) && addDependent(that)
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
    */
   def =:= (that: CaptureSet)(using Context): Boolean =
-       this.subCaptures(that, VarState.Separate).isOK
-    && that.subCaptures(this, VarState.Separate).isOK
+       this.subCaptures(that, VarState.Separate)
+    && that.subCaptures(this, VarState.Separate)
+
+  def adaptMutability(that: CaptureSet)(using Context): CaptureSet | Null =
+    val m1 = this.mutability
+    val m2 = that.mutability
+    if m1 == Writer && m2 == Reader then this.readOnly
+    else if m1 == Reader && m2 == Writer then
+      if that.toReader() then this else null
+    else this
 
   /** The smallest capture set (via <:<) that is a superset of both
    *  `this` and `that`
    */
   def ++ (that: CaptureSet)(using Context): CaptureSet =
-    if this.subCaptures(that, VarState.HardSeparate).isOK then
+    if this.subCaptures(that, VarState.HardSeparate) then
       if that.isAlwaysEmpty && this.keepAlways then this else that
-    else if that.subCaptures(this, VarState.HardSeparate).isOK then this
+    else if that.subCaptures(this, VarState.HardSeparate) then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Union(this, that)
 
@@ -275,8 +353,8 @@ sealed abstract class CaptureSet extends Showable:
   /** The largest capture set (via <:<) that is a subset of both `this` and `that`
    */
   def **(that: CaptureSet)(using Context): CaptureSet =
-    if this.subCaptures(that, VarState.Closed()).isOK then this
-    else if that.subCaptures(this, VarState.Closed()).isOK then that
+    if this.subCaptures(that, VarState.Closed()) then this
+    else if that.subCaptures(this, VarState.Closed()) then that
     else if this.isConst && that.isConst then Const(elemIntersection(this, that))
     else Intersection(this, that)
 
@@ -329,7 +407,13 @@ sealed abstract class CaptureSet extends Showable:
           if mappedElems == elems then this
           else Const(mappedElems)
         else if ccState.mapFutureElems then
-          def unfused = BiMapped(asVar, tm, mappedElems)
+          def unfused =
+            if debugVars then
+              try BiMapped(asVar, tm, mappedElems)
+              catch case ex: AssertionError =>
+                println(i"error while mapping $this")
+                throw ex
+            else BiMapped(asVar, tm, mappedElems)
           this match
             case self: BiMapped => self.bimap.fuse(tm) match
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
@@ -355,7 +439,41 @@ sealed abstract class CaptureSet extends Showable:
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
-  def readOnly(using Context): CaptureSet = map(ReadOnlyMap())
+  def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
+
+  def readOnly(using Context): CaptureSet =
+    val res = map(ReadOnlyMap())
+    if mutability != Ignored then res.mutability = Reader
+    res
+
+  def transClassifiers(using Context): Classifiers =
+    def elemClassifiers =
+      (ClassifiedAs(Nil) /: elems.map(_.transClassifiers))(joinClassifiers)
+    if ccState.isSepCheck then
+      dropEmpties()
+      elemClassifiers
+    else if isConst then
+      elemClassifiers
+    else
+      UnknownClassifier
+
+  def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+    elems.forall(_.tryClassifyAs(cls))
+
+  def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
+    for elem <- elems do
+      elem.stripReadOnly match
+        case fresh: FreshCap => fresh.adoptClassifier(cls, freeze = isConst)
+        case _ =>
+
+  /** All capabilities of this set except those Termrefs and FreshCaps that
+   *  are bound by `mt`.
+   */
+  def freeInResult(mt: MethodicType)(using Context): CaptureSet =
+    filter:
+      case TermParamRef(binder, _) => binder ne mt
+      case ResultCap(binder) => binder ne mt
+      case _ => true
 
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
@@ -371,13 +489,20 @@ sealed abstract class CaptureSet extends Showable:
       case elem: FreshCap => elem.ccOwner.isContainedIn(rootLimit)
       case _ => false
 
-  /** Invoke `handler` if this set has (or later aquires) a root capability.
-   *  Excluded are Fresh instances unless their ccOwner is contained in `upto`.
+  /** Invoke `handler` if this set has (or later aquires) a bad root capability.
+   *  Fresh instances count as good as long as their ccOwner is outside `upto`.
    *  If `upto` is NoSymbol, all Fresh instances are admitted.
    */
-  def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
-    if elems.exists(isBadRoot(upto, _)) then handler()
-    this
+  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
+    checkAddedElems: elem =>
+      if isBadRoot(upto, elem) then handler()
+
+  /** Invoke handler for each element currently in the set and each element
+   *  added to it in the future.
+   */
+  def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+    elems.foreach: elem =>
+      handler(elem)
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
    *  The handler might add additional elements to the capture set.
@@ -411,10 +536,6 @@ sealed abstract class CaptureSet extends Showable:
   /** More info enabled by -Y flags */
   def optionalInfo(using Context): String = ""
 
-  /** A regular @retains or @retainsByName annotation with the elements of this set as arguments. */
-  def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
-    Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
-
   override def toText(printer: Printer): Text =
     printer.toTextCaptureSet(this) ~~ description
 
@@ -428,25 +549,52 @@ object CaptureSet:
   type Vars = SimpleIdentitySet[Var]
   type Deps = SimpleIdentitySet[CaptureSet]
 
+  enum Mutability derives CanEqual:
+    case Writer, Reader, Ignored
+
+    def | (that: Mutability): Mutability =
+      if this == that then this
+      else if this == Ignored || that == Ignored then Ignored
+      else if this == Reader || that == Reader then Reader
+      else Writer
+
+    def & (that: Mutability): Mutability =
+      if this == that then this
+      else if this == Ignored then that
+      else if that == Ignored then this
+      else if this == Reader then that
+      else this
+
+  end Mutability
+  import Mutability.*
+
   /** If set to `true`, capture stack traces that tell us where sets are created */
   private final val debugSets = false
 
   val emptyRefs: Refs = SimpleIdentitySet.empty
 
   /** The empty capture set `{}` */
+  @sharable // sharable since the set is empty, so mutability won't be set
   val empty: CaptureSet.Const = Const(emptyRefs)
+
+  /** The empty capture set `{}` of a Stateful type, with Reader status */
+  @sharable // sharable since the set is empty, so mutability won't be re-set
+  val emptyOfStateful: CaptureSet.Const =
+    val cs = Const(emptyRefs)
+    cs.mutability = Mutability.Reader
+    cs
+
+  class EmptyOfBoxed(val tp1: Type, val tp2: Type) extends Const(emptyRefs):
+    override def toString = "{} of boxed mismatch"
 
   /** The universal capture set `{cap}` */
   def universal(using Context): Const =
     Const(SimpleIdentitySet(GlobalCap))
 
-  /** The same as {cap.rd} but generated implicitly for
-   * references of Capability subtypes
-   */
-  val csImpliedByCapability = Const(SimpleIdentitySet(GlobalCap.readOnly))
-
+  def fresh(owner: Symbol, prefix: Type, origin: Origin)(using Context): Const =
+    FreshCap(owner, prefix, origin).singletonCaptureSet
   def fresh(origin: Origin)(using Context): Const =
-    FreshCap(origin).singletonCaptureSet
+    fresh(ctx.owner, ctx.owner.thisType, origin)
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): Const =
@@ -471,21 +619,39 @@ object CaptureSet:
     def isAlwaysEmpty(using Context) = elems.isEmpty
     def isProvisionallySolved(using Context) = false
 
-    def addThisElem(elem: Capability)(using Context, VarState): CompareResult =
-      val res = addIfHiddenOrFail(elem)
-      if !res.isOK && this.isProvisionallySolved then
-        println(i"Cannot add $elem to provisionally solved $this")
-      res
+    def addThisElem(elem: Capability)(using Context, VarState): Boolean =
+      addIfHiddenOrFail(elem)
+      || {
+        if this.isProvisionallySolved then
+          capt.println(i"Cannot add $elem to provisionally solved $this")
+        false
+      }
 
-    def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
+    def toReader()(using Context) = failWith(MutAdaptFailure(this))
+
+    def addDependent(cs: CaptureSet)(using Context, VarState) = true
 
     def upperApprox(origin: CaptureSet)(using Context): CaptureSet = this
 
     def withDescription(description: String): Const = Const(elems, description)
 
-    def level = undefinedLevel
-
     def owner = NoSymbol
+
+    def dropEmpties()(using Context) = this
+
+    private var isComplete = true
+
+    def associateWithStateful()(using Context): CaptureSet =
+      if elems.isEmpty then emptyOfStateful
+      else
+        isComplete = false // delay computation of Mutability status
+        this
+
+    override def mutability(using Context): Mutability =
+      if !isComplete then
+        myMut = if maybeExclusive then Writer else Reader
+        isComplete = true
+      myMut
 
     override def toString = elems.toString
   end Const
@@ -496,22 +662,64 @@ object CaptureSet:
       then i" under-approximating the result of mapping $ref to $mapped"
       else ""
 
+  private def capImpliedByCapability(parent: Type, sym: Symbol, variance: Int)(using Context): Capability =
+    // Since standard library classes are not compiled with separation checking,
+    // they treat Array as a Pure class. That means, no effort is made to distinguish
+    // between exclusive and read-only arrays. To compensate in code compiled under
+    // strict mutability, we treat contravariant arrays in signatures of stdlib
+    // members as read-only (so all arrays may be passed to them), and co- and
+    // invariant arrays as exclusive.
+    // TODO This scheme should also apply whenever code under strict mutability interfaces
+    // with code compiled without. To do that we will need to store in the Tasty format
+    // a flag whether code was compiled with separation checking on. This will have
+    // to wait until 3.10.
+    def isArrayFromScalaPackage =
+      parent.classSymbol == defn.ArrayClass
+      && ccConfig.strictMutability
+      && variance >= 0
+      && sym.isContainedIn(defn.ScalaPackageClass)
+    if parent.derivesFromStateful && !isArrayFromScalaPackage
+    then GlobalCap.readOnly
+    else GlobalCap
+
+  /* The same as {cap} but generated implicitly for references of Capability subtypes.
+   *  @param parent   the type to which the capture set will be attached
+   *  @param sym      the symbol carrying that type
+   *  @param variance the variance in which `parent` appears in the type of `sym`
+   */
+  class CSImpliedByCapability(parent: Type, sym: Symbol, variance: Int)(using @constructorOnly ctx: Context)
+  extends Const(SimpleIdentitySet(capImpliedByCapability(parent, sym, variance)))
+
   /** A special capture set that gets added to the types of symbols that were not
    *  themselves capture checked, in order to admit arbitrary corresponding capture
    *  sets in subcapturing comparisons. Similar to platform types for explicit
    *  nulls, this provides more lenient checking against compilation units that
    *  were not yet compiled with capture checking on.
    */
+  @sharable
   object Fluid extends Const(emptyRefs):
     override def isAlwaysEmpty(using Context) = false
-    override def addThisElem(elem: Capability)(using Context, VarState) = CompareResult.OK
+    override def addThisElem(elem: Capability)(using Context, VarState) = true
+    override def toReader()(using Context) = true
     override def accountsFor(x: Capability)(using Context)(using VarState): Boolean = true
     override def mightAccountFor(x: Capability)(using Context): Boolean = true
+    override def mutability_=(x: Mutability): Unit = ()
     override def toString = "<fluid>"
   end Fluid
 
-  /** The subclass of captureset variables with given initial elements */
-  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
+  /** If true emit info when var with id debugTarget is created or gets a new element */
+  inline val debugVars = false
+  inline val debugTarget = 1745
+
+  /** The subclass of captureset variables with given initial elements
+   *  @param initialOwner  the initial owner. This is the real owner, except that
+   *                       it can be change in HiddenSets. Used for level checking
+   *                       if different from NoSymbol.
+   *  @param initialElems  the initial elements
+   *  @param nestedOK      relevant only if owner != NoSymbol. If true the set accepts
+   *                       elements that are directly owned by owner.
+   */
+  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
 
     override def owner = initialOwner
 
@@ -536,13 +744,24 @@ object CaptureSet:
     /** The elements currently known to be in the set */
     protected var myElems: Refs = initialElems
 
+    if debugVars && id == debugTarget then
+      println(i"###INIT ELEMS of $id of class $getClass in $initialOwner, $nestedOK to $initialElems")
+      assert(false)
+
     def elems: Refs = myElems
-    def elems_=(refs: Refs): Unit = myElems = refs
+    def elems_=(refs: Refs): Unit =
+      if debugVars && id == debugTarget then
+        println(i"###SET ELEMS of $id to $refs")
+      myElems = refs
 
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
      */
     var deps: Deps = SimpleIdentitySet.empty
+
+    def associateWithStateful()(using Context): CaptureSet =
+      mutability = Writer
+      this
 
     def isConst(using Context) = solved >= ccState.iterationId
     def isAlwaysEmpty(using Context) = isConst && elems.isEmpty
@@ -550,42 +769,58 @@ object CaptureSet:
 
     def isMaybeSet = false // overridden in BiMapped
 
-    /** A handler to be invoked if the root reference `cap` is added to this set */
-    var rootAddedHandler: () => Context ?=> Unit = () => ()
+    private var emptiesDropped = false
+
+    def dropEmpties()(using Context): this.type =
+      if !emptiesDropped then
+        emptiesDropped = true
+        for elem <- elems do
+          if elem.isKnownEmpty then
+            elems -= empty
+      this
+
+    /** A list of handlers to be invoked when a new element is added to this set */
+    var newElemAddedHandlers: List[Capability => Context ?=> Unit] = Nil
 
     /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
      *  @see isBadRoot for details.
      */
     private[CaptureSet] var rootLimit: Symbol | Null = null
 
-    /** A handler to be invoked when new elems are added to this set */
-    var newElemAddedHandler: Capability => Context ?=> Unit = _ => ()
+    def isBadRoot(elem: Capability)(using Context): Boolean =
+      isBadRoot(rootLimit, elem)
+
+    private var myClassifier: ClassSymbol = defn.AnyClass
+    def classifier: ClassSymbol = myClassifier
+
+    private def narrowClassifier(cls: ClassSymbol)(using Context): Unit =
+      val newClassifier = leastClassifier(classifier, cls)
+      if newClassifier == defn.NothingClass then
+        capt.println(i"conflicting classifications for $this, was $classifier, now $cls")
+      myClassifier = newClassifier
+
+    override def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
+      if !classifier.isSubClass(cls) then // serves as recursion brake
+        narrowClassifier(cls)
+        super.adoptClassifier(cls)
+
+    override def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+      classifier.isSubClass(cls)
+      || super.tryClassifyAs(cls)
+          && { narrowClassifier(cls); true }
 
     var description: String = ""
 
-    /** Record current elements in given VarState provided it does not yet
-     *  contain an entry for this variable.
+    private var myRepr: Name | Null = null
+
+    /** A represtentation of this capture set as a unique name. We print
+     *  empty capture set variables in this representation. Bimapped sets have
+     *  the representation of their source set.
      */
-    private def recordElemsState()(using VarState): Boolean =
-      varState.getElems(this) match
-        case None => varState.putElems(this, elems)
-        case _ => true
-
-    /** Record current dependent sets in given VarState provided it does not yet
-     *  contain an entry for this variable.
-     */
-    private[CaptureSet] def recordDepsState()(using VarState): Boolean =
-      varState.getDeps(this) match
-        case None => varState.putDeps(this, deps)
-        case _ => true
-
-    /** Reset elements to what was recorded in `state` */
-    def resetElems()(using state: VarState): Unit =
-      elems = state.elems(this)
-
-    /** Reset dependent sets to what was recorded in `state` */
-    def resetDeps()(using state: VarState): Unit =
-      deps = state.deps(this)
+    def repr(using Context): Name = {
+      if (myRepr == null) myRepr = CapsetName.fresh()
+      myRepr.nn
+    }
 
     /** Check that all maps recorded in skippedMaps map `elem` to itself
      *  or something subsumed by it.
@@ -596,29 +831,55 @@ object CaptureSet:
           assert(elem.subsumes(elem1),
             i"Skipped map ${tm.getClass} maps newly added $elem to $elem1 in $this")
 
-    final def addThisElem(elem: Capability)(using Context, VarState): CompareResult =
-      if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
+    protected def includeElem(elem: Capability)(using Context, VarState): Unit =
+      if !elems.contains(elem) then
+        if debugVars && id == debugTarget then
+          println(i"###INCLUDE $elem in $this")
+        elems += elem
+        TypeComparer.logUndoAction: () =>
+          elems -= elem
+
+    def includeDep(cs: CaptureSet)(using Context): Unit =
+      if !deps.contains(cs) then
+        deps += cs
+        TypeComparer.logUndoAction: () =>
+          deps -= cs
+
+    final def addThisElem(elem: Capability)(using Context, VarState): Boolean =
+      if isConst || !varState.canRecord then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
-        CompareResult.LevelError(this, elem)    // or `elem` is not visible at the level of the set.
+        failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
+      else if !elem.tryClassifyAs(classifier) then
+        //println(i"cannot classify $elem as $classifier, ${elem.asInstanceOf[CoreCapability].classifier}")
+        failWith(IncludeFailure(this, elem))
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        elems += elem
-        if isBadRoot(rootLimit, elem) then
-          rootAddedHandler()
-        newElemAddedHandler(elem)
+        try includeElem(elem)
+        catch case ex: AssertionError =>
+          println(i"error for incl $elem in $this, ${summon[VarState].toString}")
+          throw ex
+        newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
-        val res = (CompareResult.OK /: deps): (r, dep) =>
-          r.andAlso:
-            reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
-              dep.tryInclude(normElem, this)
-        if ccConfig.checkSkippedMaps && res.isOK then checkSkippedMaps(elem)
-        res.orElse:
+        val res = deps.forall: dep =>
+          reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
+            dep.tryInclude(normElem, this)
+        if ccConfig.checkSkippedMaps && res then checkSkippedMaps(elem)
+        if !res then
           elems -= elem
-          res.addToTrace(this)
+          TypeComparer.updateErrorNotes:
+            case note: IncludeFailure => note.addToTrace(this)
+        res
+
+    final def toReader()(using Context) =
+      if isConst then failWith(MutAdaptFailure(this))
+      else
+        mutability = Reader
+        TypeComparer.logUndoAction(() => mutability = Writer)
+        deps.forall(_.mutableToReader(this))
 
     private def isPartOf(binder: Type)(using Context): Boolean =
       val find = new TypeAccumulator[Boolean]:
@@ -628,56 +889,33 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    private def levelOK(elem: Capability)(using Context): Boolean = elem match
-      case _: FreshCap =>
-        !level.isDefined
-        || ccState.symLevel(elem.ccOwner) <= level
-        || {
-          capt.println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
-          false
-        }
+    def levelOK(elem: Capability)(using Context): Boolean = elem match
       case elem @ ResultCap(binder) =>
-        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
+        rootLimit == null && isPartOf(binder.resType)
       case GlobalCap =>
         rootLimit == null
-      case elem: TermRef if level.isDefined =>
-        elem.prefix match
-          case prefix: Capability =>
-            levelOK(prefix)
-          case _ =>
-            ccState.symLevel(elem.symbol) <= level
-      case elem: ThisType if level.isDefined =>
-        ccState.symLevel(elem.cls).nextInner <= level
-      case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
+      case elem: ParamRef =>
         isPartOf(elem.binder.resType)
-        || {
-          capt.println(
-            i"""LEVEL ERROR $elem for $this
-                |elem binder = ${elem.binder}""")
-          false
-        }
-      case elem: DerivedCapability =>
-        levelOK(elem.underlying)
       case _ =>
-        true
+        if owner.exists then
+          val elemVis = elem.visibility
+          !elemVis.isProperlyContainedIn(owner)
+          || nestedOK && elemVis.owner == owner
+        else true
 
-    def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
-      if (cs eq this) || cs.isUniversal || isConst then
-        CompareResult.OK
-      else if recordDepsState() then
-        deps += cs
-        CompareResult.OK
-      else
-        CompareResult.Fail(this :: Nil)
+    def addDependent(cs: CaptureSet)(using Context, VarState): Boolean =
+      (cs eq this)
+      || cs.isUniversal
+      || isConst
+      || varState.canRecord && { includeDep(cs); true }
 
-    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
       rootLimit = upto
-      rootAddedHandler = handler
-      super.disallowRootCapability(upto)(handler)
+      super.disallowBadRoots(upto)(handler)
 
-    override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
-      newElemAddedHandler = handler
-      super.ensureWellformed(handler)
+    override def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
+      newElemAddedHandlers = handler :: newElemAddedHandlers
+      super.checkAddedElems(handler)
 
     private var computingApprox = false
 
@@ -720,13 +958,15 @@ object CaptureSet:
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
         given VarState()
-        if tryInclude(newElems, empty).isOK then
+        if tryInclude(newElems, empty) then
           markSolved(provisional = false)
 
     /** Mark set as solved and propagate this info to all dependent sets */
     def markSolved(provisional: Boolean)(using Context): Unit =
       solved = if provisional then ccState.iterationId else Int.MaxValue
       deps.foreach(_.propagateSolved(provisional))
+      if mutability == Writer && !maybeExclusive then mutability = Reader
+
 
     var skippedMaps: Set[TypeMap] = Set.empty
 
@@ -741,15 +981,9 @@ object CaptureSet:
      */
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
-      val debugInfo =
-        if !ctx.settings.YccDebug.value then ""
-        else if isConst then ids ++ "(solved)"
-        else ids
-      val limitInfo =
-        if ctx.settings.YprintLevel.value && level.isDefined
-        then i"<at level ${level.toString}>"
-        else ""
-      debugInfo ++ limitInfo
+      if !ctx.settings.YccDebug.value then ""
+      else if isConst then ids ++ "(solved)"
+      else ids
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -768,16 +1002,69 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
-  /** Variables that represent refinements of class parameters can have the universal
-   *  capture set, since they represent only what is the result of the constructor.
-   *  Test case: Without that tweak, logger.scala would not compile.
-   */
-  class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
+  /** Variables created in types of inferred type trees */
+  class ProperVar(override val owner: Symbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  extends Var(owner, initialElems, nestedOK):
+
+    /** Make sure that capset variables in types of vals and result types of
+     *  non-anonymous functions contain only a single FreshCap, and furthermore
+     *  that that FreshCap has as origin InDecl(owner), where owner is the val
+     *  or def for which the type is defined.
+     *  Note: This currently does not apply to classified or read-only fresh caps.
+     */
+    override def includeElem(elem: Capability)(using ctx: Context, vs: VarState): Unit = elem match
+      case elem: FreshCap
+      if !nestedOK
+          && !elems.contains(elem)
+          && !owner.isAnonymousFunction =>
+        def fail = i"attempting to add $elem to $this"
+        def hideIn(fc: FreshCap): Unit =
+          assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
+          if !isRefining then
+            // If a variable is added by addCaptureRefinements in a synthetic
+            // refinement of a class type, don't do level checking. The problem is
+            // that the variable might be matched against a type that does not have
+            // a refinement, in which case FreshCaps of the class definition would
+            // leak out in the corresponding places. This will fail level checking.
+            // The disallowBadRoots override below has a similar reason.
+            // TODO: We should instead mark the variable as impossible to instantiate
+            // and drop the refinement later in the inferred type.
+            // Test case is drop-refinement.scala.
+            assert(fc.acceptsLevelOf(elem),
+              i"level failure, cannot add $elem with ${elem.levelOwner} to $owner / $getClass / $fail")
+          fc.hiddenSet.add(elem)
+        val isSubsumed = (false /: elems): (isSubsumed, prev) =>
+          prev match
+            case prev: FreshCap =>
+              hideIn(prev)
+              true
+            case _ => isSubsumed
+        if !isSubsumed then
+          if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
+            val fc = FreshCap(owner, Origin.InDecl(owner))
+            assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
+            hideIn(fc)
+            super.includeElem(fc)
+          else
+            super.includeElem(elem)
+      case _ =>
+        super.includeElem(elem)
+
+    /** Variables that represent refinements of class parameters can have the universal
+     *  capture set, since they represent only what is the result of the constructor.
+     *  Test case: Without that tweak, logger.scala would not compile.
+     */
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
+      if !isRefining then super.disallowBadRoots(upto)(handler)
+
+  end ProperVar
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
+
+    override def levelOK(elem: Capability)(using Context): Boolean =
+      true
 
     // For debugging: A trace where a set was created. Note that logically it would make more
     // sense to place this variable in Mapped, but that runs afoul of the initialization checker.
@@ -786,7 +1073,16 @@ object CaptureSet:
     /** The variable from which this variable is derived */
     def source: Var
 
+    mutability = source.mutability
+
     addAsDependentTo(source)
+
+    /** Mutability is same as in source, except for readOnly */
+    override def associateWithStateful()(using Context): CaptureSet = this
+
+    override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+      super.mutableToReader(origin)
+      && ((origin eq source) || source.mutableToReader(this))
 
     override def propagateSolved(provisional: Boolean)(using Context) =
       if source.isConst && !isConst then markSolved(provisional)
@@ -818,13 +1114,16 @@ object CaptureSet:
     (val source: Var, val bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, initialElems):
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult =
+    if debugVars && id == debugTarget then
+      println(i"variable $id is derived from $source")
+      assert(false)
+
+    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then
         val mappedElem = bimap.mapCapability(elem)
-        if accountsFor(mappedElem) then CompareResult.OK
-        else addNewElem(mappedElem)
+        accountsFor(mappedElem) || addNewElem(mappedElem)
       else if accountsFor(elem) then
-        CompareResult.OK
+        true
       else
         // Propagate backwards to source. The element will be added then by another
         // forward propagation from source that hits the first branch `if origin eq source then`.
@@ -851,6 +1150,7 @@ object CaptureSet:
     override def isMaybeSet: Boolean = bimap.isInstanceOf[MaybeMap]
     override def toString = s"BiMapped$id($source, elems = $elems)"
     override def summarize = bimap.getClass.toString
+    override def repr(using Context): Name = source.repr
   end BiMapped
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
@@ -858,17 +1158,16 @@ object CaptureSet:
     (val source: Var, val p: Context ?=> Capability => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, source.elems.filter(p)):
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult =
+    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then
-        CompareResult.OK
+        true
       else if origin eq source then
-        if p(elem) then addNewElem(elem)
-        else CompareResult.OK
+        !p(elem) || addNewElem(elem)
       else
         // Filtered elements have to be back-propagated to source.
         // Elements that don't satisfy `p` are not allowed.
         if p(elem) then source.tryInclude(elem, this)
-        else CompareResult.Fail(this :: Nil)
+        else failWith(IncludeFailure(this, elem))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then
@@ -889,19 +1188,29 @@ object CaptureSet:
   extends Var(initialElems = cs1.elems ++ cs2.elems):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
+    mutability = cs1.mutability | cs2.mutability
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if accountsFor(elem) then CompareResult.OK
+    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+      if accountsFor(elem) then true
       else
         val res = super.tryInclude(elem, origin)
         // If this is the union of a constant and a variable,
         // propagate `elem` to the variable part to avoid slack
         // between the operands and the union.
-        if res.isOK && (origin ne cs1) && (origin ne cs2) then
+        if res && (origin ne cs1) && (origin ne cs2) then
           if cs1.isConst then cs2.tryInclude(elem, origin)
           else if cs2.isConst then cs1.tryInclude(elem, origin)
           else res
         else res
+
+    override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+      super.mutableToReader(origin)
+      && {
+        if (origin eq cs1) || (origin eq cs2) then true
+        else if cs1.isConst && cs1.mutability == Writer then cs2.mutableToReader(this)
+        else if cs2.isConst && cs2.mutability == Writer then cs1.mutableToReader(this)
+        else true
+      }
 
     override def propagateSolved(provisional: Boolean)(using Context) =
       if cs1.isConst && cs2.isConst && !isConst then markSolved(provisional)
@@ -913,14 +1222,23 @@ object CaptureSet:
     addAsDependentTo(cs2)
     deps += cs1
     deps += cs2
+    mutability = cs1.mutability & cs2.mutability
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult =
-      val present =
+    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+      val inIntersection =
         if origin eq cs1 then cs2.accountsFor(elem)
         else if origin eq cs2 then cs1.accountsFor(elem)
         else true
-      if present && !accountsFor(elem) then addNewElem(elem)
-      else CompareResult.OK
+      !inIntersection
+      || accountsFor(elem)
+      || addNewElem(elem)
+        && ((origin eq cs1) || cs1.tryInclude(elem, this))
+        && ((origin eq cs2) || cs2.tryInclude(elem, this))
+
+    override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+      super.mutableToReader(origin)
+      && ((origin eq cs1) || cs1.mutableToReader(this))
+      && ((origin eq cs2) || cs2.mutableToReader(this))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if (origin eq cs1) || (origin eq cs2) then
@@ -951,70 +1269,26 @@ object CaptureSet:
    *  which are already subject through snapshotting and rollbacks in VarState.
    *  It's advantageous if we don't need to deal with other pieces of state there.
    */
-  class HiddenSet(initialOwner: Symbol)(using @constructorOnly ictx: Context)
+  class HiddenSet(initialOwner: Symbol, val owningCap: FreshCap)(using @constructorOnly ictx: Context)
   extends Var(initialOwner):
-    var owningCap: FreshCap = uninitialized // initialized when owning FreshCap is created
+
+    // Updated by anchorCaps in CheckCaptures, but owner can be changed only
+    // if it was NoSymbol before.
     var givenOwner: Symbol = initialOwner
 
     override def owner = givenOwner
 
-    //assert(id != 4)
+    /** The FreshCaps generated by derivedFreshCap, indexed by prefix */
+    val derivedCaps = new EqHashMap[Type, FreshCap]()
 
-    private def aliasRef: FreshCap | Null =
-      if myElems.size == 1 then
-        myElems.nth(0) match
-          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias
-          case _ => null
-      else null
+    //assert(id != 3)
 
-    private def aliasSet: HiddenSet =
-      if myElems.size == 1 then
-        myElems.nth(0) match
-          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias.hiddenSet
-          case _ => this
-      else this
+    description = i"of elements subsumed by a fresh cap in $initialOwner"
 
-    def superCaps: List[FreshCap] =
-      deps.toList.map(_.asInstanceOf[HiddenSet].owningCap)
-
-    override def elems: Refs =
-      val al = aliasSet
-      if al eq this then super.elems else al.elems
-
-    override def elems_=(refs: Refs) =
-      val al = aliasSet
-      if al eq this then super.elems_=(refs) else al.elems_=(refs)
-
-    /** Add element to hidden set. Also add it to all supersets (as indicated by
-     *  deps of this set). Follow aliases on both hidden set and added element
-     *  before adding. If the added element is also a Fresh instance with
-     *  hidden set H which is a superset of this set, then make this set an
-     *  alias of H.
-     */
+    /** Add element to hidden set. */
     def add(elem: Capability)(using ctx: Context, vs: VarState): Unit =
-      val alias = aliasSet
-      if alias ne this then alias.add(elem)
-      else
-        def addToElems() =
-          elems += elem
-          deps.foreach: dep =>
-            assert(dep != this)
-            vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
-        elem match
-          case elem: FreshCap =>
-            if this ne elem.hiddenSet then
-              val alias = elem.hiddenSet.aliasRef
-              if alias != null then
-                add(alias)
-              else if deps.contains(elem.hiddenSet) then // make this an alias of elem
-                capt.println(i"Alias $this to ${elem.hiddenSet}")
-                elems = SimpleIdentitySet(elem)
-                deps = SimpleIdentitySet(elem.hiddenSet)
-              else
-                addToElems()
-                elem.hiddenSet.deps += this
-          case _ =>
-            addToElems()
+      assert(elem ne owningCap)
+      includeElem(elem)
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the
      *  duration. This is used to escape infinite recursions if two Freshs
@@ -1062,109 +1336,148 @@ object CaptureSet:
     case TypeBounds(CapturingType(lo, loRefs), CapturingType(hi, hiRefs)) if lo =:= hi =>
       given VarState()
       val cs2 = arg2.captureSet
-      hiRefs.subCaptures(cs2).isOK && cs2.subCaptures(loRefs).isOK
+      hiRefs.subCaptures(cs2) && cs2.subCaptures(loRefs)
     case _ =>
       false
 
   /** A TypeMap that is the identity on capabilities */
   trait IdentityCaptRefMap extends TypeMap
 
-  /** A value of this class is produced and added as a note to ccState
-   *  when a subsumes check decides that an existential variable `ex` cannot be
-   *  instantiated to the other capability `other`.
-   */
-  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote
+  /** Failure indicating that `elem` cannot be included in `cs` */
+  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends Note, Showable:
+    private var myTrace: List[CaptureSet] = cs :: Nil
 
-  trait CompareFailure:
-    private var myErrorNotes: List[ErrorNote] = Nil
-    def errorNotes: List[ErrorNote] = myErrorNotes
-    def withNotes(notes: List[ErrorNote]): this.type =
-      myErrorNotes = notes
-      this
+    def trace: List[CaptureSet] = myTrace
+    def addToTrace(cs1: CaptureSet) =
+      val res = IncludeFailure(cs, elem, levelError)
+      res.myTrace = cs1 :: this.myTrace
+      res
 
-  enum CompareResult extends Showable:
-    case OK
-    case Fail(trace: List[CaptureSet]) extends CompareResult, CompareFailure
-    case LevelError(cs: CaptureSet, elem: Capability) extends CompareResult, CompareFailure, ErrorNote
+    override def showAsPrefix(using Context) = cs match
+      case cs: Var =>
+        !cs.levelOK(elem)
+        || cs.isBadRoot(elem) && elem.isInstanceOf[FreshCap]
+      case _ =>
+        false
+
+    /** An include failure F1 covers another include failure F2 unless one
+     *  of the following two conditons holds:
+     *   1. F2 strictly subsumes F1, which means they describe the same capture sets
+     *      and the element in F2 is more specific than the element in F1.
+     *   2. Both F1 and F2 are the empty set, but only F2 is an empty set synthesized
+     *      when comparing types with different box status
+     */
+    override def covers(other: Note)(using Context) = other match
+      case other @ IncludeFailure(cs1, elem1, _) =>
+        val strictlySubsumes =
+          cs.elems == cs1.elems
+          && (elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+              || cs1.isInstanceOf[EmptyOfBoxed] && !cs.isInstanceOf[EmptyOfBoxed])
+        !strictlySubsumes
+      case _ => false
+
+    def trailing(msg: String)(using Context): String =
+      i"""
+         |
+         |Note that $msg."""
+
+    def leading(msg: String)(using Context): String =
+      i"""$msg.
+         |The leakage occurred when trying to match the following types:
+         |
+         |"""
+
+    def render(using Context): String = cs match
+      case cs: Var =>
+        def ownerStr =
+          if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
+        if !cs.levelOK(elem) then
+          val outlivesStr = elem match
+            case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
+            case _ => " outlives its scope: "
+          leading:
+            i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+        else if !elem.tryClassifyAs(cs.classifier) then
+          trailing:
+            i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
+              |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
+        else if cs.isBadRoot(elem) then
+          elem match
+            case elem: FreshCap =>
+              leading:
+                i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
+                    |It leaks into outer capture set $cs$ownerStr"""
+            case _ =>
+              trailing:
+                i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
+        else
+          trailing:
+            i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
+      case cs: EmptyOfBoxed =>
+        trailing:
+          val (boxed, unboxed) =
+            if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+          i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
+      case _ =>
+        def why =
+          val reasons = cs.elems.toList.collect:
+            case c: FreshCap if !c.acceptsLevelOf(elem) =>
+              i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
+            case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+              i"$c is classified as ${c.hiddenSet.classifier} but ${elem.showAsCapability} is not"
+            case c: ResultCap if !c.subsumes(elem) =>
+              val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
+              i"$c, which is existentially bound in ${c.originalBinder.resType}, cannot subsume ${elem.showAsCapability}$toAdd"
+          if reasons.isEmpty then ""
+          else reasons.mkString("\nbecause ", "\nand ", "")
+
+        trailing:
+          i"capability ${elem.showAsCapability} is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
-        this match
-          case OK => Str("OK")
-          case Fail(trace) =>
-            if ctx.settings.YccDebug.value then printer.toText(trace, ", ")
-            else blocking.show
-          case LevelError(cs: CaptureSet, elem: Capability) =>
-            Str(i"($elem at wrong level for $cs at level ${cs.level.toString})")
+        if levelError then
+          i"($elem at wrong level for $cs in ${cs.owner.showLocated})"
+        else
+          if ctx.settings.YccDebug.value
+          then i"$elem cannot be included in $trace"
+          else i"$elem cannot be included in $cs"
+  end IncludeFailure
 
-    /** The result is OK */
-    def isOK: Boolean = this == OK
+  /** Failure indicating that a read-only capture set of a stateful type cannot be
+   *  widened to an exclusive set.
+   *  @param  cs    the exclusive set in question
+   *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
+   *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
+   */
+  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note:
 
-    /** If not isOK, the blocking capture set */
-    def blocking: CaptureSet = (this: @unchecked) match
-      case Fail(cs) => cs.last
-      case LevelError(cs, _) => cs
+    def render(using Context): String =
+      def ofType(tp: Type) = if tp.exists then i"of the stateful type $tp" else "of a stateful type"
+      i"""
+         |
+         |Note that $cs is an exclusive capture set ${ofType(hi)},
+         |it cannot subsume a read-only capture set ${ofType(lo)}."""
 
-    /** Optionally, this result if it is a level error */
-    def levelError: Option[LevelError] = this match
-      case result: LevelError => Some(result)
-      case _ => None
-
-    inline def andAlso(op: Context ?=> CompareResult)(using Context): CompareResult =
-      if isOK then op else this
-
-    inline def orElse(op: Context ?=> CompareResult)(using Context): CompareResult =
-      if isOK then this
-      else
-        val alt = op
-        if alt.isOK then alt
-        else this
-
-    inline def addToTrace(cs: CaptureSet): CompareResult = this match
-      case Fail(trace) => Fail(cs :: trace)
-      case _ => this
-  end CompareResult
+    // Show only one failure of this kind
+    override def covers(other: Note)(using Context) =
+      other.isInstanceOf[MutAdaptFailure]
+  end MutAdaptFailure
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
    */
   class VarState:
 
-    /** A map from captureset variables to their elements at the time of the snapshot. */
-    private val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
-
-    /** A map from captureset variables to their dependent sets at the time of the snapshot. */
-    private val depsMap: util.EqHashMap[Var, Deps] = new util.EqHashMap
-
     /** A map from ResultCap values to other ResultCap values. If two result values
      *  `a` and `b` are unified, then `eqResultMap(a) = b` and `eqResultMap(b) = a`.
      */
     private var eqResultMap: util.SimpleIdentityMap[ResultCap, ResultCap] = util.SimpleIdentityMap.empty
 
-    /** A snapshot of the `eqResultMap` value at the start of a VarState transaction */
-    private var eqResultSnapshot: util.SimpleIdentityMap[ResultCap, ResultCap] | Null = null
-
-    /** The recorded elements of `v` (it's required that a recording was made) */
-    def elems(v: Var): Refs = elemsMap(v)
-
-    /** Optionally the recorded elements of `v`, None if nothing was recorded for `v` */
-    def getElems(v: Var): Option[Refs] = elemsMap.get(v)
-
     /** Record elements, return whether this was allowed.
      *  By default, recording is allowed in regular but not in frozen states.
      */
-    def putElems(v: Var, elems: Refs): Boolean = { elemsMap(v) = elems; true }
-
-    /** The recorded dependent sets of `v` (it's required that a recording was made) */
-    def deps(v: Var): Deps = depsMap(v)
-
-    /** Optionally the recorded dependent sets of `v`, None if nothing was recorded for `v` */
-    def getDeps(v: Var): Option[Deps] = depsMap.get(v)
-
-    /** Record dependent sets, return whether this was allowed.
-     *  By default, recording is allowed in regular but not in frozen states.
-     */
-    def putDeps(v: Var, deps: Deps): Boolean = { depsMap(v) = deps; true }
+    def canRecord: Boolean = true
 
     /** Does this state allow additions of elements to capture set variables? */
     def isOpen = true
@@ -1175,13 +1488,10 @@ object CaptureSet:
      *  but the special state VarState.Separate overrides this.
      */
     def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean =
-      elemsMap.get(hidden) match
-        case None =>
-          elemsMap(hidden) = hidden.elems
-          depsMap(hidden) = hidden.deps
-        case _ =>
-      hidden.add(elem)(using ctx, this)
-      true
+      if hidden.isConst then false
+      else
+        if !CCState.collapseFresh then hidden.add(elem)(using ctx, this)
+        true
 
     /** If root1 and root2 belong to the same binder but have different originalBinders
      *  it means that one of the roots was mapped to the binder of the other by a
@@ -1203,16 +1513,12 @@ object CaptureSet:
       && eqResultMap(c1) == null
       && eqResultMap(c2) == null
       && {
-        if eqResultSnapshot == null then eqResultSnapshot = eqResultMap
         eqResultMap = eqResultMap.updated(c1, c2).updated(c2, c1)
+        TypeComparer.logUndoAction: () =>
+          eqResultMap.remove(c1)
+          eqResultMap.remove(c2)
         true
       }
-
-    /** Roll back global state to what was recorded in this VarState */
-    def rollBack(): Unit =
-      elemsMap.keysIterator.foreach(_.resetElems()(using this))
-      depsMap.keysIterator.foreach(_.resetDeps()(using this))
-      if eqResultSnapshot != null then eqResultMap = eqResultSnapshot.nn
 
     private var seen: util.EqHashSet[Capability] = new util.EqHashSet
 
@@ -1233,8 +1539,7 @@ object CaptureSet:
      *  subsume arbitary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
-      override def putElems(v: Var, refs: Refs) = false
-      override def putDeps(v: Var, deps: Deps) = false
+      override def canRecord = false
       override def isOpen = false
       override def toString = "closed varState"
 
@@ -1258,14 +1563,21 @@ object CaptureSet:
      */
     def HardSeparate(using Context): Separating = ccState.HardSeparate
 
-    /** A special state that turns off recording of elements. Used only
-     *  in `addSub` to prevent cycles in recordings. Instantiated in ccState.Unrecorded.
-     */
-    class Unrecorded extends VarState:
-      override def putElems(v: Var, refs: Refs) = true
-      override def putDeps(v: Var, deps: Deps) = true
-      override def rollBack(): Unit = ()
+    /** A mixin trait that overrides the addHidden and unify operations to
+     *  not depend in state. */
+    trait Stateless extends VarState:
+
+      /** Allow adding hidden elements, but don't store them */
       override def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean = true
+
+      /** Don't allow to unify result caps */
+      override def unify(c1: ResultCap, c2: ResultCap)(using Context): Boolean = false
+    end Stateless
+
+    /** An open state that turns off recording of hidden elements (but allows
+     *  adding them). Used in `addAsDependentTo`. Instantiated in ccState.Unrecorded.
+     */
+    class Unrecorded extends VarState, Stateless:
       override def toString = "unrecorded varState"
 
     def Unrecorded(using Context): Unrecorded = ccState.Unrecorded
@@ -1273,8 +1585,7 @@ object CaptureSet:
     /** A closed state that turns off recording of hidden elements (but allows
      *  adding them). Used in `mightAccountFor`. Instantiated in ccState.ClosedUnrecorded.
      */
-    class ClosedUnrecorded extends Closed:
-      override def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean = true
+    class ClosedUnrecorded extends Closed, Stateless:
       override def toString = "closed unrecorded varState"
 
     def ClosedUnrecorded(using Context): ClosedUnrecorded = ccState.ClosedUnrecorded
@@ -1286,12 +1597,13 @@ object CaptureSet:
 
   /** A template for maps on capabilities where f(c) <: c and f(f(c)) = c */
   private abstract class NarrowingCapabilityMap(using Context) extends BiTypeMap:
-
     def apply(t: Type) = mapOver(t)
 
+    protected def isSameMap(other: BiTypeMap) = other.getClass == getClass
+
     override def fuse(next: BiTypeMap)(using Context) = next match
-      case next: Inverse if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
-      case next: NarrowingCapabilityMap if next.getClass == getClass => assert(false)
+      case next: Inverse if next.inverse.getClass == getClass => Some(IdentityTypeMap)
+      case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
       case _ => None
 
     class Inverse extends BiTypeMap:
@@ -1300,8 +1612,8 @@ object CaptureSet:
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
       override def fuse(next: BiTypeMap)(using Context) = next match
-        case next: NarrowingCapabilityMap if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
-        case next: NarrowingCapabilityMap if next.getClass == getClass => assert(false)
+        case next: NarrowingCapabilityMap if isSameMap(next.inverse) => Some(IdentityTypeMap)
+        case next: NarrowingCapabilityMap if isSameMap(next) => Some(this)
         case _ => None
 
     lazy val inverse = Inverse()
@@ -1316,6 +1628,13 @@ object CaptureSet:
   private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
     override def mapCapability(c: Capability, deep: Boolean) = c.readOnly
     override def toString = "ReadOnly"
+
+  private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+    override def mapCapability(c: Capability, deep: Boolean) = c.restrict(cls)
+    override def toString = "Restrict"
+    override def isSameMap(other: BiTypeMap) = other match
+      case other: RestrictMap => cls == other.cls
+      case _ => false
 
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
@@ -1342,8 +1661,11 @@ object CaptureSet:
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
     case Reach(c1) =>
-      c1.widen.deepCaptureSet(includeTypevars = true)
+      c1.widen.computeDeepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
+    case Restricted(c1, cls) =>
+      if cls == defn.NothingClass then CaptureSet.empty
+      else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
@@ -1355,14 +1677,10 @@ object CaptureSet:
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
     case c: CoreCapability =>
-      ofType(c.underlying, followResult = false)
+      ofType(c.underlying, followResult = ccConfig.useSpanCapset)
 
   /** Capture set of a type
    *  @param followResult  If true, also include capture sets of function results.
-   *                       This mode is currently not used. It could be interesting
-   *                       when we change the system so that the capture set of a function
-   *                       is the union of the capture sets if its span.
-   *                       In this case we should use `followResult = true` in the call in ofInfo above.
    */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):
@@ -1374,15 +1692,11 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case CapturingType(parent, refs) =>
+        case CapturingOrRetainsType(parent, refs) =>
           recur(parent) ++ refs
-        case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
+        case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
-          ++ recur(rinfo.resType)                             // add capture set of result
-              .filter:
-                case TermParamRef(binder, _) => binder ne rinfo
-                case ResultCap(binder) => binder ne rinfo
-                case _ => true
+          ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
         case tpd @ AppliedType(tycon, args) =>
           if followResult && defn.isNonRefinedFunction(tpd) then
             recur(args.last)
@@ -1407,13 +1721,18 @@ object CaptureSet:
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
    */
-  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet =
     val collect = new DeepTypeAccumulator[CaptureSet]:
-      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
-        this(acc, parent) ++ refs
+
+      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet, boxed: Boolean) =
+        if includeBoxed || !boxed then this(acc, parent) ++ refs
+        else this(acc, parent)
+
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
+        if t.derivesFrom(defn.Caps_CapSet) then t.singletonCaptureSet
+        else if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
         else this(acc, upperBound)
+
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[Capability]]

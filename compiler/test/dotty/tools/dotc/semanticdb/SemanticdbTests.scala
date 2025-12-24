@@ -33,7 +33,7 @@ import dotty.tools.dotc.util.SourceFile
  *  only 1 semanticdb file should be present
  *  @param source the single source file producing the semanticdb
  */
-@main def metac(root: String, source: String) =
+@main def metac(root: String, source: String): Unit =
   val rootSrc = Paths.get(root)
   val sourceSrc = Paths.get(source)
   val semanticFile = FileSystems.getDefault.getPathMatcher("glob:**.semanticdb")
@@ -53,13 +53,13 @@ import dotty.tools.dotc.util.SourceFile
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
-  val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
-  val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
-  val expectSrc = rootSrc.resolve("expect")
-  val javaRoot = rootSrc.resolve("javacp")
-  val metacExpectFile = rootSrc.resolve("metac.expect")
+  val javaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.java")
+  val scalaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
+  val expectFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
+  val rootSrc: Path = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
+  val expectSrc: Path = rootSrc.resolve("expect")
+  val javaRoot: Path = rootSrc.resolve("javacp")
+  val metacExpectFile: Path = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
@@ -138,12 +138,13 @@ class SemanticdbTests:
       "-feature",
       "-deprecation",
       // "-Ydebug-flags",
-      // "-Xprint:extractSemanticDB",
+      // "-Vprint:extractSemanticDB",
       "-sourceroot", expectSrc.toString,
       "-classpath", target.toString,
       "-Xignore-scala2-macros",
       "-usejavacp",
-      "-Wunused:all"
+      "-Wunused:all",
+      "-Yreporter:dotty.tools.dotc.reporting.Reporter$SilentReporter",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)

@@ -47,6 +47,24 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |""".stripMargin
     )
 
+  @Test def `basic-params` =
+    check(
+      """|def paint(c: Int, f: String, d: List[String]) = ???
+         |val _ = paint(1, "aa", @@)
+         |""".stripMargin,
+      """|List[String]
+         |""".stripMargin
+    )
+
+  @Test def `basic-type-param` =
+    check(
+      """|def paint[T](c: T) = ???
+         |val _ = paint[Int](@@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
   @Test def `type-ascription` =
     check(
       """|def doo = (@@ : Double)
@@ -75,7 +93,7 @@ class InferExpectedTypeSuite extends BasePCSuite:
     check(
       """|val i: Option[Int] = Option(@@)
          |""".stripMargin,
-      """|Int
+      """|Int | Null
          |""".stripMargin
     )
 
@@ -334,4 +352,61 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |""".stripMargin,
       """|String
          |""".stripMargin
+    )
+
+  @Test def using =
+    check(
+      """|def go(using Ordering[Int])(x: Int, y: Int): Int =
+         |  Ordering[Int].compare(x, y)
+         |
+         |def test =
+         |  go(???, @@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
+  @Test def `apply-dynamic` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method(x: Int): Unit
+         |  } = new reflect.Selectable {
+         |    def method(x: Int): Unit = ()
+         |  }
+         |
+         |  obj.method(@@)
+         |}
+         |""".stripMargin,
+      "Int"
+    )
+
+  @Test def `apply-dynamic-2` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method[T](x: Int, y: T): Unit
+         |  } = new reflect.Selectable {
+         |    def method[T](x: Int, y: T): Unit = ()
+         |  }
+         |
+         |  obj.method[String](1, @@)
+         |}
+         |""".stripMargin,
+      "String"
+    )
+
+  @Test def `apply-dynamic-3` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method[T](a: Int)(x: Int, y: T): Unit
+         |  } = new reflect.Selectable {
+         |    def method[T](a: Int)(x: Int, y: T): Unit = ()
+         |  }
+         |
+         |  obj.method[String](1)(1, @@)
+         |}
+         |""".stripMargin,
+      "String"
     )

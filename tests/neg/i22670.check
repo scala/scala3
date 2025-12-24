@@ -1,0 +1,19 @@
+-- [E222] Syntax Error: tests/neg/i22670/i22670-macro.scala:4:8 --------------------------------------------------------
+ 4 |package xy // error named package required for warning
+   |^
+   |The package name `i22670-macro$package` will be encoded on the classpath, and can lead to undefined behaviour.
+   |
+ 5 |import scala.quoted.*
+ 6 |...
+ 9 |  Expr("hello")
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Tools may not handle directories whose names differ from their corresponding package names.
+   | For example, `p-q` is encoded as `p$minusq` when written to the file system.
+   |
+   | Package objects derive their names from the file names, so files such as `myfile.test.scala`
+   | or `myfile-test.scala` can produce encoded names for the generated package objects.
+   |
+   | In this case, the name `i22670-macro$package` is encoded as `i22670$minusmacro$package`.
+    --------------------------------------------------------------------------------------------------------------------

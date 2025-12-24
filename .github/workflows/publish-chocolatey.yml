@@ -31,7 +31,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Fetch the Chocolatey package from GitHub
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: scala.nupkg
       - name: Publish the package to Chocolatey

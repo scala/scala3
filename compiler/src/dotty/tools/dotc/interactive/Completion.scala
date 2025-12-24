@@ -35,6 +35,8 @@ import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.TypeOps
 import dotty.tools.dotc.core.StdNames
 
+import java.util.logging.Logger
+
 /**
  * One of the results of a completion query.
  *
@@ -48,14 +50,16 @@ case class Completion(label: String, description: String, symbols: List[Symbol])
 
 object Completion:
 
+  private val logger = Logger.getLogger(this.getClass.getName)
+
   def scopeContext(pos: SourcePosition)(using Context): CompletionResult =
     val tpdPath = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     val completionContext = Interactive.contextOfPath(tpdPath).withPhase(Phases.typerPhase)
     inContext(completionContext):
       val untpdPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)
-      val mode = completionMode(untpdPath, pos, forSymbolSearch = true)
       val rawPrefix = completionPrefix(untpdPath, pos)
-      val completer = new Completer(mode, pos, untpdPath, _ => true)
+      // Lazy mode is to avoid too many checks as it's mostly for printing types
+      val completer = new Completer(Mode.Lazy, pos, untpdPath, _ => true)
       completer.scopeCompletions
 
   /** Get possible completions from tree at `pos`
@@ -98,7 +102,7 @@ object Completion:
    *
    * Otherwise, provide no completion suggestion.
    */
-  def completionMode(path: List[untpd.Tree], pos: SourcePosition, forSymbolSearch: Boolean = false): Mode = path match
+  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode = path match
     // Ignore `package foo@@` and `package foo.bar@@`
     case ((_: tpd.Select) | (_: tpd.Ident)):: (_ : tpd.PackageDef) :: _  => Mode.None
     case GenericImportSelector(sel) =>
@@ -111,14 +115,9 @@ object Completion:
     case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
     case (ref: untpd.RefTree) :: _ =>
       val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
-      if (forSymbolSearch) then Mode.Term | Mode.Type | maybeSelectMembers
-      else if (ref.name.isTermName) Mode.Term | maybeSelectMembers
+      if (ref.name.isTermName) Mode.Term | maybeSelectMembers
       else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
       else Mode.None
-
-    case (_: tpd.TypeTree | _: tpd.MemberDef) :: _ if forSymbolSearch => Mode.Type | Mode.Term
-    case (_: tpd.CaseDef) :: _ if forSymbolSearch => Mode.Type | Mode.Term
-    case Nil if forSymbolSearch =>  Mode.Type | Mode.Term
     case _ => Mode.None
 
   /** When dealing with <errors> in varios palces we check to see if they are
@@ -192,6 +191,15 @@ object Completion:
           Some(qual)
         case _ => None
 
+  private object NamedTupleSelection:
+    def unapply(path: List[tpd.Tree])(using Context): Option[tpd.Tree] =
+      path match
+        case (tpd.Apply(tpd.Apply(tpd.TypeApply(fun, _), List(qual)), _)) :: _
+          if fun.symbol.exists && fun.symbol.name == nme.apply &&
+             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
+          Some(qual)
+        case _ => None
+
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(untpdPath: List[untpd.Tree]): Int =
@@ -200,7 +208,7 @@ object Completion:
       case _ => 0
 
   /** Handle case when cursor position is inside extension method construct.
-   *  The extension method construct is then desugared into methods, and consturct parameters
+   *  The extension method construct is then desugared into methods, and construct parameters
    *  are no longer a part of a typed tree, but instead are prepended to method parameters.
    *
    *  @param untpdPath The typed or untyped path to the tree that is being completed
@@ -247,6 +255,7 @@ object Completion:
         completer.scopeCompletions.names ++ completer.selectionCompletions(qual)
       case tpd.Select(qual, _) :: _                                             => completer.selectionCompletions(qual)
       case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
+      case NamedTupleSelection(qual)                                            => completer.selectionCompletions(qual)
       case _                                                                    => completer.scopeCompletions.names
 
     interactiv.println(i"""completion info with pos    = $pos,
@@ -329,15 +338,15 @@ object Completion:
    *   8. symbol is not a constructor proxy module when in type completion mode
    *   9. have same term/type kind as name prefix given so far
    */
-  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean =
-
+  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean = try
     lazy val isEnum = sym.is(Enum) ||
       (sym.companionClass.exists && sym.companionClass.is(Enum))
 
     sym.exists &&
-    !sym.isAbsent() &&
+    !sym.isAbsent(canForce = false) &&
     !sym.isPrimaryConstructor &&
-    sym.sourceSymbol.exists &&
+      // running sourceSymbol on ExportedTerm will force a lot of computation from collectSubTrees
+    (sym.is(ExportedTerm) || sym.sourceSymbol.exists) &&
     (!sym.is(Package) || sym.is(ModuleClass)) &&
     !sym.isAllOf(Mutable | Accessor) &&
     !sym.isPackageObject &&
@@ -348,6 +357,9 @@ object Completion:
          (completionMode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
       || (completionMode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
     )
+  catch
+    case NonFatal(ex) =>
+      false
   end isValidCompletionSymbol
 
   given ScopeOrdering(using Context): Ordering[Seq[SingleDenotation]] with
@@ -593,12 +605,19 @@ object Completion:
         case _: MethodOrPoly => tpe
         case _ => ExprType(tpe)
 
+      // Try added due to https://github.com/scalameta/metals/issues/7872
       def tryApplyingReceiverToExtension(termRef: TermRef): Option[SingleDenotation] =
-        ctx.typer.tryApplyingExtensionMethod(termRef, qual)
-          .map { tree =>
-            val tpe = asDefLikeType(tree.typeOpt.dealias)
-            termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
-          }
+        try
+          ctx.typer.tryApplyingExtensionMethod(termRef, qual)
+            .map { tree =>
+             val tpe = asDefLikeType(tree.typeOpt.dealias)
+              termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
+            }
+        catch case NonFatal(ex) =>
+          logger.warning(
+            s"Exception when trying to apply extension method:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
+          )
+          None
 
       def extractMemberExtensionMethods(types: Seq[Type]): Seq[(TermRef, TermName)] =
         object DenotWithMatchingName:
@@ -617,8 +636,9 @@ object Completion:
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val extMethodsInScope = scopeCompletions.names.toList.flatMap:
-        case (name, denots) => denots.collect:
-          case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
+        case (name, denots) =>
+          denots.collect:
+            case d if d.isTerm && d.symbol.is(Extension) => (d.symbol.termRef, name.asTermName)
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
       val givensInScope = ctx.implicits.eligible(defn.AnyType).map(_.implicitRef.underlyingRef)
@@ -651,7 +671,7 @@ object Completion:
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
       matches(nameInScope) &&
       completionsFilter(NoType, nameInScope) &&
-      isValidCompletionSymbol(denot.symbol, mode, isNew)
+      (mode.is(Mode.Lazy) || isValidCompletionSymbol(denot.symbol, mode, isNew))
 
     private def extractRefinements(site: Type)(using Context): Seq[SingleDenotation] =
       site match
@@ -681,7 +701,7 @@ object Completion:
 
       val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
         case mbr if include(mbr, mbr.name)
-                    && mbr.symbol.isAccessibleFrom(site) => mbr
+                    && (mode.is(Mode.Lazy) || mbr.symbol.isAccessibleFrom(site)) => mbr
       }
       val refinements = extractRefinements(site).filter(mbr => include(mbr, mbr.name))
 
@@ -695,13 +715,17 @@ object Completion:
      * @param qual The argument to which the implicit conversion should be applied.
      * @return The set of types after `qual` implicit conversion.
      */
-    private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
+    private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = try {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span, Set.empty).allImplicits
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
-    }
+    } catch case NonFatal(ex) =>
+      logger.warning(
+        s"Exception when searching for implicit conversions:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
+      )
+      Set.empty
 
     /** Filter for names that should appear when looking for completions. */
     private object completionsFilter extends NameFilter:
@@ -743,4 +767,6 @@ object Completion:
     val Scope: Mode = new Mode(8)
 
     val Member: Mode = new Mode(16)
+
+    val Lazy: Mode = new Mode(32)
 

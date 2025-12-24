@@ -2,6 +2,7 @@
 layout: doc-page
 title: "Preview"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/overview.html
+redirectFrom: overview.html
 ---
 
 ## Preview language features
@@ -20,5 +21,4 @@ This flag enables the use of all preview language feature in the project.
 
 ## List of available preview features
 
-* [`better-fors`](./better-fors.md): Enables new for-comprehension behaviour under SIP-62 under `-source:3.7` or later
-
+* [The `into` Type and Modifier](into.md)

@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package util
 
-import scala.language.unsafeNulls
 
 import printing.{Showable, Printer}
 import printing.Texts.*
@@ -12,11 +11,11 @@ import scala.annotation.internal.sharable
 
 /** A source position is comprised of a span and a source file */
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
-extends SrcPos, interfaces.SourcePosition, Showable {
+extends SrcPos, interfaces.SourcePosition, Showable:
 
   def sourcePos(using Context) = this
 
-  /** Is `that` a source position contained in this source position ?
+  /** Is `that` a source position contained in this source position?
    *  `outer` is not taken into account. */
   def contains(that: SourcePosition): Boolean =
     this.source == that.source && this.span.contains(that.span)
@@ -67,7 +66,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
   def toSynthetic: SourcePosition = withSpan(span.toSynthetic)
 
   def outermost: SourcePosition =
-    if outer == null || outer == NoSourcePosition then this else outer.outermost
+    if (outer eq null) || outer == NoSourcePosition then this else outer.outermost
 
   /** Inner most position that is contained within the `outermost` position.
    *  Most precise position that comes from the call site.
@@ -83,10 +82,17 @@ extends SrcPos, interfaces.SourcePosition, Showable {
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 
   def toText(printer: Printer): Text = printer.toText(this)
-}
+
+object SourcePosition:
+  extension (pos: SourcePosition)
+    /** List of all the inline calls that surround the position. */
+    def inlinePosStack: List[SourcePosition] =
+      if pos.outer != null && pos.outer.exists then pos :: pos.outer.inlinePosStack
+      else pos :: Nil
+end SourcePosition
 
 /** A sentinel for a non-existing source position */
-@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan, null) {
+@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan) {
   override def line: Int = -1
   override def column: Int = -1
   override def toString: String = "?"

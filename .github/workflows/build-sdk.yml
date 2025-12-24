@@ -55,8 +55,8 @@ jobs:
     env:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
@@ -75,37 +75,37 @@ jobs:
       - name: Build and pack the SDK (win x86-64)
         run : ./project/scripts/sbt dist-win-x86_64/Universal/stage
       - name: Upload zip archive to GitHub Artifact (universal)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         id  : universal
         with:
           path: ./dist/target/universal/stage
           name: scala3-universal
       - name: Upload zip archive to GitHub Artifact (linux x86-64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         id  : linux-x86_64
         with:
           path: ./dist/linux-x86_64/target/universal/stage
           name: scala3-x86_64-pc-linux
       - name: Upload zip archive to GitHub Artifact (linux aarch64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         id  : linux-aarch64
         with:
           path: ./dist/linux-aarch64/target/universal/stage
           name: scala3-aarch64-pc-linux
       - name: Upload zip archive to GitHub Artifact (mac x86-64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         id  : mac-x86_64
         with:
           path: ./dist/mac-x86_64/target/universal/stage
           name: scala3-x86_64-apple-darwin
       - name: Upload zip archive to GitHub Artifact (mac aarch64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         id  : mac-aarch64
         with:
           path: ./dist/mac-aarch64/target/universal/stage
           name: scala3-aarch64-apple-darwin
       - name: Upload zip archive to GitHub Artifact (win x86-64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         id  : win-x86_64
         with:
           path: ./dist/win-x86_64/target/universal/stage

@@ -18,7 +18,6 @@ import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
 import CCState.*
-import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
 import NamerOps.methodType
 import NameKinds.{CanThrowEvidenceName, TryOwnerName}
@@ -40,6 +39,29 @@ trait SetupAPI:
 
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
+
+  /** A map from currently compiled class symbols to those of their fields
+   *  that have an explicit type given. Used in `captureSetImpliedByFields`
+   *  to avoid forcing fields with inferred types prematurely. The test file
+   *  where this matters is i24335.scala. The precise failure scenario which
+   *  this avoids is described in #24335.
+   */
+  def fieldsWithExplicitTypes: collection.Map[ClassSymbol, List[Symbol]]
+
+  /** Used for error reporting:
+   *  Maps mutable variables to the symbols that capture them (in the
+   *  CheckCaptures sense, i.e. symbol is referred to from a different method
+   *  than the one it is defined in).
+   */
+  def capturedBy: collection.Map[Symbol, Symbol]
+
+  /** Used for error reporting:
+   *  Maps anonymous functions appearing as function arguments to
+   *  the function that is called.
+   */
+  def anonFunCallee: collection.Map[Symbol, Symbol]
+
+end SetupAPI
 
 object Setup:
 
@@ -143,9 +165,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
       def mappedInfo =
-        if toBeUpdated.contains(sym)
-        then symd.info // don't transform symbols that will anyway be updated
-        else transformExplicitType(symd.info, sym, freshen = true)
+        if toBeUpdated.contains(sym) then
+          symd.info // don't transform symbols that will anyway be updated
+        else if sym.isArrayUnderStrictMut then
+          val cinfo: ClassInfo = sym.info.asInstanceOf
+          cinfo.derivedClassInfo(
+            declaredParents = cinfo.declaredParents :+ defn.Caps_Mutable.typeRef)
+        else
+          transformExplicitType(symd.info, sym)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -161,37 +188,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else symd
     else symd
   end transformSym
-
-  /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
-   *  convert it to be boxed.
-   */
-  private def box(tp: Type)(using Context): Type =
-    def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
-      case tp @ CapturingType(parent, refs) =>
-        if tp.isBoxed || parent.derivesFrom(defn.Caps_CapSet) then tp
-        else tp.boxed
-      case tp @ AnnotatedType(parent, ann) =>
-        if ann.symbol.isRetains && !parent.derivesFrom(defn.Caps_CapSet)
-        then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
-        else tp.derivedAnnotatedType(box(parent), ann)
-      case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
-        val res = args.last
-        val boxedRes = recur(res)
-        if boxedRes eq res then tp
-        else tp1.derivedAppliedType(tycon, args.init :+ boxedRes)
-      case tp1 @ defn.RefinedFunctionOf(rinfo: MethodType) =>
-        val boxedRinfo = recur(rinfo)
-        if boxedRinfo eq rinfo then tp
-        else boxedRinfo.toFunctionType(alwaysDependent = true)
-      case tp1: MethodOrPoly =>
-        val res = tp1.resType
-        val boxedRes = recur(res)
-        if boxedRes eq res then tp
-        else tp1.derivedLambdaType(resType = boxedRes)
-      case _ => tp
-    tp match
-      case tp: MethodOrPoly => tp // don't box results of methods outside refinements
-      case _ => recur(tp)
 
   private trait SetupTypeMap extends FollowAliasesMap:
     private var isTopLevel = true
@@ -225,11 +221,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AppliedType(`tycon`, args0) => args0.last ne args.last
           case _ => false
         if expand then
-          val fn = depFun(
+          val (fn: RefinedType) = depFun(
             args.init, args.last,
             isContextual = defn.isContextFunctionClass(tycon.classSymbol))
               .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
-          AnnotatedType(fn, Annotation(defn.InferredDepFunAnnot, util.Spans.NoSpan))
+            .runtimeChecked
+          RefinedType.inferred(fn.parent, fn.refinedName, fn.refinedInfo)
         else tp
       case _ => tp
 
@@ -257,9 +254,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
       case tp @ AppliedType(tycon, args)
       if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
-        tp.derivedAppliedType(tycon, args.mapConserve(box))
+        tp.derivedAppliedType(tycon, args.mapConserve(_.boxDeeply))
       case tp: RealTypeBounds =>
-        tp.derivedTypeBounds(tp.lo, box(tp.hi))
+        tp.derivedTypeBounds(tp.lo, tp.hi.boxDeeply)
       case tp: LazyRef =>
         normalizeCaptures(tp.ref)
       case _ =>
@@ -284,7 +281,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
   private def transformInferredType(tp: Type)(using Context): Type =
-    def mapInferred(refine: Boolean): TypeMap = new TypeMap with SetupTypeMap:
+    def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap:
       override def toString = "map inferred"
 
       var refiningNames: Set[Name] = Set()
@@ -294,23 +291,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
        *  where CV_1, ..., CV_n are fresh capture set variables.
        */
       def addCaptureRefinements(tp: Type): Type = tp match
-        case _: TypeRef | _: AppliedType if refine && tp.typeParams.isEmpty =>
+        case _: TypeRef | _: AppliedType if !inCaptureRefinement && tp.typeParams.isEmpty =>
           tp.typeSymbol match
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-              cls.paramGetters.foldLeft(tp) { (core, getter) =>
+              cls.paramGetters.foldLeft(tp): (core, getter) =>
                 if atPhase(thisPhase.next)(getter.hasTrackedParts)
                     && getter.isRefiningParamAccessor
                     && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
                 then
                   val getterType =
-                    mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType(core, getter.name,
-                      CapturingType(getterType, new CaptureSet.RefiningVar(ctx.owner)))
+                    mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
+                  RefinedType.precise(core, getter.name,
+                      CapturingType(getterType,
+                        CaptureSet.ProperVar(ctx.owner, isRefining = true)))
                     .showing(i"add capture refinement $tp --> $result", capt)
                 else
                   core
-              }
             case _ => tp
         case _ => tp
 
@@ -334,11 +331,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             mapFollowingAliases(tp)
         addVar(
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
-          ctx.owner)
+          ctx.owner,
+          isRefining = inCaptureRefinement)
     end mapInferred
 
     try
-      val tp1 = mapInferred(refine = true)(tp)
+      val tp1 = mapInferred(inCaptureRefinement = false)(tp)
       val tp2 = toResultInResults(NoSymbol, _ => assert(false))(tp1)
       if tp2 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
@@ -356,18 +354,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
    */
-  private def transformExplicitType(tp: Type, sym: Symbol, freshen: Boolean, tptToCheck: Tree = EmptyTree)(using Context): Type =
+  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree)(using Context): Type =
 
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
     /** If C derives from Capability and we have a C^cs in source, we leave it as is
-     *  instead of expanding it to C^{cap.rd}^cs. We do this by stripping capability-generated
+     *  instead of expanding it to C^{cap}^cs. We do this by stripping capability-generated
      *  universal capture sets from the parent of a CapturingType.
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
       case tp @ CapturingType(parent, refs)
-      if (refs eq CaptureSet.csImpliedByCapability) && !tp.isBoxedCapturing =>
+      if refs.isInstanceOf[CaptureSet.CSImpliedByCapability] && !tp.isBoxedCapturing =>
         parent
       case tp: AliasingBounds =>
         tp.derivedAlias(stripImpliedCaptureSet(tp.alias))
@@ -406,55 +404,55 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
 
-      /** Check that types extending SharedCapability don't have a `cap` in their capture set.
-       *  TODO This is not enough.
-       *  We need to also track that we cannot get exclusive capabilities in paths
-       *  where some prefix derives from SharedCapability. Also, can we just
-       *  exclude `cap`, or do we have to extend this to all exclusive capabilties?
-       *  The problem is that we know what is exclusive in general only after capture
-       *  checking, not before.
+      /** 1. Check that parents of capturing types are not pure.
        */
-      def checkSharedOK(tp: Type): tp.type =
+      def checkRetainsOK(tp: Type): tp.type =
         tp match
-          case CapturingType(parent, refs)
-          if refs.isUniversal && parent.derivesFromSharedCapability =>
-            fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
+          case CapturingType(parent, refs) =>
+            if parent.isAlwaysPure && !tptToCheck.span.isZeroExtent then
+              // If tptToCheck is zero-extent it could be copied from an overridden
+              // method's result type. In that case, there's no point requiring
+              // an explicit result type in the override, the inherited capture set
+              // will be ignored anyway.
+              fail(em"$parent is a pure type, it makes no sense to add a capture set to it")
           case _ =>
         tp
 
-      /** Map references to capability classes C to C^,
+      /** Map references to capability classes C to C^{cap.rd},
        *  normalize captures and map to dependent functions.
        */
       def defaultApply(t: Type) =
         if t.derivesFromCapability
+          && t.typeParams.isEmpty
           && !t.isSingleton
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
-        then CapturingType(t, CaptureSet.csImpliedByCapability, boxed = false)
+        then
+          normalizeCaptures(mapOver(t)) match
+            case t1 @ CapturingType(_, _) => t1
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1, sym, variance), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
-            checkSharedOK:
+            checkRetainsOK:
               t.derivedCapturingType(stripImpliedCaptureSet(this(parent)), refs)
-          case t @ AnnotatedType(parent, ann) =>
-            val parent1 = this(parent)
-            if ann.symbol.isRetains then
-              val parent2 = stripImpliedCaptureSet(parent1)
+          case t @ AnnotatedType(parent, ann: RetainingAnnotation) if ann.isStrict =>
+            val parent1 = stripImpliedCaptureSet(this(parent))
+            if !tptToCheck.isEmpty then
+              checkWellformedLater(parent1, ann, tptToCheck)
+            try
+              checkRetainsOK:
+                CapturingType(parent1, ann.toCaptureSet)
+            catch case ex: IllegalCaptureRef =>
               if !tptToCheck.isEmpty then
-                checkWellformedLater(parent2, ann.tree, tptToCheck)
-              try
-                checkSharedOK:
-                  CapturingType(parent2, ann.tree.toCaptureSet)
-              catch case ex: IllegalCaptureRef =>
-                if !tptToCheck.isEmpty then
-                  report.error(em"Illegal capture reference: ${ex.getMessage}", tptToCheck.srcPos)
-                parent2
-            else if ann.symbol == defn.UncheckedCapturesAnnot then
-              makeUnchecked(apply(parent))
-            else
-              t.derivedAnnotatedType(parent1, ann)
+                report.error(em"Illegal capture reference: ${ex.getMessage}", tptToCheck.srcPos)
+              parent1
+          case t @ AnnotatedType(parent, ann) =>
+            if ann.symbol == defn.UncheckedCapturesAnnot
+            then makeUnchecked(this(parent))
+            else t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
           case t @ AppliedType(tycon, args)
@@ -488,9 +486,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     val tp3 =
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
-    if freshen then
-      capToFresh(tp3, Origin.InDecl(sym)).tap(addOwnerAsHidden(_, sym))
-    else tp3
+    capToFresh(tp3, Origin.InDecl(sym))
   end transformExplicitType
 
   /** Update info of `sym` for CheckCaptures phase only */
@@ -503,24 +499,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  private def addOwnerAsHidden(tp: Type, owner: Symbol)(using Context): Unit =
-    val ref = owner.termRef
-    def add = new TypeTraverser:
-      var reach = false
-      def traverse(t: Type): Unit = t match
-        case t @ CapturingType(parent, refs) =>
-          val saved = reach
-          reach |= t.isBoxed
-          try
-            traverse(parent)
-            for case fresh: FreshCap <- refs.elems.iterator do // TODO: what about fresh.rd elems?
-              if reach then fresh.hiddenSet.elems += ref.reach
-              else if ref.isTracked then fresh.hiddenSet.elems += ref
-          finally reach = saved
-        case _ =>
-          traverseChildren(t)
-    if ref.isTrackableRef then add.traverse(tp)
-  end addOwnerAsHidden
+  val fieldsWithExplicitTypes: mutable.HashMap[ClassSymbol, List[Symbol]] = mutable.HashMap()
+
+  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+
+  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
@@ -534,8 +517,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
-          else transformExplicitType(tree.tpe, sym, freshen = !boxed, tptToCheck = tree)
-        if boxed then transformed = box(transformed)
+          else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
+        if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
@@ -544,7 +527,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
-        transformTT(tpt, sym, boxed = false)
+        inContext(ctx.addMode(Mode.CCPreciseOwner)):
+          transformTT(tpt, sym, boxed = false)
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
         throw ex
@@ -564,21 +548,30 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
+        case tree: Ident =>
+          val sym = tree.symbol
+          if sym.isMutableVar && sym.owner.isTerm then
+            val enclMeth = ctx.owner.enclosingMethod
+            if sym.enclosingMethod != enclMeth then
+              capturedBy(sym) = enclMeth
+
+        case Apply(fn, args) =>
+          for case closureDef(mdef) <- args do
+            anonFunCallee(mdef.symbol) = fn.symbol
+          traverseChildren(tree)
+
         case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
           val meth = tree.symbol
           if isExcluded(meth) then
             return
 
-          ccState.recordLevel(meth)
-          ccState.inNestedLevel:
-            inContext(ctx.withOwner(meth)):
-              paramss.foreach(traverse)
-              transformResultType(tpt, meth)
-              traverse(tree.rhs)
+          inContext(ctx.withOwner(meth)):
+            paramss.foreach(traverse)
+            transformResultType(tpt, meth)
+            traverse(tree.rhs)
 
         case tree @ ValDef(_, tpt: TypeTree, _) =>
           val sym = tree.symbol
-          ccState.recordLevel(sym)
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             transformResultType(tpt, sym)
@@ -595,17 +588,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
-          ccState.recordLevel(sym)
-          ccState.inNestedLevelUnless(sym.is(Module)):
-            inContext(ctx.withOwner(sym))
-              traverseChildren(tree)
+          inContext(ctx.withOwner(sym))
+            traverseChildren(tree)
 
         case tree @ TypeDef(_, rhs: TypeTree) =>
           transformTT(rhs, tree.symbol, boxed = false)
 
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
           traverse(elems)
-          tpt.setNuType(box(transformInferredType(tpt.tpe)))
+          tpt.setNuType(transformInferredType(tpt.tpe).boxDeeply)
 
         case tree @ Try(body, catches, finalizer) =>
           val tryOwner = firstCanThrowEvidence(body) match
@@ -618,8 +609,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             traverse(body)
           catches.foreach(traverse)
           traverse(finalizer)
+
+        case tree: New =>
+
         case _ =>
           traverseChildren(tree)
+
       postProcess(tree)
       checkProperUseOrConsume(tree)
     end traverse
@@ -665,17 +660,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def ownerChanges =
           ctx.owner.name.is(TryOwnerName)
 
-        def paramsToCap(mt: Type)(using Context): Type = mt match
+        def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
-                paramInfos = mt.paramInfos.map(freshToCap),
-                resType = paramsToCap(mt.resType))
+                paramInfos =
+                  psymss.head.lazyZip(mt.paramInfos).map(freshToCap),
+                resType = paramsToCap(psymss.tail, mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")
               throw ex
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(mt.resType))
+            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`
@@ -686,7 +682,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               def newInfo(using Context) = // will be run in this or next phase
                 toResultInResults(sym, report.error(_, tree.srcPos)):
                   if sym.is(Method) then
-                    paramsToCap(methodType(paramSymss, localReturnType))
+                    inContext(ctx.withOwner(sym)):
+                      paramsToCap(paramSymss, methodType(paramSymss, localReturnType))
                   else tree.tpt.nuType
               if tree.tpt.isInstanceOf[InferredTypeTree]
                   && !sym.is(Param) && !sym.is(ParamAccessor)
@@ -712,59 +709,71 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: Bind =>
         val sym = tree.symbol
         updateInfo(sym, transformInferredType(sym.info), sym.owner)
-      case tree: TypeDef =>
-        tree.symbol match
-          case cls: ClassSymbol =>
-            ccState.inNestedLevelUnless(cls.is(Module)):
-              val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+      case tree @ TypeDef(_, impl: Template) =>
+        val cls: ClassSymbol = tree.symbol.asClass
 
-              // Compute new self type
-              def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
-              val selfInfo1 =
-                if (selfInfo ne NoType) && !isInnerModule then
-                  // if selfInfo is explicitly given then use that one, except if
-                  // self info applies to non-static modules, these still need to be inferred
-                  selfInfo
-                else if cls.isPureClass then
-                  // is cls is known to be pure, nothing needs to be added to self type
-                  selfInfo
-                else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
-                  // assume {cap} for completely unconstrained self types of publicly extensible classes
-                  CapturingType(cinfo.selfType, CaptureSet.universal)
-                else
-                  // Infer the self type for the rest, which is all classes without explicit
-                  // self types (to which we also add nested module classes), provided they are
-                  // neither pure, nor are publicily extensible with an unconstrained self type.
-                  CapturingType(cinfo.selfType, CaptureSet.Var(cls, level = ccState.currentLevel))
+        fieldsWithExplicitTypes(cls) =
+          for
+            case vd @ ValDef(_, tpt: TypeTree, _) <- impl.body
+            if !tpt.isInferred && vd.symbol.exists && !vd.symbol.is(NonMember)
+          yield
+            vd.symbol
 
-              // Compute new parent types
-              val ps1 = inContext(ctx.withOwner(cls)):
-                ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
+        checkClassifiedInheritance(cls)
+        val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
-              // Install new types and if it is a module class also update module object
-              if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
-                val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
-                updateInfo(cls, newInfo, cls.owner)
-                capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
-                cls.thisType.asInstanceOf[ThisType].invalidateCaches()
-                if cls.is(ModuleClass) then
-                  // if it's a module, the capture set of the module reference is the capture set of the self type
-                  val modul = cls.sourceModule
-                  val selfCaptures = selfInfo1 match
-                    case CapturingType(_, refs) => refs
-                    case _ => CaptureSet.empty
-                  // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
-                  // This would potentially give stackoverflows when setup is run repeatedly.
-                  // One test case is pos-custom-args/captures/checkbounds.scala under
-                  // ccConfig.alwaysRepeatRun = true.
-                  updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
-                  modul.termRef.invalidateCaches()
-          case _ =>
+        // Compute new self type
+        def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
+        val selfInfo1 =
+          if (selfInfo ne NoType) && !isInnerModule then
+            // if selfInfo is explicitly given then use that one, except if
+            // self info applies to non-static modules, these still need to be inferred
+            selfInfo
+          else if cls.isPureClass then
+            // is cls is known to be pure, nothing needs to be added to self type
+            selfInfo
+          else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
+            // assume {cap} for completely unconstrained self types of publicly extensible classes
+            CapturingType(cinfo.selfType, CaptureSet.universal)
+          else
+            // Infer the self type for the rest, which is all classes without explicit
+            // self types (to which we also add nested module classes), provided they are
+            // neither pure, nor are publicily extensible with an unconstrained self type.
+            val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
+            if cls.derivesFrom(defn.Caps_Capability) then
+              // If cls is a capability class, we need to add a fresh capability to ensure
+              // we cannot treat the class as pure.
+              CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
+            CapturingType(cinfo.selfType, cs)
+
+        // Compute new parent types
+        val ps1 = inContext(ctx.withOwner(cls)):
+          ps.mapConserve(transformExplicitType(_, NoSymbol))
+
+        // Install new types and if it is a module class also update module object
+        if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
+          val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
+          updateInfo(cls, newInfo, cls.owner)
+          capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
+          cls.thisType.asInstanceOf[ThisType].invalidateCaches()
+          if cls.is(ModuleClass) then
+            // if it's a module, the capture set of the module reference is the capture set of the self type
+            val modul = cls.sourceModule
+            val selfCaptures = selfInfo1 match
+              case CapturingType(_, refs) => refs
+              case _ => CaptureSet.empty
+            // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
+            // This would potentially give stackoverflows when setup is run repeatedly.
+            // One test case is pos-custom-args/captures/checkbounds.scala under
+            // ccConfig.alwaysRepeatRun = true.
+            updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
+            modul.termRef.invalidateCaches()
       case _ =>
     end postProcess
 
     /** Check that @use and @consume annotations only appear on parameters and not on
-     *  anonymous function parameters
+     *  anonymous function parameters. Check that @use annotations don't appear
+     *  at all from 3.8 on.
      */
     def checkProperUseOrConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
@@ -778,11 +787,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               && !(sym.is(Method) && sym.owner.isClass)
             then
               report.error(
-                em"""@consume cannot be used here. Only memeber methods and their term parameters
-                    |can have @consume annotations.""",
+                em"""consume cannot be used here. Only member methods and their term parameters
+                    |can have a consume modifier.""",
                 tree.srcPos)
           else if annotCls == defn.UseAnnot then
-            if !isMethodParam then
+            if !ccConfig.allowUse then
+              if sym.is(TypeParam) then
+                report.error(
+                  em"""@use is redundant here and should no longer be written explicitly.
+                      |Capset variables are always implicitly used, unless they are annotated with @caps.preserve.""",
+                  tree.srcPos)
+              else
+                report.error(
+                  em"""@use is no longer supported. Instead of @use you can introduce capset
+                      |variables for the polymorphic parts of parameter types.""",
+                  tree.srcPos)
+            else if !isMethodParam then
               report.error(
                 em"@use cannot be used here. Only method parameters can have @use annotations.",
                 tree.srcPos)
@@ -798,10 +818,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private def instanceCanBeImpure(tp: Type)(using Context): Boolean = {
     tp.dealiasKeepAnnots match
-      case CapturingType(_, refs) =>
+      case CapturingOrRetainsType(_, refs) =>
         !refs.isAlwaysEmpty
-      case RetainingType(parent, refs) =>
-        !refs.isEmpty
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass
@@ -841,15 +859,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(tp.tp1) && needsVariable(tp.tp2)
       case tp: OrType =>
         needsVariable(tp.tp1) || needsVariable(tp.tp2)
-      case CapturingType(parent, refs) =>
+      case CapturingOrRetainsType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
-      case RetainingType(parent, refs) =>
-        needsVariable(parent)
-        && !refs.tpes.exists:
-            case ref: TermRef => ref.isCapRef
-            case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
@@ -884,8 +897,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else maybeAdd(tp, tp)
 
   /** Add a capture set variable to `tp` if necessary. */
-  private def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp, CaptureSet.Var(owner, _, level = ccState.currentLevel))
+  private def addVar(tp: Type, owner: Symbol, isRefining: Boolean)(using Context): Type =
+    decorate(tp, CaptureSet.ProperVar(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining))
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types
@@ -926,6 +939,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
 
+  // ------ Checks to run at Setup ----------------------------------------
+
+  private def checkClassifiedInheritance(cls: ClassSymbol)(using Context): Unit =
+    def recur(cs: List[ClassSymbol]): Unit = cs match
+      case c :: cs1 =>
+        for c1 <- cs1 do
+          if !c.derivesFrom(c1) && !c1.derivesFrom(c) then
+            report.error(em"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
+        recur(cs1)
+      case Nil =>
+    recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
+    if cls.derivesFrom(defn.Caps_SharedCapability) && cls.derivesFrom(defn.Caps_Stateful) then
+      report.error(em"$cls cannot inherit from both SharedCapability and Stateful", cls.srcPos)
+
   // ------ Checks to run after main capture checking --------------------------
 
   /** A list of actions to perform at postCheck */
@@ -941,50 +968,46 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  @param ann      the original retains annotation
    *  @param tpt      the tree for which an error or warning should be reported
    */
-  private def checkWellformed(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
-    capt.println(i"checkWF post $parent ${ann.retainedElems} in $tpt")
-    var retained = ann.retainedElems.toArray
-    for i <- 0 until retained.length do
-      val refTree = retained(i)
-      val refs =
-        try refTree.toCapabilities
-        catch case ex: IllegalCaptureRef =>
-          report.error(em"Illegal capture reference: ${ex.getMessage}", refTree.srcPos)
-          Nil
-      for ref <- refs do
-        def pos =
-          if refTree.span.exists then refTree.srcPos
-          else if ann.span.exists then ann.srcPos
-          else tpt.srcPos
+  private def checkWellformed(parent: Type, ann: RetainingAnnotation, tpt: Tree)(using Context): Unit =
+    capt.println(i"checkWF post $parent ${ann.retainedType} in $tpt")
+    try
+      var retained = ann.retainedType.retainedElements.toArray
+      for i <- 0 until retained.length do
+        val ref = retained(i)
+        def pos = tpt.srcPos
 
         def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
           if others.accountsFor(ref) then
             report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
-        if ref.captureSetOfInfo.elems.isEmpty
-            && !ref.coreType.derivesFrom(defn.Caps_Capability)
-            && !ref.coreType.derivesFrom(defn.Caps_CapSet) then
-          val deepStr = if ref.isReach then " deep" else ""
-          report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
-        check(parent.captureSet, parent)
+        if !ref.coreType.derivesFrom(defn.Caps_Capability)
+            // Capability classes don't have their implied capture set yet, so
+            // they would be seen as pure
+            && !ref.coreType.derivesFrom(defn.Caps_CapSet)
+        then
+          if ref.captureSetOfInfo.elems.isEmpty then
+            val deepStr = if ref.isReach then " deep" else ""
+            report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
+          check(parent.captureSet, parent)
 
-        val others =
-          for
-            j <- 0 until retained.length if j != i
-            r <- retained(j).toCapabilities
-            if !r.isTerminalCapability
-          yield r
-        val remaining = CaptureSet(others*)
-        check(remaining, remaining)
+          val others =
+            for
+              j <- 0 until retained.length if j != i
+              r = retained(j)
+              if !r.isTerminalCapability
+            yield r
+          val remaining = CaptureSet(others*)
+          check(remaining, remaining)
       end for
-    end for
+    catch case ex: IllegalCaptureRef =>
+      report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)
   end checkWellformed
 
   /** Check well formed at post check time. We need to wait until after
    *  recheck because we find out only then whether capture sets are empty or
    *  capabilities are redundant.
    */
-  private def checkWellformedLater(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
+  private def checkWellformedLater(parent: Type, ann: RetainingAnnotation, tpt: Tree)(using Context): Unit =
     if !tpt.span.isZeroExtent && enclosingInlineds.isEmpty then
       todoAtPostCheck += (ctx1 =>
         checkWellformed(parent, ann, tpt)(using ctx1.withOwner(ctx.owner)))

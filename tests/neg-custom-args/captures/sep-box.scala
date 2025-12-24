@@ -21,7 +21,7 @@ object NIL extends LIST[Nothing]:
 class Ref extends Mutable:
   var x = 0
   def get: Int = x
-  mut def put(y: Int): Unit = x = y
+  update def put(y: Int): Unit = x = y
 
 class Box[+X](val value: X)
 

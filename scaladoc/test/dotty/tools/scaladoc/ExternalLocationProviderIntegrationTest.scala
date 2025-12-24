@@ -1,8 +1,6 @@
 package dotty.tools.scaladoc
 
-import scala.io.Source
 import scala.jdk.CollectionConverters._
-import scala.util.matching.Regex
 import dotty.tools.scaladoc.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
@@ -26,8 +24,8 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
 class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc2",
   List(
+    ".*externalStubs.*::scaladoc2::https://external.stubs/api/",
     ".*scala/.*::scaladoc2::https://www.scala-lang.org/api/current/",
-    ".*externalStubs.*::scaladoc2::https://external.stubs/api/"
   ),
   List(
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
@@ -43,8 +41,8 @@ class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationP
 class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc3",
   List(
+    ".*externalStubs.*::scaladoc3::https://external.stubs/api/",
     ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/",
-    ".*externalStubs.*::scaladoc3::https://external.stubs/api/"
   ),
   List(
     "https://dotty.epfl.ch/api/scala/collection/immutable/Map.html",
@@ -54,26 +52,6 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
     "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
   )
 )
-
-def getScalaLibraryPath: String = {
-  val classpath: List[String] = System.getProperty("java.class.path").split(java.io.File.pathSeparatorChar).toList
-  // For an unclear reason, depending on if we pass the compiler context onto the tasty inspector
-  // the scala-2-library path needs to have its characters case fixed with new java.io.File(stdlib).getCanonicalPath()
-  classpath.find(_.contains("scala-library-2")).getOrElse("foobarbazz") // If we don't find the scala 2 library, the test will fail
-}
-
-class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExternalLocationProviderIntegrationTest(
-  "externalScaladoc2",
-  List(s"${getScalaLibraryPath}#https://www.scala-lang.org/api/current/"),
-  List(
-    "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
-    "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
-    "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):b.type",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
-  )
-)
-
 
 abstract class ExternalLocationProviderIntegrationTest(
   name: String,
@@ -89,7 +67,7 @@ abstract class ExternalLocationProviderIntegrationTest(
   )
 
   override def runTest = afterRendering {
-    val output = summon[DocContext].args.output.toPath
+    val output = summon[DocContext].args.output.nn.toPath
     val linksBuilder = List.newBuilder[String]
 
     def processFile(path: Path): Unit =
@@ -113,17 +91,3 @@ abstract class ExternalLocationProviderIntegrationTest(
       reportError(reportMessage)
     }
   } :: Nil
-
-abstract class LegacyExternalLocationProviderIntegrationTest(
-  name: String,
-  mappings: Seq[String],
-  expectedLinks: Seq[String]
-) extends ExternalLocationProviderIntegrationTest(name, mappings, expectedLinks):
-
-  override def args = super.args.copy(
-      externalMappings = mappings.flatMap( s =>
-        ExternalDocLink.parseLegacy(s).fold(left => None, right => Some(right)
-      )
-    ).toList
-  )
-

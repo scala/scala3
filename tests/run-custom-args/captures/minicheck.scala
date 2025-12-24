@@ -2,10 +2,11 @@
 import compiletime.uninitialized
 import annotation.{experimental, tailrec, constructorOnly}
 import collection.mutable
+import caps.unsafe.untrackedCaptures
 
-case class Symbol(name: String, initOwner: Symbol | Null) extends Pure:
+case class Symbol(name: String, initOwner: Symbol | Null) extends caps.Pure:
   def owner = initOwner.nn
-  private var myInfo: Type = uninitialized
+  @untrackedCaptures private var myInfo: Type = uninitialized
   def infoOrCompleter: Type = myInfo
   def info: Type =
     infoOrCompleter match
@@ -27,7 +28,7 @@ object NoSymbol extends Symbol("", null):
   override def exists: Boolean = false
   override def orElse(alt: => Symbol): Symbol = alt
 
-abstract class Type extends Pure:
+abstract class Type extends caps.Pure:
   def exists = true
   def show: String
 case class IntType()(using @constructorOnly c: Context) extends Type:
@@ -67,7 +68,7 @@ object EmptyScope extends Scope
 class TypeError(val msg: String) extends Exception
 
 class Run:
-  var errorCount = 0
+  @untrackedCaptures var errorCount = 0
 
 object report:
   def error(msg: -> String)(using Context) =
@@ -87,10 +88,10 @@ abstract class DetachedContext extends Ctx:
   def outer: DetachedContext
 
 class FreshCtx(val level: Int) extends DetachedContext:
-  var outer: FreshCtx = uninitialized
-  var owner: Symbol = uninitialized
-  var scope: Scope = uninitialized
-  var run: Run = uninitialized
+  @untrackedCaptures var outer: FreshCtx = uninitialized
+  @untrackedCaptures var owner: Symbol = uninitialized
+  @untrackedCaptures var scope: Scope = uninitialized
+  @untrackedCaptures var run: Run = uninitialized
   def initFrom(other: Context): this.type =
     outer = other.asInstanceOf[FreshCtx]
     owner = other.owner
@@ -113,8 +114,8 @@ type FreshContext = FreshCtx^
 inline def ctx(using c: Context): Ctx^{c} = c
 
 // !cc! it does not work if ctxStack is an Array[FreshContext] instead.
-var ctxStack = Array.tabulate(16)(new FreshCtx(_))
-var curLevel = 0
+@untrackedCaptures var ctxStack = Array.tabulate(16)(new FreshCtx(_))
+@untrackedCaptures var curLevel = 0
 
 private def freshContext(using Context): FreshContext =
   if curLevel == ctxStack.length then

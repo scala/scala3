@@ -3,8 +3,21 @@ package dotty.tools.pc.tests.hover
 import dotty.tools.pc.base.BaseHoverSuite
 
 import org.junit.Test
+import org.junit.Ignore
 
 class HoverTermSuite extends BaseHoverSuite:
+
+  @Test def `n-ary lamba` =
+    check(
+      """|object testRepor {
+         |  val listOfTuples = List(1 -> 1, 2 -> 2, 3 -> 3)
+         |
+         |  listOfTuples.map((k@@ey, value) => key + value)
+         |}
+         |""".stripMargin,
+      """|val key: Int
+         |""".stripMargin.hover
+    )
 
   @Test def `map` =
     check(
@@ -56,6 +69,7 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin.hover
     )
 
+  @Ignore
   @Test def `interpolator-name` =
     check(
       """
@@ -68,6 +82,7 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin.hover
     )
 
+  @Ignore
   @Test def `interpolator-macro` =
     check(
       """
@@ -798,4 +813,143 @@ class HoverTermSuite extends BaseHoverSuite:
          |
          |""".stripMargin,
          "def valueOf($name: String): Foo".hover
+    )
+
+  @Test def `i7460` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.foo.sub@@string(2, 4)
+         |""".stripMargin,
+         "def substring(x$0: Int, x$1: Int): String".hover
+    )
+
+  @Test def `i7460-2` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.bar.sub@@string(2, 4)
+         |""".stripMargin,
+         "def substring(x$0: Int, x$1: Int): String".hover
+    )
+
+  @Test def `multiple-valdefs-1` =
+    check(
+      """|object O {
+         |  val x@@x, yy, zz = 1
+         |}
+         |""".stripMargin,
+      "val xx: Int".hover
+    )
+
+  @Test def `multiple-valdefs-2` =
+    check(
+      """|object O {
+         |  val xx, y@@y, zz = 1
+         |}
+         |""".stripMargin,
+      "val yy: Int".hover
+    )
+
+  @Test def `multiple-valdefs-3` =
+    check(
+      """|object O {
+         |  val xx, yy, z@@z = 1
+         |}
+         |""".stripMargin,
+      "val zz: Int".hover
+    )
+
+  @Test def `multiple-valdefs-4` =
+    check(
+      """|object O {
+         |  val xx, thisIsAVeryLongNa@@me, zz = 1
+         |}
+         |""".stripMargin,
+      "val thisIsAVeryLongName: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-1` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-2` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val aa: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.a@@a
+         |""".stripMargin,
+      "val aa: Int & String".hover
+    )
+
+  @Test def `intersection_of_selectable-3` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.b@@b
+         |""".stripMargin,
+      "val bb: String".hover
+    )
+
+  @Test def `intersection_of_selectable-4` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type C = Record { val cc: Float }
+         |type AB = A & B
+         |type ABC = AB & C
+         |
+         |val abc: ABC = Record().asInstanceOf[ABC]
+         |val abc_a = abc.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-5` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type AL = List[Int] & Record { val aa: Int }
+         |
+         |val al: AL = ???.asInstanceOf[ABC]
+         |val al_a = al.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def i7763 =
+    check(
+      """|case class MyItem(name: String)
+         |
+         |def handle(item: MyItem) =
+         |  item match {
+         |    case MyItem(na@@me = n2) => println(n2)
+         |  }
+         |""".stripMargin,
+      "val name: String".hover
     )

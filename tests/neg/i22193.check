@@ -1,0 +1,35 @@
+-- [E018] Syntax Error: tests/neg/i22193.scala:15:68 -------------------------------------------------------------------
+15 |      arg2 = "the quick brown fox jumped over the lazy dog"): env => // error
+   |                                                                    ^
+   |                                                         expression expected but [31mend of single-line lambda[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i22193.scala:22:2 ----------------------------------------------------------------------------------
+22 |  env => // error indented definitions expected, identifier env found
+   |  ^^^
+   |  indented definitions expected, identifier env found
+-- Error: tests/neg/i22193.scala:31:2 ----------------------------------------------------------------------------------
+31 |  val x = "Hello" // error
+   |  ^^^
+   |  indented definitions expected, val found
+-- [E006] Not Found Error: tests/neg/i22193.scala:16:10 ----------------------------------------------------------------
+16 |  val x = env // error
+   |          ^^^
+   |          Not found: env
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i22193.scala:28:2 ----------------------------------------------------------------------
+28 |  fn3( // error missing argument list for value of type (=> Unit) => Unit
+   |  ^
+   |  missing argument list for value of type (=> Unit) => Unit
+   |
+29 |    arg = "blue sleeps faster than tuesday",
+30 |    arg2 = "the quick brown fox jumped over the lazy dog"):
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i22193.scala:32:10 ----------------------------------------------------------------
+32 |  println(x) // error
+   |          ^
+   |          Not found: x
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,15 +1,11 @@
 package scala.annotation.internal
-import annotation.experimental
 
-/** An internal annotation on (part of) a parameter type that allows implicit conversions
- *  for its arguments. The publicly visible `into` annotation in the parent package
- *  `annotation` gets mapped to `$into` by the compiler in all places where
- *  conversions should be allowed. The reason for the split into two annotations
- *  is that `annotation.into` is given in source code and may propagate in unspecified
- *  ways through type inference. By contrast `$into` is constrained to occur only
- *  on parameters of method types. This makes implicit conversion insertion
- *  predictable and independent of the un-specified aspects of type inference.
+/** An internal annotation on (part of) a parameter type that serves as a marker where
+ *  the original type was of the form `into[T]`. These annotated types are mapped back
+ *  to `into[T]` types when forming a method types from the parameter types. The idea is
+ *  that `T @$into` is equivalent to `T`, whereas `into[T]` is only a known supertype of
+ *  `T`. Hence, we don't need to use `.underlying` to go from an into type to its
+ *  underlying type in the types of local parameters.
  */
-@experimental
-class $into() extends annotation.StaticAnnotation
-
+@preview
+class $into extends annotation.StaticAnnotation

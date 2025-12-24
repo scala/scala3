@@ -1,0 +1,18 @@
+-- Warning: tests/init-global/warn/resolve-parent-this.scala:3:18 ------------------------------------------------------
+3 |  val f: O.type = O // warn
+  |                  ^
+  |                  Accessing module class O$ before the super constructor of the object finishes! Calling trace:
+  |                  ├── object O extends Delegate {	[ resolve-parent-this.scala:6 ]
+  |                  │   ^
+  |                  ├── class Delegate {	[ resolve-parent-this.scala:1 ]
+  |                  │   ^
+  |                  └── val f: O.type = O // warn	[ resolve-parent-this.scala:3 ]
+  |                                      ^
+-- Warning: tests/init-global/warn/resolve-parent-this.scala:7:21 ------------------------------------------------------
+7 |  val a: Int = foo().a // warn
+  |               ^^^^^^^
+  |               Access uninitialized field value a. Calling trace:
+  |               ├── object O extends Delegate {	[ resolve-parent-this.scala:6 ]
+  |               │   ^
+  |               └── val a: Int = foo().a // warn	[ resolve-parent-this.scala:7 ]
+  |                                ^^^^^^^

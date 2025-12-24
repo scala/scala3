@@ -1,10 +1,14 @@
-import caps.Mutable
+import caps.Stateful
 
 trait IterableOnce[T]:
   def iterator: Iterator[T]^{this}
-  mut def foreach(op: T => Unit): Unit // error
+  update def foreach(op: T => Unit): Unit // error
 
-trait Foo extends Mutable:
+trait Foo extends Stateful:
   def bar =
-    mut def baz() = 1 // error
+    update def baz() = 1 // error
     baz()
+
+trait Bar extends Stateful:
+  class Baz:
+    update def baz() = 1 // error

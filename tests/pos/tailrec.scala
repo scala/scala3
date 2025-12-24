@@ -2,7 +2,7 @@
 
 import scala.annotation.tailrec
 
-erased class Foo1
+class Foo1 extends compiletime.Erased
 class Foo2
 
 @tailrec

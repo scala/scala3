@@ -1,4 +1,4 @@
-
+//> using options -source 3.8
 object Test {
   // refutable extractor
   object Positive { def unapply(i: Int): Option[Int] = Some(i).filter(_ > 0) }

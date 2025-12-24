@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Scopes.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
@@ -368,6 +369,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term =
+        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValInLetFlags)
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs, flags)(using ctx.withOwner(owner))
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
+        Block(List(vdef), body(ref))
+
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
@@ -477,6 +484,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           argss.foldLeft(self: Term)(Apply(_, _))
         def appliedToNone: Apply =
           self.appliedToArgs(Nil)
+        def ensureApplied: Term =
+          def isParameterless(tpe: TypeRepr): Boolean = !tpe.isInstanceOf[MethodType]
+          if (isParameterless(self.tpe.widen)) self else self.appliedToNone
         def appliedToType(targ: TypeRepr): Term =
           self.appliedToTypes(targ :: Nil)
         def appliedToTypes(targs: List[TypeRepr]): Term =
@@ -1237,6 +1247,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeProjectionTypeTest
 
     object TypeProjection extends TypeProjectionModule:
+      def apply(qualifier: TypeTree, name: String): TypeProjection =
+        withDefaultPos(tpd.Select(qualifier, name.toTypeName))
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
       def unapply(x: TypeProjection): (TypeTree, String) =
@@ -1282,6 +1294,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RefinedTypeTest
 
     object Refined extends RefinedModule:
+      def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined = // Symbol of the class being refined, according to which the refinements are typed
+        assert(refineCls.isClass, "refineCls must be a class/trait/object")
+        withDefaultPos(tpd.RefinedTypeTree(tpt, refinements, refineCls.asClass).asInstanceOf[tpd.RefinedTypeTree])
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
       def unapply(x: Refined): (TypeTree, List[Definition]) =
@@ -1904,6 +1919,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
+          case AnnotatedType(parent, _) => parent.typeArgs
+          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
@@ -2287,7 +2304,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
-        def erasedParams: List[Boolean] = self.erasedParams
+        def erasedParams: List[Boolean] = self.paramErasureStatuses
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
     end MethodTypeMethods
@@ -2823,7 +2840,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           modFlags | dotc.core.Flags.ModuleValCreationFlags,
           clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
           parents,
-          dotc.core.Scopes.newScope,
+          newScope,
           privateWithin,
           NoCoord,
           compUnitInfo = null
@@ -2839,7 +2856,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validMethodFlags)
-        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
+        val method = dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
+        method.setParamss(method.paramSymss)
+        method
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
@@ -2860,7 +2879,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
-      private inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
+      private[QuotesImpl] inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
         xCheckMacroAssert(
           flags <= valid,
           s"Received invalid flags. Expected flags ${flags.show} to only contain a subset of ${valid.show}."
@@ -3015,7 +3034,33 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def memberTypes: List[Symbol] =
           self.typeRef.decls.filter(_.isType)
         def typeMembers: List[Symbol] =
-          lookupPrefix.typeMembers.map(_.symbol).toList
+          // lookupPrefix.typeMembers currently returns a Set wrapped into a unsorted Seq,
+          // so we try to sort that here (see discussion: https://github.com/scala/scala3/issues/22472),
+          // without adding too much of a performance hit.
+          // It first sorts by parents, then for type params by their positioning, then for members
+          // derived from declarations it sorts them by their name lexicographically
+          val parentsMap = lookupPrefix.sortedParents.map(_.typeSymbol).zipWithIndex.toList.toMap
+          val unsortedTypeMembers = lookupPrefix.typeMembers.map(_.symbol).filter(_.exists).toList
+          unsortedTypeMembers.sortWith {
+            case (typeA, typeB) =>
+              val msg = "Unknown type member found. Please consider reporting the issue to the compiler. "
+              assert(parentsMap.contains(typeA.owner), msg)
+              assert(parentsMap.contains(typeB.owner), msg)
+              val parentPlacementA = parentsMap(typeA.owner)
+              val parentPlacementB = parentsMap(typeB.owner)
+              if (parentPlacementA == parentPlacementB) then
+                if typeA.isTypeParam && typeB.isTypeParam then
+                  // put type params at the beginning (and sort them by declaration order)
+                  val pl = typeA.owner
+                  val typeParamPositionMap = pl.typeParams.map(_.asInstanceOf[Symbol]).zipWithIndex.toMap
+                  typeParamPositionMap(typeA) < typeParamPositionMap(typeB)
+                else if typeA.isTypeParam then true
+                else if typeB.isTypeParam then false
+                else
+                  // sort by name lexicographically
+                  typeA.name.toString().compareTo(typeB.name.toString()) < 0
+              else parentPlacementA < parentPlacementB
+          }.map(_.asInstanceOf[Symbol])
 
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
@@ -3066,7 +3111,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def asQuotes: Nested =
           assert(self.ownersIterator.contains(ctx.owner), s"$self is not owned by ${ctx.owner}")
-          new QuotesImpl(using ctx.withOwner(self))
+          val newCtx = if ctx.owner eq self then ctx else
+            val newCtx = ctx.fresh.setOwner(self)
+            if !self.flags.is(Flags.Method) then newCtx
+            else newCtx.setScope(newScopeWith(self.paramSymss.flatten*))
+          new QuotesImpl(using newCtx)
 
       end extension
 
@@ -3183,6 +3232,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Implicit: Flags = dotc.core.Flags.Implicit
       def Infix: Flags = dotc.core.Flags.Infix
       def Inline: Flags = dotc.core.Flags.Inline
+      def Into: Flags = dotc.core.Flags.Into
       def Invisible: Flags = dotc.core.Flags.Invisible
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
       def JavaStatic: Flags = dotc.core.Flags.JavaStatic
@@ -3208,6 +3258,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def StableRealizable: Flags = dotc.core.Flags.StableRealizable
       @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags = dotc.core.Flags.JavaStatic
       def Synthetic: Flags = dotc.core.Flags.Synthetic
+      def Tracked: Flags = dotc.core.Flags.Tracked
       def Trait: Flags = dotc.core.Flags.Trait
       def Transparent: Flags = dotc.core.Flags.Transparent
 
@@ -3215,7 +3266,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private[QuotesImpl] def validMethodFlags: Flags = Private | Protected | Override | Deferred | Final | Method | Implicit | Given | Local | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be allowed: Synthetic | ExtensionMethod | Exported | Erased | Infix | Invisible
       // Keep: aligned with Quotes's `newVal` doc
       private[QuotesImpl] def validValFlags: Flags = Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be added: Synthetic | Erased | Invisible
-
+      // Keep: aligned with Quotes's `let` doc
+      private[QuotesImpl] def validValInLetFlags: Flags = Final | Implicit | Lazy | Mutable | Given | Synthetic
       // Keep: aligned with Quotes's `newBind` doc
       private[QuotesImpl] def validBindFlags: Flags = Case // Flags that could be allowed: Implicit | Given | Erased
 

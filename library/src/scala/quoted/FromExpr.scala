@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 /** A type class for types that can convert a `quoted.Expr[T]` to a `T`.
  *
  *  - Converts expression containing literal values to their values:
@@ -12,7 +14,7 @@ package scala.quoted
  */
 trait FromExpr[T] {
 
-  /** Return the value of the expression.
+  /** Returns the value of the expression.
    *
    *  Returns `None` if the expression does not represent a value or possibly contains side effects.
    *  Otherwise returns the `Some` of the value.
@@ -21,7 +23,7 @@ trait FromExpr[T] {
 
 }
 
-/** Default given instances of `FromExpr` */
+/** Default given instances of `FromExpr`. */
 object FromExpr {
 
   /** Default implementation of `FromExpr[Boolean]`
@@ -79,7 +81,7 @@ object FromExpr {
    */
   given StringFromExpr[T <: String]: FromExpr[T] = new PrimitiveFromExpr
 
-  /** Lift a quoted primitive value `'{ x }` into `x` */
+  /** Lift a quoted primitive value `'{ x }` into `x`. */
   private class PrimitiveFromExpr[T <: Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends FromExpr[T] {
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect.*
@@ -102,7 +104,7 @@ object FromExpr {
    */
   given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with {
     def unapply(x: Expr[Option[T]])(using Quotes) = x match {
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
       case '{ None } => Some(None)
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None

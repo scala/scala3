@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze.scala:11:17 ---------------------------------------
+11 |  val b = freeze((a, a)) // error
+   |                 ^^^^^^
+   |                 Found:    (Arr[String], Arr[String])
+   |                 Required: scala.caps.Mutable | Array[?]
+   |
+   | longer explanation available when compiling with `-explain`

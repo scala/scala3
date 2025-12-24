@@ -1,29 +1,31 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.annotation.{compileTimeOnly, experimental}
 
-/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */
+/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}`. */
 abstract class Type[T <: AnyKind] private[scala]:
-  /** The type represented by `Type` */
+  /** The type represented by `Type`. */
   type Underlying = T
 end Type
 
-/** Methods to interact with the current `Type[T]` in scope */
+/** Methods to interact with the current `Type[T]` in scope. */
 object Type:
 
-  /** Show a source code like representation of this type without syntax highlight */
+  /** Shows a source code like representation of this type without syntax highlight. */
   def show[T <: AnyKind](using Type[T])(using Quotes): String =
     import quotes.reflect.*
     TypeTree.of[T].show
 
-  /** Return a quoted.Type with the given type */
+  /** Returns a quoted.Type with the given type. */
   @compileTimeOnly("Reference to `scala.quoted.Type.of` was not handled by PickleQuotes")
   given of[T <: AnyKind](using Quotes): Type[T] = ???
 
 
   /** Extracts the value of a singleton constant type.
-   *  Returns Some of the value of the type if it is a singleton constant type.
-   *  Returns None if the type is not a singleton constant type.
+   *  Returns `Some` of the value of the type if it is a singleton constant type.
+   *  Returns `None` if the type is not a singleton constant type.
    *
    *  Example usage:
    *  ```scala
@@ -46,8 +48,8 @@ object Type:
     ValueOf.unapply(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
 
   /** Extracts the value of a tuple of singleton constant types.
-   *  Returns Some of the tuple type if it is a tuple singleton constant types.
-   *  Returns None if the type is not a tuple singleton constant types.
+   *  Returns `Some` of the tuple type if it is a tuple singleton constant types.
+   *  Returns `None` if the type is not a tuple singleton constant types.
    *
    *  Example usage:
    *  ```scala

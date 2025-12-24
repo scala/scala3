@@ -73,7 +73,7 @@ class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
         if unsupported.nonEmpty then Left(s"Unsupported patterns from scaladoc format are used: ${unsupported.mkString(" ")}")
         else Right(TemplateSourceLink(supported.foldLeft(string)((template, pattern) =>
           template.replace(pattern, SupportedScalaDocPatternReplacements(pattern)))))
-      case KnownProvider(name, organization, repo, rawRevision, rawSubPath) =>
+      case KnownProvider(name: String, organization: String, repo: String, rawRevision, rawSubPath) =>
         val subPath = Option(rawSubPath).fold("")("/" + _.drop(1))
         val pathRev = Option(rawRevision).map(_.drop(1)).orElse(revision)
 

@@ -203,8 +203,10 @@ object Tokens extends TokensCommon {
     // A `:` recognized as starting an indentation block
   inline val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
+  inline val ENDlambda = 99;        enter(ENDlambda, "end of single-line lambda")
+
   /** XML mode */
-  inline val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  inline val XMLSTART = 100;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, END)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
@@ -267,7 +269,7 @@ object Tokens extends TokensCommon {
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE, END)
 
-  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
+  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT, ENDlambda)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -299,7 +301,8 @@ object Tokens extends TokensCommon {
 
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
+  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
+    // Note: update, consume and erased are missing here since they are only modifiers under some import
 
   def showTokenDetailed(token: Int): String = debugString(token)
 

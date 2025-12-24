@@ -8,16 +8,16 @@ import java.nio.file.Path
 class Coverage:
   private val statementsById = new mutable.LongMap[Statement](256)
 
-  private var statementId: Int = 0
+  private var _nextStatementId: Int = 1
 
-  def nextStatementId(): Int =
-    statementId += 1
-    statementId - 1
-
+  def nextStatementId(): Int = _nextStatementId
+  def setNextStatementId(id: Int): Unit = _nextStatementId = id
 
   def statements: Iterable[Statement] = statementsById.values
 
-  def addStatement(stmt: Statement): Unit = statementsById(stmt.id) = stmt
+  def addStatement(stmt: Statement): Unit =
+    if stmt.id >= _nextStatementId then _nextStatementId = stmt.id + 1
+    statementsById(stmt.id) = stmt
 
   def removeStatementsFromFile(sourcePath: Path | Null) =
     val removedIds = statements.filter(_.location.sourcePath == sourcePath).map(_.id.toLong)

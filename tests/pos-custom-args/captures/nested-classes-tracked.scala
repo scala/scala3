@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 import language.experimental.modularity
 import annotation.{capability, constructorOnly}
 
-class IO extends caps.Capability
+class IO extends caps.SharedCapability
 class Blah
 class Pkg(using tracked val io: IO):
   class Foo:

@@ -64,6 +64,7 @@ case class ScalaPresentationCompiler(
      CodeActionId.ExtractMethod,
      CodeActionId.InlineValue,
      CodeActionId.InsertInferredType,
+     CodeActionId.InsertInferredMethod,
      PcConvertToNamedLambdaParameters.codeActionId
    ).asJava
 
@@ -92,6 +93,8 @@ case class ScalaPresentationCompiler(
           implementAbstractMembers(params)
         case (CodeActionId.InsertInferredType, _) =>
           insertInferredType(params)
+        case (CodeActionId.InsertInferredMethod, _) =>
+          insertInferredMethod(params)
         case (CodeActionId.InlineValue, _) =>
           inlineValue(params)
         case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
@@ -116,7 +119,7 @@ case class ScalaPresentationCompiler(
   ): PresentationCompiler =
     copy(completionItemPriority = priority)
 
-  override def withBuildTargetName(buildTargetName: String) =
+  override def withBuildTargetName(buildTargetName: String): PresentationCompiler =
     copy(buildTargetName = Some(buildTargetName))
 
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
@@ -352,6 +355,19 @@ case class ScalaPresentationCompiler(
         .asJava
     }(params.toQueryContext)
 
+  def insertInferredMethod(
+      params: OffsetParams
+  ): CompletableFuture[ju.List[l.TextEdit]] =
+    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
+    compilerAccess.withNonInterruptableCompiler(
+      empty,
+      params.token()
+    ) { pc =>
+      new InferredMethodProvider(params, pc.compiler(), config, search)
+        .inferredMethodEdits()
+        .asJava
+    }(params.toQueryContext)
+
   override def inlineValue(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
@@ -485,7 +501,13 @@ case class ScalaPresentationCompiler(
   override def didChange(
       params: VirtualFileParams
   ): CompletableFuture[ju.List[l.Diagnostic]] =
-    CompletableFuture.completedFuture(Nil.asJava)
+    compilerAccess.withNonInterruptableCompiler(
+      ju.Collections.emptyList(),
+      EmptyCancelToken
+    ) { access =>
+      val driver = access.compiler()
+      DiagnosticProvider(driver, params).diagnostics().asJava
+    }(params.toQueryContext)
 
   override def didClose(uri: URI): Unit =
     compilerAccess.withNonInterruptableCompiler(

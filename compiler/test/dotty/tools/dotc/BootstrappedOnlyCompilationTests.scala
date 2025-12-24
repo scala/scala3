@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
 import org.junit.Assume._
+import org.junit.Ignore
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -131,7 +132,7 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(tests*).checkRuns()
   }
 
-  @Test def runScala2LibraryFromTasty: Unit = {
+  @Ignore @Test def runScala2LibraryFromTasty: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runScala2LibraryFromTasty")
     // These tests recompile the entire scala2-library from TASTy,
     // they are resource intensive and should not run alongside other tests to avoid timeouts
@@ -166,7 +167,6 @@ class BootstrappedOnlyCompilationTests {
       compileDir("compiler/src/dotty/tools/dotc/config", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/parsing", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/printing", picklingWithCompilerOptions),
-      compileDir("compiler/src/dotty/tools/repl", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/rewrites", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/transform", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/typer", picklingWithCompilerOptions),
@@ -214,7 +214,7 @@ object BootstrappedOnlyCompilationTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 100.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

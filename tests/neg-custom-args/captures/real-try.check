@@ -7,48 +7,45 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:14:2 -----------------------------------------------------------
 14 |  try  // error
    |  ^
-   |  The result of `try` cannot have type () ->{cap.rd} Unit since
+   |  The result of `try` cannot have type () => Unit since
    |  that type captures the root capability `cap`.
    |  This is often caused by a locally generated exception capability leaking as part of its result.
    |
-   |  where:    cap is a fresh root capability in the type of given instance canThrow$1
+   |  where:    => refers to a fresh root capability classified as Control in the type of given instance canThrow$1
+   |
 15 |    () => foo(1)
-16 |  catch
-17 |    case _: Ex1 => ???
+16 |...
 18 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:20:10 ----------------------------------------------------------
-20 |  val x = try // error
-   |          ^
-   |          The result of `try` cannot have type () ->{cap.rd} Unit since
-   |          that type captures the root capability `cap`.
-   |          This is often caused by a locally generated exception capability leaking as part of its result.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:21:4 --------------------------------------
+21 |    () => foo(1) // error
+   |    ^^^^^^^^^^^^
+   |    Capability canThrow$2 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's1 of value x.
+   |    The leakage occurred when trying to match the following types:
    |
-   |          where:    cap is a fresh root capability in the type of given instance canThrow$2
-21 |    () => foo(1)
-22 |  catch
-23 |    case _: Ex1 => ???
-24 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:26:10 ----------------------------------------------------------
-26 |  val y = try  // error
-   |          ^
-   |          The result of `try` cannot have type () ->{cap.rd} Cell[Unit]^? since
-   |          that type captures the root capability `cap`.
-   |          This is often caused by a locally generated exception capability leaking as part of its result.
+   |    Found:    () ->{canThrow$2} Unit
+   |    Required: () ->'s1 Unit
    |
-   |          where:    cap is a fresh root capability in the type of given instance canThrow$3
-27 |    () => Cell(foo(1))
-28 |  catch
-29 |    case _: Ex1 => ???
-30 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:32:10 ----------------------------------------------------------
-32 |  val b = try // error
-   |          ^
-   |          The result of `try` cannot have type Cell[box () ->{cap.rd} Unit]^? since
-   |          the part box () ->{cap.rd} Unit of that type captures the root capability `cap`.
-   |          This is often caused by a locally generated exception capability leaking as part of its result.
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:27:4 --------------------------------------
+27 |    () => Cell(foo(1)) // error
+   |    ^^^^^^^^^^^^^^^^^^
+   |    Capability canThrow$3 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's2 of value y.
+   |    The leakage occurred when trying to match the following types:
    |
-   |          where:    cap is a fresh root capability in the type of given instance canThrow$4
-33 |    Cell(() => foo(1))
-34 |  catch
-35 |    case _: Ex1 => ???
-36 |    case _: Ex2 => ???
+   |    Found:    () ->{canThrow$3} Cell[Unit]^'s3
+   |    Required: () ->'s2 Cell[Unit]^'s4
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:33:8 --------------------------------------
+33 |    Cell(() => foo(1)) // error
+   |    ^^^^^^^^^^^^^^^^^^
+   |    Capability canThrow$4 defined in an enclosing try expression outlives its scope:
+   |    it leaks into outer capture set 's5 of value b.
+   |    The leakage occurred when trying to match the following types:
+   |
+   |    Found:    Cell[() ->{canThrow$4} Unit]
+   |    Required: Cell[() ->'s5 Unit]^'s6
+   |
+   | longer explanation available when compiling with `-explain`

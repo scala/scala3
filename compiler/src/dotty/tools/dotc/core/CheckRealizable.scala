@@ -48,8 +48,6 @@ object CheckRealizable {
 
   def boundsRealizability(tp: Type)(using Context): Realizability =
     new CheckRealizable().boundsRealizability(tp)
-
-  private val LateInitializedFlags = Lazy | Erased
 }
 
 /** Compute realizability status.
@@ -72,7 +70,7 @@ class CheckRealizable(using Context) {
   /** Is symbol's definitition a lazy or erased val?
    *  (note we exclude modules here, because their realizability is ensured separately)
    */
-  private def isLateInitialized(sym: Symbol) = sym.isOneOf(LateInitializedFlags, butNot = Module)
+  private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)
 
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
@@ -175,7 +173,7 @@ class CheckRealizable(using Context) {
     baseProblems.foldLeft(
       refinementProblems.foldLeft(
         memberProblems.foldLeft(
-          Realizable: Realizability)(_ andAlso _))(_ andAlso _))(_ andAlso _)
+          Realizable: Realizability)(_ `andAlso` _))(_ `andAlso` _))(_ `andAlso` _)
   }
 
   /** `Realizable` if all of `tp`'s non-strict fields have realizable types,
@@ -184,7 +182,7 @@ class CheckRealizable(using Context) {
   private def memberRealizability(tp: Type) = {
     def checkField(sofar: Realizability, fld: SingleDenotation): Realizability =
       sofar andAlso {
-        if (checkedFields.contains(fld.symbol) || fld.symbol.isOneOf(Private | Mutable | LateInitializedFlags))
+        if (checkedFields.contains(fld.symbol) || fld.symbol.isOneOf(Private | Mutable | Lazy))
           // if field is private it cannot be part of a visible path
           // if field is mutable it cannot be part of a path
           // if field is lazy or erased it does not need to be initialized when the owning object is
@@ -196,7 +194,7 @@ class CheckRealizable(using Context) {
         }
       }
     if sourceVersion.isAtLeast(future) then
-      // check fields only from version 3.x.
+      // check fields only from version 3.future.
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.

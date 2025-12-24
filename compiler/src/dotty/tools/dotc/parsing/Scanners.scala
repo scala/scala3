@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.migrateTo3
+import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
@@ -184,7 +184,7 @@ object Scanners {
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
-    val newSyntax = ctx.settings.newSyntax.value
+    val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
     val rewriteToIndent = ctx.settings.indent.value && rewrite
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite
@@ -307,7 +307,7 @@ object Scanners {
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       var noProgress = 0
         // Defensive measure to ensure we always get out of the following while loop
-        // even if source file is weirly formatted (i.e. we never reach EOF)
+        // even if source file is weirdly formatted (i.e. we never reach EOF)
       var prevOffset = offset
       while !atStop && noProgress < 3 do
         nextToken()
@@ -596,7 +596,7 @@ object Scanners {
           lastWidth = r.width
           newlineIsSeparating = lastWidth <= nextWidth || r.isOutermost
           indentPrefix = r.prefix
-        case _: InString => ()
+        case _: InString | _: SingleLineLambda => ()
         case r =>
           indentIsSignificant = indentSyntax
           r.proposeKnownWidth(nextWidth, lastToken)
@@ -617,7 +617,9 @@ object Scanners {
         && !statCtdTokens.contains(lastToken)
         && !isTrailingBlankLine
 
-      if newlineIsSeparating
+      if currentRegion.closedBy == ENDlambda then
+        insert(ENDlambda, lineOffset)
+      else if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator(nextWidth)
@@ -1148,7 +1150,7 @@ object Scanners {
       val lookahead = LookaheadScanner()
       while
         lookahead.nextToken()
-        lookahead.isNewLine || lookahead.isSoftModifier
+        lookahead.token == NEWLINE || lookahead.isSoftModifier
       do ()
       modifierFollowers.contains(lookahead.token)
     }
@@ -1228,15 +1230,14 @@ object Scanners {
       && (softModifierNames.contains(name)
         || name == nme.erased && erasedEnabled
         || name == nme.tracked && trackedEnabled
-        || name == nme.mut && Feature.ccEnabled)
+        || name == nme.update && Feature.ccEnabled
+        || name == nme.consume && Feature.ccEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && !lookahead.isColon
-
-    def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3
@@ -1600,6 +1601,8 @@ object Scanners {
    *   InParens    a pair of parentheses (...) or brackets [...]
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
+   *   InCase      a case of a match
+   *   SingleLineLambda  the rest of a line following a `:`
    */
   abstract class Region(val closedBy: Token):
 
@@ -1668,6 +1671,7 @@ object Scanners {
       case _: InBraces => "}"
       case _: InCase => "=>"
       case _: Indented => "UNDENT"
+      case _: SingleLineLambda => "end of single-line lambda"
 
     /** Show open regions as list of lines with decreasing indentations */
     def visualize: String =
@@ -1681,6 +1685,7 @@ object Scanners {
   case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
   case class InBraces(outer: Region) extends Region(RBRACE)
   case class InCase(outer: Region) extends Region(OUTDENT)
+  case class SingleLineLambda(outer: Region) extends Region(ENDlambda)
 
   /** A class describing an indentation region.
    *  @param width   The principal indentation width

@@ -6,7 +6,7 @@ object App {
   trait A { type L >: Any}
   def upcast(erased a: A)(x: Any): a.L = x
   erased val p: A { type L <: Nothing } = p
-  def coerce(x: Any): Int = upcast(p)(x) // error
+  def coerce(x: Any): Int = upcast(p)(x) // ok?
 
   def coerceInline(x: Any): Int = upcast(compiletime.erasedValue[A {type L <: Nothing}])(x) // error
 
@@ -14,7 +14,7 @@ object App {
   def upcast_dep_parameter(erased a: B)(x: a.L) : Int = x
   erased val q : B { type L >: Any } = compiletime.erasedValue
 
-  def coerceInlineWithB(x: Any): Int = upcast_dep_parameter(q)(x) // error
+  def coerceInlineWithB(x: Any): Int = upcast_dep_parameter(q)(x) // ok?
 
   def main(args: Array[String]): Unit = {
     println(coerce("Uh oh!"))
