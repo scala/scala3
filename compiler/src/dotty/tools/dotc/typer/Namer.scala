@@ -1629,9 +1629,22 @@ class Namer { typer: Typer =>
         def typedParentType(tree: untpd.Tree): tpd.Tree =
           val parentTpt = typer.typedType(parent, AnyTypeConstructorProto)
           val ptpe = parentTpt.tpe.dealias.etaCollapse
-          if ptpe.typeParams.nonEmpty
-              && ptpe.underlyingClassRef(refinementOK = false).exists
-          then
+          // Check if type params need to be inferred. This applies when:
+          // 1. The type has type params AND
+          // 2. Either it directly underlies a class (for class/trait refs), OR
+          //    it's a HKTypeLambda whose result is a class application and params appear in result
+          //    (the latter handles type aliases like `type Foo[T] = Bar[T]` but not
+          //    type-lambda-as-result cases like `type Foo[X] = [Z] =>> Bar[X]`)
+          val needsTypeParamInference = ptpe.typeParams.nonEmpty && (
+            ptpe.underlyingClassRef(refinementOK = false).exists
+            || (ptpe match
+                case tl: HKTypeLambda =>
+                  tl.paramRefs.exists(pref => tl.resType.existsPart(_ == pref))
+                  && !tl.resType.isInstanceOf[TypeLambda]
+                  && tl.resType.underlyingClassRef(refinementOK = false).exists
+                case _ => false)
+          )
+          if needsTypeParamInference then
             // Try to infer type parameters from a synthetic application.
             // This might yield new info if implicit parameters are resolved.
             // A test case is i16778.scala.
