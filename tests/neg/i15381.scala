@@ -1,6 +1,6 @@
 //> using options -Vprint:parser
 
-case class $[A](value: A)
+case class `$`[A](value: A)
 
 def g: Int = $        // error
 

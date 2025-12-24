@@ -1286,9 +1286,7 @@ object Parsers {
       if (isIdent) {
         val name = in.name
         if name == nme.CONSTRUCTOR || name == nme.STATIC_CONSTRUCTOR then
-          report.error(
-            em"""Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden""",
-            in.sourcePos())
+          report.error(IllegalIdentifier(name), in.sourcePos())
         in.nextToken()
         name
       }
@@ -1296,6 +1294,19 @@ object Parsers {
         syntaxErrorOrIncomplete(ExpectedTokenButFound(IDENTIFIER, in.token))
         nme.ERROR
       }
+
+    /** An ident that is checked to be clean for a definition. */
+    def defName(): TermName =
+      val checkable = in.token != BACKQUOTED_IDENT
+      val start = in.sourcePos()
+      ident().tap: name =>
+        if checkable && name.toSimpleName.contains('$') then
+          report.errorOrMigrationWarning(IllegalIdentifier(name), start, MigrationVersion.IdentifierDollars)
+
+    extension (nameTree: NameTree) def checkName: nameTree.type =
+      if !isBackquoted(nameTree) && nameTree.name.toSimpleName.contains('$') then
+        report.errorOrMigrationWarning(IllegalIdentifier(nameTree.name), nameTree.srcPos, MigrationVersion.IdentifierDollars)
+      nameTree
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
@@ -1309,7 +1320,7 @@ object Parsers {
       val tree = Ident(name)
       if (tok == BACKQUOTED_IDENT) tree.pushAttachment(Backquoted, ())
 
-      // Make sure that even trees with parsing errors have a offset that is within the offset
+      // Make sure that even trees with parsing errors have an offset that is within the offset
       val errorOffset = offset min (in.lastOffset - 1)
       if (tree.name == nme.ERROR && tree.span == NoSpan) tree.withSpan(Span(errorOffset, errorOffset))
       else atSpan(offset)(tree)
@@ -1379,7 +1390,7 @@ object Parsers {
 
     /** QualId ::= id {`.' id}
     */
-    def qualId(): Tree = dotSelectors(termIdent())
+    def qualId(): Tree = dotSelectors(termIdent().checkName)
 
     /** SimpleLiteral     ::=  [‘-’] integerLiteral
      *                      |  [‘-’] floatingPointLiteral
@@ -3414,7 +3425,9 @@ object Parsers {
           p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
         if (in.token == LPAREN)
           p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
-        p
+        p match
+        case nt: NameTree if isVarPattern(nt) => nt.checkName
+        case p => p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      *                      |  NamedPattern {‘,’ NamedPattern}
@@ -3773,7 +3786,7 @@ object Parsers {
           mods |= Param
         }
         atSpan(start, nameStart) {
-          val name = ident()
+          val name = defName()
           acceptColon()
           if (in.token == ARROW && paramOwner.isClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
@@ -4101,8 +4114,12 @@ object Parsers {
         else EmptyTree
       lhs match {
         case IdPattern(id, t) :: Nil if t.isEmpty =>
-          val vdef = ValDef(id.name.asTermName, tpt, rhs)
-          if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
+          val vdef =
+            if isBackquoted(id) then
+              ValDef(id.name.asTermName, tpt, rhs)
+              .tap(_.pushAttachment(Backquoted, ()))
+            else
+              ValDef(id.checkName.name.asTermName, tpt, rhs)
           finalizeDef(vdef, mods, start)
         case _ =>
           def isAllIds = lhs.forall {
@@ -4158,7 +4175,7 @@ object Parsers {
       }
       else {
         val mods1 = addFlag(mods, Method)
-        val ident = termIdent()
+        val ident = termIdent().checkName
         var name = ident.name.asTermName
         val paramss =
           if sourceVersion.enablesClauseInterleaving then
@@ -4229,7 +4246,7 @@ object Parsers {
 
       newLinesOpt()
       atSpan(start, nameStart) {
-        val nameIdent = typeIdent()
+        val nameIdent = typeIdent().checkName
         val isCapDef = gobbleHat()
         val tname = nameIdent.name.asTypeName
         val tparams = typeParamClauseOpt(ParamOwner.Hk)
@@ -4321,7 +4338,7 @@ object Parsers {
     /** ClassDef ::= id ClassConstr TemplateOpt
      */
     def classDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      classDefRest(start, mods, ident().toTypeName)
+      classDefRest(start, mods, defName().toTypeName)
     }
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
@@ -4346,7 +4363,7 @@ object Parsers {
     /** ObjectDef       ::= id TemplateOpt
      */
     def objectDef(start: Offset, mods: Modifiers): ModuleDef = atSpan(start, nameStart) {
-      val name = ident()
+      val name = defName()
       val templ = templateOpt(emptyConstructor)
       finalizeDef(ModuleDef(name, templ), mods, start)
     }
@@ -4366,7 +4383,7 @@ object Parsers {
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
       val mods1 = checkAccessOnly(mods, "")
-      val modulName = ident()
+      val modulName = defName()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)
       val templ = template(constr, isEnum = true)
@@ -4380,10 +4397,10 @@ object Parsers {
       accept(CASE)
 
       atSpan(start, nameStart) {
-        val id = termIdent()
+        val id = termIdent().checkName
         if (in.token == COMMA) {
           in.nextToken()
-          val ids = commaSeparated(() => termIdent())
+          val ids = commaSeparated(() => termIdent().checkName)
           if ctx.settings.Whas.enumCommentDiscard then
             in.getDocComment(start).foreach: comm =>
               warning(
