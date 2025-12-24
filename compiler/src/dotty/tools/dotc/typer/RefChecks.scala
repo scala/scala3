@@ -1366,6 +1366,14 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   }
 
+  override def transformTypeDef(tree: TypeDef)(using Context): tree.type =
+    if tree.isClassDef then
+      val sym = tree.symbol
+      val owner = sym.owner
+      if sym.is(Override) && owner.is(Package) then
+        report.error(OverridesNothing(sym), sym.srcPos)
+    tree
+
   override def transformTemplate(tree: Template)(using Context): Tree = try {
     val cls = ctx.owner.asClass
     checkOverloadedRestrictions(cls)
