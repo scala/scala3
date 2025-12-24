@@ -22,17 +22,12 @@ import FileUtils.*
  * when there are a lot of projects having a lot of common dependencies.
  */
 sealed trait ZipAndJarFileLookupFactory {
-  private val cache = new FileBasedCache[ClassPath]
-
   def create(zipFile: AbstractFile)(using Context): ClassPath =
     val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
     if (ctx.settings.YdisableFlatCpCaching.value || zipFile.file == null) createForZipFile(zipFile, release)
-    else createUsingCache(zipFile, release)
+    else ctx.cacheStore.classPaths(zipFile, createForZipFile(zipFile, release))
 
   protected def createForZipFile(zipFile: AbstractFile, release: Option[String]): ClassPath
-
-  private def createUsingCache(zipFile: AbstractFile, release: Option[String]): ClassPath =
-    cache.getOrCreate(zipFile.file.toPath, () => createForZipFile(zipFile, release))
 }
 
 /**
@@ -171,30 +166,4 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   }
 
   override protected def createForZipFile(zipFile: AbstractFile, release: Option[String]): ClassPath = ZipArchiveSourcePath(zipFile.file)
-}
-
-final class FileBasedCache[T] {
-  private case class Stamp(lastModified: FileTime, fileKey: Object)
-  private val cache = collection.mutable.Map.empty[java.nio.file.Path, (Stamp, T)]
-
-  def getOrCreate(path: java.nio.file.Path, create: () => T): T = cache.synchronized {
-    val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
-    val lastModified = attrs.lastModifiedTime()
-    // only null on some platforms, but that's okay, we just use the last modified timestamp as our stamp
-    val fileKey = attrs.fileKey()
-    val stamp = Stamp(lastModified, fileKey)
-    cache.get(path) match {
-      case Some((cachedStamp, cached)) if cachedStamp == stamp => cached
-      case _ =>
-        val value = create()
-        cache.put(path, (stamp, value))
-        value
-    }
-  }
-
-  def clear(): Unit = cache.synchronized {
-    // TODO support closing
-    // cache.valuesIterator.foreach(_.close())
-    cache.clear()
-  }
 }

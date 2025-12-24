@@ -17,6 +17,7 @@ import NameOps.*
 import StdNames.*
 import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
 import Decorators.*
+import Caches.Cache
 
 import util.Stats
 import reporting.trace
@@ -471,10 +472,11 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     classfileParser.run()
 }
 
-class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
-  val isBestEffortTasty = tastyFile.hasBetastyExtension
+class TastyLoader(val tastyFile: AbstractFile, tastyBytesCache: Cache[AbstractFile, Array[Byte]]) extends SymbolLoader {
+  private val isBestEffortTasty = tastyFile.hasBetastyExtension
 
-  lazy val tastyBytes = tastyFile.toByteArray
+  private lazy val tastyBytes: Array[Byte] =
+    tastyBytesCache(tastyFile, tastyFile.toByteArray)
 
   private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
