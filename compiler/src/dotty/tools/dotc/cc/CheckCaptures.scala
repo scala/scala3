@@ -30,6 +30,7 @@ import reporting.Message.Note
 import Annotations.Annotation
 import Capabilities.*
 import Mutability.*
+import TypeOps.AsSeenFromMap
 import util.common.alwaysTrue
 import scala.annotation.constructorOnly
 
@@ -953,7 +954,20 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
 
-      augmentConstructorType(resType, capturedVars(cls))
+      /** Map locals with an as-seen-from relative to the prefix path of the created class
+       *  if the prefix is non-trivial,
+       */
+      def mapLocals(core: Type, locals: CaptureSet): CaptureSet =
+        if cls.isStatic || cls.owner.isTerm then locals
+        else core match
+          case core: MethodType => mapLocals(core.resType, locals)
+          case _ =>
+            core.underlyingClassRef(refinementOK = true) match
+              case TypeRef(prefix: ThisType, _) if prefix.cls == cls => locals
+              case TypeRef(prefix, _) => locals.map(AsSeenFromMap(prefix, cls.owner))
+              case _ => locals
+
+      augmentConstructorType(resType, mapLocals(resType, capturedVars(cls)))
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
 
