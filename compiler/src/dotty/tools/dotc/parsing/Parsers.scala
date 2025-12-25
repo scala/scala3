@@ -4695,6 +4695,7 @@ object Parsers {
 
     /** Template          ::=  InheritClauses [TemplateBody]
      *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+     *                         [‘uses’ CaptureRef {‘,’ CaptureRef}]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
       val parents =
@@ -4711,24 +4712,29 @@ object Parsers {
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
       val derived =
-        if (isIdent(nme.derives)) {
+        if isIdent(nme.derives) then
           in.nextToken()
           commaSeparated(() => convertToTypeId(qualId()))
-        }
+        else Nil
+      newLinesOptWhenFollowedBy(nme.uses)
+      val uses =
+        if isIdent(nme.uses) then
+          in.nextToken()
+          concreteCapsType(commaSeparated(captureRef)) :: Nil
         else Nil
       possibleTemplateStart()
       if isEnum then
         val (self, stats) = withinEnum(templateBody(parents))
-        Template(constr, parents, derived, self, stats)
+        Template(constr, parents, derived ++ uses, self, stats)
       else
-        templateBodyOpt(constr, parents, derived)
+        templateBodyOpt(constr, parents, derived ++ uses)
     }
 
     /** TemplateOpt = [Template]
      */
     def templateOpt(constr: DefDef): Template =
       newLinesOptWhenFollowedBy(nme.derives)
-      if in.token == EXTENDS || isIdent(nme.derives) then
+      if in.token == EXTENDS || isIdent(nme.derives) || isIdent(nme.uses) then
         template(constr)
       else
         possibleTemplateStart()

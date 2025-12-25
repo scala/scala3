@@ -947,9 +947,11 @@ object desugar {
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumClass)
 
+    val (implDerived, implUses) = impl.derived.partition(getRetainsAnnot(_).isEmpty)
+
     // derived type classes of non-module classes go to their companions
     val (clsDerived, companionDerived) =
-      if (mods.is(Module)) (impl.derived, Nil) else (Nil, impl.derived)
+      if (mods.is(Module)) (implDerived, Nil) else (Nil, implDerived)
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt derives class-derived { defs }
@@ -1104,6 +1106,10 @@ object desugar {
       val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
       if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
         classMods |= Dependent
+      implUses match
+        case use :: Nil => classMods = classMods.withAddedAnnotation(getRetainsAnnot(use))
+        case _ =>
+
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,

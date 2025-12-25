@@ -659,6 +659,7 @@ object StdNames {
     val unsafeNulls: N          = "unsafeNulls"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
+    val uses: N                 = "uses"
     val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"

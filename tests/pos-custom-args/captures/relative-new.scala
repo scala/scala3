@@ -1,10 +1,16 @@
+import caps.SharedCapability
+
 class File
 
-class A:
+object Console extends SharedCapability:
+  def println(s: String) = Predef.println(s)
+
+class A {
   val f: File^ = File()
 
-  class B:
-    def show = println(f)
+  class B uses A.this.f, Console:
+    def show = Console.println(f.toString)
+}
 
 def test =
   val a = A()
