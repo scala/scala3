@@ -950,8 +950,8 @@ object SpaceEngine {
           if prev == Empty && covered == Empty then // defer until a case is reachable
             recur(rest, prevs, pat :: deferred)
           else
-            for pat <- deferred.reverseIterator
-            do report.warning(MatchCaseUnreachable(), pat.srcPos)
+            for deferral <- deferred.reverseIterator
+            do report.warning(MatchCaseUnreachable(), deferral.srcPos)
 
             if pat != EmptyTree // rethrow case of catch uses EmptyTree
                 && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
