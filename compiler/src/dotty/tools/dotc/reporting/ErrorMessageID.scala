@@ -250,6 +250,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UseOfAnyMethodAsInterpolatorID // errorNumber: 232
   case IncreasingMatchReductionID // errorNumber: 233
   case CyclicMatchTypeReductionID // errorNumber: 234
+  case MatchTypeReductionWithErrorArgsID // errorNumber: 235
 
   def errorNumber = ordinal - 1
 
