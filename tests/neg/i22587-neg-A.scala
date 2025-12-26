@@ -9,7 +9,4 @@ type Loop[X] = X match
   case String => Loop[Int]
   case _ => String
 
-@main def test02(): Unit =
-  val e1: Loop[Int] = ??? // error
-  println("Test 2 - Direct self-reference:")
-  println(s"e1 value: $e1")
+type Test = Loop[Int] // error

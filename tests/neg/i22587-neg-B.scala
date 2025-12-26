@@ -6,7 +6,4 @@ type Wrap[X] = X match
   case AnyVal => Wrap[List[X]]
   case AnyRef => Wrap[List[X]]
 
-@main def test03(): Unit =
-  val e1: Wrap[Int] = ??? // error
-  println("Test 3 - Wrapping without progress:")
-  println(s"e1 value: $e1")
+type Test = Wrap[Int] // error
