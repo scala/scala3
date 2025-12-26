@@ -4646,30 +4646,30 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
-      *  class, and the expected type is a function type. This rule is needed so we can pass
-      *  an implicit function to a regular function type. So the following is OK
-      *
-      *     val f: implicit A => B  =  ???
-      *     val g: A => B = f
-      *
-      *  and the last line expands to
-      *
-      *     val g: A => B  =  (x$0: A) => f.apply(x$0)
-      *
-      *  One could be tempted not to eta expand the rhs, but that would violate the invariant
-      *  that expressions of implicit function types are always implicit closures, which is
-      *  exploited by ShortcutImplicits.
-      *
-      *  On the other hand, the following would give an error if there is no implicit
-      *  instance of A available.
-      *
-      *     val x: AnyRef = f
-      *
-      *  That's intentional, we want to fail here, otherwise some unsuccessful implicit searches
-      *  would go undetected.
-      *
-      *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
-      */
+     *  class, and the expected type is a function type. This rule is needed so we can pass
+     *  an implicit function to a regular function type. So the following is OK
+     *
+     *     val f: implicit A => B  =  ???
+     *     val g: A => B = f
+     *
+     *  and the last line expands to
+     *
+     *     val g: A => B  =  (x$0: A) => f.apply(x$0)
+     *
+     *  One could be tempted not to eta expand the rhs, but that would violate the invariant
+     *  that expressions of implicit function types are always implicit closures, which is
+     *  exploited by ShortcutImplicits.
+     *
+     *  On the other hand, the following would give an error if there is no implicit
+     *  instance of A available.
+     *
+     *     val x: AnyRef = f
+     *
+     *  That's intentional, we want to fail here, otherwise some unsuccessful implicit searches
+     *  would go undetected.
+     *
+     *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
+     */
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
