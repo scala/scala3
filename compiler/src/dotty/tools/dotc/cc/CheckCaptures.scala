@@ -459,9 +459,16 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy)
-        then CaptureSet.Var(sym, nestedOK = false)
-        else CaptureSet.empty)
+        sym.getAnnotation(defn.RetainsAnnot) match
+          case Some(ann: RetainingAnnotation) =>
+            try ann.toCaptureSet
+            catch case ex: IllegalCaptureRef =>
+              report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
+              CaptureSet.empty
+          case _ =>
+            if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy)
+            then CaptureSet.Var(sym, nestedOK = false)
+            else CaptureSet.empty)
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
 

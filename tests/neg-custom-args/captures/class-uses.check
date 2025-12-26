@@ -1,0 +1,11 @@
+-- Warning: tests/neg-custom-args/captures/class-uses.scala:5:0 --------------------------------------------------------
+5 |object Console extends SharedCapability:
+  |^
+  |object Console has a non-empty capture set but will not be added as
+  |a capability to computed capture sets since it is globally accessible
+  |as a top-level definition. Global values cannot be capabilities.
+-- Error: tests/neg-custom-args/captures/class-uses.scala:15:22 --------------------------------------------------------
+15 |      Console.println(g.toString) // error
+   |                      ^
+   |                      reference (A.this.g : File^) is not included in the allowed capture set {A.this.f}
+   |                      of the enclosing class B in class A
