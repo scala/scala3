@@ -1,5 +1,6 @@
 import java.io.OutputStream
 
+// System.err is ostensibly final but cannot be inlined
 object Test {
   def main(args: Array[String]): Unit = {
     val oldErr = System.err

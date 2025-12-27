@@ -111,7 +111,8 @@ class CoverageTests:
     if run then
       val path = if isDirectory then inputFile.toString else inputFile.getParent.toString
       val test = compileDir(path, options)
-      test.checkFiles.foreach: checkFile =>
+      // a checkFile exists by construction; perhaps this intends to assert that target.checkFile.isDefined
+      for target <- test.targets; checkFile <- target.checkFile do
         assert(checkFile.exists, s"Expected checkfile for $path $checkFile does not exist.")
       test.checkRuns()
     else

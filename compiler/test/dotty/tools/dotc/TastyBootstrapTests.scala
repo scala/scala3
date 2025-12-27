@@ -22,7 +22,7 @@ import reporting.TestReporter
 class TastyBootstrapTests {
   import ParallelTesting._
   import TestConfiguration._
-  import CompilationTests._
+  import TastyBootstrapTests.{*, given}
   import CompilationTest.aggregateTests
 
   /** The purpose of this test is three-fold, being able to compile dotty
@@ -116,7 +116,8 @@ object TastyBootstrapTests extends ParallelTesting {
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()

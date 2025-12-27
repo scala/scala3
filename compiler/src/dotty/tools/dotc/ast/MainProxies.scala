@@ -4,13 +4,14 @@ package ast
 import core.*
 import Symbols.*, Types.*, Contexts.*, Decorators.*, util.Spans.*, Flags.*, Constants.*
 import StdNames.{nme, tpnme}
-import ast.Trees.*
+import reporting.Message
 import Names.Name
 import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation
+import untpd.*
 
-object MainProxies {
+object MainProxies:
 
   /** Generate proxy classes for @main functions.
    *  A function like
@@ -30,66 +31,55 @@ object MainProxies {
    *         catch case err: ParseError => showError(err)
    *       }
    */
-  def proxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  def proxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] =
     import tpd.*
-    def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
+    def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap:
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
         stat.symbol :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
       case _ =>
         Nil
-    }
     mainMethods(stats).flatMap(mainProxy)
-  }
 
-  import untpd.*
-  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
+  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] =
+    def error(msg: Message) = report.error(msg, mainFun.sourcePos)
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
-    def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
-      if (mt.isImplicitMethod) {
-        report.error(em"@main method cannot have implicit parameters", pos)
+      val args = mt.paramInfos.zipWithIndex.map: (formal, n) =>
+        val (parserSym, formalElem) =
+          if formal.isRepeatedParam then (defn.CLP_parseRemainingArguments, formal.argTypes.head)
+          else (defn.CLP_parseArgument, formal)
+        val arg = Apply(
+          TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
+          argsRef :: Literal(Constant(idx + n)) :: Nil)
+        if formal.isRepeatedParam then repeated(arg) else arg
+      mt.resType match
+      case _ if mt.isImplicitMethod =>
+        error(em"@main method cannot have implicit parameters")
         call
-      }
-      else {
-        val args = mt.paramInfos.zipWithIndex map {
-          (formal, n) =>
-            val (parserSym, formalElem) =
-              if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
-              else (defn.CLP_parseArgument, formal)
-            val arg = Apply(
-              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
-              argsRef :: Literal(Constant(idx + n)) :: Nil)
-            if (formal.isRepeatedParam) repeated(arg) else arg
-        }
-        val call1 = Apply(call, args)
-        mt.resType match {
-          case restpe: MethodType =>
-            if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              report.error(em"varargs parameter of @main method must come last", pos)
-            addArgs(call1, restpe, idx + args.length)
-          case _ =>
-            call1
-        }
-      }
+      case restpe: MethodType =>
+        if mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam then
+          error(em"varargs parameter of @main method must come last")
+        addArgs(Apply(call, args), restpe, idx + args.length)
+      case _ =>
+        Apply(call, args)
 
-    var result: List[TypeDef] = Nil
-    if (!mainFun.owner.isStaticOwner)
-      report.error(em"@main method is not statically accessible", pos)
-    else {
-      var call = ref(mainFun.termRef)
-      mainFun.info match {
-        case _: ExprType =>
-        case mt: MethodType =>
-          call = addArgs(call, mt, 0)
-        case _: PolyType =>
-          report.error(em"@main method cannot have type parameters", pos)
-        case _ =>
-          report.error(em"@main can only annotate a method", pos)
-      }
+    var call = ref(mainFun.termRef)
+    mainFun.info match
+    case _ if !mainFun.owner.isStaticOwner =>
+      error(em"@main method is not statically accessible")
+    case _: ExprType =>
+    case mt: MethodType =>
+      call = addArgs(call, mt, 0)
+    case _: PolyType =>
+      error(em"@main method cannot have type parameters")
+    case _ =>
+      error(em"@main can only annotate a method")
+
+    if !ctx.reporter.hasErrors then
       val errVar = Ident(nme.error)
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
@@ -115,11 +105,6 @@ object MainProxies {
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final | Invisible)
-
-      if (!ctx.reporter.hasErrors)
-        result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
-    }
-    result
-  }
-
-}
+      mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+    else Nil
+  end mainProxy

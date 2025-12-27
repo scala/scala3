@@ -4,32 +4,32 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
-import org.junit.Assert._
-import org.junit.Assume._
+import org.junit.{Test, BeforeClass, AfterClass, Ignore}
+import org.junit.Assert.*
+import org.junit.Assume.*
 import org.junit.experimental.categories.Category
 
 import java.io.File
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters._
+import java.nio.file.*
+import java.util.stream.Stream as JStream
+import scala.jdk.CollectionConverters.*
 import scala.util.matching.Regex
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import TestSources.sources
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 import dotty.tools.dotc.config.ScalaSettings
 
 class CompilationTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import CompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import CompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
 
   @Test def pos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePos")
+    given TestGroup = TestGroup("compilePos")
     var tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
@@ -274,9 +274,14 @@ class CompilationTests {
 
       // Set -sourceroot such that the source code cannot be found by the compiler
       val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
-      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(group).keepOutput.checkCompile()
+      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)
+        (using group)
+        .keepOutput
+        .checkCompile()
 
-      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(group).checkWarnings()
+      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))
+        (using group)
+        .checkWarnings()
 
       lib.delete()
     }
@@ -404,7 +409,8 @@ object CompilationTests extends ParallelTesting {
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()

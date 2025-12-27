@@ -4,7 +4,7 @@ import com.sun.jdi.*
 import dotty.Properties
 import dotty.tools.dotc.reporting.TestReporter
 import dotty.tools.io.JFile
-import dotty.tools.vulpix.*
+import dotty.tools.vulpix.*, Status.{Failure, Success, Timeout}
 import org.junit.AfterClass
 import org.junit.Test
 
@@ -13,9 +13,9 @@ import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 
 class DebugTests:
-  import DebugTests.*
+  import DebugTests.{*, given}
   @Test def debug: Unit =
-    implicit val testGroup: TestGroup = TestGroup("debug")
+    given TestGroup = TestGroup("debug")
     CompilationTest.aggregateTests(
       compileFile("tests/debug-custom-args/eval-explicit-nulls.scala", TestConfiguration.explicitNullsOptions),
       compileFilesInDir("tests/debug", TestConfiguration.defaultOptions),
@@ -33,17 +33,18 @@ object DebugTests extends ParallelTesting:
   def failedTests = TestReporter.lastRunFailedTests
   override def debugMode = true
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit =
     super.cleanup()
     summaryReport.echoSummary()
 
   extension (test: CompilationTest)
-    private def checkDebug()(implicit summaryReport: SummaryReporting): test.type =
+    private def checkDebug()(using SummaryReporting): test.type =
       import test.*
-      checkPass(new DebugTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Debug")
+      checkPass(new DebugTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
-  private final class DebugTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  private final class DebugTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
     extends RunTest(testSources, times, threadLimit, suppressAllOutput):
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =

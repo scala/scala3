@@ -6,7 +6,7 @@ import org.junit.Ignore
 
 @Ignore class Playground:
   import TestConfiguration._
-  import CompilationTests._
+  import CompilationTests.{*, given}
 
   @Test def example: Unit =
     implicit val testGroup: TestGroup = TestGroup("playground")
