@@ -654,7 +654,11 @@ object Scanners {
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
                   report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
         else if lastWidth < nextWidth
-             || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
+             || lastWidth == nextWidth
+                && token == CASE
+                && (lastToken == MATCH || lastToken == CATCH
+                  || lastToken == COLONeol && featureEnabled(Feature.relaxedColonSyntax))
+        then
           if canStartIndentTokens.contains(lastToken) then
             currentRegion = Indented(nextWidth, lastToken, currentRegion)
             insert(INDENT, offset)
