@@ -1,5 +1,3 @@
-import caps.SharedCapability
-
 class File
 
 class A {

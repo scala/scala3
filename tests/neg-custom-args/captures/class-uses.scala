@@ -1,3 +1,5 @@
+package test
+
 import caps.SharedCapability
 
 class File
@@ -13,6 +15,10 @@ class A {
     def show =
       Console.println(f.toString)
       Console.println(g.toString) // error
+
+  class C: // error
+    def show =
+      Console.println(f.toString)
 }
 
 def test =

@@ -1299,6 +1299,22 @@ class CheckCaptures extends Recheck, SymTransformer:
           curEnv = saved
     end recheckDefDef
 
+    /** Is symbol exempt from checking that its type or uses clause must
+     *  be given explicitly? This is the case for symbols that are not
+     *  visible outside the compilation unit where they are defined,
+     *  and also for two pragmatic exemptions, explained below.
+     */
+    def isExemptFromExplicitChecks(sym: Symbol)(using Context): Boolean =
+      sym.isLocalToCompilationUnit
+      || ctx.owner.enclosingPackageClass.isEmptyPackage
+        // We make an exception for symbols in the empty package.
+        // these could theoretically be accessed from other files in the empty package, but
+        // usually it would be too annoying to require explicit types.
+      || sym.name.is(DefaultGetterName)
+        // Default getters are exempted since otherwise it would be
+        // too annoying. This is a hole since a defualt getter's result type
+        // might leak into a type variable.
+
     /** Two tests for member definitions with inferred types:
      *
      *   1. If val or def definition with inferred (result) type is visible
@@ -1316,16 +1332,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
       val sym = tree.symbol
-
-      def isExemptFromChecks =
-        ctx.owner.enclosingPackageClass.isEmptyPackage
-          // We make an exception for symbols in the empty package.
-          // these could theoretically be accessed from other files in the empty package, but
-          // usually it would be too annoying to require explicit types.
-        || sym.name.is(DefaultGetterName)
-          // Default getters are exempted since otherwise it would be
-          // too annoying. This is a hole since a defualt getter's result type
-          // might leak into a type variable.
 
       def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
@@ -1356,9 +1362,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt match
         case tpt: InferredTypeTree =>
           // Test point (1) of doc comment above
-          if !sym.isLocalToCompilationUnit && !isExemptFromChecks
-            // Symbols that can't be seen outside the compilation unit can have inferred types
-          then
+          if !isExemptFromExplicitChecks(sym) then // Symbols that can't be seen outside the compilation unit can have inferred types
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
               withCapAsRoot:
@@ -1473,6 +1477,14 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         super.recheckClassDef(tree, impl, cls)
       finally
+        localSet match
+          case localSet: CaptureSet.Var
+          if !localSet.elems.isEmpty && !isExemptFromExplicitChecks(cls) =>
+            report.error(
+              em"""Publicly visible $cls uses external capabilities $localSet.
+                  |These dependencies need to be declared explicitly in a `uses ...` clause.""",
+              cls.srcPos)
+          case _ =>
         completed += cls
         curEnv = saved
     end recheckClassDef
