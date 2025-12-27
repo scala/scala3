@@ -635,7 +635,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case root: ThisType => ctx.owner.isContainedIn(root.cls)
           case _ => true
         if sym.exists && curEnv.kind != EnvKind.Boxed then
-          markFree(capturedVars(sym).filter(isRetained), tree)
+          var locals = capturedVars(sym)
+          if sym.isConstructor then
+            locals = mapClassCaptures(sym.owner.asClass, resType, locals)
+          markFree(locals.filter(isRetained), tree)
 
     /** If `tp` (possibly after widening singletons) is an ExprType
      *  of a parameterless method, map Result instances in it to Fresh instances
@@ -954,22 +957,22 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
 
-      /** Map locals with an as-seen-from relative to the prefix path of the created class
-       *  if the prefix is non-trivial,
-       */
-      def mapLocals(core: Type, locals: CaptureSet): CaptureSet =
-        if cls.isStatic || cls.owner.isTerm then locals
-        else core match
-          case core: MethodType => mapLocals(core.resType, locals)
-          case _ =>
-            core.underlyingClassRef(refinementOK = true) match
-              case TypeRef(prefix: ThisType, _) if prefix.cls == cls => locals
-              case TypeRef(prefix, _) => locals.map(AsSeenFromMap(prefix, cls.owner))
-              case _ => locals
-
-      augmentConstructorType(resType, mapLocals(resType, capturedVars(cls)))
+      augmentConstructorType(resType, mapClassCaptures(cls, resType, capturedVars(cls)))
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
+
+    /** Map locals with an as-seen-from relative to the prefix path of the created class
+     *  if the prefix is non-trivial,
+     */
+    def mapClassCaptures(cls: ClassSymbol, core: Type, locals: CaptureSet)(using Context): CaptureSet =
+      if cls.isStatic || cls.owner.isTerm then locals
+      else core match
+        case core: MethodType => mapClassCaptures(cls, core.resType, locals)
+        case _ =>
+          core.underlyingClassRef(refinementOK = true) match
+            case TypeRef(prefix: ThisType, _) if prefix.cls == cls => locals
+            case TypeRef(prefix, _) => locals.map(AsSeenFromMap(prefix, cls.owner))
+            case _ => locals
 
     private def memberCaps(mbr: Symbol)(using Context): List[Capability] =
       if contributesFreshToClass(mbr) then
