@@ -24,7 +24,7 @@ final class AnyValue private (
     _copy(this.wrapped)
 
   /** Returns `true` iff `this` and `other` have an equivalent value. */
-  def eq(other: AnyValue): Boolean =
+  infix def eq(other: AnyValue): Boolean =
     _eq(this.wrapped, other.wrapped)
 
   /** Hashes the salient parts of `this` into `hasher`. */
@@ -49,7 +49,7 @@ object AnyValue {
       AnyValue(a.asInstanceOf[Ref[T]].value.copy())
 
     def eq(a: AnyRef, b: AnyRef): Boolean =
-      a.asInstanceOf[Ref[T]].value `eq` b.asInstanceOf[Ref[T]].value
+      a.asInstanceOf[Ref[T]].value eq b.asInstanceOf[Ref[T]].value
 
     def hashInto(a: AnyRef, hasher: Hasher): Hasher =
       a.asInstanceOf[Ref[T]].value.hashInto(hasher)
@@ -62,6 +62,6 @@ given AnyValue is Value:
 
   extension (self: AnyValue)
     def copy(): AnyValue = self.copy()
-    def eq(other: AnyValue): Boolean = self `eq` other
+    infix def eq(other: AnyValue): Boolean = self eq other
     def hashInto(hasher: Hasher): Hasher = self.hashInto(hasher)
 

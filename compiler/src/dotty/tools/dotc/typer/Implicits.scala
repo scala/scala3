@@ -1668,15 +1668,14 @@ trait Implicits:
     def isUnderSpecifiedArgument(tp: Type): Boolean =
       tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
 
-    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar match
+    private def isUnderspecified(tp: Type): Boolean = tp.simplified match
       case tp: WildcardType =>
         !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
       case tp: ViewProto =>
         isUnderspecified(tp.resType)
         || tp.resType.isRef(defn.UnitClass)
         || isUnderSpecifiedArgument(tp.argType.widen)
-      case _ =>
-        tp.isAny || tp.isAnyRef
+      case tp => tp.isAny || tp.isAnyRef || tp.isAnyVal
 
     /** Search implicit in context `ctxImplicits` or else in implicit scope
      *  of expected type if `ctxImplicits == null`.
