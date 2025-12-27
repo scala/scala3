@@ -41,6 +41,7 @@ object Feature:
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
+  val relaxedColonSyntax = experimental("relaxedColonSyntax")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
@@ -73,6 +74,7 @@ object Feature:
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
+    (relaxedColonSyntax, "Enable experimental relaxed colon syntax"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.

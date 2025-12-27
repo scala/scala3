@@ -368,13 +368,16 @@ object language {
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
 
-   /** Experimental support for single-line lambdas and case clause expressions after `:`
-     */
+    /** Experimental support for single-line lambdas and case clause expressions after `:`. */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for unindented case block after `:`. */
+    @compileTimeOnly("`relaxedColonSyntax` can only be used at compile time in import statements")
+    object relaxedColonSyntax
   }
 
-    /** The deprecated object contains features that are no longer officially suypported in Scala.
+  /** The deprecated object contains features that are no longer officially suypported in Scala.
    *  Features in this object are slated for removal. New code should not use them and
    *  old code should migrate away from them.
    */
@@ -448,7 +451,7 @@ object language {
   object `future-migration`
 
   /** Sets source version to 2.13. Effectively, this doesn't change the source language,
-   * but rather adapts the generated code as if it was compiled with Scala 2.13
+   *  but rather adapts the generated code as if it were compiled with Scala 2.13.
    */
   @compileTimeOnly("`2.13` can only be used at compile time in import statements")
   private[scala] object `2.13`
