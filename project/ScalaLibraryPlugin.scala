@@ -7,6 +7,7 @@ import java.nio.file.Files
 import xsbti.VirtualFileRef
 import sbt.internal.inc.Stamper
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
+import org.objectweb.asm.*
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
@@ -56,8 +57,8 @@ object ScalaLibraryPlugin extends AutoPlugin {
         dest = target / (id.toString)
         ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
-        // Copy the files to the classDirectory
-        IO.copyFile(file, dest)
+        // Read -> Strip Scala 2 Pickles -> Write
+        IO.write(dest, unpickler(IO.readBytes(file)))
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
           VirtualFileRef.of(s"$${BASE}/$ref"),
@@ -77,7 +78,8 @@ object ScalaLibraryPlugin extends AutoPlugin {
         // Copy all the specialized classes in the stdlib
         // no need to update any stamps as these classes exist nowhere in the analysis
         for (orig <- diff; dest <- orig.relativeTo(reference)) {
-          IO.copyFile(orig, ((Compile / classDirectory).value / dest.toString()))
+          // Read -> Strip Scala 2 Pickles -> Write
+          IO.write((Compile / classDirectory).value / dest.toString, unpickler(IO.readBytes(orig)))
         }
       }
 
@@ -101,6 +103,25 @@ object ScalaLibraryPlugin extends AutoPlugin {
       IO.unzip(jar, target)
       (target ** "*.class").get.toSet ++ (target ** "*.sjsir").get.toSet
     } (Set(jar)), target)
+  }
+
+  /* Remove Scala 2 Pickles from Classfiles */
+  private def unpickler(bytes: Array[Byte]): Array[Byte] = {
+    val reader = new ClassReader(bytes)
+    val writer = new ClassWriter(0)
+    val visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+      override def visitAttribute(attr: Attribute): Unit = attr.`type` match {
+        case "ScalaSig" | "ScalaInlineInfo" => ()
+        case _ => super.visitAttribute(attr)
+      }
+
+      override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor =
+        if (desc == "Lscala/reflect/ScalaSignature;" || desc == "Lscala/reflect/ScalaLongSignature;") null
+        else super.visitAnnotation(desc, visible)
+
+    }
+    reader.accept(visitor, 0)
+    writer.toByteArray
   }
 
   private lazy val filesToCopy = Set(
