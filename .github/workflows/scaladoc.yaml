@@ -84,3 +84,41 @@ jobs:
 
       - name: Test sourcelinks to stdlib
         run: true # ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
+
+  check-error-code-snippets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: coursier/cache-action@v7
+      - uses: VirtusLab/scala-cli-setup@v1
+        with: 
+          jvm: temurin:17
+          apps: sbt
+      - name: Publish compiler locally
+        run: |
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped-new/version" | tail -n1)
+          echo "SCALA_VERSION=$version" >> $GITHUB_ENV
+          echo "Would test snippets using Scala $version"
+
+          # Publish locally minimal set of artifacts that would be required to test snippets 
+          sbt "set every doc := new File(\"unused\");\
+               scala3-bootstrapped-new/publishLocal
+              "
+      - name: Test error code snippets
+        shell: bash
+        run: scala-cli test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+      - name: "[On failure] Print reproduction/fix steps"
+        if: failure()
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          Snippets validation for error codes failed
+
+          If you've modified messages of positions of error codes, you might need to update the expected outputs, to do it run: following command:
+          scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler --main-class=updateAllErrorCodeOutputs
+
+          Single error code validation can be performed using:
+          scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler -- docs/_docs/reference/error-codes/E001.md [--verbose --update-output]
+
+          To check the validation use dedicated test suite:
+          scala test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+          EOF

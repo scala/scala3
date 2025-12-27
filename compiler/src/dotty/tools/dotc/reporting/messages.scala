@@ -2108,11 +2108,6 @@ class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsEx
   }
 }
 
-class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(using Context) extends SyntaxMsg(TraitRedefinedFinalMethodFromAnyRefID) {
-  def msg(using Context) = i"Traits cannot redefine final $method from ${hl("class AnyRef")}."
-  def explain(using Context) = ""
-}
-
 class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context)
 extends NamingMsg(AlreadyDefinedID):
   def msg(using Context) =
@@ -2823,29 +2818,6 @@ class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(using Cont
         | Please choose a different name to avoid conflicts
         |"""
 }
-
-class NoExtensionMethodAllowed(mdef: untpd.DefDef)(using Context)
-  extends SyntaxMsg(NoExtensionMethodAllowedID) {
-  def msg(using Context) = i"No extension method allowed here, since collective parameters are given"
-  def explain(using Context) =
-    i"""|Extension method:
-        |  `${mdef}`
-        |is defined inside an extension clause which has collective parameters.
-        |"""
-}
-
-class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(using Context)
-  extends SyntaxMsg(ExtensionMethodCannotHaveTypeParamsID) {
-  def msg(using Context) = i"Extension method cannot have type parameters since some were already given previously"
-
-  def explain(using Context) =
-    i"""|Extension method:
-        |  `${mdef}`
-        |has type parameters `[${mdef.leadingTypeParams.map(_.show).mkString(",")}]`, while the extension clause has
-        |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
-        |"""
-}
-
 class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(using Context)
   extends SyntaxMsg(ExtensionCanOnlyHaveDefsID) {
   def msg(using Context) = i"Only methods allowed here, since collective parameters are given"
