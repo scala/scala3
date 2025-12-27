@@ -39,7 +39,8 @@ object Test {
       l.productElement(23)
       ???
     } catch {
-      case e: IndexOutOfBoundsException => assert(e.getMessage == "23")
+      case e: IndexOutOfBoundsException => assert(e.getMessage.contains("23"))
+      case _ => assert(false)
     }
   }
 }

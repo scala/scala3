@@ -674,6 +674,11 @@ class Definitions {
   @tu lazy val JavaCloneableClass: ClassSymbol        = requiredClass("java.lang.Cloneable")
   @tu lazy val NullPointerExceptionClass: ClassSymbol = requiredClass("java.lang.NullPointerException")
   @tu lazy val IndexOutOfBoundsException: ClassSymbol = requiredClass("java.lang.IndexOutOfBoundsException")
+  @tu lazy val IndexOutOfBoundsExceptionType: Type    = IndexOutOfBoundsException.typeRef
+    @tu lazy val IndexOutOfBoundsException_IntConstructor: TermSymbol  = IndexOutOfBoundsException.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
+        case List(pt) => pt.isRef(IntClass)
+        case _ => false
+      }).symbol.asTerm
   @tu lazy val ClassClass: ClassSymbol                = requiredClass("java.lang.Class")
   @tu lazy val BoxedNumberClass: ClassSymbol          = requiredClass("java.lang.Number")
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = requiredClass("java.lang.ClassCastException")
