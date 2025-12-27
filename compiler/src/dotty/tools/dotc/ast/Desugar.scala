@@ -660,6 +660,7 @@ object desugar {
     val impl @ Template(constr0, _, self, _) = cdef.rhs: @unchecked
     val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
+    val (implDerived, implUses) = impl.derived.partition(getRetainsAnnot(_).isEmpty)
     val mods = cdef.mods
     val companionMods = mods
         .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
@@ -667,6 +668,18 @@ object desugar {
         .withAnnotations(Nil)
 
     var defaultGetters: List[Tree] = Nil
+
+    /** If there is a uses or uses_init clause, convert it to a @retains annotation
+     *  and add it to `mods`.
+     *  @param  idx  the index in implUses that describes the clause as a CapSet^{...}
+     *               reference: 0 for `uses...`, 1 for `uses_init...`
+     */
+    def addImplUse(mods: Modifiers, idx: 0 | 1): Modifiers =
+      if implUses.nonEmpty then
+        val retains = getRetainsAnnot(implUses(idx))
+        if isEmptyRetainsAnnot(retains) then mods
+        else mods.withAddedAnnotation(retains)
+      else mods
 
     def decompose(ddef: Tree): DefDef = ddef match {
       case meth: DefDef => meth
@@ -750,6 +763,8 @@ object desugar {
         derived.withAnnotations(Nil)
 
     val constr = cpy.DefDef(constr1)(paramss = joinParams(constrTparams, constrVparamss))
+      .withMods(addImplUse(constr1.mods, 1))
+
     if enumTParams.nonEmpty then
       defaultGetters = defaultGetters.map:
         case ddef: DefDef =>
@@ -947,8 +962,6 @@ object desugar {
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumClass)
 
-    val (implDerived, implUses) = impl.derived.partition(getRetainsAnnot(_).isEmpty)
-
     // derived type classes of non-module classes go to their companions
     val (clsDerived, companionDerived) =
       if (mods.is(Module)) (implDerived, Nil) else (Nil, implDerived)
@@ -1106,15 +1119,12 @@ object desugar {
       val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
       if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
         classMods |= Dependent
-      implUses match
-        case use :: Nil => classMods = classMods.withAddedAnnotation(getRetainsAnnot(use))
-        case _ =>
 
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
           newBody)
-      ).withMods(classMods)
+      ).withMods(addImplUse(classMods, 0))
     }
 
     // install the watch on classTycon

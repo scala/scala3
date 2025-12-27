@@ -559,6 +559,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Annotated(parent, annot) if annot.hasAttachment(RetainsAnnot) => annot
     case _ => EmptyTree
 
+  def isEmptyRetainsAnnot(annot: Tree)(using Context): Boolean = annot match
+    case New(AppliedTypeTree(annot, TypedSplice(tpt: TypeTree) :: Nil)) =>
+      tpt.tpe.isNothingType
+    case _ =>
+      false
+
   def makeReachAnnot()(using Context): Tree =
     New(scalaAnnotationInternalDot(tpnme.reachCapability), Nil :: Nil)
 
