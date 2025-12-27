@@ -12,15 +12,11 @@
 
 package scala.runtime;
 
-
-public final class BoxedUnit implements java.io.Serializable {
-    private static final long serialVersionUID = 8405543498931817370L;
+public final class BoxedUnit {
 
     public final static BoxedUnit UNIT = new BoxedUnit();
 
     public final static Class<Void> TYPE = java.lang.Void.TYPE;
-    
-    private Object readResolve() { return UNIT; }
 
     private BoxedUnit() { }
 
