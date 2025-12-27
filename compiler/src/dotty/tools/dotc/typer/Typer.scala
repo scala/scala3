@@ -3360,7 +3360,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val superCls = cls.superClass
           superCls.exists && superCls.asClass.baseClasses.contains(m.symbol.owner)
 
-        def givenImpl(mbr: TermRef): ValDef =
+        def givenImpl(mbr: TermRef): ValDef | EmptyTree.type =
           val dcl = mbr.symbol
           val target = dcl.info.asSeenFrom(cls.thisType, dcl.owner)
           val constr = cls.primaryConstructor
@@ -3398,7 +3398,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 cpy.Select(id)(This(cls), id.name)
               case _ =>
                 super.transform(tree)
-          ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
+
+          rhs.tpe match
+          case tp: NamedType if tp.prefix.typeSymbol == cls && tp.name == mbr.name && !tp.typeSymbol.is(Method) =>
+            report.error(
+              em"""Inferred implementation of the deferred ${dcl.showLocated} is self-recursive.
+                  |An implementing given needs to be written explicitly.""",
+              cdef.srcPos)
+            EmptyTree
+          case _ =>
+            ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
         end givenImpl
 
         val givenImpls =
