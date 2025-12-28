@@ -118,6 +118,83 @@ class BootstrappedOnlyCompilationTests {
       .checkRuns()
   }
 
+  /** Test ALL macros with TASTy-based interpretation - finds edge cases */
+  @Test def runAllMacrosTastyInterpreter: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runAllMacrosTastyInterpreter")
+    val tastyInterpreterOptions = defaultOptions.and("-Xcheck-macros", "-Ytasty-interpreter")
+    compileFilesInDir("tests/run-macros", tastyInterpreterOptions, FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted))
+      .checkRuns()
+  }
+
+  /** Test macro execution using TASTy-based interpretation instead of JVM reflection */
+  @Test def runMacrosTastyInterpreter: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runMacrosTastyInterpreter")
+    // Test a subset of macros with the TASTy interpreter flag enabled
+    val tastyInterpreterOptions = defaultOptions.and("-Xcheck-macros", "-Ytasty-interpreter")
+    aggregateTests(
+      // Basic quote/splice macros
+      compileDir("tests/run-macros/quote-simple-macro", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-and-splice", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-force", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-change-owner", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-whitebox", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-impure-by-name", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-inline-function", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-toExprOfSeq", tastyInterpreterOptions),
+      // Inline tuples and pattern matching
+      compileDir("tests/run-macros/inline-tuples-1", tastyInterpreterOptions),
+      compileDir("tests/run-macros/inline-tuples-2", tastyInterpreterOptions),
+      compileDir("tests/run-macros/inline-option", tastyInterpreterOptions),
+      compileDir("tests/run-macros/inline-varargs-1", tastyInterpreterOptions),
+      compileDir("tests/run-macros/inline-case-objects", tastyInterpreterOptions),
+      // Expression mapping
+      compileDir("tests/run-macros/expr-map-1", tastyInterpreterOptions),
+      compileDir("tests/run-macros/expr-map-2", tastyInterpreterOptions),
+      compileDir("tests/run-macros/expr-map-3", tastyInterpreterOptions),
+      // Quote matching
+      compileDir("tests/run-macros/quote-matcher-power", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-matcher-runtime", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-matching-optimize-1", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-matching-optimize-2", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quoted-matching-docs", tastyInterpreterOptions),
+      // Type operations
+      compileDir("tests/run-macros/from-type", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-type-matcher", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-type-matcher-2", tastyInterpreterOptions),
+      // Annotation macros
+      compileDir("tests/run-macros/annot-simple-fib", tastyInterpreterOptions),
+      compileDir("tests/run-macros/annot-macro-main", tastyInterpreterOptions),
+      compileDir("tests/run-macros/annot-bind", tastyInterpreterOptions),
+      compileDir("tests/run-macros/annot-memo", tastyInterpreterOptions),
+      // Class generation
+      compileDir("tests/run-macros/newClass", tastyInterpreterOptions),
+      compileDir("tests/run-macros/newClassExtends", tastyInterpreterOptions),
+      compileDir("tests/run-macros/newClassParams", tastyInterpreterOptions),
+      compileDir("tests/run-macros/newClassSelf", tastyInterpreterOptions),
+      // Derivation and liftable
+      compileDir("tests/run-macros/quoted-liftable-derivation-macro", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quoted-ToExpr-derivation-macro", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quoted-toExprOfClass", tastyInterpreterOptions),
+      // Reflection operations
+      compileDir("tests/run-macros/reflect-lambda", tastyInterpreterOptions),
+      compileDir("tests/run-macros/reflect-select-copy", tastyInterpreterOptions),
+      compileDir("tests/run-macros/reflect-select-copy-2", tastyInterpreterOptions),
+      compileDir("tests/run-macros/reflect-inline", tastyInterpreterOptions),
+      compileDir("tests/run-macros/reflect-isFunctionType", tastyInterpreterOptions),
+      compileDir("tests/run-macros/reflect-sourceCode", tastyInterpreterOptions),
+      // String context and interpolation
+      compileDir("tests/run-macros/string-context-implicits", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-matcher-string-interpolator", tastyInterpreterOptions),
+      compileDir("tests/run-macros/quote-matcher-string-interpolator-2", tastyInterpreterOptions),
+      // Misc interesting cases
+      compileDir("tests/run-macros/i5119", tastyInterpreterOptions),
+      compileDir("tests/run-macros/i5533", tastyInterpreterOptions),
+      compileDir("tests/run-macros/i6765", tastyInterpreterOptions),
+      compileDir("tests/run-macros/power-macro", tastyInterpreterOptions),
+      compileDir("tests/run-macros/BigFloat", tastyInterpreterOptions),
+    ).checkRuns()
+  }
+
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     val basicTests = List(
@@ -125,11 +202,7 @@ class BootstrappedOnlyCompilationTests {
       compileFilesInDir("tests/run-staging", withStagingOptions),
       compileFilesInDir("tests/run-tasty-inspector", withTastyInspectorOptions)
     )
-    val tests =
-      if scala.util.Properties.isWin then basicTests
-      else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
-
-    aggregateTests(tests*).checkRuns()
+    aggregateTests(basicTests*).checkRuns()
   }
 
   @Ignore @Test def runScala2LibraryFromTasty: Unit = {

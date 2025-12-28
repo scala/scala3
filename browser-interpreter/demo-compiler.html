@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scala Browser Compiler</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e0e0e0;
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #4fc3f7;
+            margin: 0;
+            font-size: 2em;
+        }
+        h1 small {
+            color: #81d4fa;
+            font-size: 0.5em;
+            display: block;
+            margin-top: 5px;
+        }
+        .editor-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            padding: 15px;
+        }
+        .panel h2 {
+            color: #4fc3f7;
+            margin: 0 0 10px 0;
+            font-size: 1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.4);
+            color: #f8f8f2;
+            border: 1px solid rgba(79, 195, 247, 0.2);
+            border-radius: 5px;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #4fc3f7;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.4);
+        }
+        button.secondary {
+            background: rgba(79, 195, 247, 0.2);
+            color: #4fc3f7;
+            border: 1px solid #4fc3f7;
+        }
+        .output {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 5px;
+            padding: 15px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #81c784; }
+        .error { color: #ef5350; }
+        .warning { color: #ffb74d; }
+        .info { color: #64b5f6; }
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .feature-list li::before {
+            content: '✓ ';
+            color: #81c784;
+        }
+        .feature-list.unsupported li::before {
+            content: '✗ ';
+            color: #ef5350;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Scala Browser Compiler <small>Compile Scala to TASTy in your browser</small></h1>
+        </header>
+
+        <div class="editor-section">
+            <div class="panel">
+                <h2>📝 Scala Source</h2>
+                <textarea id="source-input" placeholder="Enter Scala code here...">// Try clicking Run to execute this code!
+val message = "Hello from the browser!"
+println(message)
+
+// Fibonacci sequence
+def fib(n: Int): Int = {
+  if (n <= 1) n
+  else fib(n - 1) + fib(n - 2)
+}
+
+val result = fib(10)
+println("Fibonacci(10) = " + result)
+
+// List operations
+val nums = List(1, 2, 3, 4, 5)
+val doubled = nums.map(x => x * 2)
+println("Doubled: " + doubled.mkString(", "))</textarea>
+            </div>
+            <div class="panel">
+                <h2>📊 Output</h2>
+                <div id="output" class="output">Click a button to compile or parse...</div>
+            </div>
+        </div>
+
+        <div class="button-row">
+            <button id="run-btn" style="background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);">▶️ Run</button>
+            <button id="compile-btn">🔨 Compile</button>
+            <button id="parse-btn" class="secondary">🔍 Parse</button>
+            <button id="check-btn" class="secondary">✓ Check Syntax</button>
+            <button id="clear-btn" class="secondary">🗑️ Clear</button>
+        </div>
+
+        <div class="features">
+            <div class="panel">
+                <h2>✅ Supported Features</h2>
+                <ul class="feature-list" id="supported-features"></ul>
+            </div>
+            <div class="panel">
+                <h2>❌ Unsupported Features</h2>
+                <ul class="feature-list unsupported" id="unsupported-features"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { ScalaCompiler } from './js/target/scala-3.7.0/browser-interpreter-js-fastopt/main.js';
+
+        const sourceInput = document.getElementById('source-input');
+        const output = document.getElementById('output');
+        const runBtn = document.getElementById('run-btn');
+        const compileBtn = document.getElementById('compile-btn');
+        const parseBtn = document.getElementById('parse-btn');
+        const checkBtn = document.getElementById('check-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const supportedList = document.getElementById('supported-features');
+        const unsupportedList = document.getElementById('unsupported-features');
+
+        // Populate feature lists
+        const supported = ScalaCompiler.supportedFeatures();
+        const unsupported = ScalaCompiler.unsupportedFeatures();
+
+        for (const feature of supported) {
+            const li = document.createElement('li');
+            li.textContent = feature;
+            supportedList.appendChild(li);
+        }
+
+        for (const feature of unsupported) {
+            const li = document.createElement('li');
+            li.textContent = feature;
+            unsupportedList.appendChild(li);
+        }
+
+        // Run button - parse, convert, and interpret
+        runBtn.addEventListener('click', () => {
+            const source = sourceInput.value;
+            output.textContent = 'Running...\n';
+
+            try {
+                const result = ScalaCompiler.run(source);
+
+                if (result.success) {
+                    output.innerHTML = '<span class="success">✓ Execution successful!</span>\n\n';
+
+                    if (result.output) {
+                        output.innerHTML += '<span class="info">Output:</span>\n';
+                        output.innerHTML += result.output + '\n';
+                    }
+
+                    if (result.result && result.result !== '()') {
+                        output.innerHTML += `\n<span class="info">Result:</span> ${result.result}\n`;
+                    }
+
+                    if (result.stats) {
+                        output.innerHTML += `\n<span class="info">Stats:</span> ${result.stats.nodes} nodes, ${result.stats.calls} calls\n`;
+                    }
+                } else {
+                    output.innerHTML = '<span class="error">✗ Execution failed</span>\n\n';
+                    if (result.output) {
+                        output.innerHTML += '<span class="info">Output before error:</span>\n';
+                        output.innerHTML += result.output + '\n\n';
+                    }
+                    output.innerHTML += `<span class="error">${result.error}</span>\n`;
+
+                    if (result.parseErrors) {
+                        for (const err of result.parseErrors) {
+                            output.innerHTML += `<span class="error">${err}</span>\n`;
+                        }
+                    }
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${e.message}</span>\n${e.stack}`;
+            }
+        });
+
+        compileBtn.addEventListener('click', () => {
+            const source = sourceInput.value;
+            output.textContent = 'Compiling...\n';
+
+            try {
+                const result = ScalaCompiler.compile(source);
+
+                if (result.success) {
+                    output.innerHTML = '<span class="success">✓ Compilation successful!</span>\n\n';
+                    output.innerHTML += `TASTy bytes: ${result.tastyBytes.length} bytes\n`;
+
+                    if (result.warnings.length > 0) {
+                        output.innerHTML += '\n<span class="warning">Warnings:</span>\n';
+                        for (const warn of result.warnings) {
+                            output.innerHTML += `  ${warn}\n`;
+                        }
+                    }
+                } else {
+                    output.innerHTML = '<span class="error">✗ Compilation failed</span>\n\n';
+                    output.innerHTML += 'Errors:\n';
+                    for (const err of result.errors) {
+                        output.innerHTML += `  <span class="error">${err}</span>\n`;
+                    }
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${e.message}</span>\n${e.stack}`;
+            }
+        });
+
+        parseBtn.addEventListener('click', () => {
+            const source = sourceInput.value;
+            output.textContent = 'Parsing...\n';
+
+            try {
+                const result = ScalaCompiler.parse(source);
+
+                if (result.success) {
+                    output.innerHTML = '<span class="success">✓ Parse successful!</span>\n\n';
+                    output.innerHTML += '<span class="info">AST:</span>\n';
+                    output.innerHTML += JSON.stringify(result.ast, null, 2) + '\n\n';
+                    output.innerHTML += '<span class="info">AST String:</span>\n';
+                    output.innerHTML += result.astString;
+                } else {
+                    output.innerHTML = '<span class="error">✗ Parse failed</span>\n\n';
+                    for (const err of result.errors) {
+                        output.innerHTML += `<span class="error">${err}</span>\n`;
+                    }
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${e.message}</span>\n${e.stack}`;
+            }
+        });
+
+        // Add tokenize button handler
+        const tokenizeBtn = document.createElement('button');
+        tokenizeBtn.className = 'secondary';
+        tokenizeBtn.textContent = '📝 Tokenize';
+        tokenizeBtn.addEventListener('click', () => {
+            const source = sourceInput.value;
+            output.textContent = 'Tokenizing...\n';
+
+            try {
+                const result = ScalaCompiler.tokenize(source);
+
+                if (result.success) {
+                    output.innerHTML = '<span class="success">✓ Tokenize successful!</span>\n\n';
+                    output.innerHTML += `Found ${result.tokens.length} tokens:\n\n`;
+
+                    for (const tok of result.tokens.slice(0, 50)) {
+                        const name = tok.name ? ` (${tok.name})` : '';
+                        const str = tok.strVal ? ` = "${tok.strVal}"` : '';
+                        output.innerHTML += `<span class="info">${tok.tokenStr}</span>${name}${str} @ ${tok.offset}\n`;
+                    }
+
+                    if (result.tokens.length > 50) {
+                        output.innerHTML += `\n... and ${result.tokens.length - 50} more tokens\n`;
+                    }
+                } else {
+                    output.innerHTML = '<span class="error">✗ Tokenize failed</span>\n\n';
+                    for (const err of result.errors) {
+                        output.innerHTML += `<span class="error">${err}</span>\n`;
+                    }
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${e.message}</span>\n${e.stack}`;
+            }
+        });
+        document.querySelector('.button-row').insertBefore(tokenizeBtn, checkBtn);
+
+        checkBtn.addEventListener('click', () => {
+            const source = sourceInput.value;
+            output.textContent = 'Checking syntax...\n';
+
+            try {
+                const result = ScalaCompiler.checkSyntax(source);
+
+                if (result.valid) {
+                    output.innerHTML = '<span class="success">✓ Syntax is valid!</span>';
+                } else {
+                    output.innerHTML = '<span class="error">✗ Syntax errors found:</span>\n\n';
+                    for (const err of result.errors) {
+                        output.innerHTML += `<span class="error">${err}</span>\n`;
+                    }
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${e.message}</span>\n${e.stack}`;
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            sourceInput.value = '';
+            output.textContent = 'Cleared.';
+        });
+
+        // Display version
+        console.log(`ScalaCompiler version: ${ScalaCompiler.version()}`);
+        // ScalaInterpreter might not have version in this context
+    </script>
+</body>
+</html>
+

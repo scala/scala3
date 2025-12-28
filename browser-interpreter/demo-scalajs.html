@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scala Browser Interpreter - Scala.js Version</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-muted: #388bfd;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+            --border: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Menlo', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header { text-align: center; margin-bottom: 2rem; }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), #a371f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--success);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .subtitle { color: var(--text-secondary); font-size: 1rem; }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: var(--bg-tertiary);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .panel-body { padding: 1rem; }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            padding: 1rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        .output {
+            width: 100%;
+            height: 300px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow: auto;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        .output.success { border-color: var(--success); }
+        .output.error { border-color: var(--error); }
+
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--accent), var(--accent-muted));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+        }
+
+        button.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .examples { margin-top: 2rem; }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .example-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .example-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent);
+        }
+
+        .example-btn h3 { font-size: 0.875rem; margin-bottom: 0.25rem; }
+        .example-btn p { font-size: 0.75rem; color: var(--text-secondary); }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .status-dot.ready { background: var(--success); }
+        .status-dot.running { background: var(--accent); animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+
+        .stats {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.25rem; font-weight: 600; color: var(--accent); }
+        .stat-label { font-size: 0.625rem; text-transform: uppercase; }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .spinner {
+            border: 3px solid var(--bg-tertiary);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading Scala.js interpreter...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>🚀 Scala Browser Interpreter <span class="badge">Scala.js</span></h1>
+            <p class="subtitle">Pure Scala interpreter compiled to JavaScript via Scala.js</p>
+        </header>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">JSON AST Input</span>
+                    <span class="status">
+                        <span class="status-dot ready" id="statusDot"></span>
+                        <span id="statusText">Ready</span>
+                    </span>
+                </div>
+                <div class="panel-body">
+                    <textarea id="astInput" placeholder="Paste JSON AST here or select an example below..."></textarea>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">Output</span>
+                    <button class="secondary" onclick="clearOutput()" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Clear</button>
+                </div>
+                <div class="panel-body">
+                    <div class="output" id="output">
+                        <pre>Click "Run" to execute the program...</pre>
+                    </div>
+                    <div class="stats" id="stats" style="display: none;">
+                        <strong>Execution Stats</strong>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="statNodes">0</div>
+                                <div class="stat-label">Nodes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="statCalls">0</div>
+                                <div class="stat-label">Calls</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="statTime">0</div>
+                                <div class="stat-label">ms</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="statLines">0</div>
+                                <div class="stat-label">Output</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="runProgram()">▶ Run Program</button>
+            <button class="secondary" onclick="formatAst()">Format JSON</button>
+            <button class="secondary" onclick="runTest()">🧪 Test</button>
+            <label class="secondary" style="cursor: pointer; background: var(--bg-tertiary); color: var(--text-primary); border-radius: 8px; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 500;">
+                📁 Load TASTy
+                <input type="file" id="tastyFile" accept=".tasty" style="display: none;" onchange="loadTasty(event)">
+            </label>
+        </div>
+
+        <div class="examples">
+            <div class="panel-header" style="background: transparent; border: none; padding: 0;">
+                <span class="panel-title">Example Programs</span>
+            </div>
+            <div class="examples-grid">
+                <button class="example-btn" onclick="loadExample('hello')">
+                    <h3>👋 Hello World</h3>
+                    <p>Simple println</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('arithmetic')">
+                    <h3>🔢 Arithmetic</h3>
+                    <p>Math operations</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('fibonacci')">
+                    <h3>🔄 Fibonacci</h3>
+                    <p>Recursive function</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('listOps')">
+                    <h3>📋 List Ops</h3>
+                    <p>Map, filter, fold</p>
+                </button>
+                <button class="example-btn" onclick="loadExample('factorial')">
+                    <h3>🎲 Factorial</h3>
+                    <p>Recursion</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the Scala.js interpreter
+        import { ScalaInterpreter } from './js/target/scala-3.7.0/browser-interpreter-js-fastopt/main.js';
+
+        // Make it available globally for onclick handlers
+        window.ScalaInterpreter = ScalaInterpreter;
+
+        // Initialize after DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            console.log('Scala.js interpreter loaded! Version:', ScalaInterpreter.version);
+            window.loadExample('hello');
+        });
+
+        // Also hide immediately if DOM already loaded
+        if (document.readyState !== 'loading') {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            console.log('Scala.js interpreter loaded! Version:', ScalaInterpreter.version);
+        }
+
+        // Example programs
+        const examples = {
+            hello: {
+                tag: 'Apply',
+                fn: { tag: 'Ident', name: 'println' },
+                args: [{ tag: 'Literal', type: 'String', value: 'Hello from Scala.js Interpreter!' }]
+            },
+
+            arithmetic: {
+                tag: 'Block',
+                stats: [
+                    { tag: 'ValDef', name: 'a', rhs: { tag: 'Literal', type: 'Int', value: 10 } },
+                    { tag: 'ValDef', name: 'b', rhs: { tag: 'Literal', type: 'Int', value: 20 } },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+',
+                          lhs: { tag: 'Literal', type: 'String', value: 'Sum: ' },
+                          rhs: { tag: 'BinaryOp', op: '+', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', type: 'Unit', value: null }
+            },
+
+            fibonacci: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'fib',
+                        params: ['n'],
+                        body: {
+                            tag: 'If',
+                            cond: { tag: 'BinaryOp', op: '<=', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', type: 'Int', value: 1 } },
+                            thenp: { tag: 'Ident', name: 'n' },
+                            elsep: {
+                                tag: 'BinaryOp', op: '+',
+                                lhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fib' }, args: [
+                                    { tag: 'BinaryOp', op: '-', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', type: 'Int', value: 1 } }
+                                ]},
+                                rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fib' }, args: [
+                                    { tag: 'BinaryOp', op: '-', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', type: 'Int', value: 2 } }
+                                ]}
+                            }
+                        }
+                    },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', type: 'String', value: 'fib(10) = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fib' }, args: [{ tag: 'Literal', type: 'Int', value: 10 }] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', type: 'Unit', value: null }
+            },
+
+            listOps: {
+                tag: 'Block',
+                stats: [
+                    { tag: 'ValDef', name: 'nums', rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'List' }, args: [
+                        { tag: 'Literal', type: 'Int', value: 1 }, { tag: 'Literal', type: 'Int', value: 2 },
+                        { tag: 'Literal', type: 'Int', value: 3 }, { tag: 'Literal', type: 'Int', value: 4 },
+                        { tag: 'Literal', type: 'Int', value: 5 }
+                    ]}},
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', type: 'String', value: 'Sum: ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Select', receiver: { tag: 'Ident', name: 'nums' }, name: 'foldLeft' },
+                                 args: [{ tag: 'Literal', type: 'Int', value: 0 },
+                                        { tag: 'Lambda', params: ['a', 'b'], body: { tag: 'BinaryOp', op: '+', lhs: { tag: 'Ident', name: 'a' }, rhs: { tag: 'Ident', name: 'b' } } }] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', type: 'Unit', value: null }
+            },
+
+            factorial: {
+                tag: 'Block',
+                stats: [
+                    {
+                        tag: 'DefDef',
+                        name: 'fact',
+                        params: ['n'],
+                        body: {
+                            tag: 'If',
+                            cond: { tag: 'BinaryOp', op: '<=', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', type: 'Int', value: 1 } },
+                            thenp: { tag: 'Literal', type: 'Int', value: 1 },
+                            elsep: {
+                                tag: 'BinaryOp', op: '*',
+                                lhs: { tag: 'Ident', name: 'n' },
+                                rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fact' }, args: [
+                                    { tag: 'BinaryOp', op: '-', lhs: { tag: 'Ident', name: 'n' }, rhs: { tag: 'Literal', type: 'Int', value: 1 } }
+                                ]}
+                            }
+                        }
+                    },
+                    { tag: 'Apply', fn: { tag: 'Ident', name: 'println' }, args: [
+                        { tag: 'BinaryOp', op: '+', lhs: { tag: 'Literal', type: 'String', value: '10! = ' },
+                          rhs: { tag: 'Apply', fn: { tag: 'Ident', name: 'fact' }, args: [{ tag: 'Literal', type: 'Int', value: 10 }] }
+                        }
+                    ]}
+                ],
+                expr: { tag: 'Literal', type: 'Unit', value: null }
+            }
+        };
+
+        // UI functions
+        window.runProgram = function() {
+            const input = document.getElementById('astInput').value;
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            statusDot.className = 'status-dot running';
+            statusText.textContent = 'Running...';
+
+            const startTime = performance.now();
+
+            setTimeout(() => {
+                const result = ScalaInterpreter.interpret(input);
+                const elapsed = (performance.now() - startTime).toFixed(1);
+
+                if (result.success) {
+                    const outputText = result.output || (result.result ? `Result: ${result.result}` : 'Program completed successfully');
+                    output.innerHTML = `<pre>${escapeHtml(outputText)}</pre>`;
+                    output.className = 'output success';
+                    statusDot.className = 'status-dot ready';
+                    statusText.textContent = 'Complete';
+                } else {
+                    const errorOutput = result.output
+                        ? `${result.output}\n\nError: ${result.error}`
+                        : `Error: ${result.error}`;
+                    output.innerHTML = `<pre style="color: var(--error)">${escapeHtml(errorOutput)}</pre>`;
+                    output.className = 'output error';
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Error';
+                }
+
+                stats.style.display = 'block';
+                document.getElementById('statNodes').textContent = result.stats.nodes;
+                document.getElementById('statCalls').textContent = result.stats.calls;
+                document.getElementById('statTime').textContent = elapsed;
+                document.getElementById('statLines').textContent = (result.output || '').split('\n').filter(l => l).length;
+            }, 10);
+        };
+
+        window.runTest = function() {
+            const output = document.getElementById('output');
+            const result = ScalaInterpreter.test();
+            output.innerHTML = `<pre>Test result:\n${escapeHtml(result)}</pre>`;
+            output.className = 'output success';
+        };
+
+        window.loadTasty = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            statusDot.className = 'status-dot running';
+            statusText.textContent = 'Loading TASTy...';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const bytes = new Int8Array(e.target.result);
+
+                // First, show TASTy info
+                const info = ScalaInterpreter.readTastyInfo(bytes);
+                if (!info.success) {
+                    output.innerHTML = `<pre style="color: var(--error)">Error reading TASTy: ${info.error}</pre>`;
+                    output.className = 'output error';
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Error';
+                    return;
+                }
+
+                // Show TASTy info
+                const infoText = `TASTy File: ${file.name}\nVersion: ${info.version}\nTooling: ${info.tooling}\nSections: ${info.sections.join(', ')}\n\n`;
+
+                // Now interpret the TASTy
+                const startTime = performance.now();
+                const result = ScalaInterpreter.interpretTasty(bytes);
+                const elapsed = (performance.now() - startTime).toFixed(1);
+
+                if (result.success) {
+                    const outputText = infoText + '--- Output ---\n' + (result.output || '(no output)');
+                    output.innerHTML = `<pre>${escapeHtml(outputText)}</pre>`;
+                    output.className = 'output success';
+                    statusDot.className = 'status-dot ready';
+                    statusText.textContent = 'TASTy Complete';
+                } else {
+                    output.innerHTML = `<pre style="color: var(--error)">${escapeHtml(infoText + 'Error: ' + result.error)}</pre>`;
+                    output.className = 'output error';
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Error';
+                }
+
+                stats.style.display = 'block';
+                document.getElementById('statNodes').textContent = result.stats.nodes;
+                document.getElementById('statCalls').textContent = result.stats.calls;
+                document.getElementById('statTime').textContent = elapsed;
+                document.getElementById('statLines').textContent = (result.output || '').split('\n').filter(l => l).length;
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        window.clearOutput = function() {
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            output.innerHTML = '<pre>Click "Run" to execute the program...</pre>';
+            output.className = 'output';
+            stats.style.display = 'none';
+        };
+
+        window.formatAst = function() {
+            const input = document.getElementById('astInput');
+            try {
+                const parsed = JSON.parse(input.value);
+                input.value = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        };
+
+        window.loadExample = function(name) {
+            const example = examples[name];
+            if (example) {
+                document.getElementById('astInput').value = JSON.stringify(example, null, 2);
+                window.clearOutput();
+            }
+        };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+
