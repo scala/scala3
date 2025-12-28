@@ -122,7 +122,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
   }
 
   /* Remove Scala 2 Pickles from Classfiles */
-  private def unpickler(bytes: Array[Byte]): Array[Byte] = {
+  private def removeScala2Pickles(bytes: Array[Byte]): Array[Byte] = {
     val reader = new ClassReader(bytes)
     val writer = new ClassWriter(0)
     val visitor = new ClassVisitor(Opcodes.ASM9, writer) {
@@ -142,7 +142,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
   // Apply the patches to given input file and write the result to the output
   def patchFile(input: File, output: File): File = {
     if (input.getName.endsWith(".class")) {
-      IO.write(output, unpickler(IO.readBytes(input)))
+      IO.write(output, removeScala2Pickles(IO.readBytes(input)))
     } else {
       // For .sjsir files, we just copy the file
       IO.copyFile(input, output)
