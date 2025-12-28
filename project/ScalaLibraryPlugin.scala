@@ -2,6 +2,7 @@ package dotty.tools.sbtplugin
 
 import sbt.*
 import sbt.Keys.*
+import sbt.io.Using
 import scala.jdk.CollectionConverters.*
 import java.nio.file.Files
 import xsbti.VirtualFileRef
@@ -20,6 +21,16 @@ object ScalaLibraryPlugin extends AutoPlugin {
    */
   val scala2Version = "2.13.18"
 
+  /** Scala 2 pickle annotation descriptors that should be stripped from class files */
+  private val Scala2PickleAnnotations = Set(
+    "Lscala/reflect/ScalaSignature;",
+    "Lscala/reflect/ScalaLongSignature;"
+  )
+
+  /** Check if an annotation descriptor is a Scala 2 pickle annotation */
+  private def isScala2PickleAnnotation(descriptor: String): Boolean =
+    Scala2PickleAnnotations.contains(descriptor)
+
   object autoImport {
     val keepSJSIR = settingKey[Boolean]("Should we patch .sjsir too?")
   }
@@ -27,6 +38,10 @@ object ScalaLibraryPlugin extends AutoPlugin {
   import autoImport._
 
   override def projectSettings = Seq (
+    // Settings to validate that JARs don't contain Scala 2 pickle annotations
+    Compile / packageBin := (Compile / packageBin)
+      .map(validateNoScala2Pickles)
+      .value,
     (Compile / manipulateBytecode) := {
       val stream = streams.value
       val target = (Compile / classDirectory).value
@@ -62,8 +77,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         dest = target / (id.toString)
         ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
-        // Read -> Strip Scala 2 Pickles -> Write
-        IO.write(dest, unpickler(IO.readBytes(file)))
+        patchFile(input = file, output = dest)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
           VirtualFileRef.of(s"$${BASE}/$ref"),
@@ -83,8 +97,10 @@ object ScalaLibraryPlugin extends AutoPlugin {
         // Copy all the specialized classes in the stdlib
         // no need to update any stamps as these classes exist nowhere in the analysis
         for (orig <- diff; dest <- orig.relativeTo(reference)) {
-          // Read -> Strip Scala 2 Pickles -> Write
-          IO.write((Compile / classDirectory).value / dest.toString, unpickler(IO.readBytes(orig)))
+          patchFile(
+            input = orig,
+            output = (Compile / classDirectory).value / dest.toString()
+          )
         }
       }
 
@@ -121,12 +137,58 @@ object ScalaLibraryPlugin extends AutoPlugin {
       }
 
       override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor =
-        if (desc == "Lscala/reflect/ScalaSignature;" || desc == "Lscala/reflect/ScalaLongSignature;") null
+        if (isScala2PickleAnnotation(desc)) null
         else super.visitAnnotation(desc, visible)
-
     }
     reader.accept(visitor, 0)
     writer.toByteArray
+  }
+
+  // Apply the patches to given input file and write the result to the output
+  def patchFile(input: File, output: File): File = {
+    if (input.getName.endsWith(".class")) {
+      IO.write(output, unpickler(IO.readBytes(input)))
+    } else {
+      // For .sjsir files, we just copy the file
+      IO.copyFile(input, output)
+    }
+    output
+  }
+
+  /** Check if class file bytecode contains Scala 2 pickle annotations */
+  private def hasScala2Pickles(bytes: Array[Byte]): Boolean = {
+    var found = false
+    val visitor = new ClassVisitor(Opcodes.ASM9) {
+      override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor = {
+        if (isScala2PickleAnnotation(desc)) found = true
+        null
+      }
+    }
+    new ClassReader(bytes).accept(
+      visitor,
+      ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES
+    )
+    found
+  }
+
+  def validateNoScala2Pickles(jar: File): File = {
+    val classFilesWithPickles = Using.jarFile(verify = true)(jar){ jarFile =>
+      jarFile
+      .entries().asScala
+      .filter(_.getName.endsWith(".class"))
+      .flatMap { entry =>
+        Using.bufferedInputStream(jarFile.getInputStream(entry)){ inputStream =>
+          if (hasScala2Pickles(inputStream.readAllBytes())) Some(entry.getName)
+          else None
+        }
+      }
+      .toList
+    }
+    assert(
+      classFilesWithPickles.isEmpty,
+      s"JAR ${jar.getName} contains ${classFilesWithPickles.size} class files with Scala 2 pickle annotations: ${classFilesWithPickles.mkString("\n  - ", "\n  - ", "")}"
+    )
+    jar
   }
 
   private lazy val filesToCopy = Set(
