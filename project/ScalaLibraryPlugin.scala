@@ -4,11 +4,15 @@ import sbt.*
 import sbt.Keys.*
 import sbt.io.Using
 import scala.jdk.CollectionConverters.*
+import scala.collection.mutable
 import java.nio.file.Files
+import java.nio.ByteBuffer
 import xsbti.VirtualFileRef
 import sbt.internal.inc.Stamper
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 import org.objectweb.asm.*
+
+import dotty.tools.tasty.TastyHeaderUnpickler
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
@@ -33,9 +37,13 @@ object ScalaLibraryPlugin extends AutoPlugin {
   import autoImport._
 
   override def projectSettings = Seq (
-    // Settings to validate that JARs don't contain Scala 2 pickle annotations
+    // Settings to validate that JARs don't contain Scala 2 pickle annotations and have valid TASTY attributes
     Compile / packageBin := (Compile / packageBin)
-      .map(validateNoScala2Pickles)
+      .map{ jar =>
+        validateNoScala2Pickles(jar)
+        validateTastyAttributes(jar)
+        jar
+      }
       .value,
     (Compile / manipulateBytecode) := {
       val stream = streams.value
@@ -62,6 +70,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
       }
       var stamps = analysis.stamps
 
+      val classDir = (Compile / classDirectory).value
+      val sourceDir = sourceDirectory.value
+
       // Patch the files that are in the list
       for {
         (files, reference) <- patches
@@ -72,7 +83,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         dest = target / (id.toString)
         ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
-        patchFile(input = file, output = dest)
+        patchFile(input = file, output = dest, classDirectory = classDir, sourceDirectory = sourceDir)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
           VirtualFileRef.of(s"$${BASE}/$ref"),
@@ -80,11 +91,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
       }
 
 
-      val overwrittenBinaries = Files.walk((Compile / classDirectory).value.toPath())
+      val overwrittenBinaries = Files.walk(classDir.toPath())
         .iterator()
         .asScala
         .map(_.toFile)
-        .map(_.relativeTo((Compile / classDirectory).value).get)
+        .map(_.relativeTo(classDir).get)
         .toSet
 
       for ((files, reference) <- patches) {
@@ -94,7 +105,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
         for (orig <- diff; dest <- orig.relativeTo(reference)) {
           patchFile(
             input = orig,
-            output = (Compile / classDirectory).value / dest.toString()
+            output = classDir / dest.toString(),
+            classDirectory = classDir,
+            sourceDirectory = sourceDir
           )
         }
       }
@@ -121,10 +134,15 @@ object ScalaLibraryPlugin extends AutoPlugin {
     } (Set(jar)), target)
   }
 
-  /* Remove Scala 2 Pickles from Classfiles */
-  private def removeScala2Pickles(bytes: Array[Byte]): Array[Byte] = {
+  /** Remove Scala 2 Pickles from class file and optionally add TASTY attribute.
+   *
+   *  @param bytes the class file bytecode
+   *  @param tastyUUID optional 16-byte UUID from the corresponding .tasty file (only for primary class)
+   */
+  private def patchClassFile(bytes: Array[Byte], tastyUUID: Option[Array[Byte]]): Array[Byte] = {
     val reader = new ClassReader(bytes)
     val writer = new ClassWriter(0)
+    // Remove Scala 2 pickles and Scala signatures
     val visitor = new ClassVisitor(Opcodes.ASM9, writer) {
       override def visitAttribute(attr: Attribute): Unit = attr.`type` match {
         case "ScalaSig" | "ScalaInlineInfo" => ()
@@ -136,17 +154,55 @@ object ScalaLibraryPlugin extends AutoPlugin {
         else super.visitAnnotation(desc, visible)
     }
     reader.accept(visitor, 0)
+    // Only add TASTY attribute for the primary class (not for inner/nested classes)
+    tastyUUID
+      .map(new TastyAttribute(_))
+      .foreach(writer.visitAttribute)
     writer.toByteArray
   }
 
-  // Apply the patches to given input file and write the result to the output
-  def patchFile(input: File, output: File): File = {
-    if (input.getName.endsWith(".class")) {
-      IO.write(output, removeScala2Pickles(IO.readBytes(input)))
-    } else {
+  /** Apply the patches to given input file and write the result to the output.
+   *  For .class files, strips Scala 2 pickles and adds TASTY attribute only for primary classes.
+   *
+   *  The TASTY attribute is only added to the "primary" class for each .tasty file:
+   *  - Inner/nested classes (e.g., Outer$Inner.class) don't get TASTY attribute
+   *  - Companion objects (Foo$.class when Foo.class exists) don't get TASTY attribute
+   *  - Only the class whose name matches the .tasty file name gets the attribute
+   *  - Java source files don't produce .tasty files, so they are skipped
+   *
+   *  @param input the input file (.class or .sjsir)
+   *  @param output the output file location
+   *  @param classDirectory the class directory to look for .tasty files
+   *  @param sourceDirectory the source directory to check for .java files
+   */
+  def patchFile(input: File, output: File, classDirectory: File, sourceDirectory: File): File = {
+    if (input.getName.endsWith(".sjsir")) {
       // For .sjsir files, we just copy the file
       IO.copyFile(input, output)
+      return output
     }
+
+    val relativePath = output.relativeTo(classDirectory)
+      .getOrElse(sys.error(s"Patched file is not relative to class directory: $output"))
+      .getPath
+    val classPath = relativePath.stripSuffix(".class")
+    val basePath = classPath.split('$').head
+    val javaSourceFile = sourceDirectory / (basePath + ".java")
+
+    // Skip TASTY handling for Java-sourced classes (they don't have .tasty files)
+    val tastyUUID =
+      if (javaSourceFile.exists()) None
+      else {
+        val tastyFile = classDirectory / (basePath + ".tasty")
+        assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath / $javaSourceFile")
+
+        // Only add TASTY attribute if this is the primary class (class path equals base path)
+        // Inner classes, companion objects ($), anonymous classes ($$anon), etc. don't get TASTY attribute
+        val isPrimaryClass = classPath == basePath
+        if (isPrimaryClass) Some(extractTastyUUID(IO.readBytes(tastyFile)))
+        else None
+    }
+    IO.write(output, patchClassFile(IO.readBytes(input), tastyUUID))
     output
   }
 
@@ -166,7 +222,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     found
   }
 
-  def validateNoScala2Pickles(jar: File): File = {
+  def validateNoScala2Pickles(jar: File): Unit = {
     val classFilesWithPickles = Using.jarFile(verify = true)(jar){ jarFile =>
       jarFile
       .entries().asScala
@@ -183,7 +239,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
       classFilesWithPickles.isEmpty,
       s"JAR ${jar.getName} contains ${classFilesWithPickles.size} class files with Scala 2 pickle annotations: ${classFilesWithPickles.mkString("\n  - ", "\n  - ", "")}"
     )
-    jar
   }
 
   private lazy val filesToCopy = Set(
@@ -227,4 +282,122 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/util/Sorting",
     )
 
+  /** Extract the UUID bytes (16 bytes) from a TASTy file.
+   *
+   *  Uses the official TastyHeaderUnpickler to parse the header and extract the UUID,
+   *  ensuring correctness and validating the TASTy format.
+   */
+  private def extractTastyUUID(tastyBytes: Array[Byte]): Array[Byte] = {
+    val unpickler = new TastyHeaderUnpickler(tastyBytes)
+    val header = unpickler.readFullHeader()
+    val uuid = header.uuid
+
+    // Convert UUID (two longs) to 16-byte array in big-endian format
+    val buffer = ByteBuffer.allocate(16)
+    buffer.putLong(uuid.getMostSignificantBits)
+    buffer.putLong(uuid.getLeastSignificantBits)
+    buffer.array()
+  }
+
+  /** Extract TASTY UUID from class file bytecode, if present */
+  private def extractTastyUUIDFromClass(bytes: Array[Byte]): Option[Array[Byte]] = {
+    val tastyAttr = new TastyAttributeReader()
+    var result: Option[Array[Byte]] = None
+    val visitor = new ClassVisitor(Opcodes.ASM9) {
+      override def visitAttribute(attr: Attribute): Unit = {
+        attr match {
+          case t: TastyAttributeReader => result = t.uuid
+          case _ => ()
+        }
+      }
+    }
+    new ClassReader(bytes).accept(visitor, Array[Attribute](tastyAttr), 0)
+    result
+  }
+
+  /** Validate TASTY attributes in the JAR:
+   *  - If a .class file has a TASTY attribute, verify its UUID matches a .tasty file in the JAR
+   *  - Every .tasty file must have at least one .class file with a matching TASTY attribute
+   *
+   *  Note: .class files from Java sources don't have .tasty files and are allowed to not have TASTY attributes.
+   */
+  def validateTastyAttributes(jar: File): Unit = {
+    Using.jarFile(verify = true)(jar) { jarFile =>
+      // Build a map of .tasty file paths to their UUIDs
+      val tastyEntries = jarFile.entries().asScala
+        .filter(_.getName.endsWith(".tasty"))
+        .map { entry =>
+          val bytes = Using.bufferedInputStream(jarFile.getInputStream(entry))(_.readAllBytes())
+          val uuid = extractTastyUUID(bytes)
+          entry.getName -> uuid
+        }
+        .toMap
+
+      val errors = mutable.ListBuffer.empty[String]
+      val referencedTastyFiles = mutable.Set.empty[String]
+
+      // Check each .class file that has a TASTY attribute
+      jarFile.entries().asScala
+        .filter(e => e.getName.endsWith(".class"))
+        .foreach { entry =>
+          val classBytes = Using.bufferedInputStream(jarFile.getInputStream(entry))(_.readAllBytes())
+          val classPath = entry.getName
+
+          // Only validate classes that have a TASTY attribute
+          extractTastyUUIDFromClass(classBytes).foreach[Unit] { classUUID =>
+            // Find a .tasty file with matching UUID
+            tastyEntries.find{ case (path, tastyUUID) =>
+            java.util.Arrays.equals(classUUID, tastyUUID) && {
+              val tastyName = file(path).getName().stripSuffix(".tasty")
+              val className = file(entry.getName()).getName().stripSuffix(".class")
+              // apparently 2 files might have the same UUID, e.g. param.scala and field.scala
+              className.startsWith(tastyName)
+            }} match {
+              case Some((path, _)) =>
+                referencedTastyFiles += path
+              case None =>
+                val uuidHex = classUUID.map(b => f"$b%02x").mkString
+                errors += s"$classPath: has TASTY attribute (UUID=$uuidHex) but no matching .tasty file found in JAR"
+            }
+          }
+        }
+
+      // Check that every .tasty file has at least one .class file referencing it
+      val unreferencedTastyFiles = tastyEntries.keySet -- referencedTastyFiles
+      unreferencedTastyFiles.foreach { tastyPath =>
+        errors += s"$tastyPath: no .class file with matching TASTY attribute found"
+      }
+
+      assert(
+        errors.isEmpty,
+        s"JAR ${jar.getName} has ${errors.size} TASTY validation errors:\n  - ${errors.mkString("\n  - ")}"
+      )
+    }
+  }
+
+
+  /** Custom ASM Attribute for TASTY that can be written to class files */
+  private class TastyAttribute(val uuid: Array[Byte]) extends Attribute("TASTY") {
+    override def write(classWriter: ClassWriter, code: Array[Byte], codeLength: Int, maxStack: Int, maxLocals: Int): ByteVector = {
+      val bv = new ByteVector(uuid.length)
+      bv.putByteArray(uuid, 0, uuid.length)
+      bv
+    }
+  }
+  /** Custom ASM Attribute for reading TASTY attributes from class files */
+  private class TastyAttributeReader extends Attribute("TASTY") {
+    var uuid: Option[Array[Byte]] = None
+
+    override def read(classReader: ClassReader, offset: Int, length: Int, charBuffer: Array[Char], codeOffset: Int, labels: Array[Label]): Attribute = {
+      val attr = new TastyAttributeReader()
+      if (length == 16) {
+        val bytes = new Array[Byte](16)
+        for (i <- 0 until 16) {
+          bytes(i) = classReader.readByte(offset + i).toByte
+        }
+        attr.uuid = Some(bytes)
+      }
+      attr
+    }
+  }
 }
