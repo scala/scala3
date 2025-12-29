@@ -51,9 +51,22 @@ jobs:
           distribution: 'temurin'
           java-version: 8
           cache: 'sbt'
+      - name: Setup PGP Key
+        run: |
+          echo -n "$PGP_SECRET" | gpg --batch --import
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+      - name: Setup SBT PGP directory
+        run: |
+          mkdir -p "/home/runner/.sbt/gpg"
+      - name: Setup SBT PGP
+        run: |
+          echo "$PGP_SECRET" > "/home/runner/.sbt/gpg/secring.asc"
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
       - uses: sbt/setup-sbt@v1
       - name: Publish Artifacts to the Maven Repository
-        run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
+        run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned"
         env:
           SONATYPE_USER         : ${{ secrets.MAVEN_REPOSITORY_USER }}
           SONATYPE_PW           : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
