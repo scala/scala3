@@ -1072,15 +1072,15 @@ trait Implicits:
     ltp.isError
     || rtp.isError
     || locally:
-      if strictEquality then
-        strictEqualityPatternMatching &&
-          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
-          ltp <:< lift(rtp)
+      if strictEquality
+      then strictEqualityPatternMatching
+        && (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case))
+        && ltp <:< lift(rtp)
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
 
-  /** Check that equality tests between types `ltp` and `left.tpe` make sense.
+  /** Check that equality tests between types `left.tpe` and `rtp` make sense.
    * `left` is required to check for the condition for language.strictEqualityPatternMatching.
    */
   def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
