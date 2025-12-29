@@ -71,7 +71,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       var stamps = analysis.stamps
 
       val classDir = (Compile / classDirectory).value
-      val sourceDir = sourceDirectory.value
+      val sourceDir = (LocalProject("scala-library-nonbootstrapped") / sourceDirectory).value
 
       // Patch the files that are in the list
       for {
@@ -194,7 +194,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       if (javaSourceFile.exists()) None
       else {
         val tastyFile = classDirectory / (basePath + ".tasty")
-        assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath / $javaSourceFile")
+        assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath")
 
         // Only add TASTY attribute if this is the primary class (class path equals base path)
         // Inner classes, companion objects ($), anonymous classes ($$anon), etc. don't get TASTY attribute
