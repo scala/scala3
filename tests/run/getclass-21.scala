@@ -1,5 +1,5 @@
 // scalajs: --skip
-// test: -jvm 17
+// test: -jvm 21+
 
 class ValueClass(val i: Integer) extends AnyVal
 class SomeClass

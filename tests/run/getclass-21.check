@@ -1,0 +1,26 @@
+Value types:
+void
+boolean
+byte
+short
+char
+int
+long
+float
+double
+
+Class types:
+class SomeClass
+class ValueClass
+class scala.collection.immutable.$colon$colon
+class scala.Tuple2
+
+Arrays:
+class [Lscala.runtime.BoxedUnit;
+class [I
+class [D
+class [Lscala.collection.immutable.List;
+
+Functions:
+class Test$$$Lambda/
+class Test$$$Lambda/
