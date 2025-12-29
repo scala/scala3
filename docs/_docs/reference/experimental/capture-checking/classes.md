@@ -166,6 +166,73 @@ again on access, the capture information "pops out" again. For instance, even th
 In other words, references to capabilities "tunnel through" in generic instantiations from creation to access; they do not affect the capture set of the enclosing generic data constructor applications.
 This principle plays an important part in making capture checking concise and practical.
 
+## Captures of New
+
+Consider the following class, assuming we have capabilities `io`, `async`, and `out` in our environment:
+```scala
+class C(x: () => Unit):
+  val f: File^{io} = File()
+  def g() =
+    out.println("one")
+    f.write("two")
+    x()
+```
+What is the capture set of a class creation expression `C(y)`, assuming `y` has type `() ->{async} Unit`? This capture set computed from _local_ and _external_ elements. The local elements are:
+
+ - all capabilities passed in parameters, in this case `y` if it is a value, or its underlying capability `async` otherwise, and
+ - all capabilities in the types of class fields, in this case `io`, which comes from the type of `f`.
+
+The external elements are all capabilities from outside the class that are referenced
+by a method of the class. In this case the external elements are `out` and `io`. `out` is accessed directly from method `g`. `io` is accessed indirectly through the
+field `f`.
+
+The external elements of the capture set of a class can be declared explicitly with a `uses` clause:
+
+```scala
+class C(x: () => Unit) uses out, io:
+  val f: File^{io} = File()
+  def g() =
+    out.println("one")
+    f.write("two")
+    x()
+```
+
+A `uses` clause must be given if a class that is visible in other compilation units captures external capabilities. This is to support separate compilation where we need to know the capture set of `C(...)` without analyzing the internals of `C`.
+
+### Captures due to Class Initialization
+
+The previous section described what capabilities get captured by the value of a class instance creation expression. But this is not the only relevant capture set linked with `new`. It's also important to know which capabilities are accessed when a class is initialized.
+
+For example, consider:
+```scala
+class D():
+  val str: String =
+    out.println("str was initialized")
+    "abc"
+```
+Here, the initialization of `D` accesses the capability `out`. Therefore, the function value `() => D()` has type `() ->{out} D`.
+
+The capabilities accessed during initialization of a class can be declared in the class with a `uses_init` clause, like this:
+
+```scala
+class D() uses_init out:
+  val str: String =
+    out.println("str was initialized")
+    "abc"
+```
+A `uses_init` clause must be given if a class that is visible in other compilation units accesses capabilities during initialization. Like for `uses` clauses, this is to support separate compilation where we need to know the use set of a class instance creation without analyzing the internals of the class.
+
+**Syntax**
+
+`uses` clauses come after `extends` and `derives` clauses. `uses_init` clauses come after `uses` clauses.
+
+```
+InheritClauses    ::=  [‘extends’ ConstrApps]
+                       [‘derives’ QualId {‘,’ QualId}]
+                       [‘uses’ CaptureRef {‘,’ CaptureRef}]
+                       [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
+```
+
 
 ## A Larger Example
 
