@@ -71,7 +71,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
       var stamps = analysis.stamps
 
       val classDir = (Compile / classDirectory).value
-      val sourceDir = (LocalProject("scala-library-nonbootstrapped") / sourceDirectory).value
 
       // Patch the files that are in the list
       for {
@@ -83,7 +82,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         dest = target / (id.toString)
         ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
-        patchFile(input = file, output = dest, classDirectory = classDir, sourceDirectory = sourceDir)
+        patchFile(input = file, output = dest, classDirectory = classDir)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
           VirtualFileRef.of(s"$${BASE}/$ref"),
@@ -107,7 +106,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
             input = orig,
             output = classDir / dest.toString(),
             classDirectory = classDir,
-            sourceDirectory = sourceDir
           )
         }
       }
@@ -173,9 +171,8 @@ object ScalaLibraryPlugin extends AutoPlugin {
    *  @param input the input file (.class or .sjsir)
    *  @param output the output file location
    *  @param classDirectory the class directory to look for .tasty files
-   *  @param sourceDirectory the source directory to check for .java files
    */
-  def patchFile(input: File, output: File, classDirectory: File, sourceDirectory: File): File = {
+  def patchFile(input: File, output: File, classDirectory: File): File = {
     if (input.getName.endsWith(".sjsir")) {
       // For .sjsir files, we just copy the file
       IO.copyFile(input, output)
@@ -187,11 +184,12 @@ object ScalaLibraryPlugin extends AutoPlugin {
       .getPath
     val classPath = relativePath.stripSuffix(".class")
     val basePath = classPath.split('$').head
-    val javaSourceFile = sourceDirectory / (basePath + ".java")
 
     // Skip TASTY handling for Java-sourced classes (they don't have .tasty files)
+    val classfileBytes = IO.readBytes(input)
+    val isJavaSourced = extractSourceFile(classfileBytes).exists(_.endsWith(".java"))
     val tastyUUID =
-      if (javaSourceFile.exists()) None
+      if (isJavaSourced) None
       else {
         val tastyFile = classDirectory / (basePath + ".tasty")
         assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath")
@@ -202,7 +200,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         if (isPrimaryClass) Some(extractTastyUUID(IO.readBytes(tastyFile)))
         else None
     }
-    IO.write(output, patchClassFile(IO.readBytes(input), tastyUUID))
+    IO.write(output, patchClassFile(classfileBytes, tastyUUID))
     output
   }
 
@@ -281,6 +279,21 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/runtime/NonLocalReturnControl",
     "scala/util/Sorting",
     )
+
+  /** Extract the SourceFile attribute from class file bytecode */
+  private def extractSourceFile(bytes: Array[Byte]): Option[String] = {
+    var sourceFile: Option[String] = None
+    val visitor = new ClassVisitor(Opcodes.ASM9) {
+      override def visitSource(source: String, debug: String): Unit =
+        sourceFile = Option(source)
+    }
+    // Note: Don't use SKIP_DEBUG here - SourceFile is debug info and would be skipped
+    new ClassReader(bytes).accept(
+      visitor,
+      ClassReader.SKIP_CODE | ClassReader.SKIP_FRAMES
+    )
+    sourceFile
+  }
 
   /** Extract the UUID bytes (16 bytes) from a TASTy file.
    *
