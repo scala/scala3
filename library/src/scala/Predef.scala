@@ -272,7 +272,7 @@ object Predef extends LowPriorityImplicits {
    *           }}}
    *  @group utilities
    */
-  @inline def locally[T](@deprecatedName("x") x: T): T = x
+  inline override def locally[T](@deprecatedName("x") x: T): T = x
 
   // ==============================================================================================
   // ========================================= ASSERTIONS =========================================
@@ -675,6 +675,9 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
 
   /** @group conversions-string */
   implicit def wrapString(s: String): WrappedString = mapNull(s, new WrappedString(s))
+
+  /** Overridden by public inline method, to preserve binary compat. */
+  protected[scala] def locally[T](x: T): T = x
 }
 
 private[scala] abstract class LowPriorityImplicits2 {
