@@ -266,6 +266,11 @@ class TreeUnpickler(reader: TastyReader,
 
     def readName(): TermName = nameAtRef(readNameRef())
 
+    /** Can `tag` start a type argument of a CompactAnnotation? */
+    def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
+      case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
+      case _ => false
+
 // ------ Reading types -----------------------------------------------------
 
     /** Read names in an interleaved sequence of types/bounds and (parameter) names,
@@ -353,11 +358,6 @@ class TreeUnpickler(reader: TastyReader,
         typeAtAddr(start) = tp
         op
       }
-
-      /** Can `tag` start a type argument of a CompactAnnotation? */
-      def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
-        case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
-        case _ => false
 
       def readLengthType(): Type = {
         val end = readEnd()
@@ -796,7 +796,10 @@ class TreeUnpickler(reader: TastyReader,
       val end = readEnd()
       readLater(end, reader =>
         val tp = reader.readType()
-        val lazyAnnotTree = reader.readLaterWithOwner(end, _.readTree())
+        def readAnnotTree(rdr: TreeReader)(using Context) =
+          if isCompactAnnotTypeTag(rdr.reader.nextByte) then TypeTree(rdr.readType())
+          else rdr.readTree()
+        val lazyAnnotTree = reader.readLaterWithOwner(end, readAnnotTree(_))
         owner =>
           new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
             // Only force computation of symbol if it has the right name. This added
