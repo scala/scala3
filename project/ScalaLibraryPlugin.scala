@@ -26,6 +26,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "Lscala/reflect/ScalaLongSignature;"
   )
 
+  /** Scala 2 attribute names that should be stripped from class files */
+  private val Scala2PickleAttributes = Set("ScalaSig", "ScalaInlineInfo")
+
   /** Check if an annotation descriptor is a Scala 2 pickle annotation */
   private def isScala2PickleAnnotation(descriptor: String): Boolean =
     Scala2PickleAnnotations.contains(descriptor)
@@ -142,9 +145,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
     val writer = new ClassWriter(0)
     // Remove Scala 2 pickles and Scala signatures
     val visitor = new ClassVisitor(Opcodes.ASM9, writer) {
-      override def visitAttribute(attr: Attribute): Unit = attr.`type` match {
-        case "ScalaSig" | "ScalaInlineInfo" => ()
-        case _ => super.visitAttribute(attr)
+      override def visitAttribute(attr: Attribute): Unit = {
+        val shouldRemove = Scala2PickleAttributes.contains(attr.`type`)
+        if (!shouldRemove) super.visitAttribute(attr)
       }
 
       override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor =
@@ -204,20 +207,27 @@ object ScalaLibraryPlugin extends AutoPlugin {
     output
   }
 
-  /** Check if class file bytecode contains Scala 2 pickle annotations */
+  /** Check if class file bytecode contains Scala 2 pickle annotations or attributes */
   private def hasScala2Pickles(bytes: Array[Byte]): Boolean = {
-    var found = false
+    var hasPickleAnnotation = false
+    var hasScalaSigAttr = false
+    var hasScalaInlineInfoAttr = false
     val visitor = new ClassVisitor(Opcodes.ASM9) {
       override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor = {
-        if (isScala2PickleAnnotation(desc)) found = true
+        if (isScala2PickleAnnotation(desc)) hasPickleAnnotation = true
         null
       }
+      override def visitAttribute(attr: Attribute): Unit =
+        if (Scala2PickleAttributes.contains(attr.`type`)) attr.`type` match {
+          case "ScalaSig" => hasScalaSigAttr = true
+          case "ScalaInlineInfo" => hasScalaInlineInfoAttr = true
+        }
     }
     new ClassReader(bytes).accept(
       visitor,
       ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES
     )
-    found
+    hasPickleAnnotation || hasScalaSigAttr || hasScalaInlineInfoAttr
   }
 
   def validateNoScala2Pickles(jar: File): Unit = {
@@ -387,7 +397,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
       )
     }
   }
-
 
   /** Custom ASM Attribute for TASTY that can be written to class files */
   private class TastyAttribute(val uuid: Array[Byte]) extends Attribute("TASTY") {
