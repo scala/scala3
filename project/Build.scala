@@ -506,8 +506,8 @@ object Build {
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
     doc / scalaInstance := {
-      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
-      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
+      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value
       val docJars = Array(scalaDoc) ++ externalDeps
 
       val base = scalaInstance.value
@@ -830,7 +830,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`,
-      `scaladoc-new`, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
+      scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -938,7 +938,7 @@ object Build {
         (`tasty-core-bootstrapped-new` / publishLocalBin),
         (`scala3-staging-new` / publishLocalBin),
         (`scala3-tasty-inspector-new` / publishLocalBin),
-        (`scaladoc-new` / publishLocalBin),
+        (scaladoc / publishLocalBin),
         (`scala3-repl` / publishLocalBin),
         publishLocalBin,
       ).evaluated,
@@ -1737,7 +1737,7 @@ object Build {
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
 
   /* Configuration of the org.scala-lang:scaladoc_3:*.**.**-bootstrapped project */
-  lazy val `scaladoc-new` = project.in(file("scaladoc"))
+  lazy val scaladoc = project.in(file("scaladoc"))
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-tasty-inspector-new`)
     .settings(publishSettings)
     .settings(
@@ -2516,7 +2516,7 @@ object Build {
         (`scala3-library-bootstrapped-new` / publishLocalBin).value
         (`scala-library-bootstrapped` / publishLocalBin).value
         (`scala3-tasty-inspector-new` / publishLocalBin).value
-        (`scaladoc-new` / publishLocalBin).value
+        (scaladoc / publishLocalBin).value
         (`scala3-repl` / publishLocalBin).value
         (`scala3-compiler-bootstrapped-new` / publishLocalBin).value
         (`scala-library-sjs` / publishLocalBin).value
@@ -2723,7 +2723,7 @@ object Build {
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
         `scala3-staging-new`,
         `scala3-tasty-inspector-new`,
-        `scaladoc-new`,
+        scaladoc,
         `tasty-core-bootstrapped-new`,
       )
       .settings(
