@@ -782,7 +782,28 @@ object Build {
       }.evaluated,
       bspEnabled := false,
     )
-
+    .settings( // aliases for root project
+        // Clean everything by default, overrides default `scala3-nonbootstrapped/clean` which would leave remaining projects with stale artifacts
+        addCommandAlias("clean", Seq(
+            // aggregate projects
+            "scala3-nonbootstrapped",
+            "scala3-bootstrapped",
+            // dist projects
+            "dist", "dist-mac-x86_64", "dist-mac-aarch64", "dist-win-x86_64", "dist-linux-x86_64", "dist-linux-aarch64",
+            // utility/test projects
+            "scala3-presentation-compiler-testcases",
+            "scaladoc-js-common", "scaladoc-js-main", "scaladoc-js-contributors", "scaladoc-testcases",
+            "sjsCompilerTests", "sjsSandbox",
+          ).map(_ + "/clean").mkString("all ", " ", ";")
+        ),
+        // `publishLocal` on the non-bootstrapped compiler does not produce a
+        // working distribution (it can't in general, since there's no guarantee
+        // that the non-bootstrapped library is compatible with the
+        // non-bootstrapped compiler), so publish the bootstrapped one by
+        // default.
+        addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
+        addCommandAlias("repl", "scala3-repl/run"),
+    )
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
   lazy val `scala3-sbt-bridge-nonbootstrapped` = project.in(file("sbt-bridge"))
     .dependsOn(`scala3-compiler-nonbootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
