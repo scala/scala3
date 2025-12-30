@@ -29,7 +29,7 @@ jobs:
           passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
           fingerprint    : ${{ vars.SCALA_PGP_FINGERPRINT }}
       - name: Publish Artifacts to the Maven Repository
-        run : sbt scala3-bootstrapped-new/publishSigned
+        run : sbt scala3-bootstrapped/publishSigned
         env:
           MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
           MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}

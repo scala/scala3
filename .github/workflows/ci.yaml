@@ -72,7 +72,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Test
-        run: sbt ";scala3-bootstrapped-new/compile ;scala3-compiler-bootstrapped-new/test"
+        run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
         shell: cmd
 
   publish_release:
@@ -125,7 +125,7 @@ jobs:
       - name: Check compiler version
         shell: bash
         run : |
-          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped-new/version" | tail -n1)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "This build version: ${version}"
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
@@ -197,7 +197,7 @@ jobs:
           scala3-${{ env.RELEASE_TAG }}.msi
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped-new ;publishSigned ;sonaUpload"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaUpload"
 
   build-msi-package:
    uses: ./.github/workflows/build-msi.yml
