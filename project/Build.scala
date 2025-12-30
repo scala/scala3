@@ -152,15 +152,6 @@ object Build {
     }
   }
 
-  /** Version of the scala-library for which we will generate TASTy.
-   *
-   *  We should never use a nightly version here to release.
-   *
-   *  We can use nightly versions to tests the future compatibility in development.
-   *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
-   */
-  val stdlibBootstrappedVersion = "2.13.16"
-
   val homepageUrl = "https://scala-lang.org/"
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
@@ -943,7 +934,7 @@ object Build {
       scriptedBatchExecution := true,
       scriptedLaunchOpts ++= Seq(
         s"-Dplugin.scalaVersion=${dottyVersion}",
-        s"-Dplugin.scala2Version=2.13.16",
+        s"-Dplugin.scala2Version=${ScalaLibraryPlugin.scala2Version}",
         s"-Dplugin.scalaJSVersion=${scalaJSVersion}",
       ),
       scriptedBufferLog := true,
@@ -2108,7 +2099,7 @@ object Build {
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
         "com.google.guava" % "guava" % "33.2.1-jre",
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % s"mtags-shared_${ScalaLibraryPlugin.scala2Version}" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
