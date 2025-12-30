@@ -329,17 +329,21 @@ object ScalaLibraryPlugin extends AutoPlugin {
 
   /** Extract TASTY UUID from class file bytecode, if present */
   private def extractTastyUUIDFromClass(bytes: Array[Byte]): Option[Array[Byte]] = {
-    val tastyAttr = new TastyAttributeReader()
     var result: Option[Array[Byte]] = None
-    val visitor = new ClassVisitor(Opcodes.ASM9) {
-      override def visitAttribute(attr: Attribute): Unit = {
-        attr match {
-          case t: TastyAttributeReader => result = t.uuid
-          case _ => ()
+    val tastyPrototype = new Attribute("TASTY") {
+      override def read(cr: ClassReader, off: Int, len: Int, buf: Array[Char], codeOff: Int, labels: Array[Label]): Attribute = {
+        if (len == 16) {
+          val uuid = Array.tabulate[Byte](16)(i => cr.readByte(off + i).toByte)
+          result = Some(uuid)
         }
+        this
       }
     }
-    new ClassReader(bytes).accept(visitor, Array[Attribute](tastyAttr), 0)
+    new ClassReader(bytes).accept(
+      new ClassVisitor(Opcodes.ASM9) {},
+      Array(tastyPrototype),
+      0
+    )
     result
   }
 
@@ -409,22 +413,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
       val bv = new ByteVector(uuid.length)
       bv.putByteArray(uuid, 0, uuid.length)
       bv
-    }
-  }
-  /** Custom ASM Attribute for reading TASTY attributes from class files */
-  private class TastyAttributeReader extends Attribute("TASTY") {
-    var uuid: Option[Array[Byte]] = None
-
-    override def read(classReader: ClassReader, offset: Int, length: Int, charBuffer: Array[Char], codeOffset: Int, labels: Array[Label]): Attribute = {
-      val attr = new TastyAttributeReader()
-      if (length == 16) {
-        val bytes = new Array[Byte](16)
-        for (i <- 0 until 16) {
-          bytes(i) = classReader.readByte(offset + i).toByte
-        }
-        attr.uuid = Some(bytes)
-      }
-      attr
     }
   }
 }
