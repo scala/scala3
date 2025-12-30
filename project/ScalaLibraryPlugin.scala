@@ -171,6 +171,10 @@ object ScalaLibraryPlugin extends AutoPlugin {
    *  - Only the class whose name matches the .tasty file name gets the attribute
    *  - Java source files don't produce .tasty files, so they are skipped
    *
+   *  Additionally validates that if the original class file (before patching) had a TASTY
+   *  attribute, the patched version will also have one. This prevents accidentally losing
+   *  TASTY attributes during the patching process.
+   *
    *  @param input the input file (.class or .sjsir)
    *  @param output the output file location
    *  @param classDirectory the class directory to look for .tasty files
@@ -181,6 +185,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
       IO.copyFile(input, output)
       return output
     }
+
+    // Extract the original TASTY UUID if the class file exists and has one
+    val originalTastyUUID: Option[Array[Byte]] =
+      if (output.exists()) extractTastyUUIDFromClass(IO.readBytes(output))
+      else None
 
     val relativePath = output.relativeTo(classDirectory)
       .getOrElse(sys.error(s"Patched file is not relative to class directory: $output"))
@@ -203,6 +212,18 @@ object ScalaLibraryPlugin extends AutoPlugin {
         if (isPrimaryClass) Some(extractTastyUUID(IO.readBytes(tastyFile)))
         else None
     }
+
+    // Validation to ensure that no new TASTY attributes are added or removed when compared with unpatched sources
+    (tastyUUID, originalTastyUUID) match {
+      case (None, None) => () // no TASTY attribute, no problem
+      case (Some(newUUID), Some(originalUUID)) =>
+        assert(java.util.Arrays.equals(originalUUID, newUUID),
+          s"TASTY UUID mismatch for $relativePath: original=${originalUUID.map(b => f"$b%02x").mkString}, new=${newUUID.map(b => f"$b%02x").mkString}."
+        )
+      case (Some(_), None) => sys.error(s"TASTY attribute defined, but not present in unpatched source $relativePath")
+      case (None, Some(_)) => sys.error(s"TASTY attribute missing, but present in unpatched $relativePath")
+    }
+
     IO.write(output, patchClassFile(classfileBytes, tastyUUID))
     output
   }
