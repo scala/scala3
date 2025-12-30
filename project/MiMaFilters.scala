@@ -11,6 +11,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
         // scala/scala3#24545 / scala/scala3#24788
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
+        // scala/scala3#24855 - copied from Scala 2.13.16 by ScalaLibraryPlugin, to be removed when Scala 3.8.0 is released
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyList$State*"),
       ),
 
     )
