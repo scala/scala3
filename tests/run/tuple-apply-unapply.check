@@ -1,0 +1,18 @@
+=== Tuple.apply tests ===
+Tuple() = ()
+Tuple(42) = (42)
+Tuple(1, hello) = (1,hello)
+Tuple(1, a, 3.14) = (1,a,3.14)
+Tuple(1..22) arity = 22
+Tuple(1..23) arity = 23
+=== Type preservation tests ===
+Type preservation: OK
+=== Tuple.unapply tests ===
+EmptyTuple: OK
+Tuple1: 42 (typed Int)
+Tuple2: 1, hello (typed)
+Tuple3: 1, a, 3.14 (typed)
+=== Abstract Tuple (unapplySeq) ===
+Abstract 3-tuple: 1, hello, 3.14
+Correct arity matched
+=== All tests passed ===
