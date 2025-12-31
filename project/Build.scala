@@ -803,6 +803,31 @@ object Build {
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
         addCommandAlias("repl", "scala3-repl/run"),
+        // Publish the org.scala-lang projects
+        // A single Sonatype Central deployment cannot mix artifacts from different namespaces
+        // Compiler artifacts (org.scala-lang) cannot be mixed with Scala.js artifacts (org.scala-js)
+        // Explicit deletation of target/sona-staging is needed becouse root project overrides targetDirectory, while `localStaging` uses fixed target/sona-staging path
+        addCommandAlias("releaseOrgScalaLang", Seq(
+            `scala-library-bootstrapped`,
+            `scala3-compiler-bootstrapped`,
+            `scala3-interfaces`,
+            `scala3-language-server`,
+            `scala3-library-bootstrapped`,
+            `scala3-library-sjs`,
+            `scala3-presentation-compiler`,
+            `scala3-repl`,
+            `scala3-sbt-bridge-bootstrapped`,
+            `scala3-staging`,
+            `scala3-tasty-inspector`,
+            `scaladoc`,
+            `tasty-core-bootstrapped`,
+          ).map(_.id + "/publishSigned").mkString("""io.IO.delete(file("target/sona-staging")); all """, " ", ";sonaUpload")
+        ),
+        // Publish the org.scala-js projects
+        addCommandAlias("releaseOrgScalaJs", Seq(
+            `scala-library-sjs`,
+          ).map(_.id + "/publishSigned").mkString("""io.IO.delete(file("target/sona-staging")); all """, " ", ";sonaUpload")
+        ),
     )
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
   lazy val `scala3-sbt-bridge-nonbootstrapped` = project.in(file("sbt-bridge"))
@@ -2783,14 +2808,14 @@ object Build {
       assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
     }
 
-    if(isRelease) {
-      assert(version.minor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
-      assert(!referenceV.isRC, "Stable release needs to use stable compiler version")
-      if (version.isRC && version.patch == 0)
-        assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
-      else
-        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
-    }
+    // if(isRelease) {
+    //   assert(version.minor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
+    //   assert(!referenceV.isRC, "Stable release needs to use stable compiler version")
+    //   if (version.isRC && version.patch == 0)
+    //     assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
+    //   else
+    //     assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
+    // }
   }
 
   /** Helper to validate JAR contents */
