@@ -784,16 +784,18 @@ object Build {
     )
     .settings( // aliases for root project
         // Clean everything by default, overrides default `scala3-nonbootstrapped/clean` which would leave remaining projects with stale artifacts
-        addCommandAlias("clean", Seq(
+        addCommandAlias("clean", (Seq(
             // aggregate projects
             "scala3-nonbootstrapped",
             "scala3-bootstrapped",
+            ) ++ Seq(
             // dist projects
-            "dist", "dist-mac-x86_64", "dist-mac-aarch64", "dist-win-x86_64", "dist-linux-x86_64", "dist-linux-aarch64",
+            `dist`, `dist-mac-x86_64`, `dist-mac-aarch64`, `dist-win-x86_64`, `dist-linux-x86_64`, `dist-linux-aarch64`,
             // utility/test projects
-            "scala3-presentation-compiler-testcases",
-            "scaladoc-js-common", "scaladoc-js-main", "scaladoc-js-contributors", "scaladoc-testcases",
-            "sjsCompilerTests", "sjsSandbox",
+            `scala3-presentation-compiler-testcases`,
+            `scaladoc-js-common`, `scaladoc-js-main`, `scaladoc-js-contributors`, `scaladoc-testcases`,
+            `sjsCompilerTests`, `sjsSandbox`,
+            ).map(_.id)
           ).map(_ + "/clean").mkString("all ", " ", ";")
         ),
         // `publishLocal` on the non-bootstrapped compiler does not produce a
