@@ -98,13 +98,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Return a colored fansi.Str representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
-    // pretty-print things with 100 cols 50 rows by default,
-    val res = pprintRender(
-      value,
-      width = 100,
-      height = 50,
-      initialOffset = prefixLength
-    )
+    // Use Tuple1(x) format to avoid pprint's "(x,)" format
+    val res = value match {
+      case t: Tuple1[?] => s"Tuple1(${t._1})"
+      case _ =>
+        pprintRender(value, width = 100, height = 50, initialOffset = prefixLength)
+    }
     if (ctx.settings.color.value == "never") fansi.Str(res).plainText else res
   }
 
