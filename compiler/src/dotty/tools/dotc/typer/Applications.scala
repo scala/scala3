@@ -2037,7 +2037,13 @@ trait Applications extends Compatibility {
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
       tp1 match
         case tp1: MethodType => // (1)
-          tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
+          tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType] && {
+            // When tp1 is nullary (empty parameter list), it's as good as tp2 only if
+            // tp2 is not a varargs method (which is less specific than an explicit empty list)
+            tp2 match
+              case tp2: MethodType => !tp2.isVarArgsMethod
+              case _ => true
+          }
           || {
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
