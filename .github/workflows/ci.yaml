@@ -220,7 +220,7 @@ jobs:
               scala3-sbt-bridge-bootstrapped/publishSigned \
               scala3-staging-new/publishSigned \
               scala3-tasty-inspector-new/publishSigned \
-              scaladoc-new/publishSigned \
+              scaladoc/publishSigned \
               tasty-core-bootstrapped-new/publishSigned \
             ;sonaUpload"
 
