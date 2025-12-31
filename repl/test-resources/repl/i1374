@@ -2,8 +2,40 @@ scala> implicit class Padder(val sb: StringBuilder) extends AnyVal { infix def p
 // defined class Padder
 def Padder(sb: StringBuilder): Padder
 scala> val greeting = new StringBuilder("Hello, kitteh!")
-val greeting: StringBuilder = Hello, kitteh!
+val greeting: StringBuilder = IndexedSeq(
+  'H',
+  'e',
+  'l',
+  'l',
+  'o',
+  ',',
+  ' ',
+  'k',
+  'i',
+  't',
+  't',
+  'e',
+  'h',
+  '!'
+)
+
 scala> val a = greeting pad2 20
-val a: StringBuilder = Hello, kitteh!*
+val a: StringBuilder = IndexedSeq(
+  'H',
+  'e',
+  'l',
+  'l',
+  'o',
+  ',',
+  ' ',
+  'k',
+  'i',
+  't',
+  't',
+  'e',
+  'h',
+  '!',
+  '*'
+)
 scala> val farewell = new StringBuilder("U go now.")  // I hatez long bye-bye.
-val farewell: StringBuilder = U go now.
+val farewell: StringBuilder = IndexedSeq('U', ' ', 'g', 'o', ' ', 'n', 'o', 'w', '.')

@@ -706,4 +706,4 @@ class ReplDriver(settings: Array[String],
 
 end ReplDriver
 object ReplDriver:
-  def pprintImport = "import pprint.pprintln\n"
+  def pprintImport = "import dotty.shaded.pprint.pprintln\n"

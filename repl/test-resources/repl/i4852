@@ -1,6 +1,6 @@
 scala> inline def foo[T](t : T*) : Any = t
 def foo[T](t: T*): Any
 scala> foo(1, "hi", false)
-val res0: Any = ArraySeq(1, hi, false)
+val res0: Any = ArraySeq(1, "hi", false)
 scala> foo()
 val res1: Any = ArraySeq()

@@ -26,6 +26,9 @@ import dotty.tools.sbtplugin.ScalaLibraryPlugin
 import dotty.tools.sbtplugin.ScalaLibraryPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyJSPlugin
 import dotty.tools.sbtplugin.DottyJSPlugin.autoImport._
+import sbtassembly.AssemblyPlugin.autoImport._
+import sbtassembly.{MergeStrategy, PathList}
+import com.eed3si9n.jarjarabrams.ShadeRule
 
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
@@ -1070,9 +1073,6 @@ object Build {
         "org.jline" % "jline-reader" % "3.29.0",
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0",
-        "com.lihaoyi" %% "pprint"     % "0.9.3",
-        "com.lihaoyi" %% "fansi"      % "0.5.1",
-        "com.lihaoyi" %% "sourcecode" % "0.4.4",
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         "io.get-coursier" % "interface" % "1.0.28", // used by the REPL for dependency resolution
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
@@ -1115,6 +1115,176 @@ object Build {
         (Compile / run).partialInput(" -usejavacp").evaluated
       },
       bspEnabled := false,
+      (Compile / sourceGenerators) += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val dest = (Compile / sourceManaged).value / "downloaded"
+        val lm = dependencyResolution.value
+
+        val dependencies = Seq(
+          ("com.lihaoyi", "pprint_3", "0.9.5"),
+          ("com.lihaoyi", "fansi_3", "0.5.1"),
+          ("com.lihaoyi", "sourcecode_3", "0.4.4"),
+        )
+
+        // Create a marker file that tracks the dependencies for cache invalidation
+        val markerFile = cacheDir / "shaded-sources-marker"
+        val markerContent = dependencies.map { case (org, name, version) => s"$org:$name:$version:sources" }.mkString("\n")
+        if (!markerFile.exists || IO.read(markerFile) != markerContent) {
+          IO.write(markerFile, markerContent)
+        }
+
+        FileFunction.cached(cacheDir / "fetchShadedSources",
+          FilesInfo.lastModified, FilesInfo.exists) { _ =>
+          s.log.info(s"Downloading and processing shaded sources to $dest...")
+
+          if (dest.exists) IO.delete(dest)
+          IO.createDirectory(dest)
+
+          for((org, name, version) <- dependencies) {
+            import sbt.librarymanagement._
+
+            val moduleId = ModuleID(org, name, version).sources()
+            val retrieveDir = cacheDir / "retrieved" / s"$org-$name-$version-sources"
+
+            s.log.info(s"Retrieving $org:$name:$version:sources...")
+            val retrieved = lm.retrieve(moduleId, scalaModuleInfo = None, retrieveDir, s.log)
+            val jarFiles = retrieved.fold(
+              w => throw w.resolveException,
+              files => files.filter(_.getName.contains("-sources.jar"))
+            )
+
+            jarFiles.foreach { jarFile =>
+              s.log.info(s"Extracting ${jarFile.getName}...")
+              IO.unzip(jarFile, dest)
+            }
+          }
+
+          val scalaFiles = (dest ** "*.scala").get
+
+          val patches = Map( // Define patches as a map from search text to replacement text
+            "import scala" -> "import _root_.scala",
+            " scala.collection." -> " _root_.scala.collection.",
+            "def apply(c: Char): Trie[T]" -> "def apply(c: Char): Trie[T] | Null",
+            "var head: Iterator[T] = null" -> "var head: Iterator[T] | Null = null",
+            "if (head != null && head.hasNext) true" -> "if (head != null && head.nn.hasNext) true",
+            "head.next()" -> "head.nn.next()",
+            "abstract class Walker" -> "@scala.annotation.nowarn abstract class Walker",
+            "object TPrintLowPri" -> "@scala.annotation.nowarn object TPrintLowPri",
+            "x.toString match{" -> "scala.runtime.ScalaRunTime.stringOf(x) match{"
+          )
+
+          val patchUsageCounter = scala.collection.mutable.Map(patches.keys.map(_ -> 0).toSeq: _*)
+
+          scalaFiles.foreach { file =>
+            val text = IO.read(file)
+            if (!file.getName.equals("CollectionName.scala")) {
+              var processedText = "package dotty.shaded\n" + text
+
+              // Apply patches and count usage
+              for((search, replacement) <- patches if processedText.contains(search)){
+                processedText = processedText.replace(search, replacement)
+                patchUsageCounter(search) += 1
+              }
+
+              IO.write(file, processedText)
+            }
+          }
+
+          // Assert that all patches were applied at least once
+          val unappliedPatches = patchUsageCounter.filter(_._2 == 0).keys
+          if (unappliedPatches.nonEmpty) {
+            throw new RuntimeException(s"Patches were not applied: ${unappliedPatches.mkString(", ")}")
+          }
+
+          scalaFiles.toSet
+        } (Set(markerFile)).toSeq
+
+      }
+    )
+
+  lazy val `scala3-repl-embedded` = project.in(file("repl-embedded"))
+    .dependsOn(`scala-library-bootstrapped`)
+    .enablePlugins(sbtassembly.AssemblyPlugin)
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-repl-embedded",
+      moduleName    := "scala3-repl-embedded",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      autoScalaLibrary := true,
+      libraryDependencies ++= Seq(
+        "org.jline" % "jline-reader" % "3.29.0",
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0",
+      ),
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      // Assembly configuration for shading
+      assembly / assemblyJarName := s"scala3-repl-embedded-${version.value}.jar",
+      // Add scala3-repl to assembly classpath without making it a published dependency
+      assembly / fullClasspath := {
+        (Compile / fullClasspath).value ++ (`scala3-repl` / assembly / fullClasspath).value
+      },
+      assembly / test := {}, // Don't run tests for assembly
+      // Exclude scala-library and jline from assembly (users provide them on classpath)
+      assembly / assemblyExcludedJars := {
+        (assembly / fullClasspath).value.filter { jar =>
+          val name = jar.data.getName
+          // Filter out the `scala-library` here otherwise it conflicts with the
+          // `scala-library` pulled in via `assembly / fullClasspath`
+          name.contains("scala-library") ||
+            // Avoid shading JLine because shading it causes problems with
+            // its service discovery and JNI-related logic
+            // This is the entrypoint to the embedded Scala REPL so don't shade it
+            name.contains("jline")
+        }
+      },
+
+      assembly := {
+        val originalJar = assembly.value
+        val log = streams.value.log
+
+        log.info(s"Post-processing assembly to relocate files into shaded subfolder...")
+
+        val tmpDir = IO.createTemporaryDirectory
+        try {
+          IO.unzip(originalJar, tmpDir)
+          val shadedDir = tmpDir / "dotty" / "isolated"
+          IO.createDirectory(shadedDir)
+
+          for(file <- (tmpDir ** "*").get if file.isFile) {
+            val relativePath = file.relativeTo(tmpDir).get.getPath
+
+            val shouldKeepInPlace =
+              relativePath.startsWith("dotty/embedded/")||
+              // These are manually shaded when vendored/patched so leave them alone
+              relativePath.startsWith("dotty/shaded/") ||
+              // This needs to be inside scala/collection so cannot be moved
+              relativePath.startsWith("scala/collection/internal/pprint/")
+
+            if (!shouldKeepInPlace) {
+              val newPath = shadedDir / relativePath
+              IO.createDirectory(newPath.getParentFile)
+              IO.move(file, newPath)
+            }
+          }
+
+          val filesToZip =
+            for(f <- (tmpDir ** "*").get if f.isFile)
+            yield (f, f.relativeTo(tmpDir).get.getPath)
+
+          IO.zip(filesToZip, originalJar, None)
+
+          log.info(s"Assembly post-processing complete")
+        } finally IO.delete(tmpDir)
+
+        originalJar
+      },
+      // Use the shaded assembly jar as our packageBin for publishing
+      Compile / packageBin := (Compile / assembly).value,
+      publish / skip := false,
     )
 
   // ==============================================================================================

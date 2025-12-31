@@ -9,7 +9,7 @@ import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
-
+import dotty.shaded.*
 import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
 
@@ -31,21 +31,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     def fallback() =
       pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
-        .plainText
+        .render
+
     try
-      // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
-      // however PPrint works by runtime type testing to deconstruct values. This is
-      // sensitive to which classloader instantiates the object under test, i.e.
-      // `value` is constructed inside the repl classloader. Testing for
-      // `value.isInstanceOf[scala.Product]` in this classloader fails (JDK AppClassLoader),
-      // because repl classloader has two layers where it can redefine `scala.Product`:
-      // - `new URLClassLoader` constructed with contents of the `-classpath` setting
-      // - `AbstractFileClassLoader` also might instrument the library code to support interrupt.
-      // Due the possible interruption instrumentation, it is unlikely that we can get
-      // rid of reflection here.
+      // PPrint needs to do type-tests against scala-library classes, but the `classLoader()`
+      // used in the REPL typically has a its own copy of such classes to support
+      // `-XreplInterruptInstrumentation`. Thus we need to use the copy of PPrint from the
+      // REPL-line `classLoader()` rather than our own REPL-impl classloader in order for it
+      // to work
       val cl = classLoader()
-      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
-      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$Color$", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
       val Color_apply = pprintCls.getMethod("apply",
         classOf[Any],     // value
@@ -56,12 +51,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
       )
-      val FansiStr_render = fansiStrCls.getMethod("render")
-      val fansiStr = Color_apply.invoke(
-        Color, value, width, height, 2, initialOffset, false, true
-      )
-      FansiStr_render.invoke(fansiStr).asInstanceOf[String]
+
+      val fansiStr = Color_apply.invoke(Color, value, width, height, 2, initialOffset, false, true)
+      fansiStr.toString
     catch
+      // If classloading fails for whatever reason, try to fallback to our own version
+      // of PPrint. Won't be as good, but better than blowing up with an exception
       case ex: ClassNotFoundException => fallback()
       case ex: NoSuchMethodException  => fallback()
   }
