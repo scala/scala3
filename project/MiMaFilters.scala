@@ -32,6 +32,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.SharedCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
+        // scala/scala3#24545 / scala/scala3#24788
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
       ),
 
     )
