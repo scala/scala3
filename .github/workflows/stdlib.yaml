@@ -314,7 +314,7 @@ jobs:
       - uses: sbt/setup-sbt@v1
 
       - name: Compile `scaladoc`
-        run: ./project/scripts/sbt scaladoc-new/compile
+        run: ./project/scripts/sbt scaladoc/compile
 
   presentation-compiler:
     runs-on: ubuntu-latest

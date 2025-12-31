@@ -513,8 +513,8 @@ object Build {
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
     doc / scalaInstance := {
-      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
-      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
+      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value
       val docJars = Array(scalaDoc) ++ externalDeps
 
       val base = scalaInstance.value
@@ -850,7 +850,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`,
-      `scaladoc-new`, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
+      scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -958,7 +958,7 @@ object Build {
         (`tasty-core-bootstrapped-new` / publishLocalBin),
         (`scala3-staging-new` / publishLocalBin),
         (`scala3-tasty-inspector-new` / publishLocalBin),
-        (`scaladoc-new` / publishLocalBin),
+        (scaladoc / publishLocalBin),
         (`scala3-repl` / publishLocalBin),
         publishLocalBin,
       ).evaluated,
@@ -1807,9 +1807,10 @@ object Build {
   // ==============================================================================================
   // ========================================== SCALADOC ==========================================
   // ==============================================================================================
+  val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
 
   /* Configuration of the org.scala-lang:scaladoc_3:*.**.**-bootstrapped project */
-  lazy val `scaladoc-new` = project.in(file("scaladoc"))
+  lazy val scaladoc = project.in(file("scaladoc"))
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-tasty-inspector-new`)
     .settings(publishSettings)
     .settings(
@@ -1828,6 +1829,7 @@ object Build {
         generateStaticAssetsTask.taskValue,
         bundleCSS.taskValue
       ),
+      Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.8.2",
@@ -1851,14 +1853,229 @@ object Build {
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
       publish / skip := false,
-      //
+      // Main class configuration
       Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
-      Compile / buildInfoKeys := Seq[BuildInfoKey](version),
-      Compile / buildInfoPackage := "dotty.tools.scaladoc",
-      BuildInfoPlugin.buildInfoScopedSettings(Compile),
-      BuildInfoPlugin.buildInfoDefaultSettings,
+      run / baseDirectory := (ThisBuild / baseDirectory).value,
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
+    )
+    // Build information configuration
+    .settings(
+      Compile / buildInfoKeys := Seq[BuildInfoKey](version),
+      Compile / buildInfoPackage := "dotty.tools.scaladoc",
+      Test / buildInfoPackage := "dotty.tools.scaladoc.test",
+      Test / buildInfoKeys := Seq[BuildInfoKey](
+        (Test / Build.testcasesOutputDir),
+        (Test / Build.testcasesSourceRoot),
+        Build.testDocumentationRoot,
+      ),
+      BuildInfoPlugin.buildInfoScopedSettings(Compile),
+      BuildInfoPlugin.buildInfoScopedSettings(Test),
+      BuildInfoPlugin.buildInfoDefaultSettings,
+    )
+    // Test configuration
+    .settings(
+      Test / test := (Test / test).dependsOn(`scaladoc-testcases` / Compile / compile).value,
+      Test / testcasesOutputDir := (`scaladoc-testcases` / Compile / products).value.map(_.getAbsolutePath),
+      Test / testcasesSourceRoot := ((`scaladoc-testcases` / baseDirectory).value / "src").getAbsolutePath.toString,
+      testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
+    )
+    // Test configuration for source links integration test
+    .configs(SourceLinksIntegrationTest)
+    .settings(
+      inConfig(SourceLinksIntegrationTest)(Defaults.testSettings),
+      SourceLinksIntegrationTest / scalaSource := baseDirectory.value / "test-source-links",
+      SourceLinksIntegrationTest / test := ((SourceLinksIntegrationTest / test).dependsOn(generateScalaDocumentation.toTask(""))).value,
+    )
+      // Documentation generation tasks
+    .settings(
+      generateSelfDocumentation := Def.taskDyn {
+        generateDocumentation(Scaladoc)
+      }.value,
+
+      generateScalaDocumentation := Def.inputTaskDyn {
+        val majorVersion = (`scala-library-bootstrapped` / scalaBinaryVersion).value
+        val extraArgs = spaceDelimited("[<output-dir>] [--justAPI]").parsed
+        val outputDirOverride = extraArgs.headOption.fold(identity[GenerationConfig](_))(newDir => {
+          config: GenerationConfig => config.add(OutputDir(newDir))
+        })
+        val justAPI = extraArgs.contains("--justAPI")
+        def justAPIOverride(config: GenerationConfig): GenerationConfig = {
+          if (!justAPI) config
+          else {
+            val siteRoot = IO.createTemporaryDirectory.getAbsolutePath()
+            config.add(SiteRoot(siteRoot))
+          }
+        }
+        // It would be the easiest to create a temp directory and apply patches there, but this task would be used frequently during development
+        // If we'd build using copy the emitted warnings would point developers to copies instead of original sources. Any fixes made in there would be lost.
+        // Instead let's apply revertable patches to the files as part snapshot doc generation process
+        abstract class SourcePatch(val file: File) {
+          def apply(): Unit
+          def revert(): Unit
+        }
+        val docs = file("docs")
+        val sourcePatches = if (justAPI) Nil else Seq(
+          // Generate full sidebar.yml based on template and reference content
+          new SourcePatch(docs / "sidebar.yml") {
+            val referenceSideBarCopy = IO.temporaryDirectory / "sidebar.yml.copy"
+            IO.copyFile(file, referenceSideBarCopy)
+
+            override def apply(): Unit = {
+              val yaml = new org.yaml.snakeyaml.Yaml()
+              type YamlObject = java.util.Map[String, AnyRef]
+              type YamlList[T] = java.util.List[T]
+              def loadYaml(file: File): YamlObject = {
+                val reader = Files.newBufferedReader(file.toPath)
+                try yaml.load(reader).asInstanceOf[YamlObject]
+                finally reader.close()
+              }
+              // Ensure to always operate on original (Map, List) instances
+              val template = loadYaml(docs / "sidebar.nightly.template.yml")
+              template.get("subsection")
+                .asInstanceOf[YamlList[YamlObject]]
+                .stream()
+                .filter(_.get("title") == "Reference")
+                .findFirst()
+                .orElseThrow(() => new IllegalStateException("Reference subsection not found in sidebar.nightly.template.yml"))
+                .putAll(loadYaml(referenceSideBarCopy))
+
+              val sidebarWriter = Files.newBufferedWriter(this.file.toPath)
+              try yaml.dump(template, sidebarWriter)
+              finally sidebarWriter.close()
+            }
+            override def revert(): Unit = IO.move(referenceSideBarCopy, file)
+          },
+          // Add patch about nightly version usage
+          new SourcePatch(docs / "_layouts" / "static-site-main.html") {
+            lazy val originalContent = IO.read(file)
+
+            val warningMessage = """{% if page.nightlyOf %}
+              |  <aside class="warning">
+              |    <div class='icon'></div>
+              |    <div class='content'>
+              |      This is a nightly documentation. The content of this page may not be consistent with the current stable version of language.
+              |      Click <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this page.
+              |    </div>
+              |  </aside>
+              |{% endif %}""".stripMargin
+
+            override def apply(): Unit = {
+              IO.write(file,
+                originalContent
+                .replace("{{ content }}", s"$warningMessage {{ content }}")
+                .ensuring(_.contains(warningMessage), "patch to static-site-main layout not applied!")
+              )
+            }
+            override def revert(): Unit = IO.write(file, originalContent)
+          }
+        )
+        val config = Def.task {
+          outputDirOverride
+          .andThen(justAPIOverride)
+          .apply(Scala3.value)
+        }
+        val writeAdditionalFiles = Def.task {
+          val dest = file(config.value.get[OutputDir].get.value)
+          if (!justAPI) {
+            IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
+            // This file is used by GitHub Pages when the page is available in a custom domain
+            IO.write(dest / "CNAME", "dotty.epfl.ch")
+          }
+        }
+        val applyPatches = Def.task {
+          streams.value.log.info(s"Generating snapshot scaladoc, would apply patches to ${sourcePatches.map(_.file)}")
+          sourcePatches.foreach(_.apply())
+        }
+        val revertPatches = Def.task {
+          streams.value.log.info(s"Generated snapshot scaladoc, reverting changes made to ${sourcePatches.map(_.file)}")
+          sourcePatches.foreach(_.revert())
+        }
+        writeAdditionalFiles.dependsOn(
+          revertPatches.dependsOn(
+            generateDocumentation(config)
+              .dependsOn(applyPatches)
+          )
+        )
+      }.evaluated,
+
+      generateStableScala3Documentation := Def.inputTaskDyn {
+        val extraArgs = spaceDelimited("<version>").parsed
+        val version = baseVersion
+        // In the early days of scaladoc there was a practice to precompile artifacts of Scala 3 and generate docs using different version of scaladoc
+        // It's no longer needed after its stablisation.
+        // Allow to use explcit version check to detect using incorrect revision during release process
+        extraArgs.headOption.foreach { explicitVersion =>
+          assert(
+            explicitVersion == version,
+            s"Version of the build ($version) does not match the explicit verion ($explicitVersion)"
+          )
+        }
+
+        val docs = IO.createTemporaryDirectory
+        IO.copyDirectory(file("docs"), docs)
+        IO.delete(docs / "_blog")
+
+        val config = Def.task {
+          Scala3.value
+          .add(ProjectVersion(version))
+          .add(Revision(version))
+          .add(OutputDir(s"scaladoc/output/${version}"))
+          .add(SiteRoot(docs.getAbsolutePath))
+          .remove[ApiSubdirectory]
+        }
+        generateDocumentation(config)
+      }.evaluated,
+
+      generateTestcasesDocumentation := Def.taskDyn {
+        generateDocumentation(Testcases)
+      }.value,
+
+      // Generate the Scala 3 reference documentation (published at https://docs.scala-lang.org/scala3/reference)
+      generateReferenceDocumentation := Def.inputTaskDyn {
+        val shouldRegenerateExpectedLinks = (Space ~> literal("--no-regenerate-expected-links")).?.parsed.isEmpty
+
+        val _ = generateStaticAssetsTask.value
+
+        // Move all the source files to a temporary directory and apply some changes specific to the reference documentation
+        val docs = IO.createTemporaryDirectory
+        IO.copyDirectory(file("docs"), docs)
+        IO.delete(docs / "_blog")
+
+        // Add redirections from previously supported URLs, for some pages
+        for (name <- Seq("changed-features", "contextual", "dropped-features", "metaprogramming", "other-new-features")) {
+          val path = docs / "_docs" / "reference" / name / s"${name}.md"
+          val contentLines = IO.read(path).linesIterator.to[collection.mutable.ArrayBuffer]
+          contentLines.insert(1, s"redirectFrom: /${name}.html") // Add redirection
+          val newContent = contentLines.mkString("\n")
+          IO.write(path, newContent)
+        }
+
+        val languageReferenceConfig = Def.task {
+          Scala3.value
+            .add(OutputDir("scaladoc/output/reference"))
+            .add(SiteRoot(docs.getAbsolutePath))
+            .add(ProjectName("Scala 3 Reference"))
+            .add(ProjectVersion(baseVersion))
+            .remove[VersionsDictionaryUrl]
+            .add(SourceLinks(List(
+              s"${docs.getParentFile().getAbsolutePath}=github://scala/scala3/language-reference-stable"
+            )))
+        }
+
+        val expectedLinksRegeneration = Def.task {
+          if (shouldRegenerateExpectedLinks) {
+            val script = (file("project") / "scripts" / "regenerateExpectedLinks").toString
+            val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
+            val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
+            import _root_.scala.sys.process._
+            s"$script $outputDir $expectedLinksFile".!
+          }
+        }
+
+        expectedLinksRegeneration.dependsOn(generateDocumentation(languageReferenceConfig))
+      }.evaluated,
+
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
@@ -2360,245 +2577,6 @@ object Build {
     createBundle(cssThemePath)
   }
 
-  val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
-
-  lazy val scaladoc = project.in(file("scaladoc")).
-    configs(SourceLinksIntegrationTest).
-    settings(commonBootstrappedSettings).
-    dependsOn(`scala3-compiler-bootstrapped-new`).
-    dependsOn(`scala3-tasty-inspector-new`).
-    settings(inConfig(SourceLinksIntegrationTest)(Defaults.testSettings)).
-    settings(
-      SourceLinksIntegrationTest / scalaSource := baseDirectory.value / "test-source-links",
-      SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
-    ).
-    settings(
-      scalacOptions += "-experimental" // workaround use of experimental .info in Scaladoc2AnchorCreator
-    ).
-    settings(
-      Compile / resourceGenerators ++= Seq(
-        generateStaticAssetsTask.taskValue,
-        bundleCSS.taskValue
-      ),
-      libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.8.2",
-        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
-        Dependencies.`jackson-dataformat-yaml`,
-
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-      ),
-      Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
-      Compile / buildInfoKeys := Seq[BuildInfoKey](version),
-      Compile / buildInfoPackage := "dotty.tools.scaladoc",
-      BuildInfoPlugin.buildInfoScopedSettings(Compile),
-      BuildInfoPlugin.buildInfoDefaultSettings,
-
-      Test / test := (Test / test).dependsOn(`scaladoc-testcases` / Compile / compile).value,
-      Test / testcasesOutputDir := (`scaladoc-testcases`/Compile/products).value.map(_.getAbsolutePath),
-      Test / testcasesSourceRoot := ((`scaladoc-testcases` / baseDirectory).value / "src").getAbsolutePath.toString,
-      run / baseDirectory := (ThisBuild / baseDirectory).value,
-      generateSelfDocumentation := Def.taskDyn {
-        generateDocumentation(Scaladoc)
-      }.value,
-
-      generateScalaDocumentation := Def.inputTaskDyn {
-        val majorVersion = (`scala-library-bootstrapped` / scalaBinaryVersion).value
-
-        val extraArgs = spaceDelimited("[<output-dir>] [--justAPI]").parsed
-        val outputDirOverride = extraArgs.headOption.fold(identity[GenerationConfig](_))(newDir => {
-          config: GenerationConfig => config.add(OutputDir(newDir))
-        })
-        val justAPI = extraArgs.contains("--justAPI")
-        def justAPIOverride(config: GenerationConfig): GenerationConfig = {
-          if (!justAPI) config
-          else {
-            val siteRoot = IO.createTemporaryDirectory.getAbsolutePath()
-            config.add(SiteRoot(siteRoot))
-          }
-        }
-
-        // It would be the easiest to create a temp directory and apply patches there, but this task would be used frequently during development
-        // If we'd build using copy the emitted warnings would point developers to copies instead of original sources. Any fixes made in there would be lost.
-        // Instead let's apply revertable patches to the files as part snapshot doc generation process
-        abstract class SourcePatch(val file: File) {
-          def apply(): Unit
-          def revert(): Unit
-        }
-        val docs = file("docs")
-        val sourcePatches = if (justAPI) Nil else Seq(
-          // Generate full sidebar.yml based on template and reference content
-          new SourcePatch(docs / "sidebar.yml") {
-            val referenceSideBarCopy = IO.temporaryDirectory / "sidebar.yml.copy"
-            IO.copyFile(file, referenceSideBarCopy)
-
-            override def apply(): Unit = {
-              val yaml = new org.yaml.snakeyaml.Yaml()
-              type YamlObject = java.util.Map[String, AnyRef]
-              type YamlList[T] = java.util.List[T]
-              def loadYaml(file: File): YamlObject = {
-                val reader = Files.newBufferedReader(file.toPath)
-                try yaml.load(reader).asInstanceOf[YamlObject]
-                finally reader.close()
-              }
-              // Ensure to always operate on original (Map, List) instances
-              val template = loadYaml(docs / "sidebar.nightly.template.yml")
-              template.get("subsection")
-                .asInstanceOf[YamlList[YamlObject]]
-                .stream()
-                .filter(_.get("title") == "Reference")
-                .findFirst()
-                .orElseThrow(() => new IllegalStateException("Reference subsection not found in sidebar.nightly.template.yml"))
-                .putAll(loadYaml(referenceSideBarCopy))
-
-              val sidebarWriter = Files.newBufferedWriter(this.file.toPath)
-              try yaml.dump(template, sidebarWriter)
-              finally sidebarWriter.close()
-            }
-            override def revert(): Unit = IO.move(referenceSideBarCopy, file)
-          },
-          // Add patch about nightly version usage
-          new SourcePatch(docs / "_layouts" / "static-site-main.html") {
-            lazy val originalContent = IO.read(file)
-
-            val warningMessage = """{% if page.nightlyOf %}
-              |  <aside class="warning">
-              |    <div class='icon'></div>
-              |    <div class='content'>
-              |      This is a nightly documentation. The content of this page may not be consistent with the current stable version of language.
-              |      Click <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this page.
-              |    </div>
-              |  </aside>
-              |{% endif %}""".stripMargin
-
-            override def apply(): Unit = {
-              IO.write(file,
-                originalContent
-                .replace("{{ content }}", s"$warningMessage {{ content }}")
-                .ensuring(_.contains(warningMessage), "patch to static-site-main layout not applied!")
-              )
-            }
-            override def revert(): Unit = IO.write(file, originalContent)
-          }
-        )
-
-        val config = Def.task {
-          outputDirOverride
-          .andThen(justAPIOverride)
-          .apply(Scala3.value)
-        }
-
-        val writeAdditionalFiles = Def.task {
-          val dest = file(config.value.get[OutputDir].get.value)
-          if (!justAPI) {
-            IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
-            // This file is used by GitHub Pages when the page is available in a custom domain
-            IO.write(dest / "CNAME", "dotty.epfl.ch")
-          }
-        }
-        val applyPatches = Def.task {
-          streams.value.log.info(s"Generating snapshot scaladoc, would apply patches to ${sourcePatches.map(_.file)}")
-          sourcePatches.foreach(_.apply())
-        }
-        val revertPatches = Def.task {
-          streams.value.log.info(s"Generated snapshot scaladoc, reverting changes made to ${sourcePatches.map(_.file)}")
-          sourcePatches.foreach(_.revert())
-        }
-
-        writeAdditionalFiles.dependsOn(
-          revertPatches.dependsOn(
-            generateDocumentation(config)
-              .dependsOn(applyPatches)
-          )
-        )
-      }.evaluated,
-
-      generateStableScala3Documentation := Def.inputTaskDyn {
-        val extraArgs = spaceDelimited("<version>").parsed
-        val version = baseVersion
-        // In the early days of scaladoc there was a practice to precompile artifacts of Scala 3 and generate docs using different version of scaladoc
-        // It's no longer needed after its stablisation.
-        // Allow to use explcit version check to detect using incorrect revision during release process
-        extraArgs.headOption.foreach { explicitVersion =>
-          assert(
-            explicitVersion == version,
-            s"Version of the build ($version) does not match the explicit verion ($explicitVersion)"
-          )
-        }
-
-        val docs = IO.createTemporaryDirectory
-        IO.copyDirectory(file("docs"), docs)
-        IO.delete(docs / "_blog")
-
-        val config = Def.task {
-          Scala3.value
-          .add(ProjectVersion(version))
-          .add(Revision(version))
-          .add(OutputDir(s"scaladoc/output/${version}"))
-          .add(SiteRoot(docs.getAbsolutePath))
-          .remove[ApiSubdirectory]
-        }
-        generateDocumentation(config)
-      }.evaluated,
-
-      generateTestcasesDocumentation := Def.taskDyn {
-        generateDocumentation(Testcases)
-      }.value,
-
-      // Generate the Scala 3 reference documentation (published at https://docs.scala-lang.org/scala3/reference)
-      generateReferenceDocumentation := Def.inputTaskDyn {
-        val shouldRegenerateExpectedLinks = (Space ~> literal("--no-regenerate-expected-links")).?.parsed.isEmpty
-
-        generateStaticAssetsTask.value
-
-        // Move all the source files to a temporary directory and apply some changes specific to the reference documentation
-        val docs = IO.createTemporaryDirectory
-        IO.copyDirectory(file("docs"), docs)
-        IO.delete(docs / "_blog")
-
-        // Add redirections from previously supported URLs, for some pages
-        for (name <- Seq("changed-features", "contextual", "dropped-features", "metaprogramming", "other-new-features")) {
-          val path = docs / "_docs" / "reference" / name / s"${name}.md"
-          val contentLines = IO.read(path).linesIterator.to[collection.mutable.ArrayBuffer]
-          contentLines.insert(1, s"redirectFrom: /${name}.html") // Add redirection
-          val newContent = contentLines.mkString("\n")
-          IO.write(path, newContent)
-        }
-
-        val languageReferenceConfig = Def.task {
-          Scala3.value
-            .add(OutputDir("scaladoc/output/reference"))
-            .add(SiteRoot(docs.getAbsolutePath))
-            .add(ProjectName("Scala 3 Reference"))
-            .add(ProjectVersion(baseVersion))
-            .remove[VersionsDictionaryUrl]
-            .add(SourceLinks(List(
-              s"${docs.getParentFile().getAbsolutePath}=github://scala/scala3/language-reference-stable"
-            )))
-            .withTargets(List("___fake___.scala"))
-        }
-
-        val expectedLinksRegeneration = Def.task {
-          if (shouldRegenerateExpectedLinks) {
-            val script = (file("project") / "scripts" / "regenerateExpectedLinks").toString
-            val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
-            val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
-            import _root_.scala.sys.process._
-            s"$script $outputDir $expectedLinksFile".!
-          }
-        }
-
-        expectedLinksRegeneration.dependsOn(generateDocumentation(languageReferenceConfig))
-      }.evaluated,
-
-      Test / buildInfoKeys := Seq[BuildInfoKey](
-        (Test / Build.testcasesOutputDir),
-        (Test / Build.testcasesSourceRoot),
-        Build.testDocumentationRoot,
-      ),
-      testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
-      Test / buildInfoPackage := "dotty.tools.scaladoc.test",
-      BuildInfoPlugin.buildInfoScopedSettings(Test),
-    )
 
   val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-injected-plugins}.")
 
@@ -2613,7 +2591,7 @@ object Build {
         (`scala3-library-bootstrapped-new` / publishLocalBin).value
         (`scala-library-bootstrapped` / publishLocalBin).value
         (`scala3-tasty-inspector-new` / publishLocalBin).value
-        (`scaladoc-new` / publishLocalBin).value
+        (scaladoc / publishLocalBin).value
         (`scala3-repl` / publishLocalBin).value
         (`scala3-compiler-bootstrapped-new` / publishLocalBin).value
         (`scala-library-sjs` / publishLocalBin).value
@@ -2819,7 +2797,7 @@ object Build {
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
         `scala3-staging-new`,
         `scala3-tasty-inspector-new`,
-        `scaladoc-new`,
+        scaladoc,
         `tasty-core-bootstrapped-new`,
       )
       .settings(
