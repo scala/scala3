@@ -495,7 +495,10 @@ object MiMaFilters {
 
           // NO IDEA FOR NOW :)
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.mutable.ArrayDequeOps.scala$collection$mutable$ArrayDequeOps$$super$sliding"),
-        ),
+
+          // scala/scala3#24855 - copied from Scala 2.13.16 by ScalaLibraryPlugin, to be removed when Scala 3.8.0 is released
+          ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyList$State*"),
+      )
     )
   }
 
