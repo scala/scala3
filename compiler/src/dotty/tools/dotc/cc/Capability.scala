@@ -466,7 +466,7 @@ object Capabilities:
      */
     final def isLocalMutable(using Context): Boolean = this match
       case tp @ TermRef(NoPrefix, _) =>
-        ccConfig.newScheme && ccConfig.strictMutability
+        ccConfig.strictMutability
         && tp.symbol.isMutableVar
         && !tp.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
       case _ => false

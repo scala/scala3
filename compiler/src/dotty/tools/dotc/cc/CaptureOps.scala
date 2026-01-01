@@ -675,7 +675,7 @@ extension (sym: Symbol)
     sym == defn.ArrayClass && ccConfig.strictMutability
 
   def isDisallowedInCapset(using Context): Boolean =
-    sym.isOneOf(if ccConfig.newScheme && ccConfig.strictMutability then Method else UnstableValueFlags)
+    sym.isOneOf(if ccConfig.strictMutability then Method else UnstableValueFlags)
 
   def varMirror(using Context): Symbol =
     ccState.varMirrors.getOrElseUpdate(sym,
