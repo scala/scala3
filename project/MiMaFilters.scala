@@ -17,6 +17,32 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.generic.IsSeq.iarrayIsSeq"),
         // new annotation encoding capture checking's `x.except[C]` capabilities
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
+        // scala/scala3#24874 - Uniform Tuple.apply and Tuple.unapply for SIP-NN
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply1"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply2"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply3"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply4"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply6"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply7"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply8"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply9"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply10"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply11"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply12"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply13"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply14"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply15"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply16"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply17"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply18"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply19"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply20"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply21"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply22"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapplySeq"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros$"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
