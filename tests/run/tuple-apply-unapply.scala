@@ -76,5 +76,18 @@ object Test extends App {
       val checkC: Double = c
       println(s"Tuple3: $a, $b, $c (typed)")
 
+  // Abstract Tuple - unapplySeq fallback (elements are Any)
+  println("=== Abstract Tuple (unapplySeq) ===")
+  val abstractTuple: Tuple = (1, "hello", 3.14)
+  abstractTuple match
+    case Tuple(a, b, c) => println(s"Abstract 3-tuple: $a, $b, $c")
+    case _ => assert(false, "Should have matched")
+
+  // Arity mismatch - should not match
+  abstractTuple match
+    case Tuple(a, b) => assert(false, "Should not match wrong arity")
+    case Tuple(a, b, c) => println("Correct arity matched")
+    case _ => assert(false, "Should have matched")
+
   println("=== All tests passed ===")
 }

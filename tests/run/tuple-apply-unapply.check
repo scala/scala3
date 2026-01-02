@@ -12,4 +12,7 @@ EmptyTuple: OK
 Tuple1: 42 (typed Int)
 Tuple2: 1, hello (typed)
 Tuple3: 1, a, 3.14 (typed)
+=== Abstract Tuple (unapplySeq) ===
+Abstract 3-tuple: 1, hello, 3.14
+Correct arity matched
 === All tests passed ===

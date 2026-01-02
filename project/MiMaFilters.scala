@@ -34,6 +34,7 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply20"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply21"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply22"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapplySeq"),
         ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros"),
         ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros$"),
       ),

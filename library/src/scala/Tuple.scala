@@ -393,10 +393,7 @@ object Tuple {
   @targetName("unapply22")
   def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V) = x
 
-  /** Fallback for abstract Tuple types - provides runtime arity matching.
-   *  When the static type is abstract (e.g., just `Tuple`), this allows
-   *  pattern matching with any arity, but extracted elements have type `Any`.
-   */
+  /** Fallback for abstract Tuple types - provides runtime arity matching. */
   def unapplySeq(x: Tuple): Option[Seq[Any]] = Some(x.productIterator.toSeq)
 
   /** Converts an array into a tuple of unknown arity and types. */
