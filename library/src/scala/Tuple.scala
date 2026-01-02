@@ -307,91 +307,91 @@ object Tuple {
 
   /** Matches a 1-tuple, extracting its element. */
   @targetName("unapply1")
-  def unapply[A](x: Tuple1[A]): Some[A] = Some(x._1)
+  inline def unapply[A](x: Tuple1[A]): Some[A] = Some(x._1)
 
   /** Matches a 2-tuple, extracting its elements. */
   @targetName("unapply2")
-  def unapply[A, B](x: (A, B)): (A, B) = x
+  inline def unapply[A, B](x: (A, B)): (A, B) = x
 
   /** Matches a 3-tuple, extracting its elements. */
   @targetName("unapply3")
-  def unapply[A, B, C](x: (A, B, C)): (A, B, C) = x
+  inline def unapply[A, B, C](x: (A, B, C)): (A, B, C) = x
 
   /** Matches a 4-tuple, extracting its elements. */
   @targetName("unapply4")
-  def unapply[A, B, C, D](x: (A, B, C, D)): (A, B, C, D) = x
+  inline def unapply[A, B, C, D](x: (A, B, C, D)): (A, B, C, D) = x
 
   /** Matches a 5-tuple, extracting its elements. */
   @targetName("unapply5")
-  def unapply[A, B, C, D, E](x: (A, B, C, D, E)): (A, B, C, D, E) = x
+  inline def unapply[A, B, C, D, E](x: (A, B, C, D, E)): (A, B, C, D, E) = x
 
   /** Matches a 6-tuple, extracting its elements. */
   @targetName("unapply6")
-  def unapply[A, B, C, D, E, F](x: (A, B, C, D, E, F)): (A, B, C, D, E, F) = x
+  inline def unapply[A, B, C, D, E, F](x: (A, B, C, D, E, F)): (A, B, C, D, E, F) = x
 
   /** Matches a 7-tuple, extracting its elements. */
   @targetName("unapply7")
-  def unapply[A, B, C, D, E, F, G](x: (A, B, C, D, E, F, G)): (A, B, C, D, E, F, G) = x
+  inline def unapply[A, B, C, D, E, F, G](x: (A, B, C, D, E, F, G)): (A, B, C, D, E, F, G) = x
 
   /** Matches a 8-tuple, extracting its elements. */
   @targetName("unapply8")
-  def unapply[A, B, C, D, E, F, G, H](x: (A, B, C, D, E, F, G, H)): (A, B, C, D, E, F, G, H) = x
+  inline def unapply[A, B, C, D, E, F, G, H](x: (A, B, C, D, E, F, G, H)): (A, B, C, D, E, F, G, H) = x
 
   /** Matches a 9-tuple, extracting its elements. */
   @targetName("unapply9")
-  def unapply[A, B, C, D, E, F, G, H, I](x: (A, B, C, D, E, F, G, H, I)): (A, B, C, D, E, F, G, H, I) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I](x: (A, B, C, D, E, F, G, H, I)): (A, B, C, D, E, F, G, H, I) = x
 
   /** Matches a 10-tuple, extracting its elements. */
   @targetName("unapply10")
-  def unapply[A, B, C, D, E, F, G, H, I, J](x: (A, B, C, D, E, F, G, H, I, J)): (A, B, C, D, E, F, G, H, I, J) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J](x: (A, B, C, D, E, F, G, H, I, J)): (A, B, C, D, E, F, G, H, I, J) = x
 
   /** Matches a 11-tuple, extracting its elements. */
   @targetName("unapply11")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K](x: (A, B, C, D, E, F, G, H, I, J, K)): (A, B, C, D, E, F, G, H, I, J, K) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K](x: (A, B, C, D, E, F, G, H, I, J, K)): (A, B, C, D, E, F, G, H, I, J, K) = x
 
   /** Matches a 12-tuple, extracting its elements. */
   @targetName("unapply12")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L](x: (A, B, C, D, E, F, G, H, I, J, K, L)): (A, B, C, D, E, F, G, H, I, J, K, L) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L](x: (A, B, C, D, E, F, G, H, I, J, K, L)): (A, B, C, D, E, F, G, H, I, J, K, L) = x
 
   /** Matches a 13-tuple, extracting its elements. */
   @targetName("unapply13")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M](x: (A, B, C, D, E, F, G, H, I, J, K, L, M)): (A, B, C, D, E, F, G, H, I, J, K, L, M) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M](x: (A, B, C, D, E, F, G, H, I, J, K, L, M)): (A, B, C, D, E, F, G, H, I, J, K, L, M) = x
 
   /** Matches a 14-tuple, extracting its elements. */
   @targetName("unapply14")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N) = x
 
   /** Matches a 15-tuple, extracting its elements. */
   @targetName("unapply15")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) = x
 
   /** Matches a 16-tuple, extracting its elements. */
   @targetName("unapply16")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P) = x
 
   /** Matches a 17-tuple, extracting its elements. */
   @targetName("unapply17")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q) = x
 
   /** Matches a 18-tuple, extracting its elements. */
   @targetName("unapply18")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R) = x
 
   /** Matches a 19-tuple, extracting its elements. */
   @targetName("unapply19")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S) = x
 
   /** Matches a 20-tuple, extracting its elements. */
   @targetName("unapply20")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T) = x
 
   /** Matches a 21-tuple, extracting its elements. */
   @targetName("unapply21")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U) = x
 
   /** Matches a 22-tuple, extracting its elements. */
   @targetName("unapply22")
-  def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V) = x
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V) = x
 
   /** Fallback for abstract Tuple types - provides runtime arity matching. */
   def unapplySeq(x: Tuple): Option[Seq[Any]] = Some(x.productIterator.toSeq)
