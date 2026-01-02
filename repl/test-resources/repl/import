@@ -1,9 +1,9 @@
 scala> import collection.mutable._
 scala> val buf = new ListBuffer[Int]
-val buf: scala.collection.mutable.ListBuffer[Int] = ListBuffer()
+val buf: ListBuffer[Int] = ListBuffer()
 scala> buf += 22
-val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(22)
+val res0: ListBuffer[Int] = ListBuffer(22)
 scala> buf ++= List(1, 2, 3)
-val res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(22, 1, 2, 3)
+val res1: ListBuffer[Int] = ListBuffer(22, 1, 2, 3)
 scala> buf.toList
 val res2: List[Int] = List(22, 1, 2, 3)

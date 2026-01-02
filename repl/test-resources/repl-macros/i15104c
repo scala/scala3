@@ -1,6 +1,6 @@
 scala> import scala.quoted._
 scala> def macroImpl(using Quotes) = Expr(1)
-def macroImpl(using x$1: scala.quoted.Quotes): scala.quoted.Expr[Int]
+def macroImpl(using x$1: Quotes): Expr[Int]
 scala> inline def foo = ${ macroImpl }
 def foo: Int
 scala> foo

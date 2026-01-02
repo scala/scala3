@@ -1,9 +1,5 @@
 scala> import scala.quoted._
 scala> def foo(expr: Expr[Any])(using Quotes) = expr match { case '{ $x: t } => '{ $x: Any } }
-def foo
-  (expr: scala.quoted.Expr[Any])
-    (using x$2: scala.quoted.Quotes): scala.quoted.Expr[Any]
+def foo(expr: Expr[Any])(using x$2: Quotes): Expr[Any]
 scala> def bar(expr: Expr[Any])(using Quotes) = expr match { case '{ $x: t } => '{ val a: t = ??? ; ???} }
-def bar
-  (expr: scala.quoted.Expr[Any])
-    (using x$2: scala.quoted.Quotes): scala.quoted.Expr[Nothing]
+def bar(expr: Expr[Any])(using x$2: Quotes): Expr[Nothing]
