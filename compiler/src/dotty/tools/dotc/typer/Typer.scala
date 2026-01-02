@@ -5055,7 +5055,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if qual.symbol.isAllOf(SyntheticMethod | Exported) then
             qual.symbol.owner.info.memberBasedOnFlags(qual.symbol.name.toTypeName, required = Exported)
           else NoDenotation
-        if exported.exists then exported.symbol.typeRef
+        if exported.exists then
+          qual.tpe match
+          case tp: NamedType =>
+            exported.symbol.typeRef.asSeenFrom(tp.prefix, exported.symbol.owner)
+          case _ =>
+            exported.symbol.typeRef
         else ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
       typed(
         untpd.Select(
