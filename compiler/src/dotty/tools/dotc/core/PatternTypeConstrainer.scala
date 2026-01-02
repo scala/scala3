@@ -10,9 +10,6 @@ import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
 import config.Printers.*
-import dotty.tools.dotc.typer.Inferencing.variances
-
-import scala.collection.mutable
 
 trait PatternTypeConstrainer { self: TypeComparer =>
 
@@ -255,17 +252,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     val pt = patternTp.baseType(base)
     val tp = scrutineeTp.baseType(base)
 
-    val skolemTypeVars = mutable.ListBuffer[TypeVar]()
-    val vs = variances(patternTp)
-    vs.underlying foreachBinding { (tvar, v) =>
-      if !tvar.isInstantiated && v == 0  then
-        val bounds = TypeComparer.fullBounds(tvar.origin)
-        if (tvar.occursIn(pt) || (bounds.hi frozen_<:< bounds.lo) || bounds.hi.classSymbol.is(Final)) {}
-        else {
-          skolemTypeVars += tvar
-        }
-    }
-
     val assumeInvariantRefinement =
       migrateTo3 || forceInvariantRefinement || refinementIsInvariant(patternTp)
 
@@ -284,7 +270,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               var res = true
               if variance <  1 then res &&= isSubType(loS, hiP)
               if variance > -1 then res &&= isSubType(loP, hiS)
-              res && skolemTypeVars.forall(!_.isInstantiated)
+              res
             else true
           }
         case _ =>
