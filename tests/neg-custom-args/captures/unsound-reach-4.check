@@ -8,7 +8,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach-4.scala:20:29 ------------------------------
 20 |  val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).
    |                             ^^^^^^^
-   |                             Found:    Bar
+   |                             Found:    Bar^'s1
    |                             Required: Foo[File^]
    |
    |                             Note that capability cap is not included in capture set {cap²}

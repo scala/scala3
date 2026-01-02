@@ -465,10 +465,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             catch case ex: IllegalCaptureRef =>
               report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
               CaptureSet.empty
-          case _ =>
-            if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy)
-            then CaptureSet.Var(sym, nestedOK = false)
-            else CaptureSet.empty)
+          case _ if sym.is(Package) => CaptureSet.empty
+          case _ => CaptureSet.Var(sym, nestedOK = false)
+      )
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
 

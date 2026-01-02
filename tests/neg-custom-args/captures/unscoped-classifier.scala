@@ -16,6 +16,6 @@ def test(g: () => Unit) =
   class E extends caps.Unscoped:
     def gg() = g()     // error but msg could be better
 
-  val b = B() // error  but msg could be better
+  val b = B()
   val d = D() // ok (?)
   val _: D^{cap.only[Unscoped]} = d
