@@ -459,9 +459,16 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy)
-        then CaptureSet.Var(sym, nestedOK = false)
-        else CaptureSet.empty)
+        sym.getAnnotation(defn.RetainsAnnot) match
+          case Some(ann: RetainingAnnotation) =>
+            try ann.toCaptureSet
+            catch case ex: IllegalCaptureRef =>
+              report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
+              CaptureSet.empty
+          case _ =>
+            if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy)
+            then CaptureSet.Var(sym, nestedOK = false)
+            else CaptureSet.empty)
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
 
@@ -610,23 +617,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         if addUseInfo then useInfos += ((tree, cs, curEnv))
     end markFree
 
-    /** If capability `c` refers to a parameter that is not implicitly or explicitly
-     *  @use declared, report an error.
-     */
-    def checkUseDeclared(c: Capability, pos: SrcPos)(using Context): Unit =
-      c.paramPathRoot match
-        case ref: NamedType if !ref.symbol.isUseParam =>
-          val what = if ref.isType then "Capture set parameter" else "Local reach capability"
-          def mitigation =
-            if ccConfig.allowUse
-            then i"\nTo allow this, the ${ref.symbol} should be declared with a @use annotation."
-            else if !ref.isType then i"\nYou could try to abstract the capabilities referred to by $c in a capset variable."
-            else ""
-          report.error(
-            em"$what $c leaks into capture scope${ref.symbol.owner.qualString("of")}.$mitigation",
-            pos)
-        case _ =>
-
     /** Include references captured by the called method in the current environment stack */
     def includeCallCaptures(sym: Symbol, resType: Type, tree: Tree)(using Context): Unit = resType match
       case _: MethodOrPoly => // wait until method is fully applied
@@ -639,16 +629,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           if sym.isConstructor then
             locals = mapClassCaptures(sym.owner.asClass, resType, locals)
           markFree(locals.filter(isRetained), tree)
-
-    /** If `tp` (possibly after widening singletons) is an ExprType
-     *  of a parameterless method, map Result instances in it to Fresh instances
-     */
-    def mapResultRoots(tp: Type, sym: Symbol)(using Context): Type =
-      tp.widenSingleton match
-        case tp: ExprType if sym.is(Method) =>
-          resultToFresh(tp, Origin.ResultInstance(tp, sym))
-        case _ =>
-          tp
 
     /** Type arguments come either from a TypeApply node or from an AppliedType
      *  which represents a trait parent in a template.
@@ -681,6 +661,56 @@ class CheckCaptures extends Recheck, SymTransformer:
           val param = fn.symbol.paramNamed(pname)
           if param.isUseParam then markFree(arg.nuType.deepCaptureSet, errTree)
     end markFreeTypeArgs
+
+    /** If capability `c` refers to a parameter that is not implicitly or explicitly
+     *  @use declared, report an error.
+     */
+    def checkUseDeclared(c: Capability, pos: SrcPos)(using Context): Unit =
+      c.paramPathRoot match
+        case ref: NamedType if !ref.symbol.isUseParam =>
+          val what = if ref.isType then "Capture set parameter" else "Local reach capability"
+          def mitigation =
+            if ccConfig.allowUse
+            then i"\nTo allow this, the ${ref.symbol} should be declared with a @use annotation."
+            else if !ref.isType then i"\nYou could try to abstract the capabilities referred to by $c in a capset variable."
+            else ""
+          report.error(
+            em"$what $c leaks into capture scope${ref.symbol.owner.qualString("of")}.$mitigation",
+            pos)
+        case _ =>
+
+    /** Warn if there is an unboxed reach capability in the result of a method
+     *  that refers to a parameter. These uses will almost always lead to checkUseDeclared
+     *  failures later on.
+     */
+    def checkNoUnboxedReaches(tree: DefDef)(using Context): Unit = tree.tpt match
+      case tpt: TypeTree if !tpt.isInferred =>
+        def checkType(tp: Type) = tp match
+          case tp @ CapturingType(_, refs) =>
+            if !tp.isBoxed then
+              for ref <- refs.elems do
+                if ref.isReach then
+                  ref.paramPathRoot match
+                    case tp: TermRef =>
+                      report.warning(
+                        em"""Reach capability $ref in function result refers to ${tp.symbol}.
+                            |To avoid errors of the form "Local reach capability $ref leaks into capture set ..."
+                            |you should replace the reach capability with a new capset variable in ${tree.symbol}.""",
+                        tree.tpt.srcPos)
+                    case _ =>
+          case _ =>
+        tpt.nuType.foreachPart(checkType, StopAt.Static)
+      case _ =>
+
+    /** If `tp` (possibly after widening singletons) is an ExprType
+     *  of a parameterless method, map Result instances in it to Fresh instances
+     */
+    def mapResultRoots(tp: Type, sym: Symbol)(using Context): Type =
+      tp.widenSingleton match
+        case tp: ExprType if sym.is(Method) =>
+          resultToFresh(tp, Origin.ResultInstance(tp, sym))
+        case _ =>
+          tp
 
     /** Rechecking idents involves:
      *   - adding call captures for idents referring to methods
@@ -1256,7 +1286,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       if Synthetics.isExcluded(sym) then sym.info
-      else
+      else {
         // Under the deferredReaches setting: If rhs ends in a closure or
         // anonymous class, the corresponding symbol
         def nestedClosure(rhs: Tree)(using Context): Symbol =
@@ -1283,6 +1313,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
+        checkNoUnboxedReaches(tree)
+
         try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
         finally
           if !sym.isAnonymousFunction then
@@ -1290,7 +1322,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             // so it is not in general sound to interpolate their types.
             interpolateIfInferred(tree.tpt, sym)
           curEnv = saved
-    end recheckDefDef
+      }
+
+    /** Is symbol exempt from checking that its type or uses clause must
+     *  be given explicitly? This is the case for symbols that are not
+     *  visible outside the compilation unit where they are defined,
+     *  and also for two pragmatic exemptions, explained below.
+     */
+    def isExemptFromExplicitChecks(sym: Symbol)(using Context): Boolean =
+      sym.isLocalToCompilationUnit
+      || ctx.owner.enclosingPackageClass.isEmptyPackage
+        // We make an exception for symbols in the empty package.
+        // these could theoretically be accessed from other files in the empty package, but
+        // usually it would be too annoying to require explicit types.
+      || sym.name.is(DefaultGetterName)
+        // Default getters are exempted since otherwise it would be
+        // too annoying. This is a hole since a defualt getter's result type
+        // might leak into a type variable.
 
     /** Two tests for member definitions with inferred types:
      *
@@ -1309,16 +1357,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
       val sym = tree.symbol
-
-      def isExemptFromChecks =
-        ctx.owner.enclosingPackageClass.isEmptyPackage
-          // We make an exception for symbols in the empty package.
-          // these could theoretically be accessed from other files in the empty package, but
-          // usually it would be too annoying to require explicit types.
-        || sym.name.is(DefaultGetterName)
-          // Default getters are exempted since otherwise it would be
-          // too annoying. This is a hole since a defualt getter's result type
-          // might leak into a type variable.
 
       def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
@@ -1349,9 +1387,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt match
         case tpt: InferredTypeTree =>
           // Test point (1) of doc comment above
-          if !sym.isLocalToCompilationUnit && !isExemptFromChecks
-            // Symbols that can't be seen outside the compilation unit can have inferred types
-          then
+          if !isExemptFromExplicitChecks(sym) then // Symbols that can't be seen outside the compilation unit can have inferred types
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
               withCapAsRoot:
@@ -1432,6 +1468,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
 
+      def checkExplicitUses(sym: Symbol): Unit = capturedVars(sym) match
+        case cs: CaptureSet.Var
+        if !cs.elems.isEmpty && !isExemptFromExplicitChecks(sym) =>
+          val usesStr = if sym.isClass then "uses" else "uses_init"
+          report.error(
+            em"""Publicly visible $sym uses external capabilities $cs.
+               |These dependencies need to be declared explicitly in a `$usesStr ...` clause.""",
+            sym.srcPos)
+        case _ =>
+
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
@@ -1466,6 +1512,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         super.recheckClassDef(tree, impl, cls)
       finally
+        checkExplicitUses(cls)
+        checkExplicitUses(cls.primaryConstructor)
         completed += cls
         curEnv = saved
     end recheckClassDef

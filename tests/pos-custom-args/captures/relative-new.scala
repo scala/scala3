@@ -1,10 +1,11 @@
 class File
 
-class A:
+class A {
   val f: File^ = File()
 
-  class B:
-    def show = println(f)
+  class B uses A.this.f:
+    def show = Console.println(f.toString)
+}
 
 def test =
   val a = A()

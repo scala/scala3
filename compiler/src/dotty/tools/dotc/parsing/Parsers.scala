@@ -4694,7 +4694,10 @@ object Parsers {
       else Nil
 
     /** Template          ::=  InheritClauses [TemplateBody]
-     *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+     *  InheritClauses    ::=  [‘extends’ ConstrApps]
+     *                         [‘derives’ QualId {‘,’ QualId}]
+     *                         [‘uses’ CaptureRef {‘,’ CaptureRef}]
+     *                         [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
       val parents =
@@ -4711,24 +4714,40 @@ object Parsers {
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
       val derived =
-        if (isIdent(nme.derives)) {
+        if isIdent(nme.derives) then
           in.nextToken()
           commaSeparated(() => convertToTypeId(qualId()))
-        }
         else Nil
+      newLinesOptWhenFollowedBy(nme.uses)
+      var classUses =
+        if isIdent(nme.uses) then
+          in.nextToken()
+          concreteCapsType(commaSeparated(captureRef)) :: Nil
+        else Nil
+      newLinesOptWhenFollowedBy(nme.uses_init)
+      var constructorUses =
+        if isIdent(nme.uses_init)then
+          in.nextToken()
+          concreteCapsType(commaSeparated(captureRef)) :: Nil
+        else Nil
+      if classUses.isEmpty && constructorUses.nonEmpty then
+        classUses = concreteCapsType(Nil) :: Nil
+      if constructorUses.isEmpty && classUses.nonEmpty then
+        constructorUses = concreteCapsType(Nil) :: Nil
+      val derivedAndUses = derived ++ classUses ++ constructorUses
       possibleTemplateStart()
       if isEnum then
         val (self, stats) = withinEnum(templateBody(parents))
-        Template(constr, parents, derived, self, stats)
+        Template(constr, parents, derivedAndUses, self, stats)
       else
-        templateBodyOpt(constr, parents, derived)
+        templateBodyOpt(constr, parents, derivedAndUses)
     }
 
     /** TemplateOpt = [Template]
      */
     def templateOpt(constr: DefDef): Template =
       newLinesOptWhenFollowedBy(nme.derives)
-      if in.token == EXTENDS || isIdent(nme.derives) then
+      if in.token == EXTENDS || isIdent(nme.derives) || isIdent(nme.uses) || isIdent(nme.uses_init) then
         template(constr)
       else
         possibleTemplateStart()
