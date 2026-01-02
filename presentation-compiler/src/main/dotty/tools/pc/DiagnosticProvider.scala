@@ -15,7 +15,6 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.VirtualFileParams
 
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
-
   def diagnostics(): List[lsp4j.Diagnostic] =
     if params.shouldReturnDiagnostics then
       val diags = driver.run(params.uri().nn, params.text().nn)
@@ -25,11 +24,16 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
     Option.when(diag.pos.exists):
+      val explanation =
+        if Diagnostic.shouldExplain(diag)
+        then
+          "\n\n# Explanation (enabled by `-explain`)\n\n" + diag.msg.explanation
+        else ""
       val lspDiag = lsp4j.Diagnostic(
         diag.pos.toLsp,
-        diag.msg.message,
+        diag.msg.message + explanation,
         toDiagnosticSeverity(diag.level),
-        "presentation compiler",
+        "presentation compiler"
       )
       lspDiag.setCode(diag.msg.errorId.errorNumber)
 
@@ -45,7 +49,8 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
     val lspAction = lsp4j.CodeAction(action.title)
     lspAction.setKind(lsp4j.CodeActionKind.QuickFix)
     lspAction.setIsPreferred(true)
-    val edits = action.patches.groupBy(_.srcPos.source.path)
+    val edits = action.patches
+      .groupBy(_.srcPos.source.path)
       .map((path, actions) => path -> (actions.map(toLspTextEdit).asJava))
       .asJava
 
@@ -54,8 +59,12 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
     lspAction
 
   private def toLspTextEdit(actionPatch: ActionPatch): lsp4j.TextEdit =
-    val startPos = lsp4j.Position(actionPatch.srcPos.startLine, actionPatch.srcPos.startColumn)
-    val endPos   = lsp4j.Position(actionPatch.srcPos.endLine, actionPatch.srcPos.endColumn)
+    val startPos = lsp4j.Position(
+      actionPatch.srcPos.startLine,
+      actionPatch.srcPos.startColumn
+    )
+    val endPos =
+      lsp4j.Position(actionPatch.srcPos.endLine, actionPatch.srcPos.endColumn)
     val range = lsp4j.Range(startPos, endPos)
     lsp4j.TextEdit(range, actionPatch.replacement)
 

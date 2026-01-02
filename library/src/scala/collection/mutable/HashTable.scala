@@ -131,7 +131,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     foreachEntry(writeEntry)
   }
 
-  /** Find entry with given key in table, null if not found.
+  /** Finds entry with given key in table, null if not found.
    */
   final def findEntry(key: A): Entry | Null =
     findEntry0(key, index(elemHashCode(key)))
@@ -142,7 +142,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     e
   }
 
-  /** Add entry to table
+  /** Adds entry to table
    *  pre: no entry with same key exists
    */
   protected[collection] final def addEntry(e: Entry): Unit = {
@@ -158,7 +158,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
       resize(2 * table.length)
   }
 
-  /** Find entry with given key in table, or add new one if not found.
+  /** Finds entry with given key in table, or adds new one if not found.
    *  May be somewhat faster then `findEntry`/`addEntry` pair as it
    *  computes entry's hash index only once.
    *  Returns entry found in table or null.
@@ -176,12 +176,12 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    */
   def createNewEntry(key: A, value: B): Entry
 
-  /** Remove entry from table if present.
+  /** Removes entry from table if present.
    */
   final def removeEntry(key: A) : Entry | Null = {
     removeEntry0(key, index(elemHashCode(key)))
   }
-  /** Remove entry from table if present.
+  /** Removes entry from table if present.
    */
   private[collection] final def removeEntry0(key: A, h: Int) : Entry | Null = {
     var e = table(h).asInstanceOf[Entry | Null]
@@ -247,7 +247,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     }
   }
 
-  /** Remove all entries from table
+  /** Removes all entries from table
    */
   def clearTable(): Unit = {
     var i = table.length - 1

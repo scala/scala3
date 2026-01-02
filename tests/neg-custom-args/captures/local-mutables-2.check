@@ -1,0 +1,21 @@
+-- Error: tests/neg-custom-args/captures/local-mutables-2.scala:7:9 ----------------------------------------------------
+7 |def foo() = // error: separation failure
+  |         ^
+  |Separation failure in method foo's inferred result type (() ->{cap.rd} Int, Int => Unit)^{}.
+  |One part,  () ->{cap.rd} Int, hides capabilities  {cap².rd}.
+  |Another part,  Int => Unit,  captures capabilities  {cap³, cap, cap²}.
+  |The two sets overlap at  {cap of value r}.
+  |
+  |where:    => and cap³ refer to a fresh root capability classified as Unscoped in the result type of method foo
+  |          cap         is a fresh root capability classified as Unscoped in the type of value r
+  |          cap²        is a fresh root capability classified as Unscoped created in value r when constructing instance Ref
+-- Error: tests/neg-custom-args/captures/local-mutables-2.scala:11:10 --------------------------------------------------
+11 |def foo2() = // error: separation failure
+   |          ^
+   |        Separation failure in method foo2's inferred result type (() ->{cap.rd} Int, Int => Unit)^{}.
+   |        One part,  Int => Unit, hides capabilities  {cap}.
+   |        Another part,  () ->{cap.rd} Int,  captures capabilities  {cap.rd}.
+   |        The two sets overlap at  {cap of variable r}.
+   |
+   |        where:    =>  refers to a fresh root capability classified as Unscoped in the result type of method foo2
+   |                  cap is a fresh root capability classified as Unscoped in the type of variable r

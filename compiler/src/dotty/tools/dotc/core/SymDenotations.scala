@@ -799,13 +799,12 @@ object SymDenotations {
       *
       * Note, (f: => T) is treated as a stable TermRef only in Capture Sets.
       */
-    final def isStableMember(using Context): Boolean = {
+    final def isStableMember(using Context): Boolean =
       def isUnstableValue =
         isOneOf(UnstableValueFlags)
-        || !ctx.mode.is(Mode.InCaptureSet) && info.isInstanceOf[ExprType]
+        || info.isInstanceOf[ExprType]
         || isAllOf(InlineParam)
       isType || is(StableRealizable) || exists && !isUnstableValue
-    }
 
     /** Is this a denotation of a real class that does not have - either direct or inherited -
      *  initialization code?
@@ -1251,12 +1250,12 @@ object SymDenotations {
       || isClass
         && (!isOneOf(EffectivelyOpenFlags) || isLocalToCompilationUnit)
 
-    final def isLocalToCompilationUnitIgnoringPrivate(using Context): Boolean =
-      owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
-      || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
-
+    /** Is symbol visible only in the current compilation unit? */
     final def isLocalToCompilationUnit(using Context): Boolean =
-      is(Private) || isLocalToCompilationUnitIgnoringPrivate
+      is(Private)
+      || owner.isTerm
+      || privateWithin.exists && !privateWithin.is(Package)
+      || !owner.is(Package) && owner.isLocalToCompilationUnit
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType) || defn.isAssumedTransparent(symbol)
@@ -1889,7 +1888,7 @@ object SymDenotations {
       myBaseTypeCache.nn
     }
 
-    private def invalidateBaseDataCache() = {
+    def invalidateBaseDataCache() = {
       baseDataCache.invalidate()
       baseDataCache = BaseData.None
     }

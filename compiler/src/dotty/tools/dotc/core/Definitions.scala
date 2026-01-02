@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType}
+import cc.{CaptureSet, RetainingAnnotation}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -122,8 +122,9 @@ class Definitions {
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
-              tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      captureRoot.termRef)
+              tl => AnnotatedType(
+                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -1026,9 +1027,11 @@ class Definitions {
     @tu lazy val Caps_unsafeDiscardUses: Symbol = CapsUnsafeModule.requiredMethod("unsafeDiscardUses")
     @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
+    @tu lazy val Caps_Shared: TypeSymbol = CapsModule.requiredType("Shared")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_freeze: TermSymbol = CapsModule.requiredMethod("freeze")
+    @tu lazy val Caps_Var: ClassSymbol = requiredClass("scala.caps.internal.Var")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
@@ -1081,6 +1084,7 @@ class Definitions {
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
+  @tu lazy val UncheckedOverrideAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedOverride")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
@@ -1348,8 +1352,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refSet)
+      case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
+        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
@@ -1987,10 +1991,10 @@ class Definitions {
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
     Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
-    RequiresCapabilityAnnot,
+    Caps_Shared, RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
-    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 

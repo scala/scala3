@@ -18,7 +18,7 @@ private[scala] object Predef:
     if !assertion then scala.runtime.Scala3RunTime.assertFailed()
 
   /**
-   * Retrieve the single value of a type with a unique inhabitant.
+   * Retrieves the single value of a type with a unique inhabitant.
    *
    * @example {{{
    * object Foo

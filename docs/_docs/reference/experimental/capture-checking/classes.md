@@ -45,7 +45,9 @@ Here class `Super` has local capability `a`, which gets inherited by class
 `Sub` and is combined with `Sub`'s own local capability `b`. Class `Sub` also has an argument capability corresponding to its parameter `x`. This capability gets instantiated to `c` in the final constructor call `Sub(c)`. Hence,
 the capture set of that call is `{a, b, c}`.
 
-The capture set of the type of `this` of a class is inferred by the capture checker, unless the type is explicitly declared with a self type annotation like this one:
+## Capture Set of This
+
+The capture set of the type of `this` of a class is inferred by the capture checker, unless the type is explicitly declared with a self-type annotation like this one:
 ```scala
 class C:
   self: D^{a, b} => ...
@@ -73,7 +75,69 @@ we know that the type of `this` must be pure, since `this` is the right hand sid
    |       of the enclosing class A
 ```
 
-## Capture Tunnelling
+### Traits and Open Classes
+
+The self-type inference behaves differently depending on whether all subclasses of a class are known. For a regular (non-open, non-abstract) class, all subclasses are known at compile time,¹ so the capture checker can precisely infer the self-type. However, for traits, abstract classes, and [`open`](../../other-new-features/open-classes.md) classes, arbitrary subclasses may exist, so the capture checker conservatively assumes that `this` may capture arbitrary capabilities
+(i.e., it infers the universal capture set `cap`).
+
+¹We ignore here the possibility that non-open classes have subclasses in other compilation units (e.g. for testing) and assume that these subclasses do not change the inferred self type.
+
+For example (assuming all definitions are in the same file):
+```scala
+class A:
+  def fn: A = this   // ok
+
+trait B:
+  def fn: B = this   // error
+  def fn2: B^ = this // ok
+
+abstract class C:
+  def fn: C = this   // error
+  def fn2: C^ = this // ok
+
+sealed abstract class D:
+  def fn: D = this   // ok
+
+object D0 extends D
+
+open class E:
+  def fn: E = this   // error
+  def fn2: E^ = this // ok
+```
+
+### Inheritance
+
+The capture set of `this` of a class or trait also serves as an upper bound of the possible capture
+sets of extending classes
+```scala
+abstract class Root:
+  this: Root^ => // the default, can capture anything
+
+abstract class Sub extends Root:
+  this: Sub^{a, b} => // ok, refinement {a, b} <: {cap}
+
+class SubGood extends Sub:
+  val fld: AnyRef^{a} = a // ok, {a} included in {a, b}
+
+class SubBad extends Sub:
+  val fld: IO^{io} = io // error, {io} not included in the this capture set {a, b}
+
+class SubBad2 extends Sub:
+  this: SubBad2^{io} => // error, self type SubBad2^{e} does not conform to Sub^{c, d}
+```
+
+Generally, the further up a class hierarchy we go, the more permissive/impure the `this` capture set
+of a class will be (and the more restrictive/pure it will be if we traverse the hierarchy downwards).
+For example, Scala 3's top reference type `AnyRef`/`Object` conceptually has the universal
+capability
+```scala
+class AnyRef:
+  this: AnyRef^ =>
+  // ...
+```
+Similarly, pure `Iterator`s are subtypes of impure ones.
+
+## Capture Tunneling
 
 Consider the following simple definition of a `Pair` class:
 ```scala
@@ -93,7 +157,7 @@ def p: Pair[Int ->{ct} String, Logger^{fs}] = Pair(x, y)
 ```
 This might seem surprising. The `Pair(x, y)` value does capture capabilities `ct` and `fs`. Why don't they show up in its type at the outside?
 
-The answer is capture tunnelling. Once a type variable is instantiated to a capturing type, the
+The answer is capture tunneling. Once a type variable is instantiated to a capturing type, the
 capture is not propagated beyond this point. On the other hand, if the type variable is instantiated
 again on access, the capture information "pops out" again. For instance, even though `p` is technically pure because its capture set is empty, writing `p.fst` would record a reference to the captured capability `ct`. So if this access was put in a closure, the capability would again form part of the outer capture set. E.g.
 ```scala
@@ -144,7 +208,7 @@ end LzyCons
 The `LzyCons` class takes two parameters: A head `hd` and a tail `tl`, which is a function
 returning a `LzyList`. Both the function and its result can capture arbitrary capabilities.
 The result of applying the function is memoized after the first dereference of `tail` in
-the private mutable field `cache`. Note that the typing of the assignment `cache = tl()` relies on the monotonicity rule for `{this}` capture sets.
+the private mutable field `cache`. Note that the typing of the assignment `cache = tl()` relies on the [monotonicity rule](basics.md#monotonicity-rule) for `{this}` capture sets.
 
 Here is an extension method to define an infix cons operator `#:` for lazy lists. It is analogous
 to `::` but instead of a strict list it produces a lazy list without evaluating its right operand.
@@ -204,7 +268,7 @@ Their capture annotations are all as one would expect:
  - Filtering a lazy list produces a lazy list that captures the original list as well
    as the (possibly impure) filtering predicate.
  - Concatenating two lazy lists produces a lazy list that captures both arguments.
- - Dropping elements from a lazy list gives a safe approximation where the original list is captured in the result. In fact, it's only some suffix of the list that is retained at run time, but our modelling identifies lazy lists and their suffixes, so this additional knowledge would not be useful.
+ - Dropping elements from a lazy list gives a safe approximation where the original list is captured in the result. In fact, it's only some suffix of the list that is retained at run time, but our modeling identifies lazy lists and their suffixes, so this additional knowledge would not be useful.
 
 Of course the function passed to `map` or `filter` could also be pure. After all, `A -> B` is a subtype of `(A -> B)^{cap}` which is the same as `A => B`. In that case, the pure function
 argument will _not_ show up in the result type of `map` or `filter`. For instance:
@@ -218,7 +282,7 @@ argument does not show up since it is pure. Likewise, if the lazy list
 This demonstrates that capability-based
 effect systems with capture checking are naturally _effect polymorphic_.
 
-This concludes our example. It's worth mentioning that an equivalent program defining and using standard, strict lists would require no capture annotations whatsoever. It would compile exactly as written now in standard Scala 3, yet one gets the capture checking for free. Essentially, `=>` already means "can capture anything" and since in a strict list side effecting operations are not retained in the result, there are no additional captures to record. A strict list could of course capture side-effecting closures in its elements but then tunnelling applies, since
+This concludes our example. It's worth mentioning that an equivalent program defining and using standard, strict lists would require no capture annotations whatsoever. It would compile exactly as written now in standard Scala 3, yet one gets the capture checking for free. Essentially, `=>` already means "can capture anything" and since in a strict list side effecting operations are not retained in the result, there are no additional captures to record. A strict list could of course capture side-effecting closures in its elements but then tunneling applies, since
 these elements are represented by a type variable. This means we don't need to annotate anything there either.
 
 Another possibility would be a variant of lazy lists that requires all functions passed to `map`, `filter` and other operations like it to be pure. E.g. `map` on such a list would be defined like this:

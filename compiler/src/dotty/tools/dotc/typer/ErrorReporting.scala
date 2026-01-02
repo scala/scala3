@@ -14,6 +14,7 @@ import config.Feature
 import reporting.*
 import Message.Note
 import collection.mutable
+import cc.isCaptureChecking
 
 object ErrorReporting {
 
@@ -190,7 +191,13 @@ object ErrorReporting {
         case _ =>
           Nil
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ missingElse))
+      def badTreeNote =
+        val span = tree.span
+        if tree.span.isZeroExtent && isCaptureChecking then
+          Note(i"\n\nThe error occurred for a synthesized tree:  $tree") :: Nil
+        else Nil
+
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ missingElse ++ badTreeNote))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */

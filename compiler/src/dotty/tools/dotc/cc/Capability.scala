@@ -459,6 +459,18 @@ object Capabilities:
       case self: CoreCapability => self.isTrackableRef
       case _ => true
 
+    /** Under separation checking: Is this a mutable var owned by a term that is
+     *  not annotated with @untrackedCaptures? Such mutable variables need to be
+     *  tracked as capabilities. Since mutable variables are not trackable, we do
+     *  this by adding a varMirror symbol to such variables which represents the capability.
+     */
+    final def isLocalMutable(using Context): Boolean = this match
+      case tp @ TermRef(NoPrefix, _) =>
+        ccConfig.newScheme && ccConfig.strictMutability
+        && tp.symbol.isMutableVar
+        && !tp.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
+      case _ => false
+
     /** The non-derived capability underlying this capability */
     final def core: CoreCapability | RootCapability = this match
       case self: (CoreCapability | RootCapability) => self
@@ -1035,14 +1047,13 @@ object Capabilities:
       else t match
         case t @ CapturingType(_, _) =>
           mapOver(t)
+        case t @ AnnotatedType(parent, ann: RetainingAnnotation)
+        if ann.isStrict && ann.toCaptureSet.containsCap =>
+          // Applying `this` can cause infinite recursion in some cases during printing.
+          // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
+          mapOver(CapturingType(this(parent), ann.toCaptureSet))
         case t @ AnnotatedType(parent, ann) =>
-          val parent1 = this(parent)
-          if ann.symbol.isRetains && ann.tree.toCaptureSet.containsCap then
-            // Applying `this` can cause infinite recursion in some cases during printing.
-            // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
-            mapOver(CapturingType(parent1, ann.tree.toCaptureSet))
-          else
-            t.derivedAnnotatedType(parent1, ann)
+          t.derivedAnnotatedType(this(parent), ann)
         case defn.RefinedFunctionOf(_) =>
           t  // stop at dependent function types
         case _ =>

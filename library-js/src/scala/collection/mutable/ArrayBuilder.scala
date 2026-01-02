@@ -54,10 +54,10 @@ sealed abstract class ArrayBuilder[T]
 
   protected[this] def resize(size: Int): Unit
 
-  /** Add all elements of an array */
+  /** Adds all elements of an array. */
   def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
 
-  /** Add a slice of an array */
+  /** Adds a slice of an array. */
   def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
     ensureSize(this.size + length)
     Array.copy(xs, offset, elems.nn, this.size, length)
@@ -146,7 +146,7 @@ object ArrayBuilder {
       this
     }
 
-    /** Add a slice of an array */
+    /** Adds a slice of an array. */
     override def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
       val end = offset + length
       var i = offset

@@ -38,7 +38,7 @@ object ScalaRunTime {
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
-  /** Return the class object representing an array with element class `clazz`.
+  /** Returns the class object representing an array with element class `clazz`.
    */
   def arrayClass(clazz: jClass[?]): jClass[?] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
@@ -46,14 +46,14 @@ object ScalaRunTime {
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
   }
 
-  /** Return the class object representing an unboxed value type,
+  /** Returns the class object representing an unboxed value type,
    *  e.g., classOf[int], not classOf[java.lang.Integer].  The compiler
    *  rewrites expressions like 5.getClass to come here.
    */
   def anyValClass[T <: AnyVal : ClassTag](value: T): jClass[T] =
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
-  /** Retrieve generic array element */
+  /** Retrieves generic array element. */
   def array_apply(xs: AnyRef, idx: Int): Any = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx).asInstanceOf[Any]
@@ -69,7 +69,7 @@ object ScalaRunTime {
     }
   }
 
-  /** update generic array element */
+  /** Updates generic array element. */
   def array_update(xs: AnyRef, idx: Int, value: Any): Unit = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx) = value.asInstanceOf[AnyRef]
@@ -85,7 +85,7 @@ object ScalaRunTime {
     }
   }
 
-  /** Get generic array length */
+  /** Gets generic array length. */
   @inline def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
@@ -103,7 +103,7 @@ object ScalaRunTime {
     case null => throw new NullPointerException
   }
 
-  /** Convert an array to an object array.
+  /** Converts an array to an object array.
    *  Needed to deal with vararg arguments of primitive types that are passed
    *  to a generic Java vararg parameter T ...
    */
@@ -289,20 +289,23 @@ object ScalaRunTime {
   // Use `null` in places where we want to make sure the reference is cleared.
   private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
 
-  // Convert arrays to immutable.ArraySeq for use with Scala varargs.
-  // By construction, calls to these methods always receive a fresh (and non-null), non-empty array.
-  // In cases where an empty array would appear, the compiler uses a direct reference to Nil instead.
-  // Synthetic Java varargs forwarders (@annotation.varargs or varargs bridges when overriding) may pass
-  // `null` to these methods; but returning `null` or `ArraySeq(null)` makes little difference in practice.
-  def genericWrapArray[T](xs: Array[T]): ArraySeq[T] = ArraySeq.unsafeWrapArray(xs)
-  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
-  def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = new ArraySeq.ofInt(xs)
-  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = new ArraySeq.ofDouble(xs)
-  def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = new ArraySeq.ofLong(xs)
-  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float] = new ArraySeq.ofFloat(xs)
-  def wrapCharArray(xs: Array[Char]): ArraySeq[Char] = new ArraySeq.ofChar(xs)
-  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte] = new ArraySeq.ofByte(xs)
-  def wrapShortArray(xs: Array[Short]): ArraySeq[Short] = new ArraySeq.ofShort(xs)
-  def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean] = new ArraySeq.ofBoolean(xs)
-  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit] = new ArraySeq.ofUnit(xs)
+  // Convert an array to an immutable.ArraySeq for use with Scala varargs.
+  // `foo(x, y)` is compiled to `foo(wrapXArray(Array(x, y))).
+  // For `foo()`, the Scala 2 compiler uses a reference to `Nil` instead; Scala 3 doesn't have this special case.
+  //
+  // The `null` checks are there for backwards compatibility. They were removed in 2.13.17 (scala/scala#11021)
+  // which led to a ticket in Scala 3 (scala/scala3#24204). The argument may be null:
+  //   - When calling a Scala `@varargs` method from Java
+  //   - When using an array as sequence argument in Scala 3: `foo((null: Array[X])*)`
+  def genericWrapArray[T](xs: Array[T]): ArraySeq[T]              = mapNull(xs, ArraySeq.unsafeWrapArray(xs))
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = mapNull(xs, new ArraySeq.ofRef[T](xs))
+  def wrapIntArray(xs: Array[Int]): ArraySeq[Int]                 = mapNull(xs, new ArraySeq.ofInt(xs))
+  def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double]        = mapNull(xs, new ArraySeq.ofDouble(xs))
+  def wrapLongArray(xs: Array[Long]): ArraySeq[Long]              = mapNull(xs, new ArraySeq.ofLong(xs))
+  def wrapFloatArray(xs: Array[Float]): ArraySeq[Float]           = mapNull(xs, new ArraySeq.ofFloat(xs))
+  def wrapCharArray(xs: Array[Char]): ArraySeq[Char]              = mapNull(xs, new ArraySeq.ofChar(xs))
+  def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte]              = mapNull(xs, new ArraySeq.ofByte(xs))
+  def wrapShortArray(xs: Array[Short]): ArraySeq[Short]           = mapNull(xs, new ArraySeq.ofShort(xs))
+  def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean]     = mapNull(xs, new ArraySeq.ofBoolean(xs))
+  def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit]              = mapNull(xs, new ArraySeq.ofUnit(xs))
 }

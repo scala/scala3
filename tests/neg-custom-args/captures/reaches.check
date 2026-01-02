@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:20:13 --------------------------------------
 20 |  usingFile: f => // error
    |             ^
-   |Found:    (f: File^'s1) ->'s2 Unit
+   |Found:    (f: File^'s1) ->{cur} Unit
    |Required: File^ => Unit
    |
    |Note that capability cap is not included in capture set {C}.
@@ -9,20 +9,22 @@
    |where:    =>  refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
    |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Unit of parameter parameter f² of method $anonfun
+   |
 21 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:30:13 --------------------------------------
 30 |  usingFile: f => // error
    |             ^
-   |Found:    (f: File^'s3) ->'s4 Unit
+   |Found:    (f: File^'s2) ->{cur} Unit
    |Required: File^ => Unit
    |
    |Note that capability cap cannot be included in capture set {C} of value cur.
    |
    |where:    =>  refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
-   |          cap is a fresh root capability created in anonymous function of type (f: File^'s3): Unit of parameter parameter f² of method $anonfun
+   |          cap is a fresh root capability created in anonymous function of type (f: File^'s2): Unit of parameter parameter f² of method $anonfun
+   |
 31 |    cur.set:
 32 |      (() => f.write()) :: Nil
    |
@@ -44,7 +46,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:57:27 --------------------------------------
 57 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
-   |          Found:    (x: File^) ->'s5 File^²
+   |          Found:    (x: File^) ->'s3 File^²
    |          Required: File^ -> File^³
    |
    |          Note that capability cap is not included in capture set {cap²}
@@ -69,8 +71,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:85:10 --------------------------------------
 85 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (A^ ->'s6 A^'s7, A^ ->'s8 A^'s9)^'s10) ->'s11 A^'s12 ->'s13 A^'s14
-   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s15 ->'s16 A^'s17
+   |Found:    (x$1: (A^ ->'s4 A^'s5, A^ ->'s6 A^'s7)^'s8) ->'s9 A^'s10 ->'s11 A^'s12
+   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s13 ->'s14 A^'s15
    |
    |Note that capability ps* cannot be included in capture set {} of value x.
    |
@@ -81,8 +83,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:88:10 --------------------------------------
 88 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (A^ ->'s18 A^'s19, A^ ->'s20 A^'s21)^'s22) ->'s23 A^'s24 ->'s25 A^'s26
-   |Required: ((A ->{C} A, A ->{C} A)) => A^'s27 ->'s28 A^'s29
+   |Found:    (x$1: (A^ ->'s16 A^'s17, A^ ->'s18 A^'s19)^'s20) ->'s21 A^'s22 ->'s23 A^'s24
+   |Required: ((A ->{C} A, A ->{C} A)) => A^'s25 ->'s26 A^'s27
    |
    |Note that capability C cannot be included in capture set {} of value x.
    |
@@ -106,12 +108,13 @@
    |        Local cap created in type of parameter x leaks into capture scope of an enclosing function
    |
    |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
+   |
 61 |    val f1: File^{id*} = id(f)
 62 |    f1
 -- Error: tests/neg-custom-args/captures/reaches.scala:42:9 ------------------------------------------------------------
 42 |  val cur = Ref[List[Proc]](xs) // error
    |         ^
-   |         Separation failure: value cur's inferred type Ref[List[() => Unit]^{}]^{} hides parameter xs.
+   |         Separation failure: value cur's inferred type Ref[List[() => Unit]^{}]^ hides parameter xs.
    |         The parameter needs to be annotated with consume to allow this.
 -- Error: tests/neg-custom-args/captures/reaches.scala:44:17 -----------------------------------------------------------
 44 |    val next: () => Unit = cur.get.head // error // error

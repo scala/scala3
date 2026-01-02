@@ -16,7 +16,7 @@
    |                              Note that capability console is not included in capture set {x}.
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/lazyvals.scala:16:18 ----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/lazyvals.scala:16:12 ----------------------------------------------------------
 16 |  val fun3: () ->{x} String = () => x() // error // error
-   |                  ^
-   |                  (x : () -> String) cannot be tracked since its capture set is empty
+   |            ^^^^^^^^^^^^^^^
+   |            (x : () -> String) cannot be tracked since its capture set is empty

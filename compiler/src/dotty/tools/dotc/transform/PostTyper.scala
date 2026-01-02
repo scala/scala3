@@ -201,8 +201,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try
-        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
-          then ctx.addMode(Mode.InCaptureSet) else ctx
+        val annotCtx =
+          if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet)
+          else ctx
         transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
@@ -650,7 +652,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-          Checking.checkRealizable(ref.tpe, ref.srcPos)
+          if !ctx.mode.is(Mode.InCaptureSet) then
+            Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
         case tree: TypeBoundsTree =>
           val TypeBoundsTree(lo, hi, alias) = tree

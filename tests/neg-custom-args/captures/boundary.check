@@ -10,6 +10,7 @@
    |
    |  where:    ^ and cap refer to the universal root capability
    |            ^²        refers to a fresh root capability classified as Control in the type of value local
+   |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error
  8 |      ???
@@ -45,8 +46,11 @@
    |
    |  Note that capability cap is not included in capture set {cap²}.
    |
+   |  The error occurred for a synthesized tree:  _
+   |
    |  where:    ^ and cap² refer to the universal root capability
    |            ^² and cap refer to a fresh root capability created in package <empty>
+   |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error
  8 |      ???

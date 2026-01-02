@@ -72,7 +72,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Test
-        run: sbt ";scala3-bootstrapped-new/compile ;scala3-compiler-bootstrapped-new/test"
+        run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
         shell: cmd
 
   publish_release:
@@ -125,7 +125,7 @@ jobs:
       - name: Check compiler version
         shell: bash
         run : |
-          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped-new/version" | tail -n1)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "This build version: ${version}"
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
@@ -133,7 +133,6 @@ jobs:
           fi
 
       - name: Prepare the SDKs
-        if: false # TODO: Requires changes to dist targets, to be done before stable release
         shell: bash
         run : |
           prepareSDK() {
@@ -160,13 +159,11 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        if: false # TODO: Requires changes to dist targets, to be done before stable release
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: scala.msi
           path: .
       - name: Prepare MSI package
-        if: false # TODO: Requires changes to dist targets, to be done before stable release
         shell: bash
         run: |
           msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
@@ -194,53 +191,52 @@ jobs:
           --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
           --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
           --verify-tag ${{ env.RELEASE_TAG }} \
-          # TODO: dist packaging for 3.8.0 stable release
-          # scala3-${{ env.RELEASE_TAG }}*.zip \
-          # scala3-${{ env.RELEASE_TAG }}*.tar.gz \
-          # scala3-${{ env.RELEASE_TAG }}*.sha256 \
-          # scala3-${{ env.RELEASE_TAG }}.msi
+          scala3-${{ env.RELEASE_TAG }}*.zip \
+          scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          scala3-${{ env.RELEASE_TAG }}*.sha256 \
+          scala3-${{ env.RELEASE_TAG }}.msi
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped-new ;publishSigned ;sonaUpload"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaUpload"
 
-  #build-msi-package:
-  #  uses: ./.github/workflows/build-msi.yml
-  #  if  :
-  #    (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
-  #    (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
+  build-msi-package:
+   uses: ./.github/workflows/build-msi.yml
+   if  :
+     (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
+     (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
 
-  #test-msi-package:
-  #  uses: ./.github/workflows/test-msi.yml
-  #  needs: [build-msi-package]
-  #  with:
-  #    # Ensure that version starts with prefix 3.
-  #    # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
-  #    version: "3."
-  #    java-version: 17
+  test-msi-package:
+   uses: ./.github/workflows/test-msi.yml
+   needs: [build-msi-package]
+   with:
+     # Ensure that version starts with prefix 3.
+     # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
+     version: "3."
+     java-version: 17
 
-  #build-sdk-package:
-  #  uses: ./.github/workflows/build-sdk.yml
-  #  if:
-  #    (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
-  #    (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
-  #    (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
-  #    github.event_name == 'push' ||
-  #    github.event_name == 'merge_group'
-  #  with:
-  #    java-version: 17
+  build-sdk-package:
+   uses: ./.github/workflows/build-sdk.yml
+   if:
+     (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+     (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+     (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
+     github.event_name == 'push' ||
+     github.event_name == 'merge_group'
+   with:
+     java-version: 17
 
-  #build-chocolatey-package:
-  #  uses: ./.github/workflows/build-chocolatey.yml
-  #  needs: [ build-sdk-package ]
-  #  with:
-  #    version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-  #    url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
-  #    digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
+  build-chocolatey-package:
+   uses: ./.github/workflows/build-chocolatey.yml
+   needs: [ build-sdk-package ]
+   with:
+     version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
+     url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+     digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
 
-  #test-chocolatey-package:
-  #  uses: ./.github/workflows/test-chocolatey.yml
-  #  with:
-  #    version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-  #    java-version: 17
-  #  if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
-  #  needs: [ build-chocolatey-package ]
+  test-chocolatey-package:
+   uses: ./.github/workflows/test-chocolatey.yml
+   with:
+     version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
+     java-version: 17
+   if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
+   needs: [ build-chocolatey-package ]

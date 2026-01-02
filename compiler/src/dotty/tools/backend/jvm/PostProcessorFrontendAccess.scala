@@ -119,7 +119,7 @@ object PostProcessorFrontendAccess {
           case (Some(release), Some(_)) =>
             report.warning(s"The value of ${s.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
             release
-          case (None, None) => "8" // least supported version by default
+          case (None, None) => "17" // least supported version by default
 
       override val experimental = s.YvalueClasses.value
 

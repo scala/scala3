@@ -12,7 +12,8 @@ private final class ConcatIterator[+A](val from: Iterator[A @uncheckedVariance]^
   }
 }
 
-private final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: ConcatIteratorCell[A]^) {
-  def headIterator: Iterator[A]^{this} = head.iterator
-}
+private final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: ConcatIteratorCell[A]^)
+extends caps.Stateful:
+  update def headIterator: Iterator[A]^{this} = head.iterator
+
 

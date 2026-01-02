@@ -210,7 +210,9 @@ object SymbolLoaders {
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
   def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(using Context): Unit =
-    ((classRep.binary, classRep.source): @unchecked) match {
+    // module-info is a special class added by JPMS (Java 9+) that cannot be parsed like a normal class
+    if classRep.name != "module-info" then
+      ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, nameOf(classRep), src)

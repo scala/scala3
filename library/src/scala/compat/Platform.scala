@@ -141,7 +141,7 @@ object Platform {
   @deprecated("Use `java.lang.System#gc` instead.", since = "2.13.0")
   def collectGarbage(): Unit = System.gc()
 
-  /** The name of the default character set encoding as a string */
+  /** The name of the default character set encoding as a string. */
   @inline
   @deprecated("Use `java.nio.charset.Charset.defaultCharset#name` instead.", since = "2.13.0")
   def defaultCharsetName: String = java.nio.charset.Charset.defaultCharset.name

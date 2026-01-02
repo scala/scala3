@@ -61,7 +61,7 @@ object Array {
     val emptyObjectArray  = new Array[Object](0)
   }
 
-  /** Provides an implicit conversion from the Array object to a collection Factory */
+  /** Provides an implicit conversion from the Array object to a collection Factory. */
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
@@ -109,7 +109,7 @@ object Array {
     }
   }
 
-  /** Copy one array to another.
+  /** Copies one array to another.
    *  Equivalent to Java's
    *    `System.arraycopy(src, srcPos, dest, destPos, length)`,
    *  except that this also works for polymorphic and boxed arrays.
@@ -132,7 +132,7 @@ object Array {
       slowcopy(src, srcPos, dest, destPos, length)
   }
 
-  /** Copy one array to another, truncating or padding with default values (if
+  /** Copies one array to another, truncating or padding with default values (if
     * necessary) so the copy has the specified length.
     *
     * Equivalent to Java's
@@ -154,7 +154,7 @@ object Array {
     case x: Array[Boolean]    => java.util.Arrays.copyOf(x, newLength)
   }).asInstanceOf[Array[A]]
 
-  /** Copy one array to another, truncating or padding with default values (if
+  /** Copies one array to another, truncating or padding with default values (if
     * necessary) so the copy has the specified length. The new array can have
     * a different type than the original one as long as the values are
     * assignment-compatible. When copying between primitive and object arrays,
@@ -192,7 +192,7 @@ object Array {
     result
   }
 
-  /** Returns an array of length 0 */
+  /** Returns an array of length 0. */
   def empty[T: ClassTag]: Array[T] = new Array[T](0)
 
   /** Creates an array with given elements.
@@ -212,7 +212,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Boolean` objects */
+  /** Creates an array of `Boolean` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Boolean, xs: Boolean*): Array[Boolean] = {
     val array = new Array[Boolean](xs.length + 1)
@@ -225,7 +225,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Byte` objects */
+  /** Creates an array of `Byte` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Byte, xs: Byte*): Array[Byte] = {
     val array = new Array[Byte](xs.length + 1)
@@ -238,7 +238,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Short` objects */
+  /** Creates an array of `Short` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Short, xs: Short*): Array[Short] = {
     val array = new Array[Short](xs.length + 1)
@@ -251,7 +251,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Char` objects */
+  /** Creates an array of `Char` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Char, xs: Char*): Array[Char] = {
     val array = new Array[Char](xs.length + 1)
@@ -264,7 +264,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Int` objects */
+  /** Creates an array of `Int` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Int, xs: Int*): Array[Int] = {
     val array = new Array[Int](xs.length + 1)
@@ -277,7 +277,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Long` objects */
+  /** Creates an array of `Long` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Long, xs: Long*): Array[Long] = {
     val array = new Array[Long](xs.length + 1)
@@ -290,7 +290,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Float` objects */
+  /** Creates an array of `Float` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Float, xs: Float*): Array[Float] = {
     val array = new Array[Float](xs.length + 1)
@@ -303,7 +303,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Double` objects */
+  /** Creates an array of `Double` objects. */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Double, xs: Double*): Array[Double] = {
     val array = new Array[Double](xs.length + 1)
@@ -316,7 +316,7 @@ object Array {
     array
   }
 
-  /** Creates an array of `Unit` objects */
+  /** Creates an array of `Unit` objects. */
   def apply(x: Unit, xs: Unit*): Array[Unit] = {
     val array = new Array[Unit](xs.length + 1)
     array(0) = x
@@ -328,23 +328,23 @@ object Array {
     array
   }
 
-  /** Creates array with given dimensions */
+  /** Creates array with given dimensions. */
   def ofDim[T: ClassTag](n1: Int): Array[T] =
     new Array[T](n1)
-  /** Creates a 2-dimensional array */
+  /** Creates a 2-dimensional array. */
   def ofDim[T: ClassTag](n1: Int, n2: Int): Array[Array[T]] = {
     val arr: Array[Array[T]] = (new Array[Array[T]](n1): Array[Array[T]])
     for (i <- 0 until n1) arr(i) = new Array[T](n2)
     arr
     // tabulate(n1)(_ => ofDim[T](n2))
   }
-  /** Creates a 3-dimensional array */
+  /** Creates a 3-dimensional array. */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int): Array[Array[Array[T]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3))
-  /** Creates a 4-dimensional array */
+  /** Creates a 4-dimensional array. */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int): Array[Array[Array[Array[T]]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3, n4))
-  /** Creates a 5-dimensional array */
+  /** Creates a 5-dimensional array. */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int): Array[Array[Array[Array[Array[T]]]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3, n4, n5))
 
@@ -662,7 +662,7 @@ object Array {
  */
 final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self =>
 
-  /** The length of the array */
+  /** The length of the array. */
   def length: Int = throw new Error()
 
   /** The element at given index.
@@ -676,7 +676,7 @@ final class Array[T](_length: Int) extends java.io.Serializable with java.lang.C
    */
   def apply(i: Int): T = throw new Error()
 
-  /** Update the element at given index.
+  /** Updates the element at given index.
    *
    *  Indices start at `0`; `xs.update(i, x)` replaces the i^th^ element in the array.
    *  Note the syntax `xs(i) = x` is a shorthand for `xs.update(i, x)`.
@@ -687,7 +687,7 @@ final class Array[T](_length: Int) extends java.io.Serializable with java.lang.C
    */
   def update(i: Int, x: T): Unit = { throw new Error() }
 
-  /** Clone the Array.
+  /** Clones the Array.
    *
    *  @return A clone of the Array.
    */

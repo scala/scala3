@@ -25,7 +25,7 @@ import scala.collection.Stepper.EfficientSplit
   */
 private[convert] abstract class InOrderStepperBase[Sub, Semi <: Sub](protected var i0: Int, protected var iN: Int)
 extends EfficientSplit {
-  /** Set `true` if the element at `i0` is known to be there.  `false` if either not known or is a gap.
+  /** Sets `true` if the element at `i0` is known to be there.  `false` if either not known or is a gap.
     */
   protected def found: Boolean
 

@@ -35,7 +35,7 @@ import scala.language.implicitConversions
  *  @see [[scala.sys.process.ProcessBuilder]]
  */
 trait Process {
-  /** Returns this process alive status */
+  /** Returns this process alive status. */
   def isAlive(): Boolean
   /** Blocks until this process exits and returns the exit code.*/
   def exitValue(): Int
@@ -175,7 +175,7 @@ trait ProcessCreation {
   }
 }
 
-/** Provide implicit conversions for the factories offered by [[scala.sys.process.Process]]'s
+/** Provides implicit conversions for the factories offered by [[scala.sys.process.Process]]'s
   * companion object. These implicits can then be used to decrease the noise in a pipeline
   * of commands, making it look more shell-like. They are available through the package object
   * [[scala.sys.process]].
@@ -183,7 +183,7 @@ trait ProcessCreation {
 trait ProcessImplicits {
   import Process._
 
-  /** Return a sequence of [[scala.sys.process.ProcessBuilder.Source]] from a sequence
+  /** Returns a sequence of [[scala.sys.process.ProcessBuilder.Source]] from a sequence
     * of values for which an implicit conversion to `Source` is available.
     */
   implicit def buildersToProcess[T](builders: scala.collection.Seq[T])(implicit convert: T => Source): scala.collection.Seq[Source] = applySeq(builders)

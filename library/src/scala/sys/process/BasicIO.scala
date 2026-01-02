@@ -33,7 +33,7 @@ import scala.annotation.tailrec
   * features, but can also be used by client code.
   */
 object BasicIO {
-  /** Size of the buffer used in all the functions that copy data */
+  /** Size of the buffer used in all the functions that copy data. */
   final val BufferSize = 8192
 
   /** Used to separate lines in the `processFully` function that takes `Appendable`. */
@@ -132,7 +132,7 @@ object BasicIO {
   def apply(withIn: Boolean, buffer: Appendable, log: Option[ProcessLogger]) =
     new ProcessIO(input(withIn), processFully(buffer), getErr(log))
 
-  /** Creates a `ProcessIO` from a `ProcessLogger` . It can attach the
+  /** Creates a `ProcessIO` from a `ProcessLogger`. It can attach the
     * process input to stdin.
     *
     * @param withIn True if the process input should be attached to stdin.
@@ -161,7 +161,7 @@ object BasicIO {
   private def processErrFully(log: ProcessLogger) = processFully(log err _)
   private def processOutFully(log: ProcessLogger) = processFully(log out _)
 
-  /** Closes a `Closeable` without throwing an exception */
+  /** Closes a `Closeable` without throwing an exception. */
   def close(c: Closeable) = try c.close() catch { case _: IOException => () }
 
   /** Returns a function `InputStream => Unit` that appends all data read to the
@@ -215,7 +215,7 @@ object BasicIO {
     readFully()
   }
 
-  /** Copy contents of stdin to the `OutputStream`. */
+  /** Copies contents of stdin to the `OutputStream`. */
   def connectToIn(o: OutputStream): Unit = transferFully(Uncloseable protect stdin, o)
 
   /** Returns a function `OutputStream => Unit` that either reads the content
@@ -233,20 +233,20 @@ object BasicIO {
   /** Returns a `ProcessIO` connected to stdout and stderr, and, optionally, stdin. */
   def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
 
-  /** Returns a `ProcessIO` connected to stdout, stderr and the provided `in` */
+  /** Returns a `ProcessIO` connected to stdout, stderr and the provided `in`. */
   def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
 
-  /** Send all the input from the stream to stderr, and closes the input stream
+  /** Sends all the input from the stream to stderr, and closes the input stream
    * afterwards.
    */
   def toStdErr = (in: InputStream) => transferFully(in, stderr)
 
-  /** Send all the input from the stream to stdout, and closes the input stream
+  /** Sends all the input from the stream to stdout, and closes the input stream
    * afterwards.
    */
   def toStdOut = (in: InputStream) => transferFully(in, stdout)
 
-  /** Copy all input from the input stream to the output stream. Closes the
+  /** Copies all input from the input stream to the output stream. Closes the
     * input stream once it's all read.
     */
   def transferFully(in: InputStream, out: OutputStream): Unit =

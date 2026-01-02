@@ -65,7 +65,7 @@ sealed abstract class BitSet
     } else this
   }
 
-  /** Update word at index `idx`; enlarge set if `idx` outside range of set.
+  /** Updates word at index `idx`; enlarges set if `idx` outside range of set.
     */
   protected def updateWord(idx: Int, w: Long): BitSet
 
@@ -110,7 +110,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   private def createSmall(a: Long, b: Long): BitSet = if (b == 0L) new BitSet1(a) else new BitSet2(a, b)
 
-  /** A bitset containing all the bits in an array */
+  /** A bitset containing all the bits in an array. */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty

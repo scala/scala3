@@ -10,6 +10,7 @@ import config.Printers.capt
 import config.Feature
 import ast.tpd.Tree
 import typer.ProtoTypes.LhsProto
+import StdNames.nme
 
 /** Handling mutability and read-only access
  */
@@ -59,6 +60,7 @@ object Mutability:
               && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
             else true
            )
+      || ccConfig.strictMutability && sym.name == nme.update && sym == defn.Array_update
 
     /** A read-only member is a lazy val or a method that is not an update method. */
     def isReadOnlyMember(using Context): Boolean =
@@ -119,7 +121,7 @@ object Mutability:
         && (!tp.isStatefulType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
 
   extension (ref: TermRef | ThisType)
-    /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
+    /** Map `ref` to `ref.readOnly` if its type extends Mutable, and one of the
      *  following is true:
      *    - it appears in a non-exclusive context,
      *    - the expected type is a value type that is not a stateful type,

@@ -152,7 +152,7 @@ jobs:
 
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-library-bootstrapped`
-        run: ./project/scripts/sbt scala3-library-bootstrapped-new/compile
+        run: ./project/scripts/sbt scala3-library-bootstrapped/compile
 
   tasty-core-bootstrapped:
     runs-on: ubuntu-latest
@@ -169,7 +169,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Compile `tasty-core-bootstrapped`
-        run: ./project/scripts/sbt tasty-core-bootstrapped-new/compile
+        run: ./project/scripts/sbt tasty-core-bootstrapped/compile
 
   scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
@@ -186,7 +186,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-compiler-bootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-bootstrapped-new/compile
+        run: ./project/scripts/sbt scala3-compiler-bootstrapped/compile
 
   scala3-sbt-bridge-bootstrapped:
     runs-on: ubuntu-latest
@@ -220,7 +220,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-staging`
-        run: ./project/scripts/sbt scala3-staging-new/compile
+        run: ./project/scripts/sbt scala3-staging/compile
 
   scala3-tasty-inspector:
     runs-on: ubuntu-latest
@@ -237,9 +237,9 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-staging`
-        run: ./project/scripts/sbt scala3-staging-new/compile
+        run: ./project/scripts/sbt scala3-staging/compile
       - name: Compile `scala3-tasty-inspector`
-        run: ./project/scripts/sbt scala3-tasty-inspector-new/compile
+        run: ./project/scripts/sbt scala3-tasty-inspector/compile
 
   scala-library-sjs:
     runs-on: ubuntu-latest
@@ -257,7 +257,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-staging`
-        run: ./project/scripts/sbt scala3-staging-new/compile
+        run: ./project/scripts/sbt scala3-staging/compile
       - name: Compile `scala-library` for Scala.js
         run: ./project/scripts/sbt scala-library-sjs/compile
 
@@ -276,7 +276,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala3-staging`
-        run: ./project/scripts/sbt scala3-staging-new/compile
+        run: ./project/scripts/sbt scala3-staging/compile
       - name: Compile `scala3-library` for Scala.js
         run: ./project/scripts/sbt scala3-library-sjs/compile
 
@@ -314,7 +314,7 @@ jobs:
       - uses: sbt/setup-sbt@v1
 
       - name: Compile `scaladoc`
-        run: ./project/scripts/sbt scaladoc-new/compile
+        run: ./project/scripts/sbt scaladoc/compile
 
   presentation-compiler:
     runs-on: ubuntu-latest
@@ -443,7 +443,7 @@ jobs:
 
       - uses: sbt/setup-sbt@v1
       - name: Report MiMa issues in `tasty-core-bootstrapped`
-        run: ./project/scripts/sbt tasty-core-bootstrapped-new/mimaReportBinaryIssues
+        run: ./project/scripts/sbt tasty-core-bootstrapped/mimaReportBinaryIssues
 
   mima-scala-library-sjs:
     runs-on: ubuntu-latest
@@ -501,7 +501,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `scala3-compiler-bootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-bootstrapped-new/test
+        run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
 
   test-scala3-sbt-bridge-nonbootstrapped:
     runs-on: ubuntu-latest
@@ -569,7 +569,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `tasty-core-bootstrapped`
-        run: ./project/scripts/sbt tasty-core-bootstrapped-new/test
+        run: ./project/scripts/sbt tasty-core-bootstrapped/test
 
   test-scala-js:
     runs-on: ubuntu-latest
@@ -666,7 +666,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Run SBT scripted tests
-        run: ./project/scripts/sbt scala3-bootstrapped-new/scripted
+        run: ./project/scripts/sbt scala3-bootstrapped/scripted
 
   community_build_a:
     runs-on: ubuntu-latest

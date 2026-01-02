@@ -406,7 +406,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     if (knownIsEmpty) Iterator.empty
     else new LazyIterator(this)
 
-  /** Apply the given function `f` to each element of this linear sequence
+  /** Applies the given function `f` to each element of this linear sequence
     * (while respecting the order of the elements).
     *
     *  @param f The treatment to apply to each element.
@@ -1193,25 +1193,25 @@ object LazyList extends SeqFactory[LazyList] {
   /** An alternative way of building and matching lazy lists using LazyList.cons(hd, tl).
     */
   object cons {
-    /** A lazy list consisting of a given first element and remaining elements
+    /** A lazy list consisting of a given first element and remaining elements.
       *  @param hd   The first element of the result lazy list
       *  @param tl   The remaining elements of the result lazy list
       */
     def apply[A](hd: => A, tl: => LazyList[A]): LazyList[A] = newLL(eagerCons(hd, newLL(tl)))
 
-    /** Maps a lazy list to its head and tail */
+    /** Maps a lazy list to its head and tail. */
     def unapply[A](xs: LazyList[A]): Option[(A, LazyList[A])] = #::.unapply(xs)
   }
 
   implicit def toDeferrer[A](l: => LazyList[A]): Deferrer[A] = new Deferrer[A](() => l)
 
   final class Deferrer[A] private[LazyList] (private val l: () => LazyList[A]) extends AnyVal {
-    /** Construct a LazyList consisting of a given first element followed by elements
-      *  from another LazyList.
+    /** Constructs a `LazyList` consisting of a given first element followed by elements
+      *  from another `LazyList`.
       */
     def #:: [B >: A](elem: => B): LazyList[B] = newLL(eagerCons(elem, newLL(l())))
-    /** Construct a LazyList consisting of the concatenation of the given LazyList and
-      *  another LazyList.
+    /** Constructs a `LazyList` consisting of the concatenation of the given `LazyList` and
+      *  another `LazyList`.
       */
     def #:::[B >: A](prefix: LazyList[B]): LazyList[B] = prefix lazyAppendedAll l()
   }
@@ -1262,7 +1262,7 @@ object LazyList extends SeqFactory[LazyList] {
     }
 
   /**
-    * Create an infinite LazyList starting at `start` and incrementing by
+    * Creates an infinite LazyList starting at `start` and incrementing by
     * step `step`.
     *
     * @param start the start value of the LazyList
@@ -1273,7 +1273,7 @@ object LazyList extends SeqFactory[LazyList] {
     newLL(eagerCons(start, from(start + step, step)))
 
   /**
-    * Create an infinite LazyList starting at `start` and incrementing by `1`.
+    * Creates an infinite LazyList starting at `start` and incrementing by `1`.
     *
     * @param start the start value of the LazyList
     * @return the LazyList starting at value `start`.
@@ -1281,7 +1281,7 @@ object LazyList extends SeqFactory[LazyList] {
   def from(start: Int): LazyList[Int] = from(start, 1)
 
   /**
-    * Create an infinite LazyList containing the given element expression (which
+    * Creates an infinite LazyList containing the given element expression (which
     * is computed for each occurrence).
     *
     * @param elem the element composing the resulting LazyList

@@ -19,7 +19,7 @@ trait Selectable extends scala.Selectable:
   protected def selectedValue: Any = this
 
   // The Scala.js codegen relies on this method being final for correctness
-  /** Select member with given name */
+  /** Selects member with given name. */
   final def selectDynamic(name: String): Any =
     val rcls = selectedValue.getClass
     try
@@ -30,7 +30,7 @@ trait Selectable extends scala.Selectable:
       applyDynamic(name)()
 
   // The Scala.js codegen relies on this method being final for correctness
-  /** Select method and apply to arguments.
+  /** Selects method and applies to arguments.
    *  @param name       The name of the selected method
    *  @param paramTypes The class tags of the selected method's formal parameter types
    *  @param args       The arguments to pass to the selected method

@@ -70,7 +70,7 @@ final class RichInt(val self: Int) extends AnyVal with ScalaNumberProxy[Int] wit
     */
   def until(end: Int, step: Int): Range = Range(self, end, step)
 
-  /** like `until`, but includes the last index */
+  /** Like `until`, but includes the last index. */
   /**
     * @param end The final bound of the range to make.
     * @return A [[scala.collection.immutable.Range]] from `'''this'''` up to

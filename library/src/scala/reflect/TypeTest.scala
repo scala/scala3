@@ -27,5 +27,5 @@ trait TypeTest[-S, T] extends Serializable:
 
 object TypeTest:
 
-  /** Trivial type test that always succeeds */
+  /** Trivial type test that always succeeds. */
   def identity[T]: TypeTest[T, T] = Some(_)

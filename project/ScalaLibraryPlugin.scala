@@ -12,7 +12,12 @@ object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
-  private val scala2Version = "2.13.16"
+  /** Version of the compatible Scala 2.13 scala-library
+   *  Should be updated when we synchronize with the sources of Scala 2.
+   *
+   *  This version would be used to fetch sources of Scala 2.13 standard library to be used for patching the Scala 3 standard library.
+   */
+  val scala2Version = "2.13.18"
 
   object autoImport {
     val keepSJSIR = settingKey[Boolean]("Should we patch .sjsir too?")

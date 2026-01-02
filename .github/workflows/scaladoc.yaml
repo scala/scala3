@@ -15,7 +15,6 @@ permissions:
 jobs:
   build:
     env:
-      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     runs-on: ubuntu-latest
     if: "github.event_name == 'merge_group'
@@ -41,11 +40,11 @@ jobs:
       - name: Compile and test scala3doc-js
         run: ./project/scripts/sbt scaladoc-js-main/test
 
-      #- name: Compile and test
-      #  run: |
-      #    ./project/scripts/sbt scaladoc/test
-      #    ./project/scripts/sbt dist/Universal/stage
-      #    ./project/scripts/cmdScaladocTests
+      - name: Compile and test
+        run: |
+          ./project/scripts/sbt scaladoc/test
+          ./project/scripts/sbt dist/Universal/stage
+          ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
         run: ./project/scripts/sbt scaladoc/publishLocal

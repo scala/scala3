@@ -29,9 +29,6 @@ abstract class CoreBTypes {
 
    def ObjectRef                   : ClassBType
    def StringRef                   : ClassBType
-   def jlStringBuilderRef          : ClassBType
-   def jlStringBufferRef           : ClassBType
-   def jlCharSequenceRef           : ClassBType
    def jlClassRef                  : ClassBType
    def jlThrowableRef              : ClassBType
    def jlCloneableRef              : ClassBType
@@ -140,15 +137,6 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
 
   override def StringRef: ClassBType = _StringRef.get
   private lazy val _StringRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.StringClass))
-
-  override def jlStringBuilderRef: ClassBType = _jlStringBuilderRef.get
-  private lazy val _jlStringBuilderRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.StringBuilder]))
-
-  override def jlStringBufferRef: ClassBType = _jlStringBufferRef.get
-  private lazy val _jlStringBufferRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.StringBuffer]))
-
-  override def jlCharSequenceRef: ClassBType = _jlCharSequenceRef.get
-  private lazy val _jlCharSequenceRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.CharSequence]))
 
   override def jlClassRef: ClassBType = _jlClassRef.get
   private lazy val _jlClassRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.Class[?]]))

@@ -17,7 +17,7 @@ package immutable
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/** Base trait for sorted sets */
+/** Base trait for sorted sets. */
 trait SortedSet[A]
   extends Set[A]
      with collection.SortedSet[A]

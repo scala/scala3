@@ -4235,8 +4235,8 @@ object Types extends TypeUtils {
               val parent1 = mapOver(parent)
               if ann.symbol.isRetainsLike then
                 range(
-                  AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(ann.symbol)),
-                  AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(ann.symbol)))
+                  AnnotatedType(parent1, RetainingAnnotation(defn.RetainsAnnot, defn.NothingType)),
+                  AnnotatedType(parent1, RetainingAnnotation(defn.RetainsCapAnnot)))
               else
                 parent1
             case _ => mapOver(tp)
@@ -7133,6 +7133,8 @@ object Types extends TypeUtils {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
       tp match {
+        case tp: AppliedType if defn.isTupleNType(tp) =>
+          foldOver(n + 1, tp.toNestedPairs)
         case tp: AppliedType =>
           val tpNorm = tp.tryNormalize
           if tpNorm.exists then apply(n, tpNorm)

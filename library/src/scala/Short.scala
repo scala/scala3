@@ -476,9 +476,9 @@ object Short extends AnyValCompanion {
    */
   def unbox(x: java.lang.Object): Short = ???
 
-  /** The String representation of the scala.Short companion object. */
+  /** The `String` representation of the `scala.Short` companion object. */
   override def toString() = "object scala.Short"
-  /** Language mandated coercions from Short to "wider" types. */
+  /** Language mandated coercions from `Short` to "wider" types. */
   import scala.language.implicitConversions
   implicit def short2int(x: Short): Int = x.toInt
   implicit def short2long(x: Short): Long = x.toLong

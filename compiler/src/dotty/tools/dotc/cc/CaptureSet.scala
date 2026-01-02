@@ -536,10 +536,6 @@ sealed abstract class CaptureSet extends Showable:
   /** More info enabled by -Y flags */
   def optionalInfo(using Context): String = ""
 
-  /** A regular @retains or @retainsByName annotation with the elements of this set as arguments. */
-  def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
-    Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
-
   override def toText(printer: Printer): Text =
     printer.toTextCaptureSet(this) ~~ description
 
@@ -666,13 +662,33 @@ object CaptureSet:
       then i" under-approximating the result of mapping $ref to $mapped"
       else ""
 
-  private def capImpliedByCapability(parent: Type)(using Context): Capability =
-    if parent.derivesFromStateful then GlobalCap.readOnly else GlobalCap
+  private def capImpliedByCapability(parent: Type, sym: Symbol, variance: Int)(using Context): Capability =
+    // Since standard library classes are not compiled with separation checking,
+    // they treat Array as a Pure class. That means, no effort is made to distinguish
+    // between exclusive and read-only arrays. To compensate in code compiled under
+    // strict mutability, we treat contravariant arrays in signatures of stdlib
+    // members as read-only (so all arrays may be passed to them), and co- and
+    // invariant arrays as exclusive.
+    // TODO This scheme should also apply whenever code under strict mutability interfaces
+    // with code compiled without. To do that we will need to store in the Tasty format
+    // a flag whether code was compiled with separation checking on. This will have
+    // to wait until 3.10.
+    def isArrayFromScalaPackage =
+      parent.classSymbol == defn.ArrayClass
+      && ccConfig.strictMutability
+      && variance >= 0
+      && sym.isContainedIn(defn.ScalaPackageClass)
+    if parent.derivesFromStateful && !isArrayFromScalaPackage
+    then GlobalCap.readOnly
+    else GlobalCap
 
   /* The same as {cap} but generated implicitly for references of Capability subtypes.
+   *  @param parent   the type to which the capture set will be attached
+   *  @param sym      the symbol carrying that type
+   *  @param variance the variance in which `parent` appears in the type of `sym`
    */
-  class CSImpliedByCapability(parent: Type)(using @constructorOnly ctx: Context)
-  extends Const(SimpleIdentitySet(capImpliedByCapability(parent)))
+  class CSImpliedByCapability(parent: Type, sym: Symbol, variance: Int)(using @constructorOnly ctx: Context)
+  extends Const(SimpleIdentitySet(capImpliedByCapability(parent, sym, variance)))
 
   /** A special capture set that gets added to the types of symbols that were not
    *  themselves capture checked, in order to admit arbitrary corresponding capture
@@ -1676,10 +1692,8 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case CapturingType(parent, refs) =>
+        case CapturingOrRetainsType(parent, refs) =>
           recur(parent) ++ refs
-        case tp @ AnnotatedType(parent, ann) if ann.symbol.isRetains =>
-          recur(parent) ++ ann.tree.toCaptureSet
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result

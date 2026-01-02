@@ -47,10 +47,10 @@ sealed abstract class ArrayBuilder[T]
 
   protected def resize(size: Int): Unit
 
-  /** Add all elements of an array. */
+  /** Adds all elements of an array. */
   def addAll(xs: Array[? <: T]): this.type = addAll(xs, 0, xs.length)
 
-  /** Add a slice of an array. */
+  /** Adds a slice of an array. */
   def addAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     val offset1 = offset.max(0)
     val length1 = length.max(0)

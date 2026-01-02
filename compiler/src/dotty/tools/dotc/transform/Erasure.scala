@@ -453,41 +453,9 @@ object Erasure {
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
-      /** Can the implementation parameter type `tp` be auto-adapted to a different
-       *  parameter type in the SAM?
-       *
-       *  For derived value classes, we always need to do the bridging manually.
-       *  For primitives, we cannot rely on auto-adaptation on the JVM because
-       *  the Scala spec requires null to be "unboxed" to the default value of
-       *  the value class, but the adaptation performed by LambdaMetaFactory
-       *  will throw a `NullPointerException` instead. See `lambda-null.scala`
-       *  for test cases.
-       *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/invoke/LambdaMetafactory.html)
-       */
-      def autoAdaptedParam(tp: Type) =
-        !tp.isErasedValueType && !tp.isPrimitiveValueType
-
-      /** Can the implementation result type be auto-adapted to a different result
-       *  type in the SAM?
-       *
-       *  For derived value classes, it's the same story as for parameters.
-       *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
-       *  adaptation, because it only needs to box, not unbox, so no special
-       *  handling of null is required.
-       */
-      def autoAdaptedResult =
-        !implResultType.isErasedValueType && !implReturnsUnit
-
-      def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
-
-      val paramAdaptationNeeded =
-        implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && (!autoAdaptedParam(implType)
-            // LambdaMetaFactory cannot auto-adapt between Object and Array types
-            || samType.isInstanceOf[JavaArrayType]))
-      val resultAdaptationNeeded =
-        !sameClass(implResultType, samResultType) && !autoAdaptedResult
+      // Check if bridging is needed using the common function from TypeErasure
+      val (paramAdaptationNeeded, resultAdaptationNeeded) =
+        additionalAdaptationNeeded(implParamTypes, implResultType, samParamTypes, samResultType)
 
       if paramAdaptationNeeded || resultAdaptationNeeded then
         // Instead of instantiating `scala.FunctionN`, see if we can instantiate
