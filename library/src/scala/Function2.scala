@@ -24,14 +24,12 @@ import scala.language.`2.13`
  *  function value is constructed may differ:
  *
  *  {{{
- *  object Main extends App {
- *    val max = (x: Int, y: Int) => if (x < y) y else x
+ *  val max = (x: Int, y: Int) => if (x < y) y else x
  *
- *    val anonfun2 = new Function2[Int, Int, Int] {
- *      def apply(x: Int, y: Int): Int = if (x < y) y else x
- *    }
- *    assert(max(0, 1) == anonfun2(0, 1))
- * }
+ *  val anonfun2 = new Function2[Int, Int, Int] {
+ *    def apply(x: Int, y: Int): Int = if (x < y) y else x
+ *  }
+ *  assert(max(0, 1) == anonfun2(0, 1))
  *  }}}
  */
 trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable.Args) -T2, @specialized(Specializable.Return) +R] extends AnyRef {
