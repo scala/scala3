@@ -445,7 +445,7 @@ object MapOps {
 @SerialVersionUID(3L)
 object Map extends MapFactory.Delegate[Map](immutable.Map) {
   private val DefaultSentinel: AnyRef = new AnyRef
-  private val DefaultSentinelFn: () => AnyRef = () => DefaultSentinel
+  private val DefaultSentinelFn: () -> AnyRef = () => DefaultSentinel
 }
 
 /** Explicit instantiation of the `Map` trait to reduce class file size in subclasses. */

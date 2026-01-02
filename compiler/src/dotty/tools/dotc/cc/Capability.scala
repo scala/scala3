@@ -543,6 +543,9 @@ object Capabilities:
           case prefix: Capability => prefix.computeOwner(mapUnscoped)
           case NoPrefix if mapUnscoped && classifier.derivesFrom(defn.Caps_Unscoped) =>
             ctx.owner.topLevelClass
+              .orElse: // fallback needed if ctx.owner is a toplevel module val
+                assert(ctx.owner.is(ModuleVal))
+                ctx.owner
           case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 

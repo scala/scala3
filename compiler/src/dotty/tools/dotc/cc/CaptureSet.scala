@@ -1018,9 +1018,9 @@ object CaptureSet:
           && !elems.contains(elem)
           && !owner.isAnonymousFunction =>
         def fail = i"attempting to add $elem to $this"
-        def hideIn(fc: FreshCap): Unit =
+        def hideIn(fc: FreshCap): Boolean =
           assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
-          if !isRefining then
+          if isRefining then
             // If a variable is added by addCaptureRefinements in a synthetic
             // refinement of a class type, don't do level checking. The problem is
             // that the variable might be matched against a type that does not have
@@ -1030,14 +1030,16 @@ object CaptureSet:
             // TODO: We should instead mark the variable as impossible to instantiate
             // and drop the refinement later in the inferred type.
             // Test case is drop-refinement.scala.
-            assert(fc.acceptsLevelOf(elem),
-              i"level failure, cannot add $elem with ${elem.levelOwner} to $owner / $getClass / $fail")
-          fc.hiddenSet.add(elem)
+            true
+          else if fc.acceptsLevelOf(elem) then
+            fc.hiddenSet.add(elem)
+            true
+          else
+            capt.println(i"level failure when subsuming fresh caps, cannot add $elem with ${elem.levelOwner} to $owner / $fail")
+            false
         val isSubsumed = (false /: elems): (isSubsumed, prev) =>
           prev match
-            case prev: FreshCap =>
-              hideIn(prev)
-              true
+            case prev: FreshCap => hideIn(prev)
             case _ => isSubsumed
         if !isSubsumed then
           if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then

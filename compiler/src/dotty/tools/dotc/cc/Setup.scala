@@ -515,7 +515,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
       if !tree.hasNuType then
         var transformed =
-          if tree.isInferred
+          if tree.isInferred || sym.is(ModuleVal)
           then transformInferredType(tree.tpe)
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
@@ -756,18 +756,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           updateInfo(cls, newInfo, cls.owner)
           capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
           cls.thisType.asInstanceOf[ThisType].invalidateCaches()
-          if cls.is(ModuleClass) then
-            // if it's a module, the capture set of the module reference is the capture set of the self type
-            val modul = cls.sourceModule
-            val selfCaptures = selfInfo1 match
-              case CapturingType(_, refs) => refs
-              case _ => CaptureSet.empty
-            // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
-            // This would potentially give stackoverflows when setup is run repeatedly.
-            // One test case is pos-custom-args/captures/checkbounds.scala under
-            // ccConfig.alwaysRepeatRun = true.
-            updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
-            modul.termRef.invalidateCaches()
       case _ =>
     end postProcess
 
