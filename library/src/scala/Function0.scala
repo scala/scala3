@@ -25,15 +25,13 @@ import scala.language.`2.13`
  *  function value is constructed may differ:
  *
  *  {{{
- *  object Main extends App {
- *    val name = "world"
- *    val greeting = () => s"hello, $name"
+ *  val name = "world"
+ *  val greeting = () => s"hello, $name"
  *
- *    val anonfun0 = new Function0[String] {
- *      def apply(): String = s"hello, $name"
- *    }
- *    assert(greeting() == anonfun0())
- * }
+ *  val anonfun0 = new Function0[String] {
+ *    def apply(): String = s"hello, $name"
+ *  }
+ *  assert(greeting() == anonfun0())
  *  }}}
  */
 trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef {

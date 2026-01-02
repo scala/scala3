@@ -52,13 +52,11 @@ object Function1 {
  *  function value is constructed may differ:
  *
  *  {{{
- *  object Main extends App {
- *    val succ = (x: Int) => x + 1
- *    val anonfun1 = new Function1[Int, Int] {
- *      def apply(x: Int): Int = x + 1
- *    }
- *    assert(succ(0) == anonfun1(0))
- * }
+ *  val succ = (x: Int) => x + 1
+ *  val anonfun1 = new Function1[Int, Int] {
+ *    def apply(x: Int): Int = x + 1
+ *  }
+ *  assert(succ(0) == anonfun1(0))
  *  }}}
  *
  *  Note that the difference between `Function1` and [[scala.PartialFunction]]
