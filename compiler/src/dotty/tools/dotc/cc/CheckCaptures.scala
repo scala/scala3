@@ -389,6 +389,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
      *  variantly in it. Also anchor Fresh instances with anchorCaps.
+     *  Note: module vals don't have inferred types but still hold capture set variables.
+     *  These capture set variables are interpolated after the associated module class
+     *  has been rechecked.
      */
     private def interpolateIfInferred(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
@@ -1517,6 +1520,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       finally
         checkExplicitUses(cls)
         checkExplicitUses(cls.primaryConstructor)
+        if cls.is(ModuleClass) then
+          interpolate(cls.sourceModule.info, cls.sourceModule)
         completed += cls
         curEnv = saved
     end recheckClassDef

@@ -594,7 +594,7 @@ object LongMap {
   private final val VacantBit  = 0x4000_0000
   private final val MissVacant = 0xC000_0000
 
-  private val exceptionDefault: Long => Nothing = (k: Long) => throw new NoSuchElementException(k.toString)
+  private val exceptionDefault: Long -> Nothing = (k: Long) => throw new NoSuchElementException(k.toString)
 
   /** A builder for instances of `LongMap`.
     *

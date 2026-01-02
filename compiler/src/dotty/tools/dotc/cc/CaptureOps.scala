@@ -117,7 +117,7 @@ extension (tp: Type)
       !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
       ||
         ((tp.prefix eq NoPrefix)
-        || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
+        || tp.symbol.isField && tp.prefix.isTrackableRef
         ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
