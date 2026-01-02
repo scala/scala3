@@ -78,7 +78,7 @@ class ReplCompilerTests extends ReplTest:
       assertEquals(1, summon[State].imports.size)
       run("""mutable.Map("one" -> 1)""")
       assertEquals(
-        "val res0: scala.collection.mutable.Map[String, Int] = HashMap(one -> 1)",
+        "val res0: mutable.Map[String, Int] = HashMap(one -> 1)",
         storedOutput().trim
       )
     }

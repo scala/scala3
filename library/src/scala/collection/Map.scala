@@ -16,7 +16,7 @@ package collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-import scala.annotation.nowarn
+import scala.annotation.{retains, nowarn}
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.StringBuilder
 import scala.util.hashing.MurmurHash3
@@ -214,7 +214,8 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     * Note that this version of KeySet copies all the keys into an interval val.
     * See [[MapOps.LazyKeySet]] for a version that lazily captures the map.
     */
-  protected trait GenKeySet { this: Set[K] =>
+  protected trait GenKeySet @retains[MapOps.this.type] () { // todo change @retains to uses_init when we bootstrap with 3.8.1
+    this: Set[K] =>
     // CC note: this is unavoidable to make the KeySet pure.
     private[MapOps] val allKeys = MapOps.this.keysIterator.toList
     // We restore the lazy behavior in LazyKeySet

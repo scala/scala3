@@ -27,14 +27,12 @@ import scala.language.`2.13`
  *  warning instead of suppressing it.
  *
  *  {{{
- *    object Test extends App {
- *      // This would normally warn "match is not exhaustive"
- *      // because `None` is not covered.
- *      def f(x: Option[String]) = (x: @unchecked) match { case Some(y) => y }
- *      // This would normally warn "type pattern is unchecked"
- *      // but here will blindly cast the head element to String.
- *      def g(xs: Any) = xs match { case x: List[String @unchecked] => x.head }
- *    }
- * }}}
+ *    // This would normally warn "match is not exhaustive"
+ *    // because `None` is not covered.
+ *    def f(x: Option[String]) = (x: @unchecked) match { case Some(y) => y }
+ *    // This would normally warn "type pattern is unchecked"
+ *    // but here will blindly cast the head element to String.
+ *    def g(xs: Any) = xs match { case x: List[String @unchecked] => x.head }
+ *  }}}
  */
 final class unchecked extends scala.annotation.Annotation {}

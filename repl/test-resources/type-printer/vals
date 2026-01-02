@@ -5,6 +5,6 @@ var y: Int = 2
 scala> val xs = List(1)
 val xs: List[Int] = List(1)
 scala> scala.util.Try(1)
-val res0: scala.util.Try[Int] = Success(1)
+val res0: util.Try[Int] = Success(1)
 scala> Map(1 -> "one")
 val res1: Map[Int, String] = Map(1 -> one)

@@ -59,7 +59,8 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
 
     val bytes = file.toByteArray
 
-    if !interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
+
+    if interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
     else defineClass(name, bytes, 0, bytes.length)
   }
 

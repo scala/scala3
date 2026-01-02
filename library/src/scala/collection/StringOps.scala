@@ -638,20 +638,13 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     else s.substring(start, end)
   }
 
-  // Note: String.repeat is added in JDK 11.
   /** Returns the current string concatenated `n` times.
    */
   def *(n: Int): String =
     if (n <= 0) {
       ""
     } else {
-      val sb = new JStringBuilder(s.length * n)
-      var i = 0
-      while (i < n) {
-        sb.append(s)
-        i += 1
-      }
-      sb.toString
+      s.repeat(n)
     }
 
   @inline private def isLineBreak(c: Char) = c == CR || c == LF

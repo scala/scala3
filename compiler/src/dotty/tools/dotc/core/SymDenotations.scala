@@ -1247,12 +1247,12 @@ object SymDenotations {
       || isClass
         && (!isOneOf(EffectivelyOpenFlags) || isLocalToCompilationUnit)
 
-    final def isLocalToCompilationUnitIgnoringPrivate(using Context): Boolean =
-      owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
-      || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
-
+    /** Is symbol visible only in the current compilation unit? */
     final def isLocalToCompilationUnit(using Context): Boolean =
-      is(Private) || isLocalToCompilationUnitIgnoringPrivate
+      is(Private)
+      || owner.isTerm
+      || privateWithin.exists && !privateWithin.is(Package)
+      || !owner.is(Package) && owner.isLocalToCompilationUnit
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType) || defn.isAssumedTransparent(symbol)
