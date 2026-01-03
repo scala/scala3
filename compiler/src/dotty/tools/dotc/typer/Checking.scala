@@ -1373,11 +1373,12 @@ trait Checking {
           if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
             () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
           else if decl.is(Synthetic) then doubleDefError(other, decl)
-          else doubleDefError(decl, other)
-          // Check for conflicting default arguments only if they actually conflict
-          if decl.hasDefaultParams && other.hasDefaultParams then
-            report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
-            decl.resetFlag(HasDefaultParams)
+          else
+            doubleDefError(decl, other)
+            // Check for conflicting default arguments only if they actually conflict
+            if decl.hasDefaultParams && other.hasDefaultParams then
+              report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
+              decl.resetFlag(HasDefaultParams)
       if !excludeFromDoubleDeclCheck(decl) then
         seen(decl.name) = decl :: seen(decl.name)
 
