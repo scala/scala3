@@ -141,7 +141,7 @@ sealed abstract class ArraySeq[+A]
     }
 
     suffix match {
-      case that: ArraySeq[_] =>
+      case that: ArraySeq[?] =>
         val result = appendedAllArraySeq(that.asInstanceOf[ArraySeq[B]])
         if (result == null) genericResult
         else result
@@ -165,7 +165,7 @@ sealed abstract class ArraySeq[+A]
     }
 
     prefix match {
-      case that: ArraySeq[_] =>
+      case that: ArraySeq[?] =>
         val result = that.asInstanceOf[ArraySeq[B]].appendedAllArraySeq(this)
         if (result == null) genericResult
         else result
@@ -334,7 +334,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def apply(i: Int): T = unsafeArray(i)
     override def hashCode() = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any): Boolean = that match {
-      case that: ofRef[_] =>
+      case that: ofRef[?] =>
         Array.equals(
           this.unsafeArray.asInstanceOf[Array[AnyRef]],
           that.unsafeArray.asInstanceOf[Array[AnyRef]])

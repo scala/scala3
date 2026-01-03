@@ -150,7 +150,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   // Overridden to use array copying for efficiency where possible.
   override def addAll(elems: IterableOnce[A]^): this.type = {
     elems match {
-      case elems: ArrayBuffer[_] =>
+      case elems: ArrayBuffer[?] =>
         val elemsLength = elems.size0
         if (elemsLength > 0) {
           mutationCount += 1

@@ -149,7 +149,7 @@ object ArrayBuilder {
     }
 
     override def equals(other: Any): Boolean = other match {
-      case x: ofRef[_] => (size == x.size) && (elems == x.elems)
+      case x: ofRef[?] => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 

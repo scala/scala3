@@ -127,7 +127,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
     * [[reverse]] as well.
     */
   def isReverseOf(other: Ordering[?]): Boolean = other match {
-    case that: Ordering.Reverse[_] => that.outer == this
+    case that: Ordering.Reverse[?] => that.outer == this
     case _ => false
   }
 
@@ -260,7 +260,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Reverse[_]             => this.outer == that.outer
+      case that: Reverse[?]             => this.outer == that.outer
       case _                            => false
     }
     override def hashCode(): Int = outer.hashCode() * reverseSeed
@@ -282,7 +282,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that  => true
-      case that: IterableOrdering[_, _]  => this.ord == that.ord
+      case that: IterableOrdering[?, ?]  => this.ord == that.ord
       case _                             => false
     }
     override def hashCode(): Int = ord.hashCode() * iterableSeed
@@ -613,7 +613,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: OptionOrdering[_]      => this.optionOrdering == that.optionOrdering
+      case that: OptionOrdering[?]      => this.optionOrdering == that.optionOrdering
       case _                            => false
     }
     override def hashCode(): Int = optionOrdering.hashCode() * optionSeed
@@ -648,7 +648,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple2Ordering[_, _] =>
+      case that: Tuple2Ordering[?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2
       case _ => false
@@ -673,7 +673,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple3Ordering[_, _, _] =>
+      case that: Tuple3Ordering[?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3
@@ -703,7 +703,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple4Ordering[_, _, _, _] =>
+      case that: Tuple4Ordering[?, ?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3 &&
@@ -737,7 +737,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple5Ordering[_, _, _, _, _] =>
+      case that: Tuple5Ordering[?, ?, ?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3 &&
@@ -775,7 +775,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple6Ordering[_, _, _, _, _, _] =>
+      case that: Tuple6Ordering[?, ?, ?, ?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3 &&
@@ -817,7 +817,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple7Ordering[_, _, _, _, _, _, _] =>
+      case that: Tuple7Ordering[?, ?, ?, ?, ?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3 &&
@@ -863,7 +863,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple8Ordering[_, _, _, _, _, _, _, _] =>
+      case that: Tuple8Ordering[?, ?, ?, ?, ?, ?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3 &&
@@ -913,7 +913,7 @@ object Ordering extends LowPriorityOrderingImplicits {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple9Ordering[_, _, _, _, _, _, _, _, _] =>
+      case that: Tuple9Ordering[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         this.ord1 == that.ord1 &&
         this.ord2 == that.ord2 &&
         this.ord3 == that.ord3 &&

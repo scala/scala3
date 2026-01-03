@@ -146,7 +146,7 @@ private[concurrent] object Promise {
         val zipped = new DefaultPromise[R]()
 
         val thisF: Try[T] => Unit = {
-          case left: Success[_] =>
+          case left: Success[?] =>
             val right = buffer.getAndSet(left).asInstanceOf[Success[U]]
             if (right ne null)
               zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
@@ -155,7 +155,7 @@ private[concurrent] object Promise {
         }
 
         val thatF: Try[U] => Unit = {
-          case right: Success[_] =>
+          case right: Success[?] =>
             val left = buffer.getAndSet(right).asInstanceOf[Success[T]]
             if (left ne null)
               zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })

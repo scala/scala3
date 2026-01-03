@@ -65,7 +65,7 @@ object IntMap {
     // careful handling.
     override def equals(that : Any) = that match {
       case _: this.type => true
-      case _: IntMap[_] => false // The only empty IntMaps are eq Nil
+      case _: IntMap[?] => false // The only empty IntMaps are eq Nil
       case _            => super.equals(that)
     }
   }

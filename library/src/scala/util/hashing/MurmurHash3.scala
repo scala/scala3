@@ -403,8 +403,8 @@ object MurmurHash3 extends MurmurHash3 {
   /** To offer some potential for optimization.
    */
   def seqHash(xs: scala.collection.Seq[?]): Int    = xs match {
-    case xs: scala.collection.IndexedSeq[_] => indexedSeqHash(xs, seqSeed)
-    case xs: List[_] => listHash(xs, seqSeed)
+    case xs: scala.collection.IndexedSeq[?] => indexedSeqHash(xs, seqSeed)
+    case xs: List[?] => listHash(xs, seqSeed)
     case xs => orderedHash(xs, seqSeed)
   }
 

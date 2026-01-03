@@ -637,7 +637,7 @@ object LongMap {
     * @return a new `LongMap` with the elements of `source`
     */
   def from[V](source: IterableOnce[(Long, V)]^): LongMap[V] = source match {
-    case source: LongMap[_] => source.clone().asInstanceOf[LongMap[V]]
+    case source: LongMap[?] => source.clone().asInstanceOf[LongMap[V]]
     case _ => buildFromIterableOnce(source)
   }
 
