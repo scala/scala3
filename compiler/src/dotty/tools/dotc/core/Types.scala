@@ -2486,7 +2486,7 @@ object Types extends TypeUtils {
       util.Stats.record("NamedType.computeDenot")
 
       def finish(d: Denotation) = {
-        if (d.exists)
+        if d.exists then
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type

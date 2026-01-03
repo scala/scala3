@@ -479,7 +479,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def nextEnvToCharge(env: Env)(using Context): Env | Null =
       if env.owner.isConstructor then env.outer.outer0
-      else env.outer
+      else env.outer0
 
     /** A description where this environment comes from */
     private def provenance(env: Env)(using Context): String =
@@ -589,7 +589,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 tree.srcPos)
 
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
-        if env.kind != EnvKind.Boxed && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
+        if env.kind != EnvKind.Boxed && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
           // should be included.
           val included = cs.filter: c =>
@@ -604,7 +604,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
             val nextEnv = nextEnvToCharge(env)
-            if nextEnv != null && !nextEnv.owner.isStaticOwner then
+            if nextEnv != null then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
                   && env.owner.owner.derivesFrom(defn.Caps_Stateful)
