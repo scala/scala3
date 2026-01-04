@@ -253,26 +253,31 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(using Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs)), sym)
+    
+  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
+    DefDef(sym, null, rhsFn)
 
   /** A DefDef with given method symbol `sym`.
+   * @annotationsFn A function (possibly null) from parameters to annotations
    *  @rhsFn  A function from parameter references
    *          to the method's right-hand side.
    *  Parameter symbols are taken from the `rawParamss` field of `sym`, or
    *  are freshly generated if `rawParamss` is empty.
+   *  When freshly generated, a non-null annotationsFn is used to add annotations
    */
-  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
-
+  def DefDef(sym: TermSymbol, annotationsFn: (TermName => List[Annotation]) | Null, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
     // Map method type `tp` with remaining parameters stored in rawParamss to
     // final result type and all (given or synthesized) parameters
-    def recur(tp: Type, remaining: List[List[Symbol]]): (Type, List[List[Symbol]]) = tp match
+    def recur(tp: Type, afn: (TermName => List[Annotation]) | Null,
+      remaining: List[List[Symbol]]): (Type, List[List[Symbol]]) = tp match
       case tp: PolyType =>
-        val (tparams: List[TypeSymbol], remaining1) = remaining match
+        val (tparams: List[TypeSymbol], afn1, remaining1) = remaining match
           case tparams :: remaining1 =>
             assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
-            (tparams.asInstanceOf[List[TypeSymbol]], remaining1)
+            (tparams.asInstanceOf[List[TypeSymbol]], null, remaining1)
           case nil =>
-            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
-        val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
+            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), null, Nil)
+        val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), afn1, remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
@@ -297,22 +302,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           else makeSym(origInfo)
         end valueParam
 
-        val (vparams: List[TermSymbol], remaining1) =
-          if tp.paramNames.isEmpty then (Nil, remaining)
+        val (vparams: List[TermSymbol], afn1, remaining1) =
+          if tp.paramNames.isEmpty then (Nil, null, remaining)
           else remaining match
             case vparams :: remaining1 =>
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
-              (vparams.asInstanceOf[List[TermSymbol]], remaining1)
+              (vparams.asInstanceOf[List[TermSymbol]], null, remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
-        val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
+              val res = tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam)
+              if afn != null then
+                res.lazyZip(tp.paramNames.map(afn)).foreach: (s, annots) =>
+                  s.addAnnotations(annots)
+              (res, null, Nil)
+        val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), afn1, remaining1)
         (rtp, vparams :: paramss)
       case _ =>
         assert(remaining.isEmpty)
         (tp.widenExpr, Nil)
     end recur
 
-    val (rtp, paramss) = recur(sym.info, sym.rawParamss)
+    assert(sym.rawParamss.isEmpty || annotationsFn == null)
+    val (rtp, paramss) = recur(sym.info, annotationsFn, sym.rawParamss)
     DefDef(sym, paramss, rtp, rhsFn(paramss.nestedMap(ref)))
   end DefDef
 
