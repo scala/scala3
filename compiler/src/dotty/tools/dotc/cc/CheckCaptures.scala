@@ -1460,7 +1460,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def checkExplicitUses(sym: Symbol): Unit = capturedVars(sym) match
         case cs: CaptureSet.Var
-        if !cs.elems.isEmpty && !isExemptFromExplicitChecks(sym) =>
+        if cs.elems.exists(!_.isTerminalCapability) && !isExemptFromExplicitChecks(sym) =>
           val usesStr = if sym.isClass then "uses" else "uses_init"
           report.error(
             em"""Publicly visible $sym uses external capabilities $cs.
