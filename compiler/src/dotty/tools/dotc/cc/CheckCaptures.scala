@@ -732,7 +732,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // For fields it's not a problem since `c` would already have been
           // charged for the prefix `p` in `p.x`.
           markFree(sym.info.captureSet, tree)
-        if sym.exists && !sym.isStatic then
+        if sym.exists then
           markPathFree(sym.termRef, pt, tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
@@ -1269,6 +1269,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             && !(sym.is(ModuleVal) && sym.owner.is(Package))
                  // global modules that don't derive from capability can have captures
                  // only if their fields have them, and then the field was already reported.
+            && !CaptureSet.isAssumedPure(sym.termRef)
         then
           def where =
             if sym.effectiveOwner.is(Package) then "top-level definition"

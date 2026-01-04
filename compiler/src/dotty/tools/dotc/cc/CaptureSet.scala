@@ -21,6 +21,7 @@ import compiletime.uninitialized
 import Capabilities.*
 import Names.Name
 import NameKinds.CapsetName
+import StdNames.nme
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -1678,6 +1679,8 @@ object CaptureSet:
       // might happen during construction of lambdas, assume `{cap}` in this case so that
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
+    case c: TermRef if isAssumedPure(c) =>
+      CaptureSet.empty
     case c: CoreCapability =>
       ofType(c.underlying, followResult = ccConfig.useSpanCapset)
 
@@ -1723,7 +1726,7 @@ object CaptureSet:
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
    */
-  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet = {
     val collect = new DeepTypeAccumulator[CaptureSet]:
 
       def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet, boxed: Boolean) =
@@ -1736,6 +1739,15 @@ object CaptureSet:
         else this(acc, upperBound)
 
     collect(CaptureSet.empty, tp)
+  }
+
+  /** Is `ref` assumed to be pure even though it would have a non-empty capture
+   *  set by the normal rules?
+   */
+  def isAssumedPure(ref: TermRef)(using Context): Boolean =
+    ref.name == nme.DOLLAR_VALUES     // ref is an enum $values array, which for backwards
+    && ref.symbol.owner.is(Module)    // compatible reasons is an array, but should really be an IArray.
+    && ref.symbol.owner.companionClass.is(Enum)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[Capability]]
   val AssumedContains: Property.Key[AssumedContains] = Property.Key()
