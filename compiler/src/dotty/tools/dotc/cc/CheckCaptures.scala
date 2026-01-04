@@ -762,7 +762,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  a PathSelectionProto.
      */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
-      if tree.symbol.isStatic then super.selectionProto(tree, pt)
+      if tree.symbol.is(Package) then super.selectionProto(tree, pt)
       else PathSelectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
