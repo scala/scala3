@@ -4,7 +4,7 @@
 // used to track the behaviour of match type reduction
 class Inv[T]
 
-type Recur[X] = X match
+type Recur[X] = X match // error
   case Int => Inv[Recur[X]]
 
-def x = ??? : Recur[Int] // error
+def x = ??? : Recur[Int]
