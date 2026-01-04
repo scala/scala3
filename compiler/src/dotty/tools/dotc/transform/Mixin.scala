@@ -16,6 +16,7 @@ import StdNames.*
 import Names.*
 import NameKinds.*
 import NameOps.*
+import Annotations.*
 import Phases.erasurePhase
 import ast.Trees.*
 
@@ -315,7 +316,27 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(DefDef(mkMixinForwarderSym(meth.asTerm), forwarderRhsFn(meth)))
+        val sym = meth.asTerm
+        val forwarderSym = mkMixinForwarderSym(sym)
+        //Whereas method annotations are set directly in mkMixForwarderSym from the original method symbol
+        //in the case of parameter annotations, we cant rely on DefDef of the forwarderSym directly as this
+        //will not get the parameter annotations.
+        //Hence we replicate a portion of DefDef to create the forwarderSyms method parameters and then set
+        //the annotations on these parameters and then rely on a different path thru DefDef to finish the logic.
+        lazy val annotationss: Map[TermName, List[Annotation]] = (for
+          rawParams <- meth.asTerm.rawParamss
+          if rawParams.nonEmpty && !rawParams.head.isType
+          p <- rawParams
+        yield (p.termRef.name, p.annotations)).toMap
+        if sym.info.isInstanceOf[MethodType] && annotationss.values.exists(_.nonEmpty) then
+          val annotss = annotationss.withDefaultValue(Nil)
+          val tp: MethodType = forwarderSym.info.asInstanceOf[MethodType]
+          val vparams = newMethodValueParams(forwarderSym, tp)
+          vparams.lazyZip(tp.paramNames.map(annotss)).foreach: (vpms, annots) =>
+            vpms.addAnnotations(annots)
+          forwarderSym.setParamss(vparams :: Nil)
+        end if
+        transformFollowing(DefDef(forwarderSym, forwarderRhsFn(meth)))
       }
 
     def mkMixinForwarderSym(target: TermSymbol): TermSymbol =

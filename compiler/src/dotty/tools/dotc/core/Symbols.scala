@@ -19,16 +19,21 @@ import DenotTransformers.*
 import StdNames.*
 import NameOps.*
 import NameKinds.LazyImplicitName
-import ast.*, tpd.*
+import ast.*
+import tpd.*
 import Constants.Constant
 import Variances.Variance
 import reporting.Message
+
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
+import util.{EqHashMap, NoSource, Property, SourceFile, SourcePosition, SrcPos}
+
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.Types.Type
 
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyVersion
@@ -894,6 +899,28 @@ object Symbols extends SymUtils {
       tparam.info = bound
     tparams
   }
+
+  /** Create new method value parameter symbols for a Method.
+   */
+  def newMethodValueParams(meth: TermSymbol, methodType: MethodType)(using Context): List[TermSymbol] =
+    def makeParamSym(name: TermName, info: Type, isErased: Boolean) =
+      val maybeImplicit =
+        if methodType.isContextualMethod then Given
+        else if methodType.isImplicitMethod then Implicit
+        else EmptyFlags
+      val maybeErased = if isErased then Erased else EmptyFlags
+      newSymbol(meth, name, TermParam | maybeImplicit | maybeErased, info, coord = meth.coord)
+
+    def makeParamSymOverPreviousParams: (TermName, Type, Boolean) => TermSymbol =
+      val previousParamRefs: mutable.ListBuffer[TermRef] = mutable.ListBuffer[TermRef]()
+      (name: TermName, tpe: Type, isErased: Boolean) =>
+        val sym = makeParamSym(name, tpe.substParams(methodType, previousParamRefs.toList), isErased)
+        previousParamRefs += sym.termRef
+        sym
+
+    val newValueParam = if methodType.isParamDependent then makeParamSymOverPreviousParams else makeParamSym
+    methodType.paramNames.lazyZip(methodType.paramInfos).lazyZip(methodType.paramErasureStatuses).map(newValueParam)
+  end newMethodValueParams  
 
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.

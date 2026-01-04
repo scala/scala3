@@ -253,7 +253,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(using Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs)), sym)
-
+    
   /** A DefDef with given method symbol `sym`.
    *  @rhsFn  A function from parameter references
    *          to the method's right-hand side.
@@ -261,7 +261,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  are freshly generated if `rawParamss` is empty.
    */
   def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
-
     // Map method type `tp` with remaining parameters stored in rawParamss to
     // final result type and all (given or synthesized) parameters
     def recur(tp: Type, remaining: List[List[Symbol]]): (Type, List[List[Symbol]]) = tp match
@@ -275,28 +274,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
-        val isParamDependent = tp.isParamDependent
-        val previousParamRefs: ListBuffer[TermRef] =
-          // It is ok to assign `null` here.
-          // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
-          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
-
-        def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
-          val maybeImplicit =
-            if tp.isContextualMethod then Given
-            else if tp.isImplicitMethod then Implicit
-            else EmptyFlags
-          val maybeErased = if isErased then Erased else EmptyFlags
-
-          def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
-
-          if isParamDependent then
-            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
-            previousParamRefs += sym.termRef
-            sym
-          else makeSym(origInfo)
-        end valueParam
-
         val (vparams: List[TermSymbol], remaining1) =
           if tp.paramNames.isEmpty then (Nil, remaining)
           else remaining match
@@ -304,7 +281,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
+              (newMethodValueParams(sym, tp), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
