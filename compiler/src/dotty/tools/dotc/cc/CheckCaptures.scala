@@ -56,12 +56,12 @@ object CheckCaptures:
    *  @param nestedClosure under deferredReaches: If this is an env of a method with an anonymous function or
    *                       anonymous class as RHS, the symbol of that function or class. NoSymbol in all other cases.
    */
-  case class Env(
-      owner: Symbol,
-      kind: EnvKind,
-      captured: CaptureSet,
-      outer0: Env | Null,
-      nestedClosure: Symbol = NoSymbol)(using @constructorOnly ictx: Context):
+  class Env(
+    val owner: Symbol,
+    val kind: EnvKind,
+    val captured: CaptureSet,
+    outer0: Env | Null,
+    val nestedClosure: Symbol = NoSymbol)(using @constructorOnly ictx: Context) {
 
     assert(definesEnv(owner))
     captured match
@@ -71,16 +71,16 @@ object CheckCaptures:
 
     def outer = outer0.nn
 
-    def isOutermost = outer0 == null
+    def isRoot(using Context) = owner.is(Package)
 
-    def outersIterator: Iterator[Env] = new:
+    def outersIterator(using Context): Iterator[Env] = new:
       private var cur = Env.this
-      def hasNext = !cur.isOutermost
+      def hasNext = !cur.isRoot
       def next(): Env =
         val res = cur
         cur = cur.outer
         res
-  end Env
+  }
 
   def definesEnv(sym: Symbol)(using Context): Boolean =
     sym.isOneOf(MethodOrLazy) || sym.isClass
@@ -477,9 +477,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
      */
-    def nextEnvToCharge(env: Env)(using Context): Env | Null =
-      if env.owner.isConstructor then env.outer.outer0
-      else env.outer0
+    def nextEnvToCharge(env: Env)(using Context): Env =
+      if env.owner.isConstructor then env.outer.outer
+      else env.outer
 
     /** A description where this environment comes from */
     private def provenance(env: Env)(using Context): String =
@@ -497,9 +497,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  Does the given environment belong to a method that is (a) nested in a term
      *  and (b) not the method of an anonymous function?
      */
-    def isOfNestedMethod(env: Env | Null)(using Context) =
+    def isOfNestedMethod(env: Env)(using Context) =
       ccConfig.deferredReaches
-      && env != null
       && env.owner.is(Method)
       && env.owner.owner.isTerm
       && !env.owner.isAnonymousFunction
@@ -604,7 +603,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
             val nextEnv = nextEnvToCharge(env)
-            if nextEnv != null then
+            if !nextEnv.isRoot then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
                   && env.owner.owner.derivesFrom(defn.Caps_Stateful)
@@ -1842,11 +1841,11 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def debugShowEnvs()(using Context): Unit =
       def showEnv(env: Env): String = i"Env(${env.owner}, ${env.kind}, ${env.captured})"
       val sb = StringBuilder()
-      @annotation.tailrec def walk(env: Env | Null): Unit =
-        if env != null then
+      @annotation.tailrec def walk(env: Env): Unit =
+        if !env.isRoot then
           sb ++= showEnv(env)
           sb ++= "\n"
-          walk(env.outer0)
+          walk(env.outer)
       sb ++= "===== Current Envs ======\n"
       walk(curEnv)
       sb ++= "===== End          ======\n"
@@ -2247,7 +2246,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           else if env.owner.isStaticOwner then NoSymbol
           else
             val nextEnv = nextEnvToCharge(env)
-            if nextEnv == null then NoSymbol else boxedOwner(nextEnv)
+            if nextEnv.isRoot then NoSymbol else boxedOwner(nextEnv)
 
         def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
