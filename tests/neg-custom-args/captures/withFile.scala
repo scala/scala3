@@ -13,7 +13,7 @@ object Test2:
 
   private val later1 = usingLogFile { f => () => f.write() } // error
   private val later2 = usingLogFile { f => Box(f) } // error
-  private val later3 = usingLogFile[() => Unit]:
+  private val later3 = usingLogFile[() => Unit]: // error
     f => () => f.write() // error
   private val later4 = usingLogFile[Box[File^]]:
     f => Box(f) // error

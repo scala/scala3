@@ -1385,8 +1385,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
           // Test point (2) of doc comment above
-          if sym.owner.isClass && !sym.owner.isStaticOwner
+          if sym.owner.isClass
               && contributesFreshToClass(sym)
+              && !CaptureSet.isAssumedPure(sym)
           then
             todoAtPostCheck += { () =>
               val cls = sym.owner.asClass

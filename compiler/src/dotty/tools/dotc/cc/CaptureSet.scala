@@ -1679,7 +1679,7 @@ object CaptureSet:
       // might happen during construction of lambdas, assume `{cap}` in this case so that
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
-    case c: TermRef if isAssumedPure(c) =>
+    case c: TermRef if isAssumedPure(c.symbol) =>
       CaptureSet.empty
     case c: CoreCapability =>
       ofType(c.underlying, followResult = ccConfig.useSpanCapset)
@@ -1741,13 +1741,13 @@ object CaptureSet:
     collect(CaptureSet.empty, tp)
   }
 
-  /** Is `ref` assumed to be pure even though it would have a non-empty capture
+  /** Is `sym` assumed to be pure even though it would have a non-empty capture
    *  set by the normal rules?
    */
-  def isAssumedPure(ref: TermRef)(using Context): Boolean =
-    ref.name == nme.DOLLAR_VALUES     // ref is an enum $values array, which for backwards
-    && ref.symbol.owner.is(Module)    // compatible reasons is an array, but should really be an IArray.
-    && ref.symbol.owner.companionClass.is(Enum)
+  def isAssumedPure(sym: Symbol)(using Context): Boolean =
+    sym.name == nme.DOLLAR_VALUES // sym is an enum $values array, which for backwards
+    && sym.owner.is(Module)       // compatible reasons is an array, but should really be an IArray.
+    && sym.owner.companionClass.is(Enum)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[Capability]]
   val AssumedContains: Property.Key[AssumedContains] = Property.Key()
