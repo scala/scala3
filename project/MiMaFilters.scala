@@ -11,6 +11,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
         // scala/scala3#24545 / scala/scala3#24788
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
+        // new feature: CanEqual support for NamedTuple
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
       ),
 
     )
