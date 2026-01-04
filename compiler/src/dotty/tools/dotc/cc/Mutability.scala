@@ -73,7 +73,7 @@ object Mutability:
       else if sym.owner == cls then
         if sym.isConstructor then OK
         else NotInUpdateMethod(sym, cls)
-      else if sym.isStatic then OutsideClass(cls)
+      else if sym.isRoot then OutsideClass(cls)
       else sym.owner.inExclusivePartOf(cls)
 
   extension (tp: Type)

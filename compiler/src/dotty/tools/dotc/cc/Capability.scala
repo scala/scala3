@@ -191,7 +191,8 @@ object Capabilities:
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
         val refOwner = ref.levelOwner
-        refOwner.isStaticOwner || ccOwner.isContainedIn(refOwner)
+        ccOwner.isContainedIn(refOwner)
+        || classifier.derivesFrom(defn.Caps_Unscoped)
       else ref.core match
         case ResultCap(_) | _: ParamRef => false
         case _ => true
