@@ -7,18 +7,6 @@
    |    Note that capability nll is not included in capture set {ll}.
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg-custom-args/captures/indirect-avoid.scala:24:6 ---------------------------------------------------
-24 |  val x1 = filterImpl1(LL())
-   |      ^^
-   |      value x1 has a non-empty capture set but will not be added as
-   |      a capability to computed capture sets since it is globally accessible
-   |      as a member of static object Test. Global values cannot be capabilities.
--- Warning: tests/neg-custom-args/captures/indirect-avoid.scala:25:6 ---------------------------------------------------
-25 |  val _: LL^{cap.rd}= x1
-   |      ^
-   |      value _$1 has a non-empty capture set but will not be added as
-   |      a capability to computed capture sets since it is globally accessible
-   |      as a member of static object Test. Global values cannot be capabilities.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/indirect-avoid.scala:26:14 -------------------------------
 26 |  val _: LL = x1 // error
    |              ^^

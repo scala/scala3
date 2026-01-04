@@ -1262,23 +1262,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         if runInConstructor && savedEnv.owner.isClass then
           markFree(declaredCaptures, tree, addUseInfo = false)
-
-        if sym.owner.isStaticOwner
-            && !declaredCaptures.elems.isEmpty
-            && sym != defn.captureRoot
-            && !(sym.is(ModuleVal) && sym.owner.is(Package))
-                 // global modules that don't derive from capability can have captures
-                 // only if their fields have them, and then the field was already reported.
-            && !CaptureSet.isAssumedPure(sym.termRef)
-        then
-          def where =
-            if sym.effectiveOwner.is(Package) then "top-level definition"
-            else i"member of static ${sym.owner}"
-          report.warning(
-            em"""$sym has a non-empty capture set but will not be added as
-                |a capability to computed capture sets since it is globally accessible
-                |as a $where. Global values cannot be capabilities.""",
-            tree.namePos)
     end recheckValDef
 
     /** Recheck method definitions:

@@ -1,9 +1,3 @@
--- Warning: tests/neg/mixed_cc/B.scala:4:4 -----------------------------------------------------------------------------
-4 |val x: Object^{A.B} = ??? // error
-  |    ^
-  |    value x has a non-empty capture set but will not be added as
-  |    a capability to computed capture sets since it is globally accessible
-  |    as a top-level definition. Global values cannot be capabilities.
 -- Error: tests/neg/mixed_cc/B.scala:4:7 -------------------------------------------------------------------------------
 4 |val x: Object^{A.B} = ??? // error
   |       ^^^^^^^^^^^^
