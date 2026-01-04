@@ -2228,7 +2228,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         def boxedOwner(env: Env): Symbol =
           if env.kind == EnvKind.Boxed then env.owner
           else if isOfNestedMethod(env) then env.owner.owner
-          else if env.owner.isStaticOwner then NoSymbol
           else
             val nextEnv = nextEnvToCharge(env)
             if nextEnv.isRoot then NoSymbol else boxedOwner(nextEnv)
