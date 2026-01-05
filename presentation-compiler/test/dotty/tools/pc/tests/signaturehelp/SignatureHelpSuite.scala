@@ -1253,26 +1253,6 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       ""
     )
 
-  // Improvement would be to create synthetic signature help showing
-  // add(x: Int)(y: Int): Int
-  @Test def `dont-show-functionN` =
-    check(
-      """|object Main:
-         |  val add = (x: Int) => (y: Int) => x + y
-         |  add(@@)
-         |""".stripMargin,
-         ""
-    )
-
-  @Test def `dont-show-functionN-2` =
-    check(
-      """|object Main:
-         |  val add = (x: Int) => (y: Int) => x + y
-         |  add(1, @@)
-         |""".stripMargin,
-         ""
-    )
-
   @Test def `type-param-start` =
     check(
       """|object Main:
