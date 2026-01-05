@@ -1456,6 +1456,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           canConstrain(param2) && canInstantiate(param2) ||
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
+          def compareGADT =
+            tp1 match
+              case tp1: TypeRef =>
+                !ctx.mode.is(Mode.QuotedTypePattern)
+                && !tp1.info.existsPart(_.isInstanceOf[LazyRef])
+                && tp1.symbol.onGadtBounds(gbounds1 =>
+                  isSubTypeWhenFrozen(gbounds1.hi, tp2)
+                    || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
+                  && (tp2.isAny || GADTusage(tp1.symbol))
+              case _ => false
+
           isMatchingApply(tp1)
           || byGadtBounds
           || defn.isCompiletimeAppliedType(tycon2.symbol)
@@ -1467,6 +1478,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   tycon2.name.startsWith("Tuple")
                   && defn.isTupleNType(tp2)
                   && recur(tp1, tp2.toNestedPairs)
+                  || compareGADT
                   || tryBaseType(info2.cls)
                 case _ =>
                   fourthTry
