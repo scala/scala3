@@ -1570,7 +1570,7 @@ trait ParallelTesting extends RunnerOrchestration:
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
-    val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
+    val (_, files) = compilationTargets(sourceDir, fromTastyFilter)
 
     val filteredFiles = testFilter match
       case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
@@ -1581,19 +1581,17 @@ trait ParallelTesting extends RunnerOrchestration:
        file: JFile,
        flags: TestFlags,
        outDir: JFile,
-       fromTasty: Boolean = false,
-    ) extends JointCompilationSource(name, Array(file), flags, outDir, if (fromTasty) FromTasty else NotFromTasty) {
+    ) extends JointCompilationSource(name, Array(file), flags, outDir, FromTasty) {
 
       override def buildInstructions(errors: Int, warnings: Int): String = {
         val runOrPos = if (file.getPath.startsWith(s"tests${JFile.separator}run${JFile.separator}")) "run" else "pos"
-        val listName = if (fromTasty) "from-tasty" else "decompilation"
         s"""|
             |Test '$title' compiled with $errors error(s) and $warnings warning(s),
             |the test can be reproduced by running:
             |
             |  sbt "testCompilation --from-tasty $file"
             |
-            |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-$listName.excludelist`
+            |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-from-tasty.excludelist`
             |
             |""".stripMargin
       }
@@ -1602,7 +1600,7 @@ trait ParallelTesting extends RunnerOrchestration:
 
     val targets = filteredFiles.map { f =>
       val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-      new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
+      new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath)
     }
     // TODO add SeparateCompilationSource from tasty?
 
