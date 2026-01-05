@@ -1,7 +1,7 @@
 package scala
 
 import language.experimental.captureChecking
-import annotation.showAsInfix
+import annotation.{showAsInfix, targetName}
 import compiletime.*
 import compiletime.ops.int.*
 
@@ -288,8 +288,113 @@ object Tuple {
   /** Tuple with one element. */
   def apply[T](x: T): T *: EmptyTuple = Tuple1(x)
 
+  /** Uniform tuple construction for any arity with type preservation.
+   *  For arities 0 and 1, the overloads above are preferred (binary compatibility).
+   *  For arities >= 2, this varargs version is used.
+   *
+   *  Examples:
+   *  {{{
+   *  Tuple()              // EmptyTuple
+   *  Tuple(1)             // Tuple1[Int]
+   *  Tuple(1, "a")        // (Int, String)
+   *  Tuple(1, "a", 2.0)   // (Int, String, Double)
+   *  }}}
+   */
+  transparent inline def apply(inline args: Any*): Tuple = ${ TupleMacros.applyImpl('args) }
+
   /** Matches an empty tuple. */
   def unapply(x: EmptyTuple): true = true
+
+  /** Matches a 1-tuple, extracting its element. */
+  @targetName("unapply1")
+  inline def unapply[A](x: Tuple1[A]): Some[A] = Some(x._1)
+
+  /** Matches a 2-tuple, extracting its elements. */
+  @targetName("unapply2")
+  inline def unapply[A, B](x: (A, B)): (A, B) = x
+
+  /** Matches a 3-tuple, extracting its elements. */
+  @targetName("unapply3")
+  inline def unapply[A, B, C](x: (A, B, C)): (A, B, C) = x
+
+  /** Matches a 4-tuple, extracting its elements. */
+  @targetName("unapply4")
+  inline def unapply[A, B, C, D](x: (A, B, C, D)): (A, B, C, D) = x
+
+  /** Matches a 5-tuple, extracting its elements. */
+  @targetName("unapply5")
+  inline def unapply[A, B, C, D, E](x: (A, B, C, D, E)): (A, B, C, D, E) = x
+
+  /** Matches a 6-tuple, extracting its elements. */
+  @targetName("unapply6")
+  inline def unapply[A, B, C, D, E, F](x: (A, B, C, D, E, F)): (A, B, C, D, E, F) = x
+
+  /** Matches a 7-tuple, extracting its elements. */
+  @targetName("unapply7")
+  inline def unapply[A, B, C, D, E, F, G](x: (A, B, C, D, E, F, G)): (A, B, C, D, E, F, G) = x
+
+  /** Matches a 8-tuple, extracting its elements. */
+  @targetName("unapply8")
+  inline def unapply[A, B, C, D, E, F, G, H](x: (A, B, C, D, E, F, G, H)): (A, B, C, D, E, F, G, H) = x
+
+  /** Matches a 9-tuple, extracting its elements. */
+  @targetName("unapply9")
+  inline def unapply[A, B, C, D, E, F, G, H, I](x: (A, B, C, D, E, F, G, H, I)): (A, B, C, D, E, F, G, H, I) = x
+
+  /** Matches a 10-tuple, extracting its elements. */
+  @targetName("unapply10")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J](x: (A, B, C, D, E, F, G, H, I, J)): (A, B, C, D, E, F, G, H, I, J) = x
+
+  /** Matches a 11-tuple, extracting its elements. */
+  @targetName("unapply11")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K](x: (A, B, C, D, E, F, G, H, I, J, K)): (A, B, C, D, E, F, G, H, I, J, K) = x
+
+  /** Matches a 12-tuple, extracting its elements. */
+  @targetName("unapply12")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L](x: (A, B, C, D, E, F, G, H, I, J, K, L)): (A, B, C, D, E, F, G, H, I, J, K, L) = x
+
+  /** Matches a 13-tuple, extracting its elements. */
+  @targetName("unapply13")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M](x: (A, B, C, D, E, F, G, H, I, J, K, L, M)): (A, B, C, D, E, F, G, H, I, J, K, L, M) = x
+
+  /** Matches a 14-tuple, extracting its elements. */
+  @targetName("unapply14")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N) = x
+
+  /** Matches a 15-tuple, extracting its elements. */
+  @targetName("unapply15")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) = x
+
+  /** Matches a 16-tuple, extracting its elements. */
+  @targetName("unapply16")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P) = x
+
+  /** Matches a 17-tuple, extracting its elements. */
+  @targetName("unapply17")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q) = x
+
+  /** Matches a 18-tuple, extracting its elements. */
+  @targetName("unapply18")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R) = x
+
+  /** Matches a 19-tuple, extracting its elements. */
+  @targetName("unapply19")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S) = x
+
+  /** Matches a 20-tuple, extracting its elements. */
+  @targetName("unapply20")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T) = x
+
+  /** Matches a 21-tuple, extracting its elements. */
+  @targetName("unapply21")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U) = x
+
+  /** Matches a 22-tuple, extracting its elements. */
+  @targetName("unapply22")
+  inline def unapply[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V](x: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)): (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V) = x
+
+  /** Fallback for abstract Tuple types - provides runtime arity matching. */
+  def unapplySeq(x: Tuple): Option[Seq[Any]] = Some(x.productIterator.toSeq)
 
   /** Converts an array into a tuple of unknown arity and types. */
   def fromArray[T](xs: Array[T]): Tuple = {

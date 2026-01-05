@@ -11,6 +11,10 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
         // scala/scala3#24545 / scala/scala3#24788
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
+        // scala/scala3#24874 - Uniform Tuple.apply and Tuple.unapply for SIP-NN
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply*"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros$"),
       ),
 
     )
