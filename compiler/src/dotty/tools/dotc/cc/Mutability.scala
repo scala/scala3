@@ -55,11 +55,7 @@ object Mutability:
      */
     def isUpdateMethod(using Context): Boolean =
       sym.isAllOf(Mutable | Method)
-        && (if sym.isSetter then
-              sym.owner.derivesFrom(defn.Caps_Stateful)
-              && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
-            else true
-           )
+        && (!sym.is(Accessor) || (sym.isSetter && sym.owner.derivesFrom(defn.Caps_Stateful) && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)))
       || ccConfig.strictMutability && sym.name == nme.update && sym == defn.Array_update
 
     /** A read-only member is a lazy val or a method that is not an update method. */
