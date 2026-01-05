@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Automatic Parameter Unrolling"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/unrolled-defs.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/unrolled-defs.html
 ---
 
 Parameter unrolling enables new parameters to be added to methods and classes,

@@ -143,6 +143,7 @@ subsection:
     index: reference/preview/overview.md
     subsection:
       - page: reference/preview/into.md
+      - page: reference/preview/unrolled-defs.md
   - title: Experimental Features
     directory: experimental
     index: reference/experimental/overview.md
@@ -178,7 +179,6 @@ subsection:
       - page: reference/experimental/tupled-function.md
       - page: reference/experimental/modularity.md
       - page: reference/experimental/typeclasses.md
-      - page: reference/experimental/unrolled-defs.md
       - page: reference/experimental/package-object-values.md
       - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
       - page: reference/experimental/relaxed-lambdas.md

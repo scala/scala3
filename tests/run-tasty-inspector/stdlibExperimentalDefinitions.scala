@@ -93,9 +93,6 @@ val experimentalDefinitionInLibrary = Set(
   // Need quotedPatternsWithPolymorphicFunctions enabled.
   "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
 
-  // New feature: SIP 61 - @unroll annotation
-  "scala.annotation.unroll",
-
   // New feature: Erased trait
   "scala.compiletime.Erased",
 )
