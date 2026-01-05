@@ -11,6 +11,9 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
         // scala/scala3#24545 / scala/scala3#24788
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.relaxedColonSyntax"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$relaxedColonSyntax$"),
+          // scala/scala3#24841
       ),
 
     )
