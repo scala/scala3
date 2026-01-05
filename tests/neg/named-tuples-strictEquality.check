@@ -1,0 +1,18 @@
+-- [E172] Type Error: tests/neg/named-tuples-strictEquality.scala:9:20 -------------------------------------------------
+9 |  val b2: Boolean = u == v // error
+  |                    ^^^^^^
+  |Values of types (name : String, age : Int) and (name : String, birthYear : Int) cannot be compared with == or !=.
+  |I found:
+  |
+  |    NamedTuple.namedTupleCanEqual[N, V1, V2]
+  |
+  |But given instance namedTupleCanEqual in object NamedTuple does not match type CanEqual[(name : String, age : Int), (name : String, birthYear : Int)].
+-- [E172] Type Error: tests/neg/named-tuples-strictEquality.scala:15:11 ------------------------------------------------
+15 |      case ScalaBook => true // error
+   |           ^^^^^^^^^
+   |Values of types (name : String, published : Int) and (name : String, age : Int) cannot be compared with == or !=.
+   |I found:
+   |
+   |    NamedTuple.namedTupleCanEqual[N, V1, V2]
+   |
+   |But given instance namedTupleCanEqual in object NamedTuple does not match type CanEqual[(name : String, published : Int), (name : String, age : Int)].
