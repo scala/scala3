@@ -596,9 +596,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           return CCState.withCapAsRoot:
             subCaptures(tp1.captureSet, tp2.captureSet)
 
-        (!ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
-        || isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
-        || (ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
+        isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
+        || compareGADT
         || tryLiftedToThis2
         || fourthTry
 
@@ -969,10 +968,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            (!ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
-            || (!caseLambda.exists || widenAbstractOKFor(tp2))
+            (!caseLambda.exists || widenAbstractOKFor(tp2))
               && isSubType(hi1, tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
-            || (ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
+            || compareGADT
             || tryLiftedToThis1
           case _ =>
             def isNullable(tp: Type): Boolean = tp.dealias match
