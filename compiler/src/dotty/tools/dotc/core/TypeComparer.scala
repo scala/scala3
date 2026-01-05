@@ -579,7 +579,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case info2: TypeBounds =>
         def compareGADT: Boolean =
           tp2.symbol.onGadtBounds(gbounds2 =>
-            isSubTypeWhenFrozen(tp1, gbounds2.lo)
+            isSubType(tp1, gbounds2.lo, whenFrozen = gbounds2.lo ne gbounds2.hi)
             || tp1.match
                 case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
@@ -964,7 +964,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case info1 @ TypeBounds(lo1, hi1) =>
             def compareGADT =
               tp1.symbol.onGadtBounds(gbounds1 =>
-                isSubTypeWhenFrozen(gbounds1.hi, tp2)
+                isSubType(gbounds1.hi, tp2, whenFrozen = gbounds1.lo ne gbounds1.hi)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
