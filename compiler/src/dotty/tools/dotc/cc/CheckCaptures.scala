@@ -1213,43 +1213,41 @@ class CheckCaptures extends Recheck, SymTransformer:
       val savedEnv = curEnv
       val runInConstructor = !sym.isOneOf(Param | ParamAccessor | Lazy | NonMember)
       try
-        if sym.is(Module) then sym.info // Modules are checked by checking the module class
-        else
-          if sym.is(Mutable) then
-            if !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
-              val addendum = setup.capturedBy.get(sym) match
-                case Some(encl) =>
-                  val enclStr =
-                    if encl.isAnonymousFunction then
-                      val location = setup.anonFunCallee.get(encl) match
-                        case Some(meth) if meth.exists => i" argument in a call to $meth"
-                        case _ => ""
-                      s"an anonymous function$location"
-                    else encl.show
-                  i"\n\nNote that $sym does not count as local since it is captured by $enclStr"
-                case _ =>
-                  ""
-              disallowBadRootsIn(
-                tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
-            if ccConfig.strictMutability
-                && sym.owner.isClass
-                && !sym.owner.derivesFrom(defn.Caps_Stateful)
-                && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
-              report.error(
-                em"""Mutable $sym is defined in a class that does not extend `Stateful`.
-                    |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
-                tree.namePos)
+        if sym.is(Mutable) then
+          if !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
+            val addendum = setup.capturedBy.get(sym) match
+              case Some(encl) =>
+                val enclStr =
+                  if encl.isAnonymousFunction then
+                    val location = setup.anonFunCallee.get(encl) match
+                      case Some(meth) if meth.exists => i" argument in a call to $meth"
+                      case _ => ""
+                    s"an anonymous function$location"
+                  else encl.show
+                i"\n\nNote that $sym does not count as local since it is captured by $enclStr"
+              case _ =>
+                ""
+            disallowBadRootsIn(
+              tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
+          if ccConfig.strictMutability
+              && sym.owner.isClass
+              && !sym.owner.derivesFrom(defn.Caps_Stateful)
+              && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
+            report.error(
+              em"""Mutable $sym is defined in a class that does not extend `Stateful`.
+                  |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
+              tree.namePos)
 
-          // Lazy vals need their own environment to track captures from their RHS,
-          // similar to how methods work
-          if sym.is(Lazy) then
-            val localSet = capturedVars(sym)
-            if localSet ne CaptureSet.empty then
-              curEnv = Env(sym, EnvKind.Regular, localSet, curEnv, nestedClosure = NoSymbol)
-          else if runInConstructor then
-            pushConstructorEnv()
+        // Lazy vals need their own environment to track captures from their RHS,
+        // similar to how methods work
+        if sym.is(Lazy) then
+          val localSet = capturedVars(sym)
+          if localSet ne CaptureSet.empty then
+            curEnv = Env(sym, EnvKind.Regular, localSet, curEnv, nestedClosure = NoSymbol)
+        else if runInConstructor then
+          pushConstructorEnv()
 
-          checkInferredResult(super.recheckValDef(tree, sym), tree)
+        checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
@@ -1264,7 +1262,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         if runInConstructor && savedEnv.owner.isClass then
           markFree(declaredCaptures, tree, addUseInfo = false)
 
-        if sym.owner.isStaticOwner && !declaredCaptures.elems.isEmpty && sym != defn.captureRoot then
+        if sym.owner.isStaticOwner
+            && !declaredCaptures.elems.isEmpty
+            && sym != defn.captureRoot
+            && !(sym.is(ModuleVal) && sym.owner.is(Package))
+                 // global modules that don't derive from capability can have captures
+                 // only if their fields have them, and then the field was already reported.
+        then
           def where =
             if sym.effectiveOwner.is(Package) then "top-level definition"
             else i"member of static ${sym.owner}"

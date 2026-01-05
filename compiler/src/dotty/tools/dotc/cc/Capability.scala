@@ -466,7 +466,7 @@ object Capabilities:
      */
     final def isLocalMutable(using Context): Boolean = this match
       case tp @ TermRef(NoPrefix, _) =>
-        ccConfig.newScheme && ccConfig.strictMutability
+        ccConfig.strictMutability
         && tp.symbol.isMutableVar
         && !tp.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
       case _ => false
@@ -543,6 +543,9 @@ object Capabilities:
           case prefix: Capability => prefix.computeOwner(mapUnscoped)
           case NoPrefix if mapUnscoped && classifier.derivesFrom(defn.Caps_Unscoped) =>
             ctx.owner.topLevelClass
+              .orElse: // fallback needed if ctx.owner is a toplevel module val
+                assert(ctx.owner.is(ModuleVal))
+                ctx.owner
           case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
