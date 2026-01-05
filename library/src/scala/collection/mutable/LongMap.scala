@@ -633,7 +633,7 @@ object LongMap {
     * which is already a `LongMap` gets cloned.
     *
     * @param source Source collection
-    * @tparam A the type of the collection’s elements
+    * @tparam V the type of the collection’s elements
     * @return a new `LongMap` with the elements of `source`
     */
   def from[V](source: IterableOnce[(Long, V)]^): LongMap[V] = source match {
