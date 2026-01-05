@@ -596,10 +596,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           return CCState.withCapAsRoot:
             subCaptures(tp1.captureSet, tp2.captureSet)
 
-        val compareGadtFirst = ctx.mode.is(Mode.GadtConstraintInference) && !ctx.mode.is(Mode.QuotedTypePattern)
-        (compareGadtFirst && compareGADT)
+        (!ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
         || isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
-        || (!compareGadtFirst && compareGADT)
+        || (ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
         || tryLiftedToThis2
         || fourthTry
 
@@ -970,11 +969,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            val compareGadtFirst = ctx.mode.is(Mode.GadtConstraintInference) && !ctx.mode.is(Mode.QuotedTypePattern)
-            (compareGadtFirst && compareGADT)
+            (!ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
             || (!caseLambda.exists || widenAbstractOKFor(tp2))
               && isSubType(hi1, tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
-            || (!compareGadtFirst && compareGADT)
+            || (ctx.mode.is(Mode.QuotedTypePattern) && compareGADT)
             || tryLiftedToThis1
           case _ =>
             def isNullable(tp: Type): Boolean = tp.dealias match
