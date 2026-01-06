@@ -227,8 +227,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     if isVolatile then containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span))
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
     containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
-    //val getOffset =
-    //    Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     (containerName, ValDef(containerSymbol, defaultValue(tpe)))
 
   /** Create thread-unsafe lazy accessor equivalent to such code
