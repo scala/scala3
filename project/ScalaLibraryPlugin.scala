@@ -45,6 +45,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       .map{ jar =>
         validateNoScala2Pickles(jar)
         validateTastyAttributes(jar)
+        validateScalaAttributes(jar)
         jar
       }
       .value,
@@ -136,6 +137,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
   }
 
   /** Remove Scala 2 Pickles from class file and optionally add TASTY attribute.
+   *  Also ensures the Scala attribute is present for all Scala-compiled classes.
    *
    *  @param bytes the class file bytecode
    *  @param tastyUUID optional 16-byte UUID from the corresponding .tasty file (only for primary class)
@@ -159,6 +161,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
     tastyUUID
       .map(new TastyAttribute(_))
       .foreach(writer.visitAttribute)
+    // Add Scala attribute if not present and this is a Scala-compiled class
+    def isJavaSourced = extractSourceFile(bytes).exists(_.endsWith(".java"))
+    if (!hasScalaAttribute(bytes) && !isJavaSourced) {
+      writer.visitAttribute(new ScalaAttribute)
+    }
     writer.toByteArray
   }
 
@@ -249,6 +256,46 @@ object ScalaLibraryPlugin extends AutoPlugin {
       ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES
     )
     hasPickleAnnotation || hasScalaSigAttr || hasScalaInlineInfoAttr
+  }
+
+  /** Check if class file bytecode contains a Scala attribute */
+  private def hasScalaAttribute(bytes: Array[Byte]): Boolean = {
+    var hasScala = false
+    val visitor = new ClassVisitor(Opcodes.ASM9) {
+      override def visitAttribute(attr: Attribute): Unit = {
+        if (attr.`type` == "Scala") hasScala = true
+      }
+    }
+    new ClassReader(bytes).accept(
+      visitor,
+      ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES
+    )
+    hasScala
+  }
+
+  /** Validate that all files produced by Scala compiler have a "Scala" attribute.
+   *  Java-sourced files are excluded from this check since they don't have Scala attributes.
+   */
+  def validateScalaAttributes(jar: File): Unit = {
+    val classFilesWithoutScala = Using.jarFile(verify = true)(jar) { jarFile =>
+      jarFile
+        .entries().asScala
+        .filter(_.getName.endsWith(".class"))
+        .flatMap { entry =>
+          Using.bufferedInputStream(jarFile.getInputStream(entry)) { inputStream =>
+            val bytes = inputStream.readAllBytes()
+            // Skip Java-sourced files - they won't have Scala attributes
+            val isJavaSourced = extractSourceFile(bytes).exists(_.endsWith(".java"))
+            if (!isJavaSourced && !hasScalaAttribute(bytes)) Some(entry.getName)
+            else None
+          }
+        }
+        .toList
+    }
+    assert(
+      classFilesWithoutScala.isEmpty,
+      s"JAR ${jar.getName} contains ${classFilesWithoutScala.size} class files without 'Scala' attribute: ${classFilesWithoutScala.mkString("\n  - ", "\n  - ", "")}"
+    )
   }
 
   def validateNoScala2Pickles(jar: File): Unit = {
@@ -429,6 +476,14 @@ object ScalaLibraryPlugin extends AutoPlugin {
       val bv = new ByteVector(uuid.length)
       bv.putByteArray(uuid, 0, uuid.length)
       bv
+    }
+  }
+
+  /** Custom ASM Attribute for Scala attribute marker (empty attribute) */
+  private class ScalaAttribute extends Attribute("Scala") {
+    override def write(classWriter: ClassWriter, code: Array[Byte], codeLength: Int, maxStack: Int, maxLocals: Int): ByteVector = {
+      // Scala attribute is empty (length = 0x0)
+      new ByteVector(0)
     }
   }
 }
