@@ -487,7 +487,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val getVarHandle =
       ref(defn.MethodHandlesClass).select(defn.MethodHandles_lookup).appliedToNone
       .select(defn.MethodHandlesLookup_FindVarHandle).appliedTo(
-        thizClass, Literal(Constant(containerTree.symbol.name.mangledString)), Literal(Constant(defn.ObjectType))
+        thizClass, Literal(Constant(containerName.mangledString)), Literal(Constant(defn.ObjectType))
       )
     val varHandleTree = ValDef(varHandleSymbol, getVarHandle)
     val varHandle = ref(varHandleSymbol)
