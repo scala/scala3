@@ -1,4 +1,5 @@
- // https://github.com/scala/scala3/issues/23487
+// scalajs: --skip
+// https://github.com/scala/scala3/issues/23487
 import java.io.*
 import scala.annotation.threadUnsafe
 
