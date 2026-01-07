@@ -3713,7 +3713,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
  /** Checks if `tree` is a named tuple with one element that could be
   *  interpreted as an assignment, such as `(x = 1)`. If so, issues a warning.
-  *  However, only checking the Tuple case if we're not within a type,
+  *  However, only checks the Tuple case if we're not within a type,
   *  not only because that's not useful, but because it can lead to cyclic references while checking,
   *  e.g., `val foo: (f: String) = ... ; val f = foo.f`
   */
