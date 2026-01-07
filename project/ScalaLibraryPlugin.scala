@@ -221,7 +221,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
       if (isJavaSourced) None
       else {
         val tastyFile = classDirectory / (basePath + ".tasty")
-        if (!tastyFile.exists() && AllowedNoTastyClassFiles.contains(relativePath)) None
+        // Normalize path separators for cross-platform comparison (Windows uses backslashes)
+        val normalizedPath = relativePath.replace('\\', '/')
+        if (!tastyFile.exists() && AllowedNoTastyClassFiles.contains(normalizedPath)) None
         else {
           assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath")
 
