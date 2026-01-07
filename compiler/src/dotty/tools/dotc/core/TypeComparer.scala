@@ -3666,16 +3666,18 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
     }
 
     def matchSubTypeTest(spec: MatchTypeCaseSpec.SubTypeTest): MatchResult =
-      val disjoint = provablyDisjoint(scrut, spec.pattern)
-      if necessarySubType(scrut, spec.pattern) then
-        if disjoint then
-          MatchResult.ReducedAndDisjoint
-        else
-          MatchResult.Reduced(spec.body)
-      else if disjoint then
-        MatchResult.Disjoint
+      if spec.pattern.isErrorType then MatchResult.Stuck
       else
-        MatchResult.Stuck
+        val disjoint = provablyDisjoint(scrut, spec.pattern)
+        if necessarySubType(scrut, spec.pattern) then
+          if disjoint then
+            MatchResult.ReducedAndDisjoint
+          else
+            MatchResult.Reduced(spec.body)
+        else if disjoint then
+          MatchResult.Disjoint
+        else
+          MatchResult.Stuck
     end matchSubTypeTest
 
     // See https://docs.scala-lang.org/sips/match-types-spec.html#matching

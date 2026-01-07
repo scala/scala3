@@ -2,7 +2,7 @@ trait Expr:
   type Value
 object Expr:
   type Of[V] = Expr { type Value = V }
-  type ExtractValue[F <: Expr] = F match
+  type ExtractValue[F <: Expr] = F match // error
     case Expr.Of[v] => v
 import Expr.ExtractValue
 
@@ -53,6 +53,6 @@ object Test2:
   val x1: ExtractValue[PrimBroken] = 1 // error
 
   val foo: MyExpr2 = new MyExpr2
-  val v: foo.Value = (Vector(Vector()), 1) // error: Recursion limit exceeded
+  val v: foo.Value = (Vector(Vector()), 1)
   val c: MyExpr2 = fromLiteral:
-    (Vector(Vector()), 1) // error: Recursion limit exceeded
+    (Vector(Vector()), 1)

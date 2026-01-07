@@ -10,12 +10,12 @@ object Buf:
 inline def foo(testFun: Any): Unit = {}
 
 val x = foo {
-  type Rec[A] = A match
+  type Rec[A] = A match // error
     case String => Opt[Rec[String]]
 
-  val arr = new Buf[Rec[String]](8)    // error
-  val arr2 = Buf[Rec[String]](8)       // error
-  val arr3 = Buf.apply[Rec[String]](8) // error
+  val arr = new Buf[Rec[String]](8)
+  val arr2 = Buf[Rec[String]](8)
+  val arr3 = Buf.apply[Rec[String]](8)
 }
 
 import scala.collection.mutable
@@ -28,7 +28,7 @@ class Spec {
 
   in {
     type JsonPrimitive = String | Int
-    type Rec[JA[_], A] = A match {
+    type Rec[JA[_], A] = A match { // error
       case JsonPrimitive => JsonPrimitive | JA[Rec[JA, JsonPrimitive]]
       case _ => A | JA[Rec[JA, A]]
     }
@@ -38,6 +38,6 @@ class Spec {
       JsonPrimitive
     ]
 
-    val arr = new mutable.ArrayBuffer[Json](8) // error
+    val arr = new mutable.ArrayBuffer[Json](8)
   }
 }

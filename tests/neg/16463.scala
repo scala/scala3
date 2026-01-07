@@ -31,7 +31,7 @@ object TupleOps {
         ) *: EmptyTuple
     }
 
-  type BubbleSort[T <: Tuple] = T match {
+  type BubbleSort[T <: Tuple] = T match { // error
     case EmptyTuple => EmptyTuple
     case NonEmptyTuple =>
       BubbleSort[DropLargest[T]] `Concat` (Maximum[T] *: EmptyTuple)
@@ -39,5 +39,5 @@ object TupleOps {
 }
 
 object demo extends App {
-  println(compiletime.constValue[TupleOps.BubbleSort[(1, 2)]]) // error: Recursion limit exceeded
+  println(compiletime.constValue[TupleOps.BubbleSort[(1, 2)]]) // error
 }

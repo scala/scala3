@@ -1764,6 +1764,8 @@ class Definitions {
     else TypeOps.nestedPairs(elems)
   }
 
+  lazy val Tuple_Concat: Symbol = TupleModule.info.member(typeName("Concat")).symbol
+
   def isProductSubType(tp: Type)(using Context): Boolean = tp.derivesFrom(ProductClass)
 
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
