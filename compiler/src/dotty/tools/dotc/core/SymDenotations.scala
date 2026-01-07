@@ -152,7 +152,8 @@ object SymDenotations {
           println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
           indent += 1
 
-          if (myFlags.is(Touched)) throw CyclicReference(this)
+          if myFlags.is(Touched) then
+            throw CyclicReference(this)(using ctx.withOwner(symbol))
           myFlags |= Touched
 
           // completions.println(s"completing ${this.debugString}")
@@ -164,7 +165,7 @@ object SymDenotations {
           }
           finally {
             indent -= 1
-            println(i"${"  " * indent}completed $name in $owner")
+            println(i"${"  " * indent}completed ${if (isType) "type" else "val"} $name in $owner")
           }
         }
         else
