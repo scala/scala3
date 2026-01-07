@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.language.implicitConversions
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
-import scala.annotation.{experimental, implicitNotFound, publicInBinary, targetName, nowarn }
+import scala.annotation.{elidable, experimental, implicitNotFound, publicInBinary, targetName, nowarn}
 import scala.annotation.meta.{ companionClass, companionMethod }
 import scala.annotation.internal.{ RuntimeChecked }
 import scala.compiletime.summonFrom
@@ -272,7 +272,8 @@ object Predef extends LowPriorityImplicits {
    *           }}}
    *  @group utilities
    */
-  inline override def locally[T](@deprecatedName("x") x: T): T = x
+  @elidable(0)
+  inline def locally[T](@deprecatedName("x") x: T): T = x
 
   // ==============================================================================================
   // ========================================= ASSERTIONS =========================================
@@ -675,9 +676,6 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
 
   /** @group conversions-string */
   implicit def wrapString(s: String): WrappedString = mapNull(s, new WrappedString(s))
-
-  /** Overridden by public inline method, to preserve binary compat. */
-  protected[scala] def locally[T](x: T): T = x
 }
 
 private[scala] abstract class LowPriorityImplicits2 {
