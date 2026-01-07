@@ -3713,10 +3713,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
  /** Checks if `tree` is a named tuple with one element that could be
   *  interpreted as an assignment, such as `(x = 1)`. If so, issues a warning.
+  *  However, only checking the Tuple case if we're not within a type,
+  *  not only because that's not useful, but because it can lead to cyclic references while checking,
+  *  e.g., `val foo: (f: String) = ... ; val f = foo.f`
   */
-  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple | untpd.Parens)(using Context): Unit =
+  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple | untpd.Parens)(using ctx: Context): Unit =
     val assignmentArgs = tree match {
-      case untpd.Tuple(List(NamedArg(name, value))) =>
+      case untpd.Tuple(List(NamedArg(name, value))) if !ctx.mode.is(Mode.Type) =>
         val tmpCtx = ctx.fresh.setNewTyperState()
         typedAssign(untpd.Assign(untpd.Ident(name), value), WildcardType)(using tmpCtx)
         Option.unless(tmpCtx.reporter.hasErrors)(name -> value)
