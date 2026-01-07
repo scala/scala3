@@ -174,6 +174,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
     writer.toByteArray
   }
 
+  // Class files that don't have corresponding TASTY files (3.8.0 specific)
+  val NoTastyClassFiles = Set(
+    "scala/AnyVal.class"
+  )
+
   /** Apply the patches to given input file and write the result to the output.
    *  For .class files, strips Scala 2 pickles and adds TASTY attribute only for primary classes.
    *
@@ -214,6 +219,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     val isJavaSourced = extractSourceFile(classfileBytes).exists(_.endsWith(".java"))
     val tastyUUID =
       if (isJavaSourced) None
+      else if (NoTastyClassFiles.contains(relativePath)) None
       else {
         val tastyFile = classDirectory / (basePath + ".tasty")
         assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath")
