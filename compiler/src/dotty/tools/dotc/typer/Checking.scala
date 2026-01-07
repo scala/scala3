@@ -898,6 +898,46 @@ object Checking {
     }
   }
 
+  // Verify classes and traits with the valhalla annotation meet the requirements
+  def checkValhallaValueClass(cdef: TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+    def checkValueClassMember(stat: Tree) = stat match {
+      case _: ValDef =>
+        if !stat.symbol.is(ParamAccessor) then
+          report.error(ValueClassesMayNotDefineNonParameterField(clazz, stat.symbol), stat.srcPos)
+        if stat.symbol.is(Mutable) then
+          report.error(ValueClassParameterMayNotBeAVar(clazz, stat.symbol), stat.srcPos)
+      case _: DefDef if stat.symbol.isConstructor =>
+        report.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, stat.symbol), stat.srcPos)
+      case _ =>
+      // ok
+    }
+
+    inline def checkParents(): Unit = {
+      clazz.asClass.baseClasses.foreach(c => {
+        val parentSym = if(c.isConstructor) then c.owner else c
+
+        if (parentSym.asClass.baseClasses.contains(defn.ObjectClass))
+          report.error(ValueClassCannotExtendIdentityClass(clazz, parentSym), cdef.srcPos)
+        if (((clazz.isClass && (parentSym ne defn.AnyValClass)) || (clazz.is(Trait) && (parentSym ne defn.AnyClass))) && !parentSym.isValhallaValueClass)
+          parentSym.asClass.classInfo.decls.foreach(f => if f.isMutableVar then report.error(ValueClassMustNotExtendTraitWithMutableField(parentSym, f), cdef.srcPos))
+      })
+    }
+
+    inline def checkSelfType(): Unit = {
+      if(clazz.asClass.givenSelfType.exists)
+        val selfTypeSym = clazz.asClass.givenSelfType.classSymbol
+
+        if(selfTypeSym.exists && !selfTypeSym.isValhallaValueClass)
+          selfTypeSym.asClass.classInfo.decls.foreach(f => if f.isMutableVar then report.error(ValhallaTraitsMayNotHaveSelfTypesWithVars(selfTypeSym, f), cdef.srcPos))
+    }
+    if(clazz.hasAnnotation(defn.ValhallaAnnot))
+      if (clazz.asClass.parentSyms.contains(defn.ObjectClass))
+        report.error(IncorrectValueClassDeclaration(clazz.isClass), cdef.srcPos)
+      checkParents()
+      checkSelfType()
+      stats.foreach(checkValueClassMember)
+  }
+
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     lazy val params = sym.paramSymss.flatten

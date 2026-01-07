@@ -552,7 +552,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArrayMethodName(elemtp: Type)(using Context): TermName = {
     val elemCls = elemtp.classSymbol
     if (elemCls.isPrimitiveValueClass) nme.wrapXArray(elemCls.name)
-    else if (elemCls.derivesFrom(defn.ObjectClass) && !elemCls.isNotRuntimeClass) nme.wrapRefArray
+    else if ((elemCls.derivesFrom(defn.ObjectClass) || elemCls.isValhallaValueClass) && !elemCls.isNotRuntimeClass) nme.wrapRefArray
     else nme.genericWrapArray
   }
 

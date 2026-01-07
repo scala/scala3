@@ -893,6 +893,9 @@ object SymDenotations {
     /** Is this symbol a class that extends `AnyVal`? Overridden in ClassDenotation */
     def isValueClass(using Context): Boolean = false
 
+    /** Is this symbol a class that ...? Overridden in ClassDenotation */
+    def isValhallaValueClass(using Context): Boolean = false
+
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
@@ -904,7 +907,7 @@ object SymDenotations {
      *  but it becomes nullable after erasure.
      */
     final def isNullableClassAfterErasure(using Context): Boolean =
-      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      isClass && (!isValueClass || isValhallaValueClass) && !is(ModuleClass) && symbol != defn.NothingClass
 
     /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
      *  or, if this symbol is protected, a subclass of the owner?
@@ -2105,6 +2108,9 @@ object SymDenotations {
         // We call derivesFrom at the initial phase both because AnyVal does not exist
         // after Erasure and to avoid cyclic references caused by forcing denotations
         atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
+
+    final override def isValhallaValueClass(using Context): Boolean =
+      hasAnnotation(defn.ValhallaAnnot) && (symbol.isUniversalTrait || isValueClass)
 
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
