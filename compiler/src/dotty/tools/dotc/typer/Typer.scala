@@ -3717,7 +3717,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   *  not only because that's not useful, but because it can lead to cyclic references while checking,
   *  e.g., `val foo: (f: String) = ... ; val f = foo.f`
   */
-  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple | untpd.Parens)(using ctx: Context): Unit =
+  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple | untpd.Parens)(using Context): Unit =
     val assignmentArgs = tree match {
       case untpd.Tuple(List(NamedArg(name, value))) if !ctx.mode.is(Mode.Type) =>
         val tmpCtx = ctx.fresh.setNewTyperState()
