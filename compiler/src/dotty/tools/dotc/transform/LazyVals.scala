@@ -225,7 +225,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val containerName = LazyLocalName.fresh(x.name.asTermName)
     val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags | Private, tpe, coord = x.symbol.coord).enteredAfter(this)
     if isVolatile then containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span))
-    containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
+    for a <- x.symbol.annotations do {
+      // FIXME
+      if !a.show.contains("JS") then containerSymbol.addAnnotation(a)
+    }
+    //containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
     // for the thread-safe implementation, the generated symbol must not be static or the CAS operations won't work, see scala/scala3
     if isVolatile then containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
     (containerName, ValDef(containerSymbol, defaultValue(tpe)))
