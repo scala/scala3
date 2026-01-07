@@ -108,7 +108,9 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  def pair[A](a: A)[B](b: B): (A, B) = (a, b)
         |  pair[Int][@@String]
       """.stripMargin,
-      ""
+      """|apply(v1: Int): Any => (Int, Any)
+         |      ^^^^^^^
+         |""".stripMargin
     )
 
   @Test def `inferred-type-param-1` =

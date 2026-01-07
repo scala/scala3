@@ -379,7 +379,7 @@ object Signatures {
     case other => other.stripAnnots
 
   /**
-   * Checks if tree is valid for signatureHelp. Skipped trees are either tuple or function applies
+   * Checks if tree is valid for signatureHelp. Skips tuple apply trees
    *
    * @param tree tree to validate
    */
@@ -389,12 +389,7 @@ object Signatures {
         && tree.symbol.exists
         && ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
 
-    val isFunctionNApply =
-      tree.symbol.name == nme.apply
-        && tree.symbol.exists
-        && ctx.definitions.isFunctionSymbol(tree.symbol.owner)
-
-    !isTupleApply && !isFunctionNApply
+    !isTupleApply
 
   /**
    * Get unapply method result type omiting unknown types and another method calls.
