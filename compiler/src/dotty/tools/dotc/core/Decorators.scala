@@ -245,7 +245,7 @@ object Decorators {
   end extension
 
   extension (text: Text)
-    def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+    def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
   /** Test whether a list of strings representing phases contains
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the

@@ -49,9 +49,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def controlled(op: => Text): Text = limiter.controlled(op)
 
-  def Str(str: String, lineRange: LineRange = EmptyLineRange): Str =
+  def Str(str: String): Str =
     limiter.register(str)
-    Texts.Str(str, lineRange)
+    Texts.Str(str)
 
   given stringToText: Conversion[String, Text] = Str(_)
 

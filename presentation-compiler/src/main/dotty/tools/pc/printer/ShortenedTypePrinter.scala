@@ -215,7 +215,7 @@ class ShortenedTypePrinter(
 
   def tpe(tpe: Type): String =
     val dealiased = if (tpe.isNamedTupleType) tpe.deepDealiasAndSimplify else tpe
-    toText(dealiased).mkString(defaultWidth, false)
+    toText(dealiased).mkString(defaultWidth)
 
   def hoverSymbol(sym: Symbol, info: Type)(using Context): String =
     val typeSymbol = info.typeSymbol

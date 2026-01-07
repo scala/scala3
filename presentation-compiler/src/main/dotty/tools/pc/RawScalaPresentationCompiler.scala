@@ -65,7 +65,7 @@ case class RawScalaPresentationCompiler(
 
   override val scalaVersion = BuildInfo.scalaVersion
 
-  private val forbiddenOptions = Set("-print-lines", "-print-tasty")
+  private val forbiddenOptions = Set("-print-tasty")
   private val forbiddenDoubleOptions = Set.empty[String]
 
   val driverSettings =
