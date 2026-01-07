@@ -199,35 +199,33 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    */
   def keySet: Set[K] =
     // If we know one of the strict implementations inside this library, simply return LazyKeySet
-    import MapOps.LazyKeySet
-    this match
+    import MapOps.{LazyKeySet, StrictKeySet}
+    (this: @unchecked) match
       case s: SeqMap[K, V] => new LazyKeySet(s)
       case s: SortedMap[K, V] => new LazyKeySet(s)
       case s: immutable.MapOps[K, V, immutable.Map, immutable.Map[K, V]] => new LazyKeySet(s)
       case s: mutable.MapOps[K, V, mutable.Map, mutable.Map[K, V]] => new LazyKeySet(s)
-      case _ => new KeySet
+      case _ => new StrictKeySet(this)
 
   /** The implementation class of the set returned by `keySet`.
     */
+  @deprecated("KeySet is no longer used in the .keySet implementation", since = "3.8.0")
   protected class KeySet extends AbstractSet[K] with GenKeySet with DefaultSerializable {
-    // If you need a generic, capturing KeySet, create a View from keysIterator
-    def diff(that: Set[K]): Set[K] = fromSpecific(allKeys.filterNot(that))
+    def diff(that: Set[K]): Set[K] = fromSpecific(this.view.filterNot(that))
   }
 
   /** A generic trait that is reused by keyset implementations.
     * Note that this version of KeySet copies all the keys into an interval val.
     * See [[MapOps.LazyKeySet]] for a version that lazily captures the map.
     */
+  @deprecated("GenKeySet is not capture-safe, and so is deprecated and no longer used in .keySet implementations.", since = "3.8.0")
   protected trait GenKeySet { this: Set[K] =>
-    // CC note: this is unavoidable to make the KeySet pure.
-    private[MapOps] val allKeys = MapOps.this.keysIterator.to(mutable.LinkedHashSet)
-    // We restore the lazy behavior in LazyKeySet
-    def iterator: Iterator[K] =
-      allKeys.iterator
-    def contains(key: K): Boolean = allKeys.contains(key)
-    override def size: Int = allKeys.size
-    override def knownSize: Int = allKeys.knownSize
-    override def isEmpty: Boolean = allKeys.isEmpty
+    import caps.unsafe.{unsafeDiscardUses, unsafeAssumePure}
+    def iterator: Iterator[K] = unsafeDiscardUses(MapOps.this).keysIterator.unsafeAssumePure
+    def contains(key: K): Boolean = unsafeDiscardUses(MapOps.this).contains(key)
+    override def size: Int = unsafeDiscardUses(MapOps.this).size
+    override def knownSize: Int = unsafeDiscardUses(MapOps.this).knownSize
+    override def isEmpty: Boolean = unsafeDiscardUses(MapOps.this).isEmpty=======
   }
 
   /** An [[Iterable]] collection of the keys contained by this map.
@@ -317,7 +315,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     *  @param key the key
     *  @return    `true` if there is a binding for `key` in this map, `false` otherwise.
     */
-  def contains(key: K): Boolean = get(key).isDefined
+  def contains(key: K): Boolean =
+    // TODO: I'm not sure what's happening here, need to investigate a bit further.
+    // But this check should be fine: we of course can use a MapOps here.
+    caps.unsafe.unsafeDiscardUses(this.get(key)).isDefined
 
 
   /** Tests whether this map contains a binding for a key. This method,
@@ -437,6 +438,18 @@ object MapOps {
     override def size: Int = mp.size
     override def knownSize: Int = mp.knownSize
     override def isEmpty: Boolean = mp.isEmpty
+  }
+
+  /** The implementation class of the set returned by `keySet`, for impure maps (i.e. views).
+    */
+  private[collection] class StrictKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](@annotation.constructorOnly mp: MapOps[K, V, CC, C]^) extends AbstractSet[K] with DefaultSerializable {
+    val allKeys = mp.keysIterator.to(mutable.LinkedHashSet)
+    def iterator: Iterator[K] = allKeys.iterator
+    def diff(that: Set[K]): Set[K] = StrictKeySet.this.fromSpecific(this.view.filterNot(that))
+    def contains(key: K): Boolean = allKeys.contains(key)
+    override def size: Int = allKeys.size
+    override def knownSize: Int = allKeys.knownSize
+    override def isEmpty: Boolean = allKeys.isEmpty
   }
 }
 
