@@ -175,8 +175,8 @@ object ScalaLibraryPlugin extends AutoPlugin {
   }
 
   // Class files that don't have corresponding TASTY files (3.8.0 specific)
-  val NoTastyClassFiles = Set(
-    "scala/AnyVal.class"
+  val AllowedNoTastyClassFiles = Set(
+    "scala/AnyVal.class" // Bootstrapped only in 3.8.0
   )
 
   /** Apply the patches to given input file and write the result to the output.
@@ -219,16 +219,18 @@ object ScalaLibraryPlugin extends AutoPlugin {
     val isJavaSourced = extractSourceFile(classfileBytes).exists(_.endsWith(".java"))
     val tastyUUID =
       if (isJavaSourced) None
-      else if (NoTastyClassFiles.contains(relativePath)) None
       else {
         val tastyFile = classDirectory / (basePath + ".tasty")
-        assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath")
+        if (!tastyFile.exists() && AllowedNoTastyClassFiles.contains(relativePath)) None
+        else {
+          assert(tastyFile.exists(), s"TASTY file $tastyFile does not exist for $relativePath")
 
-        // Only add TASTY attribute if this is the primary class (class path equals base path)
-        // Inner classes, companion objects ($), anonymous classes ($$anon), etc. don't get TASTY attribute
-        val isPrimaryClass = classPath == basePath
-        if (isPrimaryClass) Some(extractTastyUUID(IO.readBytes(tastyFile)))
-        else None
+          // Only add TASTY attribute if this is the primary class (class path equals base path)
+          // Inner classes, companion objects ($), anonymous classes ($$anon), etc. don't get TASTY attribute
+          val isPrimaryClass = classPath == basePath
+          if (isPrimaryClass) Some(extractTastyUUID(IO.readBytes(tastyFile)))
+          else None
+        }
     }
 
     // Validation to ensure that no new TASTY attributes are added or removed when compared with unpatched sources
