@@ -225,7 +225,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     def contains(key: K): Boolean = unsafeDiscardUses(MapOps.this).contains(key)
     override def size: Int = unsafeDiscardUses(MapOps.this).size
     override def knownSize: Int = unsafeDiscardUses(MapOps.this).knownSize
-    override def isEmpty: Boolean = unsafeDiscardUses(MapOps.this).isEmpty=======
+    override def isEmpty: Boolean = unsafeDiscardUses(MapOps.this).isEmpty
   }
 
   /** An [[Iterable]] collection of the keys contained by this map.
