@@ -34,6 +34,17 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
         // scala/scala3#24545 / scala/scala3#24788
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
+
+        // against 3.8.0-RC1
+        // new private[collection] class StrictKeySet
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.MapOps$StrictKeySet"),
+        // private[MapOps] MapOps.allKeys changing types
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.MapOps#GenKeySet.allKeys"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.MapOps#GenKeySet.scala$collection$MapOps$GenKeySet$_setter_$allKeys_="),
+        // new private[collection] classes
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.SortedMapOps$LazyKeySortedSet"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.MapOps$LazyImmutableKeySet"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.SortedMapOps$LazyImmutableKeySortedSet"),
       ),
 
     )

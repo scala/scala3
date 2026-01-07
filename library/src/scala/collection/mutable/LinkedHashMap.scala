@@ -234,11 +234,15 @@ class LinkedHashMap[K, V]
       def extract(nd: Entry): (K, V) = (nd.key, nd.value)
     }
 
+  @deprecated("LinkedKeySet is now strict and no longer used in the implementation of .keySet", "3.8.0")
+  /** Note that a LinkedKeySet could be strict. */
   protected class LinkedKeySet extends KeySet {
     override def iterableFactory: IterableFactory[collection.Set] = LinkedHashSet
   }
 
-  override def keySet: collection.Set[K] = new LinkedKeySet
+  override def keySet: collection.Set[K] = new MapOps.LazyKeySet(this) {
+    override def iterableFactory: IterableFactory[collection.Set] = LinkedHashSet
+  }
 
   override def keysIterator: Iterator[K] =
     if (size == 0) Iterator.empty
