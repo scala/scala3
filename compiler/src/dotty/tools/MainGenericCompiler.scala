@@ -2,9 +2,8 @@ package dotty.tools
 
 import scala.annotation.tailrec
 import scala.io.Source
-import scala.util.Try
+import scala.util.{Try, Success, Failure}
 import java.io.File
-import scala.annotation.internal.sharable
 
 enum CompileMode:
   case Guess
@@ -44,9 +43,9 @@ case class CompileSettings(
     this.copy(scriptArgs = scriptArgs.appendedAll(args.toList.filter(_.nonEmpty)))
 
   def withTargetScript(file: String): CompileSettings =
-    Try(Source.fromFile(file)).toOption match
-      case Some(_) => this.copy(targetScript = file)
-      case None      =>
+    Try(Source.fromFile(file)) match
+      case Success(_) => this.copy(targetScript = file)
+      case Failure(_) =>
         println(s"not found $file")
         this.copy(exitCode = 2)
   end withTargetScript
@@ -54,29 +53,29 @@ case class CompileSettings(
 
 object MainGenericCompiler {
 
-  val classpathSeparator: String = File.pathSeparator
+  private val classpathSeparator: String = File.pathSeparator
+  private val javaPropOption = raw"""-D(.+?)=(.?)""".r
 
-  def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
+  private def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
     val cpEntries = cp.split(classpathSeparator).toList
     val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
-    val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
-    def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
+    val globDir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
+    def validGlobbedJar(s: String): Boolean = s.startsWith(globDir) && (s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip"))
     if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
       // reassemble globbed wildcard classpath
-      // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
-      val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
+      // globDir is wildcard directory for globbed jar files, reconstruct the intended classpath
+      val cpJars = tail.takeWhile(validGlobbedJar)
       val remainingArgs = tail.drop(cpJars.size)
       (remainingArgs, cpEntries ++ cpJars)
     else
       (tail, cpEntries)
 
-  @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
   @tailrec
   def process(args: List[String], settings: CompileSettings): CompileSettings = args match
     case Nil =>
       settings
     case "--" :: tail =>
-      process(Nil, settings.withResidualArgs(tail.toList*))
+      settings.withResidualArgs(tail*)
     case ("-v" | "-verbose" | "--verbose") :: tail =>
       process(tail, settings.withScalaArgs("-verbose"))
     case "-script" :: targetScript :: tail =>
@@ -92,8 +91,8 @@ object MainGenericCompiler {
     case "-print-tasty" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.PrintTasty))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val (tailargs, newEntries) = processClasspath(cp, tail)
-      process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
+      val (tailArgs, newEntries) = processClasspath(cp, tail)
+      process(tailArgs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
     case "-Oshort" :: tail =>
       // Nothing is to be done here. Request that the user adds the relevant flags manually.
       val addTC="-XX:+TieredCompilation"
@@ -110,40 +109,26 @@ object MainGenericCompiler {
     val settings = process(args.toList, CompileSettings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
 
-    def classpathSetting =
+    val classpathSetting =
       if settings.classPath.isEmpty then List()
       else List("-classpath", settings.classPath.mkString(classpathSeparator))
 
-    def reconstructedArgs() =
-      classpathSetting ++ settings.scalaArgs ++ settings.residualArgs
+    val properArgs = classpathSetting ++ settings.scalaArgs ++ settings.residualArgs
 
-    def addJavaProps(): Unit =
-      settings.javaProps.foreach { (k, v) => sys.props(k) = v }
+    settings.javaProps.foreach { (k, v) => sys.props(k) = v }
 
-    def run(settings: CompileSettings): Unit = settings.compileMode match
-      case CompileMode.Compile =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
+    settings.compileMode match
+      case CompileMode.Guess | CompileMode.Compile =>
         dotty.tools.dotc.Main.main(properArgs.toArray)
       case CompileMode.Decompile =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
         dotty.tools.dotc.decompiler.Main.main(properArgs.toArray)
       case CompileMode.PrintTasty =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
         dotty.tools.dotc.core.tasty.TastyPrinter.main(properArgs.toArray)
       case CompileMode.Script => // Naive copy from scalac bash script
-        addJavaProps()
-        val properArgs =
-          reconstructedArgs()
+        val fullArgs =
+          properArgs
           ++ List("-script", settings.targetScript)
           ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
-      case CompileMode.Guess =>
-        run(settings.withCompileMode(CompileMode.Compile))
-    end run
-
-    run(settings)
   end main
 }

@@ -87,7 +87,7 @@ object Setup:
 end Setup
 import Setup.*
 
-/** Phase that sets up everthing for capture checking.
+/** Phase that sets up everything for capture checking.
  *
  *  A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:

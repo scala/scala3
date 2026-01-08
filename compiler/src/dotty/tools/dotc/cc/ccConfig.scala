@@ -7,7 +7,7 @@ import config.{Feature, SourceVersion}
 
 object ccConfig:
 
-  /** If enabled, cache capture sets of infos capabilties */
+  /** If enabled, cache capture sets of infos capabilities */
   inline val cacheCaptureSetOfInfo = false
 
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`

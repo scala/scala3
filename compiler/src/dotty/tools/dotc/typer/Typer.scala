@@ -4387,7 +4387,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         alts.filter(_.info.isParameterless) match
         case alt :: Nil => readaptSimplified(tree.withType(alt))
         case _ =>
-          altDenots.find(_.info.paramInfoss == ListOfNil) match
+          altDenots.find(_.info.paramInfoss == List(Nil)) match
           case Some(alt) => readaptSimplified(tree.withType(altRef(alt)))
           case _ => error
 

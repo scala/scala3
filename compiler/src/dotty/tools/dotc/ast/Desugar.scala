@@ -745,11 +745,11 @@ object desugar {
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass)
           report.error(CaseClassMissingParamList(cdef), namePos)
-        ListOfNil
+        List(Nil)
       }
       else if (isCaseClass && originalVparamss.head.exists(_.mods.isOneOf(GivenOrImplicit))) {
         report.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
-        ListOfNil
+        List(Nil)
       }
       else originalVparamss.nestedMap(toMethParam(_, KeepAnnotations.All, keepDefault = true))
     val derivedTparams =
