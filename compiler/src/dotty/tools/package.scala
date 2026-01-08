@@ -29,14 +29,7 @@ package object tools {
 
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
-
-  transparent inline def assertShort(inline assertion: Boolean, inline message: Any = null): Unit =
-    if !assertion then
-      val msg = message
-      val e = if msg == null then AssertionError() else AssertionError("assertion failed: " + msg)
-      e.setStackTrace(Array())
-      throw e
-
+  
   // Ensure this object is already classloaded, since it's only actually used
   // when handling stack overflows and every operation (including class loading)
   // risks failing.

@@ -4,14 +4,7 @@ import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.Try
 import java.io.File
-import java.lang.Thread
 import scala.annotation.internal.sharable
-import dotty.tools.dotc.util.ClasspathFromClassloader
-import dotty.tools.dotc.config.Properties.envOrNone
-import dotty.tools.io.Jar
-import java.nio.file.Paths
-import dotty.tools.dotc.config.CommandLineParser
-import dotty.tools.scripting.StringDriver
 
 enum CompileMode:
   case Guess
@@ -21,19 +14,14 @@ enum CompileMode:
   case Script
 
 case class CompileSettings(
-  verbose: Boolean = false,
   classPath: List[String] = List.empty,
   compileMode: CompileMode = CompileMode.Guess,
   exitCode: Int = 0,
-  javaArgs: List[String] = List.empty,
   javaProps: List[(String, String)] = List.empty,
   scalaArgs: List[String] = List.empty,
   residualArgs: List[String] = List.empty,
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
-  compiler: Boolean = false,
-  quiet: Boolean = false,
-  colors: Boolean = false,
 ) {
   def withCompileMode(em: CompileMode): CompileSettings = this.compileMode match
     case CompileMode.Guess =>
@@ -45,9 +33,6 @@ case class CompileSettings(
 
   def withScalaArgs(args: String*): CompileSettings =
     this.copy(scalaArgs = scalaArgs.appendedAll(args.toList.filter(_.nonEmpty)))
-
-  def withJavaArgs(args: String*): CompileSettings =
-    this.copy(javaArgs = javaArgs.appendedAll(args.toList.filter(_.nonEmpty)))
 
   def withJavaProps(args: (String, String)*): CompileSettings =
     this.copy(javaProps = javaProps.appendedAll(args.toList))
@@ -65,18 +50,6 @@ case class CompileSettings(
         println(s"not found $file")
         this.copy(exitCode = 2)
   end withTargetScript
-
-  def withCompiler: CompileSettings =
-    this.copy(compiler = true)
-
-  def withQuiet: CompileSettings =
-    this.copy(quiet = true)
-
-  def withColors: CompileSettings =
-    this.copy(colors = true)
-
-  def withNoColors: CompileSettings =
-    this.copy(colors = false)
 }
 
 object MainGenericCompiler {
@@ -97,7 +70,6 @@ object MainGenericCompiler {
     else
       (tail, cpEntries)
 
-  @sharable val javaOption = raw"""-J(.*)""".r
   @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
   @tailrec
   def process(args: List[String], settings: CompileSettings): CompileSettings = args match
@@ -107,8 +79,6 @@ object MainGenericCompiler {
       process(Nil, settings.withResidualArgs(tail.toList*))
     case ("-v" | "-verbose" | "--verbose") :: tail =>
       process(tail, settings.withScalaArgs("-verbose"))
-    case ("-q" | "-quiet") :: tail =>
-      process(tail, settings.withQuiet)
     case "-script" :: targetScript :: tail =>
       process(Nil, settings
         .withCompileMode(CompileMode.Script)
@@ -121,12 +91,6 @@ object MainGenericCompiler {
       process(tail, settings.withCompileMode(CompileMode.Decompile))
     case "-print-tasty" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.PrintTasty))
-    case "-colors" :: tail =>
-      process(tail, settings.withColors)
-    case "-no-colors" :: tail =>
-      process(tail, settings.withNoColors)
-    case "-with-compiler" :: tail =>
-      process(tail, settings.withCompiler)
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       val (tailargs, newEntries) = processClasspath(cp, tail)
       process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
@@ -136,8 +100,6 @@ object MainGenericCompiler {
       val tStopAtLvl="-XX:TieredStopAtLevel=1"
       println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
       process(tail, settings)
-    case javaOption(stripped: String) :: tail =>
-      process(tail, settings.withJavaArgs(stripped))
     case javaPropOption(opt: String, value: String) :: tail =>
       process(tail, settings.withJavaProps(opt -> value))
     case arg :: tail =>
