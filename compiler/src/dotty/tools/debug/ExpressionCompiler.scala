@@ -1,7 +1,6 @@
 package dotty.tools.debug
 
 import dotty.tools.dotc.Compiler
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.ElimByName
 

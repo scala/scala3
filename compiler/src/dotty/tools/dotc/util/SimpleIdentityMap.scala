@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-import collection.mutable.ListBuffer
+import scala.collection.mutable.ListBuffer
 
 /** A simple linked map with `eq` as the key comparison, optimized for small maps.
  *  It has linear complexity for `apply`, `updated`, and `remove`.

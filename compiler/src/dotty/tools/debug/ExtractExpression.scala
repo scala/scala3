@@ -1,6 +1,5 @@
 package dotty.tools.debug
 
-import dotty.tools.dotc.core.SymUtils
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
@@ -14,9 +13,6 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.transform.MacroTransform
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.util.SrcPos
-import scala.annotation.nowarn
-
 /**
   * This phase extracts the typed expression from the source tree, transforms it and places it
   * in the evaluate method of the Expression class.
@@ -110,7 +106,7 @@ private class ExtractExpression(
         case tree: (Ident | Select | This) if isStaticObject(tree.symbol) =>
           getStaticObject(tree)(tree.symbol.moduleClass)
 
-        // non static this or outer this
+        // non-static this or outer this
         case tree: This if !tree.symbol.is(Package) =>
           thisOrOuterValue(tree)(tree.symbol.enclosingClass.asClass)
 
@@ -362,7 +358,7 @@ private class ExtractExpression(
 
   private def isLocalToExpression(symbol: Symbol)(using Context): Boolean =
     val evaluateMethod = config.evaluateMethod
-    symbol.ownersIterator.exists(_ == evaluateMethod)
+    symbol.ownersIterator.contains(evaluateMethod)
 
 private object ExtractExpression:
   val name: String = "extractExpression"
