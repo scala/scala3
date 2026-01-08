@@ -244,7 +244,7 @@ object Signatures {
         findCurrentParamIndex(untpdArgs, span, alternativeSymbol.paramSymss(safeParamssListIndex).length - 1)
 
       val pre = treeQualifier(fun)
-      val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe.widenTermRefExpr))
+      val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe))
       val alternativeSignatures = alternativesWithTypes
         .flatMap(toApplySignature(_, findOutermostCurriedApply(untpdPath), safeParamssListIndex))
 

@@ -1577,7 +1577,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |""".stripMargin,
       "foo[K, V](): Unit"
     )
-  
+
   @Test def `proper-param-list-after-param-empty-list` =
     check(
       """
@@ -1627,3 +1627,17 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     )
 
 
+  @Test def `opaque-type-parameter` =
+    check(
+      """|object History {
+         |  opaque type Builder[A] = String
+         |  def build(b: Builder[Unit]): Int = ???
+         |}
+         |object Main {
+         |  History.build(@@)
+         |}
+         |""".stripMargin,
+      """|build(b: Builder[Unit]): Int
+         |      ^^^^^^^^^^^^^^^^
+         |""".stripMargin
+    )
