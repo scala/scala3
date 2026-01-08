@@ -42,8 +42,8 @@ class SymUtils:
     }
 
     /** All traits implemented by a class, except for those inherited through the superclass.
-    *  The empty list if `self` is a trait.
-    */
+     *  The empty list if `self` is a trait.
+     */
     def mixins(using Context): List[ClassSymbol] =
       if (self.is(Trait)) Nil
       else directlyInheritedTraits
