@@ -55,13 +55,13 @@ trait IndexedSeq[+A] extends Seq[A]
   final override def toIndexedSeq: IndexedSeq[A] = this
 
   override def canEqual(that: Any): Boolean = that match {
-    case otherIndexedSeq: IndexedSeq[_] => length == otherIndexedSeq.length && super.canEqual(that)
+    case otherIndexedSeq: IndexedSeq[?] => length == otherIndexedSeq.length && super.canEqual(that)
     case _ => super.canEqual(that)
   }
 
 
   override def sameElements[B >: A](o: IterableOnce[B]^): Boolean = o match {
-    case that: IndexedSeq[_] =>
+    case that: IndexedSeq[?] =>
       (this eq that) || {
         val length = this.length
         var equal = length == that.length

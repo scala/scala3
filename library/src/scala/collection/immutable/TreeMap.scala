@@ -296,7 +296,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
     }
   }
   override def equals(obj: Any): Boolean = obj match {
-    case that: TreeMap[K @unchecked, _] if ordering == that.ordering => RB.entriesEqual(tree, that.tree)
+    case that: TreeMap[K @unchecked, ?] if ordering == that.ordering => RB.entriesEqual(tree, that.tree)
     case _ => super.equals(obj)
   }
 

@@ -603,7 +603,7 @@ sealed abstract class List[+A]
       }
 
     o match {
-      case that: List[_] => listEq(this, that)
+      case that: List[?] => listEq(this, that)
       case _ => super.equals(o)
     }
   }

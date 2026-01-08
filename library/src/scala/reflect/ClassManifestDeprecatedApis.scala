@@ -44,7 +44,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
 
   private def subargs(args1: List[OptManifest[?]], args2: List[OptManifest[?]]) = (args1 corresponds args2) {
     // !!! [Martin] this is wrong, need to take variance into account
-    case (x: ClassManifest[_], y: ClassManifest[_]) => x <:< y
+    case (x: ClassManifest[?], y: ClassManifest[?]) => x <:< y
     case (x, y)                                     => (x eq NoManifest) && (y eq NoManifest)
   }
 
@@ -91,7 +91,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
     that <:< this
 
   override def canEqual(other: Any) = other match {
-    case _: ClassManifest[_] => true
+    case _: ClassManifest[?] => true
     case _                   => false
   }
 
@@ -209,7 +209,7 @@ object ClassManifestFactory {
 
   def arrayType[T](arg: OptManifest[?]): ClassManifest[Array[T]] = (arg: @unchecked) match {
     case NoManifest          => Object.asInstanceOf[ClassManifest[Array[T]]]
-    case m: ClassManifest[_] => m.asInstanceOf[ClassManifest[T]].arrayManifest
+    case m: ClassManifest[?] => m.asInstanceOf[ClassManifest[T]].arrayManifest
   }
 
   @SerialVersionUID(1L)

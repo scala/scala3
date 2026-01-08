@@ -279,7 +279,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   override def equals(that: Any): Boolean =
     that match {
-      case map: HashMap[_, _] => (this eq map) || (this.rootNode == map.rootNode)
+      case map: HashMap[?, ?] => (this eq map) || (this.rootNode == map.rootNode)
       case _ => super.equals(that)
     }
 
@@ -1313,13 +1313,13 @@ private final class BitmapIndexedMapNode[K, +V](
           index += 1
         }
       }
-    case _: HashCollisionMapNode[_, _] =>
+    case _: HashCollisionMapNode[?, ?] =>
       throw new RuntimeException("Cannot merge BitmapIndexedMapNode with HashCollisionMapNode")
   }
 
   override def equals(that: Any): Boolean =
     that match {
-      case node: BitmapIndexedMapNode[_, _] =>
+      case node: BitmapIndexedMapNode[?, ?] =>
         (this eq node) ||
           (this.cachedJavaKeySetHashCode == node.cachedJavaKeySetHashCode) &&
           (this.nodeMap == node.nodeMap) &&
@@ -1989,7 +1989,7 @@ private final class HashCollisionMapNode[K, +V ](
 
   override def equals(that: Any): Boolean =
     that match {
-      case node: HashCollisionMapNode[_, _] =>
+      case node: HashCollisionMapNode[?, ?] =>
         (this eq node) ||
           (this.hash == node.hash) &&
             (this.content.length == node.content.length) && {

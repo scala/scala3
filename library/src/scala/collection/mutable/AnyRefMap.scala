@@ -582,7 +582,7 @@ object AnyRefMap {
     * @return a new `AnyRefMap` with the elements of `source`
     */
   def from[K <: AnyRef, V](source: IterableOnce[(K, V)]^): AnyRefMap[K, V] = source match {
-    case source: AnyRefMap[_, _] => source.clone().asInstanceOf[AnyRefMap[K, V]]
+    case source: AnyRefMap[?, ?] => source.clone().asInstanceOf[AnyRefMap[K, V]]
     case _ => buildFromIterableOnce(source)
   }
 

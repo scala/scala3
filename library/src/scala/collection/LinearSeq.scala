@@ -104,7 +104,7 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & 
 
     if (thatKnownSize >= 0) this lengthCompare thatKnownSize
     else that match {
-      case that: LinearSeq[_] =>
+      case that: LinearSeq[?] =>
         var thisSeq = this
         var thatSeq = that
         while (thisSeq.nonEmpty && thatSeq.nonEmpty) {

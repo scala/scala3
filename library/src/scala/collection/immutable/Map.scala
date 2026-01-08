@@ -221,7 +221,7 @@ object Map extends MapFactory[Map] {
 
   def from[K, V](it: IterableOnce[(K, V)]^): Map[K, V] =
     (it: @unchecked) match {
-      case it: Iterable[_] if it.isEmpty => empty[K, V]
+      case it: Iterable[?] if it.isEmpty => empty[K, V]
       // Since IterableOnce[(K, V)] launders the variance of K,
       // identify only our implementations which can be soundly substituted.
       // For example, the ordering used by sorted maps would fail on widened key type. (scala/bug#12745)

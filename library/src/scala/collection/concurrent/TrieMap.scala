@@ -55,10 +55,10 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
     prev match {
       case null =>
         m
-      case fn: FailedNode[_, _] => // try to commit to previous value
+      case fn: FailedNode[?, ?] => // try to commit to previous value
         if (CAS(m, fn.prev)) fn.prev
         else GCAS_Complete(/*READ*/mainnode, ct)
-      case vn: MainNode[_, _] =>
+      case vn: MainNode[?, ?] =>
         // Assume that you've read the root from the generation G.
         // Assume that the snapshot algorithm is correct.
         // ==> you can only reach nodes in generations <= G.
@@ -284,7 +284,7 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
             case basicNode => throw new MatchError(basicNode)
           }
         }
-      case tn: TNode[_, _] => // 3) non-live node
+      case tn: TNode[?, ?] => // 3) non-live node
         def cleanReadOnly(tn: TNode[K, V]) = if (ct.nonReadOnly) {
           clean(parent.nn, ct, lev - 5)
           RESTART
@@ -412,9 +412,9 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
   /* this is a quiescent method! */
   def string(lev: Int): String = "%sINode -> %s".format("  " * lev, mainnode match {
     case null => "<null>"
-    case tn: TNode[_, _] => "TNode(%s, %s, %d, !)".format(tn.k, tn.v, tn.hc)
-    case cn: CNode[_, _] => cn.string(lev)
-    case ln: LNode[_, _] => ln.string(lev)
+    case tn: TNode[?, ?] => "TNode(%s, %s, %d, !)".format(tn.k, tn.v, tn.hc)
+    case cn: CNode[?, ?] => cn.string(lev)
+    case ln: LNode[?, ?] => ln.string(lev)
     case x => "<elem: %s>".format(x)
   })
 
@@ -549,7 +549,7 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     while (i < array.length) {
       val pos = (i + offset) % array.length
       array(pos) match {
-        case sn: SNode[_, _]     => sz += 1
+        case sn: SNode[?, ?]     => sz += 1
         case in: INode[K, V] @uc => sz += in.cachedSize(ct)
         case basicNode           => throw new MatchError(basicNode)
       }
@@ -604,7 +604,7 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
   }
 
   private def resurrect(inode: INode[K, V], inodemain: AnyRef): BasicNode = inodemain match {
-    case tn: TNode[_, _] => tn.copyUntombed
+    case tn: TNode[?, ?] => tn.copyUntombed
     case _ => inode
   }
 

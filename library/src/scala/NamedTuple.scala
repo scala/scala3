@@ -223,8 +223,8 @@ object NamedTupleDecomposition:
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
   type Names[X <: AnyNamedTuple] <: Tuple = X match
-    case NamedTuple[n, _] => n
+    case NamedTuple[n, ?] => n
 
   /** The value types of a named tuple represented as a regular tuple. */
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
-    case NamedTuple[_, x] => x
+    case NamedTuple[?, x] => x
