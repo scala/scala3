@@ -1392,7 +1392,7 @@ object SymDenotations {
      *  containing object.
      */
     def opaqueAlias(using Context): Type = {
-      def recur(tp: Type): Type = tp match {
+      def recur(tp: Type): Type = tp.stripAnnots match {
         case RefinedType(parent, rname, TypeAlias(alias)) =>
           if rname == name then alias.stripLazyRef else recur(parent)
         case _ =>

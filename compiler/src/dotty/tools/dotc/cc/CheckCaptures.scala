@@ -56,12 +56,12 @@ object CheckCaptures:
    *  @param nestedClosure under deferredReaches: If this is an env of a method with an anonymous function or
    *                       anonymous class as RHS, the symbol of that function or class. NoSymbol in all other cases.
    */
-  case class Env(
-      owner: Symbol,
-      kind: EnvKind,
-      captured: CaptureSet,
-      outer0: Env | Null,
-      nestedClosure: Symbol = NoSymbol)(using @constructorOnly ictx: Context):
+  class Env(
+    val owner: Symbol,
+    val kind: EnvKind,
+    val captured: CaptureSet,
+    outer0: Env | Null,
+    val nestedClosure: Symbol = NoSymbol)(using @constructorOnly ictx: Context) {
 
     assert(definesEnv(owner))
     captured match
@@ -71,16 +71,16 @@ object CheckCaptures:
 
     def outer = outer0.nn
 
-    def isOutermost = outer0 == null
+    def isRoot(using Context) = owner.is(Package)
 
-    def outersIterator: Iterator[Env] = new:
+    def outersIterator(using Context): Iterator[Env] = new:
       private var cur = Env.this
-      def hasNext = !cur.isOutermost
+      def hasNext = !cur.isRoot
       def next(): Env =
         val res = cur
         cur = cur.outer
         res
-  end Env
+  }
 
   def definesEnv(sym: Symbol)(using Context): Boolean =
     sym.isOneOf(MethodOrLazy) || sym.isClass
@@ -389,6 +389,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
      *  variantly in it. Also anchor Fresh instances with anchorCaps.
+     *  Note: module vals don't have inferred types but still hold capture set variables.
+     *  These capture set variables are interpolated after the associated module class
+     *  has been rechecked.
      */
     private def interpolateIfInferred(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
@@ -465,18 +468,17 @@ class CheckCaptures extends Recheck, SymTransformer:
             catch case ex: IllegalCaptureRef =>
               report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
               CaptureSet.empty
-          case _ =>
-            if sym.isTerm || !sym.owner.isStaticOwner || sym.is(Lazy)
-            then CaptureSet.Var(sym, nestedOK = false)
-            else CaptureSet.empty)
+          case _ if sym.is(Package) => CaptureSet.empty
+          case _ => CaptureSet.Var(sym, nestedOK = false)
+      )
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
 
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
      */
-    def nextEnvToCharge(env: Env)(using Context): Env | Null =
-      if env.owner.isConstructor then env.outer.outer0
+    def nextEnvToCharge(env: Env)(using Context): Env =
+      if env.owner.isConstructor then env.outer.outer
       else env.outer
 
     /** A description where this environment comes from */
@@ -495,9 +497,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  Does the given environment belong to a method that is (a) nested in a term
      *  and (b) not the method of an anonymous function?
      */
-    def isOfNestedMethod(env: Env | Null)(using Context) =
+    def isOfNestedMethod(env: Env)(using Context) =
       ccConfig.deferredReaches
-      && env != null
       && env.owner.is(Method)
       && env.owner.owner.isTerm
       && !env.owner.isAnonymousFunction
@@ -587,7 +588,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 tree.srcPos)
 
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
-        if env.kind != EnvKind.Boxed && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
+        if env.kind != EnvKind.Boxed && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
           // should be included.
           val included = cs.filter: c =>
@@ -602,7 +603,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
             val nextEnv = nextEnvToCharge(env)
-            if nextEnv != null && !nextEnv.owner.isStaticOwner then
+            if !nextEnv.isRoot then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
                   && env.owner.owner.derivesFrom(defn.Caps_Stateful)
@@ -731,7 +732,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // For fields it's not a problem since `c` would already have been
           // charged for the prefix `p` in `p.x`.
           markFree(sym.info.captureSet, tree)
-        if sym.exists && !sym.isStatic then
+        if sym.exists then
           markPathFree(sym.termRef, pt, tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
@@ -761,7 +762,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  a PathSelectionProto.
      */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
-      if tree.symbol.isStatic then super.selectionProto(tree, pt)
+      if tree.symbol.is(Package) then super.selectionProto(tree, pt)
       else PathSelectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
@@ -1261,22 +1262,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         if runInConstructor && savedEnv.owner.isClass then
           markFree(declaredCaptures, tree, addUseInfo = false)
-
-        if sym.owner.isStaticOwner
-            && !declaredCaptures.elems.isEmpty
-            && sym != defn.captureRoot
-            && !(sym.is(ModuleVal) && sym.owner.is(Package))
-                 // global modules that don't derive from capability can have captures
-                 // only if their fields have them, and then the field was already reported.
-        then
-          def where =
-            if sym.effectiveOwner.is(Package) then "top-level definition"
-            else i"member of static ${sym.owner}"
-          report.warning(
-            em"""$sym has a non-empty capture set but will not be added as
-                |a capability to computed capture sets since it is globally accessible
-                |as a $where. Global values cannot be capabilities.""",
-            tree.namePos)
     end recheckValDef
 
     /** Recheck method definitions:
@@ -1400,8 +1385,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
           // Test point (2) of doc comment above
-          if sym.owner.isClass && !sym.owner.isStaticOwner
+          if sym.owner.isClass
               && contributesFreshToClass(sym)
+              && !CaptureSet.isAssumedPure(sym)
           then
             todoAtPostCheck += { () =>
               val cls = sym.owner.asClass
@@ -1474,7 +1460,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def checkExplicitUses(sym: Symbol): Unit = capturedVars(sym) match
         case cs: CaptureSet.Var
-        if !cs.elems.isEmpty && !isExemptFromExplicitChecks(sym) =>
+        if cs.elems.exists(!_.isTerminalCapability) && !isExemptFromExplicitChecks(sym) =>
           val usesStr = if sym.isClass then "uses" else "uses_init"
           report.error(
             em"""Publicly visible $sym uses external capabilities $cs.
@@ -1518,6 +1504,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       finally
         checkExplicitUses(cls)
         checkExplicitUses(cls.primaryConstructor)
+        if cls.is(ModuleClass) then
+          interpolate(cls.sourceModule.info, cls.sourceModule)
         completed += cls
         curEnv = saved
     end recheckClassDef
@@ -1838,11 +1826,11 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def debugShowEnvs()(using Context): Unit =
       def showEnv(env: Env): String = i"Env(${env.owner}, ${env.kind}, ${env.captured})"
       val sb = StringBuilder()
-      @annotation.tailrec def walk(env: Env | Null): Unit =
-        if env != null then
+      @annotation.tailrec def walk(env: Env): Unit =
+        if !env.isRoot then
           sb ++= showEnv(env)
           sb ++= "\n"
-          walk(env.outer0)
+          walk(env.outer)
       sb ++= "===== Current Envs ======\n"
       walk(curEnv)
       sb ++= "===== End          ======\n"
@@ -2240,10 +2228,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         def boxedOwner(env: Env): Symbol =
           if env.kind == EnvKind.Boxed then env.owner
           else if isOfNestedMethod(env) then env.owner.owner
-          else if env.owner.isStaticOwner then NoSymbol
           else
             val nextEnv = nextEnvToCharge(env)
-            if nextEnv == null then NoSymbol else boxedOwner(nextEnv)
+            if nextEnv.isRoot then NoSymbol else boxedOwner(nextEnv)
 
         def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then

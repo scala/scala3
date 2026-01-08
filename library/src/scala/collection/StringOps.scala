@@ -160,7 +160,7 @@ object StringOps {
   }
 
   /** Avoid an allocation in [[collect]]. */
-  private val fallback: Any => Any = _ => fallback
+  private val fallback: Any -> Any = _ => fallback
 }
 
 /** Provides extension methods for strings.

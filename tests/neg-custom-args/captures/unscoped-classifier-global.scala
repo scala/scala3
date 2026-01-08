@@ -12,7 +12,9 @@ class C(f: () => Unit) extends caps.Unscoped // error but msg could be better
 class D extends caps.Unscoped:
   val f: () => Unit = ???   // ok (should this be an error instead?)
 
-def test(g: () => Unit) =
+val g: () => Unit = () => ()
+
+def test() =
   class E extends caps.Unscoped:
     def gg() = g()     // error but msg could be better
 

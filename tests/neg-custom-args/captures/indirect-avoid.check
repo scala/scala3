@@ -7,18 +7,6 @@
    |    Note that capability nll is not included in capture set {ll}.
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg-custom-args/captures/indirect-avoid.scala:24:6 ---------------------------------------------------
-24 |  val x1 = filterImpl1(LL())
-   |      ^^
-   |      value x1 has a non-empty capture set but will not be added as
-   |      a capability to computed capture sets since it is globally accessible
-   |      as a member of static object Test. Global values cannot be capabilities.
--- Warning: tests/neg-custom-args/captures/indirect-avoid.scala:25:6 ---------------------------------------------------
-25 |  val _: LL^{cap.rd}= x1
-   |      ^
-   |      value _$1 has a non-empty capture set but will not be added as
-   |      a capability to computed capture sets since it is globally accessible
-   |      as a member of static object Test. Global values cannot be capabilities.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/indirect-avoid.scala:26:14 -------------------------------
 26 |  val _: LL = x1 // error
    |              ^^
@@ -39,3 +27,11 @@
    |    Note that capability nll is not included in capture set {ll}.
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/indirect-avoid.scala:24:8 -----------------------------------------------------
+24 |  val x1 = filterImpl1(LL()) // error
+   |        ^
+   |value x1 needs an explicit type because it captures a root capability in its type Test.LL^{cap.rd}.
+   |Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |subsumed by the computed capability of the enclosing class.
+   |
+   |where:    cap is a fresh root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}

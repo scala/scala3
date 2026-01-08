@@ -723,11 +723,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
         // Compute new self type
-        def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
         val selfInfo1 =
-          if (selfInfo ne NoType) && !isInnerModule then
+          if (selfInfo ne NoType) && !cls.is(ModuleClass) then
             // if selfInfo is explicitly given then use that one, except if
-            // self info applies to non-static modules, these still need to be inferred
+            // self info applies to a module class, these still need to be inferred
             selfInfo
           else if cls.isPureClass then
             // is cls is known to be pure, nothing needs to be added to self type
@@ -735,16 +734,24 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
             // assume {cap} for completely unconstrained self types of publicly extensible classes
             CapturingType(cinfo.selfType, CaptureSet.universal)
-          else
+          else {
             // Infer the self type for the rest, which is all classes without explicit
             // self types (to which we also add nested module classes), provided they are
             // neither pure, nor are publicily extensible with an unconstrained self type.
             val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
+
             if cls.derivesFrom(defn.Caps_Capability) then
               // If cls is a capability class, we need to add a fresh capability to ensure
               // we cannot treat the class as pure.
               CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
-            CapturingType(cinfo.selfType, cs)
+
+            // Add capture set variable `cs`, burying it under any refinements
+            // that might contain infos of opaque type aliases
+            def addCs(tp: Type): Type = tp match
+              case tp @ RefinedType(parent, _, _) => tp.derivedRefinedType(parent = addCs(parent))
+              case _ => CapturingType(tp, cs)
+            addCs(cinfo.selfType)
+          }
 
         // Compute new parent types
         val ps1 = inContext(ctx.withOwner(cls)):

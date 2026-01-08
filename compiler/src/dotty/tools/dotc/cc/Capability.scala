@@ -191,7 +191,8 @@ object Capabilities:
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
         val refOwner = ref.levelOwner
-        refOwner.isStaticOwner || ccOwner.isContainedIn(refOwner)
+        ccOwner.isContainedIn(refOwner)
+        || classifier.derivesFrom(defn.Caps_Unscoped)
       else ref.core match
         case ResultCap(_) | _: ParamRef => false
         case _ => true
@@ -432,11 +433,18 @@ object Capabilities:
       core.isInstanceOf[RootCapability]
 
     /** Is the reference tracked? This is true if it can be tracked and the capture
-     *  set of the underlying type is not always empty.
+     *  set of the underlying type is not always empty. Also excluded are references
+     *  that come from source files that were not capture checked and that have
+     *  `Fluid` capture sets.
      */
     final def isTracked(using Context): Boolean = this.core match
       case _: RootCapability => true
-      case tp: CoreCapability => tp.isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
+      case tp: CoreCapability =>
+        tp.isTrackableRef
+        && {
+          val cs = captureSetOfInfo
+          !cs.isAlwaysEmpty && cs != CaptureSet.Fluid
+        }
 
     /** An exclusive capability is a capability that derives
      *  indirectly from a maximal capability without going through

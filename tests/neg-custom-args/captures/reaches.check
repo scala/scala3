@@ -32,7 +32,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:52:27 --------------------------------------
 52 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           Found:    Id[() => Unit, () -> Unit]
+   |                           Found:    Id[() => Unit, () -> Unit]^'s3
    |                           Required: Id[() =>² Unit, () =>³ Unit]
    |
    |                           Note that capability cap is not included in capture set {cap²}
@@ -46,7 +46,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:57:27 --------------------------------------
 57 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
-   |          Found:    (x: File^) ->'s3 File^²
+   |          Found:    (x: File^) ->'s4 File^²
    |          Required: File^ -> File^³
    |
    |          Note that capability cap is not included in capture set {cap²}
@@ -71,8 +71,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:85:10 --------------------------------------
 85 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (A^ ->'s4 A^'s5, A^ ->'s6 A^'s7)^'s8) ->'s9 A^'s10 ->'s11 A^'s12
-   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s13 ->'s14 A^'s15
+   |Found:    (x$1: (A^ ->'s5 A^'s6, A^ ->'s7 A^'s8)^'s9) ->'s10 A^'s11 ->'s12 A^'s13
+   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s14 ->'s15 A^'s16
    |
    |Note that capability ps* cannot be included in capture set {} of value x.
    |
@@ -83,8 +83,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:88:10 --------------------------------------
 88 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (A^ ->'s16 A^'s17, A^ ->'s18 A^'s19)^'s20) ->'s21 A^'s22 ->'s23 A^'s24
-   |Required: ((A ->{C} A, A ->{C} A)) => A^'s25 ->'s26 A^'s27
+   |Found:    (x$1: (A^ ->'s17 A^'s18, A^ ->'s19 A^'s20)^'s21) ->'s22 A^'s23 ->'s24 A^'s25
+   |Required: ((A ->{C} A, A ->{C} A)) => A^'s26 ->'s27 A^'s28
    |
    |Note that capability C cannot be included in capture set {} of value x.
    |
