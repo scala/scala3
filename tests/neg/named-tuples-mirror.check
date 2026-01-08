@@ -5,4 +5,4 @@
 -- Error: tests/neg/named-tuples-mirror.scala:8:4 ----------------------------------------------------------------------
 8 |  }]// error
   |    ^
-  |MirroredElemLabels mismatch, expected: (("foo" : String), ("bla" : String)), found: (("foo" : String), ("ba" : String)).
+  |MirroredElemLabels mismatch, expected: (("foo" : String), ("bla" : String)), found:  = (("foo" : String), ("ba" : String)).
