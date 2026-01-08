@@ -3,17 +3,17 @@
   |        ^
   |        reference (A.this.a : Async) is not included in the allowed capture set {cap} of the self type of class A
   |
-  |        where:    cap is a fresh root capability classified as Unscoped in the type of class A
+  |        where:    cap is a root capability classified as Unscoped in the type of class A
 -- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:10:8 ------------------------------------------------
 10 |class C(f: () => Unit) extends caps.Unscoped // error but msg could be better
    |        ^
    |  reference (C.this.f : () => Unit) is not included in the allowed capture set {cap} of the self type of class C
    |
-   |  where:    cap is a fresh root capability classified as Unscoped in the type of class C
+   |  where:    cap is a root capability classified as Unscoped in the type of class C
 -- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:17:15 -----------------------------------------------
 17 |    def gg() = g()     // error but msg could be better
    |               ^
    |               Read-only method gg accesses exclusive capability (g : () => Unit);
    |               method gg should be declared an update method to allow this.
    |
-   |               where:    => refers to a fresh root capability in the type of parameter g
+   |               where:    => refers to a root capability in the type of parameter g

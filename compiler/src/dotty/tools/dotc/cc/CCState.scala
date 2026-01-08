@@ -88,9 +88,9 @@ class CCState:
 
   private var openExistentialScopes: List[MethodType] = Nil
 
-  private var capIsRoot: Boolean = false
+  private var globalAnyIsRoot: Boolean = false
 
-  private var collapseFresh: Boolean = false
+  private var collapseLocalCaps: Boolean = false
 
   private var discardUses: Boolean = false
 
@@ -112,37 +112,37 @@ object CCState:
   /** The currently opened existential scopes */
   def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
 
-  /** Run `op` under the assumption that `cap` can subsume all other capabilties
+  /** Run `op` under the assumption that `caps.any` can subsume all other capabilties
    *  except Result capabilities. Every use of this method should be scrutinized
    *  for whether it introduces an unsoundness hole.
    */
-  inline def withCapAsRoot[T](op: => T)(using Context): T =
+  inline def withGlobalCapAsRoot[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.capIsRoot
-      ccs.capIsRoot = true
-      try op finally ccs.capIsRoot = saved
+      val saved = ccs.globalAnyIsRoot
+      ccs.globalAnyIsRoot = true
+      try op finally ccs.globalAnyIsRoot = saved
     else op
 
   /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
-  def capIsRoot(using Context): Boolean = ccState.capIsRoot
+  def globalAnyIsRoot(using Context): Boolean = ccState.globalAnyIsRoot
 
-  /** Run `op` under the assumption that all FreshCap instances are equal
+  /** Run `op` under the assumption that all LocalCap instances are equal
    *  to each other and to GlobalCap.
-   *  Needed to make override checking of types containing fresh work.
+   *  Needed to make override checking work for types containing LocalCaps.
    *  Asserted in override checking, tested in maxSubsumes.
    *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
    */
-  inline def withCollapsedFresh[T](op: => T)(using Context): T =
+  inline def withCollapsedLocalCaps[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.collapseFresh
-      ccs.collapseFresh = true
-      try op finally ccs.collapseFresh = saved
+      val saved = ccs.collapseLocalCaps
+      ccs.collapseLocalCaps = true
+      try op finally ccs.collapseLocalCaps = saved
     else op
 
-  /** Should all FreshCap instances be treated as equal to GlobalCap? */
-  def collapseFresh(using Context): Boolean = ccState.collapseFresh
+  /** Should all LocalCap instances be treated as equal to GlobalCap? */
+  def collapseLocalCaps(using Context): Boolean = ccState.collapseLocalCaps
 
   /** Run `op` but suppress all recording of uses in `markFree` */
    inline def withDiscardedUses[T](op: => T)(using Context): T =

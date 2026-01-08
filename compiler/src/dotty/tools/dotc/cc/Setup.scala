@@ -460,7 +460,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               && !defn.isFunctionSymbol(t.typeSymbol) && (t.dealias ne tp) =>
             if keepFunAliases then
               // Hold off with dealising and expand in a second pass.
-              // This is necessary to bind existentialFresh instances to the right method binder.
+              // This is necessary to bind ResultCap instances to the right method binder.
               keptFunAliases = true
               mapOver(t)
             else
@@ -486,7 +486,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     val tp3 =
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
-    capToFresh(tp3, Origin.InDecl(sym))
+    globalToLocalCap(tp3, Origin.InDecl(sym))
   end transformExplicitType
 
   /** Update info of `sym` for CheckCaptures phase only */
@@ -582,7 +582,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for case arg: TypeTree <- args do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
-                capToFresh(arg.tpe, Origin.TypeArg(arg.tpe)))
+                globalToLocalCap(arg.tpe, Origin.TypeArg(arg.tpe)))
             else
               transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 
@@ -665,7 +665,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             try
               mt.derivedLambdaType(
                 paramInfos =
-                  psymss.head.lazyZip(mt.paramInfos).map(freshToCap),
+                  psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")
@@ -741,9 +741,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
 
             if cls.derivesFrom(defn.Caps_Capability) then
-              // If cls is a capability class, we need to add a fresh capability to ensure
+              // If cls is a capability class, we need to add a LocalCap capability to ensure
               // we cannot treat the class as pure.
-              CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).subCaptures(cs)
+              LocalCap(cls, cls.thisType, Origin.InDecl(cls)).singletonCaptureSet.subCaptures(cs)
 
             // Add capture set variable `cs`, burying it under any refinements
             // that might contain infos of opaque type aliases

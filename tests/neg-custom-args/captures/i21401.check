@@ -7,9 +7,9 @@
    |Note that capability x is not included in capture set {cap}
    |because (x : IO^'s1) is not visible from cap in value a.
    |
-   |where:    =>         refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
+   |where:    =>         refers to a root capability created in value a when checking argument to parameter op of method usingIO
    |          ^          refers to the universal root capability
-   |          ^² and cap refer to a fresh root capability created in value a
+   |          ^² and cap refer to a root capability created in value a
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
@@ -30,7 +30,7 @@
    |
    |where:    ^           refers to the universal root capability
    |          ^² and cap  refer to a root capability associated with the result type of (x: Boxed[IO^]^'s3): Boxed[IO^²]
-   |          ^³ and cap² refer to a fresh root capability created in value x²
+   |          ^³ and cap² refer to a root capability created in value x²
    |          x           is a reference to a value parameter
    |          x²          is a value in method test2
    |

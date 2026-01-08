@@ -11,7 +11,7 @@
    |  that type captures the root capability `cap`.
    |  This is often caused by a locally generated exception capability leaking as part of its result.
    |
-   |  where:    => refers to a fresh root capability classified as Control in the type of given instance canThrow$1
+   |  where:    => refers to a root capability classified as Control in the type of given instance canThrow$1
    |
 15 |    () => foo(1)
 16 |...

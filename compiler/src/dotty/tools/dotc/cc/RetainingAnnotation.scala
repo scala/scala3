@@ -7,7 +7,10 @@ import Types.*, Symbols.*, Contexts.*
 import Annotations.{Annotation, CompactAnnotation, EmptyAnnotation}
 import config.Feature
 
-/** A class for annotations @retains, @retainsByName and @retainsCap */
+/** A class for annotations @retains, @retainsByName and @retainsCap
+ *  We make sure that all annotations with these classes are represented
+ *  as RetainingAnnotations.
+ */
 class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
 
   def this(cls: ClassSymbol, args: Type*)(using Context) = this(cls.typeRef.appliedTo(args.toList))

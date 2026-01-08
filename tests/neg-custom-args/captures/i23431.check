@@ -7,8 +7,8 @@
   |             Note that capability io is not included in capture set {cap}
   |             because (io : IO^) in method setIO is not visible from cap in variable myIO.
   |
-  |             where:    ^          refers to a fresh root capability in the type of parameter io
-  |                       ^² and cap refer to a fresh root capability in the type of variable myIO
+  |             where:    ^          refers to a root capability in the type of parameter io
+  |                       ^² and cap refer to a root capability in the type of variable myIO
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:11:13 ---------------------------------------
@@ -20,8 +20,8 @@
    |             Note that capability io2 is not included in capture set {cap}
    |             because (io2 : IO^) in an enclosing function is not visible from cap in variable myIO.
    |
-   |             where:    ^          refers to a fresh root capability in the type of parameter io2
-   |                       ^² and cap refer to a fresh root capability in the type of variable myIO
+   |             where:    ^          refers to a root capability in the type of parameter io2
+   |                       ^² and cap refer to a root capability in the type of variable myIO
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:12:12 ---------------------------------------
@@ -33,10 +33,10 @@
    |Note that capability cap is not included in capture set {cap²}
    |because cap in an enclosing function is not visible from cap² in variable myIO².
    |
-   |where:    =>    refers to a fresh root capability created in anonymous function of type (io1: IO^): Unit when checking argument to parameter op of method withIO
+   |where:    =>    refers to a root capability created in anonymous function of type (io1: IO^): Unit when checking argument to parameter op of method withIO
    |          ^     refers to the universal root capability
-   |          cap   is a fresh root capability created in anonymous function of type (io3: IO^'s1): Unit of parameter parameter io3² of method $anonfun
-   |          cap²  is a fresh root capability in the type of variable myIO²
+   |          cap   is a root capability created in anonymous function of type (io3: IO^'s1): Unit of parameter parameter io3² of method $anonfun
+   |          cap²  is a root capability in the type of variable myIO²
    |          myIO  is a value in an anonymous function in method test
    |          myIO² is a variable in an anonymous function in method test
    |

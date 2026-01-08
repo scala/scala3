@@ -6,7 +6,7 @@
    |
    |        Note that capability q is not included in capture set {p, q²}.
    |
-   |        where:    => refers to a fresh root capability in the type of parameter q
+   |        where:    => refers to a root capability in the type of parameter q
    |                  q  is a parameter in method inner
    |                  q² is a parameter in method test
    |
@@ -19,7 +19,7 @@
    |
    |         Note that capability cap is not included in capture set {p, q}.
    |
-   |         where:    => and cap refer to a fresh root capability created in method inner
+   |         where:    => and cap refer to a root capability created in method inner
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:9 -------------------------------------
@@ -30,7 +30,7 @@
    |
    |         Note that capability cap cannot be included in capture set {p} of variable y.
    |
-   |         where:    => and cap refer to a fresh root capability created in method inner
+   |         where:    => and cap refer to a root capability created in method inner
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:15:8 -------------------------------------
@@ -41,6 +41,6 @@
    |
    |        Note that capability q cannot be included in capture set {p} of variable y.
    |
-   |        where:    => refers to a fresh root capability in the type of parameter q
+   |        where:    => refers to a root capability in the type of parameter q
    |
    | longer explanation available when compiling with `-explain`

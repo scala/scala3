@@ -46,7 +46,7 @@
   |              of method get with result type () => T.
   |              This type hides capabilities  {LazyRef.this.elem}
   |
-  |              where:    => refers to a fresh root capability in the result type of method get
+  |              where:    => refers to a root capability in the result type of method get
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
 29 |    .map(g) // error: separation failure
    |         ^
@@ -62,4 +62,4 @@
    |  Footprint set of function prefix      : {ref1, cap1, ref2, cap2, ref2*}
    |  The two sets overlap at               : {cap2}
    |
-   |where:    => refers to a fresh root capability created in value ref4 when checking argument to parameter f of method map
+   |where:    => refers to a root capability created in value ref4 when checking argument to parameter f of method map

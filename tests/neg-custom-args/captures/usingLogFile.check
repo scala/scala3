@@ -7,7 +7,7 @@
    |Found:    (f: java.io.FileOutputStream^'s2) ->'s3 () ->{f} Unit
    |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
+   |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -20,7 +20,7 @@
    |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 Test2.Cell[() ->{f} Unit]^'s7
    |Required: java.io.FileOutputStream^ => Test2.Cell[() ->'s4 Unit]^'s8
    |
-   |where:    => refers to a fresh root capability created in value later2 when checking argument to parameter op of method usingLogFile
+   |where:    => refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -33,7 +33,7 @@
    |Found:    (f: java.io.OutputStream^'s10) ->'s11 Int ->{f} Unit
    |Required: java.io.OutputStream^ => Int ->'s9 Unit
    |
-   |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
+   |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -46,7 +46,7 @@
    |Found:    (_$1: java.io.OutputStream^'s13) ->'s14 () ->{_$1} Unit
    |Required: java.io.OutputStream^ => () ->'s12 Unit
    |
-   |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
+   |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`

@@ -7,7 +7,7 @@
    |Found:    (log: java.io.FileOutputStream^'s2) ->'s3 cctest.Iterator[Int]^{log}
    |Required: java.io.FileOutputStream^ => cctest.Iterator[Int]^'s1
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
+   |where:    => refers to a root capability created in method test when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
 57 |    xs.iterator.map: x =>

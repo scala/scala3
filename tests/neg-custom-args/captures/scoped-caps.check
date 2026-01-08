@@ -9,7 +9,7 @@
   |
   |                 where:    ^ and cap   refer to the universal root capability
   |                           ^²          refers to a root capability associated with the result type of (x: A^): B^²
-  |                           ^³ and cap² refer to a fresh root capability in the type of value g
+  |                           ^³ and cap² refer to a root capability in the type of value g
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:9:25 -----------------------------------
@@ -35,7 +35,7 @@
    |
    |               where:    ^ and cap   refer to the universal root capability
    |                         ^²          refers to a root capability associated with the result type of (x: A^): B^²
-   |                         ^³ and cap² refer to a fresh root capability in the type of value _$3
+   |                         ^³ and cap² refer to a root capability in the type of value _$3
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:12:20 ----------------------------------
@@ -49,7 +49,7 @@
    |
    |                where:    ^           refers to the universal root capability
    |                          ^² and cap  refer to a root capability associated with the result type of (x: A^): B^²
-   |                          ^³ and cap² refer to a fresh root capability in the type of value _$5
+   |                          ^³ and cap² refer to a root capability in the type of value _$5
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:16:24 ----------------------------------
@@ -75,7 +75,7 @@
    |
    |               where:    ^           refers to a root capability associated with the result type of (x: S^²): B^
    |                         ^² and cap  refer to the universal root capability
-   |                         ^³ and cap² refer to a fresh root capability in the type of value _$13
+   |                         ^³ and cap² refer to a root capability in the type of value _$13
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:27:25 ----------------------------------
@@ -87,7 +87,7 @@
    |Note that capability cap is not included in capture set {cap²}
    |because cap in an enclosing function is not visible from cap² in value _$14.
    |
-   |where:    ^ and cap   refer to a fresh root capability created in anonymous function of type (x: S): B^³ when instantiating method apply's type (x: S^³): B^⁴
-   |          ^² and cap² refer to a fresh root capability in the type of value _$14
+   |where:    ^ and cap   refer to a root capability created in anonymous function of type (x: S): B^³ when instantiating method apply's type (x: S^³): B^⁴
+   |          ^² and cap² refer to a root capability in the type of value _$14
    |
    | longer explanation available when compiling with `-explain`

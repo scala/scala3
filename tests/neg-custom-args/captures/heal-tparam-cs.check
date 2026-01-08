@@ -7,7 +7,7 @@
    |Found:    (c: Capp^'s2) ->'s3 () ->{c} Unit
    |Required: (c: Capp^) => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
+   |where:    => refers to a root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability
    |
 11 |    () => { c.use() }

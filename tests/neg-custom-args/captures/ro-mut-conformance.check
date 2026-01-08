@@ -6,16 +6,16 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:12:21 ---------------------------
 12 |  val t: Ref^{cap} = a  // error // error separation
    |                     ^
-   |              Found:    (a : Ref)
-   |              Required: Ref^
+   |                    Found:    (a : Ref)
+   |                    Required: Ref^
    |
-   |              Note that {cap} is an exclusive capture set of the stateful type Ref^,
-   |              it cannot subsume a read-only capture set of the stateful type (a : Ref).
+   |                    Note that {cap} is an exclusive capture set of the stateful type Ref^,
+   |                    it cannot subsume a read-only capture set of the stateful type (a : Ref).
    |
-   |              Note that capability cap².rd is not included in capture set {cap}.
+   |                    Note that capability cap².rd is not included in capture set {cap}.
    |
-   |              where:    ^ and cap refer to a fresh root capability classified as Unscoped in the type of value t
-   |                        cap²      is a fresh root capability classified as Unscoped in the type of parameter a
+   |                    where:    ^ and cap refer to a root capability classified as Unscoped in the type of value t
+   |                              cap²      is a root capability classified as Unscoped in the type of parameter a
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:12:9 -------------------------------------------------

@@ -7,9 +7,9 @@
    |Note that capability x is not included in capture set {cap}
    |because (x : CT[Exception]^) is not visible from cap in value a.
    |
-   |where:    =>         refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |where:    =>         refers to a root capability created in value a when checking argument to parameter op of method handle
    |          ^          refers to the universal root capability
-   |          ^² and cap refer to a fresh root capability created in value a
+   |          ^² and cap refer to a root capability created in value a
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:30:4 -------------------------------------------
@@ -20,7 +20,7 @@
    |
    |Note that capability x is not included in capture set {}.
    |
-   |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
+   |where:    => refers to a root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -33,7 +33,7 @@
    |Found:    (x: CT[Exception]^) ->'s4 () ->{x} Int
    |Required: CT[Exception]^ => () ->'s3 Int
    |
-   |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
+   |where:    => refers to a root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
 37 |      () =>
@@ -50,7 +50,7 @@
    |Found:    (x: CT[Exception]^) ->'s6 () ->{x} Int
    |Required: CT[Exception]^ => () ->'s5 Int
    |
-   |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
+   |where:    => refers to a root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
 49 |    () =>

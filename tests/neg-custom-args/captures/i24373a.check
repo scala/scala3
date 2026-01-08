@@ -4,7 +4,7 @@
    |      Separation failure: Illegal access to (x1 : Bar^), which was passed as a consume parameter to method sink1
    |      on line 13 and therefore is no longer available.
    |
-   |      where:    ^ refers to a fresh root capability in the type of value x1
+   |      where:    ^ refers to a root capability in the type of value x1
 -- Error: tests/neg-custom-args/captures/i24373a.scala:19:8 ------------------------------------------------------------
 19 |  sink1(x2)  // error
    |        ^^
@@ -16,14 +16,14 @@
    |      Separation failure: Illegal access to (x2 : Bar^), which was passed as a consume parameter to method sink2
    |      on line 18 and therefore is no longer available.
    |
-   |      where:    ^ refers to a fresh root capability in the type of value x2
+   |      where:    ^ refers to a root capability in the type of value x2
 -- Error: tests/neg-custom-args/captures/i24373a.scala:25:8 ------------------------------------------------------------
 25 |  sink2(x3)  // error
    |        ^^
    |      Separation failure: Illegal access to (x3 : Bar^), which was passed as a consume parameter to method sink3
    |      on line 23 and therefore is no longer available.
    |
-   |      where:    ^ refers to a fresh root capability in the type of value x3
+   |      where:    ^ refers to a root capability in the type of value x3
 -- Error: tests/neg-custom-args/captures/i24373a.scala:29:8 ------------------------------------------------------------
 29 |  sink3(x4)  // error
    |        ^^
@@ -35,4 +35,4 @@
    |      Separation failure: Illegal access to (x4 : Bar^), which was passed as a consume parameter to method sink2
    |      on line 28 and therefore is no longer available.
    |
-   |      where:    ^ refers to a fresh root capability in the type of value x4
+   |      where:    ^ refers to a root capability in the type of value x4

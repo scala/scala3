@@ -7,7 +7,7 @@
    |Found:    (f: Test2.File^'s2) ->'s3 () ->{f} Unit
    |Required: Test2.File^ => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value later1 when checking argument to parameter op of method usingLogFile
+   |where:    => refers to a root capability created in value later1 when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -20,7 +20,7 @@
    |Found:    (f: Test2.File^'s5) ->'s6 Test2.Box[Test2.File^'s7]^'s8
    |Required: Test2.File^ => Test2.Box[Test2.File^'s4]^'s9
    |
-   |where:    =>  refers to a fresh root capability created in value later2 when checking argument to parameter op of method usingLogFile
+   |where:    =>  refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
    |          ^   refers to the universal root capability
    |          cap is a root capability associated with the result type of (f: Test2.File^): Test2.Box[Test2.File^'s4]^'s9
    |
@@ -34,8 +34,8 @@
    |Note that capability f is not included in capture set {cap}
    |because (f : Test2.File^'s10) is not visible from cap in value later3.
    |
-   |where:    =>          refers to a fresh root capability created in value later3 when checking argument to parameter op of method usingLogFile
-   |          =>² and cap refer to a fresh root capability created in value later3
+   |where:    =>          refers to a root capability created in value later3 when checking argument to parameter op of method usingLogFile
+   |          =>² and cap refer to a root capability created in value later3
    |          ^           refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -48,9 +48,9 @@
    |Note that capability cap is not included in capture set {cap²}
    |because cap is not visible from cap² in value later4.
    |
-   |where:    =>          refers to a fresh root capability created in value later4 when checking argument to parameter op of method usingLogFile
+   |where:    =>          refers to a root capability created in value later4 when checking argument to parameter op of method usingLogFile
    |          ^           refers to the universal root capability
-   |          ^² and cap² refer to a fresh root capability created in value later4
+   |          ^² and cap² refer to a root capability created in value later4
    |          cap         is a root capability associated with the result type of (f: Test2.File^'s12): Test2.Box[Test2.File^'s14]^'s15
    |
    | longer explanation available when compiling with `-explain`
@@ -61,4 +61,4 @@
    |           Fields capturing a root capability need to be given an explicit type unless the capability is already
    |           subsumed by the computed capability of the enclosing class.
    |
-   |           where:    => refers to a fresh root capability in the type of value later3
+   |           where:    => refers to a root capability in the type of value later3

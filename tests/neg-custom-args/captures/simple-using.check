@@ -7,7 +7,7 @@
   |Found:    (f: java.io.FileOutputStream^'s2) ->'s3 () ->{f} Unit
   |Required: java.io.FileOutputStream^ => () ->'s1 Unit
   |
-  |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
+  |where:    => refers to a root capability created in method test when checking argument to parameter op of method usingLogFile
   |          ^  refers to the universal root capability
   |
   | longer explanation available when compiling with `-explain`

@@ -13,8 +13,8 @@
    |  Footprint set of second argument      : {x}
    |  The two sets overlap at               : {x}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of parameter x
-   |          ^² refers to a fresh root capability classified as Unscoped created in method mkPair when checking argument to parameter fst of constructor Pair
+   |where:    ^  refers to a root capability classified as Unscoped in the type of parameter x
+   |          ^² refers to a root capability classified as Unscoped created in method mkPair when checking argument to parameter fst of constructor Pair
 -- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:35:25 -------------------------------------------------
 35 |  val twoCopy = Pair(two.fst, two.fst) // error
    |                     ^^^^^^^
@@ -30,8 +30,8 @@
    |  Footprint set of second argument      : {two.fst}
    |  The two sets overlap at               : {two.fst}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value fst
-   |          ^² refers to a fresh root capability classified as Unscoped created in value twoCopy when checking argument to parameter fst of constructor Pair
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value fst
+   |          ^² refers to a root capability classified as Unscoped created in value twoCopy when checking argument to parameter fst of constructor Pair
 -- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:41:29 -------------------------------------------------
 41 |  val twisted = PairPair(two.fst, two) // error
    |                         ^^^^^^^
@@ -47,8 +47,8 @@
    |  Footprint set of second argument      : {two*}
    |  The two sets overlap at               : {cap of a new instance of class Pair}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value fst
-   |          ^² refers to a fresh root capability classified as Unscoped created in value twisted when checking argument to parameter fst of constructor PairPair
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value fst
+   |          ^² refers to a root capability classified as Unscoped created in value twisted when checking argument to parameter fst of constructor PairPair
 -- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:47:33 -------------------------------------------------
 47 |  val twisted = swapped(two, two.snd) // error
    |                             ^^^^^^^
@@ -64,8 +64,8 @@
    |  Footprint set of first argument       : {two*}
    |  The two sets overlap at               : {cap of a new instance of class Pair}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value snd
-   |          ^² refers to a fresh root capability classified as Unscoped created in value twisted when checking argument to parameter y of method swapped
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value snd
+   |          ^² refers to a root capability classified as Unscoped created in value twisted when checking argument to parameter y of method swapped
 -- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:58:26 -------------------------------------------------
 58 |  val twoOther = Pair(two.fst, two.snd)  // error // error
    |                      ^^^^^^^
@@ -73,7 +73,7 @@
    |                      of value twoCopy with type Pair^.
    |                      This type hides capabilities  {two.fst, two.snd}
    |
-   |                      where:    ^ refers to a fresh root capability in the type of value twoCopy
+   |                      where:    ^ refers to a root capability in the type of value twoCopy
 -- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:58:35 -------------------------------------------------
 58 |  val twoOther = Pair(two.fst, two.snd)  // error // error
    |                               ^^^^^^^
@@ -81,4 +81,4 @@
    |                      of value twoCopy with type Pair^.
    |                      This type hides capabilities  {two.fst, two.snd}
    |
-   |                      where:    ^ refers to a fresh root capability in the type of value twoCopy
+   |                      where:    ^ refers to a root capability in the type of value twoCopy

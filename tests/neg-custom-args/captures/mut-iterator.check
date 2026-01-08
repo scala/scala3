@@ -4,7 +4,7 @@
   |                 Read-only method next accesses exclusive capability (f : T => U);
   |                 method next should be declared an update method to allow this.
   |
-  |                 where:    => refers to a fresh root capability in the type of parameter f
+  |                 where:    => refers to a root capability in the type of parameter f
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:17:14 ------------------------------------------------------
 17 |      current = xs1 // error
    |      ^^^^^^^^^^^^^
@@ -16,7 +16,7 @@
    |               Read-only method next accesses exclusive capability (f : T => U);
    |               method next should be declared an update method to allow this.
    |
-   |               where:    => refers to a fresh root capability in the type of parameter f
+   |               where:    => refers to a root capability in the type of parameter f
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:7:25 -------------------------------------------------------
 7 |  def map[U](f: T => U): Iterator[U] = new Iterator: // error
   |                         ^^^^^^^^^^^

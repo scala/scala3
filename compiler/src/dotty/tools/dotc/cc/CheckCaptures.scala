@@ -114,11 +114,11 @@ object CheckCaptures:
         if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
           report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
       case ref: CoreCapability =>
-        if !ref.isTrackableRef && !ref.isCapRef && !ref.isLocalMutable then
+        if !ref.isTrackableRef && !ref.isCapsAnyRef && !ref.isLocalMutable then
           report.error(em"$elem cannot be tracked since it is not a parameter or local value", ann.srcPos)
       case ReachCapability(ref) =>
         check(ref)
-        if ref.isCapRef then
+        if ref.isCapsAnyRef then
           report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
       case ReadOnlyCapability(ref) =>
         check(ref)
@@ -134,7 +134,7 @@ object CheckCaptures:
     ann.retainedSet.retainedElementsRaw.foreach(check)
 
   /** Disallow bad roots anywhere in type `tp``.
-   *  @param  upto  controls up to which owner local fresh capabilities should be disallowed.
+   *  @param  upto  controls up to which owner local LocalCap capabilities should be disallowed.
    *                See disallowBadRoots for details.
    */
   private def disallowBadRootsIn(tp: Type, upto: Symbol, what: => String, have: => String, addendum: => String, pos: SrcPos)(using Context) =
@@ -169,12 +169,12 @@ object CheckCaptures:
                   if t eq tp then ""
                   else
                     // Show in context of all enclosing traversed existential scopes.
-                    def showInOpenedFreshBinders(mts: List[MethodType]): String = mts match
+                    def showInOpenedResultBinders(mts: List[MethodType]): String = mts match
                       case Nil => i"the part $t of "
                       case mt :: mts1 =>
                         inNewExistentialScope(mt):
-                          showInOpenedFreshBinders(mts1)
-                    showInOpenedFreshBinders(openScopes.reverse)
+                          showInOpenedResultBinders(mts1)
+                    showInOpenedResultBinders(openScopes.reverse)
                 report.error(
                   em"""$what cannot $have $tp since
                       |${part}that type captures the root capability `cap`.$addendum""",
@@ -194,7 +194,7 @@ object CheckCaptures:
     check.traverse(tp)
   end disallowBadRootsIn
 
-  private def contributesFreshToClass(sym: Symbol)(using Context): Boolean =
+  private def contributesLocalCapToClass(sym: Symbol)(using Context): Boolean =
     sym.isField
     && !sym.isOneOf(DeferredOrTermParamOrAccessor)
     && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
@@ -272,10 +272,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   val ccState1 = new CCState // Dotty problem: Rename to ccState ==> Crash in ExplicitOuter
 
-  /** A cache that stores for each class the classifiers of all fresh instances
+  /** A cache that stores for each class the classifiers of all LocalCap instances
    *  in the types of its fields.
    */
-  val knownFresh = new util.EqHashMap[Symbol, List[ClassSymbol]]
+  val knownLocalCapClassifiers = new util.EqHashMap[Symbol, List[ClassSymbol]]
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx), CheckerAPI:
 
@@ -368,7 +368,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       interpolator.traverse(tp)
     end interpolate
 
-    /*  Also set any previously unset owners of toplevel Fresh instances to improve
+    /*  Also set any previously unset owners of toplevel LocalCap instances to improve
      *  error diagnostics in separation checking.
      */
     private def anchorCaps(sym: Symbol)(using Context) = new TypeTraverser:
@@ -378,7 +378,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case t @ CapturingType(parent, refs) =>
               for ref <- refs.elems do
                 ref match
-                  case ref: FreshCap if !ref.hiddenSet.givenOwner.exists =>
+                  case ref: LocalCap if !ref.hiddenSet.givenOwner.exists =>
                     ref.hiddenSet.givenOwner = sym
                   case _ =>
               traverse(parent)
@@ -388,7 +388,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
-     *  variantly in it. Also anchor Fresh instances with anchorCaps.
+     *  variantly in it. Also anchor LocalCap instances with anchorCaps.
      *  Note: module vals don't have inferred types but still hold capture set variables.
      *  These capture set variables are interpolated after the associated module class
      *  has been rechecked.
@@ -575,8 +575,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           val underlying = CaptureSet.ofTypeDeeply(c1.widen)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           recur(underlying.filter(!_.isTerminalCapability), env, null)
-            // we don't want to disallow underlying Fresh instances, since these are typically locally created
-            // fresh capabilities. We do check that they hide no parameter reach caps in checkEscapingUses
+            // We don't want to disallow underlying LocalCap instances, since these are
+            // typically locally created LocalCap capabilities. We do check in checkEscapingUses
+            // that they don't hide any parameter reach caps.
         case _ =>
 
       def checkReadOnlyMethod(included: CaptureSet, meth: Symbol): Unit =
@@ -707,12 +708,12 @@ class CheckCaptures extends Recheck, SymTransformer:
 // ---- Rechecking operations for different kinds of trees----------------------
 
     /** If `tp` (possibly after widening singletons) is an ExprType
-     *  of a parameterless method, map Result instances in it to Fresh instances
+     *  of a parameterless method, map ResultCap instances in it to LocalCap instances
      */
     def mapResultRoots(tp: Type, sym: Symbol)(using Context): Type =
       tp.widenSingleton match
         case tp: ExprType if sym.is(Method) =>
-          resultToFresh(tp, Origin.ResultInstance(tp, sym))
+          resultToAny(tp, Origin.ResultInstance(tp, sym))
         case _ =>
           tp
 
@@ -838,7 +839,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
     def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
       val arg :: Nil = tree.args: @unchecked
-      val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
+      val argType0 = recheck(arg, pt.stripCapturing.capturing(LocalCap(Origin.UnsafeAssumePure)))
       val argType =
         if argType0.captureSet.isAlwaysEmpty then argType0
         else argType0.widen.stripCapturing
@@ -863,21 +864,22 @@ class CheckCaptures extends Recheck, SymTransformer:
         includeCallCaptures(meth, res, tree)
         res
 
-    /** Recheck argument against a "freshened" version of `formal` where toplevel `cap`
-     *  occurrences are replaced by `Fresh` instances. Also, if formal parameter carries a `@use`,
-     *  charge the deep capture set of the actual argument to the environment.
+    /** Recheck argument against an instantiated version of `formal` where toplevel `any`
+     *  occurrences are replaced by LocalCap instances. Also, if formal parameter carries a `@use`
+     *  or @consume, charge the deep capture set of the actual argument to the environment.
+     *  TODO: Maybe not charge deep capture sets for consume?
      */
     protected override def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
-      val freshenedFormal = capToFresh(formal, Origin.Formal(pref, app))
-      val argType = recheck(arg, freshenedFormal)
-        .showing(i"recheck arg $arg vs $freshenedFormal = $result", capt)
+      val instantiatedFormal = globalToLocalCap(formal, Origin.Formal(pref, app))
+      val argType = recheck(arg, instantiatedFormal)
+        .showing(i"recheck arg $arg vs $instantiatedFormal = $result", capt)
       if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
         // The @use and/or @consume annotation is added to `formal` when creating methods types.
         // See [[MethodTypeCompanion.adaptParamInfo]].
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
       if formal.containsCap then
-        sepCheckFormals(arg) = freshenedFormal
+        sepCheckFormals(arg) = instantiatedFormal
       argType
 
     /** Map existential captures in result to `cap` and implement the following
@@ -904,7 +906,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
       val resultType = super.recheckApplication(tree, qualType, funType, argTypes)
-      val appType = resultToFresh(resultType, Origin.ResultInstance(funType, tree.symbol))
+      val appType = resultToAny(resultType, Origin.ResultInstance(funType, tree.symbol))
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
@@ -1009,27 +1011,28 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ => locals
 
     private def memberCaps(mbr: Symbol)(using Context): List[Capability] =
-      if contributesFreshToClass(mbr) then
+      if contributesLocalCapToClass(mbr) then
         mbr.info.spanCaptureSet.elems
           .filter(_.isTerminalCapability)
           .toList
       else Nil
 
-    /** If `mbr` is a field that has (possibly restricted) FreshCaps in its span capture set,
+    /** If `mbr` is a field that has (possibly restricted) LocalCaps in its span capture set,
      *  their classifiers, otherwise the empty list.
      */
-    private def classifiersOfFreshInType(mbr: Symbol)(using Context): List[ClassSymbol] =
+    private def classifiersOfLocalCapsInType(mbr: Symbol)(using Context): List[ClassSymbol] =
       memberCaps(mbr).map(_.classifier.asClass)
 
-    private def allFreshInTypeAreRO(mbr: Symbol)(using Context): Boolean =
+    private def allLocalCapsInTypeAreRO(mbr: Symbol)(using Context): Boolean =
       memberCaps(mbr).forall(_.isReadOnly)
 
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
-     *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-     *  capabiltities. Class parameters are not counted. If the type extends Separate,
-     *  we add a fresh cap in any case -- this is because we can currently hide
-     *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
+     *  capture sets, it consists of a single LocalCap that subsumes all these terminal
+     *  capabilities. Class parameters are not counted. If the type extends Separate,
+     *  we add a LocalCap in any case -- this is because we can currently hide
+     *  mutability in array vals if separation checking is off, an example is
+     *  neg-customargs/captures/matrix.scala.
      */
     def captureSetImpliedByFields(cls: ClassSymbol, core: Type)(using Context): CaptureSet =
       var infos: List[String] = Nil
@@ -1040,12 +1043,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         setup.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
           .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
 
-      /** The classifiers of the fresh caps in the span capture sets of all fields
+      /** The classifiers of the LocalCaps in the span capture sets of all fields
        *  in the given class `cls`.
        */
       def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
         case cls: ClassSymbol =>
-          var fieldClassifiers = knownFields(cls).flatMap(classifiersOfFreshInType)
+          var fieldClassifiers = knownFields(cls).flatMap(classifiersOfLocalCapsInType)
           val parentClassifiers =
             cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
           if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
@@ -1055,7 +1058,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def impliedReadOnly(cls: Symbol): Boolean = cls match
         case cls: ClassSymbol =>
-          val fieldsRO = knownFields(cls).forall(allFreshInTypeAreRO)
+          val fieldsRO = knownFields(cls).forall(allLocalCapsInTypeAreRO)
           val parentsRO = cls.parentSyms.forall(impliedReadOnly)
           fieldsRO && parentsRO
         case _ =>
@@ -1064,21 +1067,21 @@ class CheckCaptures extends Recheck, SymTransformer:
       def maybeRO(ref: Capability) =
         if !cls.isSeparate && impliedReadOnly(cls) then ref.readOnly else ref
 
-      def fresh =
-        FreshCap(Origin.NewInstance(core)).tap: fresh =>
+      def localCap = // TODO Maybe drop this?
+        LocalCap(Origin.NewInstance(core)).tap: localCap =>
           if ctx.settings.YccVerbose.value then
-            pushInfo(i"Note: instance of $cls captures a $fresh that comes from a field")
+            pushInfo(i"Note: instance of $cls captures an $localCap that comes from a field")
             report.echo(infos.mkString("\n"), ctx.owner.srcPos)
 
       var implied = impliedClassifiers(cls)
       if cls.isSeparate then implied = dominators(cls.classifier :: Nil, implied)
-      knownFresh.getOrElseUpdate(cls, implied) match
+      knownLocalCapClassifiers.getOrElseUpdate(cls, implied) match
         case Nil => CaptureSet.empty
         case cl :: Nil =>
-          val result = fresh
+          val result = localCap
           result.hiddenSet.adoptClassifier(cl)
           maybeRO(result).singletonCaptureSet
-        case _ => maybeRO(fresh).singletonCaptureSet
+        case _ => maybeRO(localCap).singletonCaptureSet
     end captureSetImpliedByFields
 
     /** Recheck type applications:
@@ -1094,7 +1097,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def methDescr = if meth.exists then i"$meth's type " else ""
       markFreeTypeArgs(tree.fun, meth, tree.args)
       val funType = super.recheckTypeApply(tree, pt)
-      val res = resultToFresh(funType, Origin.ResultInstance(funType, meth))
+      val res = resultToAny(funType, Origin.ResultInstance(funType, meth))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
@@ -1152,7 +1155,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
               val paramTpt = param.asInstanceOf[ValDef].tpt
-              val paramType = freshToCap(param.symbol, paramTpt.nuType)
+              val paramType = localCapToGlobal(param.symbol, paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
             if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
@@ -1373,7 +1376,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def covers(classCapset: CaptureSet, fieldClassifiers: List[ClassSymbol]): Boolean =
         fieldClassifiers.forall: cls =>
           classCapset.elems.exists:
-            case fresh: FreshCap => cls.isSubClass(fresh.hiddenSet.classifier)
+            case localCap: LocalCap => cls.isSubClass(localCap.hiddenSet.classifier)
             case _ => false
 
       tree.tpt match
@@ -1382,19 +1385,19 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !isExemptFromExplicitChecks(sym) then // Symbols that can't be seen outside the compilation unit can have inferred types
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
-              withCapAsRoot:
+              withGlobalCapAsRoot:
                 testAdapted(tp, expected, tree.rhs, addendum(expected) :: Nil)(fail)
                 // The check that inferred <: expected is done after recheck so that it
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
           // Test point (2) of doc comment above
           if sym.owner.isClass
-              && contributesFreshToClass(sym)
+              && contributesLocalCapToClass(sym)
               && !CaptureSet.isAssumedPure(sym)
           then
             todoAtPostCheck += { () =>
               val cls = sym.owner.asClass
-              val fieldClassifiers = classifiersOfFreshInType(sym)
+              val fieldClassifiers = classifiersOfLocalCapsInType(sym)
               val classCapset = captureSetImpliedByFields(cls, cls.appliedRef)
               if !covers(classCapset, fieldClassifiers) then
                 report.error(
@@ -1481,7 +1484,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // (3) Capture set of self type includes capture sets of tracked parameters
         for param <- cls.paramGetters do
           if param.isTrackedParamAccessor then
-            withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
+            withGlobalCapAsRoot: // OK? We need this here since self types use GlobalCap instead of a LocalCap
               checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
 
         // (3b) Capture set of self type includes capture sets of fields (including fresh)
@@ -2035,7 +2038,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                           otherTp.derivedTypeBounds(
                             otherTp.lo,
                             hi.derivedCapturingType(parent,
-                                CaptureSet.fresh(Origin.OverriddenType(member))))))
+                                LocalCap(Origin.OverriddenType(member)).singletonCaptureSet))))
                       case _ => None
                   case _ => None
               case _ => None
@@ -2095,7 +2098,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def traverse(t: Tree)(using Context) =
         t match
           case t: Template =>
-            withCollapsedFresh:
+            withCollapsedLocalCaps:
               checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
           case _ =>
         traverseChildren(t)
@@ -2259,7 +2262,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   case _ =>
               case c: DerivedCapability =>
                 checkElem(c.underlying)
-              case c: FreshCap =>
+              case c: LocalCap =>
                 c.origin match
                   case Origin.Parameter(param) =>
                     report.error(
@@ -2322,7 +2325,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                 val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
-                withCollapsedFresh: // OK? We need this since bounds use `cap` instead of `fresh`
+                withCollapsedLocalCaps: // OK? We need this since bounds use GlobalCap instead of LocalCap
+                  // TODO Do bounds still contain GlobalCap?
                   checkBounds(normArgs, tl)
                 if ccConfig.postCheckCapturesets then
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
@@ -2349,7 +2353,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case tree: InferredTypeTree =>
             case tree: New =>
             case tree: TypeTree =>
-              withCollapsedFresh:
+              withCollapsedLocalCaps:
                 checkAppliedTypesIn(tree.withType(tree.nuType))
             case _ => traverseChildren(t)
         checkAppliedTypes.traverse(unit)

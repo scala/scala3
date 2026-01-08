@@ -6,6 +6,6 @@
   |
   |                              Note that capability cap is not included in capture set {}.
   |
-  |                              where:    ^ and cap refer to a fresh root capability in the type of parameter c
+  |                              where:    ^ and cap refer to a root capability in the type of parameter c
   |
   | longer explanation available when compiling with `-explain`

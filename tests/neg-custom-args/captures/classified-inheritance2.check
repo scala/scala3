@@ -10,6 +10,6 @@
    |
    |Note that capability cap.rd is not included in capture set {}.
    |
-   |where:    cap is a fresh root capability classified as SharedCapability created in value t when constructing instance Logger
+   |where:    cap is a root capability classified as SharedCapability created in value t when constructing instance Logger
    |
    | longer explanation available when compiling with `-explain`

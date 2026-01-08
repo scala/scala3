@@ -13,7 +13,7 @@
    |
    |Note that capability cap is not included in capture set {it, f}.
    |
-   |where:    cap is a fresh root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
+   |where:    cap is a root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
    |
 22 |  def hasNext = it.hasNext
 23 |  update def next() = f(it.next())

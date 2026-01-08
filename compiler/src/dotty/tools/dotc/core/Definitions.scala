@@ -107,7 +107,7 @@ class Definitions {
    *      }
    *  ImpureXYZFunctionN follow this template:
    *
-   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {cap} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = XYZFunctionN[T0,...,T{N-1}, R]^{any}
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")

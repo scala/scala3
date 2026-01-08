@@ -9,7 +9,7 @@
    |        of method cc with result type Object^.
    |        This type hides capabilities  {c}
    |
-   |        where:    ^ refers to a fresh root capability in the result type of method cc
+   |        where:    ^ refers to a root capability in the result type of method cc
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:16:10 ----------------------------------------------------------
 16 |  def cc: Object^ = c // error
    |          ^^^^^^^
@@ -21,7 +21,7 @@
    |      of method cc with result type Object^.
    |      This type hides capabilities  {c}
    |
-   |      where:    ^ refers to a fresh root capability in the result type of method cc
+   |      where:    ^ refers to a root capability in the result type of method cc
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:20:6 -----------------------------------------------------------
 20 |    { f(c) } // error // error
    |      ^
@@ -29,7 +29,7 @@
    |      of method cc with result type Object^.
    |      This type hides capabilities  {c}
    |
-   |      where:    ^ refers to a fresh root capability in the result type of method cc
+   |      where:    ^ refers to a root capability in the result type of method cc
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:20:8 -----------------------------------------------------------
 20 |    { f(c) } // error // error
    |        ^
@@ -37,7 +37,7 @@
    |        of method cc with result type Object^.
    |        This type hides capabilities  {c}
    |
-   |        where:    ^ refers to a fresh root capability in the result type of method cc
+   |        where:    ^ refers to a root capability in the result type of method cc
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:24:8 -----------------------------------------------------------
 24 |    { f(c) } // error
    |        ^
@@ -53,8 +53,8 @@
    |  Footprint set of function prefix      : {f*, c}
    |  The two sets overlap at               : {c}
    |
-   |where:    ^  refers to a fresh root capability in the type of parameter c
-   |          ^² refers to a fresh root capability created in value x4 when checking argument to parameter v1 of method apply
+   |where:    ^  refers to a root capability in the type of parameter c
+   |          ^² refers to a root capability created in value x4 when checking argument to parameter v1 of method apply
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:23:10 ----------------------------------------------------------
 23 |  val x4: Object^ = // error: ^ hides f*, needs consume
    |          ^^^^^^^
@@ -75,8 +75,8 @@
    |  Footprint set of function prefix      : {f*, c}
    |  The two sets overlap at               : {c}
    |
-   |where:    ^  refers to a fresh root capability in the type of parameter c
-   |          ^² refers to a fresh root capability created in value x4 when checking argument to parameter v1 of method apply
+   |where:    ^  refers to a root capability in the type of parameter c
+   |          ^² refers to a root capability created in value x4 when checking argument to parameter v1 of method apply
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:27:10 ----------------------------------------------------------
 27 |  val x4: Object^ = // error: ^ hides f* which refers to c, so c needs consume
    |          ^^^^^^^

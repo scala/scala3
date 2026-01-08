@@ -6,6 +6,6 @@
    |
    |               Note that capability cap is not included in capture set {}.
    |
-   |               where:    cap is a fresh root capability classified as SharedCapability in the type of value y2
+   |               where:    cap is a root capability classified as SharedCapability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`

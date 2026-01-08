@@ -6,7 +6,7 @@
    |
    |Note that capability y is not included in capture set {}.
    |
-   |where:    =>  refers to a fresh root capability created in value dc when instantiating method apply's type (x: C^): Str^{x} =>³ Str^{x}
-   |          =>² refers to a fresh root capability in the type of value dc
+   |where:    =>  refers to a root capability created in value dc when instantiating method apply's type (x: C^): Str^{x} =>³ Str^{x}
+   |          =>² refers to a root capability in the type of value dc
    |
    | longer explanation available when compiling with `-explain`
