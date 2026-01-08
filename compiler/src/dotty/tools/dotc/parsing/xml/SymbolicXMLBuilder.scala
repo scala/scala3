@@ -163,7 +163,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
   def makeXMLseq(span: Span, args: collection.Seq[Tree]): Block = {
-    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
+    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, List(Nil)))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
     atSpan(span)(new XMLBlock(buffer :: applies.toList, Ident(_buf)) )

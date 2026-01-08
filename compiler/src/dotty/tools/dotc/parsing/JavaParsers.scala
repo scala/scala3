@@ -1014,7 +1014,7 @@ object JavaParsers {
       val predefs = List(
         DefDef(
           nme.values,
-          ListOfNil,
+          List(Nil),
           arrayOf(enumType),
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(

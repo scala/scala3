@@ -13,7 +13,6 @@ import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds.*
 import dotty.tools.tasty.TastyHeader
-import dotty.tools.tasty.TastyBuffer.Addr
 
 case class CommonTastyHeader(
   uuid: UUID,

@@ -142,7 +142,7 @@ object Serializer:
 
     val linesWithoutHeader = lines.dropWhile(_.startsWith("#"))
     val coverage = Coverage()
-    while !linesWithoutHeader.isEmpty do
+    while linesWithoutHeader.nonEmpty do
       val oneStatementLines = linesWithoutHeader.takeWhile(_ != "\f")
       coverage.addStatement(toStatement(oneStatementLines))
     end while

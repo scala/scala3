@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.report
-import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition

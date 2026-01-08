@@ -1,6 +1,5 @@
 package dotty.tools.debug
 
-import dotty.tools.dotc.core.SymUtils
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*

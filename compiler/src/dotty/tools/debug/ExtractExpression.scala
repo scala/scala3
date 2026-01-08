@@ -18,7 +18,7 @@ import dotty.tools.dotc.util.SrcPos
 import scala.annotation.nowarn
 
 /**
-  * This phase extracts the typed expression from the source tree, transfoms it and places it
+  * This phase extracts the typed expression from the source tree, transforms it and places it
   * in the evaluate method of the Expression class.
   * 
   * Before:
