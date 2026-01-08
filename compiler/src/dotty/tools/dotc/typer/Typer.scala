@@ -747,9 +747,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val sym = tree.tpe.termSymbol
     if sym.isNoValue && !ctx.isJava then
       if sym.is(Package)
-          && Feature.enabled(Feature.packageObjectValues)
           && tree.tpe.member(nme.PACKAGE).hasAltWith(_.symbol.isPackageObject)
       then
+      	// The feature is in preview for 3.10
+        Feature.checkPreviewFeature("package object values", tree.srcPos)
         typed(untpd.Select(untpd.TypedSplice(tree), nme.PACKAGE))
       else
         report.error(SymbolIsNotAValue(sym), tree.srcPos)
