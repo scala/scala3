@@ -5,4 +5,6 @@ import scala.quoted._
 class crash extends MacroAnnotation {
   def transform(using Quotes)(definition: quotes.reflect.Definition, companion: Option[quotes.reflect.Definition]): List[quotes.reflect.Definition] =
     ???
+
+  def ??? : Nothing = throw new NotImplementedError
 }
