@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.0-RC5"
+  val referenceVersion = "3.8.0-RC6"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -131,7 +131,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.8.0-RC1" // temporary until 3.8.0 is released
+  val mimaPreviousDottyVersion = "3.8.0-RC6" // temporary until 3.8.0 is released
 
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.11.0"
