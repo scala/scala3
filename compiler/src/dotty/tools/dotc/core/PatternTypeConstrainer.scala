@@ -258,7 +258,13 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) => rollbackConstraintsUnless:
-          tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
+          tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).toList.sortWith { case ((_, _, tpp1), (_, _, tpp2)) =>
+            tpp1 != tpp2 && {
+              tpp2.stripTypeVar match
+                case tpp2: TypeParamRef => tpp1.stripTypeVar.occursIn(bounds(tpp2))
+                case _ => false
+            }
+          }.forall { (param, argS, argP) =>
             val variance = param.paramVarianceSign
             if variance == 0 || assumeInvariantRefinement ||
               // As a special case, when pattern and scrutinee types have the same type constructor,
