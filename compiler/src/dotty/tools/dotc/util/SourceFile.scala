@@ -20,9 +20,8 @@ import dotty.tools.dotc.util.chaining.*
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
+import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 object ScriptSourceFile {

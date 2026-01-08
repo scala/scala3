@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-import collection.immutable
+import scala.collection.immutable
 
 /** A linear map is a map where after an `updated` the previous map
  *  value cannot be used anymore. The map is implemented as an immutable
