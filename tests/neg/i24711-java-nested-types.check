@@ -1,0 +1,21 @@
+-- [E007] Type Mismatch Error: tests/neg/i24711-java-nested-types.scala:2:20 -------------------------------------------
+2 |  val test1: Int = (??? : java.util.Map.Entry[String, Int])  // error
+  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                    Found:    java.util.Map.Entry[String, Int]
+  |                    Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i24711-java-nested-types.scala:4:38 -------------------------------------------
+4 |  val test2: Int = java.util.Map.entry("key", 1)  // error
+  |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                   Found:    java.util.Map.Entry[String, Int]
+  |                   Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i24711-java-nested-types.scala:7:20 -------------------------------------------
+7 |  val test4: Int = (??? : Outer#Inner)  // error
+  |                    ^^^^^^^^^^^^^^^^^
+  |                    Found:    Test.this.Outer#Inner
+  |                    Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
