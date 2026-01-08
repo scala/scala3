@@ -7,7 +7,7 @@
   |Found:    (lcap: Cap^'s2) ->'s3 () ->'s4 Id[Cap^'s5]^'s6
   |Required: (lcap: Cap^) => () =>² Id[Cap^'s1]^'s7
   |
-  |where:    =>  refers to a fresh root capability created in value leak when checking argument to parameter op of method withCap
+  |where:    =>  refers to a root capability created in value leak when checking argument to parameter op of method withCap
   |          =>² refers to a root capability associated with the result type of (lcap: Cap^): () =>² Id[Cap^'s1]^'s7
   |          ^   refers to the universal root capability
   |          cap is a root capability associated with the result type of (): Id[Cap^'s5]^'s6

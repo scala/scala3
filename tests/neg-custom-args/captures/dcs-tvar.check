@@ -6,7 +6,7 @@
   |
   |  Note that capability cap is not included in capture set {}.
   |
-  |  where:    => and cap refer to a fresh root capability in the type of type T
+  |  where:    => and cap refer to a root capability in the type of type T
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/dcs-tvar.scala:9:2 ---------------------------------------
@@ -17,6 +17,6 @@
   |
   |  Note that capability cap is not included in capture set {}.
   |
-  |  where:    => and cap refer to a fresh root capability in the type of type U
+  |  where:    => and cap refer to a root capability in the type of type U
   |
   | longer explanation available when compiling with `-explain`

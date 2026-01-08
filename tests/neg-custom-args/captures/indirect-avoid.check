@@ -15,7 +15,7 @@
    |
    |Note that capability cap.rd is not included in capture set {}.
    |
-   |where:    cap is a fresh root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}
+   |where:    cap is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/indirect-avoid.scala:32:4 --------------------------------
@@ -34,4 +34,4 @@
    |Fields capturing a root capability need to be given an explicit type unless the capability is already
    |subsumed by the computed capability of the enclosing class.
    |
-   |where:    cap is a fresh root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}
+   |where:    cap is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}

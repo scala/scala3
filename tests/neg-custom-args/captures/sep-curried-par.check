@@ -31,15 +31,15 @@
    |  Footprint set of second argument      : {p}
    |  The two sets overlap at               : {p}
    |
-   |where:    =>  refers to a fresh root capability in the type of value p
-   |          =>² refers to a fresh root capability created in method test when checking argument to parameter p1 of method par
+   |where:    =>  refers to a root capability in the type of value p
+   |          =>² refers to a root capability created in method test when checking argument to parameter p1 of method par
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:18:16 ---------------------------------------------------
 18 |  parCurried(p)(p) // error: consume failure
    |                ^
    |Separation failure: Illegal access to (p : () => Unit), which was passed as a consume parameter to method parCurried
    |on line 18 and therefore is no longer available.
    |
-   |where:    => refers to a fresh root capability in the type of value p
+   |where:    => refers to a root capability in the type of value p
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:21:9 ----------------------------------------------------
 21 |  foo(c)(c) // error: separation
    |         ^
@@ -55,5 +55,5 @@
    |  Footprint set of function prefix      : {c}
    |  The two sets overlap at               : {c}
    |
-   |where:    =>  refers to a fresh root capability in the type of parameter c
-   |          =>² refers to a fresh root capability created in method test when checking argument to parameter v1 of method apply
+   |where:    =>  refers to a root capability in the type of parameter c
+   |          =>² refers to a root capability created in method test when checking argument to parameter v1 of method apply

@@ -6,8 +6,8 @@
    |          Another part,  Object^²,  captures capabilities  {c}.
    |          The two sets overlap at  {c}.
    |
-   |          where:    ^  refers to a fresh root capability in the type of value x1
-   |                    ^² refers to a fresh root capability in the type of value x1
+   |          where:    ^  refers to a root capability in the type of value x1
+   |                    ^² refers to a root capability in the type of value x1
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:15:10 --------------------------------------------------------
 15 |  val x2: (Object^, Object^{d}) = (d, d) // error
    |          ^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@
    |          Another part,  Object^{d},  captures capabilities  {d}.
    |          The two sets overlap at  {d}.
    |
-   |          where:    ^ refers to a fresh root capability in the type of value x2
+   |          where:    ^ refers to a root capability in the type of value x2
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:27:6 ---------------------------------------------------------
 27 |  bar((c, c)) // error
    |      ^^^^^^
@@ -25,8 +25,8 @@
    |Another part,  Object^²,  captures capabilities  {c}.
    |The two sets overlap at  {c}.
    |
-   |where:    ^  refers to a fresh root capability created in method Test6 when checking argument to parameter x of method bar
-   |          ^² refers to a fresh root capability created in method Test6 when checking argument to parameter x of method bar
+   |where:    ^  refers to a root capability created in method Test6 when checking argument to parameter x of method bar
+   |          ^² refers to a root capability created in method Test6 when checking argument to parameter x of method bar
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:30:9 ---------------------------------------------------------
 30 |  val x: (Object^, Object^{c}) = (d, c) // error
    |         ^^^^^^^^^^^^^^^^^^^^^

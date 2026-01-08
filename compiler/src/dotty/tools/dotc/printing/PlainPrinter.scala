@@ -211,8 +211,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
                     false
         )
       isUniversal
-      || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !ccVerbose
-    case ref :: Nil => ref.isCapRef
+      || !refs.elems.isEmpty && refs.elems.forall(_.isGlobalOrLocalCap) && !ccVerbose
+    case ref :: Nil => ref.isCapsAnyRef
     case _ => false
 
   protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
@@ -315,7 +315,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann: RetainingAnnotation) if !ann.isStrict =>
             ann.retainedType.retainedElementsRaw match
-              case ref :: Nil if ref.isCapRef => Str("=>")
+              case ref :: Nil if ref.isCapsAnyRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
@@ -486,7 +486,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "<cap of " ~ toText(c.binder) ~ ">"
         case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
-    case c: FreshCap =>
+    case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
       def classified =
         if c.hiddenSet.classifier == defn.AnyClass then ""

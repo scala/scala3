@@ -920,7 +920,7 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = CCState.withCollapsedFresh:
+            val joint = CCState.withCollapsedLocalCaps:
                 // We have to do a collapseFresh here since `pdenot` will see the class
                 // view and a fresh in the class will not be able to subsume a
                 // refinement from outside since level checking would fail.
@@ -3338,7 +3338,7 @@ object Types extends TypeUtils {
 
   /** Used for refined function types created at cc/Setup that come from original
    *  generic function types. Function types of this class don't get their result
-   *  captures mapped from FreshCaps to ResultCaps with toResult.
+   *  captures mapped from LocalCaps to ResultCaps with toResult.
    */
   class InferredRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
   extends RefinedType(parent, refinedName, refinedInfo):
@@ -6384,9 +6384,9 @@ object Types extends TypeUtils {
         null
 
     def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
-      case c @ FreshCap(prefix) =>
+      case c @ LocalCap(prefix) =>
         // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
-        // We create at most one such skolem per FreshCap/context owner pair.
+        // We create at most one such skolem per LocalCap/context owner pair.
         // This approximates towards creating fewer skolems than otherwise needed,
         // which means we might get more separation conflicts than otherwise. But
         // it's not clear we will get such conflicts anyway.
@@ -6400,7 +6400,7 @@ object Types extends TypeUtils {
                 val skolem = pre.narrow(ctx.owner)
                 c.skolems = c.skolems.updated(ctx.owner, skolem)
                 skolem
-        c.derivedFreshCap(ensurePath(apply(prefix)))
+        c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)

@@ -4,4 +4,4 @@
    |                Read-only method run accesses exclusive capability (Matrix.this.f : () => Int);
    |                method run should be declared an update method to allow this.
    |
-   |                where:    => refers to a fresh root capability in the type of value f
+   |                where:    => refers to a root capability in the type of value f

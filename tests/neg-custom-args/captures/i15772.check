@@ -9,7 +9,7 @@
    |since the additional capture set {c} resulting from box conversion is not allowed in C{val arg: C^²}^{c} => Unit
    |
    |where:    => and ^ and cap refer to the universal root capability
-   |          ^²               refers to a fresh root capability in the type of value arg
+   |          ^²               refers to a root capability in the type of value arg
 -- Error: tests/neg-custom-args/captures/i15772.scala:29:35 ------------------------------------------------------------
 29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
@@ -17,7 +17,7 @@
    |since the additional capture set {c} resulting from box conversion is not allowed in C{val arg: C^²}^{c} => Unit
    |
    |where:    => and ^ and cap refer to the universal root capability
-   |          ^²               refers to a fresh root capability in the type of value arg
+   |          ^²               refers to a root capability in the type of value arg
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:33 ---------------------------------------
 35 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                             ^^^^^^^
@@ -27,9 +27,9 @@
    |Note that capability cap is not included in capture set {}.
    |
    |where:    =>         refers to the universal root capability
-   |          =>²        refers to a fresh root capability in the type of value boxed2
-   |          ^          refers to a fresh root capability in the type of value arg
-   |          ^² and cap refer to a fresh root capability created in value boxed2 when instantiating method c's type -> C^{cap²}
+   |          =>²        refers to a root capability in the type of value boxed2
+   |          ^          refers to a root capability in the type of value arg
+   |          ^² and cap refer to a root capability created in value boxed2 when instantiating method c's type -> C^{cap²}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------

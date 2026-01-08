@@ -7,7 +7,7 @@
    |Found:    (file: java.io.FileOutputStream^'s2) ->'s3 () ->{file} Unit
    |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
+   |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -20,7 +20,7 @@
    |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 LzyList[Int]^{f}
    |Required: java.io.FileOutputStream^ => LzyList[Int]^'s4
    |
-   |where:    => refers to a fresh root capability created in value xs when checking argument to parameter op of method usingLogFile
+   |where:    => refers to a root capability created in value xs when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
 48 |    LzyList(1, 2, 3).map { x => f.write(x); x * x }
@@ -35,6 +35,6 @@
    |Note that capability canThrow$1 is not included in capture set {cap}
    |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from cap in an enclosing function.
    |
-   |where:    => and cap refer to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
+   |where:    => and cap refer to a root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
    |
    | longer explanation available when compiling with `-explain`

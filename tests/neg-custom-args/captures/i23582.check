@@ -6,7 +6,7 @@
    |
    |Note that capability write is not included in capture set {cap.only[Read]}.
    |
-   |where:    cap is a fresh root capability created in method test when checking argument to parameter op of method parReduce
+   |where:    cap is a root capability created in method test when checking argument to parameter op of method parReduce
    |
 28 |      write(x)
 29 |      x + y + read()

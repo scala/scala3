@@ -19,10 +19,10 @@
 -- Error: tests/neg-custom-args/captures/local-mutables.scala:22:22 ----------------------------------------------------
 22 |    def set(x: Int) = r.set(x) // error
    |                      ^
-   |                     Read-only method set accesses exclusive capability (r : Ref^);
-   |                     method set should be declared an update method to allow this.
+   |                      Read-only method set accesses exclusive capability (r : Ref^);
+   |                      method set should be declared an update method to allow this.
    |
-   |                     where:    ^ refers to a fresh root capability classified as Unscoped in the type of value r
+   |                      where:    ^ refers to a root capability classified as Unscoped in the type of value r
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/local-mutables.scala:35:21 -------------------------------
 35 |  val _: () -> Int = getter // error
    |                     ^^^^^^
@@ -44,7 +44,7 @@
 -- Error: tests/neg-custom-args/captures/local-mutables.scala:47:22 ----------------------------------------------------
 47 |    def set(x: Int) = r = x  // error
    |                      ^
-   |                 Read-only method set accesses exclusive capability (r : scala.caps.internal.Var[Int]^);
-   |                 method set should be declared an update method to allow this.
+   |                      Read-only method set accesses exclusive capability (r : scala.caps.internal.Var[Int]^);
+   |                      method set should be declared an update method to allow this.
    |
-   |                 where:    ^ refers to a fresh root capability classified as Unscoped in the type of variable r²
+   |                      where:    ^ refers to a root capability classified as Unscoped in the type of variable r²

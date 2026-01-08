@@ -6,9 +6,9 @@
    |
    |Note that capability cap is not included in capture set {C}.
    |
-   |where:    =>  refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
+   |where:    =>  refers to a root capability created in method runAll0 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
-   |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Unit of parameter parameter f² of method $anonfun
+   |          cap is a root capability created in anonymous function of type (f: File^'s1): Unit of parameter parameter f² of method $anonfun
    |
 21 |    cur = (() => f.write()) :: Nil
    |
@@ -21,9 +21,9 @@
    |
    |Note that capability cap cannot be included in capture set {C} of value cur.
    |
-   |where:    =>  refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
+   |where:    =>  refers to a root capability created in method runAll1 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
-   |          cap is a fresh root capability created in anonymous function of type (f: File^'s2): Unit of parameter parameter f² of method $anonfun
+   |          cap is a root capability created in anonymous function of type (f: File^'s2): Unit of parameter parameter f² of method $anonfun
    |
 31 |    cur.set:
 32 |      (() => f.write()) :: Nil
@@ -38,9 +38,9 @@
    |                           Note that capability cap is not included in capture set {cap²}
    |                           because cap is not visible from cap² in value id.
    |
-   |                           where:    => and cap² refer to a fresh root capability created in value id
+   |                           where:    => and cap² refer to a root capability created in value id
    |                                     =>² and cap refer to the universal root capability
-   |                                     =>³         refers to a fresh root capability in the type of value id
+   |                                     =>³         refers to a root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:57:27 --------------------------------------
@@ -54,7 +54,7 @@
    |
    |          where:    ^           refers to the universal root capability
    |                    ^² and cap  refer to a root capability associated with the result type of (x: File^): File^²
-   |                    ^³ and cap² refer to a fresh root capability in the type of value id
+   |                    ^³ and cap² refer to a root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:68:27 --------------------------------------
@@ -65,7 +65,7 @@
    |
    |Note that capability cap is not included in capture set {id*}.
    |
-   |where:    ^ and cap refer to a fresh root capability created in value f1 when instantiating method apply's type (x: File^²): File^³
+   |where:    ^ and cap refer to a root capability created in value f1 when instantiating method apply's type (x: File^²): File^³
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:85:10 --------------------------------------
@@ -76,7 +76,7 @@
    |
    |Note that capability ps* cannot be included in capture set {} of value x.
    |
-   |where:    => refers to a fresh root capability created in method mapCompose when checking argument to parameter f of method map
+   |where:    => refers to a root capability created in method mapCompose when checking argument to parameter f of method map
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -88,7 +88,7 @@
    |
    |Note that capability C cannot be included in capture set {} of value x.
    |
-   |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
+   |where:    => refers to a root capability created in method mapCompose2 when checking argument to parameter f of method map
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -105,9 +105,9 @@
 -- Error: tests/neg-custom-args/captures/reaches.scala:60:36 -----------------------------------------------------------
 60 |  val leaked = usingFile[File^{id*}]: f => // error: separation
    |               ^
-   |        Local cap created in type of parameter x leaks into capture scope of an enclosing function
+   |              Local cap created in type of parameter x leaks into capture scope of an enclosing function
    |
-   |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
+   |              where:    cap is a root capability created in value id of parameter parameter x of method $anonfun
    |
 61 |    val f1: File^{id*} = id(f)
 62 |    f1

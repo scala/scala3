@@ -437,7 +437,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if isCaptureVarComparison then
-              return CCState.withCapAsRoot:
+              return CCState.withGlobalCapAsRoot:
                 subCaptures(tp1.captureSet, tp2.captureSet)
             if (tp1 eq NothingType) || isBottom(tp1) then
               return true
@@ -593,7 +593,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
         if isCaptureVarComparison then
-          return CCState.withCapAsRoot:
+          return CCState.withGlobalCapAsRoot:
             subCaptures(tp1.captureSet, tp2.captureSet)
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))

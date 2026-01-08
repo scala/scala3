@@ -55,7 +55,7 @@
    |                      because cap is not visible from cap² in value z2.
    |
    |                      where:    ^ and cap   refer to a root capability associated with the result type of (): C^
-   |                                ^² and cap² refer to a fresh root capability created in value z2
+   |                                ^² and cap² refer to a root capability created in value z2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:37:5 -----------------------------------------
@@ -68,7 +68,7 @@
    |     because cap is not visible from cap² in value z2.
    |
    |     where:    ^ and cap   refer to a root capability associated with the result type of (): C^
-   |               ^² and cap² refer to a fresh root capability created in value z2
+   |               ^² and cap² refer to a root capability created in value z2
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:51 -------------------------------------------------------------
@@ -78,8 +78,8 @@
    |           of value z2 with type () ->{} C^.
    |           This type hides capabilities  {cap, x}
    |
-   |           where:    ^   refers to a fresh root capability in the type of value z2
-   |                     cap is a fresh root capability created in value z2
+   |           where:    ^   refers to a root capability in the type of value z2
+   |                     cap is a root capability created in value z2
 -- Error: tests/neg-custom-args/captures/capt1.scala:40:25 -------------------------------------------------------------
 40 |  val z1: () => Cap = f1(x) // error
    |                         ^
@@ -87,8 +87,8 @@
    |                         of value z3 with type () ->{x} C^.
    |                         This type hides capabilities  {cap, x}
    |
-   |                         where:    ^   refers to a fresh root capability in the type of value z3
-   |                                   cap is a fresh root capability created in value z3
+   |                         where:    ^   refers to a root capability in the type of value z3
+   |                                   cap is a root capability created in value z3
 -- Error: tests/neg-custom-args/captures/capt1.scala:43:7 --------------------------------------------------------------
 43 |    if x == null then  // error: separation
    |       ^
@@ -96,8 +96,8 @@
    |       of value z1 with type () => C^.
    |       This type hides capabilities  {x}
    |
-   |       where:    => refers to a fresh root capability in the type of value z1
-   |                 ^  refers to a fresh root capability in the type of value z1
+   |       where:    => refers to a root capability in the type of value z1
+   |                 ^  refers to a root capability in the type of value z1
 -- Error: tests/neg-custom-args/captures/capt1.scala:44:12 -------------------------------------------------------------
 44 |      () => x  // error: separation
    |            ^
@@ -105,8 +105,8 @@
    |            of value z1 with type () => C^.
    |            This type hides capabilities  {x}
    |
-   |            where:    => refers to a fresh root capability in the type of value z1
-   |                      ^  refers to a fresh root capability in the type of value z1
+   |            where:    => refers to a root capability in the type of value z1
+   |                      ^  refers to a root capability in the type of value z1
 -- Error: tests/neg-custom-args/captures/capt1.scala:47:2 --------------------------------------------------------------
 47 |  x // error: separation
    |  ^
@@ -114,5 +114,5 @@
    |  of value z1 with type () => C^.
    |  This type hides capabilities  {x}
    |
-   |  where:    => refers to a fresh root capability in the type of value z1
-   |            ^  refers to a fresh root capability in the type of value z1
+   |  where:    => refers to a root capability in the type of value z1
+   |            ^  refers to a root capability in the type of value z1

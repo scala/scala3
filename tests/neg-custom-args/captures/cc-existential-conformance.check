@@ -8,7 +8,7 @@
   |                  because cap is not visible from cap² in value y.
   |
   |                  where:    ^           refers to a root capability associated with the result type of (x²: A): B^
-  |                            ^² and cap² refer to a fresh root capability in the type of value y
+  |                            ^² and cap² refer to a root capability in the type of value y
   |                            cap         is the universal root capability
   |                            x           is a value in method test
   |                            x²          is a reference to a value parameter
@@ -36,7 +36,7 @@
    |                because cap is not visible from cap² in value y.
    |
    |                where:    ^           refers to a root capability associated with the result type of (x²: A): B^
-   |                          ^² and cap² refer to a fresh root capability in the type of value y
+   |                          ^² and cap² refer to a root capability in the type of value y
    |                          cap         is the universal root capability
    |                          x           is a value in method test2
    |                          x²          is a reference to a value parameter

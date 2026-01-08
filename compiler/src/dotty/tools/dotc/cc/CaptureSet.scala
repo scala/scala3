@@ -118,7 +118,7 @@ sealed abstract class CaptureSet extends Showable:
     case c: Const => c
     case v: Var => Const(v.elems)
 
-  /** Does this capture set contain the root reference `cap` as element? */
+  /** Does this capture set contain the root reference `caps.any` as element? */
   final def isUniversal(using Context) =
     elems.contains(GlobalCap)
 
@@ -130,18 +130,18 @@ sealed abstract class CaptureSet extends Showable:
   final def containsResultCapability(using Context) =
     elems.exists(_.core.isInstanceOf[ResultCap])
 
-  /** Does this capture set contain a GlobalCap or FreshCap, and at the same time
+  /** Does this capture set contain a GlobalCap or LocalCap, and at the same time
    *  does not contain a ResultCap?
    */
-  final def containsCapOrFresh(using Context) =
+  final def containsGlobalOrLocalCap(using Context) =
     !containsResultCapability
     && elems.exists: elem =>
       elem.core match
         case GlobalCap => true
-        case _: FreshCap => true
+        case _: LocalCap => true
         case _ => false
 
-  final def containsCap(using Context) =
+  final def containsGlobalCapDerivs(using Context) =
     elems.exists(_.core eq GlobalCap)
 
   final def isReadOnly(using Context): Boolean =
@@ -279,13 +279,9 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      CCState.withCollapsedFresh:
-        // withCollapsedFresh should be dropped. The problem is that since our level checking
-        // does not deal with classes well, we get false negatives here. Observed in the line
-        //
-        //     stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state))))
-        //
-        // in cc-lib's LazyListIterable.scala.
+      CCState.withCollapsedLocalCaps:
+        // TODO Can we drop withCollapsedLocalCaps?. Without it we get errors in
+        // LazyListIterable.scala.
         TypeComparer.noNotes:
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
@@ -464,10 +460,10 @@ sealed abstract class CaptureSet extends Showable:
   def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
     for elem <- elems do
       elem.stripReadOnly match
-        case fresh: FreshCap => fresh.adoptClassifier(cls, freeze = isConst)
+        case localCap: LocalCap => localCap.adoptClassifier(cls, freeze = isConst)
         case _ =>
 
-  /** All capabilities of this set except those Termrefs and FreshCaps that
+  /** All capabilities of this set except those Termrefs and LocalCaps that
    *  are bound by `mt`.
    */
   def freeInResult(mt: MethodicType)(using Context): CaptureSet =
@@ -487,7 +483,7 @@ sealed abstract class CaptureSet extends Showable:
     if rootLimit == null then false
     else elem.core match
       case GlobalCap | _: ResultCap => true
-      case elem: FreshCap => elem.ccOwner.isContainedIn(rootLimit)
+      case elem: LocalCap => elem.ccOwner.isContainedIn(rootLimit)
       case _ => false
 
   /** Invoke `handler` if this set has (or later aquires) a bad root capability.
@@ -591,11 +587,6 @@ object CaptureSet:
   /** The universal capture set `{cap}` */
   def universal(using Context): Const =
     Const(SimpleIdentitySet(GlobalCap))
-
-  def fresh(owner: Symbol, prefix: Type, origin: Origin)(using Context): Const =
-    FreshCap(owner, prefix, origin).singletonCaptureSet
-  def fresh(origin: Origin)(using Context): Const =
-    fresh(ctx.owner, ctx.owner.thisType, origin)
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): Const =
@@ -929,7 +920,7 @@ object CaptureSet:
         this
       else if isUniversal || computingApprox then
         universal
-      else if containsCap && isReadOnly then
+      else if containsGlobalCapDerivs && isReadOnly then
         shared
       else
         computingApprox = true
@@ -952,9 +943,9 @@ object CaptureSet:
      *  in the results of defs and vals.
      */
     def solve()(using Context): Unit =
-      CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
+      CCState.withGlobalCapAsRoot: // OK here since we infer parameter types that get checked later
         val approx = upperApprox(empty)
-          .map(CapToFresh(Origin.Unknown).inverse)    // Fresh --> cap
+          .map(GlobalToLocalCap(Origin.Unknown).inverse)    // Fresh --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1008,43 +999,43 @@ object CaptureSet:
   extends Var(owner, initialElems, nestedOK):
 
     /** Make sure that capset variables in types of vals and result types of
-     *  non-anonymous functions contain only a single FreshCap, and furthermore
-     *  that that FreshCap has as origin InDecl(owner), where owner is the val
+     *  non-anonymous functions contain only a single LocalCap, and furthermore
+     *  that that LocalCap has as origin InDecl(owner), where owner is the val
      *  or def for which the type is defined.
-     *  Note: This currently does not apply to classified or read-only fresh caps.
+     *  Note: This currently does not apply to classified or read-only LocalCaps.
      */
     override def includeElem(elem: Capability)(using ctx: Context, vs: VarState): Unit = elem match
-      case elem: FreshCap
+      case elem: LocalCap
       if !nestedOK
           && !elems.contains(elem)
           && !owner.isAnonymousFunction =>
         def fail = i"attempting to add $elem to $this"
-        def hideIn(fc: FreshCap): Boolean =
-          assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
+        def hideIn(ac: LocalCap): Boolean =
+          assert(elem.tryClassifyAs(ac.hiddenSet.classifier), fail)
           if isRefining then
             // If a variable is added by addCaptureRefinements in a synthetic
             // refinement of a class type, don't do level checking. The problem is
             // that the variable might be matched against a type that does not have
-            // a refinement, in which case FreshCaps of the class definition would
+            // a refinement, in which case LocalCaps of the class definition would
             // leak out in the corresponding places. This will fail level checking.
             // The disallowBadRoots override below has a similar reason.
             // TODO: We should instead mark the variable as impossible to instantiate
             // and drop the refinement later in the inferred type.
             // Test case is drop-refinement.scala.
             true
-          else if fc.acceptsLevelOf(elem) then
-            fc.hiddenSet.add(elem)
+          else if ac.acceptsLevelOf(elem) then
+            ac.hiddenSet.add(elem)
             true
           else
-            capt.println(i"level failure when subsuming fresh caps, cannot add $elem with ${elem.levelOwner} to $owner / $fail")
+            capt.println(i"level failure when subsuming in a LocalCap, cannot add $elem with ${elem.levelOwner} to $owner / $fail")
             false
         val isSubsumed = (false /: elems): (isSubsumed, prev) =>
           prev match
-            case prev: FreshCap => hideIn(prev)
+            case prev: LocalCap => hideIn(prev)
             case _ => isSubsumed
         if !isSubsumed then
           if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
-            val fc = FreshCap(owner, Origin.InDecl(owner))
+            val fc = LocalCap(owner, Origin.InDecl(owner))
             assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
             hideIn(fc)
             super.includeElem(fc)
@@ -1272,7 +1263,7 @@ object CaptureSet:
    *  which are already subject through snapshotting and rollbacks in VarState.
    *  It's advantageous if we don't need to deal with other pieces of state there.
    */
-  class HiddenSet(initialOwner: Symbol, val owningCap: FreshCap)(using @constructorOnly ictx: Context)
+  class HiddenSet(initialOwner: Symbol, val owningCap: LocalCap)(using @constructorOnly ictx: Context)
   extends Var(initialOwner):
 
     // Updated by anchorCaps in CheckCaptures, but owner can be changed only
@@ -1281,12 +1272,12 @@ object CaptureSet:
 
     override def owner = givenOwner
 
-    /** The FreshCaps generated by derivedFreshCap, indexed by prefix */
-    val derivedCaps = new EqHashMap[Type, FreshCap]()
+    /** The LocalCaps generated by derivedLocalCap, indexed by prefix */
+    val derivedCaps = new EqHashMap[Type, LocalCap]()
 
     //assert(id != 3)
 
-    description = i"of elements subsumed by a fresh cap in $initialOwner"
+    description = i"of elements subsumed by an `any` in $initialOwner"
 
     /** Add element to hidden set. */
     def add(elem: Capability)(using ctx: Context, vs: VarState): Unit =
@@ -1359,7 +1350,7 @@ object CaptureSet:
     override def showAsPrefix(using Context) = cs match
       case cs: Var =>
         !cs.levelOK(elem)
-        || cs.isBadRoot(elem) && elem.isInstanceOf[FreshCap]
+        || cs.isBadRoot(elem) && elem.isInstanceOf[LocalCap]
       case _ =>
         false
 
@@ -1406,7 +1397,7 @@ object CaptureSet:
               |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
         else if cs.isBadRoot(elem) then
           elem match
-            case elem: FreshCap =>
+            case elem: LocalCap =>
               leading:
                 i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
                     |It leaks into outer capture set $cs$ownerStr"""
@@ -1424,9 +1415,9 @@ object CaptureSet:
       case _ =>
         def why =
           val reasons = cs.elems.toList.collect:
-            case c: FreshCap if !c.acceptsLevelOf(elem) =>
+            case c: LocalCap if !c.acceptsLevelOf(elem) =>
               i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
-            case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+            case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
               i"$c is classified as ${c.hiddenSet.classifier} but ${elem.showAsCapability} is not"
             case c: ResultCap if !c.subsumes(elem) =>
               val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
@@ -1493,7 +1484,7 @@ object CaptureSet:
     def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean =
       if hidden.isConst then false
       else
-        if !CCState.collapseFresh then hidden.add(elem)(using ctx, this)
+        if !CCState.collapseLocalCaps then hidden.add(elem)(using ctx, this)
         true
 
     /** If root1 and root2 belong to the same binder but have different originalBinders
@@ -1735,7 +1726,7 @@ object CaptureSet:
 
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
         if t.derivesFrom(defn.Caps_CapSet) then t.singletonCaptureSet
-        else if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
+        else if includeTypevars && upperBound.isExactlyAny then LocalCap(Origin.DeepCS(t)).singletonCaptureSet
         else this(acc, upperBound)
 
     collect(CaptureSet.empty, tp)

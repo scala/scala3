@@ -4,7 +4,7 @@
    |Separation failure: Illegal access to (b : B^), which was passed as a consume parameter to constructor of class A2
    |on line 18 and therefore is no longer available.
    |
-   |where:    ^ refers to a fresh root capability in the type of value b
+   |where:    ^ refers to a root capability in the type of value b
 -- Error: tests/neg-custom-args/captures/consume-in-constructor.scala:21:10 --------------------------------------------
 21 |  println(a1) // error, since `b` was consumed before
    |          ^^
@@ -13,7 +13,7 @@
    |
    |where:    b   is a value in class A1
    |          b²  is a value in method Test
-   |          cap is a fresh root capability in the type of value a1
+   |          cap is a root capability in the type of value a1
 -- Error: tests/neg-custom-args/captures/consume-in-constructor.scala:27:10 --------------------------------------------
 27 |  println(b) // error, b is hidden in the type of a1
    |          ^
@@ -21,5 +21,5 @@
    |          of value a1 with type A1^.
    |          This type hides capabilities  {cap, b}
    |
-   |          where:    ^   refers to a fresh root capability in the type of value a1
-   |                    cap is a fresh root capability created in value a1 when constructing instance A1
+   |          where:    ^   refers to a root capability in the type of value a1
+   |                    cap is a root capability created in value a1 when constructing instance A1

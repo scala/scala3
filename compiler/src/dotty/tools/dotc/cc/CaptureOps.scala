@@ -70,7 +70,7 @@ extension (tp: Type)
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
-    case ref: TermRef if ref.isCapRef =>
+    case ref: TermRef if ref.isCapsAnyRef =>
       GlobalCap
     case ref: Capability if ref.isTrackableRef =>
       ref
@@ -145,7 +145,7 @@ extension (tp: Type)
    *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
    *  set can be narrowed to`{x*}`.
-   *  @param includeTypevars  if true, return a new FreshCap for every type parameter
+   *  @param includeTypevars  if true, return a new LocalCap for every type parameter
    *                          or abstract type with an Any upper bound. Types with
    *                          defined upper bound are always mapped to the dcs of their bound
    *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
@@ -343,8 +343,8 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a reference to caps.cap? Note this is _not_ the GlobalCap capability. */
-  def isCapRef(using Context): Boolean = tp match
+  /** Is this a reference to caps.any? Note this is _not_ the GlobalCap capability. */
+  def isCapsAnyRef(using Context): Boolean = tp match
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
 
@@ -409,7 +409,7 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
-  /** If `x` is a capability, replace all no-flip covariant occurrences of `cap`
+  /** If `x` is a capability, replace all no-flip covariant occurrences of `any`
    *  in type `tp` with `x*`.
    */
   def withReachCaptures(ref: Type)(using Context): Type = ref match
@@ -419,7 +419,7 @@ extension (tp: Type)
         def apply(t: Type) =
           if variance <= 0 then t
           else t.dealias match
-            case t @ CapturingType(p, cs) if cs.containsCapOrFresh =>
+            case t @ CapturingType(p, cs) if cs.containsGlobalOrLocalCap =>
               val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
               if reachRef.singletonCaptureSet.mightSubcapture(cs) then
                 change = true
@@ -444,13 +444,13 @@ extension (tp: Type)
       tp
   end withReachCaptures
 
-  /** Does this type contain no-flip covariant occurrences of `cap`? */
+  /** Does this type contain no-flip covariant occurrences of `any`? */
   def containsCap(using Context): Boolean =
     val acc = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
         x
         || variance > 0 && t.dealiasKeepAnnots.match
-          case t @ CapturingType(p, cs) if cs.containsCap =>
+          case t @ CapturingType(p, cs) if cs.containsGlobalCapDerivs =>
             true
           case t @ AnnotatedType(parent, ann) =>
             // Don't traverse annotations, which includes capture sets
@@ -682,7 +682,7 @@ extension (sym: Symbol)
       sym.copy(
         flags = Flags.EmptyFlags,
         info = defn.Caps_Var.typeRef.appliedTo(sym.info)
-            .capturing(FreshCap(sym, Origin.InDecl(sym)))))
+            .capturing(LocalCap(sym, Origin.InDecl(sym)))))
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

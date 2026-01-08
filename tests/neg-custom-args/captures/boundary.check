@@ -9,7 +9,7 @@
    |  Required: scala.util.boundary.Label[Object^]^²
    |
    |  where:    ^ and cap refer to the universal root capability
-   |            ^²        refers to a fresh root capability classified as Control in the type of value local
+   |            ^²        refers to a root capability classified as Control in the type of value local
    |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error
@@ -32,9 +32,9 @@
   |Note that capability cap is not included in capture set {cap²}.
   |
   |where:    ^           refers to the universal root capability
-  |          ^²          refers to a fresh root capability classified as Control in the type of value local²
-  |          ^³ and cap² refer to a fresh root capability classified as Control created in package <empty> when checking argument to parameter label of method break
-  |          cap         is a fresh root capability classified as Control in the type of value local
+  |          ^²          refers to a root capability classified as Control in the type of value local²
+  |          ^³ and cap² refer to a root capability classified as Control created in package <empty> when checking argument to parameter label of method break
+  |          cap         is a root capability classified as Control in the type of value local
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------
@@ -49,7 +49,7 @@
    |  The error occurred for a synthesized tree:  _
    |
    |  where:    ^ and cap² refer to the universal root capability
-   |            ^² and cap refer to a fresh root capability created in package <empty>
+   |            ^² and cap refer to a root capability created in package <empty>
    |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error

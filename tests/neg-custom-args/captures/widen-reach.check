@@ -16,7 +16,7 @@
   |
   |                where:    ^           refers to the universal root capability
   |                          ^² and cap  refer to a root capability associated with the result type of (x: IO^): IO^²
-  |                          ^³ and cap² refer to a fresh root capability in the type of value foo
+  |                          ^³ and cap² refer to a root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------
@@ -28,7 +28,7 @@
    |                       Note that capability x* is not included in capture set {}.
    |
    |                       where:    ^  refers to the universal root capability
-   |                                 ^² refers to a fresh root capability in the type of value y2
+   |                                 ^² refers to a root capability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 ----------------------------------

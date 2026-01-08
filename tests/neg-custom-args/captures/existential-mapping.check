@@ -71,7 +71,7 @@
    |
    |                 Note that capability cap is not included in capture set {}.
    |
-   |                 where:    =>         refers to a fresh root capability in the type of value _$6
+   |                 where:    =>         refers to a root capability in the type of value _$6
    |                           ^          refers to the universal root capability
    |                           ^² and cap refer to a root capability associated with the result type of (x: C^): C^²
    |
@@ -84,8 +84,8 @@
    |
    |              Note that capability cap is not included in capture set {cap²}.
    |
-   |              where:    => and cap   refer to a fresh root capability in the type of value y1
-   |                        =>² and cap² refer to a fresh root capability in the type of value _$7
+   |              where:    => and cap   refer to a root capability in the type of value y1
+   |                        =>² and cap² refer to a root capability in the type of value _$7
    |                        ^            refers to the universal root capability
    |                        ^²           refers to a root capability associated with the result type of (x: C^): C^²
    |
@@ -98,7 +98,7 @@
    |
    |                    Note that capability y2* is not included in capture set {}.
    |
-   |                    where:    => refers to a fresh root capability in the type of value _$8
+   |                    where:    => refers to a root capability in the type of value _$8
    |                              ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -110,8 +110,8 @@
    |
    |                 Note that capability cap is not included in capture set {}.
    |
-   |                 where:    =>         refers to a fresh root capability in the type of value _$9
-   |                           =>²        refers to a fresh root capability in the type of value _$9
+   |                 where:    =>         refers to a root capability in the type of value _$9
+   |                           =>²        refers to a root capability in the type of value _$9
    |                           ^          refers to the universal root capability
    |                           ^² and cap refer to a root capability associated with the result type of (x: C^): C^²
    |
@@ -124,8 +124,8 @@
    |
    |                         Note that capability y4* is not included in capture set {}.
    |
-   |                         where:    =>  refers to a fresh root capability in the type of value _$10
-   |                                   =>² refers to a fresh root capability in the type of value _$10
+   |                         where:    =>  refers to a root capability in the type of value _$10
+   |                                   =>² refers to a root capability in the type of value _$10
    |                                   ^   refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -137,8 +137,8 @@
    |
    |              Note that capability cap is not included in capture set {cap²}.
    |
-   |              where:    => and cap   refer to a fresh root capability in the type of value y5
-   |                        =>² and cap² refer to a fresh root capability in the type of value _$11
+   |              where:    => and cap   refer to a root capability in the type of value y5
+   |                        =>² and cap² refer to a root capability in the type of value _$11
    |                        ^            refers to the universal root capability
    |                        ^²           refers to a root capability associated with the result type of (x: C^): C^²
    |
@@ -151,8 +151,8 @@
    |
    |                 Note that capability cap is not included in capture set {}.
    |
-   |                 where:    =>         refers to a fresh root capability in the type of value _$12
-   |                           =>²        refers to a fresh root capability in the type of value _$12
+   |                 where:    =>         refers to a root capability in the type of value _$12
+   |                           =>²        refers to a root capability in the type of value _$12
    |                           ^          refers to the universal root capability
    |                           ^² and cap refer to a root capability associated with the result type of (x: C^): C^²
    |

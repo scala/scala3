@@ -6,8 +6,8 @@
   |
   |                Note that capability cap is not included in capture set {cap²}.
   |
-  |                where:    => and cap   refer to a fresh root capability in the type of value b
-  |                          =>² and cap² refer to a fresh root capability in the type of value _$1
+  |                where:    => and cap   refer to a root capability in the type of value b
+  |                          =>² and cap² refer to a root capability in the type of value _$1
   |                          ^            refers to the universal root capability
   |                          ^²           refers to a root capability associated with the result type of (x: C^): C^²
   |
@@ -15,43 +15,43 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:6:18 ----------------------------------
 6 |  val _: C => C = a // error
   |                  ^
-  |  Found:    (a : (x: C) => C)
-  |  Required: C^ =>² C^²
+  |        Found:    (a : (x: C) => C)
+  |        Required: C^ =>² C^²
   |
-  |  Note that capability cap is not included in capture set {cap²}.
+  |        Note that capability cap is not included in capture set {cap²}.
   |
-  |  where:    => and cap   refer to a fresh root capability in the type of value a
-  |            =>² and cap² refer to a fresh root capability in the type of value _$2
-  |            ^            refers to the universal root capability
-  |            ^²           refers to a fresh root capability classified as SharedCapability in the type of value _$2
+  |        where:    => and cap   refer to a root capability in the type of value a
+  |                  =>² and cap² refer to a root capability in the type of value _$2
+  |                  ^            refers to the universal root capability
+  |                  ^²           refers to a root capability classified as SharedCapability in the type of value _$2
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:8:18 ----------------------------------
 8 |  val _: C => C = (x: C) => a(x) // error
   |                  ^^^^^^^^^^^^^^
-  |    Found:    (x: C^) ->{a} C^²
-  |    Required: C^ => C^³
+  |          Found:    (x: C^) ->{a} C^²
+  |          Required: C^ => C^³
   |
-  |    Note that capability cap is not included in capture set {cap²}
-  |    because cap is not visible from cap² in value _$4.
+  |          Note that capability cap is not included in capture set {cap²}
+  |          because cap is not visible from cap² in value _$4.
   |
-  |    where:    =>          refers to a fresh root capability in the type of value _$4
-  |              ^           refers to the universal root capability
-  |              ^² and cap  refer to a root capability associated with the result type of (x: C^): C^²
-  |              ^³ and cap² refer to a fresh root capability classified as SharedCapability in the type of value _$4
+  |          where:    =>          refers to a root capability in the type of value _$4
+  |                    ^           refers to the universal root capability
+  |                    ^² and cap  refer to a root capability associated with the result type of (x: C^): C^²
+  |                    ^³ and cap² refer to a root capability classified as SharedCapability in the type of value _$4
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:14:18 ---------------------------------
 14 |  val _: C -> C = a // error
    |                  ^
-   |  Found:    (a : (x: C) -> C)
-   |  Required: C^ -> C^²
+   |        Found:    (a : (x: C) -> C)
+   |        Required: C^ -> C^²
    |
-   |  Note that capability cap is not included in capture set {cap²}
-   |  because cap is not visible from cap² in value _$6.
+   |        Note that capability cap is not included in capture set {cap²}
+   |        because cap is not visible from cap² in value _$6.
    |
-   |  where:    ^ and cap   refer to the universal root capability
-   |            ^² and cap² refer to a fresh root capability classified as SharedCapability in the type of value _$6
+   |        where:    ^ and cap   refer to the universal root capability
+   |                  ^² and cap² refer to a root capability classified as SharedCapability in the type of value _$6
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:16:29 ---------------------------------
@@ -63,7 +63,7 @@
    |Note that capability cap is not included in capture set {cap²}
    |because cap in an enclosing function is not visible from cap² in value _$8.
    |
-   |where:    ^ and cap   refer to a fresh root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating method apply's type (x: C^³): C^⁴
-   |          ^² and cap² refer to a fresh root capability classified as SharedCapability in the type of value _$8
+   |where:    ^ and cap   refer to a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating method apply's type (x: C^³): C^⁴
+   |          ^² and cap² refer to a root capability classified as SharedCapability in the type of value _$8
    |
    | longer explanation available when compiling with `-explain`

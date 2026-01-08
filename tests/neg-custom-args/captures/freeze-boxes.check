@@ -7,7 +7,7 @@
    |
    |                        Note that capability a.rd is not included in capture set {}.
    |
-   |                        where:    cap is a fresh root capability classified as Unscoped in the type of value xs
+   |                        where:    cap is a root capability classified as Unscoped in the type of value xs
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/freeze-boxes.scala:29:7 -------------------------------------------------------
@@ -17,8 +17,8 @@
    |of value a with type Ref^.
    |This type hides capabilities  {cap}
    |
-   |where:    ^   refers to a fresh root capability classified as Unscoped in the type of value a
-   |          cap is a fresh root capability classified as Unscoped created in value a when instantiating method allocRef's type (): Ref^²
+   |where:    ^   refers to a root capability classified as Unscoped in the type of value a
+   |          cap is a root capability classified as Unscoped created in value a when instantiating method allocRef's type (): Ref^²
 -- Error: tests/neg-custom-args/captures/freeze-boxes.scala:31:6 -------------------------------------------------------
 31 |  par(() => a.set(42), () => println(b.get))  // error
    |      ^^^^^^^^^^^^^^^
@@ -34,11 +34,11 @@
    |  Footprint set of second argument      : {b.rd, a.rd}
    |  The two sets overlap at               : {a}
    |
-   |where:    => refers to a fresh root capability created in method test2 when checking argument to parameter op1 of method par
+   |where:    => refers to a root capability created in method test2 when checking argument to parameter op1 of method par
 -- Error: tests/neg-custom-args/captures/freeze-boxes.scala:37:12 ------------------------------------------------------
 37 |  par(() => a.set(42), () => println(b.get)) // error
    |            ^
    |      Separation failure: Illegal access to (a : Ref^), which was passed as a consume parameter to method freeze
    |      on line 36 and therefore is no longer available.
    |
-   |      where:    ^ refers to a fresh root capability classified as Unscoped in the type of value a
+   |      where:    ^ refers to a root capability classified as Unscoped in the type of value a

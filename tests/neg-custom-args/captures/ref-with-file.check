@@ -6,10 +6,10 @@
    |
    |Note that capability cap cannot be included in capture set {} of value r.
    |
-   |where:    =>  refers to a fresh root capability created in method Test when checking argument to parameter op of method withFile
-   |          ^   refers to a fresh root capability classified as Unscoped in the type of value r
+   |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFile
+   |          ^   refers to a root capability classified as Unscoped in the type of value r
    |          ^²  refers to the universal root capability
-   |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Ref[File^'s3]^ of parameter parameter f² of method $anonfun
+   |          cap is a root capability created in anonymous function of type (f: File^'s1): Ref[File^'s3]^ of parameter parameter f² of method $anonfun
    |
 19 |    val r = Ref(f)
 20 |    r
@@ -23,9 +23,9 @@
    |
    |Note that capability cap cannot be included in capture set {} of value r.
    |
-   |where:    =>  refers to a fresh root capability created in method Test when checking argument to parameter op of method withFile
+   |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
-   |          cap is a fresh root capability created in anonymous function of type (f: File^'s6): (??? : -> Nothing) of parameter parameter f² of method $anonfun
+   |          cap is a root capability created in anonymous function of type (f: File^'s6): (??? : -> Nothing) of parameter parameter f² of method $anonfun
    |
 22 |    val r = Ref(f)
 23 |    ???
@@ -40,7 +40,7 @@
    |Found:    (f: File^'s9, r: Ref[String]^) ->'s10 Ref[String]^
    |Required: (f: File^, r: Ref[String]^) => Ref[String]^'s8
    |
-   |where:    =>        refers to a fresh root capability created in method Test when checking argument to parameter op of method withFileAndRef
+   |where:    =>        refers to a root capability created in method Test when checking argument to parameter op of method withFileAndRef
    |          ^ and cap refer to the universal root capability
    |
 26 |    r.put(f.read())

@@ -1,13 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:10:8 ------------------------------
 10 |    v = x  // error
    |        ^
-   |   Found:    (x : IO)
-   |   Required: IO^
+   |        Found:    (x : IO)
+   |        Required: IO^
    |
-   |   Note that capability x is not included in capture set {cap}
-   |   because (x : IO) in method f1 is not visible from cap in variable v.
+   |        Note that capability x is not included in capture set {cap}
+   |        because (x : IO) in method f1 is not visible from cap in variable v.
    |
-   |   where:    ^ and cap refer to a fresh root capability classified as SharedCapability in the type of variable v
+   |        where:    ^ and cap refer to a root capability classified as SharedCapability in the type of variable v
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:11:8 ------------------------------
@@ -19,7 +19,7 @@
    |        Note that capability x is not included in capture set {cap}
    |        because (x : IO) in method f1 is not visible from cap in variable w.
    |
-   |        where:    => and cap refer to a fresh root capability in the type of variable w
+   |        where:    => and cap refer to a root capability in the type of variable w
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:20:11 -----------------------------
@@ -31,7 +31,7 @@
    |Found:    (io: IO^'s2) ->'s3 IO^{io}
    |Required: IO^ => IO^'s1
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    => refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -44,7 +44,7 @@
    |Found:    (x: IO^) ->'s5 IO^{x}
    |Required: IO^ => IO^'s4
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    => refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -57,7 +57,7 @@
    |Found:    (x: IO^'s7) ->'s8 IO^{x}
    |Required: IO^ => IO^'s6
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    => refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
@@ -70,7 +70,7 @@
    |Found:    (x: IO^) ->'s10 IO^²
    |Required: IO^ => IO^'s9
    |
-   |where:    =>  refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
    |          ^²  refers to a root capability associated with the result type of (x: IO^): IO^²
    |          cap is a root capability associated with the result type of (x: IO^): IO^'s9
@@ -85,7 +85,7 @@
    |Found:    (x: IO^'s12) ->'s13 IO^
    |Required: IO^² => IO^'s11
    |
-   |where:    =>  refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to a root capability associated with the result type of (x: IO^'s12): IO^
    |          ^²  refers to the universal root capability
    |          cap is a root capability associated with the result type of (x: IO^²): IO^'s11
@@ -100,7 +100,7 @@
    |Found:    (x: IO^'s15) ->'s16 IO^'s17
    |Required: IO^ => IO^'s14
    |
-   |where:    =>  refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
    |          cap is a root capability associated with the result type of (x: IO^): IO^'s14
    |
@@ -114,7 +114,7 @@
    |Found:    (x: IO^'s19) ->'s20 IO^'s21
    |Required: IO^ => IO^'s18
    |
-   |where:    =>  refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
    |          cap is a root capability associated with the result type of (x: IO^): IO^'s18
    |
@@ -128,7 +128,7 @@
    |Found:    (io: IO^'s23) ->'s24 () ->{io} Unit
    |Required: IO^ => () ->'s22 Unit
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method withFile
+   |where:    => refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^  refers to the universal root capability
    |
 29 |    () => println(io)
@@ -137,28 +137,28 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:31:21 -----------------------------
 31 |  val f2: IO => IO = (x: IO) => x  // error
    |                     ^^^^^^^^^^^^
-   |    Found:    (x: IO^) ->'s25 IO^{x}
-   |    Required: IO^ => IO^²
+   |          Found:    (x: IO^) ->'s25 IO^{x}
+   |          Required: IO^ => IO^²
    |
-   |    Note that capability x is not included in capture set {cap}
-   |    because (x : IO) is not visible from cap in value f2.
+   |          Note that capability x is not included in capture set {cap}
+   |          because (x : IO) is not visible from cap in value f2.
    |
-   |    where:    =>         refers to a fresh root capability in the type of value f2
-   |              ^          refers to the universal root capability
-   |              ^² and cap refer to a fresh root capability classified as SharedCapability in the type of value f2
+   |          where:    =>         refers to a root capability in the type of value f2
+   |                    ^          refers to the universal root capability
+   |                    ^² and cap refer to a root capability classified as SharedCapability in the type of value f2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:33:21 -----------------------------
 33 |  val f4: IO => IO = f3  // error
    |                     ^^
-   |    Found:    (f3 : (x$0: IO) ->{} IO^{x$0})
-   |    Required: IO^ => IO^²
+   |          Found:    (f3 : (x$0: IO) ->{} IO^{x$0})
+   |          Required: IO^ => IO^²
    |
-   |    Note that capability x$0 is not included in capture set {cap}
-   |    because (x$0 : IO) is not visible from cap in value f4.
+   |          Note that capability x$0 is not included in capture set {cap}
+   |          because (x$0 : IO) is not visible from cap in value f4.
    |
-   |    where:    =>         refers to a fresh root capability in the type of value f4
-   |              ^          refers to the universal root capability
-   |              ^² and cap refer to a fresh root capability classified as SharedCapability in the type of value f4
+   |          where:    =>         refers to a root capability in the type of value f4
+   |                    ^          refers to the universal root capability
+   |                    ^² and cap refer to a root capability classified as SharedCapability in the type of value f4
    |
    | longer explanation available when compiling with `-explain`

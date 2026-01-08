@@ -7,7 +7,7 @@
    |        Note that capability a1 is not included in capture set {cap}
    |        because (a1 : A^) in method b is not visible from cap in variable a.
    |
-   |        where:    ^          refers to a fresh root capability in the type of value a1
-   |                  ^² and cap refer to a fresh root capability in the type of variable a
+   |        where:    ^          refers to a root capability in the type of value a1
+   |                  ^² and cap refer to a root capability in the type of variable a
    |
    | longer explanation available when compiling with `-explain`
