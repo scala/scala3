@@ -294,8 +294,17 @@ class ClassfileParser(
   private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
 
-  def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+  def run()(using Context): Option[Embedded] =
+    if ctx.cacheStore.classBytes.mightContain(classfile) then
+      val bytes = ctx.cacheStore.classBytes(classfile, classfile.toByteArray)
+      given DataReader = AbstractFileReader(bytes)
+      runWithReader()
+    else
+      ctx.base.reusableDataReader.withInstance: reader =>
+        given DataReader = reader.reset(classfile)
+        runWithReader()
+
+  private def runWithReader()(using Context, DataReader): Option[Embedded] = try {
     report.debuglog("[class] >> " + classRoot.fullName)
     classfileVersion = parseHeader(classfile)
     this.pool = new ConstantPool

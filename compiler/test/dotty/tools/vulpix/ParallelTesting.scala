@@ -63,6 +63,14 @@ trait ParallelTesting extends RunnerOrchestration:
 
   protected def testPlatform: TestPlatform = TestPlatform.JVM
 
+  private def setupTestContext(initCtx: FreshContext): FreshContext =
+    initCtx.setCacheStore(TestCacheStore)
+    initCtx
+
+  private class TestDriver extends Driver:
+    override protected def initCtx =
+      setupTestContext(super.initCtx.fresh)
+
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
    */
@@ -533,8 +541,8 @@ trait ParallelTesting extends RunnerOrchestration:
       val reporter = mkReporter
 
       val driver =
-        if (times == 1) new Driver
-        else new Driver {
+        if (times == 1) TestDriver()
+        else new TestDriver() {
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
@@ -686,7 +694,7 @@ trait ParallelTesting extends RunnerOrchestration:
       val classes = flattenFiles(targetDir).filter(isBestEffortTastyFile).map(_.toString)
       val flags = flags0 `and` "-from-tasty" `and` "-Ywith-best-effort-tasty"
       val reporter = mkReporter
-      val driver = new Driver
+      val driver = TestDriver()
 
       driver.process(flags.all ++ classes, reporter = reporter)
 
@@ -698,7 +706,7 @@ trait ParallelTesting extends RunnerOrchestration:
         .and("-Ywith-best-effort-tasty")
         .and("-d", targetDir.getPath)
       val reporter = mkReporter
-      val driver = new Driver
+      val driver = TestDriver()
 
       val args = Array("-classpath", flags.defaultClassPath + JFile.pathSeparator + bestEffortDir.toString) ++ flags.options
 
@@ -716,7 +724,7 @@ trait ParallelTesting extends RunnerOrchestration:
 
       val reporter = mkReporter
 
-      val driver = new Driver
+      val driver = TestDriver()
 
       driver.process(flags.all ++ classes, reporter = reporter)
 

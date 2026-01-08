@@ -572,7 +572,8 @@ object TreeChecker {
         ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
-        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
+        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %\n" +
+        i"ctx owners = ${ctx.owner.ownersIterator.toList}%, %")
     }
 
     private def checkParents(tree: untpd.TypeDef)(using Context): Unit = {
