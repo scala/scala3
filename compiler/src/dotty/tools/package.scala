@@ -2,6 +2,9 @@ package dotty
 
 package object tools {
 
+  /** Cached single-element list of Nil. (Whether this helps performance has not been tested) */
+  val ListOfNil: List[Nil.type] = Nil :: Nil
+
   /** Throws an `UnsupportedOperationException` with the given method name. */
   def unsupported(methodName: String): Nothing =
     throw new UnsupportedOperationException(methodName)
