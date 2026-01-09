@@ -1749,11 +1749,9 @@ class Namer { typer: Typer =>
       denot.info = tempInfo.nn
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
-        defn.adjustForBoxedUnit(cls,
-          addUsingTraits:
-            val isJava = ctx.isJava
-            ensureFirstIsClass(cls, parents.map(checkedParentType(_, isJava)))
-        )
+        addUsingTraits:
+          val isJava = ctx.isJava
+          ensureFirstIsClass(cls, parents.map(checkedParentType(_, isJava)))
       )
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
