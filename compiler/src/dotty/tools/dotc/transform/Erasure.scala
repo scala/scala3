@@ -888,7 +888,9 @@ object Erasure {
      *  parameter of type `[]Object`.
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
-      if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
+      if sym.isEffectivelyErased && sym.isElidable
+      || sym.name.is(BodyRetainerName)
+      then
         erasedDef(sym)
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
