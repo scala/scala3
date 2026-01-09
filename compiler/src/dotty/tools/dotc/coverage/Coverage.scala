@@ -19,11 +19,6 @@ class Coverage:
     if stmt.id >= _nextStatementId then _nextStatementId = stmt.id + 1
     statementsById(stmt.id) = stmt
 
-  def removeStatementsFromFile(sourcePath: Path | Null) =
-    val removedIds = statements.filter(_.location.sourcePath == sourcePath).map(_.id.toLong)
-    removedIds.foreach(statementsById.remove)
-
-
 /**
   * A statement that can be invoked, and thus counted as "covered" by code coverage tools.
   *
