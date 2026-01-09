@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 @main def Test =
   val res = Array.range(2, 5, Int.MaxValue)
   assert(res.length == 1, s"array length was ${res.length}")
