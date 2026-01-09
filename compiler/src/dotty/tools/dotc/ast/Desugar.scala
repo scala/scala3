@@ -1791,7 +1791,8 @@ object desugar {
    */
   def tuple(tree: Tuple, pt: Type)(using Context): Tree =
     var elems = checkWellFormedTupleElems(tree.trees)
-    if ctx.mode.is(Mode.Pattern) then elems = adaptPatternArgs(elems, pt, tree.srcPos)
+    // Don't adapt pattern args when we're in type mode (e.g., for pattern type ascription like `_: (a: Int, b: String)`)
+    if ctx.mode.is(Mode.Pattern) && !ctx.mode.is(Mode.Type) then elems = adaptPatternArgs(elems, pt, tree.srcPos)
     val elemValues = elems.mapConserve(stripNamedArg)
     val tup =
       val arity = elems.length
