@@ -2,9 +2,10 @@ package dotty.tools.dotc
 package transform
 
 import core.*
-import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import Decorators.*, Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
 import NameKinds.*
 import util.Spans.*
+import util.chaining.*
 
 import StdNames.*, NameOps.*
 import typer.Nullables
@@ -19,15 +20,20 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
-  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
-    val res = member.copy(
+  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol =
+    member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred &~ Module | Synthetic | extraFlags,
-      info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
-    res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
-    res
-  }
+      info = cls.thisType.memberInfo(member)
+    )
+    .enteredAfter(thisPhase)
+    .asTerm.tap: res =>
+      res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
+      res.setParamss(res.paramSymss)
+      atPhaseBeforeTransforms:
+        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(res.paramSymss.flatten) do
+          dst.addAnnotations(src.annotations)
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {
     val sup = if (target.isConstructor && !target.owner.is(Trait))
