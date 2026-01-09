@@ -88,7 +88,7 @@ class CCState:
 
   private var openExistentialScopes: List[MethodType] = Nil
 
-  private var globalAnyIsRoot: Boolean = false
+  private var globalCapIsRoot: Boolean = false
 
   private var collapseLocalCaps: Boolean = false
 
@@ -119,13 +119,13 @@ object CCState:
   inline def withGlobalCapAsRoot[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.globalAnyIsRoot
-      ccs.globalAnyIsRoot = true
-      try op finally ccs.globalAnyIsRoot = saved
+      val saved = ccs.globalCapIsRoot
+      ccs.globalCapIsRoot = true
+      try op finally ccs.globalCapIsRoot = saved
     else op
 
-  /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
-  def globalAnyIsRoot(using Context): Boolean = ccState.globalAnyIsRoot
+  /** Is `caps.any` a root capability that is allowed to subsume other capabilities? */
+  def globalCapIsRoot(using Context): Boolean = ccState.globalCapIsRoot
 
   /** Run `op` under the assumption that all LocalCap instances are equal
    *  to each other and to GlobalCap.

@@ -30,10 +30,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
-  /** Print Fresh instances as <cap hiding ...> */
+  /** Print local roots as <any hiding ...> */
   protected def ccVerbose = ctx.settings.YccVerbose.value
 
-  /** Elide redundant ^ and ^{cap.rd} when printing instances of Capability
+  /** Elide redundant ^ and ^{any.rd} when printing instances of Capability
    *  classes. Gets set when singletons are printed as `(x: T)` to reduce verbosity.
    */
   private var elideCapabilityCaps = false
@@ -197,8 +197,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def isUniversalCaptureSet(refs: GeneralCaptureSet): Boolean = refs match
     case refs: CaptureSet =>
-      // The set if universal if it consists only of caps.cap or
-      // only of an existential Fresh that is bound to the immediately enclosing method.
+      // The set is universal if it consists only of caps.any or
+      // only of an ResultCap that is bound to the immediately enclosing method.
       val isUniversal =
         refs.elems.size == 1
         && (refs.isUniversal
@@ -477,14 +477,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
-    case _: GlobalCap => "cap"
+    case _: GlobalCap => "any"
     case c: ResultCap =>
       def idStr = s"##${c.rootId}"
       // TODO: Better printing? USe a mode where we print more detailed
       val vbleText: Text = CCState.openExistentialScopes.indexOf(c.binder) match
         case -1 =>
-          "<cap of " ~ toText(c.binder) ~ ">"
-        case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
+          "<fresh of " ~ toText(c.binder) ~ ">"
+        case n => "outer_" * n ++ (if ccVerbose then "fresh" else "any")
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
     case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
@@ -498,8 +498,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case pre: SingletonType => toTextRef(pre) ~ "."
         case pre => toText(pre) ~ "."
       def core: Text =
-        if ccVerbose then s"<fresh$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
-        else "cap"
+        if ccVerbose then s"<any$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
+        else "any"
       prefixTxt ~ core
     case tp: TypeProxy =>
       homogenize(tp) match

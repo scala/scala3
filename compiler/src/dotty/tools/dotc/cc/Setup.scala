@@ -350,7 +350,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   1. Expand throws aliases to contextual function type with CanThrow parameters
    *   2. Map types with retains annotations to CapturingTypes
    *   3. Add universal capture sets to types deriving from Capability
-   *   4. Map `cap` in function result types to existentially bound variables.
+   *   4. Map `any` in function result types to existentially bound variables.
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
    */
@@ -360,7 +360,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
     /** If C derives from Capability and we have a C^cs in source, we leave it as is
-     *  instead of expanding it to C^{cap}^cs. We do this by stripping capability-generated
+     *  instead of expanding it to C^{any}^cs. We do this by stripping capability-generated
      *  universal capture sets from the parent of a CapturingType.
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
@@ -418,8 +418,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
         tp
 
-      /** Map references to capability classes C to C^{cap.rd},
-       *  normalize captures and map to dependent functions.
+      /** Map references to capability classes C to C^{any}, or (if Mutable)
+       *  tp C^{any.rd}. Normalize captures and map to dependent functions.
        */
       def defaultApply(t: Type) =
         if t.derivesFromCapability
@@ -732,7 +732,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             // is cls is known to be pure, nothing needs to be added to self type
             selfInfo
           else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
-            // assume {cap} for completely unconstrained self types of publicly extensible classes
+            // assume {caps.any} for completely unconstrained self types of publicly extensible classes
             CapturingType(cinfo.selfType, CaptureSet.universal)
           else {
             // Infer the self type for the rest, which is all classes without explicit

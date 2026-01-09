@@ -86,8 +86,8 @@
 -- Error: tests/neg-custom-args/captures/mutvars.scala:44:13 -----------------------------------------------------------
 44 |  r6().x.fld = 33 // error
    |  ^^^^^^^^^^^^^^^
-   |  Cannot assign to field fld of Ref[Int]^{cap.rd}
-   |  since its capture set {cap.rd} is read-only.
+   |  Cannot assign to field fld of Ref[Int]^{any.rd}
+   |  since its capture set {any.rd} is read-only.
 -- Error: tests/neg-custom-args/captures/mutvars.scala:9:15 ------------------------------------------------------------
 9 |    val self2: Ref[T]^ = this // error // error separation
   |               ^^^^^^^

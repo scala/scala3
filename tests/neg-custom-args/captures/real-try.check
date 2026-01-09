@@ -8,7 +8,7 @@
 14 |  try  // error
    |  ^
    |  The result of `try` cannot have type () => Unit since
-   |  that type captures the root capability `cap`.
+   |  that type captures the root capability `any`.
    |  This is often caused by a locally generated exception capability leaking as part of its result.
    |
    |  where:    => refers to a root capability classified as Control in the type of given instance canThrow$1

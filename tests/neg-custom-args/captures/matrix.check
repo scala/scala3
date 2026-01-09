@@ -2,7 +2,7 @@
 27 |  mul(m1, m2, m2) // error: will fail separation checking
    |          ^^
    |Separation failure: argument of type  Matrix^{m2.rd}
-   |to method mul: (x: Matrix^{cap.rd}, y: Matrix^{cap.rd}, z: Matrix^): Unit
+   |to method mul: (x: Matrix^{any.rd}, y: Matrix^{any.rd}, z: Matrix^): Unit
    |corresponds to capture-polymorphic formal parameter y of type  Matrix^{cap.rd}
    |and hides capabilities  {m2.rd}.
    |Some of these overlap with the captures of the third argument with type  (m2 : Matrix^).
@@ -18,7 +18,7 @@
 30 |  mul1(m1, m2, m2) // error: will fail separation checking
    |           ^^
    |Separation failure: argument of type  Matrix^{m2.rd}
-   |to method mul1: (x: Matrix^{cap.rd}, y: Matrix^{cap.rd}, z: Matrix^): Unit
+   |to method mul1: (x: Matrix^{any.rd}, y: Matrix^{any.rd}, z: Matrix^): Unit
    |corresponds to capture-polymorphic formal parameter y of type  Matrix^{cap.rd}
    |and hides capabilities  {m2.rd}.
    |Some of these overlap with the captures of the third argument with type  (m2 : Matrix^).

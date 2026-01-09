@@ -119,7 +119,7 @@ object CheckCaptures:
       case ReachCapability(ref) =>
         check(ref)
         if ref.isCapsAnyRef then
-          report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
+          report.error(em"Cannot form a reach capability from `any`", ann.srcPos)
       case ReadOnlyCapability(ref) =>
         check(ref)
       case OnlyCapability(ref, cls) =>
@@ -177,7 +177,7 @@ object CheckCaptures:
                     showInOpenedResultBinders(openScopes.reverse)
                 report.error(
                   em"""$what cannot $have $tp since
-                      |${part}that type captures the root capability `cap`.$addendum""",
+                      |${part}that type captures the root capability `any`.$addendum""",
                   pos)
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
@@ -215,7 +215,7 @@ object CheckCaptures:
       def hasNuType: Boolean
 
       /** Is this tree passed to a parameter or assigned to a value with a type
-       *  that contains cap in no-flip covariant position, which will necessite
+       *  that contains `any` in no-flip covariant position, which will necessite
        *  a separation check?
        */
       def needsSepCheck: Boolean
@@ -453,8 +453,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
           TypeComparer.compareResult(cs1.subCaptures(cs2)),
-          if cs1.elems.size == 1 then i"reference ${cs1.elems.nth(0)}$cs1description is not"
-          else i"references $cs1$cs1description are not all",
+          if cs1.elems.size == 1 then
+            i"reference `${cs1.elems.nth(0).showAsCapability}`$cs1description is not"
+          else
+            i"references $cs1$cs1description are not all",
           cs1, cs2, pos, provenance)
 
     /** If `sym` is a method or a non-static inner class, a capture set variable
@@ -534,7 +536,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
 
       /** Avoid locally defined capability by charging the underlying type
-       *  (which may not be cap). This scheme applies only under the deferredReaches setting.
+       *  (which may not be `any`). This scheme applies only under the deferredReaches setting.
        */
       def avoidLocalCapability(c: Capability, env: Env, lastEnv: Env | Null): Unit =
         if c.isParamPath then
@@ -554,7 +556,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 CaptureSet.ofType(c1.widen, followResult = ccConfig.useSpanCapset)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowBadRoots(NoSymbol): () =>
-            report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `cap` as underlying capture set", tree.srcPos)
+            report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `any` as underlying capture set", tree.srcPos)
           recur(underlying, env, lastEnv)
 
       /** Avoid locally defined capability if it is a reach capability or capture set
@@ -565,12 +567,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           // Parameter reaches are rejected in checkEscapingUses.
           // When a reach capabilty x* where `x` is not a parameter goes out
           // of scope, we need to continue with `x`'s underlying deep capture set.
-          // It is an error if that set contains cap.
+          // It is an error if that set contains `any`.
           // The same is not an issue for normal capabilities since in a local
           // definition `val x = e`, the capabilities of `e` have already been charged.
           // Note: It's not true that the underlying capture set of a reach capability
-          // is always cap. Reach capabilities over paths depend on the prefix, which
-          // might turn a cap into something else.
+          // is always `any`. Reach capabilities over paths depend on the prefix, which
+          // might turn an `any` into something else.
           // The path-use.scala neg test contains an example.
           val underlying = CaptureSet.ofTypeDeeply(c1.widen)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
@@ -634,7 +636,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Type arguments come either from a TypeApply node or from an AppliedType
      *  which represents a trait parent in a template.
-     *   - Disallow global cap and result caps in such arguments.
+     *   - Disallow GlobalCaps and ResultCaps in such arguments.
      *   - If a corresponding formal type parameter is declared or implied @use,
      *     charge the deep capture set of the argument to the environent.
      *  @param  fn   the type application, of type TypeApply or TypeTree
@@ -809,7 +811,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       //   - on the LHS of assignments, or
       //   - if the qualifier or selection type is boxed, or
       //   - the selection is either a trackable capture reference or a pure type, or
-      //   - if the selection is of a parameterless method capturing a result cap
+      //   - if the selection is of a parameterless method capturing a ResultCap
       if noWiden(selType, pt)
           || qualType.isBoxedCapturing
           || selType.isBoxedCapturing
@@ -879,8 +881,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         sepCheckFormals(arg) = instantiatedFormal
       argType
 
-    /** Map existential captures in result to `cap` and implement the following
-     *  rele:
+    /** Map existential captures in result to a new local `any` and implement the
+     *  following rule:
      *
      *  E |- q: Tq^Cq
      *  E |- q.f: Ta^Ca ->Cf Tr^Cr
@@ -1082,9 +1084,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     end captureSetImpliedByFields
 
     /** Recheck type applications:
-     *   - Map existential captures in result to `cap`
+     *   - Map existential captures in result to new local `any`s
      *   - include captures of called methods in environment
-     *   - don't allow cap to appear covariantly in type arguments
+     *   - don't allow `any` to appear covariantly in type arguments
      *   - special handling of `contains[A, B]` calls
      */
     override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
@@ -1207,7 +1209,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.seqLiteralElemProto(tree, pt, declared).boxed
 
     /** Recheck val and var definitions:
-     *   - disallow cap in the type of mutable vars.
+     *   - disallow `any` in the type of mutable vars.
      *   - for externally visible definitions: check that their inferred type
      *     does not refine what was known before capture checking.
      *   - Interpolate contravariant capture set variables in result type.
@@ -1447,7 +1449,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   3. The capture set of the self type of a class includes the capture set of every class
      *      parameter, unless the parameter is marked @constructorOnly or @untrackedCaptures.
      *   4. If the class extends a pure base class, the capture set of the self type must be empty.
-     *   5. Check that trait parents represented as applied types don't have cap in their
+     *   5. Check that trait parents represented as applied types don't have `any` in their
      *      type arguments. Charge deep capture sets of type arguments to non-reserved typevars
      *      to the environment. Other generic parents are represented as TypeApplys, where the
      *      same check is already done in the TypeApply.
@@ -1527,7 +1529,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckTyped(tree)
 
-    /** Under the sealed policy and with saferExceptions, disallow cap in the
+    /** Under the sealed policy and with saferExceptions, disallow `any` in the
      *  result type of a try
      */
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
@@ -1617,7 +1619,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     //   - Relax expected capture set containing `this.type`s by adding references only
     //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
     //   - Adapt box status and environment capture sets by simulating box/unbox operations.
-    //   - Instantiate covariant occurrenves of `cap` in actual to reach capabilities.
+    //   - Instantiate covariant occurrenves of `any` in actual to reach capabilities.
 
     private inline val debugSuccesses = false
 
@@ -2135,7 +2137,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
-     *  without an explicit self type have the universal capture set `{cap}` on the
+     *  without an explicit self type have the universal capture set `{caps.any}` on the
      *  self type. If a class without explicit self type is not `effectivelySealed`
      *  it is checked that the inferred self type is universal, in order to assure
      *  that joint and separate compilation give the same result.

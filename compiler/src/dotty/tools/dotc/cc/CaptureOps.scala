@@ -58,7 +58,7 @@ extension (tree: Tree)
     case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-      then defn.captureRoot.termRef
+      then defn.Caps_any.termRef
       else NoType
 
 extension (tp: Type)
@@ -345,7 +345,7 @@ extension (tp: Type)
 
   /** Is this a reference to caps.any? Note this is _not_ the GlobalCap capability. */
   def isCapsAnyRef(using Context): Boolean = tp match
-    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
+    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.Caps_any
     case _ => false
 
   /** Knowing that `tp` is a function type, is it an alias to a function other

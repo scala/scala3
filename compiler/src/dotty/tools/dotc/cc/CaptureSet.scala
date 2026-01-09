@@ -122,7 +122,9 @@ sealed abstract class CaptureSet extends Showable:
   final def isUniversal(using Context) =
     elems.exists(_.isInstanceOf[GlobalCap])
 
-  /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
+  /** Does this capture set contain a root capability `any` or `fresh` or
+   *  a derived instance thereof as element?
+   */
   final def containsTerminalCapability(using Context) =
     elems.exists(_.isTerminalCapability)
 
@@ -262,7 +264,8 @@ sealed abstract class CaptureSet extends Showable:
           !x.isTerminalCapability
           && !x.coreType.derivesFrom(defn.Caps_CapSet)
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
-            // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
+            // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
+            // and might therefore insert an element that is too unspecific.
           && x.captureSetOfInfo.subCaptures(this, VarState.Separate)
 
     comparer match
@@ -275,7 +278,7 @@ sealed abstract class CaptureSet extends Showable:
    *  for `x` in a state where we assume all supersets of `x` have just the elements
    *  known at this point. On the other hand if x's capture set has no known elements,
    *  a set `cs` might account for `x` only if it subsumes `x` or it contains the
-   *  root capability `cap`.
+   *  root capability `any`.
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
@@ -475,9 +478,10 @@ sealed abstract class CaptureSet extends Showable:
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
    *  If the limit is null, all capture roots are good.
-   *  If the limit is NoSymbol, all Fresh roots are good, but cap and Result roots are bad.
-   *  If the limit is some other symbol, cap and Result roots are bad, as well as
-   *  all Fresh roots that are contained (via ccOwner) in `rootLimit`.
+   *  If the limit is NoSymbol, all local roots are good, but
+   *  `caps.any`, `caps.fresh` and Result roots are bad.
+   *  If the limit is some other symbol, global and result roots are bad, as well as
+   *  all local roots that are contained (via ccOwner) in `rootLimit`.
    */
   protected def isBadRoot(rootLimit: Symbol | Null, elem: Capability)(using Context): Boolean =
     if rootLimit == null then false
@@ -487,8 +491,8 @@ sealed abstract class CaptureSet extends Showable:
       case _ => false
 
   /** Invoke `handler` if this set has (or later aquires) a bad root capability.
-   *  Fresh instances count as good as long as their ccOwner is outside `upto`.
-   *  If `upto` is NoSymbol, all Fresh instances are admitted.
+   *  Local roots count as good as long as their ccOwner is outside `upto`.
+   *  If `upto` is NoSymbol, all local roots are admitted.
    */
   def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
     checkAddedElems: elem =>
@@ -584,11 +588,11 @@ object CaptureSet:
   class EmptyOfBoxed(val tp1: Type, val tp2: Type) extends Const(emptyRefs):
     override def toString = "{} of boxed mismatch"
 
-  /** The universal capture set `{cap}` */
+  /** The universal capture set `{caps.any}` */
   def universal(using Context): Const =
     Const(SimpleIdentitySet(GlobalAny))
 
-  /** The shared capture set `{cap.rd}` */
+  /** The shared capture set `{caps.any.rd}` */
   def shared(using Context): Const =
     GlobalAny.readOnly.singletonCaptureSet
 
@@ -674,7 +678,7 @@ object CaptureSet:
     then GlobalAny.readOnly
     else GlobalAny
 
-  /* The same as {cap} but generated implicitly for references of Capability subtypes.
+  /* The same as {caps.any} but generated implicitly for references of Capability subtypes.
    *  @param parent   the type to which the capture set will be attached
    *  @param sym      the symbol carrying that type
    *  @param variance the variance in which `parent` appears in the type of `sym`
@@ -913,7 +917,7 @@ object CaptureSet:
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The universal set {cap} is a sound fallback.
+     *  of this set. The universal set {caps.any} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if isConst then
@@ -929,7 +933,7 @@ object CaptureSet:
           if approx.elems.exists(_.isInstanceOf[ResultCap]) then
             ccState.approxWarnings +=
                 em"""Capture set variable $this gets upper-approximated
-                  |to existential variable from $approx, using {cap} instead."""
+                  |to existential variable from $approx, using {any} instead."""
             universal
           else approx
         finally computingApprox = false
@@ -945,7 +949,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       CCState.withGlobalCapAsRoot: // OK here since we infer parameter types that get checked later
         val approx = upperApprox(empty)
-          .map(GlobalToLocalCap(Origin.Unknown).inverse)    // Fresh --> cap
+          .map(GlobalToLocalCap(Origin.Unknown).inverse)    // local -> global
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1249,14 +1253,14 @@ object CaptureSet:
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
     cs1.elems.filter(cs2.accountsFor) ++ cs2.elems.filter(cs1.accountsFor)
 
-  /** A capture set variable used to record the references hidden by a Fresh instance,
+  /** A capture set variable used to record the references hidden by a local root,
    *  The elems and deps members are repurposed as follows:
    *    elems: Set of hidden references
-   *    deps : Set of hidden sets for which the Fresh instance owning this set
+   *    deps : Set of hidden sets for which the local root owning this set
    *           is a hidden element.
    *  Hidden sets may become aliases of other hidden sets, which means that
    *  reads and writes of elems go to the alias.
-   *  If H is an alias of R.hidden for some Fresh instance R then:
+   *  If H is an alias of R.hidden for some local root R then:
    *    H.elems == {R}
    *    H.deps = {R.hidden}
    *  This encoding was chosen because it relies only on the elems and deps fields
@@ -1529,7 +1533,7 @@ object CaptureSet:
     /** A class for states that do not allow to record elements or dependent sets.
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
-     *  On the other hand, these states do allow by default Fresh instances to
+     *  On the other hand, these states do allow by default local roots to
      *  subsume arbitary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
@@ -1537,8 +1541,8 @@ object CaptureSet:
       override def isOpen = false
       override def toString = "closed varState"
 
-    /** A closed state that allows a Fresh instance to subsume a
-     *  reference `r` only if `r` is already present in the hidden set of the instance.
+    /** A closed state that allows a local root to subsume a reference `r`
+     *  only if `r` is already present in the hidden set of the instance.
      *  No new references can be added.
      */
     class Separating extends Closed:
@@ -1546,13 +1550,10 @@ object CaptureSet:
       override def toString = "separating varState"
       override def isSeparating = true
 
-    /** A closed state that allows a Fresh instance to subsume a
-     *  reference `r` only if `r` is already present in the hidden set of the instance.
-     *  No new references can be added.
-     */
+    /** The default Separating state */
     def Separate(using Context): Separating = ccState.Separate
 
-    /** Like Separate but in addition we assume that `cap` never subsumes anything else.
+    /** Like Separate but in addition we assume that `any` never subsumes anything else.
      *  Used in `++` to not lose track of dependencies between function parameters.
      */
     def HardSeparate(using Context): Separating = ccState.HardSeparate
@@ -1667,8 +1668,8 @@ object CaptureSet:
     case c: RootCapability =>
       c.singletonCaptureSet
     case c: ParamRef if !c.underlying.exists =>
-      // might happen during construction of lambdas, assume `{cap}` in this case so that
-      // `ref` will not seem subsumed by other capabilities in a `++`.
+      // might happen during construction of lambdas, assume `{caps.any}` in this case,
+      // so that `ref` will not seem subsumed by other capabilities in a `++`.
       universal
     case c: TermRef if isAssumedPure(c.symbol) =>
       CaptureSet.empty
@@ -1715,7 +1716,7 @@ object CaptureSet:
       //.showing(i"capture set of $tp = $result", captDebug)
 
   /** The deep capture set of a type is the union of all covariant occurrences of
-   *  capture sets. Nested existential sets are approximated with `cap`.
+   *  capture sets. Nested existential sets are approximated with `any`.
    */
   def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet = {
     val collect = new DeepTypeAccumulator[CaptureSet]:

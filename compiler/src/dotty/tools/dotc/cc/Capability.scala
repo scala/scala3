@@ -838,7 +838,7 @@ object Capabilities:
             case _: LocalCap if CCState.collapseLocalCaps => true
             case _ =>
               y.derivesFromShared
-              || canAddHidden && vs != VarState.HardSeparate && CCState.globalAnyIsRoot
+              || canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
@@ -926,7 +926,7 @@ object Capabilities:
      *  and should only be used for printing or phases not related to CC.
      */
     def toType(using Context): Type = this match
-      case c: RootCapability => defn.captureRoot.termRef
+      case c: RootCapability => defn.Caps_any.termRef
       case c: CoreCapability => c
       case c: DerivedCapability =>
         val c1 = c.underlying.toType
@@ -1239,7 +1239,7 @@ object Capabilities:
             case _ => ResultCap(mt)
         else
           if variance == 0 then
-            fail(em"""$localResType captures the root capability `cap` in invariant position.
+            fail(em"""$localResType captures the root capability `any` in invariant position.
                       |This capability cannot be converted to an existential in the result type of a function.""")
           // we accept variance < 0, and leave the `any` as it is
           c

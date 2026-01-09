@@ -41,7 +41,11 @@ trait Classifier
 
 /** The universal capture reference. */
 @experimental
-object cap extends Capability
+object any extends Capability
+
+//@deprecated
+@experimental
+val cap: any.type = any
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  *

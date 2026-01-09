@@ -2,7 +2,7 @@
 32 |  seq3(f)(f) // error
    |       ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq3: (x: () => Unit)(y: () ->{a, cap} Unit): Unit
+   |to method seq3: (x: () => Unit)(y: () ->{a, any} Unit): Unit
    |corresponds to capture-polymorphic formal parameter x of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the second argument with type  (f : () ->{a} Unit).
@@ -18,7 +18,7 @@
 33 |  seq4(f)(f) // error
    |          ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq4: (x: () ->{a, cap} Unit)(y: () => Unit): Unit
+   |to method seq4: (x: () ->{a, any} Unit)(y: () => Unit): Unit
    |corresponds to capture-polymorphic formal parameter y of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the first argument with type  (f : () ->{a} Unit).
@@ -50,7 +50,7 @@
 35 |  seq6(f, f) // error
    |       ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq6: (x: () => Unit, y: () ->{a, cap} Unit): Unit
+   |to method seq6: (x: () => Unit, y: () ->{a, any} Unit): Unit
    |corresponds to capture-polymorphic formal parameter x of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the second argument with type  (f : () ->{a} Unit).
@@ -66,7 +66,7 @@
 36 |  seq7(f, f) // error
    |          ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq7: (x: () ->{a, cap} Unit, y: () => Unit): Unit
+   |to method seq7: (x: () ->{a, any} Unit, y: () => Unit): Unit
    |corresponds to capture-polymorphic formal parameter y of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the first argument with type  (f : () ->{a} Unit).

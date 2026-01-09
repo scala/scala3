@@ -2,7 +2,7 @@
 9 |class Bar extends Foo[File^]: // error
   |                  ^^^^^^^^^^
   |                  Type variable X of trait Foo cannot be instantiated to File^ since
-  |                  that type captures the root capability `cap`.
+  |                  that type captures the root capability `any`.
   |
   |                  where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:18:31 --------------------------------
