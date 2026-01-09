@@ -1,0 +1,7 @@
+-- Error: tests/neg/i22589.scala:15:7 ----------------------------------------------------------------------------------
+15 |object Person extends CompanionEssentials[Person]: // error
+   |^
+   |Inferred implementation of the deferred given instance given_MyCodec_E in trait CompanionEssentials is self-recursive.
+   |An implementing given needs to be written explicitly.
+16 |  //override final lazy given given_MyCodec_E: MyCodec[Person] = Person.given_MyCodec_E
+17 |  override def toString = ""
