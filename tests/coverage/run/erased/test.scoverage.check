@@ -42,23 +42,6 @@ test$package
 Object
 <empty>.test$package
 foo
-196
-209
-7
-s
-Apply
-false
-0
-false
-s"foo(a)($b)"
-
-2
-erased/test.scala
-<empty>
-test$package
-Object
-<empty>.test$package
-foo
 139
 146
 6
@@ -69,7 +52,7 @@ false
 false
 def foo
 
-3
+2
 erased/test.scala
 <empty>
 test$package
@@ -86,24 +69,7 @@ false
 false
 println(s"identity($s)")
 
-4
-erased/test.scala
-<empty>
-test$package
-Object
-<empty>.test$package
-identity
-260
-275
-11
-s
-Apply
-false
-0
-false
-s"identity($s)"
-
-5
+3
 erased/test.scala
 <empty>
 test$package
@@ -120,7 +86,7 @@ false
 false
 def identity
 
-6
+4
 erased/test.scala
 <empty>
 test$package
@@ -137,7 +103,7 @@ false
 false
 foo(parameterless)("b")
 
-7
+5
 erased/test.scala
 <empty>
 test$package
@@ -154,7 +120,7 @@ false
 false
 foo(e("a"))("b")
 
-8
+6
 erased/test.scala
 <empty>
 test$package
@@ -171,7 +137,7 @@ false
 false
 foo(e("a"))(identity("idem"))
 
-9
+7
 erased/test.scala
 <empty>
 test$package
@@ -188,7 +154,7 @@ false
 false
 identity("idem")
 
-10
+8
 erased/test.scala
 <empty>
 test$package

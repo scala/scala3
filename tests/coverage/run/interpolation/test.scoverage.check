@@ -25,23 +25,6 @@ Test
 Object
 <empty>.Test
 simple
-60
-78
-4
-s
-Apply
-false
-0
-false
-s"$a, ${b.length}"
-
-1
-interpolation/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-simple
 68
 76
 4
@@ -52,7 +35,7 @@ false
 false
 b.length
 
-2
+1
 interpolation/test.scala
 <empty>
 Test
@@ -69,24 +52,7 @@ false
 false
 def simple
 
-3
-interpolation/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-hexa
-113
-126
-7
-f
-Apply
-false
-0
-false
-f"0x${i}%04x"
-
-4
+2
 interpolation/test.scala
 <empty>
 Test
@@ -103,7 +69,7 @@ false
 false
 def hexa
 
-5
+3
 interpolation/test.scala
 <empty>
 Test
@@ -120,7 +86,7 @@ false
 false
 List("d", "o", "t", "t", "y")
 
-6
+4
 interpolation/test.scala
 <empty>
 Test
@@ -137,7 +103,7 @@ false
 false
 "d"
 
-7
+5
 interpolation/test.scala
 <empty>
 Test
@@ -154,7 +120,7 @@ false
 false
 "o"
 
-8
+6
 interpolation/test.scala
 <empty>
 Test
@@ -171,7 +137,7 @@ false
 false
 "t"
 
-9
+7
 interpolation/test.scala
 <empty>
 Test
@@ -188,7 +154,7 @@ false
 false
 "t"
 
-10
+8
 interpolation/test.scala
 <empty>
 Test
@@ -205,7 +171,7 @@ false
 false
 "y"
 
-11
+9
 interpolation/test.scala
 <empty>
 Test
@@ -222,7 +188,7 @@ false
 false
 xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
 
-12
+10
 interpolation/test.scala
 <empty>
 Test
@@ -239,24 +205,7 @@ false
 false
 println(s"$i: $s")
 
-13
-interpolation/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-$anonfun
-267
-276
 11
-s
-Apply
-false
-0
-false
-s"$i: $s"
-
-14
 interpolation/test.scala
 <empty>
 Test
@@ -273,7 +222,7 @@ false
 false
 println(simple(1, "abc"))
 
-15
+12
 interpolation/test.scala
 <empty>
 Test
@@ -290,7 +239,7 @@ false
 false
 simple(1, "abc")
 
-16
+13
 interpolation/test.scala
 <empty>
 Test
@@ -307,7 +256,7 @@ false
 false
 println(hexa(127))
 
-17
+14
 interpolation/test.scala
 <empty>
 Test
@@ -324,7 +273,7 @@ false
 false
 hexa(127)
 
-18
+15
 interpolation/test.scala
 <empty>
 Test
@@ -341,24 +290,7 @@ false
 false
 println(raw"a\\nb")
 
-19
-interpolation/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-345
-354
-15
-raw
-Apply
-false
-0
-false
-raw"a\\nb"
-
-20
+16
 interpolation/test.scala
 <empty>
 Test
