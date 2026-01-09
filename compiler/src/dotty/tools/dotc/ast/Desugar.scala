@@ -13,11 +13,12 @@ import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion.*
-import collection.mutable
+import collection.mutable, mutable.ListBuffer
 import reporting.*
 import printing.Formatting.hl
 import config.Printers
 import parsing.Parsers
+import util.chaining.*
 
 import scala.annotation.{unchecked as _, *}, internal.sharable
 
@@ -271,12 +272,12 @@ object desugar {
    */
   private def desugarContextBounds(
       tdef: TypeDef,
-      evidenceBuf: mutable.ListBuffer[ValDef],
+      evidenceBuf: ListBuffer[ValDef],
       evidenceFlags: FlagSet,
       freshName: untpd.Tree => TermName,
       allParamss: List[ParamClause])(using Context): TypeDef =
 
-    val evidenceNames = mutable.ListBuffer[TermName]()
+    val evidenceNames = ListBuffer.empty[TermName]
 
     def desugarRHS(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, ctxbounds) =>
@@ -321,7 +322,7 @@ object desugar {
   end desugarContextBounds
 
   def elimContextBounds(meth: Tree, isPrimaryConstructor: Boolean = false)(using Context): Tree =
-    val evidenceParamBuf = mutable.ListBuffer[ValDef]()
+    val evidenceParamBuf = ListBuffer.empty[ValDef]
     var seenContextBounds: Int = 0
     def freshName(unused: Tree) =
       seenContextBounds += 1 // Start at 1 like FreshNameCreator.
@@ -646,7 +647,7 @@ object desugar {
    *  ultimately map to deferred givens.
    */
   def typeDef(tdef: TypeDef)(using Context): Tree =
-    val evidenceBuf = new mutable.ListBuffer[ValDef]
+    val evidenceBuf = ListBuffer.empty[ValDef]
     val result = desugarContextBounds(
         tdef, evidenceBuf,
         (tdef.mods.flags.toTermFlags & AccessFlags) | Lazy | DeferredGivenFlags,
@@ -1454,18 +1455,13 @@ object desugar {
    *             IrrefutableGenFrom:  sel with attachment `CheckIrrefutable -> checkMode`
    */
   def makeSelector(sel: Tree, checkMode: MatchCheck)(using Context): Tree =
+    import MatchCheck.*
     checkMode match
-    case MatchCheck.None =>
-      Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
-
-    case MatchCheck.Exhaustive =>
-      sel
-
-    case MatchCheck.IrrefutablePatDef | MatchCheck.IrrefutableGenFrom =>
+    case None               => Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
+    case Exhaustive         => sel
+    case IrrefutablePatDef
+       | IrrefutableGenFrom => sel.withAttachment(CheckIrrefutable, checkMode)
       // TODO: use `pushAttachment` and investigate duplicate attachment
-      sel.withAttachment(CheckIrrefutable, checkMode)
-      sel
-    end match
 
   case class TuplePatternInfo(arity: Int, varNum: Int, wildcardNum: Int)
   object TuplePatternInfo:
@@ -2261,55 +2257,62 @@ object desugar {
       enums match {
         case Nil if sourceVersion.enablesBetterFors => body
         case (gen: GenFrom) :: Nil =>
-          val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
-          markTrailingMap(aply, gen, mapName)
-          aply
+          Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+            .tap(markTrailingMap(_, gen, mapName))
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
-        case (gen: GenFrom) :: rest
-        if sourceVersion.enablesBetterFors
-          && rest.dropWhile(_.isInstanceOf[GenAlias]).headOption.forall(e => e.isInstanceOf[GenFrom]) // possible aliases followed by a generator or end of for
-          && !rest.takeWhile(_.isInstanceOf[GenAlias]).exists(a => isNestedGivenPattern(a.asInstanceOf[GenAlias].pat)) =>
-          val cont = makeFor(mapName, flatMapName, rest, body)
-          val selectName =
-            if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
-            else mapName
-          val aply = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
-          markTrailingMap(aply, gen, selectName)
-          aply
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
-          val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
-          val pats = valeqs map { case GenAlias(pat, _) => pat }
-          val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
-          val (defpat0, id0) = makeIdPat(gen.pat)
-          val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
-            val mods = defpat match
-              case defTree: DefTree => defTree.mods
-              case _ => Modifiers()
-            makePatDef(valeq, mods, defpat, rhs)
-          }
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ())))
-          val allpats = gen.pat :: pats
-          val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
-          makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
+          val (valeqs, suffix) = rest.span(_.isInstanceOf[GenAlias])
+          // possible aliases followed by a generator or end of for, when betterFors.
+          // exclude value definitions with a given pattern (given T = x)
+          val better = sourceVersion.enablesBetterFors
+            && suffix.headOption.forall(_.isInstanceOf[GenFrom])
+            && !valeqs.exists(a => isNestedGivenPattern(a.asInstanceOf[GenAlias].pat))
+          if better then
+            val cont = makeFor(mapName, flatMapName, enums = rest, body)
+            val selectName =
+              if suffix.exists(_.isInstanceOf[GenFrom]) then flatMapName
+              else mapName
+            Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+          else
+            val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
+            val (defpat0, id0) = makeIdPat(gen.pat)
+            val (defpats, ids) = pats.map(makeIdPat).unzip
+            val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map: (valeq, defpat, rhs) =>
+              val mods = defpat match
+                case defTree: DefTree => defTree.mods
+                case _ => Modifiers()
+              makePatDef(valeq, mods, defpat, rhs)
+            val rhs1 =
+              val enums = GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil
+              val body = Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ()))
+              makeFor(nme.map, nme.flatMap, enums, body)
+            val allpats = gen.pat :: pats
+            val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
+            makeFor(mapName, flatMapName, enums = vfrom1 :: suffix, body)
+          end if
         case (gen: GenFrom) :: test :: rest =>
-          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
-          val genFrom = GenFrom(gen.pat, filtered, if sourceVersion.enablesBetterFors then GenCheckMode.Filtered else GenCheckMode.Ignore)
+          val genFrom =
+            val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
+            val mode =
+              import GenCheckMode.*
+              if sourceVersion.enablesBetterFors then
+                if gen.checkMode eq FilterAlways then FilterAlways
+                else Filtered
+              else Ignore
+            GenFrom(gen.pat, filtered, mode)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
-        case GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
-          val (valeqs, rest) = enums.span(_.isInstanceOf[GenAlias])
-          val pats = valeqs.map { case GenAlias(pat, _) => pat }
-          val rhss = valeqs.map { case GenAlias(_, rhs) => rhs }
+        case enums @ GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
+          val (valeqs, suffix) = enums.span(_.isInstanceOf[GenAlias])
+          val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
           val (defpats, ids) = pats.map(makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map: (valeq, defpat, rhs) =>
             val mods = defpat match
               case defTree: DefTree => defTree.mods
               case _ => Modifiers()
             makePatDef(valeq, mods, defpat, rhs)
-          }
-          Block(pdefs, makeFor(mapName, flatMapName, rest, body))
+          Block(pdefs, makeFor(mapName, flatMapName, enums = suffix, body))
         case _ =>
           EmptyTree //may happen for erroneous input
       }
@@ -2483,7 +2486,7 @@ object desugar {
    *  without duplicates
    */
   private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
-    val buf = mutable.ListBuffer[VarInfo]()
+    val buf = ListBuffer.empty[VarInfo]
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
