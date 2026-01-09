@@ -1,0 +1,41 @@
+-- Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:52:4 ---------------------------------------------------
+52 |    futs.awaitAll // error
+   |    ^^^^
+   |    Local reach capability futs* leaks into capture scope of method bad - collectors
+-- Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:86:25 --------------------------------------------------
+86 |    val ch = SyncChannel[File]() // error
+   |                         ^^^^
+   |                         Type variable T of object SyncChannel cannot be instantiated to box File^ since
+   |                         that type captures the root capability `cap`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:111:12 ----------------------------
+111 |      Result: label ?=> // error, escaping label from Result
+    |      ^
+    |      Found:    Result[box gears.async².Future[box T^?]^{fr, label, async, label²}, box E^?]
+    |      Required: Either[E, box gears.async².Future[T]^{async}]
+    |
+    |      where:    async  is a parameter in an anonymous function in method bad
+    |                async² is a package in package gears
+    |                label  is a reference to a value parameter
+    |                label² is a reference to a value parameter
+112 |        Future: fut ?=>
+113 |          fr.await.ok
+    |
+    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:48:38 --------------------------------------------------
+48 |  val futs: Seq[Future[Int]^] = Async.blocking: async ?=> // error
+   |                                ^^^^^^^^^^^^^^
+   |       local reference async leaks into outer capture set of type parameter T of method blocking in object Async
+-- Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:73:8 ---------------------------------------------------
+73 |  Async.blocking: // error
+   |  ^^^^^^^^^^^^^^
+   |local reference _$3 from (_$3: box File^{files*}): box gears.async.Future[Int]^{_$3, files*} leaks into outer capture set of type parameter T of method blocking in object Async
+-- Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:74:9 ---------------------------------------------------
+74 |    File.open("a.txt"): a => // error
+   |    ^^^^^^^^^
+   |local reference _$3 from (_$3: box File^{files*}): box gears.async.Future[Int]^{_$3, files*} leaks into outer capture set of type parameter T of method open in object File
+-- Error: tests/neg-custom-args/captures/gears/CCBehavior.scala:75:11 --------------------------------------------------
+75 |      File.open("b.txt"): b => // error
+   |      ^^^^^^^^^
+   |local reference _$3 from (_$3: box File^{files*}): box gears.async.Future[Int]^{_$3, files*} leaks into outer capture set of type parameter T of method open in object File
+there were 20 feature warnings; re-run with -feature for details
+there were 19 deprecation warnings; re-run with -deprecation for details
