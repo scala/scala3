@@ -120,7 +120,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `caps.any` as element? */
   final def isUniversal(using Context) =
-    elems.contains(GlobalCap)
+    elems.exists(_.isInstanceOf[GlobalCap])
 
   /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
   final def containsTerminalCapability(using Context) =
@@ -137,12 +137,12 @@ sealed abstract class CaptureSet extends Showable:
     !containsResultCapability
     && elems.exists: elem =>
       elem.core match
-        case GlobalCap => true
+        case _: GlobalCap => true
         case _: LocalCap => true
         case _ => false
 
   final def containsGlobalCapDerivs(using Context) =
-    elems.exists(_.core eq GlobalCap)
+    elems.exists(_.core.isInstanceOf[GlobalCap])
 
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
@@ -482,7 +482,7 @@ sealed abstract class CaptureSet extends Showable:
   protected def isBadRoot(rootLimit: Symbol | Null, elem: Capability)(using Context): Boolean =
     if rootLimit == null then false
     else elem.core match
-      case GlobalCap | _: ResultCap => true
+      case _: GlobalCap | _: ResultCap => true
       case elem: LocalCap => elem.ccOwner.isContainedIn(rootLimit)
       case _ => false
 
@@ -586,11 +586,11 @@ object CaptureSet:
 
   /** The universal capture set `{cap}` */
   def universal(using Context): Const =
-    Const(SimpleIdentitySet(GlobalCap))
+    Const(SimpleIdentitySet(GlobalAny))
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): Const =
-    GlobalCap.readOnly.singletonCaptureSet
+    GlobalAny.readOnly.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
@@ -671,8 +671,8 @@ object CaptureSet:
       && variance >= 0
       && sym.isContainedIn(defn.ScalaPackageClass)
     if parent.derivesFromStateful && !isArrayFromScalaPackage
-    then GlobalCap.readOnly
-    else GlobalCap
+    then GlobalAny.readOnly
+    else GlobalAny
 
   /* The same as {cap} but generated implicitly for references of Capability subtypes.
    *  @param parent   the type to which the capture set will be attached
@@ -884,7 +884,7 @@ object CaptureSet:
     def levelOK(elem: Capability)(using Context): Boolean = elem match
       case elem @ ResultCap(binder) =>
         rootLimit == null && isPartOf(binder.resType)
-      case GlobalCap =>
+      case _: GlobalCap =>
         rootLimit == null
       case elem: ParamRef =>
         isPartOf(elem.binder.resType)

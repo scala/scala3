@@ -71,7 +71,7 @@ extension (tp: Type)
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
     case ref: TermRef if ref.isCapsAnyRef =>
-      GlobalCap
+      GlobalAny
     case ref: Capability if ref.isTrackableRef =>
       ref
     case ref: TermRef if ref.isLocalMutable =>

@@ -211,7 +211,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
                     false
         )
       isUniversal
-      || !refs.elems.isEmpty && refs.elems.forall(_.isGlobalOrLocalCap) && !ccVerbose
+      || !refs.elems.isEmpty && refs.elems.forall(_.isLocalOrGlobalCap) && !ccVerbose
     case ref :: Nil => ref.isCapsAnyRef
     case _ => false
 
@@ -477,7 +477,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
-    case GlobalCap => "cap"
+    case _: GlobalCap => "cap"
     case c: ResultCap =>
       def idStr = s"##${c.rootId}"
       // TODO: Better printing? USe a mode where we print more detailed
