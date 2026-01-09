@@ -522,8 +522,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     }
   }
 
-  /** Under pureFunctions: A builder and extractor for `=> T`, which is an alias for `->{cap} T`.
-   *  Only trees of the form `=> T` are matched; trees written directly as `->{cap} T`
+  /** Under pureFunctions: A builder and extractor for `=> T`, which is an alias for `->{any} T`.
+   *  Only trees of the form `=> T` are matched; trees written directly as `->{any} T`
    *  are ignored by the extractor.
    */
   object ImpureByNameTypeTree:

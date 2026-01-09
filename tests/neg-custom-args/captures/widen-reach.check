@@ -2,7 +2,7 @@
 8 |trait Bar extends Foo[IO^]: // error
   |                  ^^^^^^^^
   |                  Type variable T of trait Foo cannot be instantiated to IO^ since
-  |                  that type captures the root capability `cap`.
+  |                  that type captures the root capability `any`.
   |
   |                  where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
@@ -11,12 +11,12 @@
   |                Found:    (x: IO^) ->'s1 IO^²
   |                Required: IO^ -> IO^³
   |
-  |                Note that capability cap is not included in capture set {cap²}
-  |                because cap is not visible from cap² in value foo.
+  |                Note that capability any is not included in capture set {any²}
+  |                because any is not visible from any² in value foo.
   |
   |                where:    ^           refers to the universal root capability
-  |                          ^² and cap  refer to a root capability associated with the result type of (x: IO^): IO^²
-  |                          ^³ and cap² refer to a fresh root capability in the type of value foo
+  |                          ^² and any  refer to a root capability associated with the result type of (x: IO^): IO^²
+  |                          ^³ and any² refer to a root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------
@@ -28,7 +28,7 @@
    |                       Note that capability x* is not included in capture set {}.
    |
    |                       where:    ^  refers to the universal root capability
-   |                                 ^² refers to a fresh root capability in the type of value y2
+   |                                 ^² refers to a root capability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 ----------------------------------

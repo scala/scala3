@@ -1,4 +1,4 @@
-import caps.cap
+import caps.any
 import language.future
 import language.experimental.captureChecking
 

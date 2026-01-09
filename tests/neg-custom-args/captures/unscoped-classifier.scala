@@ -18,4 +18,4 @@ def test(g: () => Unit) =
 
   val b = B()
   val d = D() // ok (?)
-  val _: D^{cap.only[Unscoped]} = d
+  val _: D^{any.only[Unscoped]} = d

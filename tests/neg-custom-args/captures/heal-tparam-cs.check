@@ -1,13 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:25 -------------------------------
 10 |  val test1 = localCap { c => // error
    |                         ^
-   |Capability c outlives its scope: it leaks into outer capture set 's1 which is owned by value test1.
+   |Capability `c` outlives its scope: it leaks into outer capture set 's1 which is owned by value test1.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (c: Capp^'s2) ->'s3 () ->{c} Unit
    |Required: (c: Capp^) => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
+   |where:    => refers to a root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability
    |
 11 |    () => { c.use() }
@@ -19,12 +19,12 @@
    |Found:    (x$0: Capp^'s4) ->'s5 () ->{x$0} Unit
    |Required: (c: Capp^) -> () => Unit
    |
-   |Note that capability x$0 is not included in capture set {cap}
-   |because cap, which is existentially bound in () =>² Unit, cannot subsume x$0 since that capability is not a SharedCapability.
+   |Note that capability x$0 is not included in capture set {any}
+   |because any, which is existentially bound in () =>² Unit, cannot subsume x$0 since that capability is not a SharedCapability.
    |
    |where:    =>        refers to a root capability associated with the result type of (c: Capp^): () => Unit
    |          =>² and ^ refer to the universal root capability
-   |          cap       is a root capability associated with the result type of (x$0: Capp^'s4): () ->{x$0} Unit
+   |          any       is a root capability associated with the result type of (x$0: Capp^'s4): () ->{x$0} Unit
    |
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }

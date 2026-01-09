@@ -3,7 +3,7 @@
   |           ^
   |           Type argument test.Tree^ does not conform to upper bound test.Tree in inferred type test.C[test.Tree^]
   |
-  |           where:    ^ refers to a fresh root capability in the type of value foo
+  |           where:    ^ refers to a root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:10:11 --------------------------------
@@ -11,7 +11,7 @@
    |           ^
    |          Type argument test.Tree^ does not conform to upper bound test.Tree in inferred type test.C[test.Tree^]
    |
-   |          where:    ^ refers to a fresh root capability in the type of type T
+   |          where:    ^ refers to a root capability in the type of type T
    |
    | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:11:11 --------------------------------

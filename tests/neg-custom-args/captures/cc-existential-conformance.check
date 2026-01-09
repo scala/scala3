@@ -4,12 +4,12 @@
   |                  Found:    (x : A -> (x²: A) -> B^)
   |                  Required: A -> A -> B^²
   |
-  |                  Note that capability cap is not included in capture set {cap²}
-  |                  because cap is not visible from cap² in value y.
+  |                  Note that capability any is not included in capture set {any²}
+  |                  because any is not visible from any² in value y.
   |
   |                  where:    ^           refers to a root capability associated with the result type of (x²: A): B^
-  |                            ^² and cap² refer to a fresh root capability in the type of value y
-  |                            cap         is the universal root capability
+  |                            ^² and any² refer to a root capability in the type of value y
+  |                            any         is the universal root capability
   |                            x           is a value in method test
   |                            x²          is a reference to a value parameter
   |
@@ -20,10 +20,10 @@
   |                           Found:    A -> A -> B^{y*}
   |                           Required: A -> (x: A) -> B^
   |
-  |                           Note that capability y* is not included in capture set {cap}.
+  |                           Note that capability y* is not included in capture set {any}.
   |
   |                           where:    ^   refers to a root capability associated with the result type of (x: A): B^
-  |                                     cap is the universal root capability
+  |                                     any is the universal root capability
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
@@ -32,12 +32,12 @@
    |                Found:    (x : (x²: A) -> B^)
    |                Required: A -> B^²
    |
-   |                Note that capability cap is not included in capture set {cap²}
-   |                because cap is not visible from cap² in value y.
+   |                Note that capability any is not included in capture set {any²}
+   |                because any is not visible from any² in value y.
    |
    |                where:    ^           refers to a root capability associated with the result type of (x²: A): B^
-   |                          ^² and cap² refer to a fresh root capability in the type of value y
-   |                          cap         is the universal root capability
+   |                          ^² and any² refer to a root capability in the type of value y
+   |                          any         is the universal root capability
    |                          x           is a value in method test2
    |                          x²          is a reference to a value parameter
    |
@@ -48,9 +48,9 @@
    |                        Found:    A -> B^{y*}
    |                        Required: (x: A) -> B^
    |
-   |                        Note that capability y* is not included in capture set {cap}.
+   |                        Note that capability y* is not included in capture set {any}.
    |
    |                        where:    ^   refers to a root capability associated with the result type of (x: A): B^
-   |                                  cap is the universal root capability
+   |                                  any is the universal root capability
    |
    | longer explanation available when compiling with `-explain`

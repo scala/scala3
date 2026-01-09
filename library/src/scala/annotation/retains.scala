@@ -16,7 +16,7 @@ import language.experimental.captureChecking
 @experimental
 class retains[Elems] extends annotation.StaticAnnotation
 
-/** Equivalent in meaning to `@retains[cap.type]`, but consumes less bytecode.
+/** Equivalent in meaning to `@retains[any.type]`, but consumes less bytecode.
  */
 @experimental
 class retainsCap extends annotation.StaticAnnotation

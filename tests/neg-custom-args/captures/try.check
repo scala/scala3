@@ -4,12 +4,12 @@
    |Found:    (x: CT[Exception]^) ->'s1 CT[Exception]^{x}
    |Required: CT[Exception]^ => CT[Exception]^²
    |
-   |Note that capability x is not included in capture set {cap}
-   |because (x : CT[Exception]^) is not visible from cap in value a.
+   |Note that capability x is not included in capture set {any}
+   |because (x : CT[Exception]^) is not visible from any in value a.
    |
-   |where:    =>         refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |where:    =>         refers to a root capability created in value a when checking argument to parameter op of method handle
    |          ^          refers to the universal root capability
-   |          ^² and cap refer to a fresh root capability created in value a
+   |          ^² and any refer to a root capability created in value a
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:30:4 -------------------------------------------
@@ -20,20 +20,20 @@
    |
    |Note that capability x is not included in capture set {}.
    |
-   |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
+   |where:    => refers to a root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:36:4 -------------------------------------------
 36 |    (x: CanThrow[Exception]) => // error
    |    ^
-   |Capability x outlives its scope: it leaks into outer capture set 's3 which is owned by value xx.
+   |Capability `x` outlives its scope: it leaks into outer capture set 's3 which is owned by value xx.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: CT[Exception]^) ->'s4 () ->{x} Int
    |Required: CT[Exception]^ => () ->'s3 Int
    |
-   |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
+   |where:    => refers to a root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
 37 |      () =>
@@ -44,13 +44,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:48:2 -------------------------------------------
 48 |  (x: CanThrow[Exception]) =>  // error
    |  ^
-   |Capability x outlives its scope: it leaks into outer capture set 's5 which is owned by value global.
+   |Capability `x` outlives its scope: it leaks into outer capture set 's5 which is owned by value global.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: CT[Exception]^) ->'s6 () ->{x} Int
    |Required: CT[Exception]^ => () ->'s5 Int
    |
-   |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
+   |where:    => refers to a root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
 49 |    () =>

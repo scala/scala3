@@ -1924,7 +1924,7 @@ object Parsers {
 
     def refinedType() = refinedTypeRest(withType())
 
-    /** Disambiguation: a `^` is treated as a postfix operator meaning `^{cap}`
+    /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
      *  if followed by `{`, `->`, or `?->`,
      *  or followed by a new line (significant or not),
      *  or followed by a token that cannot start an infix type.

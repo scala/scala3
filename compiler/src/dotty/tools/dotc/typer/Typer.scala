@@ -2564,15 +2564,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedThrow(tree: untpd.Throw)(using Context): Tree =
     val expr1 = typed(tree.expr, defn.ThrowableType)
-    val cap = checkCanThrow(expr1.tpe.widen, tree.span)
+    val ctEvidence = checkCanThrow(expr1.tpe.widen, tree.span)
     var res = Throw(expr1).withSpan(tree.span)
-    if Feature.ccEnabled && !cap.isEmpty && !ctx.isAfterTyper then
-      // Record access to the CanThrow capabulity recovered in `cap` by wrapping
+    if Feature.ccEnabled && !ctEvidence.isEmpty && !ctx.isAfterTyper then
+      // Record access to the CanThrow capabulity recovered in `capEvidence` by wrapping
       // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotation.
       res = Typed(res,
         TypeTree(
           AnnotatedType(res.tpe,
-            Annotation(defn.RequiresCapabilityAnnot, cap, tree.span))))
+            Annotation(defn.RequiresCapabilityAnnot, ctEvidence, tree.span))))
     res.withNotNullInfo(expr1.notNullInfo.terminatedInfo)
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {

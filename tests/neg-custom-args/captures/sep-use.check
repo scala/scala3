@@ -5,7 +5,7 @@
   |          of value x with type () => Unit.
   |          This type hides capabilities  {io}
   |
-  |          where:    => refers to a fresh root capability in the type of value x
+  |          where:    => refers to a root capability in the type of value x
 -- Error: tests/neg-custom-args/captures/sep-use.scala:12:12 -----------------------------------------------------------
 12 |  def x: () => Unit = () => println(io)  // error
    |         ^^^^^^^^^^
@@ -17,7 +17,7 @@
    |          of method x with result type () => Unit.
    |          This type hides capabilities  {io}
    |
-   |          where:    => refers to a fresh root capability in the result type of method x
+   |          where:    => refers to a root capability in the result type of method x
 -- Error: tests/neg-custom-args/captures/sep-use.scala:18:10 -----------------------------------------------------------
 18 |  def xx: (y: Int) => Unit = _ => println(io)  // error
    |          ^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@
    |          of method xx with result type (y: Int) => Unit.
    |          This type hides capabilities  {io}
    |
-   |          where:    => refers to a fresh root capability in the result type of method xx
+   |          where:    => refers to a root capability in the result type of method xx
 -- Error: tests/neg-custom-args/captures/sep-use.scala:24:19 -----------------------------------------------------------
 24 |  def xxx(y: Int): Object^ = io  // error
    |                   ^^^^^^^
@@ -41,4 +41,4 @@
    |          of method xxx with result type Object^.
    |          This type hides capabilities  {io}
    |
-   |          where:    ^ refers to a fresh root capability in the result type of method xxx
+   |          where:    ^ refers to a root capability in the result type of method xxx

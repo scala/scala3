@@ -268,7 +268,7 @@ object Message:
       case _ => super.toTextRef(tp)
 
     override def toTextCapability(c: Capability): Text = c match
-      case c: RootCapability if seen.isActive => seen.record("cap", isType = false, c)
+      case c: RootCapability if seen.isActive => seen.record("any", isType = false, c)
       case _ => super.toTextCapability(c)
 
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match

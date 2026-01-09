@@ -6,7 +6,7 @@
 -- Error: tests/neg-custom-args/captures/constructor-uses.scala:17:12 --------------------------------------------------
 17 |    val v = g.toString // error
    |            ^
-   |            reference (A.this.g : test.File^) is not included in the allowed capture set {A.this.f}
+   |            reference `A.this.g` is not included in the allowed capture set {A.this.f}
    |            of the enclosing constructor D in class D
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:28:21 -----------------------------
 28 |  val _: () -> a.B = f // error

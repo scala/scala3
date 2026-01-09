@@ -1,7 +1,5 @@
 -- Error: tests/neg-custom-args/captures/i24310.scala:10:16 ------------------------------------------------------------
 10 |    def run() = f() // error <- note the missing update
    |                ^
-   |                Read-only method run accesses exclusive capability (Matrix.this.f : () => Int);
+   |                Read-only method run accesses exclusive capability `Matrix.this.f`;
    |                method run should be declared an update method to allow this.
-   |
-   |                where:    => refers to a fresh root capability in the type of value f

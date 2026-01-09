@@ -922,7 +922,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     new AbstractIterator[B] {
       // TODO We should be able to prove that origElems is safe even though it is
       // declared as Iterator[B]^. We could show that origElems is never assigned a
-      // freh cap. Maybe we can invent another annotation that is checked and that
+      // fresh `any`. Maybe we can invent another annotation that is checked and that
       // shows that the `^` is just used as an upper bound for concete non-fresh
       // capabilities.
       @untrackedCaptures private var origElems: Iterator[B]^ = self

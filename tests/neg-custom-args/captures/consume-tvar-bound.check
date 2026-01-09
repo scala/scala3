@@ -1,24 +1,24 @@
 -- Error: tests/neg-custom-args/captures/consume-tvar-bound.scala:7:29 -------------------------------------------------
 7 |def h[T <: Ref^](x: Box[T]): Ref^ = x.elem // error
   |                             ^^^^
-  |                  Separation failure: method h's result type Ref^ hides cap, which appears in the bound of type T.
+  |                  Separation failure: method h's result type Ref^ hides any, which appears in the bound of type T.
   |                  This is not allowed. The type T has to be returned explicitly in the result type.
   |
-  |                  where:    cap is a fresh root capability in the type of type T
+  |                  where:    any is a root capability in the type of type T
 -- Error: tests/neg-custom-args/captures/consume-tvar-bound.scala:9:30 -------------------------------------------------
 9 |def hh[T <: Ref^](x: Box[T]): (Ref^, Int) = (x.elem, 1) // error (but msg is strange since it does not highlight the underlying box conflict)
   |                              ^^^^^^^^^^^
-  |          Separation failure: method hh's result type (Ref^, Int) hides cap, which appears in the bound of type T.
+  |          Separation failure: method hh's result type (Ref^, Int) hides any, which appears in the bound of type T.
   |          This is not allowed. The type T has to be returned explicitly in the result type.
   |
-  |          where:    cap is a fresh root capability in the type of type T
+  |          where:    any is a root capability in the type of type T
 -- Error: tests/neg-custom-args/captures/consume-tvar-bound.scala:11:37 ------------------------------------------------
 11 |def g[T <: Ref^](consume x: Box[T]): Ref^ = x.elem // error
    |                                     ^^^^
-   |                Separation failure: method g's result type Ref^ hides cap, which appears in the bound of type T.
+   |                Separation failure: method g's result type Ref^ hides any, which appears in the bound of type T.
    |                This is not allowed. The type T has to be returned explicitly in the result type.
    |
-   |                where:    cap is a fresh root capability in the type of type T
+   |                where:    any is a root capability in the type of type T
 -- Error: tests/neg-custom-args/captures/consume-tvar-bound.scala:20:43 ------------------------------------------------
 20 |  def f[T <: Ref^{rr}](consume x: Box[T]): Ref^ = x.elem // error
    |                                           ^^^^
