@@ -1,6 +1,6 @@
 Scala 3 (https://www.scala-lang.org)
-Copyright 2012-2025 EPFL
-Copyright 2012-2025 Lightbend, Inc. dba Akka
+Copyright 2012-2026 EPFL
+Copyright 2012-2026 Lightbend, Inc. dba Akka
 
 Licensed under the Apache License, Version 2.0 (the "License"):
 http://www.apache.org/licenses/LICENSE-2.0
