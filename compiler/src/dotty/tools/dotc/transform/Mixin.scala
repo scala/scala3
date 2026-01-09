@@ -16,6 +16,7 @@ import StdNames.*
 import Names.*
 import NameKinds.*
 import NameOps.*
+import Annotations.*
 import Phases.erasurePhase
 import ast.Trees.*
 
@@ -315,7 +316,16 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(DefDef(mkMixinForwarderSym(meth.asTerm), forwarderRhsFn(meth)))
+        //Whereas method annotations are set directly in mkMixForwarderSym from the meth.sym
+        //in the case of parameter annotations, we need to store these off here to pass into the DefDef
+        //to use during valueParm creation since the mkMixinForwarderSym result symbol denotation no longer
+        //have the parameter annotations.
+        val annotationss: Map[TermName, List[Annotation]] = (for
+          rawParams <- meth.asTerm.rawParamss
+          if rawParams.nonEmpty && !rawParams.head.isType
+          p <- rawParams
+        yield (p.termRef.name, p.annotations)).toMap.withDefaultValue(Nil)
+        transformFollowing(DefDef(mkMixinForwarderSym(meth.asTerm), annotationss, forwarderRhsFn(meth)))
       }
 
     def mkMixinForwarderSym(target: TermSymbol): TermSymbol =
