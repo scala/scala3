@@ -5,17 +5,21 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
 import util.{SimpleIdentitySet, EqHashMap}
+import util.common.alwaysTrue
+import scala.collection.mutable
+import CCState.*
 import Periods.{NoRunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.{Refs, emptyRefs, VarState}
+import Annotations.Annotation
 import Flags.*
 import config.Printers.capt
 import annotation.constructorOnly
 import ast.tpd
 import printing.{Printer, Showable}
 import printing.Texts.Text
-import reporting.Message
+import reporting.{Message, trace}
 import NameOps.isImpureFunction
 import annotation.internal.sharable
 import collection.immutable

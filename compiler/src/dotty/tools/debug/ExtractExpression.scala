@@ -358,7 +358,7 @@ private class ExtractExpression(
 
   private def isLocalToExpression(symbol: Symbol)(using Context): Boolean =
     val evaluateMethod = config.evaluateMethod
-    symbol.ownersIterator.contains(evaluateMethod)
+    symbol.ownersIterator.exists(_ == evaluateMethod)
 
 private object ExtractExpression:
   val name: String = "extractExpression"
