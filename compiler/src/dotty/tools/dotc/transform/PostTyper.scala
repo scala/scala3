@@ -513,11 +513,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 ctx.typer.checkClassType(tpe, tree.srcPos,
                     traitReq = false, stablePrefixReq = stablePrefixReq,
                     refinementOK = Feature.enabled(Feature.modularity))
-              checkClassType(tree.tpe, true)
+              checkClassType(tree.tpe, stablePrefixReq = true)
               if !nu.tpe.isLambdaSub then
                 // Check the constructor type as well; it could be an illegal singleton type
                 // which would not be reflected as `tree.tpe`
-                checkClassType(nu.tpe, false)
+                checkClassType(nu.tpe, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>

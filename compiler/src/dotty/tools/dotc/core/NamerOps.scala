@@ -158,12 +158,15 @@ object NamerOps:
 
   /** Does symbol `sym` need constructor proxies to be generated? */
   def needsConstructorProxies(sym: Symbol)(using Context): Boolean =
+    !sym.isTerm
+    && {
     sym.isClass
     && !sym.flagsUNSAFE.isOneOf(NoConstructorProxyNeededFlags)
     && !sym.isAnonymousClass
     ||
     sym.isType && sym.is(Exported)
     && underlyingStableClassRef(sym.info.loBound).exists
+    }
 
   /** The completer of a constructor proxy apply method */
   class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
