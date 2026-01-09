@@ -43,8 +43,7 @@ trait Classifier
 @experimental
 object any extends Capability
 
-//@deprecated
-@experimental
+@experimental // TODO: Drop once we bootstrap with 3.8.1
 val cap: any.type = any
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
