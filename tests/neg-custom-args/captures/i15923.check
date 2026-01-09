@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |                     ^^^^^^^^^^^^^^^^
-   |Capability any outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (lcap: scala.caps.Capability^) ?->'s2 Cap^'s3 ->'s4 Id[Cap^'s5]^'s6

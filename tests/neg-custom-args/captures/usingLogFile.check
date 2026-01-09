@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:29 ---------------------------------
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
    |                             ^^^^^^^^^^^^^^^^^^^^^
-   |Capability f outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: java.io.FileOutputStream^'s2) ->'s3 () ->{f} Unit
@@ -14,7 +14,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:38 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability f outlives its scope: it leaks into outer capture set 's4 which is owned by value later2.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's4 which is owned by value later2.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 Test2.Cell[() ->{f} Unit]^'s7
@@ -27,7 +27,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
 43 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability f outlives its scope: it leaks into outer capture set 's9 which is owned by value later.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's9 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: java.io.OutputStream^'s10) ->'s11 Int ->{f} Unit
@@ -40,7 +40,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:52:6 ----------------------------------
 52 |      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability _$1 outlives its scope: it leaks into outer capture set 's12 which is owned by value later.
+   |Capability `_$1` outlives its scope: it leaks into outer capture set 's12 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (_$1: java.io.OutputStream^'s13) ->'s14 () ->{_$1} Unit

@@ -1394,23 +1394,23 @@ object CaptureSet:
             case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
             case _ => " outlives its scope: "
           leading:
-            i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+            i"""Capability `${elem.showAsCapability}`${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
         else if !elem.tryClassifyAs(cs.classifier) then
           trailing:
-            i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
+            i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
               |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
         else if cs.isBadRoot(elem) then
           elem match
             case elem: LocalCap =>
               leading:
-                i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
+                i"""Local capability `${elem.showAsCapability}` created in ${elem.ccOwner} outlives its scope:
                     |It leaks into outer capture set $cs$ownerStr"""
             case _ =>
               trailing:
-                i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
+                i"universal capability `${elem.showAsCapability}` cannot be included in capture set $cs"
         else
           trailing:
-            i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
+            i"capability `${elem.showAsCapability}` cannot be included in capture set $cs"
       case cs: EmptyOfBoxed =>
         trailing:
           val (boxed, unboxed) =

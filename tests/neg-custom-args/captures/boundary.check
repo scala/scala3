@@ -2,7 +2,7 @@
  4 |  boundary[AnyRef^]:
  5 |    l1 ?=> // error // error
    |  ^
-   |  Capability any outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
+   |  Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
    |  The leakage occurred when trying to match the following types:
    |
    |  Found:    scala.util.boundary.Label[Object^'s1]^'s2

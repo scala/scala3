@@ -1,10 +1,8 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:9:17 -------------------------------------------------------
 9 |    def next() = f(Iterator.this.next()) // error
   |                 ^
-  |                 Read-only method next accesses exclusive capability (f : T => U);
+  |                 Read-only method next accesses exclusive capability `f`;
   |                 method next should be declared an update method to allow this.
-  |
-  |                 where:    => refers to a root capability in the type of parameter f
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:17:14 ------------------------------------------------------
 17 |      current = xs1 // error
    |      ^^^^^^^^^^^^^
@@ -13,10 +11,8 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:22:15 ------------------------------------------------------
 22 |  def next() = f(it.next()) // error
    |               ^
-   |               Read-only method next accesses exclusive capability (f : T => U);
+   |               Read-only method next accesses exclusive capability `f`;
    |               method next should be declared an update method to allow this.
-   |
-   |               where:    => refers to a root capability in the type of parameter f
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:7:25 -------------------------------------------------------
 7 |  def map[U](f: T => U): Iterator[U] = new Iterator: // error
   |                         ^^^^^^^^^^^

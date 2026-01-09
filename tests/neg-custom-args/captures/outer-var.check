@@ -28,7 +28,7 @@
    |         Found:    () => Unit
    |         Required: () ->{p} Unit
    |
-   |         Note that capability any cannot be included in capture set {p} of variable y.
+   |         Note that capability `any` cannot be included in capture set {p} of variable y.
    |
    |         where:    => and any refer to a root capability created in method inner
    |
@@ -39,7 +39,7 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p} Unit
    |
-   |        Note that capability q cannot be included in capture set {p} of variable y.
+   |        Note that capability `q` cannot be included in capture set {p} of variable y.
    |
    |        where:    => refers to a root capability in the type of parameter q
    |

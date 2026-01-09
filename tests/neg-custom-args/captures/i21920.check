@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21920.scala:34:35 ---------------------------------------
 34 |  val cell: Cell[File] = File.open(f => Cell(() => Seq(f))) // error
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability any outlives its scope: it leaks into outer capture set 's1 which is owned by an enclosing function.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by an enclosing function.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: File^'s2) ->'s3 Cell[File^'s4]{val head: () ->'s5 IterableOnce[File^'s6]^'s7}^'s8

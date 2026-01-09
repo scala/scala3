@@ -25,7 +25,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:20:11 -----------------------------
 20 |  withFile(io => io)         // error
    |           ^^^^^^^^
-   |Capability io outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
+   |Capability `io` outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (io: IO^'s2) ->'s3 IO^{io}
@@ -38,7 +38,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:21:11 -----------------------------
 21 |  withFile(id)               // error
    |           ^^
-   |Capability x outlives its scope: it leaks into outer capture set 's4 which is owned by method test.
+   |Capability `x` outlives its scope: it leaks into outer capture set 's4 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^) ->'s5 IO^{x}
@@ -51,7 +51,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:22:11 -----------------------------
 22 |  withFile(x => id(x))       // error
    |           ^^^^^^^^^^
-   |Capability x outlives its scope: it leaks into outer capture set 's6 which is owned by method test.
+   |Capability `x` outlives its scope: it leaks into outer capture set 's6 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s7) ->'s8 IO^{x}
@@ -64,7 +64,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:23:11 -----------------------------
 23 |  withFile(id2)              // error, note mentions any since we never have a more specific include failure
    |           ^^^
-   |Capability any outlives its scope: it leaks into outer capture set 's9 which is owned by method test.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's9 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^) ->'s10 IO^²
@@ -79,7 +79,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:24:11 -----------------------------
 24 |  withFile(x => id2(x))      // error, note mentions any since we never have a more specific include failure
    |           ^^^^^^^^^^^
-   |Capability any outlives its scope: it leaks into outer capture set 's11 which is owned by method test.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's11 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s12) ->'s13 IO^
@@ -94,7 +94,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:25:11 -----------------------------
 25 |  withFile(identity)         // error, note mentions any since we never have a more specific include failure
    |           ^^^^^^^^
-   |Capability any outlives its scope: it leaks into outer capture set 's14 which is owned by method test.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's14 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s15) ->'s16 IO^'s17
@@ -108,7 +108,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:26:11 -----------------------------
 26 |  withFile(x => identity(x)) // error, note mentions any since we never have a more specific include failure
    |           ^^^^^^^^^^^^^^^^
-   |Capability any outlives its scope: it leaks into outer capture set 's18 which is owned by method test.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's18 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s19) ->'s20 IO^'s21
@@ -122,7 +122,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:28:12 -----------------------------
 28 |  withFile: io =>     // error
    |            ^
-   |Capability io outlives its scope: it leaks into outer capture set 's22 which is owned by method test.
+   |Capability `io` outlives its scope: it leaks into outer capture set 's22 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (io: IO^'s23) ->'s24 () ->{io} Unit

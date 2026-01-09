@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923b.scala:8:21 ---------------------------------------
 8 |  val leak = withCap(f) // error
   |                     ^
-  |Capability lcap outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
+  |Capability `lcap` outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
   |The leakage occurred when trying to match the following types:
   |
   |Found:    (x$0: Cap^) -> Id[Cap^{x$0}]

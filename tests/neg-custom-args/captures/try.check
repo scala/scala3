@@ -27,7 +27,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:36:4 -------------------------------------------
 36 |    (x: CanThrow[Exception]) => // error
    |    ^
-   |Capability x outlives its scope: it leaks into outer capture set 's3 which is owned by value xx.
+   |Capability `x` outlives its scope: it leaks into outer capture set 's3 which is owned by value xx.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: CT[Exception]^) ->'s4 () ->{x} Int
@@ -44,7 +44,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:48:2 -------------------------------------------
 48 |  (x: CanThrow[Exception]) =>  // error
    |  ^
-   |Capability x outlives its scope: it leaks into outer capture set 's5 which is owned by value global.
+   |Capability `x` outlives its scope: it leaks into outer capture set 's5 which is owned by value global.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: CT[Exception]^) ->'s6 () ->{x} Int

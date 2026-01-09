@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:29 ---------------------------------
 44 |  val later = usingLogFile { file => () => file.write(0) } // error
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability file outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
+   |Capability `file` outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (file: java.io.FileOutputStream^'s2) ->'s3 () ->{file} Unit
@@ -14,7 +14,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:47:25 ---------------------------------
 47 |  val xs = usingLogFile: f => // error
    |                         ^
-   |Capability f outlives its scope: it leaks into outer capture set 's4 which is owned by value xs.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's4 which is owned by value xs.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 LzyList[Int]^{f}

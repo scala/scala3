@@ -556,7 +556,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 CaptureSet.ofType(c1.widen, followResult = ccConfig.useSpanCapset)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowBadRoots(NoSymbol): () =>
-            report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `any` as underlying capture set", tree.srcPos)
+            report.error(em"Local capability `${c.showAsCapability}`${env.owner.qualString("in")} cannot have `any` as underlying capture set", tree.srcPos)
           recur(underlying, env, lastEnv)
 
       /** Avoid locally defined capability if it is a reach capability or capture set
@@ -586,7 +586,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         included.checkAddedElems: elem =>
           if elem.isExclusive() then
             report.error(
-                em"""Read-only $meth accesses exclusive capability $elem;
+                em"""Read-only $meth accesses exclusive capability `${elem.showAsCapability}`;
                     |$meth should be declared an update method to allow this.""",
                 tree.srcPos)
 
@@ -697,7 +697,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   ref.paramPathRoot match
                     case tp: TermRef =>
                       report.warning(
-                        em"""Reach capability $ref in function result refers to ${tp.symbol}.
+                        em"""Reach capability `${ref.showAsCapability}` in function result refers to ${tp.symbol}.
                             |To avoid errors of the form "Local reach capability $ref leaks into capture set ..."
                             |you should replace the reach capability with a new capset variable in ${tree.symbol}.""",
                         tree.tpt.srcPos)

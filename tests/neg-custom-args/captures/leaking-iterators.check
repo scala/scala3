@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaking-iterators.scala:56:16 ----------------------------
 56 |  usingLogFile: log => // error
    |                ^
-   |Capability log outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
+   |Capability `log` outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (log: java.io.FileOutputStream^'s2) ->'s3 cctest.Iterator[Int]^{log}

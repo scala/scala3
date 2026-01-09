@@ -1,10 +1,8 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator2.scala:9:26 ------------------------------------------------------
 9 |    update def next() = f(Iterator.this.next()) // error
   |                          ^^^^^^^^^^^^^
-  |                          Read-only method map accesses exclusive capability (Iterator.this : Iterator[T]^);
+  |                          Read-only method map accesses exclusive capability `Iterator.this`;
   |                          method map should be declared an update method to allow this.
-  |
-  |                          where:    ^ refers to the universal root capability
 -- Error: tests/neg-custom-args/captures/mut-iterator2.scala:7:25 ------------------------------------------------------
 7 |  def map[U](f: T => U): Iterator[U] = new Iterator:  // error
   |                         ^^^^^^^^^^^
