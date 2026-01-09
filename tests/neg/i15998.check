@@ -15,7 +15,6 @@
   |              import scala.math.BigDecimal.int2bigDecimal
   |              import scala.math.BigInt.int2bigInt
   |              import scala.math.Ordered.orderingToOrdered
-  |              import scala.util.chaining.scalaUtilChainingOps
   |
   |
   | longer explanation available when compiling with `-explain`

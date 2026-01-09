@@ -16,12 +16,16 @@ package util
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
+@deprecated(message = "ChainingSyntax will be removed in the future. Refer to `scala.util.chaining` instead.",
+            since   = "3.10.0")
 trait ChainingSyntax {
-  @inline implicit final def scalaUtilChainingOps[A](a: A): ChainingOps[A] = new ChainingOps(a)
+  @deprecated(message = "Use extension methods in `scala.util.chaining` instead.", since = "3.10.0")
+  @inline final def scalaUtilChainingOps[A](a: A): ChainingOps[A] = new ChainingOps(a)
 }
 
 /** Adds chaining methods `tap` and `pipe` to every type.
  */
+@deprecated(message = "Use extension methods in `scala.util.chaining` instead.", since = "3.10.0")
 final class ChainingOps[A](private val self: A) extends AnyVal {
   /** Applies `f` to the value for its side effects, and returns the original value.
     *
@@ -37,10 +41,7 @@ final class ChainingOps[A](private val self: A) extends AnyVal {
     *  @tparam U     the result type of the function `f`.
     *  @return       the original value `self`.
     */
-  def tap[U](f: A => U): A = {
-    f(self)
-    self
-  }
+  def tap[U](f: A => U): A = scala.util.chaining.tap(self)(x => f(x))
 
   /** Converts the value by applying the function `f`.
     *
@@ -62,5 +63,5 @@ final class ChainingOps[A](private val self: A) extends AnyVal {
     *  @return       a new value resulting from applying the given function
     *                `f` to this value.
     */
-  def pipe[B](f: A => B): B = f(self)
+  def pipe[B](f: A => B): B = scala.util.chaining.pipe(self)(f)
 }

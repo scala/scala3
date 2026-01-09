@@ -1,4 +1,4 @@
-import util.chaining.scalaUtilChainingOps
+import util.chaining.*
 object Test extends App {
   def x = 42.tap(println(_))
   def y = 27.tap(println(_))

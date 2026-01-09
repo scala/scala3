@@ -4,7 +4,7 @@ package dotty.tools.repl
 import scala.language.unsafeNulls
 
 import scala.util.{Failure, Success, Try}
-import scala.util.chaining.given
+import scala.util.chaining.*
 
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
