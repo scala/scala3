@@ -17,6 +17,6 @@
   |Inline stack trace
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   |This location contains code that was inlined from Test.scala:5
-5 |    implicit inline def implicitMakeSerializer[T]: Serializer[T] = ${ Macros.makeSerializer[T] }
-  |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+5 |  inline given [T] => Serializer[T] = ${ Macros.makeSerializer[T] }
+  |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    ---------------------------------------------------------------------------------------------------------------------
