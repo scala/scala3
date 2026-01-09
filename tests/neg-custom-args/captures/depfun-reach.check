@@ -15,10 +15,10 @@
    |    Found:    (op : (xs: List[(X, () ->{io} Unit)]) => List[() ->{xs*} Unit])
    |    Required: (xs: List[(X, () ->{io} Unit)]) =>² List[() -> Unit]
    |
-   |    Note that capability cap is not included in capture set {cap²}.
+   |    Note that capability any is not included in capture set {any²}.
    |
-   |    where:    => and cap   refer to a root capability in the type of parameter op
-   |              =>² and cap² refer to a root capability in the result type of method foo
+   |    where:    => and any   refer to a root capability in the type of parameter op
+   |              =>² and any² refer to a root capability in the result type of method foo
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:26:60 ---------------------------------
@@ -27,9 +27,9 @@
    |                                        Found:    (a : (xs: List[() ->{io} Unit]) => List[() ->{xs*} Unit])
    |                                        Required: (xs: List[() ->{io} Unit]) =>² List[() -> Unit]
    |
-   |                                        Note that capability cap is not included in capture set {cap²}.
+   |                                        Note that capability any is not included in capture set {any²}.
    |
-   |                                        where:    => and cap   refer to a root capability in the type of value a
-   |                                                  =>² and cap² refer to a root capability in the type of value b
+   |                                        where:    => and any   refer to a root capability in the type of value a
+   |                                                  =>² and any² refer to a root capability in the type of value b
    |
    | longer explanation available when compiling with `-explain`

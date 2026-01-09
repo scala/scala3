@@ -14,10 +14,10 @@
    |                Found:    Ref[T]^{Ref.this.rd}
    |                Required: Ref[T]^
    |
-   |                Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
+   |                Note that {any} is an exclusive capture set of the stateful type Ref[T]^,
    |                it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
    |
-   |                where:    ^ and cap refer to a root capability classified as Unscoped in the type of value self2
+   |                where:    ^ and any refer to a root capability classified as Unscoped in the type of value self2
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:11:13 --------------------------------------------------------
@@ -38,11 +38,11 @@
    |                Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
    |                Required: () => Ref[T]^
    |
-   |                Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
+   |                Note that {any} is an exclusive capture set of the stateful type Ref[T]^,
    |                it cannot subsume a read-only capture set of the stateful type Ref[T^'s1]^{Ref.this.rd}.
    |
    |                where:    =>        refers to a root capability in the type of value self4
-   |                          ^ and cap refer to a root capability classified as Unscoped in the type of value self4
+   |                          ^ and any refer to a root capability classified as Unscoped in the type of value self4
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:16:15 --------------------------------------------------------
@@ -63,10 +63,10 @@
    |        Found:    Ref[T]^{Ref.this.rd}
    |        Required: Ref[T]^
    |
-   |        Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
+   |        Note that {any} is an exclusive capture set of the stateful type Ref[T]^,
    |        it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
    |
-   |        where:    ^ and cap refer to a root capability classified as Unscoped in the result type of method self6
+   |        where:    ^ and any refer to a root capability classified as Unscoped in the result type of method self6
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:21:15 --------------------------------------------------------
@@ -97,11 +97,11 @@
    |                   Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
    |                   Required: () => Ref2[Int]^
    |
-   |                   Note that {cap} is an exclusive capture set of the stateful type Ref2[Int]^,
+   |                   Note that {any} is an exclusive capture set of the stateful type Ref2[Int]^,
    |                   it cannot subsume a read-only capture set of the stateful type Ref2[Int]^{ref2}.
    |
    |                   where:    =>        refers to a root capability in the type of value r5
-   |                             ^ and cap refer to a root capability classified as Unscoped in the type of value r5
+   |                             ^ and any refer to a root capability classified as Unscoped in the type of value r5
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:46:9 ---------------------------------------------------------

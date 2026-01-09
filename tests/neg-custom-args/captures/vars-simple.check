@@ -4,9 +4,9 @@
    |         Found:    String => String
    |         Required: String ->{cap1, cap2} String
    |
-   |         Note that capability cap is not included in capture set {cap1, cap2}.
+   |         Note that capability any is not included in capture set {cap1, cap2}.
    |
-   |         where:    => and cap refer to a root capability created in method scope
+   |         where:    => and any refer to a root capability created in method scope
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:16:8 -----------------------------------

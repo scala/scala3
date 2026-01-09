@@ -4,9 +4,9 @@
    |                                        Found:    (y: Ref[Int]^) ->{a} Unit
    |                                        Required: (y: Ref[Int]^{a}) ->{a} Unit
    |
-   |                                        Note that capability a is not included in capture set {cap}.
+   |                                        Note that capability a is not included in capture set {any}.
    |
-   |                                        where:    ^ and cap refer to the universal root capability
+   |                                        where:    ^ and any refer to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:16:6 --------------------------------------------------------

@@ -45,14 +45,14 @@
    |
    |           where:    ^ refers to a root capability in the type of value y
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:49:15 ----------------------------------------------------
-49 |  private val y = ??? : (() => A^{cap.only[caps.Unscoped]})  // error
+49 |  private val y = ??? : (() => A^{any.only[caps.Unscoped]})  // error
    |               ^
-   |value y needs an explicit type because it captures a root capability in its type () => test.A^{cap.only[Unscoped]}.
+   |value y needs an explicit type because it captures a root capability in its type () => test.A^{any.only[Unscoped]}.
    |Fields capturing a root capability need to be given an explicit type unless the capability is already
    |subsumed by the computed capability of the enclosing class.
    |
    |where:    =>  refers to a root capability in the type of value y
-   |          cap is a root capability created in value y
+   |          any is a root capability created in value y
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:29:21 ----------------------------------------------------
 29 |    private val count = Ref() // error
    |                     ^

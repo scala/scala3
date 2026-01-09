@@ -4,12 +4,12 @@
    |Found:    (x: CT[Exception]^) ->'s1 CT[Exception]^{x}
    |Required: CT[Exception]^ => CT[Exception]^²
    |
-   |Note that capability x is not included in capture set {cap}
-   |because (x : CT[Exception]^) is not visible from cap in value a.
+   |Note that capability x is not included in capture set {any}
+   |because (x : CT[Exception]^) is not visible from any in value a.
    |
    |where:    =>         refers to a root capability created in value a when checking argument to parameter op of method handle
    |          ^          refers to the universal root capability
-   |          ^² and cap refer to a root capability created in value a
+   |          ^² and any refer to a root capability created in value a
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:30:4 -------------------------------------------

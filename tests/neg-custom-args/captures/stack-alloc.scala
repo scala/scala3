@@ -10,7 +10,7 @@ class Test extends caps.Stateful:
     if nextFree >= stack.size then stack.append(new Pooled)
     val pooled = stack(nextFree)
     nextFree = nextFree + 1
-    val ret = op(using caps.cap)(pooled)
+    val ret = op(using caps.any)(pooled)
     nextFree = nextFree - 1
     ret
 

@@ -1007,7 +1007,7 @@ class Definitions {
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
 
   @tu lazy val CapsModule: Symbol = requiredPackage("scala.caps")
-    @tu lazy val Caps_any: TermSymbol = CapsModule.requiredValue("cap")
+    @tu lazy val Caps_any: TermSymbol = CapsModule.requiredValue("any")
     @tu lazy val Caps_cap: TermSymbol = CapsModule.requiredValue("cap")
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_Classifier: ClassSymbol = requiredClass("scala.caps.Classifier")

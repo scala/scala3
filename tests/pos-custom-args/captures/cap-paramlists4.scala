@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 
 trait Foo[U^, V^, W^]:
-  type C = {caps.cap}
-  type D = {caps.cap}
+  type C = {caps.any}
+  type D = {caps.any}
   type E >: {V,W} <: {U}

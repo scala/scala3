@@ -4,10 +4,10 @@
   |            Found:    BadBuffer[T]^{BadBuffer.this.rd}
   |            Required: BadBuffer[T]^
   |
-  |            Note that {cap} is an exclusive capture set of the stateful type BadBuffer[T]^,
+  |            Note that {any} is an exclusive capture set of the stateful type BadBuffer[T]^,
   |            it cannot subsume a read-only capture set of the stateful type BadBuffer[T]^{BadBuffer.this.rd}.
   |
-  |            where:    ^ and cap refer to a root capability classified as Unscoped in the result type of method bar
+  |            where:    ^ and any refer to a root capability classified as Unscoped in the result type of method bar
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:5:27 ------------------------------------------------------

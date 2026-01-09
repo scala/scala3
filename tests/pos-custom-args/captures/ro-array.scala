@@ -11,7 +11,7 @@ class Async extends SharedCapability
 def f[T](x: T): T & Pure = x.asInstanceOf[T & Pure]
 
 def test =
-  def x(async: Async): Arr[String]^{cap.rd} =
+  def x(async: Async): Arr[String]^{any.rd} =
     val y = Arr[String](async, 10)
     for i <- 0 to 10 do
       y.set(i, "A")

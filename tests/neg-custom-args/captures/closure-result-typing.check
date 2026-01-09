@@ -4,8 +4,8 @@
   |                              Found:    (c : Object^)
   |                              Required: Object
   |
-  |                              Note that capability cap is not included in capture set {}.
+  |                              Note that capability any is not included in capture set {}.
   |
-  |                              where:    ^ and cap refer to a root capability in the type of parameter c
+  |                              where:    ^ and any refer to a root capability in the type of parameter c
   |
   | longer explanation available when compiling with `-explain`

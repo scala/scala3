@@ -857,7 +857,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case CapturingOrRetainsType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
-        && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
+        && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
@@ -966,7 +966,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def checkWellformed(parent: Type, ann: RetainingAnnotation, tpt: Tree)(using Context): Unit =
     capt.println(i"checkWF post $parent ${ann.retainedType} in $tpt")
     try
-      var retained = ann.retainedType.retainedElements.toArray
+      val retained = ann.retainedType.retainedElements.toArray
+
       for i <- 0 until retained.length do
         val ref = retained(i)
         def pos = tpt.srcPos

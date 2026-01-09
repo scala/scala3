@@ -4,7 +4,7 @@ object Test1:
 
   def usingLogFile[T](op: (local: caps.Capability) ?-> FileOutputStream => T): T =
     val logFile = FileOutputStream("log")
-    val result = op(using caps.cap)(logFile)
+    val result = op(using caps.any)(logFile)
     logFile.close()
     result
 

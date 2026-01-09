@@ -32,9 +32,9 @@
    |Found:    () ->{canThrow$1} Double
    |Required: () => Double
    |
-   |Note that capability canThrow$1 is not included in capture set {cap}
-   |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from cap in an enclosing function.
+   |Note that capability canThrow$1 is not included in capture set {any}
+   |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from any in an enclosing function.
    |
-   |where:    => and cap refer to a root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
+   |where:    => and any refer to a root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{any²} Double of function literal
    |
    | longer explanation available when compiling with `-explain`

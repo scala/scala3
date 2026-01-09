@@ -4,10 +4,10 @@
    |        Found:    (x : IO)
    |        Required: IO^
    |
-   |        Note that capability x is not included in capture set {cap}
-   |        because (x : IO) in method f1 is not visible from cap in variable v.
+   |        Note that capability x is not included in capture set {any}
+   |        because (x : IO) in method f1 is not visible from any in variable v.
    |
-   |        where:    ^ and cap refer to a root capability classified as SharedCapability in the type of variable v
+   |        where:    ^ and any refer to a root capability classified as SharedCapability in the type of variable v
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:11:8 ------------------------------
@@ -16,10 +16,10 @@
    |        Found:    () ->{x} Unit
    |        Required: () => Unit
    |
-   |        Note that capability x is not included in capture set {cap}
-   |        because (x : IO) in method f1 is not visible from cap in variable w.
+   |        Note that capability x is not included in capture set {any}
+   |        because (x : IO) in method f1 is not visible from any in variable w.
    |
-   |        where:    => and cap refer to a root capability in the type of variable w
+   |        where:    => and any refer to a root capability in the type of variable w
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:20:11 -----------------------------
@@ -62,9 +62,9 @@
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:23:11 -----------------------------
-23 |  withFile(id2)              // error, note mentions cap since we never have a more specific include failure
+23 |  withFile(id2)              // error, note mentions any since we never have a more specific include failure
    |           ^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's9 which is owned by method test.
+   |Capability any outlives its scope: it leaks into outer capture set 's9 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^) ->'s10 IO^²
@@ -73,13 +73,13 @@
    |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
    |          ^²  refers to a root capability associated with the result type of (x: IO^): IO^²
-   |          cap is a root capability associated with the result type of (x: IO^): IO^'s9
+   |          any is a root capability associated with the result type of (x: IO^): IO^'s9
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:24:11 -----------------------------
-24 |  withFile(x => id2(x))      // error, note mentions cap since we never have a more specific include failure
+24 |  withFile(x => id2(x))      // error, note mentions any since we never have a more specific include failure
    |           ^^^^^^^^^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's11 which is owned by method test.
+   |Capability any outlives its scope: it leaks into outer capture set 's11 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s12) ->'s13 IO^
@@ -88,13 +88,13 @@
    |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to a root capability associated with the result type of (x: IO^'s12): IO^
    |          ^²  refers to the universal root capability
-   |          cap is a root capability associated with the result type of (x: IO^²): IO^'s11
+   |          any is a root capability associated with the result type of (x: IO^²): IO^'s11
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:25:11 -----------------------------
-25 |  withFile(identity)         // error, note mentions cap since we never have a more specific include failure
+25 |  withFile(identity)         // error, note mentions any since we never have a more specific include failure
    |           ^^^^^^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's14 which is owned by method test.
+   |Capability any outlives its scope: it leaks into outer capture set 's14 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s15) ->'s16 IO^'s17
@@ -102,13 +102,13 @@
    |
    |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
-   |          cap is a root capability associated with the result type of (x: IO^): IO^'s14
+   |          any is a root capability associated with the result type of (x: IO^): IO^'s14
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:26:11 -----------------------------
-26 |  withFile(x => identity(x)) // error, note mentions cap since we never have a more specific include failure
+26 |  withFile(x => identity(x)) // error, note mentions any since we never have a more specific include failure
    |           ^^^^^^^^^^^^^^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's18 which is owned by method test.
+   |Capability any outlives its scope: it leaks into outer capture set 's18 which is owned by method test.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (x: IO^'s19) ->'s20 IO^'s21
@@ -116,7 +116,7 @@
    |
    |where:    =>  refers to a root capability created in method test when checking argument to parameter op of method withFile
    |          ^   refers to the universal root capability
-   |          cap is a root capability associated with the result type of (x: IO^): IO^'s18
+   |          any is a root capability associated with the result type of (x: IO^): IO^'s18
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:28:12 -----------------------------
@@ -140,12 +140,12 @@
    |          Found:    (x: IO^) ->'s25 IO^{x}
    |          Required: IO^ => IO^²
    |
-   |          Note that capability x is not included in capture set {cap}
-   |          because (x : IO) is not visible from cap in value f2.
+   |          Note that capability x is not included in capture set {any}
+   |          because (x : IO) is not visible from any in value f2.
    |
    |          where:    =>         refers to a root capability in the type of value f2
    |                    ^          refers to the universal root capability
-   |                    ^² and cap refer to a root capability classified as SharedCapability in the type of value f2
+   |                    ^² and any refer to a root capability classified as SharedCapability in the type of value f2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:33:21 -----------------------------
@@ -154,11 +154,11 @@
    |          Found:    (f3 : (x$0: IO) ->{} IO^{x$0})
    |          Required: IO^ => IO^²
    |
-   |          Note that capability x$0 is not included in capture set {cap}
-   |          because (x$0 : IO) is not visible from cap in value f4.
+   |          Note that capability x$0 is not included in capture set {any}
+   |          because (x$0 : IO) is not visible from any in value f4.
    |
    |          where:    =>         refers to a root capability in the type of value f4
    |                    ^          refers to the universal root capability
-   |                    ^² and cap refer to a root capability classified as SharedCapability in the type of value f4
+   |                    ^² and any refer to a root capability classified as SharedCapability in the type of value f4
    |
    | longer explanation available when compiling with `-explain`

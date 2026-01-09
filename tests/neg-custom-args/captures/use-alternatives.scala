@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.{cap, use}
+import caps.{any, use}
 
 def foo1(@use xs: List[() => Unit]): Unit = // error
   var x: () ->{xs*} Unit = xs.head

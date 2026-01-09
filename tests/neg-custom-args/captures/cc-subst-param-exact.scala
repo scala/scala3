@@ -5,13 +5,13 @@ trait Ref[T] { def set(x: T): T }
 def test() = {
 
   def swap[T](x: Ref[T]^)(y: Ref[T]^{x}): Unit = ???
-  def foo[T](x: Ref[T]^{cap.rd}): Unit =
+  def foo[T](x: Ref[T]^{any.rd}): Unit =
     swap(x)(x)
 
-  def bar[T](x: () => Ref[T]^{cap.rd})(y: Ref[T]^{x}): Unit =
+  def bar[T](x: () => Ref[T]^{any.rd})(y: Ref[T]^{x}): Unit =
     swap(x())(y)  // error
 
-  def baz[T](x: Ref[T]^{cap.rd})(y: Ref[T]^{x}): Unit =
+  def baz[T](x: Ref[T]^{any.rd})(y: Ref[T]^{x}): Unit =
     swap(x)(y)
 }
 

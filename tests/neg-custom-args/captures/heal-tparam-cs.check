@@ -19,12 +19,12 @@
    |Found:    (x$0: Capp^'s4) ->'s5 () ->{x$0} Unit
    |Required: (c: Capp^) -> () => Unit
    |
-   |Note that capability x$0 is not included in capture set {cap}
-   |because cap, which is existentially bound in () =>² Unit, cannot subsume x$0 since that capability is not a SharedCapability.
+   |Note that capability x$0 is not included in capture set {any}
+   |because any, which is existentially bound in () =>² Unit, cannot subsume x$0 since that capability is not a SharedCapability.
    |
    |where:    =>        refers to a root capability associated with the result type of (c: Capp^): () => Unit
    |          =>² and ^ refer to the universal root capability
-   |          cap       is a root capability associated with the result type of (x$0: Capp^'s4): () ->{x$0} Unit
+   |          any       is a root capability associated with the result type of (x$0: Capp^'s4): () ->{x$0} Unit
    |
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }

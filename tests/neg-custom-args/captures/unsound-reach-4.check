@@ -11,11 +11,11 @@
    |                             Found:    Bar^'s1
    |                             Required: Foo[File^]
    |
-   |                             Note that capability cap is not included in capture set {cap²}
-   |                             because cap in class Bar is not visible from cap² in value backdoor.
+   |                             Note that capability any is not included in capture set {any²}
+   |                             because any in class Bar is not visible from any² in value backdoor.
    |
-   |                             where:    ^ and cap² refer to a root capability in the type of value backdoor
-   |                                       cap        is a root capability created in class Bar
+   |                             where:    ^ and any² refer to a root capability in the type of value backdoor
+   |                                       any        is a root capability created in class Bar
    |
    | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------

@@ -2,11 +2,11 @@
 12 |  def mkCounter(): Pair[Ref^, Ref^] =  // error
    |                   ^^^^^^^^^^^^^^^^
    |    Separation failure in method mkCounter's result type Pair[Ref^, Ref^²].
-   |    One part,  Ref^, hides capabilities  {c, cap, cap²}.
+   |    One part,  Ref^, hides capabilities  {c, any, any²}.
    |    Another part,  Ref^²,  captures capabilities  {c}.
    |    The two sets overlap at  {c}.
    |
    |    where:    ^    refers to a root capability classified as Unscoped in the result type of method mkCounter
    |              ^²   refers to a root capability classified as Unscoped in the result type of method mkCounter
-   |              cap  is a root capability classified as Unscoped in the type of value c
-   |              cap² is a root capability classified as Unscoped created in value c when constructing instance Ref
+   |              any  is a root capability classified as Unscoped in the type of value c
+   |              any² is a root capability classified as Unscoped created in value c when constructing instance Ref

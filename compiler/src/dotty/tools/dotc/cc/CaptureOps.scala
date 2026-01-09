@@ -345,7 +345,9 @@ extension (tp: Type)
 
   /** Is this a reference to caps.any? Note this is _not_ the GlobalCap capability. */
   def isCapsAnyRef(using Context): Boolean = tp match
-    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.Caps_any
+    case tp: TermRef =>
+      tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.Caps_any
+      || tp.name == nme.OLD_CAPTURE_ROOT && tp.symbol == defn.Caps_cap
     case _ => false
 
   /** Knowing that `tp` is a function type, is it an alias to a function other
