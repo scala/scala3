@@ -5,6 +5,7 @@ import ast.tpd
 import ast.Trees.*
 import core.*
 import Flags.*
+import Decorators.*
 import Contexts.*
 import Symbols.*
 import Constants.Constant

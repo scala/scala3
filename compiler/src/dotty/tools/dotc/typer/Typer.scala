@@ -31,6 +31,7 @@ import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
+import util.chaining.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{wrapDefs, defaultArgument}
 
