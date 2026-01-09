@@ -85,12 +85,33 @@ The closure is declared pure (`() -> Unit`), meaning its local `cap` is the empt
 When capabilities flow outward to enclosing scopes, they must remain visible. A local capability cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to the smallest visible super capture set:
 
 ```scala
-def test(fs: FileSystem^): Logger^ =
+def test(fs: FileSystem^/*{cap₁*/}): Logger^/*{cap₂}*/ =
   val localLogger = Logger(fs)
   localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
 ```
 
-Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set `{localLogger}` widens to `{fs}`, which covers it (since `localLogger` captures `fs`) and is visible outside `test`. In effect, `fs` flows into the result's `cap` instead of `localLogger`.
+Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set `{localLogger}` widens to `{fs}` (since `localLogger` captures `fs`)
+which widens to the parameter's `cap₁`. In effect, `fs` flows via the parameter's
+`cap₁` into the result's `cap₂` (which is visible outside of `test`), instead of `localLogger`.
+
+#### Try-With-Resources, Again
+
+Local `cap`s are one of the mechanisms that enable [escape checking](basics.md#escape-checking) for
+the try-with-resources pattern. They prevent escaping of scoped capabilities through (direct or
+indirect) assignment to mutable variables:
+```scala
+def withFile[T](block: File^ => T): T
+
+var esc: File^/*{cap₁}*/ = null
+
+withFile: f /* : File^{cap₂} */ =>
+  esc = f   // error, since cap₂ cannot flow into cap₂
+```
+
+The other mechanism is careful treatment of `cap`s in function results
+(cf. below) which prevents returning closures holding onto `f`.
+
+Later sections on [capability classifiers](classifiers.md) will add a controlled mechanism that permits capabilities to escape their level for situations where this would be desirable.
 
 ### Local Caps of Classes
 
@@ -114,7 +135,7 @@ subtyping with each other:
 trait Super: // local cap₁
   val doSomething: () => Unit // () ->{cap₁} Unit
 
-class Logger(fs: FileSystem^) extends Supper: // local cap₂
+class Logger(fs: FileSystem^) extends Super: // local cap₂
   val file: File^ = fs.open("log.txt") // File^{cap₂}
   def log(msg: String): Unit = file.write(msg)
   val doSomething = () => log("hello") // ok, since {file} <: {this.cap₂} =:= {this.cap₁}
@@ -131,7 +152,7 @@ def test(fs: FileSystem^) =
   val logger = Logger(fs)  // Fresh logger.cap for this instance, capturing fs
   logger
 ```
-Note that the `cap` of attached to `logger` subcaptures the local `cap` of method `test` in accordance
+Note that the `cap` attached to `logger` subcaptures the local `cap` of method `test` in accordance
 to the rules outlined earlier.
 
 Conceptually, a class' local `cap` behaves like an implicit [capture-set member](polymorphism.md#capability-members)
@@ -192,15 +213,19 @@ is interpreted as
 ```
 In other words, existential quantifiers are only inserted in results of function arrows that follow an explicitly named parameter list.
 
-**Examples:**
+The placement of the existential reveals something about the behavior of a function of such a type. For example, what flows into the `cap` of the result `C^{cap}` depends solely on `x` of type `A` (and any ambient capabilities in the scope of the function), and is independent of the second parameter of type `B`.
 
- - `A => B` is an alias type that expands to `A ->{cap} B`.
+In effect, we have some form of "second-class" existential capture types which are carefully restricted and implied by the type structure and `cap` occurrences. Unlike first-class existential types, this approach does not require programmers to explicitly pack and unpack: the system determines the binding structure automatically from where `cap` appears in the type.
+
+#### Examples
+
+ - `A => B` is an alias type that expands to `A ->{cap} B`, referring to scoped a `cap` in the context as outlined above.
  -  Therefore
    `(x: T) -> A => B` expands to `(x: T) -> ∃c.(A ->{c} B)`.
 
  - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃c.Iterator[A ->{c} B]`.
 
-To summarize:
+#### Summary
 
   - If a function result type follows a named parameter list and contains covariant occurrences of `cap`,
     we replace these occurrences with a fresh existential variable which
@@ -209,8 +234,6 @@ To summarize:
     a fresh existential variable scoping over the parameter type.
   - Occurrences of `cap` elsewhere are not translated. They can be seen as representing an existential in the
     scope of the definition in which they appear.
-
-Later sections on [capability classifiers](classifiers.md) will add a controlled mechanism that permits capabilities to escape their level for situations where this would be desirable.
 
 ### Parameter Caps and Local Caps
 
@@ -224,33 +247,59 @@ def process(x: File^/* parameter {cap₁} */): Unit = /* local cap₂ */
 
 The parameter `x` has a capability at `process`'s level. The local `cap` of `process` (and any nested closures) can subsume it because they're at the same level or more deeply nested.
 
-### Result Caps Don't Subsume Local Caps
+### Result Caps are Isolated
 
-Result `cap`s do _not_ subsume the enclosing scope's local `cap`. Result `cap`s are bound at the function boundary, not within the function body:
-
-```scala
-def outer(): () -> File^ =
-  val localFile: File^ = openFile()
-  () => localFile  // Error!
-```
-
-The return type `() -> File^` contains an existentially-bound result `cap`. If this result `cap` subsumed `outer`'s local `cap`, then `localFile` could flow into it, and the local file would escape. The whole point of the existential is to describe what the _caller_ receives — it must not allow capabilities from the callee's scope to leak out.
-
-In contrast, a local `cap` inside a function body _does_ subsume the enclosing local `cap`:
+Result `cap`s (i.e., those we assign an existential capture set in function-result types) cannot
+absorb capabilities that would allow scoped resources to escape. Consider trying to leak a file by
+directly returning a closure that captures it:
 
 ```scala
-def outer(): Unit =
-  val f: File^ = openFile()  // This ^ is outer's local cap
-  val g: () => Unit = () => f.read()  // OK: closure's local cap subsumes outer's local cap
+withFile[() => File^]("test.txt"): f =>
+//       ^^^^^^^^^^^ T = () => File^, i.e., () ->{cap} File^{cap} for some outer cap
+  () => f  // We want to return this as () => File^
 ```
 
-Here the closure's local `cap` can absorb `f` because both are nested within `outer`.
+The lambda `(f: File^) => () => f` has inferred type:
+```scala
+(f: File^) -> () ->{f} File^{f}
+```
+The inner closure explicitly captures `f`. To fit the expected type `File^ => () => File^`, we'd need to widen through these steps:
+
+```scala
+(f: File^) -> () ->{f} File^{f}     // inferred: captures f explicitly
+(f: File^) -> () ->{cap} File^{cap} // widen to cap
+(f: File^) -> ∃c. () ->{c} File^{c} // apply existential rule for result cap
+```
+
+The final step produces a result cap `c` that is existentially bound to the outer function type. But the expected type `() => File^` has a `cap` bound to the enclosing scope of `withFile` outside the function entirely. The existentially bound `c` cannot flow into this outer `cap`, so the assignment fails.
+
+Allowing widening `∃c. () ->{c} File^{c}` to `() => File^` would let the scoped file escape:
+
+```scala
+val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f)
+//           ^^^^^^^^^^^ cap here is in the outer scope
+escaped().read()  // Use-after-close!
+```
+
+By keeping result caps isolated, the capture checker ensures that an existential cannot hide `f` and smuggle it out of its scope.
+
+Beyond preventing escaping capabilities, the principle of isolating result `cap`s is important
+for [tracking mutation and allocation effects](mutability.md) and [separation checking](separation-checking.md), e.g.,
+for a function returning a fresh new mutable reference cell on each call
+```scala
+def freshCell(init: Int): Cell^ = new Cell(s)
+val c1 = freshCell(0).set(42) // Cell^{cap₁}
+val c2 = freshCell(11)        // Cell^{cap₂}, cap₁ and cap₂ are incomparable
+```
+a natural type would be `(init: Int) -> Cell^`, i.e., `(init: Int) -> ∃c.Cell[Int]^{c}`
+by the rules above, reflecting that each
+invocation returns a distinct new `Cell` instance.
 
 ## Comparison with Rust Lifetimes
 
 Readers familiar with Rust may notice similarities to lifetime checking. Both systems prevent references from escaping their valid scope. In Rust, a reference type `&'a T` carries an explicit lifetime parameter `'a`. In Scala's capture checking, the lifetime is folded into the capability name itself: `T^{x}` says "a `T` capturing `x`," and `x`'s level implicitly determines how long this reference is valid. A capture set of a reference then acts as an upper bound of the reference itself: it only lives as long as all the capabilities it contains are visible.
 
-Consider a `withFile` pattern that ensures a file handle doesn't escape:
+Here is how we could express the familiar `withFile` pattern in Rust:
 
 ```rust
 struct File;
@@ -271,19 +320,7 @@ fn main() {
 }
 ```
 
-```scala
-// Scala CC: the closure receives a capability whose level prevents escape
-def withFile[R](path: String)(f: File^ => R): R =
-  val file = File.open(path)
-  f(file)
-
-def main() =
-  var escaped: File^
-  withFile("test.txt"): file =>
-    escaped = file  // Error: file's level cannot escape to main's level
-```
-
-In both cases, the type system prevents the handle from escaping the callback. Rust achieves this by requiring `'a` to be contained within the closure's scope. Scala achieves it by checking that `file`'s level (tied to `withFile`) cannot flow into `escaped`'s level (at `main`).
+In both Rust and Scala, the type system prevents the handle from escaping the callback. Rust achieves this by requiring `'a` to be contained within the closure's scope. Scala achieves it by checking that `file`'s level (tied to `withFile`) cannot flow into `escaped`'s level (at `main`).
 
 The key analogies are:
 - **Capability name ≈ Lifetime parameter**: Where Rust writes `&'a T`, Scala writes `T^{x}`. The capability `x` carries its lifetime implicitly via its level.
