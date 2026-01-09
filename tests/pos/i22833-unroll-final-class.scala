@@ -1,5 +1,6 @@
-import scala.annotation.{experimental,unroll}
+//> using options -preview
+import scala.annotation.unroll
 
-@experimental final class Foo {
+final class Foo {
   def bar(@unroll x: Int = 0) = x + 1
 }

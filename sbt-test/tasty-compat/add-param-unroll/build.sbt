@@ -1,5 +1,5 @@
 lazy val commonSettings = Seq(
-  scalacOptions += "-experimental",
+  scalacOptions += "-preview",
 )
 
 lazy val printSettings = Seq(
