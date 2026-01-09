@@ -287,8 +287,8 @@ object JavaParsers {
       }
 
     def typ(): Tree =
-      annotations()
-      optArrayBrackets {
+      val annots = annotations()
+      val tp = optArrayBrackets {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
           var t = typeArgs(atSpan(in.offset)(Ident(ident())))
@@ -308,6 +308,7 @@ object JavaParsers {
         else
           basicType()
       }
+      annots.foldLeft(tp)((tp, ann) => Annotated(tp, ann))
 
     def typeArgs(t: Tree): Tree = {
       var wildnum = 0
@@ -554,7 +555,7 @@ object JavaParsers {
     def formalParam(): ValDef = {
       val start = in.offset
       if (in.token == FINAL) in.nextToken()
-      annotations()
+      val annots = annotations()
       var t = typ()
       if (in.token == DOTDOTDOT) {
         in.nextToken()
@@ -563,7 +564,7 @@ object JavaParsers {
         }
       }
       atSpan(start, in.offset) {
-        varDecl(Modifiers(Flags.JavaDefined | Flags.Param), t, ident().toTermName)
+        varDecl(Modifiers(Flags.JavaDefined | Flags.Param, annotations = annots), t, ident().toTermName)
       }
     }
 
