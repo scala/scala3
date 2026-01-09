@@ -1152,7 +1152,13 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
+              // Strip NamedArg wrappers since patterns have already been reordered
+              // by adaptPatternArgs during typing. This prevents checkWellFormedTupleElems
+              // from incorrectly flagging the mix of NamedArg and wildcard patterns.
+              val normalizedPats = pats.map:
+                case NamedArg(_, pat) => pat
+                case pat => pat
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, normalizedPats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
