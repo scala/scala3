@@ -1,0 +1,6 @@
+-- [E057] Type Mismatch Error: tests/neg/i24313.scala:4:14 -------------------------------------------------------------
+4 |  case _ => S[String] // error
+  |              ^
+  |              Type argument String does not conform to upper bound Int
+  |
+  | longer explanation available when compiling with `-explain`
