@@ -2035,12 +2035,14 @@ trait Applications extends Compatibility {
      *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
-      // Check if a method type would require eta-expansion when all its non-using parameter
-      // lists are applied. Returns true if there are 2+ explicit parameter lists.
+      // Check if a method type would require eta-expansion when called with just its first
+      // parameter list. Returns true if the method has a second explicit non-varargs parameter list.
+      // Methods like (xs: T*)(ys: U*) would NOT eta-expand (both can take empty args).
+      // Methods like (arr: T)(n: Int) WOULD eta-expand to Int => R.
       def wouldRequireEtaExpansion(tp: Type): Boolean = tp match
         case mt: MethodType => mt.resultType match
-          case res: MethodType if !res.isImplicitMethod =>
-            // Found second explicit param list - this would require eta-expansion
+          case res: MethodType if !res.isImplicitMethod && !res.isVarArgsMethod =>
+            // Found second explicit non-varargs param list - this would require eta-expansion
             true
           case _ => false
         case pt: PolyType => wouldRequireEtaExpansion(pt.resultType)
