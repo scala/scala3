@@ -1,0 +1,72 @@
+-- Warning: tests/warn/quoted-patterns-exhaustivity.scala:10:6 ---------------------------------------------------------
+10 |  val '{call(); $t2: tpe} = '{0} // warn
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      pattern binding uses refutable extractor `'{...}`
+   |
+   |      If this usage is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |      which may result in a MatchError at runtime.
+   |      This patch can be rewritten automatically under -rewrite -source 3.8-migration.
+-- Warning: tests/warn/quoted-patterns-exhaustivity.scala:12:6 ---------------------------------------------------------
+12 |  val '[type t <: String; t] = x // warn
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      pattern binding uses refutable extractor `'[...]`
+   |
+   |      If this usage is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |      which may result in a MatchError at runtime.
+   |      This patch can be rewritten automatically under -rewrite -source 3.8-migration.
+-- Warning: tests/warn/quoted-patterns-exhaustivity.scala:13:6 ---------------------------------------------------------
+13 |  val '[List[t]] = x // warn
+   |      ^^^^^^^^^^^^^^
+   |      pattern binding uses refutable extractor `'[...]`
+   |
+   |      If this usage is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |      which may result in a MatchError at runtime.
+   |      This patch can be rewritten automatically under -rewrite -source 3.8-migration.
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:21:2 -----------------------
+21 |  ('{1}, '{""}) match // warn
+   |  ^^^^^^^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:24:2 -----------------------
+24 |  ('{0}, '{1}) match // warn
+   |  ^^^^^^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:27:2 -----------------------
+27 |  ('{0}, '{1}) match // warn
+   |  ^^^^^^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:36:2 -----------------------
+36 |  (x, x) match // warn
+   |  ^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:39:2 -----------------------
+39 |  (x, x) match // warn
+   |  ^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:42:2 -----------------------
+42 |  (x, x) match // warn
+   |  ^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
