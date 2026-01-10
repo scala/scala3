@@ -147,6 +147,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case Apply(fn, args) => allTermArguments(fn) ::: args
     case TypeApply(fn, args) => allTermArguments(fn)
     case Block(Nil, expr) => allTermArguments(expr)
+    case Inlined(_, _, expansion) => allTermArguments(expansion)
     case _ => Nil
   }
 
@@ -155,6 +156,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case Apply(fn, args) => allArguments(fn) ::: args
     case TypeApply(fn, args) => allArguments(fn) ::: args
     case Block(Nil, expr) => allArguments(expr)
+    case Inlined(_, _, expansion) => allArguments(expansion)
     case _ => Nil
   }
 
