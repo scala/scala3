@@ -2035,13 +2035,35 @@ trait Applications extends Compatibility {
      *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
+      // Check if a method type would require eta-expansion when all its non-using parameter
+      // lists are applied. Returns true if there are 2+ explicit parameter lists.
+      def wouldRequireEtaExpansion(tp: Type): Boolean = tp match
+        case mt: MethodType => mt.resultType match
+          case res: MethodType if !res.isImplicitMethod =>
+            // Found second explicit param list - this would require eta-expansion
+            true
+          case _ => false
+        case pt: PolyType => wouldRequireEtaExpansion(pt.resultType)
+        case _ => false
+
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
           || {
+            val tp1WouldEtaExpand = wouldRequireEtaExpansion(tp1)
+            val tp2WouldEtaExpand = wouldRequireEtaExpansion(tp2)
+
             if tp1.isVarArgsMethod then
-              tp2.isVarArgsMethod
-              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
+              // A varargs method is as good as a method that would require eta-expansion
+              if tp2WouldEtaExpand then true
+              else tp2.isVarArgsMethod
+                && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
+            else if tp1WouldEtaExpand then
+              // A method requiring eta-expansion is only as good as another such method
+              if tp2WouldEtaExpand then
+                isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
+              else
+                false
             else
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
