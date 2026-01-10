@@ -277,7 +277,9 @@ object CheckShadowing:
       /** Looks after any type import symbol in the given import that matches this symbol */
       private def isAnImportedType(imp: tpd.Import)(using Context): Option[Symbol] =
         val tpd.Import(qual, sels) = imp
-        val simpleSelections = qual.tpe.member(sym.name).alternatives
+        // Only look up sym.name on qualifier if there's a wildcard import
+        val hasWildcard = sels.exists(_.isWildcard)
+        val simpleSelections = if hasWildcard then qual.tpe.member(sym.name).alternatives else Nil
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
         sels
           .find(is => is.rename.toSimpleName == sym.name.toSimpleName).map(_.symbol)
