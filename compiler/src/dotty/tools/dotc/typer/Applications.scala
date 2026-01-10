@@ -2035,13 +2035,32 @@ trait Applications extends Compatibility {
      *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
+      // Check if a method type would require eta-expansion when called with just its first
+      // parameter list. Returns true if the method has a second explicit non-varargs parameter list.
+      // Methods like (xs: T*)(ys: U*) would NOT eta-expand (both can take empty args).
+      // Methods like (arr: T)(n: Int) WOULD eta-expand to Int => R.
+      def wouldRequireEtaExpansion(tp: Type): Boolean = tp match
+        case mt: MethodType => mt.resultType match
+          case res: MethodType if !res.isImplicitMethod && !res.isVarArgsMethod =>
+            // Found second explicit non-varargs param list - this would require eta-expansion
+            true
+          case _ => false
+        case pt: PolyType => wouldRequireEtaExpansion(pt.resultType)
+        case _ => false
+
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
           || {
             if tp1.isVarArgsMethod then
-              tp2.isVarArgsMethod
-              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
+              // A varargs method is as good as a curried method that would require eta-expansion.
+              // This prevents curried extension methods like (arr: T)(n: Int) from winning over
+              // varargs factory methods like (xs: T*) when called with a single argument.
+              // See issue #24891.
+              val tp2WouldEtaExpand = wouldRequireEtaExpansion(tp2)
+              if tp2WouldEtaExpand then true
+              else tp2.isVarArgsMethod
+                && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
