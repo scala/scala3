@@ -2050,20 +2050,15 @@ trait Applications extends Compatibility {
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
           || {
-            val tp1WouldEtaExpand = wouldRequireEtaExpansion(tp1)
-            val tp2WouldEtaExpand = wouldRequireEtaExpansion(tp2)
-
             if tp1.isVarArgsMethod then
-              // A varargs method is as good as a method that would require eta-expansion
+              // A varargs method is as good as a curried method that would require eta-expansion.
+              // This prevents curried extension methods like (arr: T)(n: Int) from winning over
+              // varargs factory methods like (xs: T*) when called with a single argument.
+              // See issue #24891.
+              val tp2WouldEtaExpand = wouldRequireEtaExpansion(tp2)
               if tp2WouldEtaExpand then true
               else tp2.isVarArgsMethod
                 && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
-            else if tp1WouldEtaExpand then
-              // A method requiring eta-expansion is only as good as another such method
-              if tp2WouldEtaExpand then
-                isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
-              else
-                false
             else
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
