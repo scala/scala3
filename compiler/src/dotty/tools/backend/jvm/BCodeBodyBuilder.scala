@@ -92,6 +92,24 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val receiverClass = qual.tpe.typeSymbol
           fieldStore(lhs.symbol, receiverClass)
 
+        // Handle case where LHS is a Block wrapping a field access (e.g., from implicit conversions)
+        // See issue #24707
+        case Assign(Block(stats, expr @ DesugaredSelect(qual, _)), rhs) =>
+          // First generate the block's statements (e.g., temp variables for implicit conversions)
+          stats.foreach(genStat)
+          // Then handle the field assignment
+          val savedStackSize = stack.recordSize()
+          val isStatic = expr.symbol.isStaticMember
+          if (!isStatic) {
+            val qualTK = genLoad(qual)
+            stack.push(qualTK)
+          }
+          genLoad(rhs, symInfoTK(expr.symbol))
+          stack.restoreSize(savedStackSize)
+          lineNumber(tree)
+          val receiverClass = qual.tpe.typeSymbol
+          fieldStore(expr.symbol, receiverClass)
+
         case Assign(lhs, rhs) =>
           val s = lhs.symbol
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
