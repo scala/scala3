@@ -1,12 +1,8 @@
 package dotty.tools.debug
 
-import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.SymUtils
 
 import java.{util => ju}
 import ju.function.Consumer
@@ -37,7 +33,7 @@ class ExpressionCompilerConfig private[debug] (
   def withLocalVariables(localVariables: ju.Set[String]): ExpressionCompilerConfig = copy(localVariables = localVariables)
   def withErrorReporter(errorReporter: Consumer[String]): ExpressionCompilerConfig = copy(errorReporter = errorReporter)
 
-  private[debug] val expressionTermName: TermName = termName(outputClassName.toLowerCase.toString)
+  private[debug] val expressionTermName: TermName = termName(outputClassName.toLowerCase)
   private[debug] val expressionClassName: TypeName = typeName(outputClassName)
 
   private[debug] def expressionClass(using Context): ClassSymbol =

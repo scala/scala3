@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package printing
 
-import scala.collection.mutable
-
 import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*

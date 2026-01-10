@@ -886,7 +886,7 @@ object JavaParsers {
 
       val accessors =
         (for (name, (tpt, annots)) <- fieldsByName yield
-          DefDef(name, List(Nil), adaptVarargsType(tpt), unimplementedExpr)
+          DefDef(name, ListOfNil, adaptVarargsType(tpt), unimplementedExpr)
             .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
         ).toList
 

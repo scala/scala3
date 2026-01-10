@@ -27,9 +27,9 @@ import collection.immutable
 /** Capabilities are members of capture sets. They partially overlap with types
  *  as shown in the trait hierarchy below.
  *
- *  Capability --+-- RootCapabilty -----+-- GlobalCap
- *               |                      +-- FreshCap
- *               |                      +-- ResultCap
+ *  Capability --+-- RootCapability -----+-- GlobalCap
+ *               |                       +-- FreshCap
+ *               |                       +-- ResultCap
  *               |
  *               +-- CoreCapability ----+-- ObjectCapability --+-- TermRef
  *               |                      |                      +-- ThisType
@@ -60,7 +60,7 @@ object Capabilities:
     nextRootId += 1
     def descr(using Context): String
 
-  /** The base trait of all capabilties represented as types */
+  /** The base trait of all capabilities represented as types */
   trait CoreCapability extends TypeProxy, Capability:
     override def toText(printer: Printer): Text = printer.toText(this)
 
@@ -140,7 +140,7 @@ object Capabilities:
     override def cached[C <: DerivedCapability](newRef: C): C = unsupported("cached")
     override def invalidateCaches() = ()
 
-  /** The class of "fresh" roots. These do subsume other capabilties in scope.
+  /** The class of "fresh" roots. These do subsume other capabilities in scope.
    *  They track with hidden sets which other capabilities were subsumed.
    *  Hidden sets are inspected by separation checking.
    *  @param owner   the owner of the context in which the FreshCap was created
@@ -198,7 +198,7 @@ object Capabilities:
         case _ => true
 
     /** Classify this FreshCap as `cls`, provided `isClassified` is still false.
-     *  @param  freeze  Deterermines future `isClassified` state.
+     *  @param  freeze  Determines future `isClassified` state.
      */
     def adoptClassifier(cls: ClassSymbol, freeze: Boolean)(using Context): Unit =
       if !isClassified then
