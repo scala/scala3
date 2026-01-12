@@ -2036,8 +2036,9 @@ trait Applications extends Compatibility {
      */
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
       tp1 match
+
         case tp1: MethodType => // (1)
-          tp1.paramInfos.isEmpty
+          val cond1 = tp1.paramInfos.isEmpty
           && tp2.isInstanceOf[LambdaType]
           && {
             // When tp1 is nullary (empty parameter list), it's as good as tp2 only if
@@ -2046,13 +2047,14 @@ trait Applications extends Compatibility {
               case tp2: MethodType => !tp2.isVarArgsMethod
               case _ => true
           }
-          || {
+          val cond2 = {
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
               && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
+          cond1 || cond2
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
             // Fully define the PolyType parameters so that the infos of the
