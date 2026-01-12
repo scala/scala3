@@ -249,7 +249,7 @@ object Signatures {
         .flatMap(toApplySignature(_, findOutermostCurriedApply(untpdPath), safeParamssListIndex))
 
       val finalParamIndex =
-        if currentParamsIndex == -1 then -1
+        if currentParamsIndex == -1 then 0
         else previousArgs + currentParamsIndex
       (finalParamIndex, alternativeIndex, alternativeSignatures)
     else

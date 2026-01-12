@@ -128,7 +128,7 @@ class SignatureHelpTest {
           |object O {
           |  Foo(5).method($m1)
           |}"""
-      .signatureHelp(m1, List(testSig), Some(0), -1)
+      .signatureHelp(m1, List(testSig), Some(0), 0)
   }
 
   @Test def unapplyBooleanReturn: Unit = {
@@ -140,7 +140,7 @@ class SignatureHelpTest {
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
           |    case s               => println(s"s has an odd number of characters")
           """
-      .signatureHelp(m1, Nil, Some(0), -1)
+      .signatureHelp(m1, Nil, Some(0), 0)
   }
 
   @Test def unapplyCustomClass: Unit = {
