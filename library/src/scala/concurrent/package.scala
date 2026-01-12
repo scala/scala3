@@ -52,7 +52,7 @@ import scala.util.Try
  * For typical REPL usage and experimentation, importing the global `ExecutionContext` is often desired.
  *
  * {{{
- * import scala.concurrent.ExcutionContext.Implicits.global
+ * import scala.concurrent.ExecutionContext.Implicits.global
  * }}}
  *
  * == Specifying Durations ==
