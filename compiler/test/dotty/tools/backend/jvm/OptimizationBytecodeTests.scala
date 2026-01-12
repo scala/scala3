@@ -4,13 +4,13 @@ import dotty.tools.backend.jvm.ASMConverters.instructionsFromMethod
 import org.junit.{Ignore, Test}
 
 class OptimizationBytecodeTests extends DottyBytecodeTest {
-  def testEquivalence(expectedSource: String, actualSource: String, params: String = "()", extraMemberSources: List[String] = Nil, returnType: String = "Int"): Unit = {
+  def testEquivalence(expectedSource: String, actualSource: String, params: List[String] = Nil, extraMemberSources: List[String] = Nil, returnType: String = "Int"): Unit = {
     val source =
       f"""
         |class Test {
         |  ${extraMemberSources.mkString("\n")}
-        |  def actual$params: $returnType = { $actualSource }
-        |  def expected$params: $returnType = { $expectedSource }
+        |  def actual(${params.mkString(", ")}): $returnType = { $actualSource }
+        |  def expected(${params.mkString(", ")}): $returnType = { $expectedSource }
         |}
          """.stripMargin
 
@@ -48,6 +48,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       "val t = (3, 1, 2); t._2"
     )
 
+
   @Test def inlineNonGenericIdentityFunction =
     testEquivalence(
       "1",
@@ -62,12 +63,20 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       extraMemberSources = List("final def id[T](x: T): T = x")
     )
 
+
   @Test def inlineUnusedAdditionButKeepNullCheck =
     testEquivalence(
       "x.nn; 0",
       "add(x.nn, 0); 0",
       extraMemberSources = List("def add(x: Int, y: Int): Int = x + y"),
-      params = "(x: Int | Null)"
+      params = List("x: Int | Null")
+    )
+
+
+  @Test def inlineBoxesRunTimeUnbox =
+    testEquivalence(
+      "0",
+      "scala.runtime.BoxesRunTime.unboxToInt(null)"
     )
 
 
@@ -90,6 +99,21 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     testEquivalence(
       "1",
       "val x = 1; x"
+    )
+
+  @Test def loadAfterStoreNull =
+    testEquivalence(
+      "null",
+      "val x: Int | Null = null; x",
+      returnType = "Int | Null"
+    )
+
+  @Test def loadAfterStoreNullField =
+    testEquivalence(
+      "null",
+      "x = null; if (x != null) x = 0; x",
+      extraMemberSources = List("private var x : Int | Null = 0"),
+      returnType = "Int | Null"
     )
 
   @Test def loadAfterStoreTwice =
@@ -134,6 +158,28 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     testEquivalence(
       "1",
       "def eat(x: Int): Unit = (); var x = 42; eat(x); 1"
+    )
+
+  @Test def deadStoreVarTryCatch =
+    testEquivalence(
+      "1",
+      "var x = 42; try x = 1 catch case _ => (); x"
+    )
+
+
+  @Test def deadCastPrimitive =
+    testEquivalence(
+      "x",
+      "x.asInstanceOf[Int]",
+      params = List("x: Int")
+    )
+
+  @Test def deadCastClass =
+    testEquivalence(
+      "x",
+      "x.asInstanceOf[String]",
+      params = List("x: String"),
+      returnType = "String"
     )
 
 
@@ -200,6 +246,35 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     )
 
 
+  @Test def deadCodeFromIsInstanceExact =
+    testEquivalence(
+      "1",
+      "if x.isInstanceOf[String] then 1 else 2",
+      params = List("x: String")
+    )
+
+  @Test def deadCodeFromIsInstanceAny =
+    testEquivalence(
+      "1",
+      "if x.isInstanceOf[Any] then 1 else 2",
+      params = List("x: String")
+    )
+
+  @Test def deadCodeFromIsInstanceNull =
+    testEquivalence(
+      "2",
+      "x = null; if x.isInstanceOf[String] then 1 else 2",
+      extraMemberSources = List("private var x: String = \"\"")
+    )
+
+  @Test def deadCodeFromIsInstanceUnrelated =
+    testEquivalence(
+      "2",
+      "if x.isInstanceOf[List[Int]] then 1 else 2",
+      params = List("x: String")
+    )
+
+
   // REVIEW: these seem more questionable, what value do they add?
   @Test def classOfThenNewArray =
     testEquivalence(
@@ -223,4 +298,22 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       "scala.runtime.ScalaRunTime.array_update(scala.reflect.ClassTag(classOf[Int]).newArray(5), 0, 123)",
       returnType = "Unit"
     )
+  @Test def arrayGetLength =
+    testEquivalence(
+      "x.length",
+      "java.lang.reflect.Array.getLength(x)",
+      params = List("x: Array[Int]")
+    )
+  @Test def arrayGetClass =
+    testEquivalence(
+      "classOf[Array[Int]]",
+      "val x = Array[Int](); x.getClass",
+      returnType = "Class[?]"
+    )
+
+  // REVIEW: the scala2 test suite has some tests for stuff like `array.map(_ + 1)` ensuring it can be inlined to a while loop without boxing, do we want this?
+  //         or does HotSpot do our job for us?
+
+  // TODO: more generally we should port scala2 optimizer unit tests as some are regression tests,
+  //       e.g., https://github.com/scala/scala/pull/10404
 }
