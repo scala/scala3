@@ -75,7 +75,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  /** Disabled since locally comes from Predef now
+  /* Disabled since locally comes from Predef now
   @Test
   def inlineLocally = {
     val source =
@@ -114,7 +114,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       s"""
          |class Foo {
          |  def meth1(x: Int | Null): Int = x.nn
-         |  def meth2(x: Int | Null): Int = x.getClass; x
+         |  def meth2(x: Int | Null): Int = { x.getClass; x.asInstanceOf[Int] }
          |}
          """.stripMargin
 
@@ -478,7 +478,6 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
-
   @Test def i9246 = {
     val source = """class Foo:
                    |  inline def check(v:Double): Unit = if(v==0) throw new Exception()
@@ -519,7 +518,6 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       assert(methods == List("<init>", "a", "test"), clsNode.methods.asScala.toList.map(_.name))
     }
   }
-
 
   @Test def i9466 = {
     val source = """class Test:
@@ -651,7 +649,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = // TODO room for constant folding
+      val expected =
         List(
           IntOp(BIPUSH, 6),
           Op(IRETURN),
