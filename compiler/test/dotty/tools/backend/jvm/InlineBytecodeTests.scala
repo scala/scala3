@@ -2,8 +2,7 @@ package dotty.tools.backend.jvm
 
 import scala.language.unsafeNulls
 
-import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Test, Ignore}
 
 import scala.tools.asm.Opcodes._
 
@@ -75,13 +74,13 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  /* Disabled since locally comes from Predef now
-  @Test
-  def inlineLocally = {
+  @Ignore("Does not pass until we have an optimizer that can inline trivial calls")
+  @Test def inlineUserDefinedLocally = {
     val source =
          """
          |class Foo {
-         |  def meth1: Unit = locally {
+         |  final def myLocally[T](x: T): T = x
+         |  def meth1: Unit = myLocally {
          |    val a = 5
          |    a
          |  }
@@ -103,12 +102,12 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions2 = instructionsFromMethod(meth2)
 
       assert(instructions1 == instructions2,
-        "`locally` was not properly inlined in `meth1`\n" +
+        "`myLocally` was not properly inlined in `meth1`\n" +
         diffInstructions(instructions1, instructions2))
     }
   }
-  */
-/*
+
+  @Ignore("Intended to document how `.nn` is compiled, but out of date, and not useful until we have an optimizer that can eliminate dead code")
   @Test def inlineNn = {
     val source =
       s"""
@@ -132,7 +131,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
         diffInstructions(instructions1, instructions2))
     }
   }
-*/
+
   @Test def i4947 = {
     val source = """class Foo {
                    |  transparent inline def track[T](inline f: T): T = {
@@ -369,7 +368,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
-    // Testing that a is not boxed
+  // Testing that a is not boxed
   @Test def i4522 = {
     val source = """class Foo {
                    |  def test: Int = {
