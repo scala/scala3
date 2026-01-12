@@ -1,4 +1,4 @@
-import caps.{cap, Classifier, SharedCapability}
+import caps.{any, Classifier, SharedCapability}
 
 trait Read extends SharedCapability, Classifier
 trait Write extends SharedCapability, Classifier
@@ -6,7 +6,7 @@ trait Write extends SharedCapability, Classifier
 trait A extends Read
 trait B extends Write
 
-def weird(f: () ->{cap.only[Read]} Unit) = ???
+def weird(f: () ->{any.only[Read]} Unit) = ???
 
 def test(x: A^, y: B^) =
   val g = () => println(x)

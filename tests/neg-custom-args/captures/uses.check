@@ -4,7 +4,7 @@
   |             Found:    (d : D^{y})
   |             Required: D
   |
-  |             Note that capability y is not included in capture set {}.
+  |             Note that capability `y` is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:13:22 -----------------------------------------
@@ -13,7 +13,7 @@
    |                      Found:    (f : () ->{x} Unit)
    |                      Required: () -> Unit
    |
-   |                      Note that capability x is not included in capture set {}.
+   |                      Note that capability `x` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:18:34 -----------------------------------------
@@ -22,7 +22,7 @@
    |                                  Found:    () ->{x, y} () ->{y} Unit
    |                                  Required: () ->{x} () ->{y} Unit
    |
-   |                                  Note that capability y is not included in capture set {x}.
+   |                                  Note that capability `y` is not included in capture set {x}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:19:28 -----------------------------------------
@@ -31,6 +31,6 @@
    |                            Found:    () ->{x, y} () ->{y} Unit
    |                            Required: () -> () -> Unit
    |
-   |                            Note that capability x is not included in capture set {}.
+   |                            Note that capability `x` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

@@ -58,7 +58,7 @@ extension (tree: Tree)
     case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-      then defn.captureRoot.termRef
+      then defn.Caps_any.termRef
       else NoType
 
 extension (tp: Type)
@@ -71,7 +71,9 @@ extension (tp: Type)
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
     case ref: TermRef if ref.isCapsAnyRef =>
-      GlobalCap
+      GlobalAny
+    case ref: TermRef if ref.isCapsFreshRef =>
+      GlobalFresh
     case ref: Capability if ref.isTrackableRef =>
       ref
     case ref: TermRef if ref.isLocalMutable =>
@@ -117,7 +119,7 @@ extension (tp: Type)
       !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
       ||
         ((tp.prefix eq NoPrefix)
-        || tp.symbol.isField && tp.prefix.isTrackableRef
+        || tp.symbol.isField && tp.prefix.isPrefixOfTrackableRef
         ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
@@ -126,6 +128,11 @@ extension (tp: Type)
       || tp.derivesFrom(defn.Caps_CapSet)
     case _ =>
       false
+
+  private def isPrefixOfTrackableRef(using Context): Boolean =
+    isTrackableRef || tp.match
+      case tp: TermRef => tp.symbol.is(Package)
+      case _ => false
 
   /** The capture set of a type. This is:
     *   - For object capabilities: The singleton capture set consisting of
@@ -343,9 +350,14 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a reference to caps.any? Note this is _not_ the GlobalCap capability. */
+  /** Is this a reference to caps.any? Note this is _not_ the GlobalAny capability. */
   def isCapsAnyRef(using Context): Boolean = tp match
-    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
+    case tp: TermRef => tp.name == nme.any && tp.symbol == defn.Caps_any
+    case _ => false
+
+  /** Is this a reference to caps.any? Note this is _not_ the GlobalFresh capability. */
+  def isCapsFreshRef(using Context): Boolean = tp match
+    case tp: TermRef => tp.name == nme.fresh && tp.symbol == defn.Caps_fresh
     case _ => false
 
   /** Knowing that `tp` is a function type, is it an alias to a function other
@@ -489,6 +501,19 @@ extension (tp: Type)
   def inheritedClassifier(using Context): ClassSymbol =
     if tp.isArrayUnderStrictMut then defn.Caps_Unscoped
     else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
+
+  /** Does `tp` contain a `fresh` directly, which is not in the result of some function type?
+   */
+  def containsFresh(using Context): Boolean =
+    val search = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, tp: Type): Boolean =
+        if x then true
+        else if defn.isFunctionType(tp) then false
+        else tp match
+          case CapturingType(parent, refs) =>
+            refs.elems.exists(_.core == GlobalFresh) || apply(x, parent)
+          case _ => foldOver(x, tp)
+    search(false, tp)
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
@@ -683,6 +708,10 @@ extension (sym: Symbol)
         flags = Flags.EmptyFlags,
         info = defn.Caps_Var.typeRef.appliedTo(sym.info)
             .capturing(LocalCap(sym, Origin.InDecl(sym)))))
+
+  def skipAnonymousOwners(using Context): Symbol =
+    if sym.isAnonymousFunction then sym.owner.skipAnonymousOwners
+    else sym
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

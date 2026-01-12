@@ -169,7 +169,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
     val (printPure, refsText) =
       if refs == null then (isPure, Str(""))
-      else if isUniversalCaptureSet(refs) then (false, Str(""))
+      else if isElidableUniversal(refs) then (false, Str(""))
       else (isPure, toTextGeneralCaptureSet(refs))
     arrow(isContextual, printPure) ~ refsText
 

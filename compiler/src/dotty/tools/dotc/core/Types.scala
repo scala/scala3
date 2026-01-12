@@ -4237,7 +4237,7 @@ object Types extends TypeUtils {
             case Reach(c1) =>
               apply(c1) match
                 case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
-                case _ => GlobalCap
+                case _ => GlobalAny
             case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)

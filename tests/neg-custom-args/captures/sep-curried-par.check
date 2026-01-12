@@ -1,14 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-curried-par.scala:23:32 ------------------------------
-23 |  val bar = (p1: () => Unit) => (p2: () ->{p1, cap} Unit) => par(p1, p2) // error, but error message could be better
+23 |  val bar = (p1: () => Unit) => (p2: () ->{p1, any} Unit) => par(p1, p2) // error, but error message could be better
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                Capability p1 defined in an enclosing function outlives its scope:
+   |                                Capability `p1` defined in an enclosing function outlives its scope:
    |                                it leaks into outer capture set 's1 which is owned by value bar.
    |                                The leakage occurred when trying to match the following types:
    |
-   |                                Found:    (p2: () ->{p1, cap} Unit) ->{p1} Unit
+   |                                Found:    (p2: () ->{p1, any} Unit) ->{p1} Unit
    |                                Required: (() ->'s2 Unit) ->'s1 Unit
    |
-   |                                where:    cap is the universal root capability
+   |                                where:    any is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:6:48 ----------------------------------------------------

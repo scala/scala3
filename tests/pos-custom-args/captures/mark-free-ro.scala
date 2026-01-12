@@ -1,4 +1,4 @@
-import caps.{cap, Stateful}
+import caps.{any, Stateful}
 import caps.unsafe.untrackedCaptures
 
 class Test extends Stateful:
@@ -7,7 +7,7 @@ class Test extends Stateful:
   class FreshCtx(level: Int) extends Stateful:
     this: FreshCtx^ =>
     def detached: Boolean =
-      val c: FreshCtx^{cap.rd} = ctxStack(level)
+      val c: FreshCtx^{any.rd} = ctxStack(level)
       (c eq this)
     def detached2 =
       ctxStack(level) eq this

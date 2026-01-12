@@ -31,6 +31,7 @@ import ast.tpd
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
+import cc.Capabilities.Capability
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
@@ -38,6 +39,7 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.{Disambiguation, Note}
+import dotty.tools.dotc.util.SimpleIdentitySet
 
 /**  Messages
   *  ========
@@ -303,8 +305,8 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], notes: List[Note] = Nil)(using Context)
-  extends TypeMismatchMsg(found, expected)(TypeMismatchID):
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], val notes: List[Note] = Nil)(using Context)
+  extends TypeMismatchMsg(found, expected)(TypeMismatchID) {
 
   private val shouldSuggestNN =
     if ctx.mode.is(Mode.SafeNulls) && expected.isValueType then
@@ -390,7 +392,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       case _ =>
         List()
     }
-end TypeMismatch
+}
 
 class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
 extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {

@@ -6,7 +6,5 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator5.scala:16:26 -----------------------------------------------------
 16 |      update def next() = Iterator.this.next() // error
    |                          ^^^^^^^^^^^^^
-   |                    Read-only method sneakyForeach accesses exclusive capability (Iterator.this : Iterator[T]^);
-   |                    method sneakyForeach should be declared an update method to allow this.
-   |
-   |                    where:    ^ refers to the universal root capability
+   |                          Read-only method sneakyForeach accesses exclusive capability `Iterator.this`;
+   |                          method sneakyForeach should be declared an update method to allow this.

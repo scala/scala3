@@ -120,9 +120,11 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `caps.any` as element? */
   final def isUniversal(using Context) =
-    elems.contains(GlobalCap)
+    elems.contains(GlobalAny)
 
-  /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
+  /** Does this capture set contain a root capability `any` or `fresh` or
+   *  a derived instance thereof as element?
+   */
   final def containsTerminalCapability(using Context) =
     elems.exists(_.isTerminalCapability)
 
@@ -137,12 +139,12 @@ sealed abstract class CaptureSet extends Showable:
     !containsResultCapability
     && elems.exists: elem =>
       elem.core match
-        case GlobalCap => true
+        case _: GlobalCap => true
         case _: LocalCap => true
         case _ => false
 
   final def containsGlobalCapDerivs(using Context) =
-    elems.exists(_.core eq GlobalCap)
+    elems.exists(_.core.isInstanceOf[GlobalCap])
 
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
@@ -262,7 +264,8 @@ sealed abstract class CaptureSet extends Showable:
           !x.isTerminalCapability
           && !x.coreType.derivesFrom(defn.Caps_CapSet)
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
-            // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
+            // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
+            // and might therefore insert an element that is too unspecific.
           && x.captureSetOfInfo.subCaptures(this, VarState.Separate)
 
     comparer match
@@ -275,7 +278,7 @@ sealed abstract class CaptureSet extends Showable:
    *  for `x` in a state where we assume all supersets of `x` have just the elements
    *  known at this point. On the other hand if x's capture set has no known elements,
    *  a set `cs` might account for `x` only if it subsumes `x` or it contains the
-   *  root capability `cap`.
+   *  root capability `any`.
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
@@ -312,7 +315,11 @@ sealed abstract class CaptureSet extends Showable:
         capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
         this1.subCaptures(that, vs)
       else
-        that.tryInclude(elems, this) && addDependent(that)
+        try
+          that.tryInclude(elems, this) && addDependent(that)
+        catch case ex: AssertionError =>
+          println(i"err while subcap $this <:< $that")
+          throw ex
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -475,20 +482,21 @@ sealed abstract class CaptureSet extends Showable:
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
    *  If the limit is null, all capture roots are good.
-   *  If the limit is NoSymbol, all Fresh roots are good, but cap and Result roots are bad.
-   *  If the limit is some other symbol, cap and Result roots are bad, as well as
-   *  all Fresh roots that are contained (via ccOwner) in `rootLimit`.
+   *  If the limit is NoSymbol, all local roots are good, but
+   *  `caps.any`, `caps.fresh` and Result roots are bad.
+   *  If the limit is some other symbol, global and result roots are bad, as well as
+   *  all local roots that are contained (via ccOwner) in `rootLimit`.
    */
   protected def isBadRoot(rootLimit: Symbol | Null, elem: Capability)(using Context): Boolean =
     if rootLimit == null then false
     else elem.core match
-      case GlobalCap | _: ResultCap => true
+      case _: GlobalCap | _: ResultCap => true
       case elem: LocalCap => elem.ccOwner.isContainedIn(rootLimit)
       case _ => false
 
   /** Invoke `handler` if this set has (or later aquires) a bad root capability.
-   *  Fresh instances count as good as long as their ccOwner is outside `upto`.
-   *  If `upto` is NoSymbol, all Fresh instances are admitted.
+   *  Local roots count as good as long as their ccOwner is outside `upto`.
+   *  If `upto` is NoSymbol, all local roots are admitted.
    */
   def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): Unit =
     checkAddedElems: elem =>
@@ -584,13 +592,13 @@ object CaptureSet:
   class EmptyOfBoxed(val tp1: Type, val tp2: Type) extends Const(emptyRefs):
     override def toString = "{} of boxed mismatch"
 
-  /** The universal capture set `{cap}` */
+  /** The universal capture set `{caps.any}` */
   def universal(using Context): Const =
-    Const(SimpleIdentitySet(GlobalCap))
+    Const(SimpleIdentitySet(GlobalAny))
 
-  /** The shared capture set `{cap.rd}` */
+  /** The shared capture set `{caps.any.rd}` */
   def shared(using Context): Const =
-    GlobalCap.readOnly.singletonCaptureSet
+    GlobalAny.readOnly.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
@@ -671,10 +679,10 @@ object CaptureSet:
       && variance >= 0
       && sym.isContainedIn(defn.ScalaPackageClass)
     if parent.derivesFromStateful && !isArrayFromScalaPackage
-    then GlobalCap.readOnly
-    else GlobalCap
+    then GlobalAny.readOnly
+    else GlobalAny
 
-  /* The same as {cap} but generated implicitly for references of Capability subtypes.
+  /* The same as {caps.any} but generated implicitly for references of Capability subtypes.
    *  @param parent   the type to which the capture set will be attached
    *  @param sym      the symbol carrying that type
    *  @param variance the variance in which `parent` appears in the type of `sym`
@@ -884,7 +892,7 @@ object CaptureSet:
     def levelOK(elem: Capability)(using Context): Boolean = elem match
       case elem @ ResultCap(binder) =>
         rootLimit == null && isPartOf(binder.resType)
-      case GlobalCap =>
+      case _: GlobalCap =>
         rootLimit == null
       case elem: ParamRef =>
         isPartOf(elem.binder.resType)
@@ -913,7 +921,7 @@ object CaptureSet:
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The universal set {cap} is a sound fallback.
+     *  of this set. The universal set {caps.any} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if isConst then
@@ -929,7 +937,7 @@ object CaptureSet:
           if approx.elems.exists(_.isInstanceOf[ResultCap]) then
             ccState.approxWarnings +=
                 em"""Capture set variable $this gets upper-approximated
-                  |to existential variable from $approx, using {cap} instead."""
+                  |to existential variable from $approx, using {any} instead."""
             universal
           else approx
         finally computingApprox = false
@@ -945,7 +953,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       CCState.withGlobalCapAsRoot: // OK here since we infer parameter types that get checked later
         val approx = upperApprox(empty)
-          .map(GlobalToLocalCap(Origin.Unknown).inverse)    // Fresh --> cap
+          .map(GlobalCapToLocal(Origin.Unknown).inverse)    // local -> global
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1249,14 +1257,14 @@ object CaptureSet:
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
     cs1.elems.filter(cs2.accountsFor) ++ cs2.elems.filter(cs1.accountsFor)
 
-  /** A capture set variable used to record the references hidden by a Fresh instance,
+  /** A capture set variable used to record the references hidden by a local root,
    *  The elems and deps members are repurposed as follows:
    *    elems: Set of hidden references
-   *    deps : Set of hidden sets for which the Fresh instance owning this set
+   *    deps : Set of hidden sets for which the local root owning this set
    *           is a hidden element.
    *  Hidden sets may become aliases of other hidden sets, which means that
    *  reads and writes of elems go to the alias.
-   *  If H is an alias of R.hidden for some Fresh instance R then:
+   *  If H is an alias of R.hidden for some local root R then:
    *    H.elems == {R}
    *    H.deps = {R.hidden}
    *  This encoding was chosen because it relies only on the elems and deps fields
@@ -1338,7 +1346,8 @@ object CaptureSet:
   trait IdentityCaptRefMap extends TypeMap
 
   /** Failure indicating that `elem` cannot be included in `cs` */
-  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends Note, Showable:
+  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false)
+  extends Note, Showable:
     private var myTrace: List[CaptureSet] = cs :: Nil
 
     def trace: List[CaptureSet] = myTrace
@@ -1346,6 +1355,9 @@ object CaptureSet:
       val res = IncludeFailure(cs, elem, levelError)
       res.myTrace = cs1 :: this.myTrace
       res
+
+    //assert(elem != GlobalFresh)
+    //assert(!cs.elems.contains(GlobalFresh))
 
     override def showAsPrefix(using Context) = cs match
       case cs: Var =>
@@ -1390,23 +1402,23 @@ object CaptureSet:
             case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
             case _ => " outlives its scope: "
           leading:
-            i"""Capability ${elem.showAsCapability}${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+            i"""Capability `${elem.showAsCapability}`${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
         else if !elem.tryClassifyAs(cs.classifier) then
           trailing:
-            i"""capability ${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
+            i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
               |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
         else if cs.isBadRoot(elem) then
           elem match
             case elem: LocalCap =>
               leading:
-                i"""Local capability ${elem.showAsCapability} created in ${elem.ccOwner} outlives its scope:
+                i"""Local capability `${elem.showAsCapability}` created in ${elem.ccOwner} outlives its scope:
                     |It leaks into outer capture set $cs$ownerStr"""
             case _ =>
               trailing:
-                i"universal capability ${elem.showAsCapability} cannot be included in capture set $cs"
+                i"universal capability `${elem.showAsCapability}` cannot be included in capture set $cs"
         else
           trailing:
-            i"capability ${elem.showAsCapability} cannot be included in capture set $cs"
+            i"capability `${elem.showAsCapability}` cannot be included in capture set $cs"
       case cs: EmptyOfBoxed =>
         trailing:
           val (boxed, unboxed) =
@@ -1418,15 +1430,17 @@ object CaptureSet:
             case c: LocalCap if !c.acceptsLevelOf(elem) =>
               i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
             case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
-              i"$c is classified as ${c.hiddenSet.classifier} but ${elem.showAsCapability} is not"
+              i"`$c` is classified as ${c.hiddenSet.classifier} but `${elem.showAsCapability}` is not"
             case c: ResultCap if !c.subsumes(elem) =>
               val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
-              i"$c, which is existentially bound in ${c.originalBinder.resType}, cannot subsume ${elem.showAsCapability}$toAdd"
+              i"`$c`, which is existentially bound in ${c.originalBinder.resType}, cannot subsume `${elem.showAsCapability}`$toAdd"
           if reasons.isEmpty then ""
           else reasons.mkString("\nbecause ", "\nand ", "")
 
         trailing:
-          i"capability ${elem.showAsCapability} is not included in capture set $cs$why"
+          i"capability `${elem.showAsCapability}` is not included in capture set $cs$why"
+
+    override def mentions = cs.elems + elem
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
@@ -1444,7 +1458,7 @@ object CaptureSet:
    *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
    *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
    */
-  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note:
+  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends Note {
 
     def render(using Context): String =
       def ofType(tp: Type) = if tp.exists then i"of the stateful type $tp" else "of a stateful type"
@@ -1456,7 +1470,9 @@ object CaptureSet:
     // Show only one failure of this kind
     override def covers(other: Note)(using Context) =
       other.isInstanceOf[MutAdaptFailure]
-  end MutAdaptFailure
+
+    override def mentions = cs.elems
+  }
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
@@ -1529,7 +1545,7 @@ object CaptureSet:
     /** A class for states that do not allow to record elements or dependent sets.
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
-     *  On the other hand, these states do allow by default Fresh instances to
+     *  On the other hand, these states do allow by default local roots to
      *  subsume arbitary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
@@ -1537,8 +1553,8 @@ object CaptureSet:
       override def isOpen = false
       override def toString = "closed varState"
 
-    /** A closed state that allows a Fresh instance to subsume a
-     *  reference `r` only if `r` is already present in the hidden set of the instance.
+    /** A closed state that allows a local root to subsume a reference `r`
+     *  only if `r` is already present in the hidden set of the instance.
      *  No new references can be added.
      */
     class Separating extends Closed:
@@ -1546,13 +1562,10 @@ object CaptureSet:
       override def toString = "separating varState"
       override def isSeparating = true
 
-    /** A closed state that allows a Fresh instance to subsume a
-     *  reference `r` only if `r` is already present in the hidden set of the instance.
-     *  No new references can be added.
-     */
+    /** The default Separating state */
     def Separate(using Context): Separating = ccState.Separate
 
-    /** Like Separate but in addition we assume that `cap` never subsumes anything else.
+    /** Like Separate but in addition we assume that `any` never subsumes anything else.
      *  Used in `++` to not lose track of dependencies between function parameters.
      */
     def HardSeparate(using Context): Separating = ccState.HardSeparate
@@ -1667,8 +1680,8 @@ object CaptureSet:
     case c: RootCapability =>
       c.singletonCaptureSet
     case c: ParamRef if !c.underlying.exists =>
-      // might happen during construction of lambdas, assume `{cap}` in this case so that
-      // `ref` will not seem subsumed by other capabilities in a `++`.
+      // might happen during construction of lambdas, assume `{caps.any}` in this case,
+      // so that `ref` will not seem subsumed by other capabilities in a `++`.
       universal
     case c: TermRef if isAssumedPure(c.symbol) =>
       CaptureSet.empty
@@ -1715,7 +1728,7 @@ object CaptureSet:
       //.showing(i"capture set of $tp = $result", captDebug)
 
   /** The deep capture set of a type is the union of all covariant occurrences of
-   *  capture sets. Nested existential sets are approximated with `cap`.
+   *  capture sets. Nested existential sets are approximated with `any`.
    */
   def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet = {
     val collect = new DeepTypeAccumulator[CaptureSet]:

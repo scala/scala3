@@ -4,7 +4,7 @@
    |          Found:    (cap: Cap^{io}) ->{io} Int
    |          Required: Cap^{io} -> Int
    |
-   |          Note that capability io is not included in capture set {}.
+   |          Note that capability `io` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:29:10 ------------------------------
@@ -13,6 +13,6 @@
    |          Found:    (cap: Cap^'s1) ->{io, fs} Int
    |          Required: Cap^{io, fs} ->{io} Int
    |
-   |          Note that capability fs is not included in capture set {io}.
+   |          Note that capability `fs` is not included in capture set {io}.
    |
    | longer explanation available when compiling with `-explain`

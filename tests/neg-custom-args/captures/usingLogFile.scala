@@ -4,11 +4,11 @@ object Test1:
 
   def usingLogFile[T](op: (local: caps.Capability) ?-> FileOutputStream => T): T =
     val logFile = FileOutputStream("log")
-    val result = op(using caps.cap)(logFile)
+    val result = op(using caps.any)(logFile)
     logFile.close()
     result
 
-  private val later = usingLogFile { f => () => f.write(0) }  // OK, `f` has global lifetime
+  private val later = usingLogFile { f => () => f.write(0) }  // error
   later()
 
 object Test2:

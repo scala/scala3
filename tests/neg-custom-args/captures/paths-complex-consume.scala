@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 import language.experimental.separationChecking
-import caps.cap
+import caps.any
 import scala.caps.Stateful
 
 // Create a deeper nesting structure

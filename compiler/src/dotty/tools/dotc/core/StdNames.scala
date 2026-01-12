@@ -285,7 +285,6 @@ object StdNames {
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
-    val CAPTURE_ROOT: N             = "cap"
     val CBCompanion: N              = "<context-bound-companion>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
@@ -404,6 +403,7 @@ object StdNames {
     val adhocExtensions: N      = "adhocExtensions"
     val andThen: N              = "andThen"
     val annotation: N           = "annotation"
+    val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
@@ -500,6 +500,7 @@ object StdNames {
     val floatHash: N            = "floatHash"
     val foreach: N              = "foreach"
     val format: N               = "format"
+    val fresh: N                = "fresh"
     val fromDigits: N           = "fromDigits"
     val fromProduct: N          = "fromProduct"
     val genericArrayOps: N      = "genericArrayOps"

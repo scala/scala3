@@ -19,7 +19,7 @@
    |           ^
    |Type argument test.Tree^ does not conform to upper bound test.Tree in subpart test.C[test.Tree^] of inferred type test.C[test.Tree^] -> test.C[test.Tree^]
    |
-   |where:    ^ refers to the universal root capability
+   |where:    ^ refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:12:11 --------------------------------
@@ -27,6 +27,6 @@
    |           ^
    |Type argument test.Tree^ does not conform to upper bound test.Tree in subpart test.C[test.Tree^] of inferred type test.C[test.Tree^] -> Unit
    |
-   |where:    ^ refers to the universal root capability
+   |where:    ^ refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`

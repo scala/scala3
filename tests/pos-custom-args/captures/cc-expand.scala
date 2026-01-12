@@ -5,7 +5,7 @@ object Test:
   class B
   class C
   class CTC
-  type CT = CTC @retains[caps.cap.type]
+  type CT = CTC @retains[caps.any.type]
 
   def test(ct: CT, dt: CT) =
 

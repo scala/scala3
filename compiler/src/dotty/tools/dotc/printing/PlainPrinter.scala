@@ -30,10 +30,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
-  /** Print Fresh instances as <cap hiding ...> */
+  /** Print local roots as <any hiding ...> */
   protected def ccVerbose = ctx.settings.YccVerbose.value
 
-  /** Elide redundant ^ and ^{cap.rd} when printing instances of Capability
+  /** Elide redundant ^ and ^{any.rd} when printing instances of Capability
    *  classes. Gets set when singletons are printed as `(x: T)` to reduce verbosity.
    */
   private var elideCapabilityCaps = false
@@ -195,23 +195,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   type GeneralCaptureSet = CaptureSet | List[Type]
 
-  protected def isUniversalCaptureSet(refs: GeneralCaptureSet): Boolean = refs match
+  protected def isElidableUniversal(refs: GeneralCaptureSet): Boolean = refs match
     case refs: CaptureSet =>
-      // The set if universal if it consists only of caps.cap or
-      // only of an existential Fresh that is bound to the immediately enclosing method.
-      val isUniversal =
-        refs.elems.size == 1
-        && (refs.isUniversal
-            || !printDebug && !ccVerbose && !showUniqueIds && refs.elems.nth(0).match
-                  case ResultCap(binder) =>
-                    CCState.openExistentialScopes match
-                      case b :: _ => binder eq b
-                      case _ => false
-                  case _ =>
-                    false
-        )
-      isUniversal
-      || !refs.elems.isEmpty && refs.elems.forall(_.isGlobalOrLocalCap) && !ccVerbose
+      !refs.elems.isEmpty
+        && refs.elems.forall:
+          case _: LocalCap => true
+          case GlobalAny => true
+          case _ => false
+        && !ccVerbose
     case ref :: Nil => ref.isCapsAnyRef
     case _ => false
 
@@ -227,7 +218,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       boxText
       ~ toTextLocal(parent)
       ~ "^"
-      ~ toTextGeneralCaptureSet(refs).provided(!isUniversalCaptureSet(refs) || ccVerbose)
+      ~ toTextGeneralCaptureSet(refs).provided(!isElidableUniversal(refs) || ccVerbose)
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -477,14 +468,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
-    case GlobalCap => "cap"
+    case GlobalAny => "any"
+    case GlobalFresh => "fresh"
     case c: ResultCap =>
       def idStr = s"##${c.rootId}"
-      // TODO: Better printing? USe a mode where we print more detailed
-      val vbleText: Text = CCState.openExistentialScopes.indexOf(c.binder) match
-        case -1 =>
-          "<cap of " ~ toText(c.binder) ~ ">"
-        case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
+      // TODO: Better printing? USe a mode where we print more
+      val openExistentials = CCState.openExistentialScopes
+      val vbleText: Text = openExistentials.indexOf(c.binder) match
+        case -1 if openExistentials.nonEmpty =>
+          // Use long output if we are printing a result of a function type, but the
+          // ResultCap does not prefer to a prefix in that type
+          "<fresh of " ~ toText(c.binder) ~ ">"
+        case n => "outer_" * n ++ "fresh"
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
     case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
@@ -498,8 +493,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case pre: SingletonType => toTextRef(pre) ~ "."
         case pre => toText(pre) ~ "."
       def core: Text =
-        if ccVerbose then s"<fresh$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
-        else "cap"
+        if ccVerbose then s"<any$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
+        else "any"
       prefixTxt ~ core
     case tp: TypeProxy =>
       homogenize(tp) match

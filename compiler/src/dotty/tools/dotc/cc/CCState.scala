@@ -88,7 +88,7 @@ class CCState:
 
   private var openExistentialScopes: List[MethodType] = Nil
 
-  private var globalAnyIsRoot: Boolean = false
+  private var globalCapIsRoot: Boolean = false
 
   private var collapseLocalCaps: Boolean = false
 
@@ -119,16 +119,16 @@ object CCState:
   inline def withGlobalCapAsRoot[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.globalAnyIsRoot
-      ccs.globalAnyIsRoot = true
-      try op finally ccs.globalAnyIsRoot = saved
+      val saved = ccs.globalCapIsRoot
+      ccs.globalCapIsRoot = true
+      try op finally ccs.globalCapIsRoot = saved
     else op
 
-  /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
-  def globalAnyIsRoot(using Context): Boolean = ccState.globalAnyIsRoot
+  /** Is `caps.any` a root capability that is allowed to subsume other capabilities? */
+  def globalCapIsRoot(using Context): Boolean = ccState.globalCapIsRoot
 
   /** Run `op` under the assumption that all LocalCap instances are equal
-   *  to each other and to GlobalCap.
+   *  to each other and to GlobalAny.
    *  Needed to make override checking work for types containing LocalCaps.
    *  Asserted in override checking, tested in maxSubsumes.
    *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
@@ -141,7 +141,7 @@ object CCState:
       try op finally ccs.collapseLocalCaps = saved
     else op
 
-  /** Should all LocalCap instances be treated as equal to GlobalCap? */
+  /** Should all LocalCap instances be treated as equal to GlobalAny? */
   def collapseLocalCaps(using Context): Boolean = ccState.collapseLocalCaps
 
   /** Run `op` but suppress all recording of uses in `markFree` */

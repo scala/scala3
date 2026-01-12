@@ -350,7 +350,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   1. Expand throws aliases to contextual function type with CanThrow parameters
    *   2. Map types with retains annotations to CapturingTypes
    *   3. Add universal capture sets to types deriving from Capability
-   *   4. Map `cap` in function result types to existentially bound variables.
+   *   4. Map `any` in function result types to existentially bound variables.
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
    */
@@ -360,7 +360,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
     /** If C derives from Capability and we have a C^cs in source, we leave it as is
-     *  instead of expanding it to C^{cap}^cs. We do this by stripping capability-generated
+     *  instead of expanding it to C^{any}^cs. We do this by stripping capability-generated
      *  universal capture sets from the parent of a CapturingType.
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
@@ -418,8 +418,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
         tp
 
-      /** Map references to capability classes C to C^{cap.rd},
-       *  normalize captures and map to dependent functions.
+      /** Map references to capability classes C to C^{any}, or (if Mutable)
+       *  tp C^{any.rd}. Normalize captures and map to dependent functions.
        */
       def defaultApply(t: Type) =
         if t.derivesFromCapability
@@ -486,7 +486,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     val tp3 =
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
-    globalToLocalCap(tp3, Origin.InDecl(sym))
+    if tp3.containsFresh then
+      fail(
+        em"""`fresh` occurs outside function result in $tp3.
+            |
+            |The `fresh` capability may only be used in the result of a function type,
+            |following a function arrow such as `=>` or `->`.""")
+
+    globalCapToLocal(tp3, Origin.InDecl(sym))
   end transformExplicitType
 
   /** Update info of `sym` for CheckCaptures phase only */
@@ -582,7 +589,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for case arg: TypeTree <- args do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
-                globalToLocalCap(arg.tpe, Origin.TypeArg(arg.tpe)))
+                globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
             else
               transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 
@@ -732,7 +739,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             // is cls is known to be pure, nothing needs to be added to self type
             selfInfo
           else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
-            // assume {cap} for completely unconstrained self types of publicly extensible classes
+            // assume {caps.any} for completely unconstrained self types of publicly extensible classes
             CapturingType(cinfo.selfType, CaptureSet.universal)
           else {
             // Infer the self type for the rest, which is all classes without explicit
@@ -857,7 +864,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case CapturingOrRetainsType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
-        && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
+        && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
@@ -966,7 +973,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def checkWellformed(parent: Type, ann: RetainingAnnotation, tpt: Tree)(using Context): Unit =
     capt.println(i"checkWF post $parent ${ann.retainedType} in $tpt")
     try
-      var retained = ann.retainedType.retainedElements.toArray
+      val retained = ann.retainedType.retainedElements.toArray
+
       for i <- 0 until retained.length do
         val ref = retained(i)
         def pos = tpt.srcPos

@@ -1,13 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/linear-buffer.scala:7:29 ---------------------------------
 7 |    def bar: BadBuffer[T]^ = this // error // error separation
   |                             ^^^^
-  |            Found:    BadBuffer[T]^{BadBuffer.this.rd}
-  |            Required: BadBuffer[T]^
+  |                  Found:    BadBuffer[T]^{BadBuffer.this.rd}
+  |                  Required: BadBuffer[T]^{any}
   |
-  |            Note that {cap} is an exclusive capture set of the stateful type BadBuffer[T]^,
-  |            it cannot subsume a read-only capture set of the stateful type BadBuffer[T]^{BadBuffer.this.rd}.
+  |                  Note that {any} is an exclusive capture set of the stateful type BadBuffer[T]^{any},
+  |                  it cannot subsume a read-only capture set of the stateful type BadBuffer[T]^{BadBuffer.this.rd}.
   |
-  |            where:    ^ and cap refer to a root capability classified as Unscoped in the result type of method bar
+  |                  where:    any is a root capability classified as Unscoped in the result type of method bar
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:5:27 ------------------------------------------------------

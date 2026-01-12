@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/leaked-curried.scala:11:10 ----------------------------------------------------
 11 |    class Fuzz extends Box, caps.Pure: // error
    |    ^
-   |    reference cap is not included in the allowed capture set {} of the self type of class Fuzz
+   |    reference `any` is not included in the allowed capture set {} of the self type of class Fuzz
    |
 12 |      self =>
 13 |      val get: () ->{} () ->{io} Cap^ =
@@ -9,7 +9,7 @@
 -- Error: tests/neg-custom-args/captures/leaked-curried.scala:15:10 ----------------------------------------------------
 15 |    class Foo extends Box, caps.Pure: // error
    |    ^
-   |    reference cap is not included in the allowed capture set {} of the self type of class Foo
+   |    reference `any` is not included in the allowed capture set {} of the self type of class Foo
    |
 16 |      val get: () ->{} () ->{io} Cap^ =
 17 |        () => () => io

@@ -2,7 +2,7 @@ import annotation.retains
 import language.experimental.erasedDefinitions
 
 class CT[E <: Exception]
-type CanThrow[E <: Exception] = CT[E] @retains[caps.cap.type]
+type CanThrow[E <: Exception] = CT[E] @retains[caps.any.type]
 
 infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?-> R
 

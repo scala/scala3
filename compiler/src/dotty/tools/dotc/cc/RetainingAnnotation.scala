@@ -39,7 +39,7 @@ class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
   def isStrict(using Context): Boolean = symbol.isRetains
 
   def retainedType(using Context): Type =
-    if symbol == defn.RetainsCapAnnot then defn.captureRoot.termRef
+    if symbol == defn.RetainsCapAnnot then defn.Caps_any.termRef
     else argumentType(0)
 
   private var myCaptureSet: CaptureSet | Null = null

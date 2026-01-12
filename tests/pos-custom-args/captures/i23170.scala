@@ -2,7 +2,7 @@ import caps.*
 
 trait A
 
-extension (a: A^{cap.rd})
+extension (a: A^{any.rd})
   def await = ()
 
-def awaitA[C^ <: {cap.rd}](a: A^{C}) = a.await
+def awaitA[C^ <: {any.rd}](a: A^{C}) = a.await

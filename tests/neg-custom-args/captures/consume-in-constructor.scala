@@ -1,4 +1,4 @@
-import caps.{cap, Stateful}
+import caps.{any, Stateful}
 
 class B
 
@@ -13,10 +13,10 @@ class A4(consume val b: B^) extends Stateful { var x: Int = 1 } // ok
 def Test =
   val b: B^ = B()
   val a1 = A1(b)
-  val _: A1^{cap, b} = a1
+  val _: A1^{any, b} = a1
   println(b)  // OK   since a1's type mentions `b` explicitly
   val a2 = A2(b)
-  val _: A2^{cap, b} = a2
+  val _: A2^{any, b} = a2
   println(b) // error
   println(a1) // error, since `b` was consumed before
   println(a2) // OK since b belongs to a2

@@ -290,7 +290,7 @@ object SepCheck:
         else refs
 
     /** The non-terminal elements hidden directly or indirectly by a terminal
-     *  capability in `refs`. E g. if `R = {x, <cap hiding <y, <cap hiding z>>}` then
+     *  capability in `refs`. E g. if `R = {x, <any hiding <y, <any hiding z>>}` then
      *  its hidden set is `{y, z}`.
      */
     private def transHiddenSet(using Context): Refs =
@@ -346,7 +346,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
 
   /** The deep capture set of an argument or prefix widened to the formal parameter, if
-   *  the latter contains a cap.
+   *  the latter contains an `any`.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
     arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
@@ -368,8 +368,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if shared.isEmpty then i"${CaptureSet(shared)}"
     else shared.nth(0) match
       case localCap: LocalCap =>
-        val where = if ctx.settings.YccVerbose.value then "" else i" of ${localCap.ccOwnerStr}"
-        i"{$localCap$where}"
+        if ctx.settings.YccVerbose.value then i"{$localCap}"
+        else i"{`$localCap` of ${localCap.ccOwnerStr}}"
       case _ =>
         i"${CaptureSet(shared)}"
 
@@ -488,7 +488,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  capability in later arguments, if the corresponding formal parameter mentions
    *  the parameter where the capability was hidden. For instance in
    *
-   *    def seq(x: () => Unit; y ->{cap, x} Unit): Unit
+   *    def seq(x: () => Unit; y ->{any, x} Unit): Unit
    *    def f: () ->{io} Unit
    *
    *  we do allow `seq(f, f)` even though `{f, io}` is in the hidden set of the
@@ -898,7 +898,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The inter-parameter dependencies of the function reference `fn` applied
    *  to the argument lists `argss`. For instance, if `f` has type
    *
-   *    f(x: A, y: B^{cap, x}, z: C^{x, y}): D
+   *    f(x: A, y: B^{any, x}, z: C^{x, y}): D
    *
    *  then the dependencies of an application `f(a, b, c)` of type C^{y} is the map
    *
