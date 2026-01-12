@@ -74,39 +74,6 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  @Ignore("Does not pass until we have an optimizer that can inline trivial calls")
-  @Test def inlineUserDefinedLocally = {
-    val source =
-         """
-         |class Foo {
-         |  final def myLocally[T](x: T): T = x
-         |  def meth1: Unit = myLocally {
-         |    val a = 5
-         |    a
-         |  }
-         |
-         |  def meth2: Unit = {
-         |    val a = 5
-         |    a
-         |  }
-         |}
-         """.stripMargin
-
-    checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
-      val clsNode    = loadClassNode(clsIn)
-      val meth1      = getMethod(clsNode, "meth1")
-      val meth2      = getMethod(clsNode, "meth2")
-
-      val instructions1 = instructionsFromMethod(meth1)
-      val instructions2 = instructionsFromMethod(meth2)
-
-      assert(instructions1 == instructions2,
-        "`myLocally` was not properly inlined in `meth1`\n" +
-        diffInstructions(instructions1, instructions2))
-    }
-  }
-
   @Ignore("Intended to document how `.nn` is compiled, but out of date, and not useful until we have an optimizer that can eliminate dead code")
   @Test def inlineNn = {
     val source =
