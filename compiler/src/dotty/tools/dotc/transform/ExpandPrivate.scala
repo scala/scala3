@@ -85,7 +85,11 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
         (j < 0 || p2(j) == separatorChar)
       }
 
-      assert(d.symbol.source.exists &&
+      // Skip assertion for @publicInBinary members - they are designed to be accessed
+      // across compilation units (e.g., when inlined). See SIP-52.
+      val isPublicInBinary = d.hasPublicInBinary
+      assert(isPublicInBinary ||
+             d.symbol.source.exists &&
              ctx.owner.source.exists &&
              isSimilar(d.symbol.source.path, ctx.owner.source.path),
           s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
