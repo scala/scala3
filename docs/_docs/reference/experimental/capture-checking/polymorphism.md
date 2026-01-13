@@ -76,7 +76,8 @@ class Source[X >: CapSet <: CapSet^]:
 `CapSet` is a sealed marker trait in `caps` used internally to distinguish capture-set variables.
 It cannot be instantiated or extended; in non–capture-checked code, `CapSet^{a}` and `CapSet^{a,b}`
 erase to plain `CapSet`, while with capture checking enabled their capture sets remain distinct.
-This representation is an implementation detail and should not be used directly.
+This representation is an implementation detail and should not be used directly, as `CapSet`
+might be erased entirely by the compiler in the future.
 
 #### Instantiation and inference
 Capture-set variables are inferred in the same way as ordinary type variables.
