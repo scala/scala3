@@ -302,6 +302,8 @@ object QuotePatterns:
         if (sel.symbol == defn.QuoteUnpickler_unpickleExprV2) sel.getAttachment(transform.PickleQuotes.OriginalTree).get
         else shape
       case List(Apply(Apply(Select(TypeApply(_, _), apply),List(shape)),_)) => shape
+      case List(TypeApply(Select(Apply(_, List(Apply(_,List(shape)))), _),_)) => shape
+      case List(shape @ Ident(_)) => shape
     fun match
       // <quotes>.asInstanceOf[QuoteMatching].{ExprMatch,TypeMatch}.unapply[<typeBindings>, <resTypes>]
       case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), typeBindings :: resTypes :: Nil) =>
@@ -335,8 +337,6 @@ object QuotePatterns:
               if shapeBinding.hasAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot) then
                 binding.symbol.addAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot)
             val body1 = if stats.isEmpty then expr else cpy.Block(block)(stats, expr)
-            println("shapeBindingSyms " + shapeBindingSyms)
-            println("bindings.map(_.symbol) " + bindings.map(_.symbol))
             body1.subst(shapeBindingSyms, bindings.map(_.symbol))
           case body => body
         cpy.QuotePattern(tree)(bindings, body, quotes)
