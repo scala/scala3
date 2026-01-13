@@ -520,6 +520,28 @@ class ReplCompilerTests extends ReplTest:
   @Test def `i22844b regression colon arrow eol`: Unit = contextually:
     assertTrue(ParseResult.isIncomplete("List(42).map: x =>"))
 
+  // i24142: Colon operator at line beginning should be treated as Scala code, not REPL command
+  @Test def `i24142 cons operator`: Unit = initially:
+    run("::(1, Nil)")
+    assertEquals("val res0: ::[Int] = List(1)", storedOutput().trim)
+
+  @Test def `i24142 symbolic identifier starting with colon`: Unit = initially:
+    // Test a custom identifier starting with :
+    run("val `:test` = 42")
+    assertEquals("val :test: Int = 42", storedOutput().trim)
+
+  @Test def `i24142 colon as infix`: Unit = initially:
+    run("1 :: 2 :: Nil")
+    assertEquals("val res0: List[Int] = List(1, 2)", storedOutput().trim)
+
+  @Test def `i24142 commands still work`: Unit = initially:
+    run(":help")
+    assertTrue(storedOutput().contains("The REPL has several commands available"))
+
+  @Test def `i24142 abbreviated commands still work`: Unit = initially:
+    run(":he")
+    assertTrue(storedOutput().contains("The REPL has several commands available"))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
