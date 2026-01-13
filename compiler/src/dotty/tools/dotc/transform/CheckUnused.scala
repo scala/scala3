@@ -115,6 +115,13 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         if fun.symbol.is(Module) && defn.isTupleClass(fun.symbol.companionClass) then
           args.foreach(_.withAttachment(ForArtifact, ()))
       case _ =>
+    else if !tree.tpe.isInstanceOf[MethodOrPoly] then
+      val f = funPart(tree)
+      if f.symbol.isConstructor then
+        f match
+        case Select(_: New, nme.CONSTRUCTOR) if ctx.outersIterator.exists(_.owner eq f.symbol.owner) =>
+          ignoreArgsOfSelfConstruction(tree, f.symbol)
+        case _ =>
     ctx
   override def transformApply(tree: Apply)(using Context): tree.type =
     // check for multiversal equals
@@ -1010,6 +1017,13 @@ object CheckUnused:
           case _ =>
           traverseChildren(tree)
       relaxer.traverse(tree)
+
+  def ignoreArgsOfSelfConstruction(tree: Apply, ctor: Symbol)(using Context): Unit =
+    val pars = ctor.denot.paramSymss.flatten.iterator.filter(_.isTerm)
+    val args = allTermArguments(tree)
+    for (par, arg) <- pars.zip(args) do
+      if arg.symbol.is(ParamAccessor) && arg.symbol.name == par.name && arg.symbol.owner == ctor.owner then
+        arg.putAttachment(Ignore, ())
 
   extension (nm: Name)
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
