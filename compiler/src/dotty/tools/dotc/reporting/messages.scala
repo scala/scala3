@@ -1191,8 +1191,8 @@ extends DeclarationMsg(OverridesNothingButNameExistsID) {
 }
 
 class OverrideError(
-    core: Context ?=> String, base: Type,
-    member: Symbol, other: Symbol,
+    val core: Context ?=> String, base: Type,
+    val member: Symbol, val other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
   withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
@@ -3749,3 +3749,12 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+class UseAfterConsume(ref: cc.Capabilities.Capability, howConsumed: => String)(using Context) extends Message(NoExplanationID):
+  def kind = MessageKind.NoKind
+
+  protected def msg(using Context): String =
+    i"""Separation failure: Illegal access to $ref, which was $howConsumed
+       |and therefore is no longer available."""
+
+  protected def explain(using Context): String = ""

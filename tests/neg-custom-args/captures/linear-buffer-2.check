@@ -1,31 +1,59 @@
 -- Error: tests/neg-custom-args/captures/linear-buffer-2.scala:13:13 ---------------------------------------------------
+Separation failure: Illegal access to (buf : Buffer[Int]^), which was used as a prefix to consume method append
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter buf
+11 |  val buf1: Buffer[Int]^ = buf.append(1)
+   |                           ---
+   |                           The capability was consumed here.
+12 |  val buf2 = buf1.append(2) // OK
 13 |  val buf3 = buf.append(3) // error
    |             ^^^
-   | Separation failure: Illegal access to (buf : Buffer[Int]^), which was used as a prefix to consume method append
-   | on line 11 and therefore is no longer available.
-   |
-   | where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter buf
+   |             Then, it was used here
+
 -- Error: tests/neg-custom-args/captures/linear-buffer-2.scala:20:13 ---------------------------------------------------
+Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was used as a prefix to consume method append
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+18 |    if ??? then buf1.append(2) // OK
+   |                ----
+   |                The capability was consumed here.
+19 |    else buf1.append(3) // OK
 20 |  val buf3 = buf1.append(4) // error
    |             ^^^^
-   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was used as a prefix to consume method append
-   |on line 18 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+   |             Then, it was used here
+
 -- Error: tests/neg-custom-args/captures/linear-buffer-2.scala:28:13 ---------------------------------------------------
+Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was used as a prefix to consume method append
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+25 |    case 1 => buf1.append(2) // OK
+   |              ----
+   |              The capability was consumed here.
+26 |    case 2 => buf1.append(2)
+27 |    case _ => buf1.append(3)
 28 |  val buf3 = buf1.append(4) // error
    |             ^^^^
-   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was used as a prefix to consume method append
-   |on line 25 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+   |             Then, it was used here
+
 -- Error: tests/neg-custom-args/captures/linear-buffer-2.scala:38:13 ---------------------------------------------------
+Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was used as a prefix to consume method append
+and therefore is no longer available.
+
+where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+33 |    case 1 => buf1.append(2) // OK
+   |              ----
+   |              The capability was consumed here.
+34 |    case 2 => buf1.append(2)
+35 |    case 3 => buf1.append(3)
+36 |    case 4 => buf1.append(4)
+37 |    case 5 => buf1.append(5)
 38 |  val buf3 = buf1.append(4) // error
    |             ^^^^
-   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was used as a prefix to consume method append
-   |on line 33 and therefore is no longer available.
-   |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+   |             Then, it was used here
+
 -- Error: tests/neg-custom-args/captures/linear-buffer-2.scala:42:4 ----------------------------------------------------
 42 |    buf.append(1)  // error
    |    ^^^

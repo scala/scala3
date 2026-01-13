@@ -13,7 +13,7 @@ def foo[T](x: T): Matchable =
   List(x) match
     case (x: Int) :: Nil =>  // warn: should not be scrutinized
       println("int")
-      x
+      x  // warn
     case List(x: String) =>  // warn: should not be scrutinized
       println("string")
       x
