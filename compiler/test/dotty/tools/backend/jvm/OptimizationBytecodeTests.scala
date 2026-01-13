@@ -494,43 +494,115 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     )
 
 
-  // REVIEW: These seem more questionable, what value do they add?
-  //         The scala2 test suite has some tests for stuff like `array.map(_ + 1)` ensuring it can be inlined to a while loop without boxing, do we want this?
-  //         or does HotSpot do our job for us?
-  //         I think it might make sense to check some end-to-end properties like "no boxing for this or that stdlib function",
-  //         but enshrining behavior like "we will optimize this specific method call if followed by this other method call" in a test seems brittle
-  @Test def classOfThenNewArray =
+  @Test def t2171 =
     testEquivalence(
-      // REVIEW: observation while debugging --
-      // the generated code for "def foo(): Array[Int] = Array[Int]()"
-      // is "ICONST_0 ; NEWARRAY I; CHECKCAST [I; ARETURN",
-      // surely the checkcast isn't needed?
-      "Array[Int]()",
-      "scala.reflect.ClassTag(classOf[Int]).newArray(0)",
-      returnType = "Array[Int]"
+      "while(true) {}",
+      "while(true) m(\"...\")",
+      extraMemberSources = List("final def m(msg: => String) = try 0 catch { case ex: Throwable => println(msg) }")
     )
-  @Test def classOfThenNewArrayThenArrayApply =
-    testEquivalence(
-      "Array[Int](5)(0)",
-      "scala.runtime.ScalaRunTime.array_apply(scala.reflect.ClassTag(classOf[Int]).newArray(5), 0)",
-      returnType = "Any"
+
+
+  private def assertNoCallsExcept(body: String, allowedCalls: String => Boolean, extraMemberSources: List[String]): Unit =
+    val source =
+      f"""
+         |class Test {
+         |  ${extraMemberSources.mkString("\n")}
+         |  def test$body
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val meth = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(meth)
+      for instr <- instructions do instr match {
+        case ASMConverters.Invoke(_, owner, name, _, _) => assert(allowedCalls(name), s"Found call to $owner.$name")
+        case ASMConverters.InvokeDynamic(_, name, _, _, _) => assert(allowedCalls(name), s"Found call to $name")
+        case _ => ()
+      }
+    }
+
+  private def assertNoCallsExcept(body: String, allowedCalls: Set[String], extraMemberSources: List[String] = Nil): Unit =
+    assertNoCallsExcept(body, allowedCalls.contains, extraMemberSources)
+
+  private def assertNoBoxing(body: String, extraMemberSources: List[String] = Nil) =
+    assertNoCallsExcept(body, s => !s.contains("box") && !s.contains("unbox"), extraMemberSources)
+
+  private def assertNoCalls(body: String, extraMemberSources: List[String] = Nil) =
+    assertNoCallsExcept(body, _ => false, extraMemberSources)
+
+  @Test def cleanArrayForeachVal =
+    assertNoCallsExcept(
+      "(a: Array[Int]) = a.foreach(consume)",
+      Set("consume"),
+      extraMemberSources = List("def consume(i: Int): Unit = ()")
     )
-  @Test def classOfThenNewArrayThenArrayUpdate =
-    testEquivalence(
-      "Array[Int](5)(0) = 123",
-      "scala.runtime.ScalaRunTime.array_update(scala.reflect.ClassTag(classOf[Int]).newArray(5), 0, 123)",
-      returnType = "Unit"
+
+  @Test def cleanArrayForeachRef =
+    assertNoCallsExcept(
+      "(a: Array[String]) = a.foreach(_.trim)",
+      Set("trim")
     )
-  @Test def arrayGetLength =
-    testEquivalence(
-      "x.length",
-      "java.lang.reflect.Array.getLength(x)",
-      params = List("x: Array[Int]")
+
+  @Test def cleanArrayMapVal =
+    assertNoCalls(
+      "(a: Array[Int]) = a.map(_ + 1)"
     )
-  @Test def arrayGetClass =
-    testEquivalence(
-      "classOf[Array[Int]]",
-      "val x = Array[Int](); x.getClass",
-      returnType = "Class[?]"
+
+  @Test def cleanArrayMapRef =
+    assertNoCallsExcept(
+      "(a: Array[String]) = a.map(_.trim)",
+      Set("trim")
+    )
+
+  @Test def cleanArrayExistsVal = // also covers "forall", "indexWhere", "find" (implemented similarly)
+    assertNoBoxing(
+      "(a: Array[Int]) = a.exists(_ == 0)"
+    )
+
+  @Test def cleanArrayFoldLeftVal = // also covers "fold", "foldRight"
+    assertNoCallsExcept(
+      "(a: Array[Int]) = a.foldLeft(0)(_ + _)",
+      Set("<init>") // exception constructor
+    )
+
+  @Test def cleanArrayFoldLeftRef =
+    assertNoCallsExcept(
+      "(a: Array[String]) = a.foldLeft(0)(_ + _.length)",
+      Set("<init>", "length") // exception constructor
+    )
+
+  @Test def cleanArrayScanLeftVal = // also covers "scan", "scanRight"
+    assertNoCalls(
+      "(a: Array[Int]) = a.scanLeft(0)(_ + _)"
+    )
+
+  @Test def cleanArrayScanLeftRef =
+    assertNoCallsExcept(
+      "(a: Array[String]) = a.scanLeft(0)(_ + _.length)",
+      Set("length")
+    )
+
+  @Test def cleanArrayScanLeftRef2 =
+    assertNoCallsExcept(
+      "(a: Array[String]) = a.scanLeft(\"\")((_, s) => s.trim)",
+      Set("trim")
+    )
+
+  @Test def cleanArrayMapInPlaceVal =
+    assertNoCalls(
+      "(a: Array[Int]) = a.mapInPlace(_ + 1)"
+    )
+
+  @Test def cleanArrayMapInPlaceRef =
+    assertNoCallsExcept(
+      "(a: Array[String]) = a.mapInPlace(_.trim)",
+      Set("trim")
+    )
+
+  @Test def cleanArrayCountVal =
+    assertNoBoxing(
+      "(a: Array[Int]) = a.count(_ == 0)"
     )
 }
