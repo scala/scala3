@@ -1,4 +1,0 @@
-ErrorHandler$::defaultIfIOException(Lscala/Function0;Lscala/Function0;)Ljava/lang/Object; is annotated @inline but could not be inlined:
-The operand stack at the callsite in C::t()V contains more values than the
-arguments expected by the callee ErrorHandler$::defaultIfIOException(Lscala/Function0;Lscala/Function0;)Ljava/lang/Object;. These values would be discarded
-when entering an exception handler declared in the inlined method.
