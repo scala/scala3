@@ -93,9 +93,21 @@ transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & SortedMapOps[X, 
 
   def unsorted: Map[K, V]
 
-  override def keySet: SortedSet[K] = new ImmutableKeySortedSet
+  override def keySet: SortedSet[K] = new LazyImmutableKeySortedSet
 
   /** The implementation class of the set returned by `keySet`. */
+  private class LazyImmutableKeySortedSet extends LazyKeySortedSet with SortedSet[K] {
+    override def diff(that: scala.collection.Set[K]): SortedSet[K] = super.diff(that)
+    override def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
+      val map = self.rangeImpl(from, until)
+      new map.LazyImmutableKeySortedSet
+    }
+    def incl(elem: K): SortedSet[K] = fromSpecific(this).incl(elem)
+    def excl(elem: K): SortedSet[K] = fromSpecific(this).excl(elem)
+  }
+
+  /** The implementation class of the set returned by `keySet` */
+  @deprecated("ImmutableKeySortedSet is no longer used by the .keySet implementation", since = "3.8.0")
   protected class ImmutableKeySortedSet extends AbstractSet[K] with SortedSet[K] with GenKeySet with GenKeySortedSet {
     def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
       val map = self.rangeImpl(from, until)
