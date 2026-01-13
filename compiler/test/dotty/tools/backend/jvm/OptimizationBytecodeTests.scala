@@ -3,6 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.backend.jvm.ASMConverters.instructionsFromMethod
 import org.junit.{Ignore, Test}
 
+@Ignore("Disabled until we have ported the Scala2 optimizer")
 class OptimizationBytecodeTests extends DottyBytecodeTest {
   def testEquivalence(expectedSource: String, actualSource: String, params: List[String] = Nil, extraMemberSources: List[String] = Nil, returnType: String = "Int"): Unit = {
     val source =
