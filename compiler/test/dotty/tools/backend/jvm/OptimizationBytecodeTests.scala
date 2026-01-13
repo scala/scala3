@@ -493,16 +493,52 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       returnType = "Unit"
     )
 
+  @Test def regression618 =
+    val source =
+      """trait T {
+        |  final def m1 = 1 // trivial
+        |  final def m2 = p // forwarder
+        |  @noinline def p = 42
+        |}
+        |
+        |object TT extends T // gets mixin forwarders m1 / m2 which call the static T.m1$ / T.m2$
+        |
+        |class C {
+        |  def t1a(t: T) = t.m1 // inlined, so we get 1
+        |  def t1b = TT.m1      // mixin forwarder is inlined, static forwarder then as well because the final method is trivial
+        |  def t2a(t: T) = t.m2 // inlined, so we get T.p
+        |  def t2b = TT.m2      // mixin forwarder is inlined, static forwarder then as well because the final method is forwarder
+        |}
+      """.stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("C.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val meth1a = getMethod(clsNode, "t1a")
+      val meth1b = getMethod(clsNode, "t1b")
+      val meth2a = getMethod(clsNode, "t2a")
+      val meth2b = getMethod(clsNode, "t2b")
+      assert(instructionsFromMethod(meth1a).forall(i => !i.isInstanceOf[ASMConverters.Invoke]), "t1a should not have calls")
+      assert(instructionsFromMethod(meth1b).forall(i => !i.isInstanceOf[ASMConverters.Invoke]), "t1b should not have calls")
+      assert(instructionsFromMethod(meth2a).forall {
+        case ASMConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
+        case _ => true
+      }, "t2a should only call T.p")
+      assert(instructionsFromMethod(meth2b).forall {
+        case ASMConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
+        case _ => true
+      }, "t2b should only call T.p")
+    }
 
   @Test def t2171 =
     testEquivalence(
       "while(true) {}",
       "while(true) m(\"...\")",
+      returnType = "Unit",
       extraMemberSources = List("final def m(msg: => String) = try 0 catch { case ex: Throwable => println(msg) }")
     )
 
 
-  private def assertNoCallsExcept(body: String, allowedCalls: String => Boolean, extraMemberSources: List[String]): Unit =
+  private def assertNoCallsExcept(body: String, allowedCalls: (String, String) => Boolean, extraMemberSources: List[String]): Unit =
     val source =
       f"""
          |class Test {
@@ -517,20 +553,23 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       val meth = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(meth)
       for instr <- instructions do instr match {
-        case ASMConverters.Invoke(_, owner, name, _, _) => assert(allowedCalls(name), s"Found call to $owner.$name")
-        case ASMConverters.InvokeDynamic(_, name, _, _, _) => assert(allowedCalls(name), s"Found call to $name")
+        case ASMConverters.Invoke(_, owner, name, _, _) => assert(allowedCalls(owner, name), s"Found call to $owner.$name")
+        case ASMConverters.InvokeDynamic(_, name, _, _, _) => assert(false, s"Found unexpected invokedynamic (to $name)")
         case _ => ()
       }
     }
 
   private def assertNoCallsExcept(body: String, allowedCalls: Set[String], extraMemberSources: List[String] = Nil): Unit =
-    assertNoCallsExcept(body, allowedCalls.contains, extraMemberSources)
+    assertNoCallsExcept(body, (_, n) => allowedCalls.contains(n), extraMemberSources)
 
-  private def assertNoBoxing(body: String, extraMemberSources: List[String] = Nil) =
-    assertNoCallsExcept(body, s => !s.contains("box") && !s.contains("unbox"), extraMemberSources)
+  private def assertNoCallsToClasses(body: String, disallowedClasses: Set[String], extraMemberSources: List[String] = Nil): Unit =
+    assertNoCallsExcept(body, (o, _) => disallowedClasses.forall(c => !o.contains(c)), extraMemberSources)
 
-  private def assertNoCalls(body: String, extraMemberSources: List[String] = Nil) =
-    assertNoCallsExcept(body, _ => false, extraMemberSources)
+  private def assertNoBoxing(body: String, extraMemberSources: List[String] = Nil): Unit =
+    assertNoCallsToClasses(body, Set("BoxesRunTime"), extraMemberSources)
+
+  private def assertNoCalls(body: String, extraMemberSources: List[String] = Nil): Unit =
+    assertNoCallsExcept(body, (_, _) => false, extraMemberSources)
 
   @Test def cleanArrayForeachVal =
     assertNoCallsExcept(
@@ -548,6 +587,16 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
   @Test def cleanArrayMapVal =
     assertNoCalls(
       "(a: Array[Int]) = a.map(_ + 1)"
+    )
+
+  @Test def cleanArrayMapVal2 =
+    assertNoCalls(
+      "(a: Array[Byte]): Array[Int] = a.map(_ + 1)"
+    )
+
+  @Test def cleanArrayMapVal3 =
+    assertNoCalls(
+      "(a: Array[Byte]): Array[Byte] = a.map(x => (x + 1).toByte)"
     )
 
   @Test def cleanArrayMapRef =
@@ -605,4 +654,17 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertNoBoxing(
       "(a: Array[Int]) = a.count(_ == 0)"
     )
+
+  @Test def cleanArrayFill =
+    assertNoCalls(
+      "() = Array.fill[Option[Any]](10)(None)"
+    )
+
+  @Test def cleanRangeForeach =
+    assertNoCallsToClasses(
+      "() = { var x = 0; for i <- 1 to 10 do x += i; x }",
+      Set("IntRef")
+    )
+
+  // TODO: once we have an inliner and thus CLI args, look into t11255 from scala/scala's test/files/run (https://github.com/scala/scala/pull/7438)
 }
