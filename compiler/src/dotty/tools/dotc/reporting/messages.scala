@@ -1191,8 +1191,8 @@ extends DeclarationMsg(OverridesNothingButNameExistsID) {
 }
 
 class OverrideError(
-    core: Context ?=> String, base: Type,
-    member: Symbol, other: Symbol,
+    val core: Context ?=> String, base: Type,
+    val member: Symbol, val other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
   withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
@@ -1211,30 +1211,6 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
     memberTp.exists && otherTp.exists
   def explain(using Context) =
     if canExplain then err.whyNoMatchStr(memberTp, otherTp) else ""
-
-  /** Whether the overridden symbol has a valid source position */
-  private def otherHasValidPos(using Context): Boolean =
-    val otherPos = other.sourcePos
-    otherPos.exists && otherPos.source.file.exists
-
-  override def leading(using Context): Option[String] =
-    if otherHasValidPos then Some(message) else None
-
-  override def parts(using Context): List[Message.MessagePart] =
-    if otherHasValidPos then
-      List(
-        Message.MessagePart(
-          i"the overridden ${other.showKind} is here",
-          other.sourcePos,
-          isPrimary = false
-        ),
-        Message.MessagePart(
-          i"the overriding ${member.showKind} $core",
-          member.sourcePos,
-          isPrimary = true
-        )
-      )
-    else Nil
 
 class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
 extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
@@ -3774,7 +3750,7 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
 
-class UseAfterConsume(ref: cc.Capabilities.Capability, consumedLoc: SourcePosition, useLoc: SourcePosition, howConsumed: => String)(using Context) extends Message(NoExplanationID):
+class UseAfterConsume(ref: cc.Capabilities.Capability, howConsumed: => String)(using Context) extends Message(NoExplanationID):
   def kind = MessageKind.NoKind
 
   protected def msg(using Context): String =
@@ -3782,18 +3758,3 @@ class UseAfterConsume(ref: cc.Capabilities.Capability, consumedLoc: SourcePositi
        |and therefore is no longer available."""
 
   protected def explain(using Context): String = ""
-
-  override def leading(using Context): Option[String] = Some(message)
-
-  override def parts(using Context): List[Message.MessagePart] = List(
-    Message.MessagePart(
-      "The capability was consumed here.",
-      consumedLoc,
-      isPrimary = false
-    ),
-    Message.MessagePart(
-      "Then, it was used here",
-      useLoc,
-      isPrimary = true
-    )
-  )

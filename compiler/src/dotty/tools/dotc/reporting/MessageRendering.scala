@@ -254,11 +254,11 @@ trait MessageRendering {
     pos
 
   /** Render parts for a single source file.
-   *  @param parts the message parts to render (all must be from the same source)
+   *  @param parts the diagnostic parts to render (all must be from the same source)
    *  @param sb the StringBuilder to append to
    */
   private def renderPartsForFile(
-    parts: List[Message.MessagePart],
+    parts: List[Diagnostic.DiagnosticPart],
     sb: StringBuilder
   )(using Context, Level, Offset): Unit =
     if parts.isEmpty then return
@@ -364,7 +364,7 @@ trait MessageRendering {
   end renderPartsForFile
 
   /** Group consecutive parts by their source file. */
-  private def groupPartsByFile(parts: List[Message.MessagePart]): List[(SourceFile, List[Message.MessagePart])] =
+  private def groupPartsByFile(parts: List[Diagnostic.DiagnosticPart]): List[(SourceFile, List[Diagnostic.DiagnosticPart])] =
     if parts.isEmpty then Nil
     else
       val head = parts.head
@@ -372,21 +372,21 @@ trait MessageRendering {
       val (sameSrc, rest) = parts.span(_.srcPos.source == source)
       (source, sameSrc) :: groupPartsByFile(rest)
 
-  /** Render a message using multi-span information from Message.parts. */
+  /** Render a message using multi-span information from Diagnostic parts. */
   def messageAndPosFromParts(dia: Diagnostic)(using Context): String =
     val msg = dia.msg
     val pos = dia.pos
     val pos1 = adjust(pos.nonInlined)
-    val msgParts = msg.parts
+    val diagParts = dia.parts
 
-    if msgParts.isEmpty then
-      return msg.leading.getOrElse("") + (if msg.leading.isDefined then "\n" else "") + msg.message
+    if diagParts.isEmpty then
+      return msg.message
 
-    // Collect all positions from message parts
-    val validParts = msgParts.filter(p => p.srcPos.exists && p.srcPos.source.file.exists)
+    // Collect all positions from diagnostic parts
+    val validParts = diagParts.filter(p => p.srcPos.exists && p.srcPos.source.file.exists)
 
     if validParts.isEmpty then
-      return msg.leading.map(_ + "\n").getOrElse("") + msg.message
+      return msg.message
 
     // Group parts by consecutive source files
     val groupedParts = groupPartsByFile(validParts)
@@ -403,11 +403,10 @@ trait MessageRendering {
     val posString = posStr(pos1, msg, diagnosticLevel(dia))
     if posString.nonEmpty then sb.append(posString).append(EOL)
 
-    // Display leading text if present
-    msg.leading.foreach { leadingText =>
-      sb.append(leadingText)
-      if !leadingText.endsWith(EOL) then sb.append(EOL)
-    }
+    // Display main message
+    sb.append(msg.message)
+    if !msg.message.endsWith(EOL) then sb.append(EOL)
+    sb.append(EOL)
 
     // Track the current file
     // When starting, we set it to the file of the diagnostic
@@ -457,8 +456,8 @@ trait MessageRendering {
    */
   def messageAndPos(dia: Diagnostic)(using Context): String =
     val msg = dia.msg
-    // Check if message provides its own multi-span structure
-    if msg.leading.isDefined || msg.parts.nonEmpty then
+    // Check if diagnostic provides multi-span structure
+    if dia.parts.nonEmpty then
       messageAndPosFromParts(dia)
     else
       val pos = dia.pos

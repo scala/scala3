@@ -300,13 +300,6 @@ object Message:
       super.toText(sym)
   end Printer
 
-  /** A part of a multi-span message, associating text with a source position.
-   *  @param text       the message text for this part
-   *  @param srcPos     the source position where this part applies
-   *  @param isPrimary  whether this is the primary message (true) or a secondary note (false)
-   */
-  case class MessagePart(text: String, srcPos: util.SourcePosition, isPrimary: Boolean)
-
 end Message
 
 /** A `Message` contains all semantic information necessary to easily
@@ -376,17 +369,6 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     * avoid these errors. It might contain embedded <nonsensical> tags.
     */
   protected def explain(using Context): String
-
-  /** Optional leading text to be displayed before the source snippet.
-    * If present along with parts, triggers multi-span rendering.
-    */
-  def leading(using Context): Option[String] = None
-
-  /** Optional list of message parts for multi-span error messages.
-    * Each part associates text with a source position and indicates
-    * whether it's a primary message or a secondary note.
-    */
-  def parts(using Context): List[MessagePart] = Nil
 
   /** What gets printed after the message proper */
   protected def msgPostscript(using Context): String =

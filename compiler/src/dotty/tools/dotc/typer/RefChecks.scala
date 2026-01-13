@@ -449,7 +449,26 @@ object RefChecks {
         if !(hasErrors && member.is(Synthetic) && member.is(Module) || member.isDummyCaptureParam) then
           // suppress errors relating to synthetic companion objects and capture parameters if other override
           // errors (e.g. relating to the companion class) have already been reported.
-          if (member.owner == clazz) report.error(fullmsg, member.srcPos)
+          val parts =
+            if fullmsg.isInstanceOf[reporting.OverrideError] then
+              val overrideErr = fullmsg.asInstanceOf[reporting.OverrideError]
+              val otherPos = overrideErr.other.sourcePos
+              if otherPos.exists && otherPos.source.file.exists then
+                List(
+                  reporting.Diagnostic.DiagnosticPart(
+                    i"the overridden ${overrideErr.other.showKind} is here",
+                    otherPos,
+                    isPrimary = false
+                  ),
+                  reporting.Diagnostic.DiagnosticPart(
+                    i"the overriding ${overrideErr.member.showKind} ${overrideErr.core}",
+                    overrideErr.member.sourcePos,
+                    isPrimary = true
+                  )
+                )
+              else Nil
+            else Nil
+          if (member.owner == clazz) report.error(fullmsg, member.srcPos, parts)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
 
