@@ -43,7 +43,7 @@ abstract class BaseSignatureHelpSuite extends BasePCSuite:
         out
           .append(signature.getLabel)
           .append("\n")
-        if (result.getActiveSignature == i && result.getActiveParameter != null && result.getActiveParameter() >= 0 && signature.getParameters.size() > 0) {
+        if (result.getActiveSignature == i && result.getActiveParameter != null && result.getActiveParameter() >= 0 && result.getActiveParameter() < signature.getParameters.size()) {
           val param = signature.getParameters.get(result.getActiveParameter)
           val label = param.getLabel.getLeft()
           /* We need to find the label of the active parameter and show ^ at that spot
