@@ -2,7 +2,7 @@ package dotty.tools.backend.jvm
 
 import scala.language.unsafeNulls
 import org.junit.Assert.*
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 import scala.tools.asm
 import asm.*
