@@ -30,7 +30,6 @@ val `scala3-language-server` = Build.`scala3-language-server`
 val `tasty-core-nonbootstrapped` = Build.`tasty-core-nonbootstrapped`
 val `tasty-core-bootstrapped-new` = Build.`tasty-core-bootstrapped-new`
 val scaladoc = Build.scaladoc
-val `scaladoc-new` = Build.`scaladoc-new`
 val `scaladoc-testcases` = Build.`scaladoc-testcases`
 val `scaladoc-js-common` = Build.`scaladoc-js-common`
 val `scaladoc-js-main` = Build.`scaladoc-js-main`
