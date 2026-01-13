@@ -5,7 +5,7 @@ package reporting
 import core.*
 import Contexts.*
 import Decorators.*, Symbols.*, Names.*, Types.*, Flags.*
-import typer.ProtoTypes.{FunProto, SelectionProto}
+import typer.ProtoTypes.SelectionProto
 
 /** A utility object to support "did you mean" hinting */
 object DidYouMean:
@@ -100,7 +100,7 @@ object DidYouMean:
         else (dist(j - 1)(i) min dist(j)(i - 1) min dist(j - 1)(i - 1)) + 1
     dist(s2.length)(s1.length)
 
-  /** List of possible candidate names with their Levenstein distances
+  /** List of possible candidate names with their Levenshtein distances
    *  to the name `from` of the missing member.
    *  @param maxDist  Maximal number of differences to be considered for a hint
    *                  A distance qualifies if it is at most `maxDist`, shorter than

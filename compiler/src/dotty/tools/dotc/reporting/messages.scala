@@ -19,7 +19,7 @@ import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
+import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
@@ -34,7 +34,6 @@ import cc.CaptureSet.IdentityCaptRefMap
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
-import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
@@ -276,13 +275,16 @@ class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name, proto: T
 extends NotFoundMsg(MissingIdentID) {
   def msg(using Context) =
     val missing = name.show
-    val addendum =
-      didYouMean(
-        inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true)
-          .closestTo(missing),
-        proto, "")
-
-    i"Not found: $treeKind$name$addendum"
+    val candidates = inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing)
+    // If we're looking for a term X and a type X is in scope, don't emit "Not found: X" as that's confusing for beginners
+    if !name.isTypeName
+      && candidates.isEmpty
+      && inScopeCandidates(true, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing, maxDist = 0).nonEmpty
+    then
+      f"Expected a term, but found a type: $treeKind$name"
+    else
+      val addendum = didYouMean(candidates, proto, "")
+      i"Not found: $treeKind$name$addendum"
   def explain(using Context) = {
     i"""|Each identifier in Scala needs a matching declaration. There are two kinds of
         |identifiers: type identifiers and value identifiers. Value identifiers are introduced
@@ -294,7 +296,8 @@ extends NotFoundMsg(MissingIdentID) {
         |
         |Possible reasons why no matching declaration was found:
         | - The declaration or the use is mis-spelt.
-        | - An import is missing."""
+        | - An import is missing.
+        | - The declaration exists but refers to a type, in a context where a term is expected."""
   }
 }
 
