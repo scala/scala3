@@ -368,6 +368,24 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     )
 
 
+  @Test def deadUnbox = testEquivalence(
+    "1",
+    "Byte.unbox(b); 1",
+    params = List("b: java.lang.Byte")
+  )
+
+  @Test def deadUnboxBox = testEquivalence(
+    "1",
+    "Int.unbox(Integer.valueOf(n)); 1",
+    params = List("n: Int")
+  )
+
+  @Test def deadUnboxNull = testEquivalence(
+    "1",
+    "Byte.unbox(null); 1"
+  )
+
+
   @Test def deadCodeAfterReturn =
     testEquivalence(
       "1",
@@ -380,6 +398,12 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       "throw new Error(); 2"
     )
 
+
+  @Test def deadCodeFromNullCheckOfThis =
+    testEquivalence(
+      "1",
+      "if (this == null) then return 2; 1"
+    )
 
   @Test def deadCodeFromNullCheckOfConstantNull =
     testEquivalence(
@@ -460,7 +484,20 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     )
 
 
-  // REVIEW: these seem more questionable, what value do they add?
+  @Test def regression12343 = // https://github.com/scala/bug/issues/12343
+    testEquivalence(
+      "()",
+      "val limit = 5; var n = 1; var (d, f) = progress match { case 0 => (10000L, 5); case _ => (250L, 4) }; ()",
+      params = List("terminated: => Boolean", "progress: Int = 0", "label: => String = \"test\""),
+      returnType = "Unit"
+    )
+
+
+  // REVIEW: These seem more questionable, what value do they add?
+  //         The scala2 test suite has some tests for stuff like `array.map(_ + 1)` ensuring it can be inlined to a while loop without boxing, do we want this?
+  //         or does HotSpot do our job for us?
+  //         I think it might make sense to check some end-to-end properties like "no boxing for this or that stdlib function",
+  //         but enshrining behavior like "we will optimize this specific method call if followed by this other method call" in a test seems brittle
   @Test def classOfThenNewArray =
     testEquivalence(
       // REVIEW: observation while debugging --
@@ -495,10 +532,4 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       "val x = Array[Int](); x.getClass",
       returnType = "Class[?]"
     )
-
-  // REVIEW: the scala2 test suite has some tests for stuff like `array.map(_ + 1)` ensuring it can be inlined to a while loop without boxing, do we want this?
-  //         or does HotSpot do our job for us?
-
-  // TODO: more generally we should port scala2 optimizer unit tests as some are regression tests,
-  //       e.g., https://github.com/scala/scala/pull/10404
 }
