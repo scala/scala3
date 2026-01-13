@@ -12,6 +12,7 @@ def foo(using Quotes) =
   val '[type t <: String; t] = x // warn
   val '[List[t]] = x // warn
 
+  // wrapped in other types
   ('{1}, '{0}) match // ok
     case ('{$y}, '{$z}) => ()
 
@@ -41,3 +42,34 @@ def foo(using Quotes) =
 
   (x, x) match // warn
     case ('[List[String]], '[q]) => ()
+
+  // individual
+  '{1} match // ok
+    case '{$y} => ()
+
+  '{1} match // ok
+    case '{$y: Int} => ()
+
+  '{""} match // warn
+    case '{$z: Int} => ()
+
+  '{0} match // warn
+    case '{0} => ()
+
+  '{0} match // warn
+    case '{call(); $y} => ()
+
+  x match // ok
+    case '[t] => ()
+
+  x match // warn
+    case '[type t <: Number; t] => ()
+
+  x match // warn
+    case '[List[t]] => ()
+
+  x match // warn
+    case '[List[String]] => ()
+
+  x match // warn
+    case '[Int] => ()
