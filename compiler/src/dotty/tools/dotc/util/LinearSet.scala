@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-import scala.collection.immutable
+import collection.immutable
 
 /** A linear set is a set where after a `+` the previous set value cannot be
  *  used anymore. The set is implemented as an immutable set for sizes <= 4

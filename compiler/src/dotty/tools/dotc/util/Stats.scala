@@ -5,7 +5,7 @@ package util
 import scala.annotation.internal.sharable
 
 import core.Contexts.*
-import scala.collection.mutable
+import collection.mutable
 
 @sharable object Stats {
 

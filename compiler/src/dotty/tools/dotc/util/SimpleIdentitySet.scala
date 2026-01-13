@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-import scala.collection.mutable
+import collection.mutable
 
 /** A simple linked set with `eq` as the comparison, optimized for small sets.
  *  It has linear complexity for `contains`, `+`, and `-`.
