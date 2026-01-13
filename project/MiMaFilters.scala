@@ -9,19 +9,6 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
-        // scala/scala3#24545 / scala/scala3#24788
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedOverride"),
-
-        // against 3.8.0-RC1
-        // new private[collection] class StrictKeySet
-        ProblemFilters.exclude[MissingClassProblem]("scala.collection.MapOps$StrictKeySet"),
-        // private[MapOps] MapOps.allKeys changing types
-        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.MapOps#GenKeySet.allKeys"),
-        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.MapOps#GenKeySet.scala$collection$MapOps$GenKeySet$_setter_$allKeys_="),
-        // new private[collection] classes
-        ProblemFilters.exclude[MissingClassProblem]("scala.collection.SortedMapOps$LazyKeySortedSet"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.MapOps$LazyImmutableKeySet"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.SortedMapOps$LazyImmutableKeySortedSet"),
       ),
 
     )
@@ -32,12 +19,6 @@ object MiMaFilters {
 
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> Seq(
-        // scala/scala3#24855 - copied from Scala 2.13.16 by ScalaLibraryPlugin, to be removed when Scala 3.8.0 is released
-        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyList$State*"),
-        // ONLY against 3.8.0-RC1 : it was a breaking change in 3.8.0-RC1 to add this method
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.MapOps#KeySet.allKeys"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SortedMapOps#KeySortedSet.allKeys"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.SortedMapOps#ImmutableKeySortedSet.allKeys"),
       )
     )
   }
