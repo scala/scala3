@@ -219,7 +219,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     * See [[MapOps.LazyKeySet]] for a version that lazily captures the map.
     */
   @deprecated("GenKeySet is not capture-safe, and so is deprecated and no longer used in .keySet implementations.", since = "3.8.0")
-  protected trait GenKeySet @retains[MapOps.this.type] () { // todo change @retains to uses_init when we bootstrap with 3.8.1
+  protected trait GenKeySet @retains[MapOps.this.type] () { // todo change @retains to uses_init when we bootstrap with 3.8.2
     this: Set[K] =>
     import caps.unsafe.{unsafeDiscardUses, unsafeAssumePure}
     def iterator: Iterator[K] = unsafeDiscardUses(MapOps.this).keysIterator.unsafeAssumePure
