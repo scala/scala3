@@ -82,18 +82,18 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     )
 
 
-  @Test def inlineNonGenericIdentityFunction =
+  @Test def inlineNonGenericLocallyFunction =
     testEquivalence(
       "1",
-      "id(1)",
-      extraMemberSources = List("final def id(x: Int): Int = x")
+      "locally { 1 }",
+      extraMemberSources = List("@inline def locally(x: Int): Int = x") // simplified from the form below
     )
 
-  @Test def inlineGenericIdentityFunction =
+  @Test def inlineGenericLocallyFunction =
     testEquivalence(
       "1",
-      "id(1)",
-      extraMemberSources = List("final def id[T](x: T): T = x")
+      "locally { 1 }",
+      extraMemberSources = List("@inline def locally[T](@deprecatedName(\"x\") x: T): T = x") // copied from Predef.scala
     )
 
 
