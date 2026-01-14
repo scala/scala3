@@ -1,0 +1,3 @@
+> run
+$ copy-file Dep.scala-added Dep.scala
+-> compile

@@ -1,0 +1,4 @@
+# adapted from https://github.com/sbt/zinc/blob/1e422e5525c698aa71cc35b30c275c8c1c3135b2/zinc/src/sbt-test/macros/macro-type-change-3/test
+> app/run false
+$ copy-file changes/A1.scala A/A.scala
+> app/run true
