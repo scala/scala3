@@ -686,6 +686,10 @@ object RefChecks {
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
             impl => isConcrete(impl.symbol)
+              // Extension methods cannot implement non-extension abstract methods (they are static
+              // methods with an extra receiver parameter, even if erased parameters make signatures
+              // appear to match). But extension methods CAN implement abstract extension methods.
+              && !(impl.symbol.is(ExtensionMethod) && !mbr.is(ExtensionMethod))
               && withMode(Mode.IgnoreCaptures)(mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true)))
           .exists
 
