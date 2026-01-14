@@ -3,10 +3,16 @@
 // with a named tuple type, not a named pattern.
 
 object Test {
+  val ab: (a: Int, b: String) = (42, "hello, world")
+
   // Basic case from the issue
   ??? match {
     case _: (a: Int, b: String) => ???
   }
+
+  def `named tuple type in pattern with binding` =
+    ab match
+    case x: (a: Int, b: String) => x.b * x.a
 
   // Named tuple type in pattern with binding
   ??? match {
