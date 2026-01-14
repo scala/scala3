@@ -275,14 +275,16 @@ class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name, proto: T
 extends NotFoundMsg(MissingIdentID) {
   def msg(using Context) =
     val missing = name.show
-    val candidates = inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing)
-    // If we're looking for a term X and a type X is in scope, don't emit "Not found: X" as that's confusing for beginners
-    if !name.isTypeName
-      && candidates.isEmpty
-      && inScopeCandidates(true, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing, maxDist = 0).nonEmpty
-    then
-      f"Expected a term, but found a type: $treeKind$name"
+    // If we're looking for a term or type X and a type or term X respectively is in scope, don't emit "Not found: X" as that's confusing for beginners
+    val wrongKind = inScopeCandidates(!name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing, maxDist = 0)
+    if wrongKind.nonEmpty then
+      if name.isTypeName then
+        val extra = if wrongKind.exists(_._2.sym.denot.is(Module)) then f" - did you mean $name.type?" else ""
+        i"Expected a type, but found a term: $name$extra"
+      else
+        i"Expected a term, but found a type: $name"
     else
+      val candidates = inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing)
       val addendum = didYouMean(candidates, proto, "")
       i"Not found: $treeKind$name$addendum"
   def explain(using Context) = {
@@ -297,7 +299,7 @@ extends NotFoundMsg(MissingIdentID) {
         |Possible reasons why no matching declaration was found:
         | - The declaration or the use is mis-spelt.
         | - An import is missing.
-        | - The declaration exists but refers to a type, in a context where a term is expected."""
+        | - The declaration exists but refers to a type in a context where a term is expected, or vice-versa."""
   }
 }
 
