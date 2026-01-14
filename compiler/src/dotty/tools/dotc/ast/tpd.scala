@@ -474,7 +474,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
     if tp.isType then TypeTree(tp)
-    else if prefixIsElidable(tp) then Ident(tp)
+    else if prefixIsElidable(tp) then
+      Ident(tp)
     else if tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass) then
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else if tp.symbol.hasAnnotation(defn.ScalaStaticAnnot) then
@@ -515,7 +516,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ref(NamedType(simplifyThisTypePrefix(sym.owner.thisType), sym.name, sym.denot))
 
   private def followOuterLinks(t: Tree)(using Context) = t match {
-    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+    case t: This
+      if ctx.erasedTypes
+      && ctx.owner != defn.RootClass
+      && t.symbol != ctx.owner.enclosingClass
+      && !t.symbol.isStaticOwner
+    =>
       // after erasure outer paths should be respected
       ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.classSymbol)
     case t =>
@@ -1520,6 +1526,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       prefix.info match
         case mt: MethodType if mt.paramInfos.isEmpty && mt.resultType.typeSymbol.is(Module) =>
           ref(mt.resultType.typeSymbol.sourceModule)
+        //case tref @ TypeRef(_: ThisType, _) if tref.symbol.is(ModuleClass) =>
+        //  This(tref.symbol.asClass)
         case _ =>
           ref(prefix)
     case TermRef(prefix: ThisType, _) =>

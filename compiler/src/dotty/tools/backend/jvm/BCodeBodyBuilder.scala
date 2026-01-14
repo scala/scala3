@@ -51,11 +51,13 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         if (found == null) {
           tpd.desugarIdent(i) match {
             case sel: tpd.Select =>
+              //println(s"DESUGAR $i (${i.tpe}) -> $sel")
               desugared.put(i.tpe, sel)
               found = sel
             case _ =>
           }
         }
+        //else println(s"FOUND $i (${i.tpe}) -> $found")
         Option(found)
       }
 
@@ -427,9 +429,11 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         case DesugaredSelect(qualifier, _) =>
           val sym = tree.symbol
           generatedType = symInfoTK(sym)
-          val qualSafeToElide = tpd.isIdempotentExpr(qualifier)
 
-          def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
+          def genLoadQualUnlessElidable(): Unit = {
+            val qualSafeToElide = tpd.isIdempotentExpr(qualifier)
+            if !qualSafeToElide then genLoadQualifier(tree)
+          }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
           def receiverClass = qualifier.tpe.typeSymbol
