@@ -245,7 +245,9 @@ object SpaceEngine {
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1.stripNamedTuple, tp2) && covers(fun, tp1, ss.length) then
+        if (isSubType(tp1.stripNamedTuple, tp2)
+          || (tp1.isRef(tp2.classSymbol) && tp1.classSymbol.is(CaseClass)))
+          && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a
