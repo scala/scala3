@@ -2748,7 +2748,10 @@ object Types extends TypeUtils {
       if reduced.exists then reduced
       else prefix.stripTypeVar match
         case pre: (AppliedType | TypeRef)
-        if prefix.dealias.typeSymbol.isClass && this.symbol.isAliasType => dealias
+        // Don't dealias opaque types - they should maintain their opacity
+        // when accessed from outside their defining scope. See issue #24051.
+        if prefix.dealias.typeSymbol.isClass && this.symbol.isAliasType && !this.symbol.isOpaqueAlias =>
+          dealias
         case _ => this
 
     /** Guard against cycles that can arise if given `op`
@@ -2840,7 +2843,9 @@ object Types extends TypeUtils {
         val reduced =
           if isType && currentValidSymbol.isAllOf(ClassTypeParam) then argForParam(prefix)
           else prefix.lookupRefined(name)
-        if reduced.exists then return reduced
+        // Don't expose opaque aliases through lookupRefined - they should
+        // maintain their opacity when accessed from outside. See issue #24051.
+        if reduced.exists && !currentValidSymbol.isOpaqueAlias then return reduced
         if Config.splitProjections && isType then
           prefix match
             case prefix: AndType =>
@@ -3035,6 +3040,35 @@ object Types extends TypeUtils {
     override protected def designator_=(d: Designator): Unit = myDesignator = d
 
     override def underlying(using Context): Type = info
+
+    /** For opaque types accessed via ThisType prefix from outside their defining scope,
+     *  we should not expose the underlying alias through superType. This prevents
+     *  types like OpaqueType[String] from being treated as Unit outside the scope.
+     *  See issue #24051.
+     */
+    override def superType(using Context): Type = info match {
+      case TypeAlias(aliased) =>
+        // Check if this is an opaque type with a ThisType prefix that grants
+        // transparent access but we're outside the opaque scope
+        if symbol.isOpaqueAlias then
+          prefix match {
+            case pre: Types.ThisType if pre.cls.seesOpaques =>
+              // Only return the alias if we're inside the opaque scope
+              val opaqueOwner = symbol.maybeOwner
+              if opaqueOwner.exists && ctx.owner.ownersIterator.contains(opaqueOwner) then
+                aliased
+              else
+                // Outside the scope - return the upper bound (Any for unbounded opaques)
+                symbol.info match {
+                  case TypeBounds(_, hi) => hi
+                  case _ => defn.AnyType
+                }
+            case _ => aliased
+          }
+        else aliased
+      case TypeBounds(_, hi) => hi
+      case st => st
+    }
 
     override def translucentSuperType(using Context) = info match {
       case TypeAlias(aliased) => aliased
