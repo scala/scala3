@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i24750.scala:6:13 ---------------------------------------------
+6 |    duration.unit match // warn
+  |    ^^^^^^^^^^^^^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: DAYS
+  |
+  | longer explanation available when compiling with `-explain`
