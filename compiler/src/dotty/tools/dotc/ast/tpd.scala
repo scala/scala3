@@ -515,7 +515,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ref(NamedType(simplifyThisTypePrefix(sym.owner.thisType), sym.name, sym.denot))
 
   private def followOuterLinks(t: Tree)(using Context) = t match {
-    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+    case t: This
+      if ctx.erasedTypes
+      && ctx.owner != defn.RootClass
+      && t.symbol != ctx.owner.enclosingClass
+      && !t.symbol.isStaticOwner
+    =>
       // after erasure outer paths should be respected
       ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.classSymbol)
     case t =>
