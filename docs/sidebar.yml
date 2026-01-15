@@ -147,6 +147,8 @@ subsection:
     directory: experimental
     index: reference/experimental/overview.md
     subsection:
+      - page: reference/experimental/better-fors.md
+        hidden: true
       - page: reference/experimental/fewer-braces.md
         hidden: true
       - page: reference/experimental/canthrow.md
@@ -178,6 +180,8 @@ subsection:
       - page: reference/experimental/tupled-function.md
       - page: reference/experimental/modularity.md
       - page: reference/experimental/typeclasses.md
+      - page: reference/other-new-features/runtimeChecked.md
+        hidden: true
       - page: reference/experimental/unrolled-defs.md
       - page: reference/experimental/package-object-values.md
       - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
