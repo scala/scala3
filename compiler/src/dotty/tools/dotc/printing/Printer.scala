@@ -189,7 +189,7 @@ abstract class Printer {
 
   /** Render elements alternating with `sep` string */
   def toText(elems: Iterable[Showable], sep: String): Text =
-    Text(elems map (_ toText this), sep)
+    Text(elems.map(_.toText(this)), sep)
 
   /** Render elements within highest precedence */
   def toTextLocal(elems: Iterable[Showable], sep: String): Text =

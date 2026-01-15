@@ -82,7 +82,7 @@ object Substituters:
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
-            return substSym(tp.prefix, from, to, theMap) select ts.head
+            return substSym(tp.prefix, from, to, theMap).select(ts.head)
           fs = fs.tail
           ts = ts.tail
         }

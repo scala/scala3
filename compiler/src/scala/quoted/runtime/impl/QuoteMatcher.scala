@@ -88,7 +88,7 @@ import dotty.tools.dotc.ast.TreeTypeMap
  *   '{ e.super } =?= '{ p.super }   ===>   '{e} =?= '{p}
  *
  *   /* Match varargs */
- *   '{ e: _* } =?= '{ p: _* }   ===>   '{e} =?= '{p}
+ *   '{ e* } =?= '{ p* }   ===>   '{e} =?= '{p}
  *
  *   /* Match val */
  *   '{ val x: T = e1; e2 } =?= '{ val y: P = p1; p2 }   ===>   withEnv(x -> y)('[T] =?= '[P] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})

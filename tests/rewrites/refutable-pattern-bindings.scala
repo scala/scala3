@@ -21,7 +21,7 @@ val e :: f =
 
 val j :: k =
   for
-    (x: String) <- xs
+    case (x: String) <- xs
   yield x
 
 val (_: Int | _: AnyRef) = ??? : AnyRef

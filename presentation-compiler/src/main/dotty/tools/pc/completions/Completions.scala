@@ -218,6 +218,7 @@ class Completions(
                   suffix.withNewPrefix(Affix(PrefixKind.Using))
                 case _ => suffix
             case _ => suffix
+
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then

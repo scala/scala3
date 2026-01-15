@@ -31,6 +31,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.dotc.transform.ElimErasedValueType
+import dotty.tools.dotc.transform.Mixin
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
@@ -106,9 +107,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
     val versionPickle = {
       val vp = new PickleBuffer(new Array[Byte](16), -1, 0)
       assert(vp.writeIndex == 0, vp)
-      vp writeNat PickleFormat.MajorVersion
-      vp writeNat PickleFormat.MinorVersion
-      vp writeNat 0
+      vp.writeNat(PickleFormat.MajorVersion)
+      vp.writeNat(PickleFormat.MinorVersion)
+      vp.writeNat(0)
       vp
     }
 
@@ -395,12 +396,20 @@ trait BCodeHelpers extends BCodeIdiomatic {
      */
     def getGenericSignature(sym: Symbol, owner: Symbol): String = {
       atPhase(erasurePhase) {
-        val memberTpe =
+        def computeMemberTpe(): Type =
           if (sym.is(Method)) sym.denot.info
           else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
             // Memoization field of getter entered after erasure, see run/i17069 for an example
             sym.getter.denot.info.resultType
           else owner.denot.thisType.memberInfo(sym)
+
+        val memberTpe = if sym.is(MixedIn) then
+          mixinPhase.asInstanceOf[Mixin].mixinForwarderGenericInfos.get(sym) match
+            case Some(genericInfo) => genericInfo
+            case none              => computeMemberTpe()
+        else
+          computeMemberTpe()
+
         getGenericSignatureHelper(sym, owner, memberTpe).orNull
       }
     }
@@ -491,7 +500,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       report.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
       for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
-        val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
+        val m = if (m0.isOneOf(Bridge | MixedIn)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           report.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
         else if (m.isType || m.is(Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
@@ -507,10 +516,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
           // we generate ACC_SYNTHETIC forwarders so Java compilers ignore them.
           val isSynthetic =
             m0.name.is(NameKinds.SyntheticSetterName) ||
-            // Only hide bridges generated at Erasure, mixin forwarders are also
-            // marked as bridge but shouldn't be hidden since they don't have a
-            // non-bridge overload.
-            m0.is(Bridge) && m0.initial.validFor.firstPhaseId == erasurePhase.next.id
+            m0.is(Bridge)
           addForwarder(jclass, moduleClass, m, isSynthetic)
         }
       }
@@ -525,7 +531,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       val buffer = mutable.ListBuffer[Symbol]()
       names.foreach { name =>
         buffer ++= tp.memberBasedOnFlags(name, required, excluded)
-          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
+          .alternatives.sortBy(_.signature)(using Signature.lexicographicOrdering).map(_.symbol)
       }
       buffer.toList
     }

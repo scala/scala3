@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
 def foo = 23
 val bar = foo

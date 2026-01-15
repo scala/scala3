@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -feature
+//> using options -Werror -feature
 
 // in BadPrinter.scala
 import language.future

@@ -1,7 +1,8 @@
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 import caps.*
-class Ref extends Mutable
+class Ref extends Mutable:
+  update def set = ???
 def swap(a: Ref^, b: Ref^): Unit = ()
 def test1(): Unit =
   val a = Ref()

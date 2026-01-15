@@ -112,7 +112,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       ref1
     case _ =>
       ref.info match {
-        case ClassInfo(pre, cls, _, _, _) if cls is ModuleClass =>
+        case ClassInfo(pre, cls, _, _, _) if cls.is(ModuleClass) =>
           cls.linkedClass match {
             case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
               val info1 = atPhase(ctx.phase.next)(cls.denot).asClass.classInfo.derivedClassInfo(prefix = pre)

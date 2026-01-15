@@ -19,9 +19,6 @@ class SpecializeFunctions extends MiniPhase {
 
   override def runsAfter = Set(ElimByName.name)
 
-  override def isEnabled(using Context): Boolean =
-    !ctx.settings.scalajs.value
-
   /** Create forwarders from the generic applys to the specialized ones.
    */
   override def transformDefDef(ddef: DefDef)(using Context) = {

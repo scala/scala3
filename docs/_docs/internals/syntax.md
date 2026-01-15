@@ -141,7 +141,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  mut  opaque  open  throws tracked transparent  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  inline  opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -243,6 +243,7 @@ CapFilter         ::=  ‘.’ ‘as’ ‘[’ QualId ’]’                  
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  TypTypeParamClause ‘=>’ Expr                             PolyFunction(ts, expr)
+                    |  ExprCaseClause
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  TypTypeParamClause ‘=>’ Block
@@ -293,8 +294,11 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr							-- to be dropped
-ColonArgument     ::=  colon [LambdaStart]
+ColonArgument     ::=  colon {LambdaStart}
                        indent (CaseClauses | Block) outdent
+                    |  colon LambdaStart {LambdaStart} expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
+                                                                                -- does not apply if enclosed in parens
+                    |  colon ExprCaseClause
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
                     |  TypTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
@@ -365,7 +369,7 @@ Patterns          ::=  Pattern {‘,’ Pattern}
 NamedPattern      ::=  id '=' Pattern
 
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
-                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns]‘)’
 ```
 
 ### Type and Value Parameters
@@ -407,7 +411,8 @@ UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) �
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
 
 DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
-DefTermParam      ::= {Annotation} [`erased`] [‘inline’] Param                    ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefTermParam      ::= {Annotation} TermParamMods Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
@@ -431,7 +436,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘infix’
                     |  ‘erased’
                     |  ‘tracked’
-                    |  ‘mut’                                                      -- under captureChecking
+                    |  ‘update’                                                      -- under captureChecking
+                    |  ‘consume’
 
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’

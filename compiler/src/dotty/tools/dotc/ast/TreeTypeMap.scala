@@ -33,7 +33,7 @@ import Decorators.*
  */
 class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
-  val treeMap: tpd.Tree => tpd.Tree = identity _,
+  val treeMap: tpd.Tree => tpd.Tree = identity,
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
@@ -103,8 +103,8 @@ class TreeTypeMap(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
           self = tmap.transformSub(self),
-          body = impl.body mapconserve
-            (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
+          body = impl.body.mapconserve:
+            tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner)))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {

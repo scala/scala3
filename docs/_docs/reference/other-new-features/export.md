@@ -140,6 +140,10 @@ def f: c.T = ...
     exported `a` cannot be already a member of the object containing the export.
     This restriction might be lifted in the future.
 
+ 1. Export aliases of nullary Java methods (which may be invoked from Scala with or without empty parentheses)
+    are nullary methods in Scala and require parentheses in application. By contrast, since member types are
+    preserved, an export alias will have a flexible type if that was inferred for the Java method.
+
 <a id="note_class"></a>
 (\*) **Note:** Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.
 

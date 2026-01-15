@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
 import scala.deriving.Mirror
 import scala.compiletime._

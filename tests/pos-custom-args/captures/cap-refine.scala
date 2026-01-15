@@ -1,7 +1,7 @@
 //> using options -Werror
-import caps.Capability
+import caps.SharedCapability
 
-trait Buffer[T] extends Capability:
+trait Buffer[T] extends SharedCapability:
   def append(x: T): this.type
 
 def f(buf: Buffer[Int]) =

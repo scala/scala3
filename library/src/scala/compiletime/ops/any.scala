@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object any:
   /** Equality comparison of two singleton types.
    * ```scala

@@ -2,6 +2,8 @@
 9 |    List(foo(f())) // error
   |         ^^^^^^^^
   |         Found:    Inv[IO^{f?}]
-  |         Required: Inv[IO^?]^?
+  |         Required: Inv[IO^'s1]^'s2
+  |
+  |         Note that capability f is not included in capture set {f?}.
   |
   | longer explanation available when compiling with `-explain`

@@ -25,11 +25,11 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
 
   // Still in use in target test.junit.comp.
   @deprecated("use runtimeClass instead", "2.10.0")
-  def erasure: jClass[_] = runtimeClass
+  def erasure: jClass[?] = runtimeClass
 
-  private def subtype(sub: jClass[_], sup: jClass[_]): Boolean = {
+  private def subtype(sub: jClass[?], sup: jClass[?]): Boolean = {
     @tailrec
-    def loop(left: Set[jClass[_]], seen: Set[jClass[_]]): Boolean = {
+    def loop(left: Set[jClass[?]], seen: Set[jClass[?]]): Boolean = {
       left.nonEmpty && {
         val next = left.head
         val supers = next.getInterfaces.toSet ++ Option(next.getSuperclass)
@@ -42,7 +42,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
     loop(Set(sub), Set())
   }
 
-  private def subargs(args1: List[OptManifest[_]], args2: List[OptManifest[_]]) = (args1 corresponds args2) {
+  private def subargs(args1: List[OptManifest[?]], args2: List[OptManifest[?]]) = (args1 corresponds args2) {
     // !!! [Martin] this is wrong, need to take variance into account
     case (x: ClassManifest[_], y: ClassManifest[_]) => x <:< y
     case (x, y)                                     => (x eq NoManifest) && (y eq NoManifest)
@@ -53,11 +53,11 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
     * described in the header.
     */
   @deprecated("use scala.reflect.runtime.universe.TypeTag for subtype checking instead", "2.10.0")
-  def <:<(that: ClassManifest[_]): Boolean = {
+  def <:<(that: ClassManifest[?]): Boolean = {
     // All types which could conform to these types will override <:<.
     def cannotMatch = {
       import Manifest._
-      that.isInstanceOf[AnyValManifest[_]] || (that eq AnyVal) || (that eq Nothing) || (that eq Null)
+      that.isInstanceOf[AnyValManifest[?]] || (that eq AnyVal) || (that eq Nothing) || (that eq Null)
     }
 
     // This is wrong, and I don't know how it can be made right
@@ -87,7 +87,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
     * described in the header.
     */
   @deprecated("use scala.reflect.runtime.universe.TypeTag for subtype checking instead", "2.10.0")
-  def >:>(that: ClassManifest[_]): Boolean =
+  def >:>(that: ClassManifest[?]): Boolean =
     that <:< this
 
   override def canEqual(other: Any) = other match {
@@ -95,7 +95,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
     case _                   => false
   }
 
-  protected def arrayClass[A](tp: jClass[_]): jClass[Array[A]] =
+  protected def arrayClass[A](tp: jClass[?]): jClass[Array[A]] =
     java.lang.reflect.Array.newInstance(tp, 0).getClass.asInstanceOf[jClass[Array[A]]]
 
   @deprecated("use wrap instead", "2.10.0")
@@ -125,19 +125,20 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
   @deprecated("create WrappedArray directly instead", "2.10.0")
   def newWrappedArray(len: Int): ArraySeq[T] =
     // it's safe to assume T <: AnyRef here because the method is overridden for all value type manifests
-    new ArraySeq.ofRef[T with AnyRef](newArray(len).asInstanceOf[Array[T with AnyRef]]).asInstanceOf[ArraySeq[T]]
+    new ArraySeq.ofRef[T & AnyRef](newArray(len).asInstanceOf[Array[T & AnyRef]]).asInstanceOf[ArraySeq[T]]
 
   @deprecated("use ArrayBuilder.make(this) instead", "2.10.0")
   def newArrayBuilder(): ArrayBuilder[T] =
     // it's safe to assume T <: AnyRef here because the method is overridden for all value type manifests
-    new ArrayBuilder.ofRef[T with AnyRef]()(this.asInstanceOf[ClassManifest[T with AnyRef]]).asInstanceOf[ArrayBuilder[T]]
+    new ArrayBuilder.ofRef[T & AnyRef]()(using this.asInstanceOf[ClassManifest[T & AnyRef]]).asInstanceOf[ArrayBuilder[T]]
 
   @deprecated("use scala.reflect.runtime.universe.TypeTag to capture type structure instead", "2.10.0")
-  def typeArguments: List[OptManifest[_]] = List()
+  def typeArguments: List[OptManifest[?]] = List()
 
   protected def argString =
     if (typeArguments.nonEmpty) typeArguments.mkString("[", ", ", "]")
-    else if (runtimeClass.isArray) "["+ClassManifest.fromClass(runtimeClass.getComponentType)+"]"
+    // TODO: remove .nn here after 3.8. See #24070
+    else if (runtimeClass.isArray) "["+ClassManifest.fromClass(runtimeClass.getComponentType.nn)+"]"
     else ""
 }
 
@@ -180,7 +181,7 @@ object ClassManifestFactory {
     case java.lang.Double.TYPE    => Double.asInstanceOf[ClassManifest[T]]
     case java.lang.Boolean.TYPE   => Boolean.asInstanceOf[ClassManifest[T]]
     case java.lang.Void.TYPE      => Unit.asInstanceOf[ClassManifest[T]]
-    case _                        => classType[T with AnyRef](clazz).asInstanceOf[ClassManifest[T]]
+    case _                        => classType[T & AnyRef](clazz).asInstanceOf[ClassManifest[T]]
   }
 
   def singleType[T <: AnyRef](value: AnyRef): Manifest[T] = Manifest.singleType(value)
@@ -192,36 +193,36 @@ object ClassManifestFactory {
     *       pass varargs as arrays into this, we get an infinitely recursive call
     *       to boxArray. (Besides, having a separate case is more efficient)
     */
-  def classType[T](clazz: jClass[_]): ClassManifest[T] =
+  def classType[T](clazz: jClass[?]): ClassManifest[T] =
     new ClassTypeManifest[T](None, clazz, Nil)
 
   /** ClassManifest for the class type `clazz[args]`, where `clazz` is
     * a top-level or static class and `args` are its type arguments */
-  def classType[T](clazz: jClass[_], arg1: OptManifest[_], args: OptManifest[_]*): ClassManifest[T] =
+  def classType[T](clazz: jClass[?], arg1: OptManifest[?], args: OptManifest[?]*): ClassManifest[T] =
     new ClassTypeManifest[T](None, clazz, arg1 :: args.toList)
 
   /** ClassManifest for the class type `clazz[args]`, where `clazz` is
     * a class with non-package prefix type `prefix` and type arguments `args`.
     */
-  def classType[T](prefix: OptManifest[_], clazz: jClass[_], args: OptManifest[_]*): ClassManifest[T] =
+  def classType[T](prefix: OptManifest[?], clazz: jClass[?], args: OptManifest[?]*): ClassManifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
 
-  def arrayType[T](arg: OptManifest[_]): ClassManifest[Array[T]] = (arg: @unchecked) match {
+  def arrayType[T](arg: OptManifest[?]): ClassManifest[Array[T]] = (arg: @unchecked) match {
     case NoManifest          => Object.asInstanceOf[ClassManifest[Array[T]]]
     case m: ClassManifest[_] => m.asInstanceOf[ClassManifest[T]].arrayManifest
   }
 
   @SerialVersionUID(1L)
-  private class AbstractTypeClassManifest[T](prefix: OptManifest[_], name: String, clazz: jClass[_], args: OptManifest[_]*) extends ClassManifest[T] {
+  private class AbstractTypeClassManifest[T](prefix: OptManifest[?], name: String, clazz: jClass[?], args: OptManifest[?]*) extends ClassManifest[T] {
     override def runtimeClass = clazz
     override val typeArguments = args.toList
-    override def toString = prefix.toString+"#"+name+argString
+    override def toString() = prefix.toString+"#"+name+argString
   }
 
   /** ClassManifest for the abstract type `prefix # name`. `upperBound` is not
     * strictly necessary as it could be obtained by reflection. It was
     * added so that erasure can be calculated without reflection. */
-  def abstractType[T](prefix: OptManifest[_], name: String, clazz: jClass[_], args: OptManifest[_]*): ClassManifest[T] =
+  def abstractType[T](prefix: OptManifest[?], name: String, clazz: jClass[?], args: OptManifest[?]*): ClassManifest[T] =
     new AbstractTypeClassManifest(prefix, name, clazz)
 
   /** ClassManifest for the abstract type `prefix # name`. `upperBound` is not
@@ -229,7 +230,7 @@ object ClassManifestFactory {
     * added so that erasure can be calculated without reflection.
     * todo: remove after next bootstrap
     */
-  def abstractType[T](prefix: OptManifest[_], name: String, upperbound: ClassManifest[_], args: OptManifest[_]*): ClassManifest[T] =
+  def abstractType[T](prefix: OptManifest[?], name: String, upperbound: ClassManifest[?], args: OptManifest[?]*): ClassManifest[T] =
     new AbstractTypeClassManifest(prefix, name, upperbound.runtimeClass)
 }
 
@@ -238,11 +239,11 @@ object ClassManifestFactory {
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest""")
 @SerialVersionUID(1L)
 private class ClassTypeManifest[T](
-  prefix: Option[OptManifest[_]],
-  val runtimeClass: jClass[_],
-  override val typeArguments: List[OptManifest[_]]) extends ClassManifest[T]
+  prefix: Option[OptManifest[?]],
+  val runtimeClass: jClass[?],
+  override val typeArguments: List[OptManifest[?]]) extends ClassManifest[T]
 {
-  override def toString =
+  override def toString() =
     (if (prefix.isEmpty) "" else prefix.get.toString+"#") +
     (if (runtimeClass.isArray) "Array" else runtimeClass.getName) +
     argString

@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 
 /** This class implements immutable maps using a vector/map-based data structure, which preserves insertion order.
@@ -39,7 +41,7 @@ final class VectorMap[K, +V] private (
 
   import VectorMap._
 
-  override protected[this] def className: String = "VectorMap"
+  override protected def className: String = "VectorMap"
 
   private[immutable] def this(fields: Vector[K], underlying: Map[K, (Int, V)]) = this(fields, underlying, 0)
 
@@ -58,7 +60,7 @@ final class VectorMap[K, +V] private (
     }
   }
 
-  override def withDefault[V1 >: V](d: K => V1): Map[K, V1] =
+  override def withDefault[V1 >: V](d: K -> V1): Map[K, V1] =
     new Map.WithDefault(this, d)
 
   override def withDefaultValue[V1 >: V](d: V1): Map[K, V1] =
@@ -79,11 +81,11 @@ final class VectorMap[K, +V] private (
   }
 
   def iterator: Iterator[(K, V)] = new AbstractIterator[(K, V)] {
-    private[this] val fieldsLength = fields.length
-    private[this] var slot = -1
-    private[this] var key: K = null.asInstanceOf[K]
+    private val fieldsLength = fields.length
+    private var slot = -1
+    private var key: K = null.asInstanceOf[K]
 
-    private[this] def advance(): Unit = {
+    private def advance(): Unit = {
       val nextSlot = slot + 1
       if (nextSlot >= fieldsLength) {
         slot = fieldsLength
@@ -116,11 +118,11 @@ final class VectorMap[K, +V] private (
   // No-Op overrides to allow for more efficient steppers in a minor release.
   // Refining the return type to `S with EfficientSplit` is binary compatible.
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S = super.stepper(shape)
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S = super.stepper(using shape)
 
-  override def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S = super.keyStepper(shape)
+  override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S = super.keyStepper(using shape)
 
-  override def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S = super.valueStepper(shape)
+  override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S = super.valueStepper(using shape)
 
 
   def removed(key: K): VectorMap[K, V] = {
@@ -228,12 +230,12 @@ object VectorMap extends MapFactory[VectorMap] {
   //For other deleted slots, it simply indicates that they have been deleted.
   private[VectorMap] final case class Tombstone(distance: Int)
 
-  private[this] final val EmptyMap: VectorMap[Nothing, Nothing] =
+  private final val EmptyMap: VectorMap[Nothing, Nothing] =
     new VectorMap[Nothing, Nothing](Vector.empty[Nothing], HashMap.empty[Nothing, (Int, Nothing)])
 
   def empty[K, V]: VectorMap[K, V] = EmptyMap.asInstanceOf[VectorMap[K, V]]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): VectorMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): VectorMap[K, V] =
     it match {
       case vm: VectorMap[K, V] => vm
       case _                   => (newBuilder[K, V] ++= it).result()
@@ -243,9 +245,10 @@ object VectorMap extends MapFactory[VectorMap] {
 }
 
 private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K, V), VectorMap[K, V]] {
-  private[this] val vectorBuilder = new VectorBuilder[K]
-  private[this] val mapBuilder = new MapBuilderImpl[K, (Int, V)]
-  private[this] var aliased: VectorMap[K, V] = _
+  private val vectorBuilder = new VectorBuilder[K]
+  private val mapBuilder = new MapBuilderImpl[K, (Int, V)]
+  @annotation.stableNull
+  private var aliased: VectorMap[K, V] | Null = null
 
   override def clear(): Unit = {
     vectorBuilder.clear()

@@ -2,11 +2,11 @@ import language.experimental.captureChecking
 import caps.*
 
 class Runner(val x: Int) extends AnyVal:
-  def runOps(@use ops: List[() => Unit]): Unit =
+  def runOps[C^](ops: List[() ->{C} Unit]): Unit =
     ops.foreach(_())  // ok
 
 class RunnerAlt(val x: Int):
-  def runOps(@use ops: List[() => Unit]): Unit =
+  def runOps[C^](ops: List[() ->{C} Unit]): Unit =
     ops.foreach(_())  // ok, of course
 
 class RunnerAltAlt(val x: Int) extends AnyVal:

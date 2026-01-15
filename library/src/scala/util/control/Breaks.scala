@@ -69,7 +69,7 @@ import scala.language.`2.13`
  */
 class Breaks {
 
-  private[this] val breakException = new BreakControl
+  private val breakException = new BreakControl
 
   /** A block from which one can exit with a `break`. The `break` may be
    *  executed further down in the call stack provided that it is called on the

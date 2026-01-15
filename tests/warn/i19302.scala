@@ -3,7 +3,7 @@
 @deprecated("is deprecated", "n/a")
 class Thing(val value: Int)
 
-object Main extends App {
+object Main {
 
   def doo(): Option[Thing] = // warn
     Some(new Thing(1)) // warn

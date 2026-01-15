@@ -34,7 +34,7 @@ object Preparser {
       remaining: List[String],
       inCodeBlock: Boolean,
     )(using strippedLinesBeforeNo: Int = 0): PreparsedComment = remaining match {
-      case CodeBlockStartRegex(before, marker, after) :: ls if !inCodeBlock =>
+      case CodeBlockStartRegex(before: String, marker: String, after: String) :: ls if !inCodeBlock =>
         if (!before.trim.isEmpty && !after.trim.isEmpty && marker == "```")
           go(docBody, tags, lastTagKey, before :: (marker + after) :: ls, inCodeBlock = false)
         else if (!before.trim.isEmpty && !after.trim.isEmpty)
@@ -55,7 +55,7 @@ object Preparser {
             go(docBody append endOfLine append (marker + after), tags, lastTagKey, ls, inCodeBlock = true)
         }
 
-      case CodeBlockEndRegex(before, marker, after) :: ls =>
+      case CodeBlockEndRegex(before: String, marker: String, after: String) :: ls =>
         if (!before.trim.isEmpty && !after.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = true)
         else if (!before.trim.isEmpty)
@@ -75,18 +75,18 @@ object Preparser {
         }
 
 
-      case SymbolTagRegex(name, sym, body) :: ls if !inCodeBlock =>
+      case SymbolTagRegex(name: String, sym: String, body: String) :: ls if !inCodeBlock =>
         val key = SymbolTagKey(name, sym)
         val value = body :: tags.getOrElse(key, Nil)
         go(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
 
-      case SimpleTagRegex(name, body) :: ls if !inCodeBlock =>
+      case SimpleTagRegex(name: String, body: String) :: ls if !inCodeBlock =>
         val key = SimpleTagKey(name)
         val value = body :: tags.getOrElse(key, Nil)
         go(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)
 
 
-      case SingleTagRegex(name) :: ls if !inCodeBlock =>
+      case SingleTagRegex(name: String) :: ls if !inCodeBlock =>
         val key = SimpleTagKey(name)
         val value = "" :: tags.getOrElse(key, Nil)
         go(docBody, tags + (key -> value), Some(key), ls, inCodeBlock)

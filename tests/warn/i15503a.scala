@@ -89,8 +89,7 @@ object InnerMostCheck:
     val a = Set(1)
 
 object IgnoreExclusion:
-  import collection.mutable.{Set => _} // OK
-  import collection.mutable.{Map => _} // OK
+  import collection.mutable.{Map => _, Set => _, *} // OK??
   import collection.mutable.{ListBuffer} // warn
   def check =
     val a = Set(1)

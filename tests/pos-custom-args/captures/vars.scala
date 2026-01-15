@@ -1,4 +1,4 @@
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def test(cap1: Cap, cap2: Cap) =
   def f(x: String): String = if cap1 == cap1 then "" else "a"

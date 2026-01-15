@@ -610,7 +610,7 @@ object ExtractSemanticDB:
         tree match
           case tree: ValDef =>
             if !tree.symbol.is(Param) then
-              symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
+              symkinds += (if tree.mods.is(Mutable) then SymbolKind.Var else SymbolKind.Val)
             if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
               symkinds += SymbolKind.Abstract
           case tree: DefDef =>

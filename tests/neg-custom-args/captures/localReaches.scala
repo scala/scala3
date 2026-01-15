@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 // no separation checking
-import caps.consume
+
 
 def localReach() =
   val xs: List[() => Unit] = ???

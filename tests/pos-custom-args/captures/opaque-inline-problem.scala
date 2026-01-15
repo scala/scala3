@@ -1,4 +1,4 @@
-trait Async extends caps.Capability:
+trait Async extends caps.SharedCapability:
   def group: Int
 
 object Async:

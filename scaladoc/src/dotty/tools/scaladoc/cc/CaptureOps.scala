@@ -27,7 +27,7 @@ object CaptureDefs:
   def UseAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.use")
   def ConsumeAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.caps.consume")
+    qctx.reflect.Symbol.requiredClass("scala.caps.internal.consume")
   def ReachCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.reachCapability")
   def RootCapabilityAnnot(using qctx: Quotes) =

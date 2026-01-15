@@ -5,9 +5,9 @@ trait Suspend:
 
   def resume(s: Suspension): Unit
 
-import caps.Capability
+import caps.SharedCapability
 
-trait Async(val support: Suspend) extends Capability
+trait Async(val support: Suspend) extends SharedCapability
 
 class CancelSuspension(ac: Async, suspension: ac.support.Suspension):
   ac.support.resume(suspension)

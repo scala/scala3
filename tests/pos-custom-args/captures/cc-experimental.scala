@@ -5,9 +5,9 @@ package scala.runtime
 import language.experimental.captureChecking
 
 object test:
-  type T = Pure
+  type T = caps.Pure
 
-class Foo extends Object, Pure:
-  val x: Pure = ???
+class Foo extends Object, caps.Pure:
+  val x: caps.Pure = ???
   def foo() = ()
 

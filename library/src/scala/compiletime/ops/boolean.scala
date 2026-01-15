@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object boolean:
 
   /** Negation of a `Boolean` singleton type.

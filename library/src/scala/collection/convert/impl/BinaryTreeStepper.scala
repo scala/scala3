@@ -14,6 +14,7 @@ package scala.collection.convert
 package impl
 
 import scala.language.`2.13`
+
 import java.util.Spliterator
 
 import annotation.tailrec
@@ -22,7 +23,7 @@ import scala.collection._
 
 
 private[collection] object BinaryTreeStepper {
-  val emptyStack = new Array[AnyRef](0)
+  val emptyStack = new Array[AnyRef | Null](0)
 }
 
 
@@ -45,9 +46,9 @@ private[collection] object BinaryTreeStepper {
   * Subclasses should allow this class to do all the work of maintaining state; `next` should simply
   * reduce `maxLength` by one, and consume `myCurrent` and set it to `null` if `hasNext` is true.
   */
-private[collection] abstract class BinaryTreeStepperBase[A, T >: Null <: AnyRef, Sub >: Null, Semi <: Sub with BinaryTreeStepperBase[A, T, _, _]](
-  protected var maxLength: Int, protected var myCurrent: T, protected var stack: Array[AnyRef], protected var index: Int,
-  protected val left: T => T, protected val right: T => T
+private[collection] abstract class BinaryTreeStepperBase[A, T <: AnyRef, Sub, Semi <: Sub & BinaryTreeStepperBase[A, T, ?, ?]](
+  protected var maxLength: Int, protected var myCurrent: T | Null, protected var stack: Array[AnyRef | Null], protected var index: Int,
+  protected val left: T => T | Null, protected val right: T => T | Null
 )
 extends EfficientSplit {
   /** Unrolls a subtree onto the stack starting from a particular node, returning
@@ -88,7 +89,7 @@ extends EfficientSplit {
     *
     * Right now overwrites everything so could allow reuse, but isn't used for it.
     */
-  private[impl] final def initialize(root: T, size: Int): Unit =
+  private[impl] final def initialize(root: T | Null, size: Int): Unit =
     if (root eq null) {
       maxLength = 0
       myCurrent = null
@@ -101,7 +102,7 @@ extends EfficientSplit {
       myCurrent = detach(unroll(root))
     }
 
-  protected def semiclone(maxL: Int, myC: T, stk: Array[AnyRef], ix: Int): Semi
+  protected def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): Semi
 
   def characteristics: Int = Spliterator.ORDERED
 
@@ -122,11 +123,11 @@ extends EfficientSplit {
     *
     * If the tree is empty or only has one element left, it returns `null` instead of splitting.
     */
-  def trySplit(): Sub =
+  def trySplit(): Sub | Null =
     if (!hasStep || index < 0) null
     else {
       val root = stack(0).asInstanceOf[T]
-      val leftStack = 
+      val leftStack =
         if (index > 0) java.util.Arrays.copyOfRange(stack, 1, index+1)
         else BinaryTreeStepper.emptyStack
       val leftIndex = index - 1
@@ -142,25 +143,25 @@ extends EfficientSplit {
 }
 
 
-private[collection] final class AnyBinaryTreeStepper[A, T >: Null <: AnyRef](
-  _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => A
+private[collection] final class AnyBinaryTreeStepper[A, T <: AnyRef](
+  _maxLength: Int, _myCurrent: T | Null, _stack: Array[AnyRef | Null], _index: Int, _left: T => T | Null, _right: T => T | Null, protected val extract: T => A
 )
 extends BinaryTreeStepperBase[A, T, AnyStepper[A], AnyBinaryTreeStepper[A, T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with AnyStepper[A] {
   def nextStep(): A =
     if (hasStep) {
-      val ans = extract(myCurrent)
+      val ans = extract(myCurrent.nn)
       myCurrent = null
       maxLength -= 1
       ans
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef], ix: Int): AnyBinaryTreeStepper[A, T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): AnyBinaryTreeStepper[A, T] =
     new AnyBinaryTreeStepper[A, T](maxL, myC, stk, ix, left, right, extract)
 }
 private[collection] object AnyBinaryTreeStepper {
-  def from[A, T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => A): AnyBinaryTreeStepper[A, T] = {
+  def from[A, T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => A): AnyBinaryTreeStepper[A, T] = {
     val ans = new AnyBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -168,25 +169,25 @@ private[collection] object AnyBinaryTreeStepper {
 }
 
 
-private[collection] final class DoubleBinaryTreeStepper[T >: Null <: AnyRef](
-  _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => Double
+private[collection] final class DoubleBinaryTreeStepper[T <: AnyRef](
+  _maxLength: Int, _myCurrent: T | Null, _stack: Array[AnyRef | Null], _index: Int, _left: T => T | Null, _right: T => T | Null, protected val extract: T => Double
 )
 extends BinaryTreeStepperBase[Double, T, DoubleStepper, DoubleBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with DoubleStepper {
   def nextStep(): Double =
     if (hasStep) {
-      val ans = extract(myCurrent)
+      val ans = extract(myCurrent.nn)
       myCurrent = null
       maxLength -= 1
       ans
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef], ix: Int): DoubleBinaryTreeStepper[T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): DoubleBinaryTreeStepper[T] =
     new DoubleBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object DoubleBinaryTreeStepper {
-  def from[T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Double): DoubleBinaryTreeStepper[T] = {
+  def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => Double): DoubleBinaryTreeStepper[T] = {
     val ans = new DoubleBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -194,25 +195,25 @@ private [collection] object DoubleBinaryTreeStepper {
 }
 
 
-private[collection] final class IntBinaryTreeStepper[T >: Null <: AnyRef](
-  _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => Int
+private[collection] final class IntBinaryTreeStepper[T <: AnyRef](
+  _maxLength: Int, _myCurrent: T | Null, _stack: Array[AnyRef | Null], _index: Int, _left: T => T | Null, _right: T => T | Null, protected val extract: T => Int
 )
 extends BinaryTreeStepperBase[Int, T, IntStepper, IntBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with IntStepper {
   def nextStep(): Int =
     if (hasStep) {
-      val ans = extract(myCurrent)
+      val ans = extract(myCurrent.nn)
       myCurrent = null
       maxLength -= 1
       ans
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef], ix: Int): IntBinaryTreeStepper[T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): IntBinaryTreeStepper[T] =
     new IntBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object IntBinaryTreeStepper {
-  def from[T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Int): IntBinaryTreeStepper[T] = {
+  def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => Int): IntBinaryTreeStepper[T] = {
     val ans = new IntBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -221,25 +222,25 @@ private [collection] object IntBinaryTreeStepper {
 
 
 
-private[collection] final class LongBinaryTreeStepper[T >: Null <: AnyRef](
-  _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => Long
+private[collection] final class LongBinaryTreeStepper[T <: AnyRef](
+  _maxLength: Int, _myCurrent: T | Null, _stack: Array[AnyRef | Null], _index: Int, _left: T => T | Null, _right: T => T | Null, protected val extract: T => Long
 )
 extends BinaryTreeStepperBase[Long, T, LongStepper, LongBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with LongStepper {
   def nextStep(): Long =
     if (hasStep) {
-      val ans = extract(myCurrent)
+      val ans = extract(myCurrent.nn)
       myCurrent = null
       maxLength -= 1
       ans
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef], ix: Int): LongBinaryTreeStepper[T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): LongBinaryTreeStepper[T] =
     new LongBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object LongBinaryTreeStepper {
-  def from[T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Long): LongBinaryTreeStepper[T] = {
+  def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => Long): LongBinaryTreeStepper[T] = {
     val ans = new LongBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans

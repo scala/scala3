@@ -37,18 +37,18 @@ import scala.math.Ordering
   * other libraries that cover this use case.
   */
 object Sorting {
-  /** Sort an array of Doubles using `java.util.Arrays.sort`. */
+  /** Sorts an array of Doubles using `java.util.Arrays.sort`. */
   def quickSort(a: Array[Double]): Unit = java.util.Arrays.sort(a)
 
-  /** Sort an array of Ints using `java.util.Arrays.sort`. */
+  /** Sorts an array of Ints using `java.util.Arrays.sort`. */
   def quickSort(a: Array[Int]): Unit    = java.util.Arrays.sort(a)
 
-  /** Sort an array of Floats using `java.util.Arrays.sort`. */
+  /** Sorts an array of Floats using `java.util.Arrays.sort`. */
   def quickSort(a: Array[Float]): Unit  = java.util.Arrays.sort(a)
 
   private final val qsortThreshold = 16
 
-  /** Sort array `a` with quicksort, using the Ordering on its elements.
+  /** Sorts array `a` with quicksort, using the Ordering on its elements.
     * This algorithm sorts in place, so no additional memory is used aside from
     * what might be required to box individual elements during comparison.
     */
@@ -178,7 +178,7 @@ object Sorting {
   }
 
   // Caller is required to pass iN >= i0, else math will fail.  Also, i0 >= 0.
-  private def mergeSort[@specialized T: ClassTag](a: Array[T], i0: Int, iN: Int, ord: Ordering[T], scratch: Array[T] = null): Unit = {
+  private def mergeSort[@specialized T: ClassTag](a: Array[T], i0: Int, iN: Int, ord: Ordering[T], scratch: Array[T] | Null = null): Unit = {
     if (iN - i0 < mergeThreshold) insertionSort(a, i0, iN, ord)
     else {
       val iK = (i0 + iN) >>> 1   // Bit shift equivalent to unsigned math, no overflow
@@ -235,7 +235,7 @@ object Sorting {
   // TODO: add upper bound: T <: AnyRef, propagate to callers below (not binary compatible)
   // Maybe also rename all these methods to `sort`.
   @inline private def sort[T](a: Array[T], from: Int, until: Int, ord: Ordering[T]): Unit = (a: @unchecked) match {
-    case _: Array[AnyRef]  =>
+    case a: Array[AnyRef]  =>
       // Note that runtime matches are covariant, so could actually be any Array[T] s.t. T is not primitive (even boxed value classes)
       if (a.length > 1 && (ord eq null)) throw new NullPointerException("Ordering")
       java.util.Arrays.sort(a, from, until, ord)
@@ -251,11 +251,11 @@ object Sorting {
     case null => throw new NullPointerException
   }
 
-  /** Sort array `a` using the Ordering on its elements, preserving the original ordering where possible.
+  /** Sorts array `a` using the Ordering on its elements, preserving the original ordering where possible.
     * Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, 0, a.length)`. */
   @`inline` def stableSort[K: Ordering](a: Array[K]): Unit = stableSort(a, 0, a.length)
 
-  /** Sort array `a` or a part of it using the Ordering on its elements, preserving the original ordering where possible.
+  /** Sorts array `a` or a part of it using the Ordering on its elements, preserving the original ordering where possible.
     * Uses `java.util.Arrays.sort` unless `K` is a primitive type.
     *
     * @param a The array to sort
@@ -264,12 +264,12 @@ object Sorting {
     */
   def stableSort[K: Ordering](a: Array[K], from: Int, until: Int): Unit = sort(a, from, until, Ordering[K])
 
-  /** Sort array `a` using function `f` that computes the less-than relation for each element.
+  /** Sorts array `a` using function `f` that computes the less-than relation for each element.
     * Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, f, 0, a.length)`. */
   @`inline` def stableSort[K](a: Array[K], f: (K, K) => Boolean): Unit = stableSort(a, f, 0, a.length)
 
   // TODO: make this fast for primitive K (could be specialized if it didn't go through Ordering)
-  /** Sort array `a` or a part of it using function `f` that computes the less-than relation for each element.
+  /** Sorts array `a` or a part of it using function `f` that computes the less-than relation for each element.
     * Uses `java.util.Arrays.sort` unless `K` is a primitive type.
     *
     * @param a The array to sort

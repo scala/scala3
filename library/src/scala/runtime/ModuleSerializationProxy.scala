@@ -21,10 +21,10 @@ import scala.annotation.nowarn
 private[runtime] object ModuleSerializationProxy {
   private val instances: ClassValueCompat[Object] = new ClassValueCompat[Object] {
     @nowarn("cat=deprecation") // AccessController is deprecated on JDK 17
-    def getModule(cls: Class[_]): Object =
+    def getModule(cls: Class[?]): Object =
       java.security.AccessController.doPrivileged(
         (() => cls.getField("MODULE$").get(null)): PrivilegedExceptionAction[Object])
-    override protected def computeValue(cls: Class[_]): Object =
+    override protected def computeValue(cls: Class[?]): Object =
       try getModule(cls)
       catch {
         case e: PrivilegedActionException =>
@@ -39,6 +39,6 @@ private[runtime] object ModuleSerializationProxy {
 }
 
 @SerialVersionUID(1L)
-final class ModuleSerializationProxy(moduleClass: Class[_]) extends Serializable {
+final class ModuleSerializationProxy(moduleClass: Class[?]) extends Serializable {
   private def readResolve = ModuleSerializationProxy.instances.get(moduleClass)
 }

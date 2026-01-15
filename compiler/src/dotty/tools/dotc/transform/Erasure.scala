@@ -187,11 +187,12 @@ class Erasure extends Phase with DenotTransformer {
       tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
     assert(
       isErasedType(tp)
+      || isAllowed(defn.AnyValClass, "AnyVal.scala")
       || isAllowed(defn.ArrayClass, "Array.scala")
       || isAllowed(defn.TupleClass, "Tuple.scala")
       || isAllowed(defn.NonEmptyTupleClass, "Tuple.scala")
       || isAllowed(defn.PairClass, "Tuple.scala")
-      || isAllowed(defn.PureClass, "Pure.scala"),
+      || isAllowed(defn.PureClass, /* caps/ */ "Pure.scala"),
       i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }
 }
@@ -296,19 +297,17 @@ object Erasure {
           // "Unboxing" null to underlying is equivalent to doing null.asInstanceOf[underlying]
           // See tests/pos/valueclasses/nullAsInstanceOfVC.scala for cases where this might happen.
           val tree1 =
-            if (tree.tpe isRef defn.NullClass)
+            if tree.tpe.isRef(defn.NullClass) then
               adaptToType(tree, underlying)
-            else if (!(tree.tpe <:< tycon)) {
+            else if !(tree.tpe <:< tycon) then
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = nullLiteral
               val unboxedNull = adaptToType(nullTree, underlying)
 
-              evalOnce(tree) { t =>
+              evalOnce(tree): t =>
                 If(t.select(defn.Object_eq).appliedTo(nullTree),
                   unboxedNull,
                   unboxedTree(t))
-              }
-            }
             else unboxedTree(tree)
 
           cast(tree1, pt)
@@ -334,7 +333,7 @@ object Erasure {
         ref(evt2u(tycon.typeSymbol.asClass)).appliedTo(tree)
 
       assert(!pt.isInstanceOf[SingletonType], pt)
-      if (pt isRef defn.UnitClass) unbox(tree, pt)
+      if pt.isRef(defn.UnitClass) then unbox(tree, pt)
       else (tree.tpe.widen, pt) match {
         // Convert primitive arrays into reference arrays, this path is only
         // needed to handle repeated arguments, see
@@ -454,39 +453,9 @@ object Erasure {
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
-      /** Can the implementation parameter type `tp` be auto-adapted to a different
-       *  parameter type in the SAM?
-       *
-       *  For derived value classes, we always need to do the bridging manually.
-       *  For primitives, we cannot rely on auto-adaptation on the JVM because
-       *  the Scala spec requires null to be "unboxed" to the default value of
-       *  the value class, but the adaptation performed by LambdaMetaFactory
-       *  will throw a `NullPointerException` instead. See `lambda-null.scala`
-       *  for test cases.
-       *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/javase/8/docs/api/java/lang/invoke/LambdaMetafactory.html)
-       */
-      def autoAdaptedParam(tp: Type) =
-        !tp.isErasedValueType && !tp.isPrimitiveValueType
-
-      /** Can the implementation result type be auto-adapted to a different result
-       *  type in the SAM?
-       *
-       *  For derived value classes, it's the same story as for parameters.
-       *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
-       *  adaptation, because it only needs to box, not unbox, so no special
-       *  handling of null is required.
-       */
-      def autoAdaptedResult =
-        !implResultType.isErasedValueType && !implReturnsUnit
-
-      def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
-
-      val paramAdaptationNeeded =
-        implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && !autoAdaptedParam(implType))
-      val resultAdaptationNeeded =
-        !sameClass(implResultType, samResultType) && !autoAdaptedResult
+      // Check if bridging is needed using the common function from TypeErasure
+      val (paramAdaptationNeeded, resultAdaptationNeeded) =
+        additionalAdaptationNeeded(implParamTypes, implResultType, samParamTypes, samResultType)
 
       if paramAdaptationNeeded || resultAdaptationNeeded then
         // Instead of instantiating `scala.FunctionN`, see if we can instantiate

@@ -181,7 +181,7 @@ object Contexts {
       val local = incCallback
       local != null && local.enabled || forceRun
 
-    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    /** The Zinc compile progress callback implementation if we are run from Zinc or used by presentation compiler, null otherwise */
     def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
 
     /** Run `op` if there exists a Zinc progress callback */
@@ -234,7 +234,7 @@ object Contexts {
             else Nil
           val outerImplicits =
             if (isImportContext && importInfo.nn.unimported.exists)
-              outer.implicits exclude importInfo.nn.unimported
+              outer.implicits.exclude(importInfo.nn.unimported)
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -377,7 +377,7 @@ object Contexts {
     def isImportContext: Boolean =
       (this ne NoContext)
       && (outer ne NoContext)
-      && (this.importInfo nen outer.importInfo)
+      && (this.importInfo ne outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -479,6 +479,9 @@ object Contexts {
 
     /** Is the flexible types option set? */
     def flexibleTypes: Boolean = base.settings.YexplicitNulls.value && !base.settings.YnoFlexibleTypes.value
+
+    /** Is the flexify tasty option set? */
+    def flexifyTasty: Boolean = base.settings.YexplicitNulls.value && base.settings.YflexifyTasty.value
 
     /** Is the best-effort option set? */
     def isBestEffort: Boolean = base.settings.YbestEffort.value

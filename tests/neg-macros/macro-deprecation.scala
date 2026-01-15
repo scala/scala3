@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation
+//> using options -Werror -deprecation
 
 import scala.quoted.*
 

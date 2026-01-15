@@ -29,14 +29,14 @@ import scala.language.implicitConversions
  *  @define coll mutable map
  */
 class SystemProperties
-extends mutable.AbstractMap[String, String] {
+extends mutable.AbstractMap[String, String | Null] {
 
-  override def empty: mutable.Map[String, String] = mutable.Map[String, String]()
-  override def default(key: String): String = null
+  override def empty: mutable.Map[String, String | Null] = mutable.Map[String, String | Null]()
+  override def default(key: String): String | Null = null
 
   def iterator: Iterator[(String, String)] = wrapAccess {
     val ps = System.getProperties()
-    names map (k => (k, ps getProperty k)) filter (_._2 ne null)
+    names map (k => (k, ps.getProperty(k))) filter (_._2 ne null)
   } getOrElse Iterator.empty
 
   override def isEmpty: Boolean = iterator.isEmpty
@@ -51,7 +51,7 @@ extends mutable.AbstractMap[String, String] {
 
   override def clear(): Unit = wrapAccess(System.getProperties().clear())
   def subtractOne (key: String): this.type = { wrapAccess(System.clearProperty(key)) ; this }
-  def addOne (kv: (String, String)): this.type = { wrapAccess(System.setProperty(kv._1, kv._2)) ; this }
+  def addOne (kv: (String, String | Null)): this.type = { wrapAccess(System.setProperty(kv._1, kv._2)) ; this }
 
   @annotation.nowarn("cat=deprecation") // AccessControlException is deprecated on JDK 17
   def wrapAccess[T](body: => T): Option[T] =
@@ -68,7 +68,8 @@ object SystemProperties {
   /** An unenforceable, advisory only place to do some synchronization when
    *  mutating system properties.
    */
-  def exclusively[T](body: => T): T = this synchronized body
+  def exclusively[T](body: => T): T = this.synchronized:
+    body
 
   implicit def systemPropertiesToCompanion(p: SystemProperties): SystemProperties.type = this
 
@@ -90,4 +91,3 @@ object SystemProperties {
   lazy val preferIPv6Addresses: BooleanProp = BooleanProp.keyExists(PreferIPv6AddressesKey)
   lazy val noTraceSuppression: BooleanProp  = BooleanProp.valueIsTrue(NoTraceSuppressionKey)
 }
-

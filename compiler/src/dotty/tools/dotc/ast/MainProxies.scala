@@ -25,7 +25,7 @@ object MainProxies {
    *         try
    *           f(
    *             parseArgument[S](args, 0),
-   *             parseRemainingArguments[T](args, 1): _*
+   *             parseRemainingArguments[T](args, 1)*
    *           )
    *         catch case err: ParseError => showError(err)
    *       }

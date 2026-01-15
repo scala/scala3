@@ -1,36 +1,21 @@
-import language.`3.3`
+import language.experimental.relaxedLambdaSyntax
 
-object Test1:
-  val xs = List(1, 2, 3)
-  val ys = xs.map: x =>
-    x + 1
-  val ys1 = List(1) map: x =>
-    x + 1
-  val x = ys.foldLeft(0): (x, y) =>
-    x + y
-  val y = ys.foldLeft(0): (x: Int, y: Int) =>
-    val z = x + y
-    z * z
-  val a: Int = xs
-    .map: x =>
-      x * x
-    .filter: (y: Int) =>
-      y > 0
-    (0)
-  val e = xs.map:
-      case 1 => 2
-      case 2 => 3
-      case x => x
-    .filter:
-      x => x > 0
+val z = List(1).map: + => // ok
+  ???
 
-  extension (xs: List[Int]) def foo(f: [X] => X => X) = ()
+val xs = List(1)
+val b: Int = xs
+  .map: x => x * x
+  .filter: y => y > 0
+  (0)
 
-  val p = xs.foo:
-    [X] => (x: X) => x
+val d2: String = xs
+  .map: x => x.toString + xs.dropWhile: y => y > 0
+  .filter: z => !z.isEmpty
+  (0)
 
-  val q = (x: String => String) => x
-
-  val r = x < 0 && locally:
-    y > 0
+val d3: String = xs
+  .map: x => x.toString + xs.collect: case y if y > 0 => y
+  .filter: z => !z.isEmpty
+  (0)
 

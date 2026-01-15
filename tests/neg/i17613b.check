@@ -58,4 +58,4 @@
 42 |				class InnerCl[ImClassR] // warn
    |				              ^^^^^^^^
    |				              Type parameter ImClassR for class InnerCl shadows an explicitly renamed type : ImClassR
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
+No warnings can be incurred under -Werror

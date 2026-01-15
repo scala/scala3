@@ -343,7 +343,7 @@ object TreeChecker {
       // case tree: untpd.TypeDef =>
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)
-        args.foreach(assertIdentNotJavaClass _)
+        args.foreach(assertIdentNotJavaClass(_))
       // case tree: untpd.This =>
       // case tree: untpd.Literal =>
       // case tree: untpd.New =>
@@ -354,7 +354,7 @@ object TreeChecker {
       case Assign(_, rhs) =>
         assertIdentNotJavaClass(rhs)
       case Block(stats, expr) =>
-        stats.foreach(assertIdentNotJavaClass _)
+        stats.foreach(assertIdentNotJavaClass(_))
         assertIdentNotJavaClass(expr)
       case If(_, thenp, elsep) =>
         assertIdentNotJavaClass(thenp)
@@ -709,12 +709,6 @@ object TreeChecker {
       assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
-
-    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
-      if tree.symbol == defn.StdLibPatchesPackage then
-        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
-      else
-        super.typedPackageDef(tree)
 
     override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
       if ctx.phase <= stagingPhase.prev then

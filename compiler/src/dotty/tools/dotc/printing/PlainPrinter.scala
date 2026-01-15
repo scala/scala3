@@ -11,11 +11,11 @@ import ast.Trees.*
 import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
-import util.SourcePosition
+import util.{Chars, SourcePosition}
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import ast.tpd
+import ast.{tpd, untpd}
 import cc.*
 import CaptureSet.Mutability
 import Capabilities.*
@@ -137,6 +137,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     keywordText("erased ").provided(isErased)
     ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
+    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -171,12 +172,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
     then cs.toString
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
+      val idTxt = Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
       val core: Text =
-        if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
+        if !cs.isConst && cs.elems.isEmpty
+        then cs.asVar.repr.show ~ idTxt
+        else
+          Str("'").provided(ccVerbose && !cs.isConst)
+           ~ "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
-           ~ Str("?").provided(ccVerbose && !cs.isConst)
-           ~ Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
+           ~ idTxt
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem(ref: Type): Text = ref match
@@ -242,8 +246,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           selectionString(tp)
         else
           toTextPrefixOf(tp) ~ selectionString(tp)
-      case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
         val suffix =
           if showNestingLevel then
@@ -279,14 +281,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
           def casesText = Text(cases.map(caseText), "\n")
           atPrec(InfixPrec) { toText(scrutinee) } ~
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
-          (" <: " ~ toText(bound) provided !bound.isAny)
+          (" <: " ~ toText(bound) `provided` !bound.isAny)
         }.close
       case tp @ CapturingType(parent, refs) =>
-        val boxText: Text = Str("box ") provided tp.isBoxed && ccVerbose
+        val boxText: Text = Str("box ") `provided` tp.isBoxed && ccVerbose
         if elideCapabilityCaps
-            && parent.derivesFrom(defn.Caps_Capability)
+            && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && refs.isReadOnly
+            && (!parent.derivesFromExclusive || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refSet) =>
@@ -310,7 +312,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ ")"
-          ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
+          ~ (Str(": ") `provided` !tp.resultType.isInstanceOf[MethodOrPoly])
           ~ CCState.inNewExistentialScope(tp)(toText(tp.resultType))
         }
       case ExprType(restp) =>
@@ -329,7 +331,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PolyType =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ hashStr(tp) ~
-          (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
+          (Str(": ") `provided` !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
@@ -378,7 +380,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     finally elideCapabilityCaps = saved
 
   /** Print the annotation that are meant to be on the parameter symbol but was moved
-   * to parameter types. Examples are `@use` and `@consume`. */
+   * to parameter types. Examples are `@use` and `@consume`.
+   */
   protected def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
     Str(s"@${sym.name} ").provided(tp.hasAnnotation(sym))
 
@@ -488,8 +491,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
       def classified =
         if c.hiddenSet.classifier == defn.AnyClass then ""
         else s" classified as ${c.hiddenSet.classifier.name.show}"
-      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
-      else "cap"
+      def prefixTxt: Text = c.prefix match
+        case NoPrefix => ""
+        case _: ThisType if !ccVerbose => ""
+        case pre: TermRef if !ccVerbose && pre.name == nme.SKOLEM => ""
+        case pre: SingletonType => toTextRef(pre) ~ "."
+        case pre => toText(pre) ~ "."
+      def core: Text =
+        if ccVerbose then s"<fresh$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
+        else "cap"
+      prefixTxt ~ core
     case tp: TypeProxy =>
       homogenize(tp) match
         case tp: SingletonType => toTextRef(tp)
@@ -576,7 +587,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
       case tp: PolyType =>
         "[" ~ paramsText(tp) ~ "]"
-        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
+        ~ (Str(": ") `provided` !tp.resultType.isInstanceOf[MethodOrPoly])
         ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
@@ -693,30 +704,22 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
-  private def escapedChar(ch: Char): String = (ch: @switch) match {
-    case '\b' => "\\b"
-    case '\t' => "\\t"
-    case '\n' => "\\n"
-    case '\f' => "\\f"
-    case '\r' => "\\r"
-    case '"' => "\\\""
-    case '\'' => "\\\'"
-    case '\\' => "\\\\"
-    case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
-  }
-
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
+    case StringTag => stringText(Chars.escapedString(const.value.toString, quoted = true))
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
-    case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
+    case CharTag => literalText(Chars.escapedChar(const.charValue))
     case LongTag => literalText(const.longValue.toString + "L")
     case DoubleTag => literalText(const.doubleValue.toString + "d")
     case FloatTag => literalText(const.floatValue.toString + "f")
     case _ => literalText(String.valueOf(const.value))
   }
 
-  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
-  def annotText(annot: Annotation): Text = s"@${annot.symbol.name}"
+  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter, which also
+   *  looks at trees.
+   */
+  override def annotText(annot: Annotation): Text = annotText(annot.symbol)
+
+  protected def annotText(sym: Symbol): Text = s"@${sym.name}"
 
   def toText(annot: Annotation): Text = annot.toText(this)
 
@@ -726,7 +729,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ~ (if param.isTypeParam then "" else ": ")
     ~ toText(param.paramInfo)
 
-  protected def escapedString(str: String): String = str flatMap escapedChar
+  protected final def escapedString(str: String): String = Chars.escapedString(str, quoted = false)
 
   def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
 
@@ -748,7 +751,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       else
         Text()
 
-    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ Str(tree.sourcePos.toString).provided(printDebug)
   }.close
 
   def toText(pos: SourcePosition): Text =

@@ -13,7 +13,7 @@ import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 
 class ClasspathTest {
 
-  def pathsep = sys.props("path.separator")
+  def pathsep: String = sys.props("path.separator").nn
 
   def isWindows: Boolean = scala.util.Properties.isWin
 

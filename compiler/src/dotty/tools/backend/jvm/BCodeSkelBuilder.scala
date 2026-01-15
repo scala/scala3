@@ -598,13 +598,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case labnode: asm.tree.LabelNode => labnode.getLabel
         case _ =>
           val pp = new asm.Label
-          mnode visitLabel pp
+          mnode.visitLabel(pp)
           pp
       }
     }
     def markProgramPoint(lbl: asm.Label): Unit = {
       val skip = (lbl == null) || isAtProgramPoint(lbl)
-      if (!skip) { mnode visitLabel lbl }
+      if (!skip) { mnode.visitLabel(lbl) }
     }
     def isAtProgramPoint(lbl: asm.Label): Boolean = {
       def getNonLineNumberNode(a: asm.tree.AbstractInsnNode): asm.tree.AbstractInsnNode  = a match {

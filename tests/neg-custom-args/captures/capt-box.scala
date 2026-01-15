@@ -1,4 +1,4 @@
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def test(x: Cap) =
 

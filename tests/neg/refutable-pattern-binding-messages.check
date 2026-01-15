@@ -27,22 +27,22 @@
   |      ^^^^^^^^^^^^^^^
   |      pattern binding uses refutable extractor `Test.Positive`
   |
-  |      If this usage is intentional, this can be communicated by adding `: @unchecked` after the expression,
+  |      If this usage is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
   |      which may result in a MatchError at runtime.
-  |      This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+  |      This patch can be rewritten automatically under -rewrite -source 3.8-migration.
 -- Warning: tests/neg/refutable-pattern-binding-messages.scala:10:20 ---------------------------------------------------
 10 |  val i :: is = List(1, 2, 3)             // warn: pattern type more specialized
    |                ^^^^^^^^^^^^^
-   |        pattern's type ::[Int] is more specialized than the right hand side expression's type List[Int]
+   |     pattern's type ::[Int] is more specialized than the right hand side expression's type List[Int]
    |
-   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |        which may result in a MatchError at runtime.
-   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+   |     If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |     which may result in a MatchError at runtime.
+   |     This patch can be rewritten automatically under -rewrite -source 3.8-migration.
 -- Warning: tests/neg/refutable-pattern-binding-messages.scala:16:10 ---------------------------------------------------
 16 |  val 1 = 2                               // warn: pattern type does not match
    |          ^
-   |        pattern's type (1 : Int) does not match the right hand side expression's type (2 : Int)
+   |     pattern's type (1 : Int) does not match the right hand side expression's type (2 : Int)
    |
-   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |        which may result in a MatchError at runtime.
-   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+   |     If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |     which may result in a MatchError at runtime.
+   |     This patch can be rewritten automatically under -rewrite -source 3.8-migration.

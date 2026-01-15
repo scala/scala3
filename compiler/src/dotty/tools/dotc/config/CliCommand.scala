@@ -4,6 +4,7 @@ package config
 import Settings.*
 import core.Contexts.*
 import printing.Highlighting
+import reporting.NoExplanation
 
 import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
@@ -43,7 +44,7 @@ trait CliCommand:
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
-      case x if x startsWith "@"  => CommandLineParser.expandArg(x)
+      case x if x.startsWith("@") => CommandLineParser.expandArg(x)
       case x                      => List(x)
     }
 
@@ -125,7 +126,8 @@ trait CliCommand:
    */
   def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState, Context): Option[List[String]] =
     // Print all warnings encountered during arguments parsing
-    summary.warnings.foreach(report.warning(_))
+    for warning <- summary.warnings; message = NoExplanation(warning) do
+      report.configurationWarning(message)
 
     if summary.errors.nonEmpty then
       summary.errors foreach (report.error(_))

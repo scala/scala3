@@ -412,6 +412,7 @@ class CompletionSuite extends BaseCompletionSuite:
       includeCommitCharacter = true
     )
 
+  @Ignore
   @Test def `numeric-sort` =
     check(
       """

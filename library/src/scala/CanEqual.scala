@@ -1,5 +1,7 @@
 package scala
 
+import language.experimental.captureChecking
+
 import annotation.implicitNotFound
 import scala.collection.{Seq, Set, Map}
 

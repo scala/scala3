@@ -93,7 +93,7 @@ class InferExpectedTypeSuite extends BasePCSuite:
     check(
       """|val i: Option[Int] = Option(@@)
          |""".stripMargin,
-      """|Int
+      """|Int | Null
          |""".stripMargin
     )
 

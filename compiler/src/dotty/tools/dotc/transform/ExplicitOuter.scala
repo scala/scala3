@@ -247,8 +247,8 @@ object ExplicitOuter {
    */
   def outerAccessor(cls: ClassSymbol)(using Context): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
-    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol orElse
-      cls.info.decls.find(_.is(OuterAccessor))
+    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol
+      `orElse` cls.info.decls.find(_.is(OuterAccessor))
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
   private def hasOuter(cls: ClassSymbol)(using Context): Boolean =

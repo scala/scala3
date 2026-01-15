@@ -1,6 +1,6 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
-// These tests should pass under -Xfatal-warnings with source version less than 3.2
+// These tests should pass under -Werror with source version less than 3.2
 import language.`3.0-migration`
 
 object Test:

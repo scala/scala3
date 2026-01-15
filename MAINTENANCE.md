@@ -67,44 +67,45 @@ The following is the list of all the principal areas of the compiler and the int
 
 ### Compiler
 - Parser: @odersky, @hamzaremmal, @KacperFKorban
-- Typer: @odersky, @smarter, (@dwijnand), @noti0nal, @EugeneFlesselle, @KacperFKorban, @bracevac
+- Typer: @odersky, @smarter, @noti0nal, @KacperFKorban, @bracevac
 - Erasure: @smarter, @odersky
 - Enums:
-- Derivation & Mirrors: (@dwijnand), @EugeneFlesselle
+- Derivation & Mirrors:
 - Export: @odersky
-- Pattern Matching: @dwijnand, @sjrd, @noti0na1
-- Inline: @odersky, @jchyb, @hamzaremmal, @EugeneFlesselle
+- Pattern Matching: @sjrd, @noti0na1, (@hamzaremmal), (@zielinsky)
+- Inline: @odersky, @jchyb, @hamzaremmal
 - Metaprogramming (Quotes, Reflect, Staging): @jchyb, @hamzaremmal
-- Match types: @sjrd, @dwijnand, @Linyxus, @EugeneFlesselle
-- GADT: @dwijnand, @Linyxus
-- Initialization checker:
+- Match types: @sjrd, @Linyxus
+- GADT: @Linyxus
+- Initialization checker: @liufengyun, @olhotak, @EnzeXing
 - Transforms: @sjrd, @odersky, @smarter
 - Tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
 - JVM backend: @sjrd, @hamzaremmal
-- Java-compat: @smarter, @dwijnand, @hamzaremmal
-- Extension Methods: @odersky, @dwijnand
+- Java-compat: @smarter, @hamzaremmal
+- Extension Methods: @odersky
 - Safe nulls (experimental): @noti0na1
 - Capture checker (experimental): @odersky, @Linyxus, @bracevac, @noti0na1
 - Modularity (experimental): @KacperFKorban
-- Named Tuples (experimental): @odersky, @aherlihy
+- Named Tuples: @odersky, @aherlihy
+- Standard library: @hamzaremmal
 
 ### Tooling
-- REPL: @dwijnand
+- REPL:
 - Runner/CLI: @Gedochao, (@tgodzik)
-- IDE: @tgodzik, (@kasiaMarek)
+- IDE: @tgodzik, @zielinsky
 - Scaladoc: @Florian3k
 - SemanticDB: @natsukagami, (@tanishiking)
 - Coverage: @KacperFKorban
-- Linting (especially unused warnings) / Reporting UX: @KacperFKorban
-- Presentation Compiler: @rochala, @tgodzik, @kasiaMarek, @natsukagami
-- Debug Adapter: @adpi2, (@tgodzik)
-- Scastie: @rochala
+- Linting (especially unused warnings) / Reporting UX: @som-snytt, (@tgodzik)
+- Presentation Compiler: (@rochala), @tgodzik, @natsukagami, @zielinsky
+- Debug Adapter: @tgodzik
+- Scastie: (@rochala), @warcholjakub
 
 ### Infrastructure
 - CI: @hamzaremmal, (@WojciechMazur)
-- Community Build: @hamzaremmal
+- Community Build: @hamzaremmal, (@WojciechMazur)
 - Open Community Build: @WojciechMazur
-- Vulpix: @dwijnand, @prolativ, @hamzaremmal
+- Vulpix: @hamzaremmal
 - Benchmarks: @mbovel
-- Releases: @WojciechMazur, @prolativ
+- Releases: @WojciechMazur (Scala 3 Next), @tgodzik (Scala 3.3 LTS)

@@ -21,7 +21,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
       """val local = boundary.Label[Long]()
         |try break(5L)(using local)
         |catch case ex: boundary.Break[Long] @unchecked =>
-        |  if ex.label eq local then ex.value
+        |  if ex.isSameLabelAs(local) then ex.value
         |  else throw ex
       """.stripMargin,
       "Long",

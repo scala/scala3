@@ -1,0 +1,8 @@
+Normal
+test
+WrappedVarArgs(class java.lang.String, int)
+WrappedVarArgs(test, 42)
+Transparent
+test
+ArraySeq(class java.lang.String, int)
+ArraySeq(test, 42)

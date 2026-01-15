@@ -369,6 +369,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term =
+        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValInLetFlags)
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs, flags)(using ctx.withOwner(owner))
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
+        Block(List(vdef), body(ref))
+
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
@@ -478,6 +484,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           argss.foldLeft(self: Term)(Apply(_, _))
         def appliedToNone: Apply =
           self.appliedToArgs(Nil)
+        def ensureApplied: Term =
+          def isParameterless(tpe: TypeRepr): Boolean = !tpe.isInstanceOf[MethodType]
+          if (isParameterless(self.tpe.widen)) self else self.appliedToNone
         def appliedToType(targ: TypeRepr): Term =
           self.appliedToTypes(targ :: Nil)
         def appliedToTypes(targs: List[TypeRepr]): Term =
@@ -1238,6 +1247,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeProjectionTypeTest
 
     object TypeProjection extends TypeProjectionModule:
+      def apply(qualifier: TypeTree, name: String): TypeProjection =
+        withDefaultPos(tpd.Select(qualifier, name.toTypeName))
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
       def unapply(x: TypeProjection): (TypeTree, String) =
@@ -1283,6 +1294,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RefinedTypeTest
 
     object Refined extends RefinedModule:
+      def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined = // Symbol of the class being refined, according to which the refinements are typed
+        assert(refineCls.isClass, "refineCls must be a class/trait/object")
+        withDefaultPos(tpd.RefinedTypeTree(tpt, refinements, refineCls.asClass).asInstanceOf[tpd.RefinedTypeTree])
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
       def unapply(x: Refined): (TypeTree, List[Definition]) =
@@ -1905,6 +1919,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
+          case AnnotatedType(parent, _) => parent.typeArgs
+          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
@@ -2863,7 +2879,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
-      private inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
+      private[QuotesImpl] inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
         xCheckMacroAssert(
           flags <= valid,
           s"Received invalid flags. Expected flags ${flags.show} to only contain a subset of ${valid.show}."
@@ -3250,7 +3266,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private[QuotesImpl] def validMethodFlags: Flags = Private | Protected | Override | Deferred | Final | Method | Implicit | Given | Local | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be allowed: Synthetic | ExtensionMethod | Exported | Erased | Infix | Invisible
       // Keep: aligned with Quotes's `newVal` doc
       private[QuotesImpl] def validValFlags: Flags = Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be added: Synthetic | Erased | Invisible
-
+      // Keep: aligned with Quotes's `let` doc
+      private[QuotesImpl] def validValInLetFlags: Flags = Final | Implicit | Lazy | Mutable | Given | Synthetic
       // Keep: aligned with Quotes's `newBind` doc
       private[QuotesImpl] def validBindFlags: Flags = Case // Flags that could be allowed: Implicit | Given | Erased
 

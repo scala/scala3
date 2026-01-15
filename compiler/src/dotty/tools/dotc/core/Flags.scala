@@ -250,7 +250,7 @@ object Flags {
   val (Local @ _, _, _) = newFlags(13, "<local>")
 
   /** A field generated for a primary constructor parameter (no matter if it's a 'val' or not),
-   *  or an accessor of such a field.
+   *  or an accessor of such a field / An `into` modifier on a class
    */
   val (ParamAccessorOrInto @ _, ParamAccessor @ _, Into @ _) = newFlags(14, "<paramaccessor>", "into")
 

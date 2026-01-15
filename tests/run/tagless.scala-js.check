@@ -1,0 +1,20 @@
+5
+(8 + (-(1 + 2)))
+5
+(7 + (-1 * 2))
+35
+7 * (8 + (-(1 + 2)))
+tf1Tree = Node(Add,WrappedVarArgs(Node(Lit,WrappedVarArgs(Leaf(8))), Node(Neg,WrappedVarArgs(Node(Add,WrappedVarArgs(Node(Lit,WrappedVarArgs(Leaf(1))), Node(Lit,WrappedVarArgs(Leaf(2)))))))))
+tfm1Tree = Node(Add,WrappedVarArgs(Node(Lit,WrappedVarArgs(Leaf(7))), Node(Neg,WrappedVarArgs(Node(Mult,WrappedVarArgs(Node(Lit,WrappedVarArgs(Leaf(1))), Node(Lit,WrappedVarArgs(Leaf(2)))))))))
+2
+Not a number: "X"
+5
+(8 + (-(1 + 2)))
+Node(Add,WrappedVarArgs(Node(Lit,WrappedVarArgs(Leaf(8))), Node(Neg,WrappedVarArgs(Node(Add,WrappedVarArgs(Node(Lit,WrappedVarArgs(Leaf(1))), Node(Lit,WrappedVarArgs(Leaf(2)))))))))
+5
+(8 + (-(1 + 2)))
+(8 + ((-1) + (-2)))
+(8 + ((-1) + (-2)))
+(8 + ((-1) + (-2)))
+(7 + 1 * (-2))
+7 * (8 + ((-1) + (-2)))

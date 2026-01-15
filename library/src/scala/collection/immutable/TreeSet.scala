@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.ReusableBuilder
@@ -37,7 +39,7 @@ import scala.runtime.AbstractFunction1
   *  @define mayNotTerminateInf
   *  @define willNotTerminateInf
   */
-final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[A, Any])(implicit val ordering: Ordering[A])
+final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[A, Any] | Null)(implicit val ordering: Ordering[A])
   extends AbstractSet[A]
     with SortedSet[A]
     with SortedSetOps[A, TreeSet, TreeSet[A]]
@@ -47,11 +49,11 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
 
   if (ordering eq null) throw new NullPointerException("ordering must not be null")
 
-  def this()(implicit ordering: Ordering[A]) = this(null)(ordering)
+  def this()(implicit ordering: Ordering[A]) = this(null)(using ordering)
 
   override def sortedIterableFactory: TreeSet.type = TreeSet
 
-  private[this] def newSetOrSelf(t: RB.Tree[A, Any]) = if(t eq tree) this else new TreeSet[A](t)
+  private def newSetOrSelf(t: RB.Tree[A, Any] | Null) = if(t eq tree) this else new TreeSet[A](t)
 
   override def size: Int = RB.count(tree)
 
@@ -69,7 +71,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     if ((ord eq ordering) && nonEmpty) {
       head
     } else {
-      super.min(ord)
+      super.min(using ord)
     }
   }
 
@@ -77,7 +79,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     if ((ord eq ordering) && nonEmpty) {
       last
     } else {
-      super.max(ord)
+      super.max(using ord)
     }
   }
 
@@ -104,7 +106,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
 
   override def takeRight(n: Int): TreeSet[A] = drop(size - math.max(n, 0))
 
-  private[this] def countWhile(p: A => Boolean): Int = {
+  private def countWhile(p: A => Boolean): Int = {
     var result = 0
     val it = iterator
     while (it.hasNext && p(it.next())) result += 1
@@ -132,7 +134,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
 
   def iteratorFrom(start: A): Iterator[A] = RB.keysIterator(tree, Some(start))
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Tree[A, Any]
     val s = shape.shape match {
@@ -141,7 +143,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree, _.left, _.right, _.key.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree, _.left, _.right, _.key))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   /** Checks if this set contains element `elem`.
@@ -171,7 +173,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
   def excl(elem: A): TreeSet[A] =
     newSetOrSelf(RB.delete(tree, elem))
 
-  override def concat(that: collection.IterableOnce[A]): TreeSet[A] = {
+  override def concat(that: collection.IterableOnce[A]^): TreeSet[A] = {
     val t = that match {
       case ts: TreeSet[A] if ordering == ts.ordering =>
         RB.union(tree, ts.tree)
@@ -184,7 +186,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     newSetOrSelf(t)
   }
 
-  override def removedAll(that: IterableOnce[A]): TreeSet[A] = that match {
+  override def removedAll(that: IterableOnce[A]^): TreeSet[A] = that match {
     case ts: TreeSet[A] if ordering == ts.ordering =>
       newSetOrSelf(RB.difference(tree, ts.tree))
     case _ =>
@@ -226,7 +228,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     case _ => super.equals(obj)
   }
 
-  override protected[this] def className = "TreeSet"
+  override protected def className = "TreeSet"
 }
 
 /**
@@ -240,7 +242,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
 
   def empty[A: Ordering]: TreeSet[A] = new TreeSet[A]
 
-  def from[E](it: scala.collection.IterableOnce[E])(implicit ordering: Ordering[E]): TreeSet[E] =
+  def from[E](it: scala.collection.IterableOnce[E]^)(implicit ordering: Ordering[E]): TreeSet[E] =
     it match {
       case ts: TreeSet[E] if ordering == ts.ordering => ts
       case ss: scala.collection.SortedSet[E] if ordering == ss.ordering =>
@@ -252,7 +254,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
           // Dotty doesn't infer that E =:= Int, since instantiation of covariant GADTs is unsound
         new TreeSet[E](tree)
       case _ =>
-        var t: RB.Tree[E, Null] = null
+        var t: RB.Tree[E, Null] | Null = null
         val i = it.iterator
         while (i.hasNext) t = RB.update(t, i.next(), null, overwrite = false)
         new TreeSet[E](t)
@@ -263,14 +265,14 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
     extends RB.SetHelper[A]
       with ReusableBuilder[A, TreeSet[A]] {
     type Tree = RB.Tree[A, Any]
-    private [this] var tree:RB.Tree[A, Any] = null
+    private var tree:RB.Tree[A, Any] | Null = null
 
     override def addOne(elem: A): this.type = {
       tree = mutableUpd(tree, elem)
       this
     }
 
-    override def addAll(xs: IterableOnce[A]): this.type = {
+    override def addAll(xs: IterableOnce[A]^): this.type = {
       xs match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
         // for the moment we have to force immutability before the union
@@ -278,10 +280,10 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
         // calling `beforePublish` makes `tree` immutable
         case ts: TreeSet[A] if ts.ordering == ordering =>
           if (tree eq null) tree = ts.tree
-          else tree = RB.union(beforePublish(tree), ts.tree)(ordering)
+          else tree = RB.union(beforePublish(tree), ts.tree)(using ordering)
         case ts: TreeMap[A @unchecked, _] if ts.ordering == ordering =>
           if (tree eq null) tree = ts.tree0
-          else tree = RB.union(beforePublish(tree), ts.tree0)(ordering)
+          else tree = RB.union(beforePublish(tree), ts.tree0)(using ordering)
         case _ =>
           super.addAll(xs)
       }
@@ -292,6 +294,6 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
       tree = null
     }
 
-    override def result(): TreeSet[A] = new TreeSet[A](beforePublish(tree))(ordering)
+    override def result(): TreeSet[A] = new TreeSet[A](beforePublish(tree))(using ordering)
   }
 }

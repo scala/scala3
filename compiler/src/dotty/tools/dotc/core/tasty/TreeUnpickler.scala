@@ -668,14 +668,10 @@ class TreeUnpickler(reader: TastyReader,
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
+      registerSym(start, sym)
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
-      var annots = annotFns.map(_(annotOwner))
-      if annots.exists(_.hasSymbol(defn.SilentIntoAnnot)) then
-        // Temporary measure until we can change TastyFormat to include an INTO tag
-        sym.setFlag(Into)
-        annots = annots.filterNot(_.symbol == defn.SilentIntoAnnot)
-      sym.annotations = annots
+      sym.annotations = annotFns.map(_(annotOwner))
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
@@ -690,7 +686,6 @@ class TreeUnpickler(reader: TastyReader,
           cls.enter(sym)
         case _ =>
       }
-      registerSym(start, sym)
       if (isClass) {
         if sym.owner.is(Package) && withCaptureChecks then
           sym.setFlag(CaptureChecked)
@@ -765,6 +760,7 @@ class TreeUnpickler(reader: TastyReader,
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
           case TRACKED => addFlag(Tracked)
+          case INTO => addFlag(Into)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin
@@ -772,7 +768,10 @@ class TreeUnpickler(reader: TastyReader,
             addFlag(Protected)
             privateWithin = readWithin
           case ANNOTATION =>
-            annotFns = readAnnot :: annotFns
+            val annotFn =
+              val annot = readAnnot
+              (sym: Symbol) => annot.complete(sym)
+            annotFns = annotFn :: annotFns
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
@@ -782,21 +781,23 @@ class TreeUnpickler(reader: TastyReader,
 
     private def readWithin(using Context): Symbol = readType().typeSymbol
 
-    private def readAnnot(using Context): Symbol => Annotation =
+    private def readAnnot(using Context): Trees.Lazy[Symbol => Annotation] =
       readByte()
       val end = readEnd()
-      val tp = readType()
-      val lazyAnnotTree = readLaterWithOwner(end, _.readTree())
-      owner =>
-        new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
-          // Only force computation of symbol if it has the right name. This added
-          // amount of laziness is sometimes necessary to avid cycles. Test case pos/i15980.
-          override def hasSymbol(sym: Symbol)(using Context) = tp match
-            case tp: TypeRef =>
-              tp.designator match
-                case name: Name => name == sym.name && tp.symbol == sym
-                case _ => tp.symbol == sym
-            case _ => this.symbol == sym
+      readLater(end, reader =>
+        val tp = reader.readType()
+        val lazyAnnotTree = reader.readLaterWithOwner(end, _.readTree())
+        owner =>
+          new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
+            // Only force computation of symbol if it has the right name. This added
+            // amount of laziness is sometimes necessary to avoid cycles. Test case pos/i15980.
+            override def hasSymbol(sym: Symbol)(using Context) = tp match
+              case tp: TypeRef =>
+                tp.designator match
+                  case name: Name => name == sym.name && tp.symbol == sym
+                  case _ => tp.symbol == sym
+              case _ => this.symbol == sym
+      )
 
     /** Create symbols for the definitions in the statement sequence between
      *  current address and `end`.
@@ -921,6 +922,12 @@ class TreeUnpickler(reader: TastyReader,
 
       def ta = ctx.typeAssigner
 
+      // If explicit nulls and `Yflexify-tasty` is enabled, and the source file did not have explicit
+      // nulls enabled, nullify the member to allow for compatibility.
+      def nullify(sym: Symbol) =
+        if (ctx.flexifyTasty && !explicitNulls) then
+          sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
+
       val name = readName()
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
@@ -937,10 +944,12 @@ class TreeUnpickler(reader: TastyReader,
             else
               tpt.tpe
           sym.info = methodType(paramss, resType)
+          nullify(sym)
           DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe.suppressIntoIfParam(sym)
+          nullify(sym)
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
@@ -978,6 +987,9 @@ class TreeUnpickler(reader: TastyReader,
               sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             else
               sym.info = info
+              if (tag == TYPEPARAM) {
+                nullify(sym)
+              }
 
             sym.resetFlag(Provisional)
             TypeDef(rhs)
@@ -986,6 +998,7 @@ class TreeUnpickler(reader: TastyReader,
           val tpt = readTpt()(using localCtx)
           assert(nothingButMods(end))
           sym.info = tpt.tpe.suppressIntoIfParam(sym)
+          nullify(sym)
           ValDef(tpt)
       }
       goto(end)
@@ -1145,7 +1158,6 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
-      defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
       setSpan(start,
@@ -1539,6 +1551,9 @@ class TreeUnpickler(reader: TastyReader,
                   readByte()
                   InlineMatch(readTree(), readCases(end))
                 }
+                else if nextByte == SUBMATCH then
+                  readByte()
+                  SubMatch(readTree(), readCases(end))
                 else Match(readTree(), readCases(end)))
             case RETURN =>
               val from = readSymRef()

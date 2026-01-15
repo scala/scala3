@@ -18,7 +18,7 @@ object NIL extends LIST[Nothing]:
 def map[A, B](f: A => B)(xs: LIST[A]): LIST[B] =
   xs.map(f)
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def test(c: Cap, d: Cap, e: Cap) =
 

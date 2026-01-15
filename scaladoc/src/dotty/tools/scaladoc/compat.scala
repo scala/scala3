@@ -17,10 +17,10 @@ type JMap[K, V] = java.util.Map[K, V]
 type JHashMap[K, V] = java.util.HashMap[K, V]
 type JMapEntry[K, V] = java.util.Map.Entry[K, V]
 
-private val emptyListInst = Collections.emptyList
+private val emptyListInst: JList[AnyRef] = Collections.emptyList
 def JNil[A] = emptyListInst.asInstanceOf[JList[A]]
 
-private val emptyMapInst = Collections.emptyMap
+private val emptyMapInst: JMap[AnyRef, AnyRef] = Collections.emptyMap
 def emptyJMap[A, B] = emptyMapInst.asInstanceOf[JMap[A, B]]
 
 enum DocLink:

@@ -52,7 +52,7 @@ package object reflect {
 
   def classTag[T](implicit ctag: ClassTag[T]) = ctag
 
-  /** Make a java reflection object accessible, if it is not already
+  /** Makes a java reflection object accessible, if it is not already
    *  and it is possible to do so. If a SecurityException is thrown in the
    *  attempt, it is caught and discarded.
    */
@@ -61,7 +61,7 @@ package object reflect {
     // was called before, not if the reflected object is inherently accessible.
     // TODO: replace by `canAccess` once we're on JDK 9+
     if (!m.isAccessible: @nowarn("cat=deprecation")) {
-      try m setAccessible true
+      try m.setAccessible(true)
       catch { case _: SecurityException => } // does nothing
     }
     m
@@ -73,6 +73,3 @@ package object reflect {
   // todo. once we have implicit macros for tag generation, we can remove this anchor
   private[scala] def materializeClassTag[T](): ClassTag[T] = macro ???
 }
-
-/** An exception that indicates an error during Scala reflection */
-case class ScalaReflectionException(msg: String) extends Exception(msg)

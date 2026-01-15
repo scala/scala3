@@ -70,12 +70,11 @@ class OutputDirs {
     singleOutDir match {
       case Some(d) => d
       case None =>
-        (outputs find (isBelow _).tupled) match {
+        outputs.find(isBelow(_, _)) match
           case Some((_, d)) => d
           case _ =>
-            throw new FatalError("Could not find an output directory for "
-              + src.path + " in " + outputs)
-        }
+            throw new FatalError(
+              s"Could not find an output directory for ${src.path} in $outputs")
     }
   }
 
@@ -107,7 +106,7 @@ class OutputDirs {
           case _ => List(d.lookupPathUnchecked(srcPath, false))
         }
       case None =>
-        (outputs filter (isBelow _).tupled) match {
+        outputs.filter(isBelow(_, _)) match {
           case Nil => Nil
           case matches => matches.map(_._1.lookupPathUnchecked(srcPath, false))
         }

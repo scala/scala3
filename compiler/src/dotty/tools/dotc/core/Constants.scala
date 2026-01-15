@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types.*, Symbols.*, Contexts.*
+import NullOpsDecorator.stripNull
 import printing.Printer
 import printing.Texts.Text
 
@@ -149,7 +150,7 @@ object Constants {
     /** Convert constant value to conform to given type.
      */
     def convertTo(pt: Type)(using Context): Constant | Null = {
-      def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
+      def classBound(pt: Type): Type = pt.dealias.stripTypeVar.stripNull() match {
         case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
           classBound(tref.info.bounds.lo)
         case param: TypeParamRef =>

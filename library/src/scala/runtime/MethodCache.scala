@@ -32,54 +32,54 @@ private[scala] sealed abstract class MethodCache {
    *  `null` is returned. If `null` is returned, find's caller should look-
    *  up the right method using whichever means it prefers, and add it to
    *  the cache for later use. */
-  def find(forReceiver: JClass[_]): JMethod
-  def add(forReceiver: JClass[_], forMethod: JMethod): MethodCache
+  def find(forReceiver: JClass[?]): JMethod | Null
+  def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache
 }
 
 private[scala] final class EmptyMethodCache extends MethodCache {
 
-  def find(forReceiver: JClass[_]): JMethod = null
+  def find(forReceiver: JClass[?]): JMethod | Null = null
 
-  def add(forReceiver: JClass[_], forMethod: JMethod): MethodCache =
+  def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache =
     new PolyMethodCache(this, forReceiver, forMethod, 1)
 
 }
 
 private[scala] final class MegaMethodCache(
-  private[this] val forName: String,
-  private[this] val forParameterTypes: Array[JClass[_]]
+  private val forName: String,
+  private val forParameterTypes: Array[JClass[?]]
 ) extends MethodCache {
 
-  def find(forReceiver: JClass[_]): JMethod =
-    forReceiver.getMethod(forName, forParameterTypes:_*)
+  def find(forReceiver: JClass[?]): JMethod | Null =
+    forReceiver.getMethod(forName, forParameterTypes*)
 
-  def add(forReceiver: JClass[_], forMethod: JMethod): MethodCache = this
+  def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache = this
 
 }
 
 private[scala] final class PolyMethodCache(
-  private[this] val next: MethodCache,
-  private[this] val receiver: JClass[_],
-  private[this] val method: JMethod,
-  private[this] val complexity: Int
+  private val next: MethodCache,
+  private val receiver: JClass[?],
+  private val method: JMethod,
+  private val complexity: Int
 ) extends MethodCache {
 
   /** To achieve tail recursion this must be a separate method
    *  from `find`, because the type of next is not `PolyMethodCache`.
    */
-  @tailrec private def findInternal(forReceiver: JClass[_]): JMethod =
+  @tailrec private def findInternal(forReceiver: JClass[?]): JMethod | Null =
     if (forReceiver eq receiver) method
     else next match {
       case x: PolyMethodCache => x findInternal forReceiver
       case _                  => next find forReceiver
     }
 
-  def find(forReceiver: JClass[_]): JMethod = findInternal(forReceiver)
+  def find(forReceiver: JClass[?]): JMethod | Null = findInternal(forReceiver)
 
   // TODO: come up with a more realistic number
   final private val MaxComplexity = 160
 
-  def add(forReceiver: JClass[_], forMethod: JMethod): MethodCache =
+  def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache =
     if (complexity < MaxComplexity)
       new PolyMethodCache(this, forReceiver, forMethod, complexity + 1)
     else

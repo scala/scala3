@@ -35,7 +35,7 @@ import scala.language.implicitConversions
  *  @see [[scala.sys.process.ProcessBuilder]]
  */
 trait Process {
-  /** Returns this process alive status */
+  /** Returns this process alive status. */
   def isAlive(): Boolean
   /** Blocks until this process exits and returns the exit code.*/
   def exitValue(): Int
@@ -77,7 +77,7 @@ trait ProcessCreation {
     * @example {{{ apply("java", new java.io.File("/opt/app"), "CLASSPATH" -> "library.jar") }}}
     */
   def apply(command: String, cwd: File, extraEnv: (String, String)*): ProcessBuilder =
-    apply(command, Some(cwd), extraEnv: _*)
+    apply(command, Some(cwd), extraEnv*)
 
   /** Creates a [[scala.sys.process.ProcessBuilder]] with working dir set to `File` and extra
     * environment variables.
@@ -85,7 +85,7 @@ trait ProcessCreation {
     * @example {{{ apply("java" :: javaArgs, new java.io.File("/opt/app"), "CLASSPATH" -> "library.jar") }}}
     */
   def apply(command: scala.collection.Seq[String], cwd: File, extraEnv: (String, String)*): ProcessBuilder =
-    apply(command, Some(cwd), extraEnv: _*)
+    apply(command, Some(cwd), extraEnv*)
 
   /** Creates a [[scala.sys.process.ProcessBuilder]] with working dir optionally set to
     * `File` and extra environment variables.
@@ -93,7 +93,7 @@ trait ProcessCreation {
     * @example {{{ apply("java", params.get("cwd"), "CLASSPATH" -> "library.jar") }}}
     */
   def apply(command: String, cwd: Option[File], extraEnv: (String, String)*): ProcessBuilder =
-    apply(Parser.tokenize(command), cwd, extraEnv: _*)
+    apply(Parser.tokenize(command), cwd, extraEnv*)
 
   /** Creates a [[scala.sys.process.ProcessBuilder]] with working dir optionally set to
     * `File` and extra environment variables.
@@ -101,8 +101,8 @@ trait ProcessCreation {
     * @example {{{ apply("java" :: javaArgs, params.get("cwd"), "CLASSPATH" -> "library.jar") }}}
     */
   def apply(command: scala.collection.Seq[String], cwd: Option[File], extraEnv: (String, String)*): ProcessBuilder = {
-    val jpb = new JProcessBuilder(command.toArray: _*)
-    cwd foreach (jpb directory _)
+    val jpb = new JProcessBuilder(command.toArray*)
+    cwd foreach (jpb.directory(_))
     extraEnv foreach { case (k, v) => jpb.environment.put(k, v) }
     apply(jpb)
   }
@@ -175,7 +175,7 @@ trait ProcessCreation {
   }
 }
 
-/** Provide implicit conversions for the factories offered by [[scala.sys.process.Process]]'s
+/** Provides implicit conversions for the factories offered by [[scala.sys.process.Process]]'s
   * companion object. These implicits can then be used to decrease the noise in a pipeline
   * of commands, making it look more shell-like. They are available through the package object
   * [[scala.sys.process]].
@@ -183,7 +183,7 @@ trait ProcessCreation {
 trait ProcessImplicits {
   import Process._
 
-  /** Return a sequence of [[scala.sys.process.ProcessBuilder.Source]] from a sequence
+  /** Returns a sequence of [[scala.sys.process.ProcessBuilder.Source]] from a sequence
     * of values for which an implicit conversion to `Source` is available.
     */
   implicit def buildersToProcess[T](builders: scala.collection.Seq[T])(implicit convert: T => Source): scala.collection.Seq[Source] = applySeq(builders)

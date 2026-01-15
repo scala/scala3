@@ -42,7 +42,7 @@ object NullOpsDecorator:
         }
         if tpStripped ne tpWiden then tpStripped else tp
 
-      if ctx.explicitNulls then strip(self) else self
+      strip(self)
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */

@@ -25,9 +25,6 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
 
   override def description: String = SpecializeApplyMethods.description
 
-  override def isEnabled(using Context): Boolean =
-    !ctx.settings.scalajs.value && !Feature.shouldBehaveAsScala2
-
   private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
     val name = nme.apply.specializedFunction(ret, args)
     // Create the symbol at the next phase, so that it is a valid member of the

@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.quoted.*
 
 transparent inline def makeClass(inline name: String): JavaClass[Int] = ${ makeClassExpr('name) }

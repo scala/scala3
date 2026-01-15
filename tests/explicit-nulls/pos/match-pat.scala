@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 // Ensure we don't get "the type test for argType cannot be checked at runtime" warning
 

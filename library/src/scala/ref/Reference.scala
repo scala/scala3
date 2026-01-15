@@ -18,11 +18,11 @@ import scala.language.`2.13`
  * @see `java.lang.ref.Reference`
  */
 trait Reference[+T <: AnyRef] extends Function0[T] {
-  /** return the underlying value */
+  /** Returns the underlying value. */
   def apply(): T
-  /** return `Some` underlying if it hasn't been collected, otherwise `None` */
+  /** Returns `Some` underlying if it hasn't been collected, otherwise `None`. */
   def get: Option[T]
-  override def toString: String = get.map(_.toString).getOrElse("<deleted>")
+  override def toString(): String = get.map(_.toString).getOrElse("<deleted>")
   def clear(): Unit
   def enqueue(): Boolean
   def isEnqueued: Boolean

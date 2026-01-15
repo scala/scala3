@@ -1,5 +1,4 @@
 package scala.annotation.internal
-import annotation.experimental
 
 /** An internal annotation on (part of) a parameter type that serves as a marker where
  *  the original type was of the form `into[T]`. These annotated types are mapped back
@@ -8,5 +7,5 @@ import annotation.experimental
  *  `T`. Hence, we don't need to use `.underlying` to go from an into type to its
  *  underlying type in the types of local parameters.
  */
-@experimental
+@preview
 class $into extends annotation.StaticAnnotation

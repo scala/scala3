@@ -1,4 +1,4 @@
-//> using options -Yrequire-targetName -Xfatal-warnings
+//> using options -Yrequire-targetName -Werror
 
 // Compile with -strict -Xfatal-warnings -deprecation
 import scala.annotation.targetName

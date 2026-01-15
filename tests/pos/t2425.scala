@@ -1,6 +1,6 @@
 trait B
 class D extends B
-object Test extends App {
+object Test {
   def foo[T](bar: T) = {
     bar match {
       case _: Array[Array[_]] => println("array 2d")

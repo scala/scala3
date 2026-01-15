@@ -71,7 +71,7 @@ input on the command line.
 From the sbt prompt, `scaladoc/test` runs the tests.
 
 You can also run specific signature tests with `testOnly`,
-for example `scaladoc/test *scaladoc.signatures.MarkdownCode`.
+for example `scaladoc/testOnly *scaladoc.signatures.MarkdownCode`.
 
 Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
 to signatures found in source files (extracted using Scalameta). Such tests are defined using [SignatureTest](test/dotty/tools/scaladoc/signatures/SignatureTest.scala) class

@@ -1069,7 +1069,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
       """|def hello/*: (path : String<<java/lang/String#>>, num : Int<<scala/Int#>>)*/ = (path = ".", num = 5)/*[(String<<java/lang/String#>>, Int<<scala/Int#>>)]*/
          |
          |def test/*: (path : String<<java/lang/String#>>, num : Int<<scala/Int#>>, line : Int<<scala/Int#>>)*/ =
-         |  hello ++/*[Tuple1<<scala/Tuple1#>>["line"], Tuple1<<scala/Tuple1#>>[Int<<scala/Int#>>]]*/ (line = 1)/*(using refl<<scala/`<:<`.refl().>>)*//*[Tuple1<<scala/Tuple1#>>[Int<<scala/Int#>>]]*/
+         |  hello ++/*[Tuple1<<scala/Tuple1#>>["line"], Tuple1<<scala/Tuple1#>>[Int<<scala/Int#>>]]*/ (line = 1)/*[Tuple1<<scala/Tuple1#>>[Int<<scala/Int#>>]]*//*(using refl<<scala/`<:<`.refl().>>)*/
          |
          |@main def bla/*: Unit<<scala/Unit#>>*/ =
          |   val x: (path: String, num: Int, line: Int) = test

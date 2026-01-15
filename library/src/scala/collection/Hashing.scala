@@ -14,6 +14,7 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 protected[collection] object Hashing {
 

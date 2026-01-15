@@ -291,7 +291,7 @@ class TyperState() {
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
         val tvarState = tvar.owningState.nn.get
-        assert(tvarState eqn this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
+        assert(tvarState eq this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
         assert(!tvar.isPermanentlyInstantiated, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
         val inst = constraint.instType(tvar)
         if inst.exists then

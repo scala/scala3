@@ -1,5 +1,7 @@
 package scala.compiletime.testing
 
+import language.experimental.captureChecking
+
 /** Represents a compile-time error.
  *
  *  @see scala.compiletime.testing.typeCheckErrors

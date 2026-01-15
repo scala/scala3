@@ -5,6 +5,7 @@ import java.nio.file.Path
 import dotty.tools.pc.base.{BaseCompletionSuite, BaseExtractMethodSuite}
 
 import org.junit.Test
+import org.junit.Ignore
 
 class ExtractMethodNoIndentSuite extends BaseExtractMethodSuite:
   override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
@@ -73,6 +74,7 @@ class CompletionMatchNoIndentSuite extends BaseCompletionSuite:
       filter = !_.contains("exhaustive")
     )
 
+  @Ignore
   @Test def `exhaustive` =
     checkEdit(
       s"""

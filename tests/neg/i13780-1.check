@@ -1,8 +1,10 @@
 -- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:38:24 ----------------------------------------------------------
 38 |    case x: (h *: t) => x.head // error
    |                        ^^^^^^
-   |                      Found:    Tuple.Head[VS & h *: t]
+   |                      Found:    Tuple.Head[h *: t & VS]
    |                      Required: h
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than h
    |
    |                      where:    VS is a type in method foo with bounds <: Tuple
    |                                h  is a type in method foo
@@ -11,14 +13,12 @@
    |
    |                      Note: a match type could not be fully reduced:
    |
-   |                        trying to reduce  Tuple.Head[VS & h *: t]
-   |                        failed since selector VS & h *: t
+   |                        trying to reduce  Tuple.Head[h *: t & VS]
+   |                        failed since selector h *: t & VS
    |                        does not uniquely determine parameter x in
    |                          case x *: _ => x
    |                        The computed bounds for the parameter are:
    |                          x <: h
-   |                      Note that implicit conversions were not tried because the result of an implicit conversion
-   |                      must be more specific than h
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:52:31 ----------------------------------------------------------

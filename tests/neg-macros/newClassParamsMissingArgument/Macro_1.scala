@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.quoted._
 
 inline def makeClass(inline name: String): Object = ${ makeClassExpr('name) }

@@ -14,6 +14,8 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{Builder, ListBuffer}
 
@@ -111,7 +113,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
   override def exists(p: A => Boolean): Boolean =
     in.exists(p) || out.exists(p)
 
-  override protected[this] def className = "Queue"
+  override protected def className = "Queue"
 
   /** Returns the length of the queue. */
   override def length: Int = in.length + out.length
@@ -120,7 +122,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
 
   override def appended[B >: A](elem: B): Queue[B] = enqueue(elem)
 
-  override def appendedAll[B >: A](that: scala.collection.IterableOnce[B]): Queue[B] = {
+  override def appendedAll[B >: A](that: scala.collection.IterableOnce[B]^): Queue[B] = {
     val newIn = that match {
       case that: Queue[B] => that.in ++ (that.out reverse_::: this.in)
       case that: List[B] => that reverse_::: this.in
@@ -151,7 +153,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
     *  @param  iter        an iterable object
     */
   @deprecated("Use `enqueueAll` instead of `enqueue` to enqueue a collection of elements", "2.13.0")
-  @`inline` final def enqueue[B >: A](iter: scala.collection.Iterable[B]) = enqueueAll(iter)
+  @`inline` final def enqueue[B >: A](iter: scala.collection.Iterable[B]^) = enqueueAll(iter)
 
   /** Creates a new queue with all elements provided by an `Iterable` object
     *  added at the end of the old queue.
@@ -161,7 +163,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
     *
     *  @param  iter        an iterable object
     */
-  def enqueueAll[B >: A](iter: scala.collection.Iterable[B]): Queue[B] = appendedAll(iter)
+  def enqueueAll[B >: A](iter: scala.collection.Iterable[B]^): Queue[B] = appendedAll(iter)
 
   /** Returns a tuple with the first element in the queue,
    *  and a new queue with this element removed.
@@ -203,7 +205,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
 object Queue extends StrictOptimizedSeqFactory[Queue] {
   def newBuilder[A]: Builder[A, Queue[A]] = new ListBuffer[A] mapResult (x => new Queue[A](Nil, x))
 
-  def from[A](source: IterableOnce[A]): Queue[A] = source match {
+  def from[A](source: IterableOnce[A]^): Queue[A] = source match {
     case q: Queue[A] => q
     case _ =>
       val list = List.from(source)

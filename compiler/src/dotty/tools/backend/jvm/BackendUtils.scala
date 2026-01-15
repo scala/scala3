@@ -155,7 +155,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
    */
   final def addInnerClasses(jclass: asm.ClassVisitor, declaredInnerClasses: List[ClassBType], refedInnerClasses: List[ClassBType]): Unit = {
     // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
-    val allNestedClasses = new mutable.TreeSet[ClassBType]()(Ordering.by(_.internalName))
+    val allNestedClasses = new mutable.TreeSet[ClassBType]()(using Ordering.by(_.internalName))
     allNestedClasses ++= declaredInnerClasses
     refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain)
     for nestedClass <- allNestedClasses
@@ -169,15 +169,6 @@ class BackendUtils(val postProcessor: PostProcessor) {
 
 object BackendUtils {
   lazy val classfileVersionMap: Map[Int, Int] = Map(
-    8 -> asm.Opcodes.V1_8,
-    9 -> asm.Opcodes.V9,
-    10 -> asm.Opcodes.V10,
-    11 -> asm.Opcodes.V11,
-    12 -> asm.Opcodes.V12,
-    13 -> asm.Opcodes.V13,
-    14 -> asm.Opcodes.V14,
-    15 -> asm.Opcodes.V15,
-    16 -> asm.Opcodes.V16,
     17 -> asm.Opcodes.V17,
     18 -> asm.Opcodes.V18,
     19 -> asm.Opcodes.V19,
@@ -186,6 +177,7 @@ object BackendUtils {
     22 -> asm.Opcodes.V22,
     23 -> asm.Opcodes.V23,
     24 -> asm.Opcodes.V24,
-    25 -> asm.Opcodes.V25
+    25 -> asm.Opcodes.V25,
+    26 -> asm.Opcodes.V26,
   )
 }
