@@ -129,7 +129,7 @@ val x = 1
 val y = "abc"
 if cond then x else y
 ```
-is the soft unon type `Int | String`. Similarly for match expressions. The type of
+is the soft union type `Int | String`. Similarly for match expressions. The type of
 ```scala
 x match
   case 1 => x
