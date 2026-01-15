@@ -892,7 +892,7 @@ object SymDenotations {
     /** Is this symbol a class that extends `AnyVal`? Overridden in ClassDenotation */
     def isValueClass(using Context): Boolean = false
 
-    /** Is this symbol a class that ...? Overridden in ClassDenotation */
+    /** Is this symbol a class or trait that extends `AnyVal` and has the `valhalla` annotation? Overridden in ClassDenotation */
     def isValhallaValueClass(using Context): Boolean = false
 
     /** Is this symbol a class of which `null` is a value? */

@@ -898,7 +898,7 @@ object Checking {
     }
   }
 
-  // Verify classes and traits with the valhalla annotation meet the requirements
+  /** Verify classes and traits with the valhalla annotation meet the requirements */
   def checkValhallaValueClass(cdef: TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: ValDef =>
