@@ -3,6 +3,7 @@ package transform
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import NameKinds.*
 import util.Spans.*
 
 import StdNames.*, NameOps.*
@@ -47,32 +48,40 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 
-  /** Does `method` need a forwarder to in  class `cls`
-   *  Method needs a forwarder in those cases:
+  /** Does `method` need a forwarder in class `cls`?
+   *  Method needs a forwarder in these cases:
    *   - there's a class defining a method with same signature
    *   - there are multiple traits defining method with same signature
    */
-  def needsMixinForwarder(meth: Symbol): Boolean = {
+  def needsMixinForwarder(meth: Symbol): Boolean =
     lazy val competingMethods = competingMethodsIterator(meth).toList
 
-    def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
+    def needsDisambiguation = competingMethods.exists(!_.is(Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
 
     // JUnit 4 won't recognize annotated default methods, so always generate a forwarder for them.
     def generateJUnitForwarder: Boolean =
-      meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
+      meth.annotations.nonEmpty && JUnit4Annotations.exists(meth.hasAnnotation) &&
         ctx.settings.mixinForwarderChoices.isAtLeastJunit
 
     // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
     def generateSerializationForwarder: Boolean =
        (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
 
-    !meth.isConstructor &&
-    meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
-     generateJUnitForwarder || generateSerializationForwarder) &&
-    isInImplementingClass(meth)
-  }
+    !meth.isConstructor
+    && meth.is(Method, butNot = PrivateOrAccessorOrDeferred)
+    && (!meth.is(JavaDefined) || !meth.owner.is(Sealed) || meth.owner.children.contains(cls))
+    && (
+         ctx.settings.mixinForwarderChoices.isTruthy
+      || meth.owner.is(Scala2x)
+      || needsDisambiguation
+      || hasNonInterfaceDefinition
+      || generateJUnitForwarder
+      || generateSerializationForwarder
+    )
+    && isInImplementingClass(meth)
+    && !meth.name.is(InlineAccessorName)
+  end needsMixinForwarder
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred

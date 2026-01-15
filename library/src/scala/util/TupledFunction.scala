@@ -1,5 +1,7 @@
 package scala.util
 
+import language.experimental.captureChecking
+
 import scala.annotation.implicitNotFound
 import scala.annotation.experimental
 
@@ -16,7 +18,7 @@ sealed trait TupledFunction[F, G]:
 
 @experimental
 private[scala] object TupledFunction:
-  def apply[F, G](tupledImpl: F => G, untupledImpl: G => F): TupledFunction[F, G] =
+  def apply[F, G](tupledImpl: F => G, untupledImpl: G => F): TupledFunction[F, G]^{tupledImpl, untupledImpl} =
     new TupledFunction[F, G]:
       def tupled(f: F): G = tupledImpl(f)
       def untupled(g: G): F = untupledImpl(g)

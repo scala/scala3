@@ -38,7 +38,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
     def apiMethods(jarPath: Path, release: String): Set[String] = {
       given ctx: Context = initCtx.fresh
-      ctx.settings.usejavacp.update(true)
+      ctx.settings.Yusejavacp.update(true)
       ctx.settings.classpath.update(jarPath.toAbsolutePath.toString)
       ctx.settings.javaOutputVersion.update(release)
       ctx.initialize()
@@ -76,7 +76,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
     def classExists(className: String, release: String): Boolean = {
       given ctx: Context = initCtx.fresh
-      ctx.settings.usejavacp.update(true)
+      ctx.settings.Yusejavacp.update(true)
       ctx.settings.javaOutputVersion.update(release)
       ctx.initialize()
       val classFile = ctx.platform.classPath.findClassFile(className)

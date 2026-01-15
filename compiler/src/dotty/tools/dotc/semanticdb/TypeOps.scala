@@ -407,7 +407,7 @@ class TypeOps:
         // `Seq[Int] @Repeated` (or `Array[Int] @Repeated`)
         // See: Desugar.scala and TypeApplications.scala
         case AnnotatedType(AppliedType(_, targs), annot)
-          if (annot matches defn.RepeatedAnnot) && (targs.length == 1) =>
+          if annot.matches(defn.RepeatedAnnot) && (targs.length == 1) =>
           val stpe = loop(targs(0))
           s.RepeatedType(stpe)
 

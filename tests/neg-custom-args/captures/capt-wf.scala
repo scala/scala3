@@ -1,4 +1,4 @@
-//> using options -language:experimental.captureChecking -Xfatal-warnings
+//> using options -language:experimental.captureChecking -Werror
 import caps.cap
 class C
 type Cap = C^

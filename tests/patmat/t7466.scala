@@ -1,4 +1,4 @@
-object Test extends App {
+object Test {
   val Yes1 = true
   val Yes2 = true
   val No1 = false

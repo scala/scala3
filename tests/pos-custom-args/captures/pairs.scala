@@ -1,6 +1,6 @@
 //class CC
 //type Cap = CC^
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 object Generic:
 

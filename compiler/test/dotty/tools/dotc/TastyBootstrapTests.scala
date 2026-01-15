@@ -61,18 +61,18 @@ class TastyBootstrapTests {
       compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
           //  "-source", "future",  // TODO: re-enable once library uses updated syntax for vararg splices, wildcard imports, and import renaming
-          ))(libGroup)
+          ))(using libGroup)
 
     val tastyCoreSources = sources(Paths.get("tasty/src"))
-    val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
+    val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(using tastyCoreGroup)
 
     val compilerSources = sources(Paths.get("compiler/src")) ++ sources(Paths.get("compiler/src-bootstrapped"))
     val compilerManagedSources = Properties.dottyCompilerManagedSources match
       case p if Files.isDirectory(p) => sources(p)
       case _                         => Nil
 
-    val dotty1 = compileList("dotty1", compilerSources ++ compilerManagedSources, opt)(dotty1Group)
-    val dotty2 = compileList("dotty2", compilerSources ++ compilerManagedSources, opt)(dotty2Group)
+    val dotty1 = compileList("dotty1", compilerSources ++ compilerManagedSources, opt)(using dotty1Group)
+    val dotty2 = compileList("dotty2", compilerSources ++ compilerManagedSources, opt)(using dotty2Group)
 
     val tests = {
       lib.keepOutput :: tastyCore.keepOutput :: dotty1.keepOutput :: aggregateTests(

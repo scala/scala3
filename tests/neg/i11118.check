@@ -1,11 +1,11 @@
 -- Warning: tests/neg/i11118.scala:2:12 --------------------------------------------------------------------------------
 2 |val (a,b) = (1,2,3) // error // warning
   |            ^^^^^^^
-  |          pattern's type (Any, Any) does not match the right hand side expression's type (Int, Int, Int)
+  |       pattern's type (Any, Any) does not match the right hand side expression's type (Int, Int, Int)
   |
-  |          If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-  |          which may result in a MatchError at runtime.
-  |          This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+  |       If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+  |       which may result in a MatchError at runtime.
+  |       This patch can be rewritten automatically under -rewrite -source 3.8-migration.
 -- Error: tests/neg/i11118.scala:2:4 -----------------------------------------------------------------------------------
 2 |val (a,b) = (1,2,3) // error // warning
   |    ^

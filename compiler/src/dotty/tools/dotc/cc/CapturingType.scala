@@ -39,8 +39,7 @@ object CapturingType:
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
-        if parent.derivesFromMutable then refs.setMutable()
-        val classifier = parent.classifier
+        if parent.derivesFromMutable then refs.associateWithMutable()
         refs.adoptClassifier(parent.classifier)
         AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 

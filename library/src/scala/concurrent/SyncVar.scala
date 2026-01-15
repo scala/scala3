@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit
  */
 @deprecated("Use `java.util.concurrent.LinkedBlockingQueue with capacity 1` instead.", since = "2.13.0")
 class SyncVar[A] {
-  private[this] var isDefined: Boolean = false
-  private[this] var value: A = _
+  private var isDefined: Boolean = false
+  private var value: A = compiletime.uninitialized
 
   /**
    * Wait for this SyncVar to become defined and then get
@@ -48,8 +48,8 @@ class SyncVar[A] {
     if (elapsed < 0) 0 else TimeUnit.NANOSECONDS.toMillis(elapsed)
   }
 
-  /** Wait at least `timeout` milliseconds (possibly more) for this `SyncVar`
-   *  to become defined and then get its value.
+  /** Waits at least `timeout` milliseconds (possibly more) for this `SyncVar`
+   *  to become defined and then gets its value.
    *
    *  @param timeout     time in milliseconds to wait
    *  @return            `None` if variable is undefined after `timeout`, `Some(value)` otherwise
@@ -78,8 +78,8 @@ class SyncVar[A] {
     finally unsetVal()
   }
 
-  /** Wait at least `timeout` milliseconds (possibly more) for this `SyncVar`
-   *  to become defined and then get the stored value, unsetting it
+  /** Waits at least `timeout` milliseconds (possibly more) for this `SyncVar`
+   *  to become defined and then gets the stored value, unsetting it
    *  as a side effect.
    *
    *  @param timeout     the amount of milliseconds to wait
@@ -98,7 +98,7 @@ class SyncVar[A] {
     setVal(x)
   }
 
-  /** Check whether a value is stored in the synchronized variable. */
+  /** Checks whether a value is stored in the synchronized variable. */
   def isSet: Boolean = synchronized {
     isDefined
   }

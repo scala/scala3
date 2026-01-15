@@ -20,7 +20,7 @@ object MyXObject {
   }
 }
 
-object Main extends App {
+object Main {
   println(XObject.anX + XObject.anX) // prints 10
   println(MyXObject.anX + MyXObject.anX) // infinite loop
 }

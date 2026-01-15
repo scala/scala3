@@ -14,6 +14,8 @@ package scala
 package collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.lang.Integer.bitCount
 import java.lang.System.arraycopy
 
@@ -58,11 +60,12 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   override def keySet: Set[K] = if (size == 0) Set.empty else new HashKeySet
 
-  private[immutable] final class HashKeySet extends ImmutableKeySet {
 
-    private[this] def newKeySetOrThis(newHashMap: HashMap[K, _]): Set[K] =
+  private[immutable] final class HashKeySet extends LazyImmutableKeySet {
+
+    private def newKeySetOrThis(newHashMap: HashMap[K, ?]): Set[K] =
       if (newHashMap eq HashMap.this) this else newHashMap.keySet
-    private[this] def newKeySetOrThis(newRootNode: BitmapIndexedMapNode[K, _]): Set[K] =
+    private def newKeySetOrThis(newRootNode: BitmapIndexedMapNode[K, ?]): Set[K] =
       if (newRootNode eq rootNode) this else new HashMap(newRootNode).keySet
 
     override def incl(elem: K): Set[K] = {
@@ -95,11 +98,11 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     else new MapKeyValueTupleReverseIterator[K, V](rootNode)
   }
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S with EfficientSplit =
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S & EfficientSplit =
     shape.
       parUnbox(collection.convert.impl.AnyChampStepper.from[(K, V), MapNode[K, V]](size, rootNode, (node, i) => node.getPayload(i)))
 
-  override def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S with EfficientSplit = {
+  override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S & EfficientSplit = {
     import collection.convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => IntChampStepper.from[   MapNode[K, V]](size, rootNode, (node, i) => node.getKey(i).asInstanceOf[Int])
@@ -107,10 +110,10 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
       case StepperShape.DoubleShape => DoubleChampStepper.from[MapNode[K, V]](size, rootNode, (node, i) => node.getKey(i).asInstanceOf[Double])
       case _         => shape.parUnbox(AnyChampStepper.from[K, MapNode[K, V]](size, rootNode, (node, i) => node.getKey(i)))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
-  override def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S with EfficientSplit = {
+  override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S & EfficientSplit = {
     import collection.convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => IntChampStepper.from[   MapNode[K, V]](size, rootNode, (node, i) => node.getValue(i).asInstanceOf[Int])
@@ -118,7 +121,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
       case StepperShape.DoubleShape => DoubleChampStepper.from[MapNode[K, V]](size, rootNode, (node, i) => node.getValue(i).asInstanceOf[Double])
       case _         => shape.parUnbox(AnyChampStepper.from[V, MapNode[K, V]](size, rootNode, (node, i) => node.getValue(i)))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   override final def contains(key: K): Boolean = {
@@ -145,7 +148,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     rootNode.getOrElse(key, keyUnimprovedHash, keyHash, 0, default)
   }
 
-  @inline private[this] def newHashMapOrThis[V1 >: V](newRootNode: BitmapIndexedMapNode[K, V1]): HashMap[K, V1] =
+  @inline private def newHashMapOrThis[V1 >: V](newRootNode: BitmapIndexedMapNode[K, V1]): HashMap[K, V1] =
     if (newRootNode eq rootNode) this else new HashMap(newRootNode)
 
   def updated[V1 >: V](key: K, value: V1): HashMap[K, V1] = {
@@ -162,7 +165,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
-  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]): HashMap[K, V1] = that match {
+  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
     case hm: HashMap[K, V1] =>
       if (isEmpty) hm
       else {
@@ -271,7 +274,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   override def foreachEntry[U](f: (K, V) => U): Unit = rootNode.foreachEntry(f)
 
-  /** Applies a function to each key, value, and **original** hash value in this Map */
+  /** Applies a function to each key, value, and **original** hash value in this Map. */
   @inline private[collection] def foreachWithHash(f: (K, V, Int) => Unit): Unit = rootNode.foreachWithHash(f)
 
   override def equals(that: Any): Boolean =
@@ -292,7 +295,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     }
   }
 
-  override protected[this] def className = "HashMap"
+  override protected def className = "HashMap"
 
   /** Merges this HashMap with an other HashMap by combining all key-value pairs of both maps, and delegating to a merge
     * function to resolve any key collisions between the two HashMaps.
@@ -385,7 +388,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     else new HashMap(newRootNode)
   }
 
-  override def removedAll(keys: IterableOnce[K]): HashMap[K, V] = {
+  override def removedAll(keys: IterableOnce[K]^): HashMap[K, V] = {
     if (isEmpty) {
       this
     } else {
@@ -613,7 +616,7 @@ private[immutable] sealed abstract class MapNode[K, +V] extends Node[MapNode[K, 
     */
   def getTuple(key: K, originalHash: Int, hash: Int, shift: Int): (K, V)
 
-  /** Adds all key-value pairs to a builder */
+  /** Adds all key-value pairs to a builder. */
   def buildTo[V1 >: V](builder: HashMapBuilder[K, V1]): Unit
 }
 
@@ -872,7 +875,7 @@ private final class BitmapIndexedMapNode[K, +V](
       if (key0 == key) {
         if (this.payloadArity == 2 && this.nodeArity == 0) {
           /*
-           * Create new node with remaining pair. The new node will a) either become the new root
+           * Creates new node with remaining pair. The new node will a) either become the new root
            * returned, or b) unwrapped and inlined during returning.
            */
           val newDataMap = if (shift == 0) (dataMap ^ bitpos) else bitposFrom(maskFrom(keyHash, 0))
@@ -1173,7 +1176,7 @@ private final class BitmapIndexedMapNode[K, +V](
   }
 
   override def transform[W](f: (K, V) => W): BitmapIndexedMapNode[K, W] = {
-    var newContent: Array[Any] = null
+    @annotation.stableNull var newContent: Array[Any] | Null = null
     val iN = payloadArity // arity doesn't change during this operation
     val jN = nodeArity // arity doesn't change during this operation
     val newContentLength = content.length
@@ -1345,6 +1348,8 @@ private final class BitmapIndexedMapNode[K, +V](
 
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
+
+  override def toString() = s"${getClass.getName}@${Integer.toHexString(System.identityHashCode(this))}"
 
   override def concat[V1 >: V](that: MapNode[K, V1], shift: Int): BitmapIndexedMapNode[K, V1] = that match {
     case bm: BitmapIndexedMapNode[K, V] @unchecked =>
@@ -1716,7 +1721,7 @@ private final class BitmapIndexedMapNode[K, +V](
       // bitmap of nodes which, when filtered, returned a single-element node. These must be migrated to data
       var nodeMigrateToDataTargetMap = 0
       // the queue of single-element, post-filter nodes
-      var nodesToMigrateToData: mutable.Queue[MapNode[K, V]] = null
+      @annotation.stableNull var nodesToMigrateToData: mutable.Queue[MapNode[K, V]] | Null = null
 
       // bitmap of all nodes which, when filtered, returned themselves. They are passed forward to the returned node
       var nodesToPassThroughMap = 0
@@ -1726,7 +1731,7 @@ private final class BitmapIndexedMapNode[K, +V](
       // not named `newNodesMap` (plural) to avoid confusion with `newNodeMap` (singular)
       var mapOfNewNodes = 0
       // each bit in `mapOfNewNodes` corresponds to one element in this queue
-      var newNodes: mutable.Queue[MapNode[K, V]] = null
+      @annotation.stableNull var newNodes: mutable.Queue[MapNode[K, V]] | Null = null
 
       var newDataMap = 0
       var newNodeMap = 0
@@ -1766,7 +1771,7 @@ private final class BitmapIndexedMapNode[K, +V](
               nodesToPassThroughMap |= bitpos
             } else {
               mapOfNewNodes |= bitpos
-              if (newNodes eq null) {
+              if (newNodes == null) {
                 newNodes = mutable.Queue.empty
               }
               newNodes += newSubNode
@@ -1774,7 +1779,7 @@ private final class BitmapIndexedMapNode[K, +V](
           } else if (newSubNode.size == 1) {
             newDataMap |= bitpos
             nodeMigrateToDataTargetMap |= bitpos
-            if (nodesToMigrateToData eq null) {
+            if (nodesToMigrateToData == null) {
               nodesToMigrateToData = mutable.Queue()
             }
             nodesToMigrateToData += newSubNode
@@ -1824,14 +1829,14 @@ private final class BitmapIndexedMapNode[K, +V](
             oldNodeIndex += 1
           } else if ((bitpos & nodeMigrateToDataTargetMap) != 0) {
             // we need not check for null here. If nodeMigrateToDataTargetMap != 0, then nodesMigrateToData must not be null
-            val node = nodesToMigrateToData.dequeue()
+            val node = nodesToMigrateToData.nn.dequeue()
             newContent(TupleLength * newDataIndex) = node.getKey(0)
             newContent(TupleLength * newDataIndex + 1) = node.getValue(0)
             newOriginalHashes(newDataIndex) = node.getHash(0)
             newDataIndex += 1
             oldNodeIndex += 1
           } else if ((bitpos & mapOfNewNodes) != 0) {
-            newContent(newContentSize - newNodeIndex - 1) = newNodes.dequeue()
+            newContent(newContentSize - newNodeIndex - 1) = newNodes.nn.dequeue()
             newNodeIndex += 1
             oldNodeIndex += 1
           } else if ((bitpos & dataMap) != 0) {
@@ -2006,12 +2011,12 @@ private final class HashCollisionMapNode[K, +V ](
       if (hc eq this) {
         this
       } else {
-        var newContent: VectorBuilder[(K, V1)] = null
+        var newContent: VectorBuilder[(K, V1)] | Null = null
         val iter = content.iterator
         while (iter.hasNext) {
           val nextPayload = iter.next()
           if (hc.indexOf(nextPayload._1) < 0) {
-            if (newContent eq null) {
+            if (newContent == null) {
               newContent = new VectorBuilder[(K, V1)]()
               newContent.addAll(hc.content)
             }
@@ -2029,7 +2034,7 @@ private final class HashCollisionMapNode[K, +V ](
   override def mergeInto[V1 >: V](that: MapNode[K, V1], builder: HashMapBuilder[K, V1], shift: Int)(mergef: ((K, V), (K, V1)) => (K, V1)): Unit = that match {
     case hc: HashCollisionMapNode[K, V1] =>
       val iter = content.iterator
-      val rightArray = hc.content.toArray[AnyRef] // really Array[(K, V1)]
+      val rightArray: Array[AnyRef | Null] = hc.content.toArray[AnyRef | Null] // really Array[(K, V1)]
 
       def rightIndexOf(key: K): Int = {
         var i = 0
@@ -2091,6 +2096,8 @@ private final class HashCollisionMapNode[K, +V ](
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
+  override def toString() = s"${getClass.getName}@${Integer.toHexString(System.identityHashCode(this))}"
+
   override def cachedJavaKeySetHashCode: Int = size * hash
 
 }
@@ -2151,8 +2158,8 @@ private final class MapKeyValueTupleReverseIterator[K, V](rootNode: MapNode[K, V
 
 private final class MapKeyValueTupleHashIterator[K, V](rootNode: MapNode[K, V])
   extends ChampBaseReverseIterator[Any, MapNode[K, V]](rootNode) {
-  private[this] var hash = 0
-  private[this] var value: V = _
+  private var hash = 0
+  private var value: V = compiletime.uninitialized
   override def hashCode(): Int = MurmurHash3.tuple2Hash(hash, value.##, MurmurHash3.productSeed)
   def next(): MapKeyValueTupleHashIterator[K, V] = {
     if (!hasNext) Iterator.empty.next()
@@ -2164,9 +2171,9 @@ private final class MapKeyValueTupleHashIterator[K, V](rootNode: MapNode[K, V])
   }
 }
 
-/** Used in HashMap[K, V]#removeAll(HashSet[K]) */
+/** Used in HashMap[K, V]#removeAll(HashSet[K]). */
 private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) extends ChampBaseIterator[K, SetNode[K]](rootSetNode) {
-  /** Returns the result of immutably removing all keys in `rootSetNode` from `rootMapNode` */
+  /** Returns the result of immutably removing all keys in `rootSetNode` from `rootMapNode`. */
   def removeAll[V](rootMapNode: BitmapIndexedMapNode[K, V]): BitmapIndexedMapNode[K, V] = {
     var curr = rootMapNode
     while (curr.size > 0 && hasNext) {
@@ -2200,20 +2207,20 @@ object HashMap extends MapFactory[HashMap] {
   def empty[K, V]: HashMap[K, V] =
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
-  def from[K, V](source: collection.IterableOnce[(K, V)]): HashMap[K, V] =
+  def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     source match {
       case hs: HashMap[K, V] => hs
       case _ => (newBuilder[K, V] ++= source).result()
     }
 
-  /** Create a new Builder which can be reused after calling `result()` without an
+  /** Creates a new Builder which can be reused after calling `result()` without an
     * intermediate call to `clear()` in order to build multiple related results.
     */
   def newBuilder[K, V]: ReusableBuilder[(K, V), HashMap[K, V]] = new HashMapBuilder[K, V]
 }
 
 
-/** A Builder for a HashMap.
+/** A `Builder` for a `HashMap`.
   * $multipleResults
   */
 private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, V), HashMap[K, V]] {
@@ -2225,7 +2232,8 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
   /** The last given out HashMap as a return value of `result()`, if any, otherwise null.
     * Indicates that on next add, the elements should be copied to an identical structure, before continuing
     * mutations. */
-  private var aliased: HashMap[K, V] = _
+  @annotation.stableNull
+  private var aliased: HashMap[K, V] | Null = compiletime.uninitialized
 
   private def isAliased: Boolean = aliased != null
 
@@ -2239,8 +2247,8 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
       rootNode.getOrElse(key, originalHash, improve(originalHash), 0, value)
     }
 
-  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems */
-  private[this] def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
+  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems. */
+  private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
     if (ix < 0) throw new ArrayIndexOutOfBoundsException
     if (ix > as.length) throw new ArrayIndexOutOfBoundsException
     val result = new Array[Int](as.length + 1)
@@ -2250,8 +2258,8 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     result
   }
 
-  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair */
-  private[this] def insertValue[V1 >: V](bm: BitmapIndexedMapNode[K, V],bitpos: Int, key: K, originalHash: Int, keyHash: Int, value: V1): Unit = {
+  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair. */
+  private def insertValue[V1 >: V](bm: BitmapIndexedMapNode[K, V],bitpos: Int, key: K, originalHash: Int, keyHash: Int, value: V1): Unit = {
     val dataIx = bm.dataIndex(bitpos)
     val idx = TupleLength * dataIx
 
@@ -2273,7 +2281,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     bm.cachedJavaKeySetHashCode += keyHash
   }
 
-  /** Upserts a key/value pair into mapNode, mutably */
+  /** Upserts a key/value pair into mapNode, mutably. */
   private[immutable] def update(mapNode: MapNode[K, V], key: K, value: V, originalHash: Int, keyHash: Int, shift: Int): Unit = {
     mapNode match {
       case bm: BitmapIndexedMapNode[K, V] =>
@@ -2317,14 +2325,14 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     }
   }
 
-  /** If currently referencing aliased structure, copy elements to new mutable structure */
-  private[this] def ensureUnaliased() = {
+  /** If currently referencing aliased structure, copy elements to new mutable structure. */
+  private def ensureUnaliased() = {
     if (isAliased) copyElems()
     aliased = null
   }
 
-  /** Copy elements to new mutable structure */
-  private[this] def copyElems(): Unit = {
+  /** Copies elements to new mutable structure. */
+  private def copyElems(): Unit = {
     rootNode = rootNode.copy()
   }
 
@@ -2364,7 +2372,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     this
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     ensureUnaliased()
     xs match {
       case hm: HashMap[K, V] =>

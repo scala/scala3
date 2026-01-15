@@ -1,4 +1,4 @@
-> 'set scalacOptions += "-Xfatal-warnings"'
+> 'set scalacOptions += "-Werror"'
 
 > compile
 

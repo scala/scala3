@@ -40,14 +40,14 @@ import java.lang.InheritableThreadLocal
  *  are independent of those for the original thread.
  */
 class DynamicVariable[T](init: T) {
-  private[this] val tl = new InheritableThreadLocal[T] {
-    override def initialValue: T with AnyRef = init.asInstanceOf[T with AnyRef]
+  private val tl = new InheritableThreadLocal[T] {
+    override def initialValue: T & AnyRef = init.asInstanceOf[T & AnyRef]
   }
 
-  /** Retrieve the current value */
+  /** Retrieves the current value. */
   def value: T = tl.get.asInstanceOf[T]
 
-  /** Set the value of the variable while executing the specified
+  /** Sets the value of the variable while executing the specified
     * thunk.
     *
     * @param newval The value to which to set the variable
@@ -55,16 +55,16 @@ class DynamicVariable[T](init: T) {
     */
   def withValue[S](newval: T)(thunk: => S): S = {
     val oldval = value
-    tl set newval
+    tl.set(newval)
 
     try thunk
-    finally tl set oldval
+    finally tl.set(oldval)
   }
 
   /** Change the currently bound value, discarding the old value.
     * Usually withValue() gives better semantics.
     */
-  def value_=(newval: T) = tl set newval
+  def value_=(newval: T) = tl.set(newval)
 
-  override def toString: String = "DynamicVariable(" + value + ")"
+  override def toString(): String = "DynamicVariable(" + value + ")"
 }

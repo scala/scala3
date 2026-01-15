@@ -1,6 +1,6 @@
-import caps.consume
 
-class Cap extends caps.Capability
+
+class Cap extends caps.ExclusiveCapability
 
 def eff(using Cap): Unit = ()
 
@@ -19,7 +19,7 @@ def test(using Cap) =
   class C4(val f: () => Int) extends C3 // error
 
 // The following is a variation of pos/cc-this.scala
-def test2(using @consume cc: Cap) =
+def test2(using consume cc: Cap) =
 
   class C(val x: () => Int):
     val y: C^ = this
@@ -30,6 +30,6 @@ def test2(using @consume cc: Cap) =
 
   def c1 = new C(f)
   def c2 = c1
-  def c3 = c2.y // error
+  def c3 = c2.y // was error, now OK
   val c4: C^ = c3
   val _ = c3: C^

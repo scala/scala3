@@ -32,7 +32,9 @@ object SourceLanguage:
       SourceLanguage.Java
     // Scala 2 methods don't have Inline set, except for the ones injected with `patchStdlibClass`
     // which are really Scala 3 methods.
-    else if denot.isClass && denot.is(Scala2x) || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline)) then
+    else if denot.isClass && denot.is(Scala2x)
+          || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline))
+          || denot.is(Param) && denot.maybeOwner.is(Method)  && denot.maybeOwner.maybeOwner.lastKnownDenotation.is(Scala2x) then
       SourceLanguage.Scala2
     else
       SourceLanguage.Scala3
@@ -72,7 +74,7 @@ end SourceLanguage
  *  only for isInstanceOf, asInstanceOf: PolyType, TypeParamRef, TypeBounds
  *
  */
-object TypeErasure {
+object TypeErasure:
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
     sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass
@@ -109,9 +111,9 @@ object TypeErasure {
         case _ => -1
 
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
+    if (defn.specialErasure.contains(cls))
+      return defn.specialErasure(cls).uncheckedNN
     if (cls.owner == defn.ScalaPackageClass) {
-      if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls).uncheckedNN
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }
@@ -441,7 +443,12 @@ object TypeErasure {
             }
 
             // We are not interested in anything that is not a supertype of tp2
-            val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)
+            val tp2superclasses = tp1.baseClasses
+              // We filter out Pure from the base classes since CC should not affect binary compatibitlity
+              // and the algorithm here sometimes will take the erasure of Pure
+              // The root problem is described here: https://github.com/scala/scala3/issues/24148
+              .filter(_ != defn.PureClass)
+              .filter(cls2.derivesFrom)
 
             // From the spec, "Linearization also satisfies the property that a
             // linearization of a class always contains the linearization of its
@@ -579,7 +586,125 @@ object TypeErasure {
         defn.FunctionType(n = info.nonErasedParamCount)
     }
     erasure(functionType(applyInfo))
-}
+
+  /** Check if LambdaMetaFactory can handle signature adaptation between two method types.
+   *
+   *  LMF has limitations on what type adaptations it can perform automatically.
+   *  This method checks whether manual bridging is needed for params and/or result.
+   *
+   *  The adaptation rules are:
+   *  - For parameters: primitives and value classes cannot be auto-adapted by LMF
+   *    because the Scala spec requires null to be "unboxed" to the default value,
+   *    but LMF throws `NullPointerException` instead.
+   *  - For results: value classes and Unit cannot be auto-adapted by LMF.
+   *    Non-Unit primitives can be auto-adapted since LMF only needs to box (not unbox).
+   *  - LMF cannot auto-adapt between Object and Array types.
+   *
+   *  @param implParamTypes  Parameter types of the implementation method
+   *  @param implResultType  Result type of the implementation method
+   *  @param samParamTypes   Parameter types of the SAM method
+   *  @param samResultType   Result type of the SAM method
+   *
+   *  @return (paramNeeded, resultNeeded) indicating what needs bridging
+   */
+  def additionalAdaptationNeeded(
+      implParamTypes: List[Type],
+      implResultType: Type,
+      samParamTypes: List[Type],
+      samResultType: Type
+  )(using Context): (paramNeeded: Boolean, resultNeeded: Boolean) =
+    def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
+
+    /** Can the implementation parameter type `tp` be auto-adapted to a different
+     *  parameter type in the SAM?
+     *
+     *  For derived value classes, we always need to do the bridging manually.
+     *  For primitives, we cannot rely on auto-adaptation on the JVM because
+     *  the Scala spec requires null to be "unboxed" to the default value of
+     *  the value class, but the adaptation performed by LambdaMetaFactory
+     *  will throw a `NullPointerException` instead.
+     */
+    def autoAdaptedParam(tp: Type) = !tp.isErasedValueType && !tp.isPrimitiveValueType
+
+    /** Can the implementation result type be auto-adapted to a different result
+     *  type in the SAM?
+     *
+     *  For derived value classes, it's the same story as for parameters.
+     *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
+     *  adaptation, because it only needs to box, not unbox, so no special
+     *  handling of null is required.
+     */
+    def autoAdaptedResult(tp: Type) =
+      !tp.isErasedValueType && !(tp.classSymbol eq defn.UnitClass)
+
+    val paramAdaptationNeeded =
+      implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
+        !sameClass(implType, samType) && (!autoAdaptedParam(implType)
+          // LambdaMetaFactory cannot auto-adapt between Object and Array types
+          || samType.isInstanceOf[JavaArrayType]))
+
+    val resultAdaptationNeeded =
+      !sameClass(implResultType, samResultType) && !autoAdaptedResult(implResultType)
+
+    (paramAdaptationNeeded, resultAdaptationNeeded)
+  end additionalAdaptationNeeded
+
+  /** Check if LambdaMetaFactory can handle the SAM method's required signature adaptation.
+   *
+   *  When a SAM method overrides other methods, the erased signatures must be compatible
+   *  to be qualifies as a valid functional interface on JVM.
+   *  This method returns true if all overridden methods have compatible erased signatures
+   *  that LMF can auto-adapt (or don't need adaptation).
+   *
+   *  Additionally, all abstract methods from parent traits must be either:
+   *  - Still abstract in the SAM class (so they are the SAM method), or
+   *  - Overridden by the SAM method (so the lambda implements them via the SAM)
+   *  Otherwise, a lambda generated by LMF won't inherit the concrete implementation
+   *  and will fail with AbstractMethodError at runtime.
+   *
+   *  When this returns true, the SAM class does not need to be expanded.
+   *
+   *  @param cls  The SAM class to check
+   *  @return     true if LMF can handle the required adaptation
+   */
+  def samExpansionNotNeeded(cls: ClassSymbol)(using Context): Boolean = cls.typeRef.possibleSamMethods match
+    case Seq(samMeth) =>
+      val samMethSym = samMeth.symbol
+
+      // Check that all abstract methods from parent traits are covered by the SAM method
+      // or remain abstract in the SAM class.
+      // If a parent trait's abstract method is implemented by a non-SAM method,
+      // the lambda generated by LMF won't inherit that implementation (see i24826).
+      val parentAbstractMethodsCoveredBySam = {
+        cls.directlyInheritedTraits.forall: parentTrait =>
+          parentTrait.typeRef.possibleSamMethods.forall: absMethod =>
+            // Either the SAM method overrides this abstract method
+            // Or the method remains abstract in the SAM class
+            val absMethodSym = absMethod.symbol
+            samMethSym.allOverriddenSymbols.contains(absMethodSym)
+            || cls.typeRef.member(absMethodSym.name).alternatives.exists(_.symbol.is(Deferred))
+      }
+      if !parentAbstractMethodsCoveredBySam then
+        return false
+
+      val erasedSamInfo = transformInfo(samMethSym, samMeth.info)
+
+      val (erasedSamParamTypes, erasedSamResultType) = erasedSamInfo match
+        case mt: MethodType => (mt.paramInfos, mt.resultType)
+        case _ => return false
+
+      samMethSym.allOverriddenSymbols.forall { overridden =>
+        val erasedOverriddenInfo = transformInfo(overridden, overridden.info)
+        erasedOverriddenInfo match
+          case mt: MethodType =>
+            val (paramNeeded, resultNeeded) =
+              additionalAdaptationNeeded(erasedSamParamTypes, erasedSamResultType, mt.paramInfos, mt.resultType)
+            !(paramNeeded || resultNeeded)
+          case _ => true
+      }
+    case _ => false
+  end samExpansionNotNeeded
+end TypeErasure
 
 import TypeErasure.*
 
@@ -670,6 +795,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         WildcardType
       case tp: TypeProxy =>
         this(tp.underlying)
+      // When erasing something that is `A & Pure` or `Pure & A`, we should take the erasure of A
+      // This also work for [T <: Pure] `T & A` or `A & T`
+      // The root problem is described here: https://github.com/scala/scala3/issues/24113
+      case AndType(tp1, tp2) if tp1.dealias.classSymbol == defn.PureClass =>
+        this(tp2)
+      case AndType(tp1, tp2) if tp2.dealias.classSymbol == defn.PureClass =>
+        this(tp1)
       case tp @ AndType(tp1, tp2) =>
         if sourceLanguage.isJava then
           this(tp1)
@@ -681,7 +813,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           if e1.isInstanceOf[WildcardType] || e2.isInstanceOf[WildcardType] then WildcardType
           else erasedGlb(e1, e2)
       case OrType(tp1, tp2) =>
-        if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value then
+        val e1 = this(tp1)
+        val e2 = this(tp2)
+        val result = if e1.isInstanceOf[WildcardType] || e2.isInstanceOf[WildcardType]
+          then WildcardType
+          else TypeComparer.orType(e1, e2, isErased = true)
+        def isNullStripped =
+          tp2.isNullType && e1.derivesFrom(defn.ObjectClass)
+          || tp1.isNullType && e2.derivesFrom(defn.ObjectClass)
+        if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value && !isNullStripped then
           // In Scala2Unpickler we unpickle Scala.js pseudo-unions as if they were
           // real unions, but we must still erase them as Scala 2 would to emit
           // the correct signatures in SJSIR.
@@ -692,11 +832,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           // impact on overriding relationships so it's best to leave them
           // alone (and this doesn't impact the SJSIR we generate).
           JSDefinitions.jsdefn.PseudoUnionType
-        else
-          val e1 = this(tp1)
-          val e2 = this(tp2)
-          if e1.isInstanceOf[WildcardType] || e2.isInstanceOf[WildcardType] then WildcardType
-          else TypeComparer.orType(e1, e2, isErased = true)
+        else result
       case tp: MethodType =>
         def paramErasure(tpToErase: Type) =
           erasureFn(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, inSigName = false)(tpToErase)

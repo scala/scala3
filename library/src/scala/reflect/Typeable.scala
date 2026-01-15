@@ -1,5 +1,7 @@
 package scala.reflect
 
+import language.experimental.captureChecking
+
 /** A shorhand for `TypeTest[Any, T]`. A `Typeable[T] contains the logic needed to
  *  know at runtime if a value can be downcasted to `T`.
  *

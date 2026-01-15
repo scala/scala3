@@ -29,13 +29,13 @@ import java.{lang => jl}
   *                       extension methods instead.
   */
 object OptionConverters {
-  /** Convert a Scala `Option` to a Java `Optional` */
+  /** Converts a Scala `Option` to a Java `Optional`. */
   def toJava[A](o: Option[A]): Optional[A] = o match {
     case Some(a) => Optional.ofNullable(a)
     case _ => Optional.empty[A]
   }
 
-  /** Convert a Scala `Option[java.lang.Double]` to a Java `OptionalDouble`
+  /** Converts a Scala `Option[java.lang.Double]` to a Java `OptionalDouble`.
     *
     * $primitiveNote
     */
@@ -44,7 +44,7 @@ object OptionConverters {
     case _ => OptionalDouble.empty
   }
 
-  /** Convert a Scala `Option[java.lang.Integer]` to a Java `OptionalInt`
+  /** Converts a Scala `Option[java.lang.Integer]` to a Java `OptionalInt`.
     *
     * $primitiveNote
     */
@@ -53,7 +53,7 @@ object OptionConverters {
     case _ => OptionalInt.empty
   }
 
-  /** Convert a Scala `Option[java.lang.Long]` to a Java `OptionalLong`
+  /** Converts a Scala `Option[java.lang.Long]` to a Java `OptionalLong`.
     *
     * $primitiveNote
     */
@@ -62,22 +62,22 @@ object OptionConverters {
     case _ => OptionalLong.empty
   }
 
-  /** Convert a Java `Optional` to a Scala `Option` */
+  /** Converts a Java `Optional` to a Scala `Option`. */
   def toScala[A](o: Optional[A]): Option[A] = if (o.isPresent) Some(o.get) else None
 
-  /** Convert a Java `OptionalDouble` to a Scala `Option[java.lang.Double]`
+  /** Converts a Java `OptionalDouble` to a Scala `Option[java.lang.Double]`.
     *
     * $primitiveNote
     */
   def toScala(o: OptionalDouble): Option[jl.Double] = if (o.isPresent) Some(o.getAsDouble) else None
 
-  /** Convert a Java `OptionalInt` to a Scala `Option[java.lang.Integer]`
+  /** Converts a Java `OptionalInt` to a Scala `Option[java.lang.Integer]`.
     *
     * $primitiveNote
     */
   def toScala(o: OptionalInt): Option[jl.Integer] = if (o.isPresent) Some(o.getAsInt) else None
 
-  /** Convert a Java `OptionalLong` to a Scala `Option[java.lang.Long]`
+  /** Converts a Java `OptionalLong` to a Scala `Option[java.lang.Long]`.
     *
     * $primitiveNote
     */

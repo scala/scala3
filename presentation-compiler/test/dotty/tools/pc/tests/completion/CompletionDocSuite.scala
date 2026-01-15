@@ -136,8 +136,6 @@ class CompletionDocSuite extends BaseCompletionSuite:
       s"""
          |> Found documentation for scala/Predef.
          |Predef scala
-         |> Found documentation for scala/runtime/stdLibPatches/Predef.
-         |Predef - scala.runtime.stdLibPatches
          |""".stripMargin,
       includeDocs = true
     )

@@ -30,13 +30,13 @@ object NameTransformer {
   final val SETTER_SUFFIX_STRING          = "_$eq"
   final val TRAIT_SETTER_SEPARATOR_STRING = "$_setter_$"
 
-  private[this] val nops = 128
-  private[this] val ncodes = 26 * 26
+  private val nops = 128
+  private val ncodes = 26 * 26
 
-  private class OpCodes(val op: Char, val code: String, val next: OpCodes)
+  private class OpCodes(val op: Char, val code: String, val next: OpCodes | Null)
 
-  private[this] val op2code = new Array[String](nops)
-  private[this] val code2op = new Array[OpCodes](ncodes)
+  private val op2code = new Array[String | Null](nops)
+  private val code2op = new Array[OpCodes | Null](ncodes)
   private def enterOp(op: Char, code: String) = {
     op2code(op.toInt) = code
     val c = (code.charAt(1) - 'a') * 26 + code.charAt(2) - 'a'
@@ -63,23 +63,23 @@ object NameTransformer {
   enterOp('?', "$qmark")
   enterOp('@', "$at")
 
-  /** Replace operator symbols by corresponding `\$opname`.
+  /** Replaces operator symbols by corresponding `\$opname`.
    *
    *  @param name the string to encode
    *  @return     the string with all recognized opchars replaced with their encoding
    */
   def encode(name: String): String = {
-    var buf: StringBuilder = null
+    var buf: StringBuilder | Null = null
     val len = name.length()
     var i = 0
     while (i < len) {
-      val c = name charAt i
+      val c = name.charAt(i)
       if (c < nops && (op2code(c.toInt) ne null)) {
         if (buf eq null) {
           buf = new StringBuilder()
           buf.append(name.substring(0, i))
         }
-        buf.append(op2code(c.toInt))
+        buf.append(op2code(c.toInt).nn)
       /* Handle glyphs that are not valid Java/JVM identifiers */
       }
       else if (!Character.isJavaIdentifierPart(c)) {
@@ -97,7 +97,7 @@ object NameTransformer {
     if (buf eq null) name else buf.toString()
   }
 
-  /** Replace `\$opname` by corresponding operator symbol.
+  /** Replaces `\$opname` by corresponding operator symbol.
    *
    *  @param name0 the string to decode
    *  @return      the string with all recognized operator symbol encodings replaced with their name
@@ -106,13 +106,13 @@ object NameTransformer {
     //System.out.println("decode: " + name);//DEBUG
     val name = if (name0.endsWith("<init>")) name0.stripSuffix("<init>") + "this"
                else name0
-    var buf: StringBuilder = null
+    var buf: StringBuilder | Null = null
     val len = name.length()
     var i = 0
     while (i < len) {
-      var ops: OpCodes = null
+      var ops: OpCodes | Null = null
       var unicode = false
-      val c = name charAt i
+      val c = name.charAt(i)
       if (c == '$' && i + 2 < len) {
         val ch1 = name.charAt(i+1)
         if ('a' <= ch1 && ch1 <= 'z') {

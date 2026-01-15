@@ -73,7 +73,7 @@ class DottyUnpickler(
     import unpickler.header.{majorVersion, minorVersion, experimentalVersion}
     val tastyVersion = TastyVersion(majorVersion, minorVersion, experimentalVersion)
     val tastyInfo = TastyInfo(tastyVersion, tastyAttributes)
-    new CompilationUnitInfo(tastyFile, Some(tastyInfo))
+    CompilationUnitInfo(tastyFile, Some(tastyInfo))
 
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
   private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)

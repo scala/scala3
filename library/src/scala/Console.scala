@@ -126,24 +126,24 @@ import scala.util.DynamicVariable
  *
  */
 object Console extends AnsiColor {
-  private[this] val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
-  private[this] val errVar = new DynamicVariable[PrintStream](java.lang.System.err)
-  private[this] val inVar  = new DynamicVariable[BufferedReader](
+  private val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
+  private val errVar = new DynamicVariable[PrintStream](java.lang.System.err)
+  private val inVar  = new DynamicVariable[BufferedReader](
     new BufferedReader(new InputStreamReader(java.lang.System.in)))
 
   protected def setOutDirect(out: PrintStream): Unit  = outVar.value = out
   protected def setErrDirect(err: PrintStream): Unit  = errVar.value = err
   protected def setInDirect(in: BufferedReader): Unit = inVar.value = in
 
-  /** The default output, can be overridden by `withOut`
+  /** The default output, can be overridden by `withOut`.
    *  @group io-default
    */
   def out: PrintStream = outVar.value
-  /** The default error, can be overridden by `withErr`
+  /** The default error, can be overridden by `withErr`.
    *  @group io-default
    */
   def err: PrintStream = errVar.value
-  /** The default input, can be overridden by `withIn`
+  /** The default input, can be overridden by `withIn`.
    *  @group io-default
    */
   def in: BufferedReader = inVar.value
@@ -178,7 +178,7 @@ object Console extends AnsiColor {
   def withOut[T](out: OutputStream)(thunk: => T): T =
     withOut(new PrintStream(out))(thunk)
 
-  /** Set the default error stream for the duration
+  /** Sets the default error stream for the duration
    *  of execution of one thunk.
    *  @example {{{
    *  withErr(Console.out) { err.println("This goes to default _out_") }
@@ -279,5 +279,5 @@ object Console extends AnsiColor {
    *  @throws java.lang.IllegalArgumentException if there was a problem with the format string or arguments
    *  @group console-output
    */
-  def printf(text: String, args: Any*): Unit = { out.print(text.format(args: _*)) }
+  def printf(text: String, args: Any*): Unit = { out.print(text.format(args*)) }
 }

@@ -446,13 +446,13 @@ final abstract class Long private extends AnyVal {
 }
 
 object Long extends AnyValCompanion {
-  /** The smallest value representable as a Long. */
+  /** The smallest value representable as a `Long`. */
   final val MinValue = java.lang.Long.MIN_VALUE
 
-  /** The largest value representable as a Long. */
+  /** The largest value representable as a `Long`. */
   final val MaxValue = java.lang.Long.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToLong`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -461,7 +461,7 @@ object Long extends AnyValCompanion {
    */
   def box(x: Long): java.lang.Long = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Long.
    *
@@ -473,9 +473,9 @@ object Long extends AnyValCompanion {
    */
   def unbox(x: java.lang.Object): Long = ???
 
-  /** The String representation of the scala.Long companion object. */
-  override def toString = "object scala.Long"
-  /** Language mandated coercions from Long to "wider" types. */
+  /** The `String` representation of the `scala.Long` companion object. */
+  override def toString() = "object scala.Long"
+  /** Language mandated coercions from `Long` to "wider" types. */
   import scala.language.implicitConversions
   @deprecated("Implicit conversion from Long to Float is dangerous because it loses precision. Write `.toFloat` instead.", "2.13.1")
   implicit def long2float(x: Long): Float = x.toFloat

@@ -1,0 +1,4 @@
+scala> print("foo")
+foo
+scala> "Hello"
+val res0: String = "Hello"

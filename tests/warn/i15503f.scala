@@ -28,7 +28,7 @@ object Example:
   import scala.quoted.*
   given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with
     def unapply(x: Expr[Option[T]])(using Quotes) = x match
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
       case '{ None } => Some(None)
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None
@@ -37,7 +37,7 @@ object ExampleWithoutWith:
   import scala.quoted.*
   given [T] => (Type[T], FromExpr[T]) => FromExpr[Option[T]]:
     def unapply(x: Expr[Option[T]])(using Quotes) = x match
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
       case '{ None } => Some(None)
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None

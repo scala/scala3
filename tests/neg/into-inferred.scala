@@ -1,5 +1,4 @@
-//> using options  -feature
-import language.experimental.into
+//> using options  -feature -preview
 import Conversion.{into, underlying}
 
 trait Token

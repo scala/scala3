@@ -29,13 +29,13 @@ jobs:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
       - name: Download MSI artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: scala.msi
           path: .
 
       # Run the MSI installer
-      # During normal installation msiexec would modify the PATH automatically. 
+      # During normal installation msiexec would modify the PATH automatically.
       # However, it seems not to work in GH Actions. Append the PATH manually instead.
       - name: Install Scala Runner
         shell: pwsh
@@ -74,4 +74,3 @@ jobs:
         run: |
           Start-Process 'msiexec.exe' -ArgumentList '/X "scala.msi" /L*V "uninstall.log" /qb' -Wait
           Get-Content 'uninstall.log'
-        

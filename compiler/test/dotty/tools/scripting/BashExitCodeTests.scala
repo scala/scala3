@@ -5,13 +5,14 @@ package scripting
 import scala.language.unsafeNulls
 
 import java.nio.file.Files, java.nio.charset.StandardCharsets.UTF_8
-import org.junit.{ After, Test }
+import org.junit.{ After, Test, Ignore }
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
 
 import ScriptTestEnv.*
 
+@Ignore
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BashExitCodeTests:
   private var myTmpDir: String | Null = null

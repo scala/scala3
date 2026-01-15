@@ -30,7 +30,7 @@ import scala.language.implicitConversions
  *
  *  === Examples ===
  *
- *  Create a `Catch` which handles specified exceptions.
+ *  Creates a `Catch` which handles specified exceptions.
  *  {{{
  *  import scala.util.control.Exception._
  *  import java.net._
@@ -52,7 +52,7 @@ import scala.language.implicitConversions
  *  val x4: URL = failAsValue(classOf[MalformedURLException])(defaultUrl)(new URL("htt/xx"))
  *  }}}
  *
- *  Create a `Catch` which logs exceptions using `handling` and `by`.
+ *  Creates a `Catch` which logs exceptions using `handling` and `by`.
  *  {{{
  *  def log(t: Throwable): Unit = t.printStackTrace
  *
@@ -181,7 +181,7 @@ object Exception {
 
   trait Described {
     protected val name: String
-    private[this] var _desc: String = ""
+    private var _desc: String = ""
     def desc: String = _desc
     def withDesc(s: String): this.type = {
       _desc = s
@@ -219,11 +219,11 @@ object Exception {
 
     protected val name = "Catch"
 
-    /** Create a new Catch with additional exception handling logic. */
+    /** Creates a new Catch with additional exception handling logic. */
     def or[U >: T](pf2: Catcher[U]): Catch[U] = new Catch(pf orElse pf2, fin, rethrow)
     def or[U >: T](other: Catch[U]): Catch[U] = or(other.pf)
 
-    /** Apply this catch logic to the supplied body. */
+    /** Applies this catch logic to the supplied body. */
     def apply[U >: T](body: => U): U =
       try body
       catch {
@@ -232,7 +232,7 @@ object Exception {
       }
       finally fin foreach (_.invoke())
 
-    /** Create a new Catch container from this object and the supplied finally body.
+    /** Creates a new Catch container from this object and the supplied finally body.
      *  @param body The additional logic to apply after all existing finally bodies
      */
     def andFinally(body: => Unit): Catch[T] = {
@@ -240,23 +240,23 @@ object Exception {
       new Catch(pf, Some(appendedFin), rethrow)
     }
 
-    /** Apply this catch logic to the supplied body, mapping the result
+    /** Applies this catch logic to the supplied body, mapping the result
      *  into `Option[T]` - `None` if any exception was caught, `Some(T)` otherwise.
      */
     def opt[U >: T](body: => U): Option[U] = toOption(Some(body))
 
-    /** Apply this catch logic to the supplied body, mapping the result
+    /** Applies this catch logic to the supplied body, mapping the result
      *  into `Either[Throwable, T]` - `Left(exception)` if an exception was caught,
      *  `Right(T)` otherwise.
      */
     def either[U >: T](body: => U): Either[Throwable, U] = toEither(Right(body))
 
-    /** Apply this catch logic to the supplied body, mapping the result
+    /** Applies this catch logic to the supplied body, mapping the result
      * into `Try[T]` - `Failure` if an exception was caught, `Success(T)` otherwise.
      */
     def withTry[U >: T](body: => U): scala.util.Try[U] = toTry(Success(body))
 
-    /** Create a `Catch` object with the same `isDefinedAt` logic as this one,
+    /** Creates a `Catch` object with the same `isDefinedAt` logic as this one,
       * but with the supplied `apply` method replacing the current one. */
     def withApply[U](f: Throwable => U): Catch[U] = {
       val pf2 = new Catcher[U] {
@@ -301,8 +301,8 @@ object Exception {
    *  to catch exactly what you specify, use `catchingPromiscuously` instead.
    *  @group composition-catch
    */
-  def catching[T](exceptions: Class[_]*): Catch[T] =
-    new Catch(pfFromExceptions(exceptions : _*)) withDesc (exceptions map (_.getName) mkString ", ")
+  def catching[T](exceptions: Class[?]*): Catch[T] =
+    new Catch(pfFromExceptions(exceptions*)) withDesc (exceptions map (_.getName) mkString ", ")
 
   def catching[T](c: Catcher[T]): Catch[T] = new Catch(c)
 
@@ -311,26 +311,26 @@ object Exception {
    *  catch whatever you ask of it including $protectedExceptions.
    *  @group composition-catch-promiscuously
    */
-  def catchingPromiscuously[T](exceptions: Class[_]*): Catch[T] = catchingPromiscuously(pfFromExceptions(exceptions : _*))
+  def catchingPromiscuously[T](exceptions: Class[?]*): Catch[T] = catchingPromiscuously(pfFromExceptions(exceptions*))
   def catchingPromiscuously[T](c: Catcher[T]): Catch[T]         = new Catch(c, None, _ => false)
 
   /** Creates a `Catch` object which catches and ignores any of the supplied exceptions.
    *  @group composition-catch
    */
-  def ignoring(exceptions: Class[_]*): Catch[Unit] =
-    catching(exceptions: _*) withApply (_ => ())
+  def ignoring(exceptions: Class[?]*): Catch[Unit] =
+    catching(exceptions*) withApply (_ => ())
 
   /** Creates a `Catch` object which maps all the supplied exceptions to `None`.
    *  @group composition-catch
    */
-  def failing[T](exceptions: Class[_]*): Catch[Option[T]] =
-    catching(exceptions: _*) withApply (_ => None)
+  def failing[T](exceptions: Class[?]*): Catch[Option[T]] =
+    catching(exceptions*) withApply (_ => None)
 
   /** Creates a `Catch` object which maps all the supplied exceptions to the given value.
    *  @group composition-catch
    */
-  def failAsValue[T](exceptions: Class[_]*)(value: => T): Catch[T] =
-    catching(exceptions: _*) withApply (_ => value)
+  def failAsValue[T](exceptions: Class[?]*)(value: => T): Catch[T] =
+    catching(exceptions*) withApply (_ => value)
 
   class By[T,R](f: T => R) {
     def by(x: T): R = f(x)
@@ -344,8 +344,8 @@ object Exception {
     * }}}
     *  @group dsl
     */
-  def handling[T](exceptions: Class[_]*): By[Throwable => T, Catch[T]] = {
-    def fun(f: Throwable => T): Catch[T] = catching(exceptions: _*) withApply f
+  def handling[T](exceptions: Class[?]*): By[Throwable => T, Catch[T]] = {
+    def fun(f: Throwable => T): Catch[T] = catching(exceptions*) withApply f
     new By[Throwable => T, Catch[T]](fun)
   }
 
@@ -357,19 +357,19 @@ object Exception {
   /** Creates a `Catch` object which unwraps any of the supplied exceptions.
    *  @group composition-catch
    */
-  def unwrapping[T](exceptions: Class[_]*): Catch[T] = {
+  def unwrapping[T](exceptions: Class[?]*): Catch[T] = {
     @tailrec
     def unwrap(x: Throwable): Throwable =
       if (wouldMatch(x, exceptions) && x.getCause != null) unwrap(x.getCause)
       else x
 
-    catching(exceptions: _*) withApply (x => throw unwrap(x))
+    catching(exceptions*) withApply (x => throw unwrap(x))
   }
 
-  /** Private **/
-  private def wouldMatch(x: Throwable, classes: scala.collection.Seq[Class[_]]): Boolean =
-    classes exists (_ isAssignableFrom x.getClass)
+  /** Private. */
+  private def wouldMatch(x: Throwable, classes: scala.collection.Seq[Class[?]]): Boolean =
+    classes exists (_.isAssignableFrom(x.getClass))
 
-  private def pfFromExceptions(exceptions: Class[_]*): PartialFunction[Throwable, Nothing] =
+  private def pfFromExceptions(exceptions: Class[?]*): PartialFunction[Throwable, Nothing] =
     { case x if wouldMatch(x, exceptions) => throw x }
 }

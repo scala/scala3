@@ -16,7 +16,7 @@ lazy val `a-changes` = project.in(file("a-changes"))
 
 lazy val c = project.in(file("."))
   .settings(
-    scalacOptions ++= Seq("-from-tasty", "-Ycheck:readTasty", "-Xfatal-warnings"),
+    scalacOptions ++= Seq("-from-tasty", "-Ycheck:readTasty", "-Werror"),
     Compile / sources := Seq(new java.io.File("c-input/B.tasty")),
     Compile / unmanagedClasspath += (ThisBuild / baseDirectory).value / "c-input",
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-output"

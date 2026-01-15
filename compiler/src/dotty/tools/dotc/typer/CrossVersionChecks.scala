@@ -37,6 +37,11 @@ class CrossVersionChecks extends MiniPhase:
       for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
+  private def checkDeprecatedAnnots(sym: Symbol)(using Context): Unit =
+    if sym.exists then
+      for annot <- sym.annotations if annot.symbol.isDeprecated do
+        checkDeprecatedRef(annot.symbol, annot.tree.srcPos)
+
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
    */
@@ -102,18 +107,21 @@ class CrossVersionChecks extends MiniPhase:
     checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
+    checkDeprecatedAnnots(tree.symbol)
     tree
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef =
     checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
+    checkDeprecatedAnnots(tree.symbol)
     tree
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef =
     // TODO do we need to check checkDeprecatedOvers(tree)?
     checkUnrollMemberDef(tree)
     checkExperimentalAnnots(tree.symbol)
+    checkDeprecatedAnnots(tree.symbol)
     tree
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =

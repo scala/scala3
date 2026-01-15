@@ -15,6 +15,7 @@ package collection
 package generic
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** This trait represents collection-like objects that can be reduced
   *  using a '+' operator. It defines variants of `-` and `--`
@@ -60,5 +61,5 @@ trait Subtractable[A, +Repr <: Subtractable[A, Repr]] { self =>
     *  @return a new $coll that contains all elements of the current $coll
     *  except one less occurrence of each of the elements of `elems`.
     */
-  def --(xs: IterableOnce[A]): Repr = (repr /: xs.iterator) (_ - _)
+  def --(xs: IterableOnce[A]^): Repr = (repr /: xs.iterator) (_ - _)
 }

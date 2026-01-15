@@ -13,6 +13,8 @@
 package scala.collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.AbstractIterator
 import java.lang.Integer.bitCount
 import java.lang.Math.ceil
@@ -57,7 +59,7 @@ private[collection] abstract class Node[T <: Node[T]] {
 
   def cachedJavaKeySetHashCode: Int
 
-  private final def arrayIndexOutOfBounds(as: Array[_], ix:Int): ArrayIndexOutOfBoundsException =
+  private final def arrayIndexOutOfBounds(as: Array[?], ix:Int): ArrayIndexOutOfBoundsException =
     new ArrayIndexOutOfBoundsException(s"$ix is out of bounds (min 0, max ${as.length-1}")
 
   protected final def removeElement(as: Array[Int], ix: Int): Array[Int] = {
@@ -116,11 +118,11 @@ private[immutable] abstract class ChampBaseIterator[A, T <: Node[T]] extends Abs
   
   protected var currentValueCursor: Int = 0
   protected var currentValueLength: Int = 0
-  protected var currentValueNode: T = _
+  protected var currentValueNode: T = compiletime.uninitialized
 
-  private[this] var currentStackLevel: Int = -1
-  private[this] var nodeCursorsAndLengths: Array[Int] = _
-  private[this] var nodes: Array[T] = _
+  private var currentStackLevel: Int = -1
+  private var nodeCursorsAndLengths: Array[Int] = compiletime.uninitialized
+  private var nodes: Array[T] = compiletime.uninitialized
   private def initNodes(): Unit = {
     if (nodeCursorsAndLengths eq null) {
       nodeCursorsAndLengths = new Array[Int](MaxDepth * 2)
@@ -198,11 +200,11 @@ private[immutable] abstract class ChampBaseReverseIterator[A, T <: Node[T]] exte
   import Node.MaxDepth
 
   protected var currentValueCursor: Int = -1
-  protected var currentValueNode: T = _
+  protected var currentValueNode: T = compiletime.uninitialized
 
-  private[this] var currentStackLevel: Int = -1
-  private[this] val nodeIndex: Array[Int] = new Array[Int](MaxDepth + 1)
-  private[this] val nodeStack: Array[T] = new Array[Node[T]](MaxDepth + 1).asInstanceOf[Array[T]]
+  private var currentStackLevel: Int = -1
+  private val nodeIndex: Array[Int] = new Array[Int](MaxDepth + 1)
+  private val nodeStack: Array[T] = new Array[Node[T]](MaxDepth + 1).asInstanceOf[Array[T]]
 
   def this(rootNode: T) = {
     this()

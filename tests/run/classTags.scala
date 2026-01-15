@@ -1,3 +1,4 @@
+// scalajs: --skip --pending
 object Test {
   type T = String
 

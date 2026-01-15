@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object int:
   /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was:
    *

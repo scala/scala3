@@ -1,4 +1,4 @@
-import caps.{Capability, Control, Mutable}
+import caps.{SharedCapability, Control, Mutable}
 
 class Try[+T]
 case class Ok[T](x: T) extends Try[T]

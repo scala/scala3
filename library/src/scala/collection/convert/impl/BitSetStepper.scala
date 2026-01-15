@@ -19,8 +19,9 @@ import scala.collection.{BitSetOps, IntStepper, Stepper}
 
 
 private[collection] final class BitSetStepper(
-  private var underlying: BitSetOps[_], 
-  private var cache0: Long, private var cache1: Long, 
+  @annotation.stableNull
+  private var underlying: BitSetOps[?] | Null,
+  private var cache0: Long, private var cache1: Long,
   _i0: Int, _iN: Int,
   private var cacheIndex: Int
 )
@@ -48,7 +49,7 @@ with IntStepper {
           findNext()
         }
       }
-      else if (underlying eq null) { 
+      else if (underlying eq null) {
         i0 = iN
         found = false
         found
@@ -91,13 +92,13 @@ with IntStepper {
     }
 
   @annotation.tailrec
-  private[this] def scanLong(bits: Long, from: Int): Int =
+  private def scanLong(bits: Long, from: Int): Int =
     if (from >= WordLength) -1
     else if ((bits & (1L << from)) != 0) from
     else scanLong(bits, from + 1)
 
   def nextStep(): Int =
-    if (found || findNext()) { 
+    if (found || findNext()) {
       found = false
       val ans = i0
       i0 += 1
@@ -107,7 +108,7 @@ with IntStepper {
 }
 
 private[collection] object BitSetStepper {
-  def from(bs: scala.collection.BitSetOps[_]): IntStepper with EfficientSplit =
+  def from(bs: scala.collection.BitSetOps[?]): IntStepper & EfficientSplit =
     new BitSetStepper(
       if (bs.nwords <= 2) null else bs,
       if (bs.nwords <= 0) -1L else bs.word(0),

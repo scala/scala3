@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/delegate-match-2/Test_2.scala:5:2 -----------------------------------------------------------
 5 |  f // error
   |  ^

@@ -23,11 +23,13 @@ trait ClassLikeSupport:
 
   extension (symbol: Symbol) {
     def getExtraModifiers(): Seq[Modifier] =
-      val mods = SymOps.getExtraModifiers(symbol)()
-      if ccEnabled && symbol.flags.is(Flags.Mutable)then
-        mods :+ Modifier.Update
-      else
-        mods
+      var mods = SymOps.getExtraModifiers(symbol)()
+      if ccEnabled && symbol.flags.is(Flags.Mutable) then
+        if symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then
+          mods :+= Modifier.Consume
+        else
+          mods :+= Modifier.Update
+      mods
   }
 
   private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
@@ -140,7 +142,7 @@ trait ClassLikeSupport:
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
 
     if signatureOnly then baseMember else baseMember.copy(
-        members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
+        members = classDef.extractMembers.sortBy(m => (m.name, m.kind.name)),
         selfType = selfType,
         companion = classDef.getCompanion
     )
@@ -276,31 +278,6 @@ trait ClassLikeSupport:
       }
       c.membersToDocument.flatMap(parseMember(c)) ++
         inherited.flatMap(s => parseInheritedMember(c)(s))
-    }
-
-    /** Extracts members while taking Dotty logic for patching the stdlib into account. */
-    def extractPatchedMembers: Seq[Member] = {
-      val ownMembers = c.extractMembers
-      def extractPatchMembers(sym: Symbol) = {
-        // NOTE for some reason scala.language$.experimental$ class doesn't show up here, so we manually add the name
-        val ownMemberDRIs = ownMembers.iterator.map(_.name).toSet + "experimental$"
-        sym.tree.asInstanceOf[ClassDef]
-          .membersToDocument.filterNot(m => ownMemberDRIs.contains(m.symbol.name))
-          .flatMap(parseMember(c))
-      }
-      c.symbol.fullName match {
-        case "scala.Predef$" =>
-          ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredClass("scala.runtime.stdLibPatches.Predef$"))
-        case "scala.language$" =>
-          ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language").moduleClass)
-        case "scala.language$.experimental$" =>
-          ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language.experimental").moduleClass)
-        case _ => ownMembers
-      }
-
     }
 
     def getTreeOfFirstParent: Option[Tree] =
@@ -452,12 +429,13 @@ trait ClassLikeSupport:
   ) =
     val symbol = argument.symbol
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
+    val comsumePrefix = if self.ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then "consume " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
     val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
-      inlinePrefix + prefix(symbol),
+      comsumePrefix + inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
       argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,

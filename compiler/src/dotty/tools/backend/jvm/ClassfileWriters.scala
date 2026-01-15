@@ -272,8 +272,9 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
         else throw new FileConflictException(s"${base.path}/${path}: ${dir.path} is not a directory")
       val components = path.split('/')
       var dir = base
-      for (i <- 0 until components.length - 1) dir = ensureDirectory(dir) subdirectoryNamed components(i).toString
-      ensureDirectory(dir) fileNamed components.last.toString
+      for i <- 0 until components.length - 1 do
+        dir = ensureDirectory(dir).subdirectoryNamed(components(i).toString)
+      ensureDirectory(dir).fileNamed(components.last.toString)
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {

@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 object Tuples {
 
   inline val MaxSpecialized = 22

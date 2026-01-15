@@ -40,8 +40,8 @@ object ScriptSourceFile {
      */
     val headerLength =
       if (headerStarts exists (content startsWith _)) {
-        val matcher = headerPattern matcher content.mkString
-        if (matcher.find) matcher.end
+        val matcher = headerPattern.matcher(content.mkString)
+        if matcher.find then matcher.end
         else content.indexOf('\n') // end of first line
       }
       else 0
@@ -151,7 +151,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    */
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     if isSelfContained then position // return the argument
-    else SourcePosition(underlying, position.span shift start)
+    else SourcePosition(underlying, position.span.shift(start))
 
   private def calculateLineIndicesFromContents() = {
     val cs = content()

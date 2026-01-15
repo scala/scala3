@@ -1,5 +1,3 @@
-//> using options -experimental
-
 @main def Test: Unit = {
   val (cls1, show1) = makeTrait("foo")
   println(cls1.getClass)

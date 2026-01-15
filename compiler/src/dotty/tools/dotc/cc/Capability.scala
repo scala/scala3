@@ -12,11 +12,10 @@ import CCState.*
 import Periods.{NoRunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
-import CaptureSet.VarState
+import CaptureSet.{Refs, emptyRefs, VarState}
 import Annotations.Annotation
 import Flags.*
 import config.Printers.capt
-import CCState.{Level, undefinedLevel}
 import annotation.constructorOnly
 import ast.tpd
 import printing.{Printer, Showable}
@@ -24,6 +23,7 @@ import printing.Texts.Text
 import reporting.{Message, trace}
 import NameOps.isImpureFunction
 import annotation.internal.sharable
+import collection.immutable
 
 /** Capabilities are members of capture sets. They partially overlap with types
  *  as shown in the trait hierarchy below.
@@ -148,13 +148,67 @@ object Capabilities:
    *  @param origin  an indication where and why the FreshCap was created, used
    *                 for diagnostics
    */
-  case class FreshCap private (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
-    val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
+  case class FreshCap(val prefix: Type)
+      (val owner: Symbol, val origin: Origin, origHidden: CaptureSet.HiddenSet | Null)
+      (using @constructorOnly ctx: Context)
+  extends RootCapability:
+    val hiddenSet =
+      if origHidden == null then CaptureSet.HiddenSet(owner, this: @unchecked)
+      else origHidden
       // fails initialization check without the @unchecked
+
+    def derivedFreshCap(newPrefix: Type)(using Context): FreshCap =
+      if newPrefix eq prefix then this
+      else if newPrefix eq hiddenSet.owningCap.prefix then
+        hiddenSet.owningCap
+      else
+        hiddenSet.derivedCaps
+          .getOrElseUpdate(newPrefix, FreshCap(newPrefix)(owner, origin, hiddenSet))
+
+    /** A map from context owners to skolem TermRefs that were created by ensurePath
+     *  TypeMap's mapCapability.
+     */
+    var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
+
+    //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
+
+    /** Is this fresh cap (definitely) classified? If that's the case, the
+     *  classifier cannot be changed anymore.
+     *  We need to distinguish `FreshCap`s that can still be classified from
+     *  ones that cannot. Once a `FreshCap` is part of a constant capture set,
+     *  it gets classified by the type that prefixes the set and that classification
+     *  cannot be changed anymore. But other `FreshCap`s are created as members of
+     *  variable sets and then their classification status is open and can be
+     *  constrained further.
+     */
+    private[Capabilities] var isClassified = false
 
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that
       case _ => false
+
+    /** Is this fresh cap at the right level to be able to subsume `ref`?
+     */
+    def acceptsLevelOf(ref: Capability)(using Context): Boolean =
+      if ccConfig.useFreshLevels && !CCState.collapseFresh then
+        val refOwner = ref.levelOwner
+        refOwner.isStaticOwner || ccOwner.isContainedIn(refOwner)
+      else ref.core match
+        case ResultCap(_) | _: ParamRef => false
+        case _ => true
+
+    /** Classify this FreshCap as `cls`, provided `isClassified` is still false.
+     *  @param  freeze  Deterermines future `isClassified` state.
+     */
+    def adoptClassifier(cls: ClassSymbol, freeze: Boolean)(using Context): Unit =
+      if !isClassified then
+        hiddenSet.adoptClassifier(cls)
+        if freeze then isClassified = true
+
+    def ccOwnerStr(using Context): String =
+      val owner = ccOwner
+      if owner.name == nme.SKOLEM then i"a new instance of ${hiddenSet.owner}"
+      else owner.show
 
     def descr(using Context) =
       val originStr = origin match
@@ -169,8 +223,12 @@ object Capabilities:
       i"a fresh root capability$classifierStr$originStr"
 
   object FreshCap:
-    def apply(origin: Origin)(using Context): FreshCap | GlobalCap.type =
-      FreshCap(ctx.owner, origin)
+    def apply(owner: Symbol, prefix: Type, origin: Origin)(using Context): FreshCap =
+      new FreshCap(prefix)(owner, origin, null)
+    def apply(owner: Symbol, origin: Origin)(using Context): FreshCap =
+      apply(owner, owner.skipWeakOwner.thisType, origin)
+    def apply(origin: Origin)(using Context): FreshCap =
+      apply(ctx.owner, origin)
 
   /** A root capability associated with a function type. These are conceptually
    *  existentially quantified over the function's result type.
@@ -407,6 +465,7 @@ object Capabilities:
      *  the form this.C but their pathroot is still this.C, not this.
      */
     final def pathRoot(using Context): Capability = this match
+      case FreshCap(pre: Capability) => pre.pathRoot
       case _: RootCapability => this
       case self: DerivedCapability => self.underlying.pathRoot
       case self: CoreCapability => self.dealias match
@@ -451,8 +510,20 @@ object Capabilities:
       case TermRef(prefix: Capability, _) => prefix.ccOwner
       case self: NamedType => self.symbol
       case self: DerivedCapability => self.underlying.ccOwner
-      case self: FreshCap => self.hiddenSet.owner
+      case self: FreshCap =>
+        val setOwner = self.hiddenSet.owner
+        self.prefix match
+          case prefix: ThisType if setOwner.isTerm && setOwner.owner == prefix.cls =>
+            setOwner
+          case prefix: Capability => prefix.ccOwner
+          case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
+
+    final def visibility(using Context): Symbol = this match
+      case self: FreshCap => adjustOwner(ccOwner)
+      case _ =>
+        val vis = ccOwner
+        if vis.is(Param) then vis.owner else vis
 
     /** The symbol that represents the level closest-enclosing ccOwner.
      *  Symbols representing levels are
@@ -460,13 +531,14 @@ object Capabilities:
      *   - method symbols, but not accessors or constructors
      */
     final def levelOwner(using Context): Symbol =
-      def adjust(owner: Symbol): Symbol =
-        if !owner.exists
-          || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
-          || owner.is(Flags.Method, butNot = Flags.Accessor) && !owner.isConstructor
-        then owner
-        else adjust(owner.owner)
-      adjust(ccOwner)
+      adjustOwner(ccOwner)
+
+    private def adjustOwner(owner: Symbol)(using Context): Symbol =
+      if !owner.exists
+        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
+        || owner.is(Flags.Method, butNot = Flags.Accessor)
+      then owner
+      else adjustOwner(owner.owner)
 
     /** Tests whether the capability derives from capability class `cls`. */
     def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = this match
@@ -477,7 +549,7 @@ object Capabilities:
 
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
     def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-    def derivesFromSharable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Sharable)
+    def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -495,12 +567,33 @@ object Capabilities:
         def isProvisional = this.core match
           case core: TypeProxy => !core.underlying.exists || core.underlying.isProvisional
           case _ => false
-        if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || isProvisional then
+        if !ccConfig.cacheCaptureSetOfInfo
+            || !isCaptureChecking
+            || ctx.mode.is(Mode.IgnoreCaptures)
+            || isProvisional
+        then
           myCaptureSet = null
         else
           myCaptureSet = computed
           captureSetValid = currentId
         computed
+
+    /** The elements hidden by this capability, if this is a FreshCap
+     *  or a derived version of one. Read-only status and restrictions
+     *  are transferred from the capability to its hidden set.
+     */
+    def hiddenSet(using Context): Refs = computeHiddenSet(identity)
+
+    /** Compute result based on hidden set of this capability.
+     *  Restrictions and read-only status transfer from the capability to its
+     *  hidden set.
+     *  @param  f   a function that gets applied to all detected hidden sets
+     */
+    def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
+      case self: FreshCap => f(self.hiddenSet.elems)
+      case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
+      case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
+      case _ => emptyRefs
 
     /** The transitive classifiers of this capability. */
     def transClassifiers(using Context): Classifiers =
@@ -524,7 +617,8 @@ object Capabilities:
           case Reach(_) =>
             captureSetOfInfo.transClassifiers
           case self: CoreCapability =>
-            joinClassifiers(toClassifiers(self.classifier), captureSetOfInfo.transClassifiers)
+            if self.derivesFromCapability then toClassifiers(self.classifier)
+            else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
           classifiersValid == currentId
       myClassifiers
@@ -534,7 +628,8 @@ object Capabilities:
       cls == defn.AnyClass
       || this.match
         case self: FreshCap =>
-          self.hiddenSet.tryClassifyAs(cls)
+          if self.isClassified then self.hiddenSet.classifier.derivesFrom(cls)
+          else self.hiddenSet.tryClassifyAs(cls)
         case self: RootCapability =>
           true
         case Restricted(_, cls1) =>
@@ -547,8 +642,8 @@ object Capabilities:
         case Reach(_) =>
           captureSetOfInfo.tryClassifyAs(cls)
         case self: CoreCapability =>
-          self.classifier.isSubClass(cls)
-          && captureSetOfInfo.tryClassifyAs(cls)
+          if self.derivesFromCapability then self.derivesFrom(cls)
+          else captureSetOfInfo.tryClassifyAs(cls)
 
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
       transClassifiers match
@@ -601,6 +696,8 @@ object Capabilities:
 
       try (this eq y)
       || maxSubsumes(y, canAddHidden = !vs.isOpen)
+          // if vs is open, we should add new elements to the set containing `this`
+          // instead of adding them to the hidden set of of `this`.
       || y.match
         case y: TermRef =>
             y.prefix.match
@@ -668,25 +765,31 @@ object Capabilities:
       (this eq y)
       || this.match
         case x: FreshCap =>
-          def levelOK =
-            if ccConfig.useFreshLevels && !CCState.collapseFresh then
-              val yOwner = y.levelOwner
-              yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
-            else y.core match
-              case ResultCap(_) | _: ParamRef => false
-              case _ => true
+          def classifierOK =
+            if y.tryClassifyAs(x.hiddenSet.classifier) then true
+            else
+              capt.println(i"$y cannot be classified as $x")
+              false
+
+          def prefixAllowsAddHidden: Boolean =
+            CCState.collapseFresh || x.prefix.match
+              case NoPrefix => true
+              case pre: ThisType => x.ccOwner.isContainedIn(pre.cls)
+              case pre =>
+                capt.println(i"fresh not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipWeakOwner.thisType}")
+                false
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
-          || levelOK
-              && ( y.tryClassifyAs(x.hiddenSet.classifier)
-                   || { capt.println(i"$y cannot be classified as $x"); false }
-              )
+          || x.coversFresh(y)
+          || x.acceptsLevelOf(y)
+              && classifierOK
               && canAddHidden
+              && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
           val result = y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromSharable
+            case _ => y.derivesFromShared
           if !result then
             TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
           result
@@ -696,7 +799,7 @@ object Capabilities:
             case _: ResultCap => false
             case _: FreshCap if CCState.collapseFresh => true
             case _ =>
-              y.derivesFromSharable
+              y.derivesFromShared
               || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
@@ -714,25 +817,68 @@ object Capabilities:
      *   x covers x
      *   x covers y  ==>  x covers y.f
      *   x covers y  ==>  x* covers y*, x? covers y?
+     *   x covers y  ==>  <fresh hiding x> covers y
+     *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
+     *
      *   TODO what other clauses from subsumes do we need to port here?
+     *   The last clause is a conservative over-approximation: basically, we can't achieve
+     *   separation by having different classifiers for now. It would be good to
+     *   have a test that would expect such separation, then we can try to refine
+     *   the clause to make the test pass.
      */
     final def covers(y: Capability)(using Context): Boolean =
-      (this eq y)
-      || y.match
-          case y @ TermRef(ypre: Capability, _) =>
-            this.covers(ypre)
-          case Reach(y1) =>
-            this match
-              case Reach(x1) => x1.covers(y1)
-              case _ => false
-          case Maybe(y1) =>
-            this match
-              case Maybe(x1) => x1.covers(y1)
-              case _ => false
+      val seen: util.EqHashSet[FreshCap] = new util.EqHashSet
+
+      def recur(x: Capability, y: Capability): Boolean =
+        (x eq y)
+        || y.match
+            case y @ TermRef(ypre: Capability, _) =>
+              recur(x, ypre)
+            case Reach(y1) =>
+              x match
+                case Reach(x1) => recur(x1, y1)
+                case _ => false
+            case Maybe(y1) =>
+              x match
+                case Maybe(x1) => recur(x1, y1)
+                case _ => false
+            case Restricted(y1, _) =>
+              recur(x, y1)
+            case _ =>
+              false
+        || x.match
+            case x: FreshCap =>
+              if x.coversFresh(y) then true
+              else if !seen.contains(x) then
+                seen.add(x)
+                x.hiddenSet.exists(recur(_, y))
+              else false
+            case Restricted(x1, _) => recur(x1, y)
+            case _ => false
+
+      recur(this, y)
+    end covers
+
+    /** `x eq y` or `x` is a fresh cap, `y` is a fresh cap with prefix
+     *  `p`, and there is a prefix of `p` that contains `x` in its
+     *  capture set.
+     */
+    final def coversFresh(y: Capability)(using Context): Boolean =
+      (this eq y) || this.match
+        case x: FreshCap => y match
           case y: FreshCap =>
-            y.hiddenSet.superCaps.exists(this covers _)
-          case _ =>
-            false
+            x.origin match
+              case Origin.InDecl(sym) =>
+                def occursInPrefix(pre: Type): Boolean = pre match
+                  case pre @ TermRef(pre1, _) =>
+                    pre.symbol == sym
+                    && pre.info.captureSet.elems.contains(x)
+                    || occursInPrefix(pre1)
+                  case _ => false
+                occursInPrefix(y.prefix)
+              case _ => false
+          case _ => false
+        case _ => false
 
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
@@ -752,6 +898,9 @@ object Capabilities:
           case _: Reach => ReachCapability(c1)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
+
+    def showAsCapability(using Context) =
+      i"capability ${ctx.printer.toTextCapability(this).show}"
 
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability
@@ -779,18 +928,26 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
-  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
+  /** The smallest list D of class symbols in cs1 and cs2 such that
+   *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
+   */
+  def dominators(cs1: List[ClassSymbol], cs2: List[ClassSymbol])(using Context): List[ClassSymbol] =
     // Drop classes that subclass classes of the other set
     // @param proper  If true, only drop proper subclasses of a class of the other set
     def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol], proper: Boolean) =
       cs1.filter: cls1 =>
         !cs2.exists: cls2 =>
           cls1.isSubClass(cls2) && (!proper || cls1 != cls2)
+    filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false)
+
+  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
     (cs1, cs2) match
-      case (Unclassified, _) | (_, Unclassified) => Unclassified
-      case (UnknownClassifier, _) | (_, UnknownClassifier) => UnknownClassifier
+      case (Unclassified, _) | (_, Unclassified) =>
+        Unclassified
+      case (UnknownClassifier, _) | (_, UnknownClassifier) =>
+        UnknownClassifier
       case (ClassifiedAs(cs1), ClassifiedAs(cs2)) =>
-        ClassifiedAs(filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false))
+        ClassifiedAs(dominators(cs1, cs2))
 
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics
@@ -802,12 +959,13 @@ object Capabilities:
     case Formal(pref: ParamRef, app: tpd.Apply)
     case ResultInstance(methType: Type, meth: Symbol)
     case UnapplyInstance(info: MethodType)
-    case NewMutable(tp: Type)
-    case NewCapability(tp: Type)
+    case LocalInstance(restpe: Type)
+    case NewInstance(tp: Type)
     case LambdaExpected(respt: Type)
     case LambdaActual(restp: Type)
     case OverriddenType(member: Symbol)
     case DeepCS(ref: TypeRef)
+    case Parameter(param: Symbol)
     case Unknown
 
     def explanation(using Context): String = this match
@@ -829,10 +987,10 @@ object Capabilities:
         i" when instantiating $methDescr$mt"
       case UnapplyInstance(info) =>
         i" when instantiating argument of unapply with type $info"
-      case NewMutable(tp) =>
-        i" when constructing mutable $tp"
-      case NewCapability(tp) =>
-        i" when constructing Capability instance $tp"
+      case LocalInstance(restpe) =>
+        i" when instantiating expected result type $restpe of function literal"
+      case NewInstance(tp) =>
+        i" when constructing instance $tp"
       case LambdaExpected(respt) =>
         i" when instantiating expected result type $respt of lambda"
       case LambdaActual(restp: Type) =>
@@ -841,6 +999,8 @@ object Capabilities:
         i" when instantiating upper bound of member overridden by $member"
       case DeepCS(ref: TypeRef) =>
         i" when computing deep capture set of $ref"
+      case Parameter(param) =>
+        i" of parameter $param of ${param.owner}"
       case Unknown =>
         ""
   end Origin
@@ -862,7 +1022,9 @@ object Capabilities:
         case t @ AnnotatedType(parent, ann) =>
           val parent1 = this(parent)
           if ann.symbol.isRetains && ann.tree.toCaptureSet.containsCap then
-            this(CapturingType(parent1, ann.tree.toCaptureSet))
+            // Applying `this` can cause infinite recursion in some cases during printing.
+            // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
+            mapOver(CapturingType(parent1, ann.tree.toCaptureSet))
           else
             t.derivedAnnotatedType(parent1, ann)
         case defn.RefinedFunctionOf(_) =>
@@ -907,8 +1069,71 @@ object Capabilities:
       CapToFresh(origin)(tp)
 
   /** Maps fresh to cap */
-  def freshToCap(tp: Type)(using Context): Type =
-    CapToFresh(Origin.Unknown).inverse(tp)
+  def freshToCap(param: Symbol, tp: Type)(using Context): Type =
+    CapToFresh(Origin.Parameter(param)).inverse(tp)
+
+  /** The local dual of a result type of a closure type.
+   *  @param binder  the method type of the anonymous function whose result is mapped
+   *  @pre           the context's owner is the anonymous function
+   */
+  class Internalize(binder: MethodType)(using Context) extends BiTypeMap:
+    thisMap =>
+
+    val sym = ctx.owner
+    assert(sym.isAnonymousFunction)
+    val paramSyms = atPhase(ctx.phase.prev):
+      // We need to ask one phase before since `sym` should not be completed as a side effect.
+      // The result of Internalize is used to se the result type of an anonymous function, and
+      // the new info of that function is built with the result.
+      sym.paramSymss.head
+    val resultToFresh = EqHashMap[ResultCap, FreshCap]()
+    val freshToResult = EqHashMap[FreshCap, ResultCap]()
+
+    override def apply(t: Type) =
+      if variance < 0 then t
+      else t match
+        case t: ParamRef =>
+          if t.binder == this.binder then paramSyms(t.paramNum).termRef else t
+        case _ => mapOver(t)
+
+    override def mapCapability(c: Capability, deep: Boolean): Capability = c match
+      case r: ResultCap if r.binder == this.binder =>
+        resultToFresh.get(r) match
+          case Some(f) => f
+          case None =>
+            val f = FreshCap(Origin.LocalInstance(binder.resType))
+            resultToFresh(r) = f
+            freshToResult(f) = r
+            f
+      case _ =>
+        super.mapCapability(c, deep)
+
+    class Inverse extends BiTypeMap:
+      def apply(t: Type): Type =
+        if variance < 0 then t
+        else t match
+          case t: TermRef if paramSyms.contains(t) =>
+            binder.paramRefs(paramSyms.indexOf(t.symbol))
+          case _ => mapOver(t)
+
+      override def mapCapability(c: Capability, deep: Boolean): Capability = c match
+        case f: FreshCap if f.owner == sym =>
+          freshToResult.get(f) match
+            case Some(r) => r
+            case None =>
+              val r = ResultCap(binder)
+              resultToFresh(r) = f
+              freshToResult(f) = r
+              r
+        case _ => super.mapCapability(c, deep)
+
+      def inverse = thisMap
+      override def toString = thisMap.toString + ".inverse"
+    end Inverse
+
+    override def toString = "InternalizeClosureResult"
+    def inverse = Inverse()
+  end Internalize
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type, origin: Origin)(using Context): Type =
@@ -932,85 +1157,89 @@ object Capabilities:
       override def mapCapability(c: Capability, deep: Boolean) = c match
         case c @ ResultCap(binder) =>
           if localBinders.contains(binder) then c // keep bound references
-          else seen.getOrElseUpdate(c, FreshCap(origin)) // map free references to FreshCap
+          else
+            // Create a fresh skolem that does not subsume anything
+            def freshSkolem =
+              val c = FreshCap(origin)
+              c.hiddenSet.markSolved(provisional = false)
+              c
+            seen.getOrElseUpdate(c, freshSkolem) // map free references to FreshCap
         case _ => super.mapCapability(c, deep)
     end subst
 
     subst(tp)
   end resultToFresh
 
+  abstract class CapMap(using Context) extends BiTypeMap:
+    override def mapOver(t: Type): Type = t match
+      case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
+        t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
+      case t: (LazyRef | TypeVar) =>
+        mapConserveSuper(t)
+      case _ =>
+        super.mapOver(t)
+
+  class ToResult(localResType: Type, mt: MethodicType, fail: Message => Unit)(using Context) extends CapMap:
+
+    def apply(t: Type) = t match
+      case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
+        if variance > 0 then
+          super.mapOver:
+            defn.FunctionNOf(args, res, contextual)
+              .capturing(ResultCap(mt).singletonCaptureSet)
+        else mapOver(t)
+      case _ =>
+        mapOver(t)
+
+    override def mapCapability(c: Capability, deep: Boolean) = c match
+      case c: (FreshCap | GlobalCap.type) =>
+        if variance > 0 then
+          val res = ResultCap(mt)
+          c match
+            case c: FreshCap => res.setOrigin(c)
+            case _ =>
+          res
+        else
+          if variance == 0 then
+            fail(em"""$localResType captures the root capability `cap` in invariant position.
+                      |This capability cannot be converted to an existential in the result type of a function.""")
+          // we accept variance < 0, and leave the cap as it is
+          c
+      case _ =>
+        super.mapCapability(c, deep)
+
+      //.showing(i"mapcap $t = $result")
+    override def toString = "toVar"
+
+    object inverse extends BiTypeMap:
+      def apply(t: Type) = mapOver(t)
+
+      override def mapCapability(c: Capability, deep: Boolean) = c match
+        case c @ ResultCap(`mt`) =>
+          // do a reverse getOrElseUpdate on `seen` to produce the
+          // `Fresh` assosicated with `t`
+          val primary = c.primaryResultCap
+          primary.origin match
+            case GlobalCap =>
+              val fresh = FreshCap(Origin.LocalInstance(mt.resType))
+              primary.setOrigin(fresh)
+              fresh
+            case origin: FreshCap =>
+              origin
+        case _ =>
+          super.mapCapability(c, deep)
+
+      def inverse = ToResult.this
+      override def toString = "toVar.inverse"
+    end inverse
+  end ToResult
+
   /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
    *  variable bound by `mt`.
    *  Stop at function or method types since these have been mapped before.
    */
   def toResult(tp: Type, mt: MethodicType, fail: Message => Unit)(using Context): Type =
-
-    abstract class CapMap extends BiTypeMap:
-      override def mapOver(t: Type): Type = t match
-        case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
-          t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
-        case t: (LazyRef | TypeVar) =>
-          mapConserveSuper(t)
-        case _ =>
-          super.mapOver(t)
-
-    object toVar extends CapMap:
-
-      def apply(t: Type) = t match
-        case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
-          if variance > 0 then
-            super.mapOver:
-              defn.FunctionNOf(args, res, contextual)
-                .capturing(ResultCap(mt).singletonCaptureSet)
-          else mapOver(t)
-        case _ =>
-          mapOver(t)
-
-      override def mapCapability(c: Capability, deep: Boolean) = c match
-        case c: (FreshCap | GlobalCap.type) =>
-          if variance > 0 then
-            val res = ResultCap(mt)
-            c match
-              case c: FreshCap => res.setOrigin(c)
-              case _ =>
-            res
-          else
-            if variance == 0 then
-              fail(em"""$tp captures the root capability `cap` in invariant position.
-                       |This capability cannot be converted to an existential in the result type of a function.""")
-            // we accept variance < 0, and leave the cap as it is
-            c
-        case _ =>
-          super.mapCapability(c, deep)
-
-        //.showing(i"mapcap $t = $result")
-      override def toString = "toVar"
-
-      object inverse extends BiTypeMap:
-        def apply(t: Type) = mapOver(t)
-
-        override def mapCapability(c: Capability, deep: Boolean) = c match
-          case c @ ResultCap(`mt`) =>
-            // do a reverse getOrElseUpdate on `seen` to produce the
-            // `Fresh` assosicated with `t`
-            val primary = c.primaryResultCap
-            primary.origin match
-              case GlobalCap =>
-                val fresh = FreshCap(Origin.Unknown)
-                primary.setOrigin(fresh)
-                fresh
-              case origin: FreshCap =>
-                origin
-          case _ =>
-            super.mapCapability(c, deep)
-
-        def inverse = toVar.this
-        override def toString = "toVar.inverse"
-      end inverse
-    end toVar
-
-    toVar(tp)
-  end toResult
+    ToResult(tp, mt, fail)(tp)
 
   /** Map global roots in function results to result roots. Also,
    *  map roots in the types of def methods that are parameterless
@@ -1019,14 +1248,11 @@ object Capabilities:
   def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(tp: Type)(using Context): Type =
     val m = new TypeMap with FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case AnnotatedType(parent @ defn.RefinedFunctionOf(mt), ann) if ann.symbol == defn.InferredDepFunAnnot =>
-          val mt1 = mapOver(mt).asInstanceOf[MethodType]
-          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
-          else parent
-        case defn.RefinedFunctionOf(mt) =>
-          val mt1 = apply(mt)
-          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
-          else t
+        case rt @ defn.RefinedFunctionOf(mt) =>
+          rt.derivedRefinedType(refinedInfo =
+            if rt.isInstanceOf[InferredRefinedType]
+            then mapOver(mt)
+            else apply(mt))
         case t: MethodType if variance > 0 && t.marksExistentialScope =>
           val t1 = mapOver(t).asInstanceOf[MethodType]
           t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))

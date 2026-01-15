@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
 import scala.collection.immutable.List
@@ -41,8 +42,8 @@ class ListMap[K, V]
 
   override def mapFactory: MapFactory[ListMap] = ListMap
 
-  private[this] var elems: List[(K, V)] = List()
-  private[this] var siz: Int = 0
+  private var elems: List[(K, V)] = List()
+  private var siz: Int = 0
 
   def get(key: K): Option[V] = elems find (_._1 == key) map (_._2)
   def iterator: Iterator[(K, V)] = elems.iterator
@@ -67,7 +68,7 @@ class ListMap[K, V]
   final override def size: Int = siz
   override def knownSize: Int = size
   override def isEmpty: Boolean = size == 0
-  override protected[this] def stringPrefix = "ListMap"
+  override protected def stringPrefix = "ListMap"
 }
 
 /** $factoryInfo
@@ -78,6 +79,6 @@ class ListMap[K, V]
 @deprecated("Use an immutable.ListMap assigned to a var instead of mutable.ListMap", "2.13.0")
 object ListMap extends MapFactory[ListMap] {
   def empty[K, V]: ListMap[K, V] = new ListMap[K, V]
-  def from[K, V](it: IterableOnce[(K, V)]): ListMap[K,V] = Growable.from(empty[K, V], it)
+  def from[K, V](it: IterableOnce[(K, V)]^): ListMap[K,V] = Growable.from(empty[K, V], it)
   def newBuilder[K, V]: Builder[(K, V), ListMap[K,V]] = new GrowableBuilder(empty[K, V])
 }

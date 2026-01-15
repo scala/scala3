@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /**
   * A generic trait for ordered mutable maps. Concrete classes have to provide

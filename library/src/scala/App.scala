@@ -39,19 +39,19 @@ import scala.collection.mutable.ListBuffer
  *  before the main method has been executed.'''''
  *
  *  Future versions of this trait will no longer extend `DelayedInit`.
- * 
+ *
  *  In Scala 3, the `DelayedInit` feature was dropped. `App` exists only in a limited form
  *  that also does not support command line arguments and will be deprecated in the future.
- * 
+ *
  *  [[https://docs.scala-lang.org/scala3/book/methods-main-methods.html @main]] methods are the
  *  recommended scheme to generate programs that can be invoked from the command line in Scala 3.
- * 
+ *
  *  {{{
  *  @main def runMyProgram(args: String*): Unit = {
  *    // your program here
  *  }
  *  }}}
- * 
+ *
  *  If programs need to cross-build between Scala 2 and Scala 3, it is recommended to use an
  *  explicit `main` method:
  *  {{{
@@ -62,7 +62,7 @@ import scala.collection.mutable.ListBuffer
  *  }
  *  }}}
  */
-@nowarn("""cat=deprecation&origin=scala\.DelayedInit""")
+@deprecated(message = "Support for trait App is deprecated in Scala 3. Please refer to https://docs.scala-lang.org/scala3/book/methods-main-methods.html.", since = "3.8.0")
 trait App extends DelayedInit {
 
   /** The time when the execution of this program started, in milliseconds since 1
@@ -73,9 +73,9 @@ trait App extends DelayedInit {
    */
   protected final def args: Array[String] = _args
 
-  private[this] var _args: Array[String] = _
+  private var _args: Array[String] = compiletime.uninitialized
 
-  private[this] val initCode = new ListBuffer[() => Unit]
+  private val initCode = new ListBuffer[() => Unit]
 
   /** The init hook. This saves all initialization code for execution within `main`.
    *  This method is normally never called directly from user code.

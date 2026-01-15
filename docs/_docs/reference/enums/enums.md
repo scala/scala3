@@ -117,6 +117,9 @@ The fields referenced by `Mercury` are not visible, and the fields referenced by
 be referenced directly (using `import Planet.*`). You must use an indirect reference,
 such as demonstrated with `Earth`.
 
+Enum cases accept only access modifiers.
+Enum classes accept only access modifiers and `into` or `infix`.
+
 ## Deprecation of Enum Cases
 
 As a library author, you may want to signal that an enum case is no longer intended for use. However you could still want to gracefully handle the removal of a case from your public API, such as special casing deprecated cases.

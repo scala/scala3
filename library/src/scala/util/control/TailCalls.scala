@@ -106,7 +106,7 @@ object TailCalls {
    */
   def tailcall[A](rest: => TailRec[A]): TailRec[A] = Call(() => rest)
 
-  /** Return the final result from a tailcalling computation.
+  /** Returns the final result from a tailcalling computation.
    *  @param  `result` the result value
    *  @return a `TailRec` object representing a computation which immediately
    *          returns `result`

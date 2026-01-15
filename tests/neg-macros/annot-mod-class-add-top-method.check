@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/annot-mod-class-add-top-method/Test_2.scala:1:0 ---------------------------------------------
 1 |@addTopLevelMethod // error
   |^^^^^^^^^^^^^^^^^^

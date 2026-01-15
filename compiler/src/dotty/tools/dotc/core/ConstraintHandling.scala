@@ -845,7 +845,7 @@ trait ConstraintHandling {
         val approx = new ApproximatingTypeMap {
           if (!fromBelow) variance = -1
           def apply(t: Type): Type = t match {
-            case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
+            case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas.contains(tl) =>
               val bounds = tl.paramInfos(n)
               range(bounds.lo, bounds.hi)
             case tl: TypeLambda =>
@@ -884,7 +884,7 @@ trait ConstraintHandling {
       val saved = canWidenAbstract
       canWidenAbstract = true
       try bound match
-        case bound: TypeParamRef if constraint contains bound =>
+        case bound: TypeParamRef if constraint.contains(bound) =>
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)

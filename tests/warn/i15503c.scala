@@ -70,3 +70,10 @@ object LazyVals:
 
   final class Waiting extends CountDownLatch(1), LazyValControlState:
     private def writeReplace(): Any = null
+
+package i24235:
+  object Test:
+    private case class Unused() // warn
+    private class Regular // nowarn
+    private object Regular: // warn
+      def r = Regular() // usage

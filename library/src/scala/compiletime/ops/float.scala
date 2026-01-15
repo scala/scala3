@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object float:
   /** Addition of two `Float` singleton types.
    *  ```scala

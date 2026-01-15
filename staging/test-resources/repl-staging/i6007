@@ -5,6 +5,6 @@ def compiler: scala.quoted.staging.Compiler
 scala> def v(using Quotes) = '{ (if true then Some(1) else None).map(v => v+1) }
 def v(using x$1: scala.quoted.Quotes): scala.quoted.Expr[Option[Int]]
 scala> scala.quoted.staging.withQuotes(v.show)
-val res0: String = (if (true) scala.Some.apply[scala.Int](1) else scala.None).map[scala.Int](((v: scala.Int) => v.+(1)))
+val res0: String = "(if (true) scala.Some.apply[scala.Int](1) else scala.None).map[scala.Int](((v: scala.Int) => v.+(1)))"
 scala> scala.quoted.staging.run(v)
 val res1: Option[Int] = Some(2)

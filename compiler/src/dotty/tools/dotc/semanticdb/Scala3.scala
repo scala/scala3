@@ -382,7 +382,7 @@ object Scala3:
   object LocalSymbol:
 
     def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
-      case locals(ints) =>
+      case locals(ints: String) =>
         val bi = BigInt(ints)
         if bi.isValidInt then
           Some(bi.toInt)
@@ -406,9 +406,9 @@ object Scala3:
 
       def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.isGlobalTerminal
       def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.isGlobalTerminal
-      def isMulti: Boolean = symbol startsWith ";"
+      def isMulti: Boolean = symbol.startsWith(";")
 
-      def isConstructor: Boolean = ctor matches symbol
+      def isConstructor: Boolean = ctor.matches(symbol)
       def isPackage: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '/'
       def isTerm: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '.'
       def isType: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '#'
@@ -484,7 +484,7 @@ object Scala3:
   /** Sort symbol occurrences by their start position. */
   given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
-  given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+  given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(using IdentifierOrdering())
 
   given Ordering[Diagnostic] = (x, y) => compareRange(x.range, y.range)
 

@@ -17,7 +17,7 @@ trait IntExpr {
 object SimpleExpr extends Hierarchy with If with Word with IntExpr
 //object OtherExpr extends Hierarchy with If with IntExpr
 
-object Demo extends App {
+object Demo {
   import SimpleExpr.*
   def func(expr: Expr) = expr match {
     case If(cond, yes, no) => cond

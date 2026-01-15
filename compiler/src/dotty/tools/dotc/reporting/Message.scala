@@ -62,13 +62,6 @@ object Message:
    */
   private class Seen(disambiguate: Disambiguation):
 
-    /** The set of lambdas that were opened at some point during printing. */
-    private val openedLambdas = new collection.mutable.HashSet[LambdaType]
-
-    /** Register that `tp` was opened during printing. */
-    def openLambda(tp: LambdaType): Unit =
-      openedLambdas += tp
-
     val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
 
     var nonSensical = false
@@ -109,16 +102,17 @@ object Message:
         lazy val dealiased = followAlias(entry)
 
         /** All lambda parameters with the same name are given the same superscript as
-         *  long as their corresponding binder has been printed.
-         *  See tests/neg/lambda-rename.scala for test cases.
+         *  long as their corresponding binders have the same parameter name lists.
+         *  This avoids spurious distinctions between parameters of mapped lambdas at
+         *  the risk that sometimes we cannot distinguish parameters of distinct functions
+         *  that have the same parameter names. See tests/neg/lambda-rename.scala for test cases.
          */
         def sameSuperscript(cur: Recorded, existing: Recorded) =
           (cur eq existing) ||
           (cur, existing).match
             case (cur: ParamRef, existing: ParamRef) =>
-              (cur.paramName eq existing.paramName) &&
-              openedLambdas.contains(cur.binder) &&
-              openedLambdas.contains(existing.binder)
+              (cur.paramName eq existing.paramName)
+              && cur.binder.paramNames == existing.binder.paramNames
             case _ =>
               false
 
@@ -148,7 +142,7 @@ object Message:
     end record
 
     /** Create explanation for single `Recorded` type or symbol */
-    private def explanation(entry: AnyRef, key: String)(using Context): String =
+    private def explanation(entry: AnyRef, keys: List[String])(using Context): String =
       def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
         if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -184,7 +178,8 @@ object Message:
           s"is an unknown value of type ${tp.widen.show}"
         case ref: RootCapability =>
           val relation =
-            if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
+            if keys.length > 1 then "refer to"
+            else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
             else "is"
           s"$relation ${ref.descr}"
     end explanation
@@ -213,16 +208,20 @@ object Message:
         res // help the inferencer out
       }.sortBy(_._1)
 
-      def columnar(parts: List[(String, String)]): List[String] = {
+      def columnar(parts: List[(String, String)]): List[String] =
         lazy val maxLen = parts.map(_._1.length).max
-        parts.map {
-          case (leader, trailer) =>
-            val variable = hl(leader)
-            s"""$variable${" " * (maxLen - leader.length)} $trailer"""
-        }
-      }
+        parts.map: (leader, trailer) =>
+          val variable = hl(leader)
+          s"""$variable${" " * (maxLen - leader.length)} $trailer"""
 
-      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry, str)) }
+      // Group keys with the same Recorded entry together. We can't use groupBy here
+      // since we want to maintain the order in which entries first appear in the
+      //  original list.
+      val toExplainGrouped: List[(Recorded, List[String])] =
+        for entry <- toExplain.map(_._2).distinct
+        yield (entry, for (key, e) <- toExplain if e == entry yield key)
+      val explainParts = toExplainGrouped.map:
+        (entry, keys) => (keys.mkString(" and "), explanation(entry, keys))
       val explainLines = columnar(explainParts)
       if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
     end explanations
@@ -266,20 +265,10 @@ object Message:
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
 
-    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
-      info match
-        case info: LambdaType =>
-          seen.openLambda(info)
-        case _ =>
-      super.toTextMethodAsFunction(info, isPure, refs)
-
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true
       tp match
         case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
-        case tp: LambdaType =>
-          seen.openLambda(tp)
-          super.toText(tp)
         case _ => super.toText(tp)
 
     override def toText(sym: Symbol): Text =
@@ -438,12 +427,14 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   def mapMsg(f: String => String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = f(self.msg)
+    override def msgPostscript(using Context) = self.msgPostscript
     def explain(using Context) = self.explain
     override def canExplain = self.canExplain
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = self.msg
+    override def msgPostscript(using Context) = self.msgPostscript
     def explain(using Context) = self.explain ++ suffix
     override def canExplain = true
 

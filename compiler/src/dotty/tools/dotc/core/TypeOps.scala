@@ -76,7 +76,7 @@ object TypeOps:
        *  @param  thiscls The prefix `C` of the `C.this` type.
        */
       def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
+        if ((pre eq NoType) || (pre eq NoPrefix) || cls.is(PackageClass))
           tp
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
@@ -242,7 +242,7 @@ object TypeOps:
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
       case c :: rest =>
-        val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
+        val accu1 = if accu.exists(_.derivesFrom(c)) then accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
         assert(ctx.erasedTypes || ctx.reporter.errorsReported)
@@ -706,9 +706,34 @@ object TypeOps:
     def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
       case arg :: args1 => boundss match
         case bounds :: boundss1 =>
+
+          // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
+          def dropPure(tp: Type): Option[Type] = tp match
+            case tp @ AndType(tp1, tp2) =>
+              dropPure(tp1) match
+                case Some(tp1o) =>
+                  dropPure(tp2) match
+                    case Some(tp2o) => Some(tp.derivedAndType(tp1o, tp2o))
+                    case None => Some(tp1o)
+                case None =>
+                  dropPure(tp2)
+            case tp: HKTypeLambda =>
+              for rt <- dropPure(tp.resType) yield
+                tp.derivedLambdaType(resType = rt)
+            case _ =>
+              if tp.typeSymbol == defn.PureClass then None
+              else Some(tp)
+
+          val relevantBounds =
+            if Feature.ccEnabled then bounds
+            else
+              // Drop caps.Pure from bound, it should be checked only when capture checking is enabled
+              dropPure(bounds.hi).match
+                case Some(hi1) => bounds.derivedTypeBounds(bounds.lo, hi1)
+                case None => TypeBounds(bounds.lo, defn.AnyKindType)
           arg.tpe match
-            case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, bounds)
-            case tp => checkOverlapsBounds(tp, tp, arg, bounds)
+            case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, relevantBounds)
+            case tp => checkOverlapsBounds(tp, tp, arg, relevantBounds)
           loop(args1, boundss1)
         case _ =>
       case _ =>

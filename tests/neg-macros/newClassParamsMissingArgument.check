@@ -1,10 +1,9 @@
-
--- Error: tests/neg-macros/newClassParamsMissingArgument/Test_2.scala:4:2 ----------------------------------------------
-4 |  makeClass("foo") // error // error
+-- Error: tests/neg-macros/newClassParamsMissingArgument/Test_2.scala:2:2 ----------------------------------------------
+2 |  makeClass("foo") // error // error
   |  ^^^^^^^^^^^^^^^^
   |wrong number of arguments at inlining (while expanding macro) for (idx: Int): foo: (foo#<init> : (idx: Int): foo), expected: 1, found: 0
--- Error: tests/neg-macros/newClassParamsMissingArgument/Test_2.scala:4:11 ---------------------------------------------
-4 |  makeClass("foo") // error // error
+-- Error: tests/neg-macros/newClassParamsMissingArgument/Test_2.scala:2:11 ---------------------------------------------
+2 |  makeClass("foo") // error // error
   |  ^^^^^^^^^^^^^^^^
   |Malformed tree was found while expanding macro with -Xcheck-macros.
   |The tree does not conform to the compiler's tree invariants.
@@ -26,7 +25,7 @@
   |---------------------------------------------------------------------------------------------------------------------
   |Inline stack trace
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  |This location contains code that was inlined from Macro_1.scala:5
-5 |inline def makeClass(inline name: String): Object = ${ makeClassExpr('name) }
+  |This location contains code that was inlined from Macro_1.scala:3
+3 |inline def makeClass(inline name: String): Object = ${ makeClassExpr('name) }
   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
    ---------------------------------------------------------------------------------------------------------------------

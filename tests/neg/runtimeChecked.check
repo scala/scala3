@@ -4,4 +4,4 @@
    |the type test for ::[Int] cannot be checked at runtime because its type arguments can't be determined from List[Any]
    |
    | longer explanation available when compiling with `-explain`
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
+No warnings can be incurred under -Werror

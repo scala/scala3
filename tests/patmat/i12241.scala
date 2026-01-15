@@ -23,7 +23,7 @@ object EndpointInput {
   case class Empty[T]() extends EndpointInput[T]
 }
 
-object Test extends App {
+object Test {
   import EndpointInput._
 
   def compare(left: EndpointInput[?], right: EndpointInput[?]): Boolean =

@@ -262,6 +262,9 @@ import scala.runtime.Statics
   *  @define initiallyLazy This method does not evaluate anything until an operation is performed
   *                        on the result (e.g. calling `head` or `tail`, or checking if it is empty).
   *  @define evaluatesAllElements This method evaluates all elements of the collection.
+  *  @note Under Capture Checking, LazyList is unsound with regards to lazy/strict separation of collections.
+  *        LazyList as-is will not be capture checked and might be deprecated in the future.
+  *        Use LazyListIterable instead.
   */
 @SerialVersionUID(4L)
 final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => LazyList[A] */)
@@ -284,7 +287,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // after initialization (`_head ne Uninitialized`)
   //   - `null` if this is an empty lazy list
   //   - `head: A` otherwise (can be `null`, `_tail == null` is used to test emptiness)
-  @volatile private[this] var _head: Any /* Uninitialized | A */ =
+  @volatile private var _head: Any /* Uninitialized | A */ =
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
@@ -293,11 +296,11 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyList[A]` otherwise
-  private[this] var _tail: AnyRef /* () => LazyList[A] | MidEvaluation.type | LazyList[A] */ =
+  private var _tail: AnyRef | Null /* () => LazyList[A] | MidEvaluation.type | LazyList[A] | Null */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
-  private def rawTail: AnyRef = _tail
+  private def rawTail: AnyRef | Null = _tail
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
@@ -355,7 +358,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     if (evaluated eq Empty) throw new UnsupportedOperationException("tail of empty lazy list")
     else rawTail.asInstanceOf[LazyList[A]]
 
-  @inline private[this] def knownIsEmpty: Boolean = isEvaluated && isEmpty
+  @inline private def knownIsEmpty: Boolean = isEvaluated && isEmpty
   @inline private def knownNonEmpty: Boolean = isEvaluated && !isEmpty
 
   /** Evaluates all undefined elements of the lazy list.
@@ -403,7 +406,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     if (knownIsEmpty) Iterator.empty
     else new LazyIterator(this)
 
-  /** Apply the given function `f` to each element of this linear sequence
+  /** Applies the given function `f` to each element of this linear sequence
     * (while respecting the order of the elements).
     *
     *  @param f The treatment to apply to each element.
@@ -436,10 +439,10 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     else tail.foldLeft(op(z, head))(op)
 
   // LazyList.Empty doesn't use the SerializationProxy
-  protected[this] def writeReplace(): AnyRef =
+  protected def writeReplace(): AnyRef =
     if (knownNonEmpty) new SerializationProxy[A](this) else this
 
-  override protected[this] def className = "LazyList"
+  override protected def className = "LazyList"
 
   /** The lazy list resulting from the concatenation of this lazy list with the argument lazy list.
     *
@@ -529,7 +532,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     */
   override def partitionMap[A1, A2](f: A => Either[A1, A2]): (LazyList[A1], LazyList[A2]) = {
     val (left, right) = map(f).partition(_.isLeft)
-    (left.map(_.asInstanceOf[Left[A1, _]].value), right.map(_.asInstanceOf[Right[_, A2]].value))
+    (left.map(_.asInstanceOf[Left[A1, ?]].value), right.map(_.asInstanceOf[Right[?, A2]].value))
   }
 
   /** @inheritdoc
@@ -752,7 +755,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     }
   }
 
-  private def eagerHeadDropRightImpl(scout: LazyList[_]): LazyList[A] =
+  private def eagerHeadDropRightImpl(scout: LazyList[?]): LazyList[A] =
     if (scout.isEmpty) Empty
     else eagerCons(head, newLL(tail.eagerHeadDropRightImpl(scout.tail)))
 
@@ -928,7 +931,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     sb
   }
 
-  private[this] def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
+  private def addStringNoForce(b: JStringBuilder, start: String, sep: String, end: String): b.type = {
     b.append(start)
     if (!isEvaluated) b.append("<not computed>")
     else if (!isEmpty) {
@@ -1109,7 +1112,7 @@ object LazyList extends SeqFactory[LazyList] {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
     var restRef = ll                          // val restRef = new ObjectRef(ll)
     newLL {
-      var it: Iterator[B] = null
+      var it: Iterator[B] | Null = null
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
@@ -1121,10 +1124,10 @@ object LazyList extends SeqFactory[LazyList] {
         }
       }
       if (itHasNext) {
-        val head = it.next()
+        val head = it.nn.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        eagerCons(head, newLL(eagerHeadPrependIterator(it)(flatMapImpl(rest, f))))
+        eagerCons(head, newLL(eagerHeadPrependIterator(it.nn)(flatMapImpl(rest, f))))
       } else Empty
     }
   }
@@ -1190,25 +1193,25 @@ object LazyList extends SeqFactory[LazyList] {
   /** An alternative way of building and matching lazy lists using LazyList.cons(hd, tl).
     */
   object cons {
-    /** A lazy list consisting of a given first element and remaining elements
+    /** A lazy list consisting of a given first element and remaining elements.
       *  @param hd   The first element of the result lazy list
       *  @param tl   The remaining elements of the result lazy list
       */
     def apply[A](hd: => A, tl: => LazyList[A]): LazyList[A] = newLL(eagerCons(hd, newLL(tl)))
 
-    /** Maps a lazy list to its head and tail */
+    /** Maps a lazy list to its head and tail. */
     def unapply[A](xs: LazyList[A]): Option[(A, LazyList[A])] = #::.unapply(xs)
   }
 
   implicit def toDeferrer[A](l: => LazyList[A]): Deferrer[A] = new Deferrer[A](() => l)
 
   final class Deferrer[A] private[LazyList] (private val l: () => LazyList[A]) extends AnyVal {
-    /** Construct a LazyList consisting of a given first element followed by elements
-      *  from another LazyList.
+    /** Constructs a `LazyList` consisting of a given first element followed by elements
+      *  from another `LazyList`.
       */
     def #:: [B >: A](elem: => B): LazyList[B] = newLL(eagerCons(elem, newLL(l())))
-    /** Construct a LazyList consisting of the concatenation of the given LazyList and
-      *  another LazyList.
+    /** Constructs a `LazyList` consisting of the concatenation of the given `LazyList` and
+      *  another `LazyList`.
       */
     def #:::[B >: A](prefix: LazyList[B]): LazyList[B] = prefix lazyAppendedAll l()
   }
@@ -1259,7 +1262,7 @@ object LazyList extends SeqFactory[LazyList] {
     }
 
   /**
-    * Create an infinite LazyList starting at `start` and incrementing by
+    * Creates an infinite LazyList starting at `start` and incrementing by
     * step `step`.
     *
     * @param start the start value of the LazyList
@@ -1270,7 +1273,7 @@ object LazyList extends SeqFactory[LazyList] {
     newLL(eagerCons(start, from(start + step, step)))
 
   /**
-    * Create an infinite LazyList starting at `start` and incrementing by `1`.
+    * Creates an infinite LazyList starting at `start` and incrementing by `1`.
     *
     * @param start the start value of the LazyList
     * @return the LazyList starting at value `start`.
@@ -1278,7 +1281,7 @@ object LazyList extends SeqFactory[LazyList] {
   def from(start: Int): LazyList[Int] = from(start, 1)
 
   /**
-    * Create an infinite LazyList containing the given element expression (which
+    * Creates an infinite LazyList containing the given element expression (which
     * is computed for each occurrence).
     *
     * @param elem the element composing the resulting LazyList
@@ -1313,7 +1316,7 @@ object LazyList extends SeqFactory[LazyList] {
     */
   def newBuilder[A]: Builder[A, LazyList[A]] = new LazyBuilder[A]
 
-  private class LazyIterator[+A](private[this] var lazyList: LazyList[A]) extends AbstractIterator[A] {
+  private class LazyIterator[+A](private var lazyList: LazyList[A]) extends AbstractIterator[A] {
     override def hasNext: Boolean = !lazyList.isEmpty
 
     override def next(): A =
@@ -1325,7 +1328,7 @@ object LazyList extends SeqFactory[LazyList] {
       }
   }
 
-  private class SlidingIterator[A](private[this] var lazyList: LazyList[A], size: Int, step: Int)
+  private class SlidingIterator[A](private var lazyList: LazyList[A], size: Int, step: Int)
     extends AbstractIterator[LazyList[A]] {
     private val minLen = size - step max 0
     private var first = true
@@ -1347,7 +1350,7 @@ object LazyList extends SeqFactory[LazyList] {
 
   private final class WithFilter[A] private[LazyList](lazyList: LazyList[A], p: A => Boolean)
     extends collection.WithFilter[A, LazyList] {
-    private[this] val filtered = lazyList.filter(p)
+    private val filtered = lazyList.filter(p)
     def map[B](f: A => B): LazyList[B] = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]): LazyList[B] = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
@@ -1357,8 +1360,8 @@ object LazyList extends SeqFactory[LazyList] {
   private final class LazyBuilder[A] extends ReusableBuilder[A, LazyList[A]] {
     import LazyBuilder._
 
-    private[this] var next: DeferredState[A] = _
-    private[this] var list: LazyList[A] = _
+    private var next: DeferredState[A] = compiletime.uninitialized
+    private var list: LazyList[A] = compiletime.uninitialized
 
     clear()
 
@@ -1393,7 +1396,7 @@ object LazyList extends SeqFactory[LazyList] {
 
   private object LazyBuilder {
     final class DeferredState[A] {
-      private[this] var _tail: () => LazyList[A] = _
+      private var _tail: () => LazyList[A] = compiletime.uninitialized
 
       def eval(): LazyList[A] = {
         val state = _tail
@@ -1417,7 +1420,7 @@ object LazyList extends SeqFactory[LazyList] {
   @SerialVersionUID(4L)
   final class SerializationProxy[A](@transient protected var coll: LazyList[A]) extends Serializable {
 
-    private[this] def writeObject(out: ObjectOutputStream): Unit = {
+    private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
       var these = coll
       while (these.knownNonEmpty) {
@@ -1428,7 +1431,7 @@ object LazyList extends SeqFactory[LazyList] {
       out.writeObject(these)
     }
 
-    private[this] def readObject(in: ObjectInputStream): Unit = {
+    private def readObject(in: ObjectInputStream): Unit = {
       in.defaultReadObject()
       val init = new mutable.ListBuffer[A]
       var initRead = false
@@ -1443,6 +1446,7 @@ object LazyList extends SeqFactory[LazyList] {
       coll = newLL(eagerHeadPrependIterator(it)(tail))
     }
 
-    private[this] def readResolve(): Any = coll
+    private def readResolve(): Any = coll
   }
 }
+

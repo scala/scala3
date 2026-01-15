@@ -32,10 +32,10 @@ object QuotePatterns:
         // Collect type variables
         val typevars1 = tree match
             case tree @ DefDef(_, paramss, _, _) =>
-              typevars union paramss.flatMap{ params => params match
+              typevars `union` paramss.flatMap{ params => params match
                 case TypeDefs(tdefs) => tdefs.map(_.symbol)
                 case _ => List.empty
-              }.toSet union typevars
+              }.toSet `union` typevars
             case _ => typevars
 
         // Validate pattern

@@ -1,4 +1,4 @@
-//> using options -Wunused:imports
+//> using options -Wunused:all
 
 def i23967: Boolean = {
   //import scala.compiletime.testing.typeCheckErrors
@@ -12,8 +12,8 @@ package c:
   class C(i: Int)
 
 package q:
-  import c.* // warn should be nowarn
-  import p.* // warn should be nowarn
+  import c.* // nowarn, unit is nullified
+  import p.* // nowarn
   import scala.compiletime.testing.*
   def test() = typeCheckErrors("""println(C("hello, world"))""")
   def ok() = typeChecks("println(code)")

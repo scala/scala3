@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 case class A(a: Int)
 case class B(b: Int)

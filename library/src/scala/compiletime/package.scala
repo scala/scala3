@@ -1,6 +1,8 @@
 package scala
 package compiletime
 
+import language.experimental.captureChecking
+
 import annotation.{compileTimeOnly, experimental}
 
 /** Use this method when you have a type, do not have a value for it but want to

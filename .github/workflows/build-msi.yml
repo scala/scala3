@@ -25,14 +25,14 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: 'adopt'
-          java-version: '8'
+          java-version: 17
           cache: 'sbt'
       - name: Build MSI package
         run: sbt 'dist-win-x86_64/Windows/packageBin'
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       - name: Upload MSI Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: scala.msi
           path: ./dist/win-x86_64/target/windows/scala.msi

@@ -239,6 +239,7 @@ object Phases {
     private var myErasurePhase: Phase = uninitialized
     private var myElimErasedValueTypePhase: Phase = uninitialized
     private var myLambdaLiftPhase: Phase = uninitialized
+    private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
     private var myGenBCodePhase: Phase = uninitialized
@@ -266,6 +267,7 @@ object Phases {
     final def gettersPhase: Phase = myGettersPhase
     final def erasurePhase: Phase = myErasurePhase
     final def elimErasedValueTypePhase: Phase = myElimErasedValueTypePhase
+    final def mixinPhase: Phase = myMixinPhase
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
@@ -295,6 +297,7 @@ object Phases {
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
       myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
+      myMixinPhase = phaseOfClass(classOf[Mixin])
       myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
       myCountOuterAccessesPhase = phaseOfClass(classOf[CountOuterAccesses])
       myFlattenPhase = phaseOfClass(classOf[Flatten])
@@ -550,6 +553,7 @@ object Phases {
   def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
   def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
   def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase

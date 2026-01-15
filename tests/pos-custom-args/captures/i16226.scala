@@ -1,4 +1,4 @@
-class Cap extends caps.Sharable
+class Cap extends caps.SharedCapability
 
 class LazyRef[T](val elem: () => T):
   val get: () ->{elem} T = elem

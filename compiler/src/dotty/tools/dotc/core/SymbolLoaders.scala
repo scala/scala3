@@ -304,9 +304,9 @@ object SymbolLoaders {
     }
 
     def doComplete(root: SymDenotation)(using Context): Unit = {
-      assert(root is PackageClass, root)
+      assert(root.is(PackageClass), root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre.select(sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 
@@ -473,12 +473,17 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
   val isBestEffortTasty = tastyFile.hasBetastyExtension
-  private val unpickler: tasty.DottyUnpickler =
+
+  lazy val tastyBytes = tastyFile.toByteArray
+
+  private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
-      val tastyBytes = tastyFile.toByteArray
       new tasty.DottyUnpickler(tastyFile, tastyBytes, isBestEffortTasty) // reads header and name table
 
-  val compilationUnitInfo: CompilationUnitInfo | Null = unpickler.compilationUnitInfo
+  val compilationUnitInfo: CompilationUnitInfo =
+    new CompilationUnitInfo:
+      def associatedFile: AbstractFile = tastyFile
+      def tastyInfo: Option[TastyInfo] = unpickler.compilationUnitInfo.tastyInfo
 
   def description(using Context): String =
     if isBestEffortTasty then "Best Effort TASTy file " + tastyFile.toString
@@ -488,7 +493,6 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
     handleUnpicklingExceptions:
       val (classRoot, moduleRoot) = rootDenots(root.asClass)
       if (!isBestEffortTasty || ctx.withBestEffortTasty) then
-        val tastyBytes = tastyFile.toByteArray
         unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
         if mayLoadTreesFromTasty || isBestEffortTasty then
           classRoot.classSymbol.rootTreeOrProvider = unpickler

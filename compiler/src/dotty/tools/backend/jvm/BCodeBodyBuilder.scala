@@ -155,11 +155,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           stack.pop()
 
           (code: @switch) match {
-            case ADD => bc add resKind
-            case SUB => bc sub resKind
-            case MUL => bc mul resKind
-            case DIV => bc div resKind
-            case MOD => bc rem resKind
+            case ADD => bc.add(resKind)
+            case SUB => bc.sub(resKind)
+            case MUL => bc.mul(resKind)
+            case DIV => bc.div(resKind)
+            case MOD => bc.rem(resKind)
 
             case OR  | XOR | AND => bc.genPrimitiveLogical(code, resKind)
 
@@ -271,11 +271,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         genCond(tree, success, failure, targetIfNoJump = success)
         // success block
         markProgramPoint(success)
-        bc boolconst true
-        bc goTo after
+        bc.boolconst(true)
+        bc.goTo(after)
         // failure block
         markProgramPoint(failure)
-        bc boolconst false
+        bc.boolconst(false)
         // after
         markProgramPoint(after)
 
@@ -501,16 +501,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val stackDiff = stack.heightDiffWrt(targetStackSize)
           if stackDiff != 0 then
             if expectedType == UNIT then
-              bc dropMany stackDiff
+              bc.dropMany(stackDiff)
             else
               val loc = locals.makeTempLocal(expectedType)
               bc.store(loc.idx, expectedType)
-              bc dropMany stackDiff
+              bc.dropMany(stackDiff)
               bc.load(loc.idx, expectedType)
           end if
-          bc goTo label
+          bc.goTo(label)
         case LoadDestination.Return =>
-          bc emitRETURN returnType
+          bc.emitRETURN(returnType)
         case LoadDestination.Throw =>
           val thrownType = expectedType
           // `throw null` is valid although scala.Null (as defined in src/libray-aux) isn't a subtype of Throwable.
@@ -634,7 +634,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               }
               locals.store(earlyReturnVar)
             }
-            bc goTo nextCleanup
+            bc.goTo(nextCleanup)
             shouldEmitCleanup = true
         }
       } else {
@@ -697,20 +697,20 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if (l.isPrimitive && r.isPrimitive)
           genConversion(l, r, cast)
         else if (l.isPrimitive) {
-          bc drop l
+          bc.drop(l)
           if (cast) {
             mnode.visitTypeInsn(asm.Opcodes.NEW, jlClassCastExceptionRef.internalName)
-            bc dup ObjectRef
+            bc.dup(ObjectRef)
             emit(asm.Opcodes.ATHROW)
           } else {
-            bc boolconst false
+            bc.boolconst(false)
           }
         }
         else if (r.isPrimitive && cast) {
           abort(s"Erasure should have added an unboxing operation to prevent this cast. Tree: $t")
         }
         else if (r.isPrimitive) {
-          bc isInstance boxedClassOfPrimitive(r.asPrimitiveBType)
+          bc.isInstance(boxedClassOfPrimitive(r.asPrimitiveBType))
         }
         else {
           assert(r.isRef, r) // ensure that it's not a method
@@ -737,7 +737,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
       genLoadArguments(args, List.fill(args.size)(INT))
       (argsSize /*: @switch*/) match {
-        case 1 => bc newarray elemKind
+        case 1 => bc.newarray(elemKind)
         case _ =>
           val descr = ("[" * argsSize) + elemKind.descriptor // denotes the same as: arrayN(elemKind, argsSize).descriptor
           mnode.visitMultiANewArrayInsn(descr, argsSize)
@@ -792,7 +792,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case rt: ClassBType =>
               assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
-              bc dup generatedType
+              bc.dup(generatedType)
               stack.push(rt)
               stack.push(rt)
               genLoadArguments(args, paramTKs(app))
@@ -888,8 +888,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val elmKind       = toTypeKind(elemType)
       val generatedType = ArrayBType(elmKind)
 
-      bc iconst   elems.length
-      bc newarray elmKind
+      bc.iconst(elems.length)
+      bc.newarray(elmKind)
 
       // during the genLoad below, there is the result, its dup, and the index
       stack.push(generatedType)
@@ -899,10 +899,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var i = 0
       var rest = elems
       while (!rest.isEmpty) {
-        bc dup     generatedType
-        bc iconst  i
+        bc.dup(    generatedType)
+        bc.iconst( i)
         genLoad(rest.head, elmKind)
-        bc astore  elmKind
+        bc.astore( elmKind)
         rest = rest.tail
         i = i + 1
       }
@@ -1070,7 +1070,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             }
             markProgramPoint(keepGoing)
           }
-          bc goTo default
+          bc.goTo(default)
         }
 
         // emit blocks for common patterns
@@ -1111,7 +1111,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def adapt(from: BType, to: BType): Unit = {
       if (!from.conformsTo(to)) {
         to match {
-          case UNIT => bc drop from
+          case UNIT => bc.drop(from)
           case _    => bc.emitT2T(from, to)
         }
       } else if (from.isNothingType) {
@@ -1174,7 +1174,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          * inserted instead - after all, an expression of type scala.runtime.Null$ can only be null.
          */
         if (lastInsn.getOpcode != asm.Opcodes.ACONST_NULL) {
-          bc drop from
+          bc.drop(from)
           emit(asm.Opcodes.ACONST_NULL)
         }
       }
@@ -1248,14 +1248,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genConversion(from: BType, to: BType, cast: Boolean): Unit = {
       if (cast) { bc.emitT2T(from, to) }
       else {
-        bc drop from
-        bc boolconst (from == to)
+        bc.drop(from)
+        bc.boolconst(from == to)
       }
     }
 
     def genCast(to: RefBType, cast: Boolean): Unit = {
-      if (cast) { bc checkCast  to }
-      else      { bc isInstance to }
+      if cast then bc.checkCast(to)
+      else bc.isInstance(to)
     }
 
     /* Is the given symbol a primitive operation? */
@@ -1504,7 +1504,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           bc.emitIF(op, success)
         }
-        if (targetIfNoJump != failure) bc goTo failure
+        if (targetIfNoJump != failure) bc.goTo(failure)
       }
     }
 
@@ -1517,8 +1517,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.emitIF(op, success)
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           (op: @unchecked) match { // references are only compared with EQ and NE
-            case EQ => bc emitIFNULL    success
-            case NE => bc emitIFNONNULL success
+            case EQ => bc.emitIFNULL(   success)
+            case NE => bc.emitIFNONNULL(success)
           }
         } else {
           def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
@@ -1535,7 +1535,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           bc.emitIF(op, success)
         }
-        if (targetIfNoJump != failure) bc goTo failure
+        if (targetIfNoJump != failure) bc.goTo(failure)
       }
     }
 
@@ -1663,12 +1663,12 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val areSameFinals = l.tpe.typeSymbol.is(Final) && r.tpe.typeSymbol.is(Final) && (l.tpe =:= r.tpe)
         // todo: remove
         def isMaybeBoxed(sym: Symbol): Boolean = {
-          (sym == defn.ObjectClass) ||
-            (sym == defn.JavaSerializableClass) ||
-            (sym == defn.ComparableClass) ||
-            (sym derivesFrom defn.BoxedNumberClass) ||
-            (sym derivesFrom defn.BoxedCharClass) ||
-            (sym derivesFrom defn.BoxedBooleanClass)
+          sym == defn.ObjectClass
+          || sym == defn.JavaSerializableClass
+          || sym == defn.ComparableClass
+          || sym.derivesFrom(defn.BoxedNumberClass)
+          || sym.derivesFrom(defn.BoxedCharClass)
+          || sym.derivesFrom(defn.BoxedBooleanClass)
         }
         !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
@@ -1722,11 +1722,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genLoad(r, ObjectRef)
           stack.pop()
           locals.store(eqEqTempLocal)
-          bc dup ObjectRef
+          bc.dup(ObjectRef)
           genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectRef, targetIfNoJump = lNull)
 
           markProgramPoint(lNull)
-          bc drop ObjectRef
+          bc.drop(ObjectRef)
           locals.load(eqEqTempLocal)
           genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump = lNonNull)
 

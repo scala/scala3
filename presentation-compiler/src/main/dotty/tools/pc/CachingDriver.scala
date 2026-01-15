@@ -29,7 +29,8 @@ import scala.compiletime.uninitialized
  */
 class CachingDriver(override val settings: List[String]) extends InteractiveDriver(settings):
 
-  @volatile private var lastCompiledURI: URI = uninitialized
+  private var lastCompiledURI: URI = uninitialized
+  private var previousDiags = List.empty[Diagnostic]
 
   private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
     compilationUnits.get(uri) match
@@ -40,17 +41,8 @@ class CachingDriver(override val settings: List[String]) extends InteractiveDriv
       case _ => false
 
   override def run(uri: URI, source: SourceFile): List[Diagnostic] =
-    val diags =
-      if alreadyCompiled(uri, source.content) then Nil
-      else super.run(uri, source)
+    if !alreadyCompiled(uri, source.content) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
-    diags
-
-  override def run(uri: URI, sourceCode: String): List[Diagnostic] =
-    val diags =
-      if alreadyCompiled(uri, sourceCode.toCharArray().nn) then Nil
-      else super.run(uri, sourceCode)
-    lastCompiledURI = uri
-    diags
+    previousDiags
 
 end CachingDriver

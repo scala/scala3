@@ -6,19 +6,33 @@ import sbt.Keys.*
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
-import org.scalajs.linker.interface.StandardConfig
+import org.scalajs.linker.interface.{ESVersion, StandardConfig}
+
+import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 object DottyJSPlugin extends AutoPlugin {
 
   object autoImport {
     val switchToESModules: StandardConfig => StandardConfig =
       config => config.withModuleKind(ModuleKind.ESModule)
+
+    val switchToLatestESVersion: StandardConfig => StandardConfig =
+      config => config.withESFeatures(_.withESVersion(ESVersion.ES2021))
+
+    val enableWebAssembly: SettingKey[Boolean] =
+      settingKey("enable all the configuration items required for WebAssembly")
   }
+
+  import autoImport._
 
   val writePackageJSON = taskKey[Unit](
       "Write package.json to configure module type for Node.js")
 
   override def requires: Plugins = ScalaJSPlugin
+
+  override def globalSettings: Seq[Setting[_]] = Def.settings(
+    enableWebAssembly := false,
+  )
 
   override def projectSettings: Seq[Setting[_]] = Def.settings(
 
@@ -39,6 +53,31 @@ object DottyJSPlugin extends AutoPlugin {
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+
+    // Maybe configure WebAssembly
+    scalaJSLinkerConfig := {
+      val prev = scalaJSLinkerConfig.value
+      if (enableWebAssembly.value) {
+        prev
+          .withModuleKind(ModuleKind.ESModule)
+          .withExperimentalUseWebAssembly(true)
+      } else {
+        prev
+      }
+    },
+    jsEnv := {
+      val baseConfig = NodeJSEnv.Config()
+      val config = if (enableWebAssembly.value) {
+        baseConfig.withArgs(List(
+          "--experimental-wasm-exnref",
+          "--experimental-wasm-imported-strings", // for JS string builtins
+          "--experimental-wasm-jspi", // for JSPI, used by async/await
+        ))
+      } else {
+        baseConfig
+      }
+      new NodeJSEnv(config)
+    },
 
     Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
     Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,

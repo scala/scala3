@@ -1,4 +1,7 @@
 package scala.runtime
+
+import language.experimental.captureChecking
+
 import annotation.experimental
 
 /** A helper type to allow syntax like

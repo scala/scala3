@@ -42,7 +42,7 @@ object PathResolver {
       // mutation of the System property map. stringPropertyNames internally uses the Enumeration interface,
       // rather than Iterator, and this disables the fail-fast ConcurrentModificationException.
       val propNames = props.stringPropertyNames()
-      propNames.asScala collectFirst { case k if k endsWith ".boot.class.path" => props.getProperty(k) } getOrElse ""
+      propNames.asScala collectFirst { case k if k.endsWith(".boot.class.path") => props.getProperty(k) } getOrElse ""
     }
 
     /** Environment variables which java pays attention to so it
@@ -110,7 +110,7 @@ object PathResolver {
     // scalaLibDirFound match {
     //   case Some(dir) if scalaHomeExists =>
     //     val paths = ClassPath expandDir dir.path
-    //     join(paths: _*)
+    //     join(paths*)
     //   case _                            => ""
     // }
 
@@ -152,7 +152,7 @@ object PathResolver {
     }
     else inContext(ContextBase().initialCtx) {
       val ArgsSummary(sstate, rest, errors, warnings) =
-        ctx.settings.processArguments(args.toList, true, ctx.settingsState)
+        ctx.settings.processArguments(args.toList, processAll = true, ctx.settingsState)
       errors.foreach(println)
       val pr = inContext(ctx.fresh.setSettings(sstate)) {
         new PathResolver()
@@ -194,7 +194,7 @@ class PathResolver(using c: Context) {
    */
   object Calculated {
     def scalaHome: String           = Defaults.scalaHome
-    def useJavaClassPath: Boolean   = settings.usejavacp.value || Defaults.useJavaClassPath
+    def useJavaClassPath: Boolean   = settings.Yusejavacp.value || Defaults.useJavaClassPath
     def javaBootClassPath: String   = cmdLineOrElse("javabootclasspath", Defaults.javaBootClassPath)
     def javaExtDirs: String         = cmdLineOrElse("javaextdirs", Defaults.javaExtDirs)
     def javaUserClassPath: String   = if (useJavaClassPath) Defaults.javaUserClassPath else ""

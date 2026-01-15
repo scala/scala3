@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/i21916/Test_2.scala:3:27 --------------------------------------------------------------------
 3 |@main def Test = Macro.test() // error
   |                 ^^^^^^^^^^^^

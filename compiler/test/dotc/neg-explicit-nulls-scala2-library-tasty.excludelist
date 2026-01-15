@@ -1,0 +1,17 @@
+byname-nullables.scala                # identity() flexified
+varargs.scala                         # Array type flexified
+flow-conservative.scala               # .length flexified
+nn-basic.scala                        # .length flexified but trim rejected
+i21380c.scala                         # .length flexified but replaceAll rejected
+unsafe-scope.scala                    # .length flexified
+i17467.scala                          # Singleton type flexified
+from-nullable.scala                   # Option argument flexified
+flow-in-block.scala                   # .length flexified
+array.scala                           # Type arugment of Array flexified
+flow-forward-ref.scala                # .length flexified, forward reference error
+flow-implicitly.scala                 # Singleton type flexified
+nn.scala                              # Flexified elided error [!]
+flow-basic.scala                      # .length flexified
+
+unsafe-cast.scala           # Array type flexified
+unsafe-extensions.scala     # Function arguments flexified

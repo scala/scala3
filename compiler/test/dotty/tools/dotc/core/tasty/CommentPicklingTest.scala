@@ -22,7 +22,7 @@ import dotty.tools.io.AbstractFile
 
 class CommentPicklingTest {
 
-  val compileOptions = TestConfiguration.defaultOptions and "-Ykeep-comments" and "-Yemit-tasty"
+  val compileOptions = TestConfiguration.defaultOptions `and` "-Ykeep-comments" `and` "-Yemit-tasty"
   val unpickleOptions = TestConfiguration.defaultOptions
 
   @Test def commentOnDef: Unit = {

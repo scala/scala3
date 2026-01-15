@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wunused:all
+//> using options -Werror -Wunused:all
 
 object Foo {
   private def myMethod(a: Int, b: Int, c: Int) = adder // ok

@@ -1,6 +1,6 @@
 import caps.*
 
-trait Foo extends Capability
+trait Foo extends SharedCapability
 
 trait CaptureSet:
   type C^

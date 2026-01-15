@@ -304,7 +304,7 @@ object SpaceEngine {
 
   /** Is this an `'{..}` or `'[..]` irrefutable quoted patterns?
    *  @param  body The body of the quoted pattern
-   *  @param  bodyPt The scrutinee body type
+   *  @param  pt The scrutinee body type
    */
   def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
     if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
@@ -362,7 +362,7 @@ object SpaceEngine {
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
-        if fun.symbol.owner == defn.SeqFactoryClass && pat.tpe.hasClassSymbol(defn.ListClass) then
+        if fun.symbol.owner == defn.SeqFactoryClass && toUnderlying(pat.tpe).dealias.derivesFrom(defn.ListClass) then
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
@@ -395,7 +395,7 @@ object SpaceEngine {
 
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
-      Typ(pat.tpe.narrow, decomposed = false)
+      Typ(pat.tpe.narrow(), decomposed = false)
   })
 
   private def project(tp: Type)(using Context): Space = tp match {
@@ -709,6 +709,8 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
+      case tref: TypeRef if tref.isUpperBoundedAbstract =>
+        rec(tref.info.hiBound, mixins)
       case _ => ListOfNoType
     end rec
 
@@ -717,14 +719,16 @@ object SpaceEngine {
 
   extension (tp: Type)
     def isDecomposableToChildren(using Context): Boolean =
-      val sym = tp.typeSymbol  // e.g. Foo[List[Int]] = type Foo (i19275)
       val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
       tp.hasSimpleKind                  // can't decompose higher-kinded types
         && cls.is(Sealed)
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
-        && !sym.isOpaqueAlias           // can't instantiate subclasses to conform to an opaque type (i19275)
+
+  extension (tref: TypeRef)
+    def isUpperBoundedAbstract(using Context): Boolean =
+      tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
@@ -854,7 +858,11 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case)
+      classSym.is(Case) ||
+      (tpw.isInstanceOf[TypeRef] && {
+        val tref = tpw.asInstanceOf[TypeRef]
+        tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
+      })
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
@@ -892,7 +900,7 @@ object SpaceEngine {
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
-      val space = if x.guard.isEmpty then trace(i"project(${x.pat})")(project(x.pat)) else Empty
+      val space = if x.maybePartial then Empty else trace(i"project(${x.pat})")(project(x.pat))
       space :: acc
     })
 
@@ -934,7 +942,7 @@ object SpaceEngine {
     @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
       cases match
         case Nil =>
-        case CaseDef(pat, guard, _) :: rest =>
+        case (c @ CaseDef(pat, _, _)) :: rest =>
           val curr = trace(i"project($pat)")(projectPat(pat))
           val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
           val prev = trace("prev")(simplify(Or(prevs)))
@@ -960,8 +968,8 @@ object SpaceEngine {
                 hadNullOnly = true
                 report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
-            // in redundancy check, take guard as false in order to soundly approximate
-            val newPrev = if guard.isEmpty then covered :: prevs else prevs
+            // in redundancy check, take guard as false (or potential sub cases as partial) for a sound approximation
+            val newPrev = if c.maybePartial then prevs else covered :: prevs
             recur(rest, newPrev, Nil)
 
     recur(m.cases, Nil, Nil)

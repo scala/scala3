@@ -28,11 +28,11 @@ with IntStepper {
       val ans = myNext
       myNext += myStep
       i0 += 1
-      ans 
+      ans
     }
     else Stepper.throwNSEE()
   protected def semiclone(half: Int): RangeStepper = new RangeStepper(myNext, myStep, i0, half)
-  override def trySplit(): IntStepper = {
+  override def trySplit(): IntStepper | Null = {
     val old_i0 = i0
     val ans = super.trySplit()
     myNext += (i0 - old_i0) * myStep

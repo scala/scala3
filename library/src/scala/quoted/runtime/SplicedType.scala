@@ -1,5 +1,7 @@
 package scala.quoted.runtime
 
+import language.experimental.captureChecking
+
 import scala.annotation.{Annotation, compileTimeOnly}
 
 /** Artifact of pickled type splices

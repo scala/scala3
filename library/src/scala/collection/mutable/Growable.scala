@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** This trait forms part of collections that can be augmented
   * using a `+=` operator and that can be cleared of all elements using
@@ -34,7 +35,7 @@ trait Growable[-A] extends Clearable {
    */
   def addOne(elem: A): this.type
 
-  /** Alias for `addOne` */
+  /** Alias for `addOne`. */
   @inline final def += (elem: A): this.type = addOne(elem)
 
   //TODO This causes a conflict in StringBuilder; looks like a compiler bug
@@ -56,7 +57,7 @@ trait Growable[-A] extends Clearable {
    *  @param elems   the IterableOnce producing the elements to $add.
    *  @return  the $coll itself.
    */
-  def addAll(@deprecatedName("xs") elems: IterableOnce[A]): this.type = {
+  def addAll(@deprecatedName("xs") elems: IterableOnce[A]^): this.type = {
     if (elems.asInstanceOf[AnyRef] eq this) addAll(Buffer.from(elems)) // avoid mutating under our own iterator
     else {
       val it = elems.iterator
@@ -67,8 +68,8 @@ trait Growable[-A] extends Clearable {
     this
   }
 
-  /** Alias for `addAll` */
-  @inline final def ++= (@deprecatedName("xs") elems: IterableOnce[A]): this.type = addAll(elems)
+  /** Alias for `addAll`. */
+  @inline final def ++= (@deprecatedName("xs") elems: IterableOnce[A]^): this.type = addAll(elems)
 
   /** The number of elements in the collection under construction, if it can be cheaply computed, -1 otherwise.
    *
@@ -80,13 +81,13 @@ trait Growable[-A] extends Clearable {
 object Growable {
 
   /**
-    * Fills a `Growable` instance with the elements of a given iterable
+    * Fills a `Growable` instance with the elements of a given iterable.
     * @param empty Instance to fill
     * @param it Elements to add
     * @tparam A Element type
     * @return The filled instance
     */
-  def from[A](empty: Growable[A], it: collection.IterableOnce[A]): empty.type = empty ++= it
+  def from[A](empty: Growable[A], it: collection.IterableOnce[A]^): empty.type = empty ++= it
 
 }
 
