@@ -204,7 +204,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   override def equals(that: Any): Boolean =
     that match {
-      case set: HashSet[_] => (this eq set) || (this.rootNode == set.rootNode)
+      case set: HashSet[?] => (this eq set) || (this.rootNode == set.rootNode)
       case _ => super.equals(that)
     }
 
@@ -1394,7 +1394,7 @@ private final class BitmapIndexedSetNode[A](
 
   override def equals(that: Any): Boolean =
     that match {
-      case node: BitmapIndexedSetNode[_] =>
+      case node: BitmapIndexedSetNode[?] =>
         (this eq node) ||
         (this.cachedJavaKeySetHashCode == node.cachedJavaKeySetHashCode) &&
           (this.nodeMap == node.nodeMap) &&
@@ -1824,7 +1824,7 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
 
   override def equals(that: Any): Boolean =
     that match {
-      case node: HashCollisionSetNode[_] =>
+      case node: HashCollisionSetNode[?] =>
         (this eq node) ||
           (this.hash == node.hash) &&
             (this.content.size == node.content.size) &&

@@ -994,10 +994,10 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     var i = 0
     while(i < len) {
       xs(i) match {
-        case it: IterableOnce[_] =>
+        case it: IterableOnce[?] =>
           val k = it.knownSize
           if(k > 0) size += k
-        case a: Array[_] => size += a.length
+        case a: Array[?] => size += a.length
         case _ =>
       }
       i += 1

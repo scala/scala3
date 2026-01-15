@@ -143,9 +143,17 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
     */
   def transform[W](f: (K, V) => W): CC[K, W] = map { case (k, v) => (k, f(k, v)) }
 
-  override def keySet: Set[K] = new ImmutableKeySet
+  override def keySet: Set[K] = new LazyImmutableKeySet
 
   /** The implementation class of the set returned by `keySet`. */
+  private[immutable] class LazyImmutableKeySet extends MapOps.LazyKeySet(this) with Set[K] {
+    override def diff(that: collection.Set[K]): Set[K] = super.diff(that)
+    override def incl(elem: K): Set[K] = if (this(elem)) this else MapOps.this.updated(elem, ()).keySet
+    override def excl(elem: K): Set[K] = if (this(elem)) MapOps.this.removed(elem).keySet else this
+  }
+
+  /** The implementation class of the set returned by `keySet`. */
+  @deprecated("ImmutableKeySet is no longer used in .keySet implementations", since = "3.8.0")
   protected[immutable] class ImmutableKeySet extends AbstractSet[K] with GenKeySet with DefaultSerializable {
     def incl(elem: K): Set[K] = if (this(elem)) this else empty ++ this + elem
     def excl(elem: K): Set[K] = if (this(elem)) empty ++ this - elem else this
@@ -213,7 +221,7 @@ object Map extends MapFactory[Map] {
 
   def from[K, V](it: IterableOnce[(K, V)]^): Map[K, V] =
     (it: @unchecked) match {
-      case it: Iterable[_] if it.isEmpty => empty[K, V]
+      case it: Iterable[?] if it.isEmpty => empty[K, V]
       // Since IterableOnce[(K, V)] launders the variance of K,
       // identify only our implementations which can be soundly substituted.
       // For example, the ordering used by sorted maps would fail on widened key type. (scala/bug#12745)

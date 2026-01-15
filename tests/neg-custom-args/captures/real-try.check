@@ -45,7 +45,7 @@
    |    it leaks into outer capture set 's5 of value b.
    |    The leakage occurred when trying to match the following types:
    |
-   |    Found:    Cell[() ->{canThrow$4} Unit]
-   |    Required: Cell[() ->'s5 Unit]^'s6
+   |    Found:    Cell[() ->{canThrow$4} Unit]^'s6
+   |    Required: Cell[() ->'s5 Unit]^'s7
    |
    | longer explanation available when compiling with `-explain`

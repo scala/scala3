@@ -1,5 +1,15 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:17:21 -----------------------------
-17 |  val _: () -> a.B = f // error
+-- Error: tests/neg-custom-args/captures/constructor-uses.scala:13:4 ---------------------------------------------------
+13 |    val u = f.toString // error
+   |    ^
+   |    Publicly visible constructor C uses external capabilities {A.this.f}.
+   |    These dependencies need to be declared explicitly in a `uses_init ...` clause.
+-- Error: tests/neg-custom-args/captures/constructor-uses.scala:17:12 --------------------------------------------------
+17 |    val v = g.toString // error
+   |            ^
+   |            reference (A.this.g : test.File^) is not included in the allowed capture set {A.this.f}
+   |            of the enclosing constructor D in class D
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:28:21 -----------------------------
+28 |  val _: () -> a.B = f // error
    |                     ^
    |                     Found:    (f : () ->{a.f²} a.B^{})
    |                     Required: () -> a.B
@@ -10,8 +20,8 @@
    |                               f² is a value in class A
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:24:19 -----------------------------
-24 |  val _: () -> C = g // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:35:19 -----------------------------
+35 |  val _: () -> C = g // error
    |                   ^
    |                   Found:    (g : () ->{c} C^{})
    |                   Required: () -> C

@@ -16,7 +16,7 @@ import util.Spans.*
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
-import printing.Texts.*
+import printing.Texts.{*, given}
 import printing.Printer
 import io.AbstractFile
 import util.common.*

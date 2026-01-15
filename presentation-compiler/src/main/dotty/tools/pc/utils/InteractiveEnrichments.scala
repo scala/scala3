@@ -303,7 +303,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def seenFrom(sym: Symbol)(using Context): (Type, Symbol) =
       try
         val pre = tree.qual
-        val denot = sym.denot.asSeenFrom(pre.typeOpt.widenTermRefExpr)
+        val denot = sym.denot.asSeenFrom(pre.typeOpt)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
 

@@ -284,7 +284,7 @@ class HoverDefnSuite extends BaseHoverSuite:
     check(
       """|
          |@ma@@in
-         |def example() = 
+         |def example() =
          |    println("test")
          |""".stripMargin,
       """|```scala
@@ -296,7 +296,7 @@ class HoverDefnSuite extends BaseHoverSuite:
       check(
         """|
           |@ma@@in
-          |def example() = 
+          |def example() =
           |    List("test")
           |""".stripMargin,
         """|```scala
@@ -308,7 +308,7 @@ class HoverDefnSuite extends BaseHoverSuite:
       check(
         """|
           |@ma@@in
-          |def example() = 
+          |def example() =
           |    Array("test")
           |""".stripMargin,
         """|```scala
@@ -320,10 +320,21 @@ class HoverDefnSuite extends BaseHoverSuite:
       check(
         """|
           |@ma@@in
-          |def example() = 
+          |def example() =
           |    Array(1, 2)
           |""".stripMargin,
         """|```scala
           |def this(): main
           |```""".stripMargin.hover
+      )
+
+  @Test def `opaque-type-method` =
+      check(
+        """|object History {
+           |  opaque type Builder[A] = String
+           |  def <<bui@@ld>>(b: Builder[Unit]): Int = ???
+           |}
+           |""".stripMargin,
+        """|def build(b: Builder[Unit]): Int
+           |""".stripMargin.hover
       )

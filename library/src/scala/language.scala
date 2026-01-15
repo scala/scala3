@@ -190,7 +190,7 @@ object language {
    *  code should not rely on them.
    *
    *  Programmers are encouraged to try out experimental features and
-   *  [[https://github.com/scala/bug/issues report any bugs or API inconsistencies]]
+   *  [[https://github.com/scala/scala3/issues report any bugs or API inconsistencies]]
    *  they encounter so they can be improved in future releases.
    *
    *  @group experimental

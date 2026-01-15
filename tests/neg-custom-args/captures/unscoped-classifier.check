@@ -17,15 +17,3 @@
    |               method gg should be declared an update method to allow this.
    |
    |               where:    => refers to a fresh root capability in the type of parameter g
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unscoped-classifier.scala:19:11 --------------------------
-19 |  val b = B() // error  but msg could be better
-   |          ^^^
-   |Found:    B^
-   |Required: B^'s1
-   |
-   |Note that capability cap is not classified as trait Unscoped, therefore it
-   |cannot be included in capture set 's1 of value b of Unscoped elements.
-   |
-   |where:    ^ and cap refer to a fresh root capability classified as Nothing created in value b when constructing instance B
-   |
-   | longer explanation available when compiling with `-explain`

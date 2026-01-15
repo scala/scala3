@@ -117,7 +117,7 @@ extension (tp: Type)
       !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
       ||
         ((tp.prefix eq NoPrefix)
-        || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
+        || tp.symbol.isField && tp.prefix.isTrackableRef
         ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
@@ -675,7 +675,7 @@ extension (sym: Symbol)
     sym == defn.ArrayClass && ccConfig.strictMutability
 
   def isDisallowedInCapset(using Context): Boolean =
-    sym.isOneOf(if ccConfig.newScheme && ccConfig.strictMutability then Method else UnstableValueFlags)
+    sym.isOneOf(if ccConfig.strictMutability then Method else UnstableValueFlags)
 
   def varMirror(using Context): Symbol =
     ccState.varMirrors.getOrElseUpdate(sym,

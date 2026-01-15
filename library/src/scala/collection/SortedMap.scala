@@ -33,7 +33,7 @@ trait SortedMap[K, +V]
 
   override def equals(that: Any): Boolean = that match {
     case _ if this eq that.asInstanceOf[AnyRef] => true
-    case sm: SortedMap[K @unchecked, _] if sm.ordering == this.ordering =>
+    case sm: SortedMap[K @unchecked, ?] if sm.ordering == this.ordering =>
       (sm canEqual this) &&
         (this.size == sm.size) && {
         val i1 = this.iterator
@@ -132,9 +132,22 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
       rangeUntil(next)
   }
 
-  override def keySet: SortedSet[K] = new KeySortedSet
+  override def keySet: SortedSet[K] = new LazyKeySortedSet
 
   /** The implementation class of the set returned by `keySet`. */
+  private[collection] class LazyKeySortedSet extends MapOps.LazyKeySet(this) with SortedSet[K] {
+    implicit def ordering: Ordering[K] = SortedMapOps.this.ordering
+    def iteratorFrom(start: K): Iterator[K] = SortedMapOps.this.keysIteratorFrom(start)
+
+    override def diff(that: Set[K]): SortedSet[K] = fromSpecific(view.filterNot(that))
+    override def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
+      val map = SortedMapOps.this.rangeImpl(from, until)
+      new map.LazyKeySortedSet
+    }
+  }
+
+  /** The old implementation class of the set returned by `keySet`. */
+  @deprecated("KeySortedSet is no longer used in the .keySet implementation", since = "3.8.0")
   protected class KeySortedSet extends SortedSet[K] with GenKeySet with GenKeySortedSet {
     def diff(that: Set[K]): SortedSet[K] = fromSpecific(view.filterNot(that))
     def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
@@ -144,6 +157,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   }
 
   /** A generic trait that is reused by sorted keyset implementations. */
+  @deprecated("GenKeySortedSet is no longer used in .keySet implementations", since = "3.8.0")
   protected trait GenKeySortedSet extends GenKeySet { this: SortedSet[K] =>
     implicit def ordering: Ordering[K] = SortedMapOps.this.ordering
     def iteratorFrom(start: K): Iterator[K] = SortedMapOps.this.keysIteratorFrom(start)

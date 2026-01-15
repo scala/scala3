@@ -21,7 +21,7 @@ object Test:
     val nll: LL^{cl} = ???
     nll
 
-  val x1 = filterImpl1(LL())
+  val x1 = filterImpl1(LL()) // error
   val _: LL^{cap.rd}= x1
   val _: LL = x1 // error
 

@@ -190,7 +190,7 @@ object Array {
   def apply[T: ClassTag](xs: T*): Array[T] = {
     val len = xs.length
     xs match {
-      case wa: immutable.ArraySeq[_] if wa.unsafeArray.getClass.getComponentType == classTag[T].runtimeClass =>
+      case wa: immutable.ArraySeq[?] if wa.unsafeArray.getClass.getComponentType == classTag[T].runtimeClass =>
         // We get here in test/files/run/sd760a.scala, `Array[T](t)` for
         // a specialized type parameter `T`. While we still pay for two
         // copies of the array it is better than before when we also boxed

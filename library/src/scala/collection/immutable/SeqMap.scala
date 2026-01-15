@@ -57,7 +57,7 @@ object SeqMap extends MapFactory[SeqMap] {
       case m: SeqMap2[K, V]    => m
       case m: SeqMap3[K, V]    => m
       case m: SeqMap4[K, V]    => m
-      case it: Iterable[_] if it.isEmpty => empty[K, V]
+      case it: Iterable[?] if it.isEmpty => empty[K, V]
       case _ => (newBuilder[K, V] ++= it).result()
     }
 

@@ -177,7 +177,7 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
     */
   def filterInPlace(p: (K, V) => Boolean): this.type = {
     if (!isEmpty) this match {
-      case tm: concurrent.Map[_, _] => tm.asInstanceOf[concurrent.Map[K, V]].filterInPlaceImpl(p)
+      case tm: concurrent.Map[?, ?] => tm.asInstanceOf[concurrent.Map[K, V]].filterInPlaceImpl(p)
       case _ =>
         val array = this.toArray[Any] // scala/bug#7269 toArray avoids ConcurrentModificationException
         val arrayLength = array.length
@@ -205,8 +205,8 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
     */
   def mapValuesInPlace(f: (K, V) => V): this.type = {
     if (!isEmpty) this match {
-      case hm: mutable.HashMap[_, _] => hm.asInstanceOf[mutable.HashMap[K, V]].mapValuesInPlaceImpl(f)
-      case tm: concurrent.Map[_, _] => tm.asInstanceOf[concurrent.Map[K, V]].mapValuesInPlaceImpl(f)
+      case hm: mutable.HashMap[?, ?] => hm.asInstanceOf[mutable.HashMap[K, V]].mapValuesInPlaceImpl(f)
+      case tm: concurrent.Map[?, ?] => tm.asInstanceOf[concurrent.Map[K, V]].mapValuesInPlaceImpl(f)
       case _ =>
         val array = this.toArray[Any]
         val arrayLength = array.length

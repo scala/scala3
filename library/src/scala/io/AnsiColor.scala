@@ -25,10 +25,7 @@ import scala.language.`2.13`
   * {{{
   * import io.AnsiColor._
   *
-  * object ColorDemo extends App {
-  *
-  *   println(s"\${REVERSED}\${BOLD}Hello 1979!\${RESET}")
-  * }
+  * println(s"\${REVERSED}\${BOLD}Hello 1979!\${RESET}")
   * }}}
   *
   * ==Foreground and Background Colors==

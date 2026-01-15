@@ -2,9 +2,3 @@
 1 |val x: Int^ = 2  // error
   |       ^^^^
   |       Int is a pure type, it makes no sense to add a capture set to it
--- Warning: tests/neg-custom-args/captures/nonsensical-for-pure.scala:1:4 ----------------------------------------------
-1 |val x: Int^ = 2  // error
-  |    ^
-  |    value x has a non-empty capture set but will not be added as
-  |    a capability to computed capture sets since it is globally accessible
-  |    as a top-level definition. Global values cannot be capabilities.

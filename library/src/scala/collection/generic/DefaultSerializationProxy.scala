@@ -80,9 +80,9 @@ private[collection] case object SerializeEnd
 transparent trait DefaultSerializable extends Serializable { this: scala.collection.Iterable[?]^ =>
   protected def writeReplace(): AnyRef^{this} = {
     val f: Factory[Any, Any] = this match {
-      case it: scala.collection.SortedMap[_, _] => it.sortedMapFactory.sortedMapFactory[Any, Any](using it.ordering.asInstanceOf[Ordering[Any]]).asInstanceOf[Factory[Any, Any]]
-      case it: scala.collection.Map[_, _] => it.mapFactory.mapFactory[Any, Any].asInstanceOf[Factory[Any, Any]]
-      case it: scala.collection.SortedSet[_] => it.sortedIterableFactory.evidenceIterableFactory[Any](using it.ordering.asInstanceOf[Ordering[Any]])
+      case it: scala.collection.SortedMap[?, ?] => it.sortedMapFactory.sortedMapFactory[Any, Any](using it.ordering.asInstanceOf[Ordering[Any]]).asInstanceOf[Factory[Any, Any]]
+      case it: scala.collection.Map[?, ?] => it.mapFactory.mapFactory[Any, Any].asInstanceOf[Factory[Any, Any]]
+      case it: scala.collection.SortedSet[?] => it.sortedIterableFactory.evidenceIterableFactory[Any](using it.ordering.asInstanceOf[Ordering[Any]])
       case it => it.iterableFactory.iterableFactory
     }
     new DefaultSerializationProxy(f, this)

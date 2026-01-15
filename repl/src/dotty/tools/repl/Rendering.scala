@@ -212,7 +212,7 @@ object Rendering:
     def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)
-      text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+      text.mkString(ctx.settings.pageWidth.value)
     }
 
   def rootCause(x: Throwable): Throwable = x match

@@ -3579,7 +3579,7 @@ object TypeComparer {
 }
 
 object MatchReducer:
-  import printing.*, Texts.*
+  import printing.*, Texts.{*, given}
   enum MatchResult extends Showable:
     case Reduced(tp: Type)
     case Disjoint

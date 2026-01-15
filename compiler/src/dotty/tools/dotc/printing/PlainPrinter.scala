@@ -49,9 +49,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def controlled(op: => Text): Text = limiter.controlled(op)
 
-  def Str(str: String, lineRange: LineRange = EmptyLineRange): Str =
+  def Str(str: String): Str =
     limiter.register(str)
-    Texts.Str(str, lineRange)
+    Texts.Str(str)
 
   given stringToText: Conversion[String, Text] = Str(_)
 
@@ -671,11 +671,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }).close
 
   def locationText(sym: Symbol): Text =
-    if (!sym.exists) ""
-    else {
+    if !sym.exists then ""
+    else
       val ownr = sym.effectiveOwner
-      if (ownr.isClass && !isEmptyPrefix(ownr)) " in " ~ toText(ownr) else Text()
-    }
+      if ownr.isClass && !isEmptyPrefix(ownr) then " in " ~ toText(ownr) else Text()
 
   def locatedText(sym: Symbol): Text =
     (toText(sym) ~ locationText(sym)).close

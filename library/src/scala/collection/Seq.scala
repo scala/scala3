@@ -1073,7 +1073,7 @@ object SeqOps {
     }
     // Now we know we actually need KMP search, so do it
     else S match {
-      case xs: scala.collection.IndexedSeq[_] =>
+      case xs: scala.collection.IndexedSeq[?] =>
         // We can index into S directly; it should be adequately fast
         val Wopt = kmpOptimizeWord(W, n0, n1, forward)
         val T = kmpJumpTable(Wopt, n1-n0)

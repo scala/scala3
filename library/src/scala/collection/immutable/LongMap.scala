@@ -67,7 +67,7 @@ object LongMap {
     // Important, don't remove this! See IntMap for explanation.
     override def equals(that : Any) = that match {
       case _: this.type  => true
-      case _: LongMap[_] => false // The only empty LongMaps are eq Nil
+      case _: LongMap[?] => false // The only empty LongMaps are eq Nil
       case _             => super.equals(that)
     }
   }

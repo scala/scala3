@@ -67,12 +67,10 @@ import caps.unsafe.untrackedCaptures
   *
   *  {{{
   *  import scala.math.BigInt
-  *  object Main extends App {
-  *    val fibs: LazyListIterable[BigInt] =
-  *      BigInt(0) #:: BigInt(1) #:: fibs.zip(fibs.tail).map(n => n._1 + n._2)
-  *    println {
-  *      fibs.take(5).mkString(", ")
-  *    }
+  *  val fibs: LazyListIterable[BigInt] =
+  *    BigInt(0) #:: BigInt(1) #:: fibs.zip(fibs.tail).map(n => n._1 + n._2)
+  *  println {
+  *    fibs.take(5).mkString(", ")
   *  }
   *  // prints: 0, 1, 1, 2, 3
   *  }}}
@@ -83,14 +81,12 @@ import caps.unsafe.untrackedCaptures
   *  {{{
   *  import scala.math.BigInt
   *  import scala.util.chaining._
-  *  object Main extends App {
-  *    val fibs: LazyListIterable[BigInt] =
-  *      BigInt(0) #:: BigInt(1) #::
-  *        fibs.zip(fibs.tail).map(n => (n._1 + n._2)
-  *        .tap(sum => println(s"Adding ${n._1} and ${n._2} => $sum")))
-  *    fibs.take(5).foreach(println)
-  *    fibs.take(6).foreach(println)
-  *  }
+  *  val fibs: LazyListIterable[BigInt] =
+  *    BigInt(0) #:: BigInt(1) #::
+  *      fibs.zip(fibs.tail).map(n => (n._1 + n._2)
+  *      .tap(sum => println(s"Adding ${n._1} and ${n._2} => $sum")))
+  *  fibs.take(5).foreach(println)
+  *  fibs.take(6).foreach(println)
   *
   *  // prints
   *  //

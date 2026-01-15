@@ -22,4 +22,4 @@ scala> object fs2 { class Stream[T] { override def toString = "fs2.Stream(..)" }
 
 scala> import fs2.Stream
 scala> Stream(1)
-val res1: fs2.Stream[Int] = fs2.Stream(..)
+val res1: Stream[Int] = fs2.Stream(..)

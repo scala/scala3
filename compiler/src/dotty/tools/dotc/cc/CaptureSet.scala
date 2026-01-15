@@ -21,6 +21,7 @@ import compiletime.uninitialized
 import Capabilities.*
 import Names.Name
 import NameKinds.CapsetName
+import StdNames.nme
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -1018,9 +1019,9 @@ object CaptureSet:
           && !elems.contains(elem)
           && !owner.isAnonymousFunction =>
         def fail = i"attempting to add $elem to $this"
-        def hideIn(fc: FreshCap): Unit =
+        def hideIn(fc: FreshCap): Boolean =
           assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
-          if !isRefining then
+          if isRefining then
             // If a variable is added by addCaptureRefinements in a synthetic
             // refinement of a class type, don't do level checking. The problem is
             // that the variable might be matched against a type that does not have
@@ -1030,14 +1031,16 @@ object CaptureSet:
             // TODO: We should instead mark the variable as impossible to instantiate
             // and drop the refinement later in the inferred type.
             // Test case is drop-refinement.scala.
-            assert(fc.acceptsLevelOf(elem),
-              i"level failure, cannot add $elem with ${elem.levelOwner} to $owner / $getClass / $fail")
-          fc.hiddenSet.add(elem)
+            true
+          else if fc.acceptsLevelOf(elem) then
+            fc.hiddenSet.add(elem)
+            true
+          else
+            capt.println(i"level failure when subsuming fresh caps, cannot add $elem with ${elem.levelOwner} to $owner / $fail")
+            false
         val isSubsumed = (false /: elems): (isSubsumed, prev) =>
           prev match
-            case prev: FreshCap =>
-              hideIn(prev)
-              true
+            case prev: FreshCap => hideIn(prev)
             case _ => isSubsumed
         if !isSubsumed then
           if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
@@ -1676,6 +1679,8 @@ object CaptureSet:
       // might happen during construction of lambdas, assume `{cap}` in this case so that
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
+    case c: TermRef if isAssumedPure(c.symbol) =>
+      CaptureSet.empty
     case c: CoreCapability =>
       ofType(c.underlying, followResult = ccConfig.useSpanCapset)
 
@@ -1721,7 +1726,7 @@ object CaptureSet:
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
    */
-  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet = {
     val collect = new DeepTypeAccumulator[CaptureSet]:
 
       def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet, boxed: Boolean) =
@@ -1734,6 +1739,15 @@ object CaptureSet:
         else this(acc, upperBound)
 
     collect(CaptureSet.empty, tp)
+  }
+
+  /** Is `sym` assumed to be pure even though it would have a non-empty capture
+   *  set by the normal rules?
+   */
+  def isAssumedPure(sym: Symbol)(using Context): Boolean =
+    sym.name == nme.DOLLAR_VALUES // sym is an enum $values array, which for backwards
+    && sym.owner.is(Module)       // compatible reasons is an array, but should really be an IArray.
+    && sym.owner.companionClass.is(Enum)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[Capability]]
   val AssumedContains: Property.Key[AssumedContains] = Property.Key()

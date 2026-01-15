@@ -1253,26 +1253,6 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       ""
     )
 
-  // Improvement would be to create synthetic signature help showing
-  // add(x: Int)(y: Int): Int
-  @Test def `dont-show-functionN` =
-    check(
-      """|object Main:
-         |  val add = (x: Int) => (y: Int) => x + y
-         |  add(@@)
-         |""".stripMargin,
-         ""
-    )
-
-  @Test def `dont-show-functionN-2` =
-    check(
-      """|object Main:
-         |  val add = (x: Int) => (y: Int) => x + y
-         |  add(1, @@)
-         |""".stripMargin,
-         ""
-    )
-
   @Test def `type-param-start` =
     check(
       """|object Main:
@@ -1597,7 +1577,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |""".stripMargin,
       "foo[K, V](): Unit"
     )
-  
+
   @Test def `proper-param-list-after-param-empty-list` =
     check(
       """
@@ -1610,4 +1590,54 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       |foo[K, V]()(x: Int): Unit
       |            ^^^^^^
       """.stripMargin
+    )
+
+  @Test def `proper-function-signature` =
+    check(
+      """
+        |object OOO {
+        |
+        |val function: (x: Int, y: String) => Unit =
+        |(_, _) =>
+        | ()
+        |
+        |function(@@, "one")
+        |}
+      """.stripMargin,
+      """|apply(v1: Int, v2: String): Unit
+         |      ^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `proper-function-signature-with-explicit-apply` =
+    check(
+      """
+        |object OOO {
+        |
+        |val function: (x: Int, y: String) => Unit =
+        |(_, _) =>
+        | ()
+        |
+        |function.apply(@@, "one")
+        |}
+      """.stripMargin,
+      """|apply(v1: Int, v2: String): Unit
+         |      ^^^^^^^
+         |""".stripMargin
+    )
+
+
+  @Test def `opaque-type-parameter` =
+    check(
+      """|object History {
+         |  opaque type Builder[A] = String
+         |  def build(b: Builder[Unit]): Int = ???
+         |}
+         |object Main {
+         |  History.build(@@)
+         |}
+         |""".stripMargin,
+      """|build(b: Builder[Unit]): Int
+         |      ^^^^^^^^^^^^^^^^
+         |""".stripMargin
     )

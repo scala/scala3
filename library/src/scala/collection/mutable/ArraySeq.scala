@@ -82,7 +82,7 @@ sealed abstract class ArraySeq[T]
   }
 
   override def equals(other: Any): Boolean = other match {
-    case that: ArraySeq[_] if this.array.length != that.array.length =>
+    case that: ArraySeq[?] if this.array.length != that.array.length =>
       false
     case _ =>
       super.equals(other)
@@ -145,7 +145,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def update(index: Int, elem: T): Unit = { array(index) = elem }
     override def hashCode() = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
-      case that: ofRef[_] =>
+      case that: ofRef[?] =>
         Array.equals(
           this.array.asInstanceOf[Array[AnyRef]],
           that.array.asInstanceOf[Array[AnyRef]])

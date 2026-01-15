@@ -52,7 +52,7 @@ class TupleShowTests extends DottyTest:
     ))
     chkEq(exp, obt)
 
-  @Test def tup3_show10 = chkEq("(Int,\n  Long,\n  Short)".normEOL, tup3.toText(ctx.printer).mkString(10, false))
+  @Test def tup3_show10 = chkEq("(Int,\n  Long,\n  Short)".normEOL, tup3.toText(ctx.printer).mkString(10))
 
   val res21: String =
     """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,

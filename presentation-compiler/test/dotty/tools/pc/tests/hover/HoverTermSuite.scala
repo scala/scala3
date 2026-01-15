@@ -953,3 +953,18 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "val name: String".hover
     )
+
+  @Test def `opaque-type-method-call` =
+    check(
+      """|object History {
+         |  opaque type Builder[A] = String
+         |  def emptyBuilder: Builder[Unit] = ""
+         |  def build(b: Builder[Unit]): Int = ???
+         |}
+         |object Main {
+         |  <<History.bui@@ld(History.emptyBuilder)>>
+         |}
+         |""".stripMargin,
+      """|def build(b: Builder[Unit]): Int
+         |""".stripMargin.hover
+    )

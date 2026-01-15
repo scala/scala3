@@ -465,8 +465,9 @@ object CollectionStrawMan5 {
               // changes compared to the version here.
           case _ => new Filter(underlying, pp)
 
-    case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
-      class Partitioned(expected: Boolean) extends View[A]:
+    case class Partition[A] (val underlying: Iterable[A]^, p: A => Boolean) {
+      class Partitioned(expected: Boolean) extends View[A]
+          uses Partition.this.underlying, Partition.this.p:
         this: Partitioned^{Partition.this} =>
         def iterator: Iterator[A]^{this} =
           underlying.iterator.filter((x: A) => p(x) == expected)

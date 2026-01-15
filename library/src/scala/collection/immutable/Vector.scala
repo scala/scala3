@@ -46,7 +46,7 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
         if (knownSize == 0) empty[E]
         else if (knownSize > 0 && knownSize <= WIDTH) {
           val a1: Arr1 = it match {
-            case as: ArraySeq.ofRef[_] if as.elemTag.runtimeClass == classOf[AnyRef] =>
+            case as: ArraySeq.ofRef[?] if as.elemTag.runtimeClass == classOf[AnyRef] =>
               as.unsafeArray.asInstanceOf[Arr1]
             case it: Iterable[E] =>
               val a1 = new Arr1(knownSize)
@@ -235,7 +235,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     if (k < tinyAppendLimit) {
       var v: Vector[B] = this
       suffix match {
-        case it: Iterable[_] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
+        case it: Iterable[?] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
         case _ => suffix.iterator.foreach(x => v = v.appended(x))
       }
       v
@@ -370,7 +370,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
   override def equals(o: Any): Boolean = {
     if(this eq o.asInstanceOf[AnyRef]) true
     else o match {
-      case that: Vector[_] => false
+      case that: Vector[?] => false
       case o => super.equals(o)
     }
   }
@@ -1579,12 +1579,12 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       throw new UnsupportedOperationException("A non-empty VectorBuilder cannot be aligned retrospectively. Please call .reset() or use a new VectorBuilder.")
     val (prefixLength, maxPrefixLength) = bigVector match {
       case Vector0 => (0, 1)
-      case v1: Vector1[_] => (0, 1)
-      case v2: Vector2[_] => (v2.len1, WIDTH)
-      case v3: Vector3[_] => (v3.len12, WIDTH2)
-      case v4: Vector4[_] => (v4.len123, WIDTH3)
-      case v5: Vector5[_] => (v5.len1234, WIDTH4)
-      case v6: Vector6[_] => (v6.len12345, WIDTH5)
+      case v1: Vector1[?] => (0, 1)
+      case v2: Vector2[?] => (v2.len1, WIDTH)
+      case v3: Vector3[?] => (v3.len12, WIDTH2)
+      case v4: Vector4[?] => (v4.len123, WIDTH3)
+      case v5: Vector5[?] => (v5.len1234, WIDTH4)
+      case v6: Vector6[?] => (v6.len12345, WIDTH5)
     }
     if (maxPrefixLength == 1) return this // does not really make sense to align for <= 32 element-vector
     val overallPrefixLength = (before + prefixLength) % maxPrefixLength
@@ -1821,7 +1821,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
   }
 
   override def addAll(xs: IterableOnce[A]^): this.type = xs match {
-    case v: Vector[_] =>
+    case v: Vector[?] =>
       if(len1 == 0 && lenRest == 0 && !prefixIsRightAligned) initFrom(v)
       else addVector(v.asInstanceOf[Vector[A]])
     case _ =>
@@ -2190,7 +2190,7 @@ private object VectorStatics {
   }
 
   final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[?]^): Arr1 | Null = xs match {
-    case it: Iterable[_] =>
+    case it: Iterable[?] =>
       if(it.sizeCompare(WIDTH-prefix1.length) <= 0) {
         it.size match {
           case 0 => null
@@ -2215,7 +2215,7 @@ private object VectorStatics {
   }
 
   final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[?]^): Arr1 | Null = xs match {
-    case it: Iterable[_] =>
+    case it: Iterable[?] =>
       if(it.sizeCompare(WIDTH-suffix1.length) <= 0) {
         it.size match {
           case 0 => null

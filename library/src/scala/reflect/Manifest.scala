@@ -55,14 +55,14 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
     Manifest.classType[Array[T]](arrayClass[T](runtimeClass), this)
 
   override def canEqual(that: Any): Boolean = that match {
-    case _: Manifest[_]   => true
+    case _: Manifest[?]   => true
     case _                => false
   }
   /** Note: testing for erasure here is important, as it is many times
    *  faster than <:< and rules out most comparisons.
    */
   override def equals(that: Any): Boolean = that match {
-    case m: Manifest[_] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
+    case m: Manifest[?] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
     case _              => false
   }
   override def hashCode() = this.runtimeClass.##
@@ -152,7 +152,7 @@ abstract class AnyValManifest[T <: AnyVal](override val toString: String) extend
   override def <:<(that: ClassManifest[?]): Boolean =
     (that eq this) || (that eq Manifest.Any) || (that eq Manifest.AnyVal)
   override def canEqual(other: Any) = other match {
-    case _: AnyValManifest[_] => true
+    case _: AnyValManifest[?] => true
     case _                    => false
   }
   override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]

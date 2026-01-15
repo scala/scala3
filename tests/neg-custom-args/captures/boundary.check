@@ -5,7 +5,7 @@
    |  Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
    |  The leakage occurred when trying to match the following types:
    |
-   |  Found:    scala.util.boundary.Label[Object^'s1]
+   |  Found:    scala.util.boundary.Label[Object^'s1]^'s2
    |  Required: scala.util.boundary.Label[Object^]^²
    |
    |  where:    ^ and cap refer to the universal root capability
