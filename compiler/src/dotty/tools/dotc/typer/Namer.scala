@@ -1335,29 +1335,10 @@ class Namer { typer: Typer =>
                         info
                     wrap(pathType, avoidNameClashes(info))
 
-                  // Convert ThisType prefixes to TermRef prefixes to avoid leaking
-                  // the internal view of opaque types through exports (issue #24051).
-                  // When a method is accessed through an export, any opaque types
-                  // in its signature should be seen externally (as opaque), not
-                  // internally (as transparent).
-                  def externalizeOpaques(tp: Type): Type =
-                    val map = new TypeMap:
-                      def apply(tp: Type): Type = tp match
-                        case tp: ThisType if tp.cls.is(ModuleClass) =>
-                          val sourceModule = tp.cls.sourceModule
-                          if sourceModule.exists then
-                            TermRef(tp.cls.owner.thisType, sourceModule)
-                          else
-                            tp
-                        case _ =>
-                          mapOver(tp)
-                    map(tp)
-
-                  val mbrInfo0 =
+                  val mbrInfo =
                     if pathMethod.exists
                     then addPathMethodParams(pathMethod.info, mbr.info.widenExpr)
                     else mbr.info.ensureMethodic
-                  val mbrInfo = externalizeOpaques(mbrInfo0)
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if sym.is(Erased) then mbrFlags |= Inline
