@@ -2050,7 +2050,7 @@ object Build {
             .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              s"${docs.getParentFile().getAbsolutePath}=github://scala/scala3/language-reference-stable"
+              s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"
             )))
         }
 
