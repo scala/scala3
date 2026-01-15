@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Better fors"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimetnal/better-fors.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/better-fors.html
 redirectFrom: /preview/better-fors.html
 ---
 
