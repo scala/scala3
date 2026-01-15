@@ -3,6 +3,7 @@ package config
 
 import CommandLineParser.tokenize
 import Settings._
+import dotty.tools.Useables.given
 import dotty.tools.dotc.config.ScalaSettingCategories._
 import org.junit.Test
 import org.junit.Assert._
@@ -316,5 +317,24 @@ class ScalaSettingsTests:
     assertEquals(2, result.warnings.length)
     assertEquals("Option -Xfatal-warnings is a deprecated alias: use -Werror instead", result.warnings.head)
     assertEquals(0, result.errors.length)
+
+  // see sbt-test/pipelining/pipelining-test/test
+  @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =
+    val settings = ScalaSettings
+    val conf = Using.resource(Files.createTempDirectory("testDir")): dir =>
+      val args = List("-Ypickle-write", s"$dir/foo.jar", "-Ypickle-write", s"$dir/bar.jar")
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+      settings.processArguments(argSummary, processAll = true, skipped = Nil)
+    assert(conf.warnings.isEmpty, s"WARN: ${conf.warnings}")
+    assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
+
+  @Test def `-Xjava-tasty preferPrevious warns on change of value`: Unit =
+    val settings = ScalaSettings
+    val args = List("-Xjava-tasty", "-Xjava-tasty:false")
+    val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+    val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+    assertEquals(s"Warnings [${conf.warnings}]", 1, conf.warnings.size)
+    assertEquals("Ignoring conflicting value for Boolean flag -Xjava-tasty", conf.warnings.head)
+    assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
 
 end ScalaSettingsTests
