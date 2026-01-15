@@ -19,6 +19,7 @@ import TestSources.sources
 import reporting.TestReporter
 import vulpix._
 import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.coverage.Serializer
 
 class CompilationTests {
   import ParallelTesting._
@@ -54,7 +55,12 @@ class CompilationTests {
     if scala.util.Properties.isJavaAtLeast("16") then
       tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Wsafe-init"))
 
-    aggregateTests(tests*).checkCompile()
+    val compilationTest = withCoverage(aggregateTests(tests*))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new PosTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Pos")
+    } else {
+      compilationTest.checkCompile()
+    }
   }
 
   @Test def rewrites: Unit = {
@@ -409,5 +415,90 @@ object CompilationTests extends ParallelTesting {
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()
+  }
+
+  // Coverage instrumentation support ------------------------------------------
+
+  /** Wraps test flags with coverage instrumentation flags if enabled.
+   *  Creates a unique temporary directory each time it is called.
+   */
+  private def withCoverageFlags(flags: TestFlags): TestFlags =
+    if (Properties.testsInstrumentCoverage) {
+      val coverageDir = Files.createTempDirectory("coverage")
+      val sourceRoot = Paths.get(".").toAbsolutePath.toString
+      flags.and(
+        "-Ycheck:instrumentCoverage",
+        "-coverage-out", coverageDir.toString,
+        "-sourceroot", sourceRoot
+      )
+    } else flags
+
+  /** Verifies coverage file exists and is valid for a test source */
+  private def verifyCoverageFile(testSource: TestSource): Unit = {
+    val flags = testSource.flags.options
+    val idx = flags.indexOf("-coverage-out")
+    if (idx >= 0 && idx + 1 < flags.length) {
+      val coverageDir = Paths.get(flags(idx + 1))
+      val coverageFile = coverageDir.resolve("scoverage.coverage")
+
+      try {
+        if (!Files.exists(coverageFile)) {
+          throw new AssertionError(s"Coverage file missing: $coverageFile for test ${testSource.title}")
+        }
+
+        if (Files.size(coverageFile) == 0) {
+          throw new AssertionError(s"Coverage file is empty: $coverageFile for test ${testSource.title}")
+        }
+
+        // Verify file can be deserialized (valid format)
+        try {
+          val sourceRoot = Paths.get(".").toAbsolutePath.toString
+          Serializer.deserialize(coverageFile, sourceRoot)
+        } catch {
+          case e: Exception =>
+            throw new AssertionError(s"Coverage file has invalid format: $coverageFile for test ${testSource.title}: ${e.getMessage}")
+        }
+      } finally {
+        // Cleanup temporary directory even if exceptions are thrown
+        try {
+          Files.walk(coverageDir)
+            .sorted(java.util.Comparator.reverseOrder())
+            .forEach(Files.delete)
+        } catch {
+          case _: Exception => // Ignore cleanup errors
+        }
+      }
+    }
+  }
+
+  /** Wraps a CompilationTest to add coverage flags to all targets.
+   *  Each target gets its own unique temporary coverage directory.
+   */
+  private def withCoverage(test: CompilationTest): CompilationTest = {
+    if (Properties.testsInstrumentCoverage) {
+      val modifiedTargets = test.targets.map { target =>
+        val coverageDir = Files.createTempDirectory("coverage")
+        val sourceRoot = Paths.get(".").toAbsolutePath.toString
+        target.withFlags(
+          "-Ycheck:instrumentCoverage",
+          "-coverage-out", coverageDir.toString,
+          "-sourceroot", sourceRoot
+        )
+      }
+      test.copy(targets = modifiedTargets)
+    } else test
+  }
+
+  /** Custom PosTest that verifies coverage files in onSuccess callback */
+  private final class PosTestWithCoverage(
+    testSources: List[TestSource],
+    times: Int,
+    threadLimit: Option[Int],
+    suppressAllOutput: Boolean
+  )(implicit summaryReport: SummaryReporting)
+  extends Test(testSources, times, threadLimit, suppressAllOutput) {
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = {
+      verifyCoverageFile(testSource)
+    }
   }
 }
