@@ -355,7 +355,7 @@ class InlineReducer(inliner: Inliner)(using Context):
 
     /** The initial scrutinee binding: `val $scrutineeN = <scrutinee>` */
     val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
-    val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee.ensureConforms(scrutType)))
+    val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
     // If scrutinee has embedded references to `compiletime.erasedValue` or to
     // other erased values, mark scrutineeSym as Erased. In addition, if scrutinee
