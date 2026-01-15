@@ -1058,16 +1058,14 @@ object Capabilities:
         case t @ CapturingType(_, _) =>
           mapOver(t)
         case t @ AnnotatedType(parent, ann: RetainingAnnotation)
-        if ann.isStrict && ann.toCaptureSet.containsGlobalCapDerivs =>
+        if ann.isStrict && ann.toCaptureSet.elems.exists(_.core.isInstanceOf[GlobalCap]) =>
           // Applying `this` can cause infinite recursion in some cases during printing.
           // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
           mapOver(CapturingType(this(parent), ann.toCaptureSet))
         case t @ AnnotatedType(parent, ann) =>
           t.derivedAnnotatedType(this(parent), ann)
         case t @ defn.RefinedFunctionOf(mt) =>
-          if ccConfig.newScheme
-          then t.derivedRefinedType(refinedInfo = mapOver(mt))
-          else t
+          t.derivedRefinedType(refinedInfo = mapOver(mt))
         case _ =>
           mapFollowingAliases(t)
 
@@ -1100,11 +1098,11 @@ object Capabilities:
   /** Maps caps.any to LocalCap instances. GlobalToLocalCap is a BiTypeMap since we don't want to
    *  freeze a set when it is mapped. On the other hand, we do not want LocalCap
    *  values to flow back to caps.any since that would fail disallowRootCapability
-   *  tests elsewhere. We therefore use `withoutMappedFutureElems` to prevent
+   *  tests elsewhere. We therefore use `withNoVarsMapped` to prevent
    *  the map being installed for future use.
    */
   def globalCapToLocal(tp: Type, origin: Origin)(using Context): Type =
-    ccState.withoutMappedFutureElems:
+    ccState.withNoVarsMapped:
       GlobalCapToLocal(origin)(tp)
 
   /** Maps all LocalCap instances to caps.any */
@@ -1220,36 +1218,26 @@ object Capabilities:
 
   class ToResult(localResType: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context) extends CapMap:
 
-    def apply(t: Type) = t match
-      case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction && !(ccConfig.newScheme) =>
-        if variance > 0 then
-          super.mapOver:
-            defn.FunctionNOf(args, res, contextual)
-              .capturing(ResultCap(mt).singletonCaptureSet)
-        else mapOver(t)
-      case _ =>
-        mapOver(t)
+    def apply(t: Type) = mapOver(t)
 
     override def mapCapability(c: Capability, deep: Boolean) = c match
-      case c: (LocalCap | GlobalCap) =>
+      case c: LocalCap =>
         if variance > 0 then
-          c match
-            case c: LocalCap =>
-              if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped) then
-                c
-              else if sym.exists && !c.ccOwner.isContainedIn(sym.skipAnonymousOwners) then
-                //println(i"not mapping $c with ${c.ccOwner} in $sym")
-                c
-              else
-                ResultCap(mt).setOrigin(c)
-            case _ =>
-              if c == GlobalFresh || !(ccConfig.newScheme) then ResultCap(mt) else c
+          if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped) then
+            c
+          else if sym.exists && !c.ccOwner.isContainedIn(sym.skipAnonymousOwners) then
+            //println(i"not mapping $c with ${c.ccOwner} in $sym")
+            c
+          else
+            ResultCap(mt).setOrigin(c)
         else
           if variance == 0 then
             fail(em"""$localResType captures the root capability `any` in invariant position.
-                      |This capability cannot be converted to an existential in the result type of a function.""")
-          // we accept variance < 0, and leave the `any` as it is
+                     |This capability cannot be converted to a fresh capability in the result type of a function.""")
+          // we accept variance < 0, and leave the `any` as it is          c
           c
+      case GlobalFresh if variance > 0 =>
+        ResultCap(mt) // if variance <= 0 we leave the fresh to be flagged later
       case _ =>
         super.mapCapability(c, deep)
 
@@ -1282,54 +1270,4 @@ object Capabilities:
    */
   def toResult(tp: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context): Type =
     ToResult(tp, mt, sym, fail)(tp)
-
-  /** Map global roots in function results to result roots. Also,
-   *  map roots in the types of def methods that are parameterless
-   *  or have only type parameters.
-   */
-  def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(tp: Type)(using Context): Type =
-    val m = new TypeMap with FollowAliasesMap:
-      def apply(t: Type): Type = t match
-        case rt @ defn.RefinedFunctionOf(mt) =>
-          rt.derivedRefinedType(refinedInfo =
-            if rt.isInstanceOf[InferredRefinedType]
-            then mapOver(mt) // Don't map to Result for dependent function types created from non-dependent ones in inferred types
-            else apply(mt))
-        case t @ AppliedType(tycon, args)
-        if defn.isNonRefinedFunction(t) && args.last.containsFresh && ccConfig.newScheme =>
-          // Convert to dependent function so that we have a binder for `fresh` in result type.
-          apply(
-            depFun(args.init, args.last,
-              isContextual = defn.isContextFunctionClass(tycon.classSymbol)))
-        case t: MethodType if variance > 0 && t.marksExistentialScope =>
-          val t1 = mapOver(t).asInstanceOf[MethodType]
-          t1.derivedLambdaType(resType = toResult(t1.resType, t1, sym, fail))
-        case CapturingType(parent, refs) =>
-          t.derivedCapturingType(this(parent), refs)
-        case t: (LazyRef | TypeVar) =>
-          mapConserveSuper(t)
-        case _ =>
-          try
-            if keepAliases then mapOver(t)
-            else mapFollowingAliases(t)
-          catch case ex: AssertionError =>
-            println(i"error while mapping $t")
-            throw ex
-    m(tp) match
-      case tp1: ExprType if sym.is(Method, butNot = Accessor) =>
-        // Map the result of parameterless `def` methods.
-        tp1.derivedExprType(toResult(tp1.resType, tp1, sym, fail))
-      case tp1: PolyType if !tp1.resType.isInstanceOf[MethodicType] =>
-        // Map also the result type of method with only type parameters.
-        // This way, the `^` in the following method will be mapped to a `ResultCap`:
-        // ```
-        // object Buffer:
-        //   def empty[T]: Buffer[T]^
-        // ```
-        // This is more desirable than interpreting `^` as a `^{any}` at the level of `Buffer.empty`
-        // in most cases.
-        tp1.derivedLambdaType(resType = toResult(tp1.resType, tp1, sym, fail))
-      case tp1 => tp1
-  end toResultInResults
-
 end Capabilities

@@ -43,5 +43,5 @@ def Test =
 
   val z1: A^ => Array[C^] = ??? // ok
 
-  val z2: (x: A^) => Array[C^] = ??? // error
+  val z2: (x: A^) => Array[C^] = ??? // ok
 

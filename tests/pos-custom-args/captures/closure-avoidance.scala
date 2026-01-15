@@ -28,4 +28,3 @@ def test =
   val g2: (x: A^) => B^{fresh} = (a: A^) =>
     println("")
     (??? : B^) // ok
-

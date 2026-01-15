@@ -23,22 +23,23 @@ class CCState:
 
   // ------ BiTypeMap adjustment -----------------------
 
-  private var myMapFutureElems = true
+  private var myMapVars = true
 
-  /** When mapping a capture set with a BiTypeMap, should we create a BiMapped set
+  /** When mapping a capture set variable with a BiTypeMap, should we create a BiMapped set
    *  so that future elements can also be mapped, and elements added to the BiMapped
-   *  are back-propagated? Turned off when creating capture set variables for the
-   *  first time, since we then do not want to change the binder to the original type
-   *  without capture sets when back propagating. Error case where this shows:
-   *  pos-customargs/captures/lists.scala, method m2c.
+   *  are back-propagated? Or should we return the capture set as is? Turned off when
+   *  creating capture set variables for the first time, since we then do not want to
+   *  change the binder to the original type without capture sets when back propagating.
+   *  Error cases where this shows: pos-customargs/captures/lists.scala, method m2c, and
+   *  pos-customargs/captures/infer-exists.scala,
    */
-  def mapFutureElems(using Context) = myMapFutureElems
+  def mapVars(using Context) = myMapVars
 
-  /** Don't map future elements in this `op` */
-  inline def withoutMappedFutureElems[T](op: => T)(using Context): T =
-    val saved = mapFutureElems
-    myMapFutureElems = false
-    try op finally myMapFutureElems = saved
+  /** Don't map capset variables with BiTypeMaps during this `op` */
+  inline def withNoVarsMapped[T](op: => T)(using Context): T =
+    val saved = mapVars
+    myMapVars = false
+    try op finally myMapVars = saved
 
   // ------ Iteration count of capture checking run
 

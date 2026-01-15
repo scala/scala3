@@ -52,7 +52,7 @@
    |
    |                  where:    ^     refers to the root capability caps.any
    |                            any   is a root capability classified as SharedCapability in the type of value _$6
-   |                            fresh is the root capability caps.fresh
+   |                            fresh is a root capability associated with the result type of (x: C^): C^{fresh}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:17:29 ---------------------------------

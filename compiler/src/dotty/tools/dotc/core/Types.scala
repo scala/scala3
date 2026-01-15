@@ -3336,15 +3336,6 @@ object Types extends TypeUtils {
     override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
       PreciseRefinedType(parent, refinedName, refinedInfo)
 
-  /** Used for refined function types created at cc/Setup that come from original
-   *  generic function types. Function types of this class don't get their result
-   *  captures mapped from LocalCaps to ResultCaps with toResult.
-   */
-  class InferredRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
-  extends RefinedType(parent, refinedName, refinedInfo):
-    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
-      InferredRefinedType(parent, refinedName, refinedInfo)
-
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(using Context): Type =
       if (names.isEmpty) parent
@@ -3358,10 +3349,6 @@ object Types extends TypeUtils {
     def precise(parent: Type, name: Name, info: Type)(using Context): RefinedType =
       assert(!ctx.erasedTypes)
       unique(new PreciseRefinedType(parent, name, info)).checkInst
-
-    def inferred(parent: Type, name: Name, info: Type)(using Context): RefinedType =
-      assert(!ctx.erasedTypes)
-      unique(new InferredRefinedType(parent, name, info)).checkInst
   }
 
   /** A recursive type. Instances should be constructed via the companion object.
@@ -6277,6 +6264,11 @@ object Types extends TypeUtils {
 
     /** Fuse with another map */
     def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
+
+    /** A summarization to be used to describe capture sets resulting from this map
+     *  in cc diagnostics.
+     */
+    def summarize(using Context): String = getClass.toString
 
   end BiTypeMap
 

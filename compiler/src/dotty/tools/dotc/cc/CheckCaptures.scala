@@ -880,7 +880,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // See [[MethodTypeCompanion.adaptParamInfo]].
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
-      if formal.containsCap then
+      if formal.containsGlobalAny then
         sepCheckFormals(arg) = instantiatedFormal
       argType
 

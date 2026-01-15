@@ -1,0 +1,44 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-fresh.scala:11:43 ----------------------------------
+11 |  val _: (s: String) -> (t: String) -> A = x // error
+   |                                           ^
+   |Found:    (s: String) -> (t: String) -> A^{outer_fresh}
+   |Required: (s: String) -> (t: String) -> A
+   |
+   |Note that capability `fresh` is not included in capture set {}.
+   |
+   |where:    fresh and outer_fresh refer to a root capability associated with the result type of (s: String): (t: String) -> A^{outer_fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-fresh.scala:14:43 ----------------------------------
+14 |  val _: (s: String) -> (t: String) -> A = y // error
+   |                                           ^
+   |Found:    (Test.y : (s: String) -> (t: String) -> A^{outer_fresh})
+   |Required: (s: String) -> (t: String) -> A
+   |
+   |Note that capability `fresh` is not included in capture set {}.
+   |
+   |where:    fresh and outer_fresh refer to a root capability associated with the result type of (s: String): (t: String) -> A^{outer_fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-fresh.scala:17:34 ----------------------------------
+17 |  val _: () -> (t: String) -> A = z // error
+   |                                  ^
+   |Found:    () -> (t: String) -> A^{outer_fresh}
+   |Required: () -> (t: String) -> A
+   |
+   |Note that capability `fresh` is not included in capture set {}.
+   |
+   |where:    fresh and outer_fresh refer to a root capability associated with the result type of (): (t: String) -> A^{outer_fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-fresh.scala:20:34 ----------------------------------
+20 |  val _: () -> (t: String) -> A = z2 // error
+   |                                  ^^
+   |Found:    (Test.z2 : () -> (t: String) -> A^{outer_fresh})
+   |Required: () -> (t: String) -> A
+   |
+   |Note that capability `fresh` is not included in capture set {}.
+   |
+   |where:    fresh and outer_fresh refer to a root capability associated with the result type of (): (t: String) -> A^{outer_fresh}
+   |
+   | longer explanation available when compiling with `-explain`
