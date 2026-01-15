@@ -319,8 +319,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def etaExpand(using Context): Type =
     val tparams = self.typeParams
     val resType = self.appliedTo(tparams.map(_.paramRef))
-    val dealiased = self.dealias
-    dealiased match
+    self.dealias match
       case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
         val owner = self.symbol.owner
         // Calling asSeenFrom on the type parameter infos is important
