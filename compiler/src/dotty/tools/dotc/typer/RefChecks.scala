@@ -98,10 +98,6 @@ object RefChecks {
    *     `cls.thisType`
    *   - If self type of `cls` is explicit, check that it conforms to the self types
    *     of all its class symbols.
-   *  @param deep  If true and a self type of a parent is not given explicitly, recurse to
-   *               check against the parents of the parent. This is needed when capture checking,
-   *               since we assume (& check) that the capture set of an inferred self type
-   *               is the intersection of the capture sets of all its parents
    */
   def checkSelfAgainstParents(cls: ClassSymbol, parents: List[Symbol])(using Context): Unit =
     withMode(Mode.CheckBoundsOrSelfType) {
@@ -110,9 +106,9 @@ object RefChecks {
       def checkSelfConforms(other: ClassSymbol) =
         var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists then
-          if !CCState.withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
+          val result = CCState.withCapAsRoot:
             cinfo.selfType <:< otherSelf
-        then
+          if !result then
             report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
               cls.srcPos)
 
