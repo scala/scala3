@@ -2,7 +2,7 @@ import caps.unsafe.*
 import caps.Stateful
 
 class Buf[A] extends Stateful:
-  this: Buf[A] =>
+  this: Buf[A]^ =>
   val elems: Array[A]^ = ???
   def +=(elem: A): this.type =
     elems(0) = elem // error

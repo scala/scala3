@@ -598,7 +598,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               then avoidLocalCapability(c, env, lastEnv)
               else avoidLocalReachCapability(c, env)
             isVisible
-          //println(i"Include call or box capture $included from $cs in ${env.owner}/${env.captured}/${env.captured.owner}/${env.kind}")
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
@@ -1475,11 +1474,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos)
 
-        // (3) Capture set of self type includes capture sets of parameters
+        // (3) Capture set of self type includes capture sets of tracked parameters
         for param <- cls.paramGetters do
           if param.isTrackedParamAccessor then
             withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
               checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
+
+        // (3b) Capture set of self type includes capture sets of fields (including fresh)
+        withCapAsRoot:
+          checkSubset(captureSetImpliedByFields(cls, cls.appliedRef), thisSet, tree.srcPos)
 
         // (4) If class extends Pure, capture set of self type is empty
         for pureBase <- cls.pureBaseClass do // (4)

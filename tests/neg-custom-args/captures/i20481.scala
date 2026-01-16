@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 
 class A:
-  val b: A = this
+  val b: A = this // error
   val f: A^ = this
 
 def test(a: A^) =
