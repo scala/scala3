@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg/notfound-term-but-type.scala:1:22 -------------------------------------------------
+1 |def test[T] = println(T) // error
+  |                      ^
+  |                      Expected a term, but found a type: T
+  |
+  | longer explanation available when compiling with `-explain`

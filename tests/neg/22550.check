@@ -34,4 +34,5 @@
   | Possible reasons why no matching declaration was found:
   |  - The declaration or the use is mis-spelt.
   |  - An import is missing.
+  |  - The declaration exists but refers to a type in a context where a term is expected, or vice-versa.
    ---------------------------------------------------------------------------------------------------------------------

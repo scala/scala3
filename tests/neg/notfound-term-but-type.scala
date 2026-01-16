@@ -1,0 +1,1 @@
+def test[T] = println(T) // error
