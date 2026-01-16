@@ -47,7 +47,7 @@ object DidYouMean:
       then ctx.outer
       else nextInteresting(ctx.outer)
 
-    var ignoredRootImports: mutable.Set[Symbol] = mutable.Set()
+    val ignoredRootImports = mutable.Set.empty[Symbol]
 
     def recur()(using Context): Unit =
       if ctx eq NoContext then
