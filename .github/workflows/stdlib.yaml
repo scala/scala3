@@ -409,7 +409,7 @@ jobs:
       - name: Report MiMa issues in `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/mimaReportBinaryIssues
 
-  mima-scala-library-bootstrapped:
+  static-analysis-scala-library-bootstrapped:
     runs-on: ubuntu-latest
     needs: scala-library-bootstrapped
     steps:
