@@ -25,3 +25,6 @@ addSbtPlugin("com.gradle" % "sbt-develocity" % "1.3.1")
 addSbtPlugin("com.gradle" % "sbt-develocity-common-custom-user-data" % "1.1")
 
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
+
+addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.6")
+libraryDependencies += "com.spotify" % "missinglink-core" % "0.2.11"
