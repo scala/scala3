@@ -428,7 +428,7 @@ jobs:
         run: ./project/scripts/sbt scala-library-bootstrapped/mimaReportBinaryIssues
 
       - name: Report missingLink checks
-        run: ./project/scripts/sbt scala-library-bootstrapped/missingLinkCheck
+        run: ./project/scripts/sbt scala-library-bootstrapped/missinglinkCheck
 
   mima-tasty-core-bootstrapped:
     runs-on: ubuntu-latest
