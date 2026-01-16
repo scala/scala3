@@ -141,8 +141,161 @@ object ScalaLibraryPlugin extends AutoPlugin {
     } (Set(jar)), target)
   }
 
+  /** Represents a bytecode reference transformation */
+  private case class MemberReference(owner: String, name: String, descriptor: String) {
+    def transformTo(newName: String, newDescriptor: String): (MemberReference, MemberReference) =
+      (this, this.copy(name = newName, descriptor = newDescriptor))
+    def renameTo(newName: String): (MemberReference, MemberReference) =
+      (this, this.copy(name = newName))
+  }
+
+  /** Field reference transformations for fixing binary incompatibilities with Scala 2 specialized classes */
+  private lazy val fieldTransformations: Map[MemberReference, MemberReference] = Map(
+    // Iterator._empty: Scala 2 mangled name becomes simple name in Scala 3
+    MemberReference("scala/collection/Iterator$", "scala$collection$Iterator$$_empty", "Lscala/collection/Iterator;")
+      .renameTo("_empty"),
+
+    // ArrayOps$ArrayIterator.pos: mangled to simple name (base class)
+    MemberReference("scala/collection/ArrayOps$ArrayIterator", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+
+    // ArrayOps$ArrayIterator.pos field in specialized variants accessing from parent
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcB$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcZ$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcJ$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcV$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcF$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcC$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcD$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcI$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcS$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
+      .renameTo("pos"),
+
+    // Iterator nested anonymous class fields - map Scala 2 names to Scala 3 names
+    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$current", "Lscala/collection/Iterator;")
+      .renameTo("scala$collection$Iterator$$anon$3$$current"),
+
+    // RedBlackTree$Tree private fields: mangled to simple names
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_key", "Ljava/lang/Object;")
+      .renameTo("_key"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_value", "Ljava/lang/Object;")
+      .renameTo("_value"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_left", "Lscala/collection/immutable/RedBlackTree$Tree;")
+      .renameTo("_left"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_right", "Lscala/collection/immutable/RedBlackTree$Tree;")
+      .renameTo("_right"),
+  )
+
+  /** Method reference transformations for fixing binary incompatibilities with Scala 2 specialized classes */
+  private lazy val methodTransformations: Map[MemberReference, MemberReference] = Map(
+    // MurmurHash3 specialized methods become generic methods in Scala 3
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mZc$sp", "([ZI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mBc$sp", "([BI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mCc$sp", "([CI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mDc$sp", "([DI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mFc$sp", "([FI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mIc$sp", "([II)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mJc$sp", "([JI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mSc$sp", "([SI)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mVc$sp", "([Lscala/runtime/BoxedUnit;I)I")
+      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
+
+    // RedBlackTree private helper methods: double $$ becomes triple $$$
+    MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join",
+      "(Lscala/collection/immutable/RedBlackTree$Tree;Ljava/lang/Object;Ljava/lang/Object;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
+      .renameTo("scala$collection$immutable$RedBlackTree$$$join"),
+    MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join2",
+      "(Lscala/collection/immutable/RedBlackTree$Tree;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
+      .renameTo("scala$collection$immutable$RedBlackTree$$$join2"),
+
+    // Other private methods renamed in Scala 3: add one more $ to make triple $$
+    MemberReference("scala/util/control/Exception$", "scala$util$control$Exception$$wouldMatch",
+      "(Ljava/lang/Throwable;Lscala/collection/Seq;)Z")
+      .renameTo("scala$util$control$Exception$$$wouldMatch"),
+
+    // Lambda implementations in Ordering with renamed inner methods
+    MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElse$1",
+      "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;)I")
+      .transformTo("scala$math$Ordering$$_$orElse$$anonfun$1", "(Lscala/math/Ordering;Ljava/lang/Object;Ljava/lang/Object;)I"),
+    MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElseBy$1",
+      "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;Lscala/Function1;)I")
+      .transformTo("scala$math$Ordering$$_$orElseBy$$anonfun$1", "(Lscala/math/Ordering;Lscala/Function1;Ljava/lang/Object;Ljava/lang/Object;)I"),
+
+    // Outer accessor methods: Scala 3 inserts underscore after class name
+    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator;")
+      .renameTo("scala$collection$Iterator$_$$anon$$$outer"),
+    MemberReference("scala/collection/LazyZip2$$anon$7", "scala$collection$LazyZip2$$anon$$$outer", "()Lscala/collection/LazyZip2;")
+      .renameTo("scala$collection$LazyZip2$_$$anon$$$outer"),
+    MemberReference("scala/collection/LazyZip3$$anon$15", "scala$collection$LazyZip3$$anon$$$outer", "()Lscala/collection/LazyZip3;")
+      .renameTo("scala$collection$LazyZip3$_$$anon$$$outer"),
+    MemberReference("scala/collection/LazyZip4$$anon$23", "scala$collection$LazyZip4$$anon$$$outer", "()Lscala/collection/LazyZip4;")
+      .renameTo("scala$collection$LazyZip4$_$$anon$$$outer"),
+    MemberReference("scala/collection/convert/JavaCollectionWrappers$MapWrapper$$anon$2",
+      "scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$$outer", "()Lscala/collection/convert/JavaCollectionWrappers$MapWrapper;")
+      .renameTo("scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$$outer"),
+    MemberReference("scala/Enumeration$ValueSet$", "scala$Enumeration$ValueSet$$$outer", "()Lscala/Enumeration;")
+      .renameTo("scala$Enumeration$ValueSet$$$$outer"),
+
+    // Nested outer accessor methods: Scala 3 inserts extra $$anon
+    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator$$anon$3;")
+      .renameTo("scala$collection$Iterator$$anon$$anon$$$outer"),
+    MemberReference("scala/collection/LazyZip2$$anon$7", "scala$collection$LazyZip2$$anon$$$outer", "()Lscala/collection/LazyZip2$$anon$7;")
+      .renameTo("scala$collection$LazyZip2$$anon$$anon$$$outer"),
+    MemberReference("scala/collection/LazyZip3$$anon$15", "scala$collection$LazyZip3$$anon$$$outer", "()Lscala/collection/LazyZip3$$anon$15;")
+      .renameTo("scala$collection$LazyZip3$$anon$$anon$$$outer"),
+    MemberReference("scala/collection/LazyZip4$$anon$23", "scala$collection$LazyZip4$$anon$$$outer", "()Lscala/collection/LazyZip4$$anon$23;")
+      .renameTo("scala$collection$LazyZip4$$anon$$anon$$$outer"),
+    MemberReference("scala/collection/convert/JavaCollectionWrappers$MapWrapper$$anon$2",
+      "scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$$outer", "()Lscala/collection/convert/JavaCollectionWrappers$MapWrapper$$anon$2;")
+      .renameTo("scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$anon$$$outer"),
+  )
+
+  /** Visitor for rewriting field and method references in bytecode */
+  private class ReferenceRewritingMethodVisitor(
+    mv: MethodVisitor,
+    fieldTransforms: Map[MemberReference, MemberReference],
+    methodTransforms: Map[MemberReference, MemberReference]
+  ) extends MethodVisitor(Opcodes.ASM9, mv) {
+
+    override def visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String): Unit = {
+      val key = MemberReference(owner, name, descriptor)
+      fieldTransforms.get(key) match {
+        case Some(transformed) =>
+          super.visitFieldInsn(opcode, transformed.owner, transformed.name, transformed.descriptor)
+        case None =>
+          super.visitFieldInsn(opcode, owner, name, descriptor)
+      }
+    }
+    override def visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean): Unit = {
+      val key = MemberReference(owner, name, descriptor)
+      methodTransforms.get(key) match {
+        case Some(ref) =>
+          super.visitMethodInsn(opcode, ref.owner, ref.name, ref.descriptor, isInterface)
+        case None =>
+          super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
+      }
+    }
+  }
+
   /** Remove Scala 2 Pickles from class file and optionally add TASTY attribute.
    *  Also ensures the Scala attribute is present for all Scala-compiled classes.
+   *  Additionally rewrites incompatible field and method references in Scala 2 bytecode.
    *
    *  @param bytes the class file bytecode
    *  @param tastyUUID optional 16-byte UUID from the corresponding .tasty file (only for primary class)
@@ -150,7 +303,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
   private def patchClassFile(bytes: Array[Byte], tastyUUID: Option[Array[Byte]]): Array[Byte] = {
     val reader = new ClassReader(bytes)
     val writer = new ClassWriter(0)
-    // Remove Scala 2 pickles and Scala signatures
+    // Remove Scala 2 pickles, Scala signatures, and rewrite incompatible field/method references
     val visitor = new ClassVisitor(Opcodes.ASM9, writer) {
       override def visitAttribute(attr: Attribute): Unit = {
         val shouldRemove = Scala2PickleAttributes.contains(attr.`type`)
@@ -160,6 +313,13 @@ object ScalaLibraryPlugin extends AutoPlugin {
       override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor =
         if (isScala2PickleAnnotation(desc)) null
         else super.visitAnnotation(desc, visible)
+
+      // Chain bytecode rewriting visitor for method instructions
+      override def visitMethod(access: Int, name: String, descriptor: String, signature: String, exceptions: Array[String]): MethodVisitor = {
+        val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
+        if (mv != null) new ReferenceRewritingMethodVisitor(mv, fieldTransformations, methodTransformations)
+        else null
+      }
     }
     reader.accept(visitor, 0)
     // Only add TASTY attribute for the primary class (not for inner/nested classes)
