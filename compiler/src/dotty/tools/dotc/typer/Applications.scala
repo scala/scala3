@@ -900,6 +900,7 @@ trait Applications extends Compatibility {
                 if tycon1 =:= tycon2 && args1.length == args2.length =>
                   args1.lazyZip(args2).forall {
                     case (TypeBounds(_, hi), formal) => hi relaxed_<:< formal
+                    case (arg, formal) => arg =:= formal
                   }
                 case _ => false
             case _ => false
