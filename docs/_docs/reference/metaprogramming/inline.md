@@ -388,4 +388,5 @@ val intTwo: 2 = natTwo
 
 ## Reference
 
-For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486) paper.
+For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://infoscience.epfl.ch/server/api/core/bitstreams/fe5a7e31-ecd8-4aa7-96f7-d107341871f9/content) paper,
+also available [here](https://dl.acm.org/doi/10.1145/3426426.3428486).
