@@ -59,12 +59,30 @@ object RefChecks {
         if (haveDefaults.length > 1) {
           val owners = haveDefaults map (_.owner)
           // constructors of different classes are allowed to have defaults
-          if (haveDefaults.exists(x => !x.isConstructor) || owners.distinct.size < haveDefaults.size)
-            report.error(
-              em"in $clazz, multiple overloaded alternatives of ${haveDefaults.head} define default arguments${
-                  if owners.forall(_ == clazz) then "."
-                  else i".\nThe members with defaults are defined in ${owners.map(_.showLocated).mkString("", " and ", ".")}"}",
-              clazz.srcPos)
+          if (haveDefaults.exists(x => !x.isConstructor) || owners.distinct.size < haveDefaults.size) {
+            def generatedDefaultGetters(sym: Symbol)(using Context): Set[TermName] =
+              val paramSyms = sym.paramSymss.flatten.filter(_.isTerm)
+              val defaults = paramSyms.zipWithIndex.collect {
+                case (p, i) if p.is(HasDefault) =>
+                  DefaultGetterName(sym.name.asTermName, i + 1)
+              }
+              defaults.toSet
+
+            val defaults = haveDefaults.map(generatedDefaultGetters)
+            val hasCollision = defaults.combinations(2).exists { case List(d1, d2) =>
+              d1.intersect(d2).nonEmpty
+            }
+
+            if hasCollision then
+              report.error(
+                em"in $clazz, multiple overloaded alternatives of ${haveDefaults.head} define default arguments${
+                    if owners.forall(_ == clazz) then "."
+                    else i".\nThe members with defaults are defined in ${owners.map(_.showLocated).mkString("", " and ", ".")}"}",
+                clazz.srcPos)
+          }
+
+
+
         }
       }
     }
