@@ -1,8 +1,9 @@
 package scala.annotation
 
 import language.experimental.captureChecking
+import scala.annotation.internal.preview
 
-@experimental("under review as part of SIP-61")
+@preview
 /**The `@unroll` annotation is reserved for parameters of classes and methods.
  *
  * It enables to add new parameters while preserving backwards binary compatibility,
