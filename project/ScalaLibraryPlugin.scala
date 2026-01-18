@@ -58,7 +58,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       val stream = streams.value
       val target = (Compile / classDirectory).value
       val lm = dependencyResolution.value
-      val log = stream.log
+      implicit val log = stream.log
       val cache  = stream.cacheDirectory
       val retrieveDir = cache / "scalajs-scalalib" / scalaVersion.value
 
@@ -80,6 +80,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       var stamps = analysis.stamps
 
       val classDir = (Compile / classDirectory).value
+      val baseDir = (LocalRootProject / baseDirectory).value
 
       // Patch the files that are in the list
       for {
@@ -89,8 +90,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
         path = id.toString().replace("\\", "/").stripSuffix(".class").stripSuffix(".sjsir")
         if filesToCopy.exists(s => path == s || path.startsWith(s + '$')) // Only Override Some Very Specific Files
         dest = target / (id.toString)
-        ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
+        ref <- dest.relativeTo(baseDir)
       } {
+        log.debug(s"Replacing class using Scala 2 artifact: $ref")
         patchFile(input = file, output = dest, classDirectory = classDir)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
@@ -111,6 +113,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         // Copy all the specialized classes in the stdlib
         // no need to update any stamps as these classes exist nowhere in the analysis
         for (orig <- diff; dest <- orig.relativeTo(reference)) {
+          log.debug("Copying Scala 2 specific class: " + dest)
           patchFile(
             input = orig,
             output = classDir / dest.toString(),
@@ -118,6 +121,10 @@ object ScalaLibraryPlugin extends AutoPlugin {
           )
         }
       }
+
+      BytecodeRewrites.validateRewrittenTargetsPublic(classDir)
+      BytecodeRewrites.rulesUsage.checkForUnusedRules(log)
+      BytecodeRewrites.rulesUsage.reset()
 
       previous
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
@@ -141,157 +148,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
     } (Set(jar)), target)
   }
 
-  /** Represents a bytecode reference transformation */
-  private case class MemberReference(owner: String, name: String, descriptor: String) {
-    def transformTo(newName: String, newDescriptor: String): (MemberReference, MemberReference) =
-      (this, this.copy(name = newName, descriptor = newDescriptor))
-    def renameTo(newName: String): (MemberReference, MemberReference) =
-      (this, this.copy(name = newName))
-  }
-
-  /** Field reference transformations for fixing binary incompatibilities with Scala 2 specialized classes */
-  private lazy val fieldTransformations: Map[MemberReference, MemberReference] = Map(
-    // Iterator._empty: Scala 2 mangled name becomes simple name in Scala 3
-    MemberReference("scala/collection/Iterator$", "scala$collection$Iterator$$_empty", "Lscala/collection/Iterator;")
-      .renameTo("_empty"),
-
-    // ArrayOps$ArrayIterator.pos: mangled to simple name (base class)
-    MemberReference("scala/collection/ArrayOps$ArrayIterator", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-
-    // ArrayOps$ArrayIterator.pos field in specialized variants accessing from parent
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcB$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcZ$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcJ$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcV$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcF$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcC$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcD$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcI$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-    MemberReference("scala/collection/ArrayOps$ArrayIterator$mcS$sp", "scala$collection$ArrayOps$ArrayIterator$$pos", "I")
-      .renameTo("pos"),
-
-    // Iterator nested anonymous class fields - map Scala 2 names to Scala 3 names
-    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$current", "Lscala/collection/Iterator;")
-      .renameTo("scala$collection$Iterator$$anon$3$$current"),
-
-    // RedBlackTree$Tree private fields: mangled to simple names
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_key", "Ljava/lang/Object;")
-      .renameTo("_key"),
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_value", "Ljava/lang/Object;")
-      .renameTo("_value"),
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_left", "Lscala/collection/immutable/RedBlackTree$Tree;")
-      .renameTo("_left"),
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_right", "Lscala/collection/immutable/RedBlackTree$Tree;")
-      .renameTo("_right"),
-  )
-
-  /** Method reference transformations for fixing binary incompatibilities with Scala 2 specialized classes */
-  private lazy val methodTransformations: Map[MemberReference, MemberReference] = Map(
-    // MurmurHash3 specialized methods become generic methods in Scala 3
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mZc$sp", "([ZI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mBc$sp", "([BI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mCc$sp", "([CI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mDc$sp", "([DI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mFc$sp", "([FI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mIc$sp", "([II)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mJc$sp", "([JI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mSc$sp", "([SI)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-    MemberReference("scala/util/hashing/MurmurHash3$", "arrayHash$mVc$sp", "([Lscala/runtime/BoxedUnit;I)I")
-      .transformTo("arrayHash", "(Ljava/lang/Object;I)I"),
-
-    // RedBlackTree private helper methods: double $$ becomes triple $$$
-    MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join",
-      "(Lscala/collection/immutable/RedBlackTree$Tree;Ljava/lang/Object;Ljava/lang/Object;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
-      .renameTo("scala$collection$immutable$RedBlackTree$$$join"),
-    MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join2",
-      "(Lscala/collection/immutable/RedBlackTree$Tree;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
-      .renameTo("scala$collection$immutable$RedBlackTree$$$join2"),
-
-    // Other private methods renamed in Scala 3: add one more $ to make triple $$
-    MemberReference("scala/util/control/Exception$", "scala$util$control$Exception$$wouldMatch",
-      "(Ljava/lang/Throwable;Lscala/collection/Seq;)Z")
-      .renameTo("scala$util$control$Exception$$$wouldMatch"),
-
-    // Lambda implementations in Ordering with renamed inner methods
-    MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElse$1",
-      "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;)I")
-      .transformTo("scala$math$Ordering$$_$orElse$$anonfun$1", "(Lscala/math/Ordering;Ljava/lang/Object;Ljava/lang/Object;)I"),
-    MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElseBy$1",
-      "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;Lscala/Function1;)I")
-      .transformTo("scala$math$Ordering$$_$orElseBy$$anonfun$1", "(Lscala/math/Ordering;Lscala/Function1;Ljava/lang/Object;Ljava/lang/Object;)I"),
-
-    // Outer accessor methods: Scala 3 inserts underscore after class name
-    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator;")
-      .renameTo("scala$collection$Iterator$_$$anon$$$outer"),
-    MemberReference("scala/collection/LazyZip2$$anon$7", "scala$collection$LazyZip2$$anon$$$outer", "()Lscala/collection/LazyZip2;")
-      .renameTo("scala$collection$LazyZip2$_$$anon$$$outer"),
-    MemberReference("scala/collection/LazyZip3$$anon$15", "scala$collection$LazyZip3$$anon$$$outer", "()Lscala/collection/LazyZip3;")
-      .renameTo("scala$collection$LazyZip3$_$$anon$$$outer"),
-    MemberReference("scala/collection/LazyZip4$$anon$23", "scala$collection$LazyZip4$$anon$$$outer", "()Lscala/collection/LazyZip4;")
-      .renameTo("scala$collection$LazyZip4$_$$anon$$$outer"),
-    MemberReference("scala/collection/convert/JavaCollectionWrappers$MapWrapper$$anon$2",
-      "scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$$outer", "()Lscala/collection/convert/JavaCollectionWrappers$MapWrapper;")
-      .renameTo("scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$$outer"),
-    MemberReference("scala/Enumeration$ValueSet$", "scala$Enumeration$ValueSet$$$outer", "()Lscala/Enumeration;")
-      .renameTo("scala$Enumeration$ValueSet$$$$outer"),
-
-    // Nested outer accessor methods: Scala 3 inserts extra $$anon
-    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator$$anon$3;")
-      .renameTo("scala$collection$Iterator$$anon$$anon$$$outer"),
-    MemberReference("scala/collection/LazyZip2$$anon$7", "scala$collection$LazyZip2$$anon$$$outer", "()Lscala/collection/LazyZip2$$anon$7;")
-      .renameTo("scala$collection$LazyZip2$$anon$$anon$$$outer"),
-    MemberReference("scala/collection/LazyZip3$$anon$15", "scala$collection$LazyZip3$$anon$$$outer", "()Lscala/collection/LazyZip3$$anon$15;")
-      .renameTo("scala$collection$LazyZip3$$anon$$anon$$$outer"),
-    MemberReference("scala/collection/LazyZip4$$anon$23", "scala$collection$LazyZip4$$anon$$$outer", "()Lscala/collection/LazyZip4$$anon$23;")
-      .renameTo("scala$collection$LazyZip4$$anon$$anon$$$outer"),
-    MemberReference("scala/collection/convert/JavaCollectionWrappers$MapWrapper$$anon$2",
-      "scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$$outer", "()Lscala/collection/convert/JavaCollectionWrappers$MapWrapper$$anon$2;")
-      .renameTo("scala$collection$convert$JavaCollectionWrappers$MapWrapper$$anon$$anon$$$outer"),
-  )
-
-  /** Visitor for rewriting field and method references in bytecode */
-  private class ReferenceRewritingMethodVisitor(
-    mv: MethodVisitor,
-    fieldTransforms: Map[MemberReference, MemberReference],
-    methodTransforms: Map[MemberReference, MemberReference]
-  ) extends MethodVisitor(Opcodes.ASM9, mv) {
-
-    override def visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String): Unit = {
-      val key = MemberReference(owner, name, descriptor)
-      fieldTransforms.get(key) match {
-        case Some(transformed) =>
-          super.visitFieldInsn(opcode, transformed.owner, transformed.name, transformed.descriptor)
-        case None =>
-          super.visitFieldInsn(opcode, owner, name, descriptor)
-      }
-    }
-    override def visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean): Unit = {
-      val key = MemberReference(owner, name, descriptor)
-      methodTransforms.get(key) match {
-        case Some(ref) =>
-          super.visitMethodInsn(opcode, ref.owner, ref.name, ref.descriptor, isInterface)
-        case None =>
-          super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
-      }
-    }
-  }
 
   /** Remove Scala 2 Pickles from class file and optionally add TASTY attribute.
    *  Also ensures the Scala attribute is present for all Scala-compiled classes.
@@ -300,7 +156,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
    *  @param bytes the class file bytecode
    *  @param tastyUUID optional 16-byte UUID from the corresponding .tasty file (only for primary class)
    */
-  private def patchClassFile(bytes: Array[Byte], tastyUUID: Option[Array[Byte]]): Array[Byte] = {
+  private def patchClassFile(classFile: String, bytes: Array[Byte], tastyUUID: Option[Array[Byte]])(implicit log: Logger): Array[Byte] = {
     val reader = new ClassReader(bytes)
     val writer = new ClassWriter(0)
     // Remove Scala 2 pickles, Scala signatures, and rewrite incompatible field/method references
@@ -317,7 +173,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       // Chain bytecode rewriting visitor for method instructions
       override def visitMethod(access: Int, name: String, descriptor: String, signature: String, exceptions: Array[String]): MethodVisitor = {
         val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
-        if (mv != null) new ReferenceRewritingMethodVisitor(mv, fieldTransformations, methodTransformations)
+        if (mv != null) new BytecodeRewrites.ReferenceRewritingMethodVisitor(mv, classFile, log)
         else null
       }
     }
@@ -351,7 +207,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
    *  @param output the output file location
    *  @param classDirectory the class directory to look for .tasty files
    */
-  def patchFile(input: File, output: File, classDirectory: File): File = {
+  def patchFile(input: File, output: File, classDirectory: File)(implicit log: Logger): File = {
     if (input.getName.endsWith(".sjsir")) {
       // For .sjsir files, we just copy the file
       IO.copyFile(input, output)
@@ -396,7 +252,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       case (None, Some(_)) => sys.error(s"TASTY attribute missing, but present in unpatched $relativePath")
     }
 
-    IO.write(output, patchClassFile(classfileBytes, tastyUUID))
+    IO.write(output, patchClassFile(relativePath, classfileBytes, tastyUUID))
     output
   }
 
@@ -652,5 +508,331 @@ object ScalaLibraryPlugin extends AutoPlugin {
       // Scala attribute is empty (length = 0x0)
       new ByteVector(0)
     }
+  }
+}
+
+private object BytecodeRewrites {
+  import BytecodeRewrites.MemberToRewriteOps
+
+  def rewriteTargetsByOwner: Map[String,Seq[MemberReference]] = rules.map{rule =>
+      rule.rewrite match {
+        case RewriteOperation.Rename(newName)     => rule.reference.copy(name = newName)
+        case RewriteOperation.Delegate(target, _) => target
+      }
+    }.groupBy(_.owner)
+
+  object rulesUsage {
+    // Tracks usage of given rule by tracking to which classfiles it was applies
+    private val usages = mutable.Map.empty[Rule, mutable.Set[String]]
+    def reset() = usages.clear()
+    def mark(rule: Rule, classFile: String): Unit = usages
+      .getOrElseUpdate(rule, mutable.Set.empty)
+      .update(classFile, included = true)
+
+    def checkForUnusedRules(log: Logger) = {
+      val unused =  rules.flatMap{ rule =>
+        usages.get(rule) match {
+          case None => Some(rule)
+          case Some(appliedTo) if appliedTo.isEmpty => Some(rule)
+          case _ => None
+        }
+      }.toSeq
+
+      // Check for rules that were never triggered
+      if (unused.size > 0) {
+        log.warn(s"Found ${unused.size} unused bytecode rewrite rules:\n\t${unused.mkString("\n\t- ")}")
+      }
+
+      // check for rules aplpies less times then expected
+      usages.foreach{
+        case (rule, appliedTo) =>
+          val diff = rule.appliesTo -- appliedTo
+          if (diff.nonEmpty) {
+          log.warn(s"Rewrite rule {ref:${rule.reference},rewrite:${rule.rewrite}} not applied to ${diff.size} expected files:\n\t* ${diff.mkString("\n\t* ")}")
+        }
+      }
+    }
+  }
+
+  /** Field reference transformations that become method calls in Scala 3 */
+  private val rules: Seq[Rule] = Seq(
+    // Inlined direct access to `object Iterator: private[this] val _empty: Iterator._empty`
+    // Usage in: Array.empty[Int].reverseIterator.next, Range(1, 1).grouped(1).next
+    // Deoptimize by calling public accessor
+    MemberReference("scala/collection/Iterator$", "scala$collection$Iterator$$_empty", "Lscala/collection/Iterator;")
+      .delegateToStaticAccessor("empty")
+      .onOpCode(Opcodes.GETSTATIC)
+      .applyTo(
+        "scala/collection/ArrayOps$ArrayIterator.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcB$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcC$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcD$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcF$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcI$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcJ$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcS$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcV$sp.class",
+        "scala/collection/ArrayOps$ArrayIterator$mcZ$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcB$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcC$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcD$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcF$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcI$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcJ$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcS$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcV$sp.class",
+        "scala/collection/ArrayOps$ReverseIterator$mcZ$sp.class",
+        "scala/collection/immutable/Range$$anon$1.class",
+        "scala/collection/immutable/Range$$anon$2.class",
+        "scala/collection/immutable/Range$$anon$3.class",
+        "scala/collection/immutable/Range.class",
+      ),
+
+    // Inlined direct access to RedBlackTree$Tree instance private[immutable] fields:
+    // Deoptimize by calling public accessor
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_key", "Ljava/lang/Object;")
+      .delegateToAccessor("key")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_value", "Ljava/lang/Object;")
+      .delegateToAccessor("value")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_left", "Lscala/collection/immutable/RedBlackTree$Tree;")
+      .delegateToAccessor("left")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_right", "Lscala/collection/immutable/RedBlackTree$Tree;")
+      .delegateToAccessor("right")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+
+    // Mangling of the fields has changed
+    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$current", "Lscala/collection/Iterator;")
+      .renameTo("scala$collection$Iterator$$anon$3$$current")
+      .onOpCode(Opcodes.GETFIELD, Opcodes.PUTFIELD)
+      .applyTo("scala/collection/Iterator$$anon$3$$anon$4.class"),
+    // No longer z and op clousers were stored in fields in Scala 3, we've now forced adding these (in source) and renamed their accessor
+    MemberReference("scala/collection/Iterator$$anon$3", "z$1", "Ljava/lang/Object;")
+      .renameTo("scala$collection$Iterator$$anon$3$$_z")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo(
+        "scala/collection/Iterator$$anon$3$$anon$4.class",
+        "scala/collection/Iterator$$anon$3$$anon$4$$anon$5.class"
+      ),
+    MemberReference("scala/collection/Iterator$$anon$3", "op$1", "Lscala/Function2;")
+      .renameTo("scala$collection$Iterator$$anon$3$$_op")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/Iterator$$anon$3$$anon$4$$anon$5.class"),
+
+     // Private methods mangling change in Scala 3: add one more $ to make triple $$
+    MemberReference("scala/util/control/Exception$", "scala$util$control$Exception$$wouldMatch", "(Ljava/lang/Throwable;Lscala/collection/Seq;)Z")
+      .renameTo("scala$util$control$Exception$$$wouldMatch")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/util/control/Exception$$anonfun$pfFromExceptions$1.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join", "(Lscala/collection/immutable/RedBlackTree$Tree;Ljava/lang/Object;Ljava/lang/Object;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
+      .renameTo("scala$collection$immutable$RedBlackTree$$$join")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join2", "(Lscala/collection/immutable/RedBlackTree$Tree;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
+      .renameTo("scala$collection$immutable$RedBlackTree$$$join2")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+
+    // Lambda implementations in Ordering with renamed inner methods
+    MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElse$1", "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;)I")
+      .delegateTo(MemberReference("scala/math/Ordering", "scala$math$Ordering$$_$orElse$$anonfun$1", "(Lscala/math/Ordering;Ljava/lang/Object;Ljava/lang/Object;)I"), Opcodes.INVOKEINTERFACE)
+      .onOpCode(Opcodes.INVOKEINTERFACE)
+      .applyTo("scala/math/Ordering$$anonfun$orElse$2.class"),
+    MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElseBy$1", "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;Lscala/Function1;)I")
+      .delegateTo(MemberReference("scala/math/Ordering", "scala$math$Ordering$$_$orElseBy$$anonfun$1", "(Lscala/math/Ordering;Lscala/Function1;Ljava/lang/Object;Ljava/lang/Object;)I"), Opcodes.INVOKEINTERFACE)
+      .onOpCode(Opcodes.INVOKEINTERFACE)
+      .applyTo("scala/math/Ordering$$anonfun$orElseBy$2.class"),
+
+    // Outer accessor methods: Scala 3 inserts underscore after class name
+    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator;")
+      .renameTo("scala$collection$Iterator$_$$anon$$$outer")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo(
+        "scala/collection/Iterator$$anon$3$$anon$4.class",
+        "scala/collection/Iterator$$anon$3$$anon$4$$anon$5.class"
+      ),
+    MemberReference("scala/collection/LazyZip2$$anon$7", "scala$collection$LazyZip2$$anon$$$outer", "()Lscala/collection/LazyZip2;")
+      .renameTo("scala$collection$LazyZip2$_$$anon$$$outer")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/collection/LazyZip2$$anon$7$$anon$8.class"),
+    MemberReference("scala/collection/LazyZip3$$anon$15", "scala$collection$LazyZip3$$anon$$$outer", "()Lscala/collection/LazyZip3;")
+      .renameTo("scala$collection$LazyZip3$_$$anon$$$outer")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/collection/LazyZip3$$anon$15$$anon$16.class"),
+    MemberReference("scala/collection/LazyZip4$$anon$23", "scala$collection$LazyZip4$$anon$$$outer", "()Lscala/collection/LazyZip4;")
+      .renameTo("scala$collection$LazyZip4$_$$anon$$$outer")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/collection/LazyZip4$$anon$23$$anon$24.class"),
+    MemberReference("scala/Enumeration$ValueSet$", "scala$Enumeration$ValueSet$$$outer", "()Lscala/Enumeration;")
+      .renameTo("scala$Enumeration$ValueSet$$$$outer")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/Enumeration$ValueSet$$anon$1.class"),
+  )
+
+  /** Represents a reference to member in a bytecode  */
+  case class MemberReference(owner: String, name: String, descriptor: String)
+
+  /** A rule defintion that might to applied to references given signature
+   *  @param appliesTo - list of class fieles to which given rule can be applies
+   *  @param appliedToOpCodes - list of op codes for which rewrite is allowed
+   */
+  case class Rule(
+    reference: MemberReference,
+    rewrite: RewriteOperation,
+    appliesTo: Set[String] = Set.empty,
+    appliedToOpCodes: Set[Int] = Set.empty,
+  ) {
+    def applyTo(classFiles: String*): Rule = copy(appliesTo = this.appliesTo ++ classFiles)
+    def onOpCode(opCodes: Int*) = copy(appliedToOpCodes = appliedToOpCodes ++ opCodes)
+  }
+
+  implicit class MemberToRewriteOps(val member: MemberReference) extends AnyVal {
+    def renameTo(newName: String): Rule =
+      Rule(member, RewriteOperation.Rename(newName))
+
+    def delegateTo(target: MemberReference, opCode: Int) =
+      Rule(member, RewriteOperation.Delegate(target, opCode = opCode))
+    /** Delegates the call to accessor available under given name. Uses implicit descriptor created from member fields
+     */
+    def delegateToAccessor(name: String): Rule =
+      Rule(member, RewriteOperation.Delegate(
+        member.copy(
+          name = name,
+          descriptor = s"()${member.descriptor}".ensuring(!member.descriptor.startsWith("("), s"member is not a field, cannot delegate to accessor of function: ${member}")
+        ),
+        opCode = Opcodes.INVOKEVIRTUAL
+      ))
+
+    /** Delegates to call to static access of companion class.
+     * @param member must be a companion module
+     */
+    def delegateToStaticAccessor(name: String): Rule =
+      Rule(member, RewriteOperation.Delegate(
+        member.copy(
+          owner = member.owner.stripSuffix("$")
+            .ensuring(member.owner.endsWith("$"), "Owner is not a companion module"),
+          name = name,
+          descriptor = s"()${member.descriptor}"
+        ),
+        opCode = Opcodes.INVOKESTATIC)
+      )
+  }
+
+  sealed trait RewriteOperation
+  object RewriteOperation {
+    case class Rename(name: String) extends RewriteOperation
+    case class Delegate(target: MemberReference, opCode: Int) extends RewriteOperation
+  }
+
+  /** Visitor for rewriting field and method references in bytecode */
+  class ReferenceRewritingMethodVisitor(
+    mv: MethodVisitor,
+    classFile: String,
+    log: Logger
+  ) extends MethodVisitor(Opcodes.ASM9, mv) {
+    val rewriteRules = rules.filter(_.appliesTo.contains(classFile))
+
+    if (rewriteRules.nonEmpty){
+      val ambigiousReferenceRules = rewriteRules.groupBy(_.reference).filter(_._2.size > 1)
+      ambigiousReferenceRules.toSeq.sortBy(_._1.toString()).foreach{
+        case (ref, rules) => log.error(s" - $ref: [${rules.size}] ${rules}")
+      }
+      assert(ambigiousReferenceRules.isEmpty, s"More then one rewrite rule found for rewrites in ${classFile}")
+    }
+
+    private val ruleLookup = rewriteRules.map(rule => rule.reference -> rule).toMap
+
+    override def visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String): Unit = {
+      val key = MemberReference(owner, name, descriptor)
+      ruleLookup.get(key) match {
+        case Some(rule) if rule.appliedToOpCodes.contains(opcode) =>
+          BytecodeRewrites.rulesUsage.mark(rule, classFile)
+          rule.rewrite match {
+            case RewriteOperation.Rename(newName) =>
+              super.visitFieldInsn(opcode, owner, newName, descriptor)
+            case RewriteOperation.Delegate(target, targetOpCode) =>
+              if (opcode == Opcodes.GETSTATIC && targetOpCode == Opcodes.INVOKEVIRTUAL) {
+                super.visitFieldInsn(Opcodes.GETSTATIC, owner, "MODULE$", s"L$owner;")
+              }
+              super.visitMethodInsn(targetOpCode, target.owner, target.name, target.descriptor, false)
+          }
+        case maybeRule =>
+          maybeRule.foreach{ rule =>
+            log.warn(s"Matched rule in $classFile not applicable to opcode:${opcode}: $rule")
+          }
+          super.visitFieldInsn(opcode, owner, name, descriptor)
+      }
+    }
+    override def visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean): Unit = {
+      val key = MemberReference(owner, name, descriptor)
+      ruleLookup.get(key) match {
+        case Some(rule) if rule.appliedToOpCodes.contains(opcode) =>
+          BytecodeRewrites.rulesUsage.mark(rule, classFile)
+          rule.rewrite match {
+            case RewriteOperation.Rename(newName) =>
+              super.visitFieldInsn(opcode, owner, newName, descriptor)
+            case RewriteOperation.Delegate(target, targetOpCode) =>
+              super.visitMethodInsn(targetOpCode, target.owner, target.name, target.descriptor, false)
+          }
+        case maybeRule =>
+          maybeRule.foreach{ rule =>
+            log.warn(s"Matched rule in $classFile not applicable to opcode:${opcode}: $rule ")
+          }
+          super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
+      }
+    }
+  }
+
+  def validateRewrittenTargetsPublic(classDir: File): Unit = {
+    val errors = mutable.ListBuffer.empty[String]
+    for ((owner, targets) <- BytecodeRewrites.rewriteTargetsByOwner){
+      val classFile = classDir / s"$owner.class"
+      if (!classFile.exists()) {
+        errors += s"$owner: class file not found at $classFile"
+      } else {
+        val fields = mutable.Map.empty[(String, String), Int]
+        val methods = mutable.Map.empty[(String, String), Int]
+        val visitor = new ClassVisitor(Opcodes.ASM9) {
+          override def visitField(access: Int, name: String, descriptor: String, signature: String, value: Object): FieldVisitor = {
+            fields += (name -> descriptor) -> access
+            null
+          }
+          override def visitMethod(access: Int, name: String, descriptor: String, signature: String, exceptions: Array[String]): MethodVisitor = {
+            methods += (name -> descriptor) -> access
+            null
+          }
+        }
+        new ClassReader(IO.readBytes(classFile)).accept(
+          visitor,
+          ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES
+        )
+        for (target <- targets) {
+          val key = target.name -> target.descriptor
+          (fields.get(key), methods.get(key)) match {
+            case (Some(access), _) =>
+              if ((access & Opcodes.ACC_PUBLIC) == 0) {
+                errors += s"$owner.${target.name}${target.descriptor}: field is not public"
+              }
+            case (None, Some(access)) =>
+              if ((access & Opcodes.ACC_PUBLIC) == 0) {
+                errors += s"$owner.${target.name}${target.descriptor}: method is not public"
+              }
+            case (None, None) =>
+              errors += s"$owner.${target.name}${target.descriptor}: member not found"
+          }
+        }
+      }
+    }
+    assert(
+      errors.isEmpty,
+      s"Rewritten-to members must be public, but ${errors.size} issues found:\n  - ${errors.mkString("\n  - ")}"
+    )
   }
 }
