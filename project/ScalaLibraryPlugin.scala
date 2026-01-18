@@ -122,7 +122,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         }
       }
 
-      if (keepSJSIR.value) {
+      if (!keepSJSIR.value && analysis.stamps.products.isEmpty) {
         // No modified Scala.js bytecode, no need to check and warn. No rules would be every applied
         BytecodeRewrites.validateRewrittenTargetsPublic(classDir)
         BytecodeRewrites.rulesUsage.checkForUnusedRules(log)
