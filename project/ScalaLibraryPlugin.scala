@@ -563,7 +563,7 @@ private object BytecodeRewrites {
     // Usage in: Array.empty[Int].reverseIterator.next, Range(1, 1).grouped(1).next
     // Deoptimize by calling public accessor
     MemberReference("scala/collection/Iterator$", "scala$collection$Iterator$$_empty", "Lscala/collection/Iterator;")
-      .delegateToStaticAccessor("empty")
+      .delegateToAccessor("empty")
       .onOpCode(Opcodes.GETSTATIC)
       .applyTo(
         "scala/collection/ArrayOps$ArrayIterator.class",
@@ -712,20 +712,6 @@ private object BytecodeRewrites {
         ),
         opCode = Opcodes.INVOKEVIRTUAL
       ))
-
-    /** Delegates to call to static access of companion class.
-     * @param member must be a companion module
-     */
-    def delegateToStaticAccessor(name: String): Rule =
-      Rule(member, RewriteOperation.Delegate(
-        member.copy(
-          owner = member.owner.stripSuffix("$")
-            .ensuring(member.owner.endsWith("$"), "Owner is not a companion module"),
-          name = name,
-          descriptor = s"()${member.descriptor}"
-        ),
-        opCode = Opcodes.INVOKESTATIC)
-      )
   }
 
   sealed trait RewriteOperation
