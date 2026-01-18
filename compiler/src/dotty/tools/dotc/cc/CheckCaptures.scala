@@ -642,24 +642,37 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFreeTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
       def isExempt = sym.isTypeTestOrCast || defn.capsErasedValueMethods.contains(sym)
       if !isExempt then
-        val paramNames = atPhase(thisPhase.prev):
+        val (paramNames, paramBounds) = atPhase(thisPhase.prev):
           fn.tpe.widenDealias match
-            case tl: TypeLambda => tl.paramNames
-            case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
-            case t => args.map(_ => EmptyTypeName)
+            case tl: TypeLambda => (tl.paramNames, tl.paramInfos)
+            case ref: AppliedType if ref.typeSymbol.isClass =>
+              val tparams = ref.typeSymbol.typeParams
+              (tparams.map(_.name), tparams.map(_.info.bounds))
+            case t => (args.map(_ => EmptyTypeName), args.map(_ => TypeBounds.empty))
 
-        for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
-          def where = if sym.exists then i" in an argument of $sym" else ""
-          def addendum =
-            if arg.isInferred
-            then i"\nThis is often caused by a local capability$where\nleaking as part of its result."
-            else ""
-          def errTree = if !arg.isInferred && arg.span.exists then arg else fn
-          disallowBadRootsIn(arg.nuType, NoSymbol,
-            i"Type variable $pname of $sym", "be instantiated to", addendum, errTree.srcPos)
+        /** Check if a type bound has @uncheckedCaptures annotation on its upper bound */
+        def hasUncheckedCapturesAnnot(bounds: TypeBounds): Boolean =
+          bounds.hi.dealiasKeepAnnots match
+            case AnnotatedType(_, ann) => ann.symbol == defn.UncheckedCapturesAnnot
+            case _ => false
 
-          val param = fn.symbol.paramNamed(pname)
-          if param.isUseParam then markFree(arg.nuType.deepCaptureSet, errTree)
+        for (arg, pname, bounds) <- args.lazyZip(paramNames).lazyZip(paramBounds) do
+          arg match
+            case arg: TypeTree =>
+              def where = if sym.exists then i" in an argument of $sym" else ""
+              def addendum =
+                if arg.isInferred
+                then i"\nThis is often caused by a local capability$where\nleaking as part of its result."
+                else ""
+              def errTree = if !arg.isInferred && arg.span.exists then arg else fn
+              // Skip the check if the bound has @uncheckedCaptures annotation
+              if !hasUncheckedCapturesAnnot(bounds) then
+                disallowBadRootsIn(arg.nuType, NoSymbol,
+                  i"Type variable $pname of $sym", "be instantiated to", addendum, errTree.srcPos)
+
+              val param = fn.symbol.paramNamed(pname)
+              if param.isUseParam then markFree(arg.nuType.deepCaptureSet, errTree)
+            case _ =>
     end markFreeTypeArgs
 
     /** If capability `c` refers to a parameter that is not implicitly or explicitly
@@ -1668,10 +1681,26 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => NoType
       case _ => NoType
 
+    /** Deeply strip all CapturingTypes from a type */
+    private def stripAllCapturing(tp: Type)(using Context): Type =
+      val map = new TypeMap:
+        def apply(t: Type): Type = t match
+          case CapturingType(parent, _) => apply(parent)
+          case t => mapOver(t)
+      map(tp)
+
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
         (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type =
 
-      var expected1 = alignDependentFunction(expected, actual.stripCapturing)
+      // If expected type has @uncheckedCaptures, strip the annotation and
+      // deeply strip all capturing types to relax capture checking
+      val expected0 = expected.dealiasKeepAnnots match
+        case AnnotatedType(parent, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
+          stripAllCapturing(parent)
+        case _ =>
+          expected
+
+      var expected1 = alignDependentFunction(expected0, actual.stripCapturing)
       val falseDeps = expected1 ne expected
       val actual1 =
         if expected.stripCapturing.isInstanceOf[SelectionProto] then

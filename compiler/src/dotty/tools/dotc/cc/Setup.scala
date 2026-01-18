@@ -451,7 +451,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               parent1
           case t @ AnnotatedType(parent, ann) =>
             if ann.symbol == defn.UncheckedCapturesAnnot
-            then makeUnchecked(this(parent))
+            then t.derivedAnnotatedType(makeUnchecked(this(parent)), ann)
             else t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
