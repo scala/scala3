@@ -533,7 +533,7 @@ private object BytecodeRewrites {
       .update(classFile, included = true)
 
     def checkForUnusedRules(log: Logger) = {
-      val unused =  rules.flatMap{ rule =>
+      val unused = rules.flatMap { rule =>
         usages.get(rule) match {
           case None => Some(rule)
           case Some(appliedTo) if appliedTo.isEmpty => Some(rule)
@@ -591,26 +591,6 @@ private object BytecodeRewrites {
         "scala/collection/immutable/Range$$anon$3.class",
         "scala/collection/immutable/Range.class",
       ),
-
-    // Inlined direct access to RedBlackTree$Tree instance private[immutable] fields:
-    // Deoptimize by calling public accessor
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_key", "Ljava/lang/Object;")
-      .delegateToAccessor("key")
-      .onOpCode(Opcodes.GETFIELD)
-      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_value", "Ljava/lang/Object;")
-      .delegateToAccessor("value")
-      .onOpCode(Opcodes.GETFIELD)
-      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_left", "Lscala/collection/immutable/RedBlackTree$Tree;")
-      .delegateToAccessor("left")
-      .onOpCode(Opcodes.GETFIELD)
-      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
-    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_right", "Lscala/collection/immutable/RedBlackTree$Tree;")
-      .delegateToAccessor("right")
-      .onOpCode(Opcodes.GETFIELD)
-      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
-
     // Mangling of the fields has changed
     MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$current", "Lscala/collection/Iterator;")
       .renameTo("scala$collection$Iterator$$anon$3$$current")
@@ -628,12 +608,35 @@ private object BytecodeRewrites {
       .renameTo("scala$collection$Iterator$$anon$3$$_op")
       .onOpCode(Opcodes.GETFIELD)
       .applyTo("scala/collection/Iterator$$anon$3$$anon$4$$anon$5.class"),
-
-     // Private methods mangling change in Scala 3: add one more $ to make triple $$
-    MemberReference("scala/util/control/Exception$", "scala$util$control$Exception$$wouldMatch", "(Ljava/lang/Throwable;Lscala/collection/Seq;)Z")
-      .renameTo("scala$util$control$Exception$$$wouldMatch")
+    // Outer accessor methods: Scala 3 inserts underscore after class name
+    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator;")
+      .renameTo("scala$collection$Iterator$_$$anon$$$outer")
       .onOpCode(Opcodes.INVOKEVIRTUAL)
-      .applyTo("scala/util/control/Exception$$anonfun$pfFromExceptions$1.class"),
+      .applyTo(
+        "scala/collection/Iterator$$anon$3$$anon$4.class",
+        "scala/collection/Iterator$$anon$3$$anon$4$$anon$5.class"
+      ),
+    // Inlined direct access to RedBlackTree$Tree instance private[immutable] fields:
+    // Deoptimize by calling public accessor
+    // object partitioner is local object defined inside RedBlackTree.partitionEntries, Scala 2 produces RedBlackTree$partitioner$1$.class, Scala 3 RedBlackTree$partitioner$2$.class,
+    // Unlikely: requires inlining, can reproduce
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_key", "Ljava/lang/Object;")
+      .delegateToAccessor("key")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_value", "Ljava/lang/Object;")
+      .delegateToAccessor("value")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_left", "Lscala/collection/immutable/RedBlackTree$Tree;")
+      .delegateToAccessor("left")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    MemberReference("scala/collection/immutable/RedBlackTree$Tree", "scala$collection$immutable$RedBlackTree$Tree$$_right", "Lscala/collection/immutable/RedBlackTree$Tree;")
+      .delegateToAccessor("right")
+      .onOpCode(Opcodes.GETFIELD)
+      .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
+    // Name mangling difference $$join vs $$$join
     MemberReference("scala/collection/immutable/RedBlackTree$", "scala$collection$immutable$RedBlackTree$$join", "(Lscala/collection/immutable/RedBlackTree$Tree;Ljava/lang/Object;Ljava/lang/Object;Lscala/collection/immutable/RedBlackTree$Tree;)Lscala/collection/immutable/RedBlackTree$Tree;")
       .renameTo("scala$collection$immutable$RedBlackTree$$$join")
       .onOpCode(Opcodes.INVOKEVIRTUAL)
@@ -644,6 +647,7 @@ private object BytecodeRewrites {
       .applyTo("scala/collection/immutable/RedBlackTree$partitioner$1$.class"),
 
     // Lambda implementations in Ordering with renamed inner methods
+    // Unlikely: requires inlining in users code, can reproduce
     MemberReference("scala/math/Ordering", "scala$math$Ordering$$$anonfun$orElse$1", "(Ljava/lang/Object;Ljava/lang/Object;Lscala/math/Ordering;)I")
       .delegateTo(MemberReference("scala/math/Ordering", "scala$math$Ordering$$_$orElse$$anonfun$1", "(Lscala/math/Ordering;Ljava/lang/Object;Ljava/lang/Object;)I"), Opcodes.INVOKEINTERFACE)
       .onOpCode(Opcodes.INVOKEINTERFACE)
@@ -653,14 +657,22 @@ private object BytecodeRewrites {
       .onOpCode(Opcodes.INVOKEINTERFACE)
       .applyTo("scala/math/Ordering$$anonfun$orElseBy$2.class"),
 
-    // Outer accessor methods: Scala 3 inserts underscore after class name
-    MemberReference("scala/collection/Iterator$$anon$3", "scala$collection$Iterator$$anon$$$outer", "()Lscala/collection/Iterator;")
-      .renameTo("scala$collection$Iterator$_$$anon$$$outer")
+    // outer field manging didference $$$outer vs $$$$outer
+    // Unlikely: requires inlining in users code, can reproduce
+    MemberReference("scala/Enumeration$ValueSet$", "scala$Enumeration$ValueSet$$$outer", "()Lscala/Enumeration;")
+      .renameTo("scala$Enumeration$ValueSet$$$$outer")
       .onOpCode(Opcodes.INVOKEVIRTUAL)
-      .applyTo(
-        "scala/collection/Iterator$$anon$3$$anon$4.class",
-        "scala/collection/Iterator$$anon$3$$anon$4$$anon$5.class"
-      ),
+      .applyTo("scala/Enumeration$ValueSet$$anon$1.class"),
+
+     // Private methods mangling change in Scala 3: add one more $ to make triple $$
+     // Unlikely, requires inlining, cannot reproduce
+    MemberReference("scala/util/control/Exception$", "scala$util$control$Exception$$wouldMatch", "(Ljava/lang/Throwable;Lscala/collection/Seq;)Z")
+      .renameTo("scala$util$control$Exception$$$wouldMatch")
+      .onOpCode(Opcodes.INVOKEVIRTUAL)
+      .applyTo("scala/util/control/Exception$$anonfun$pfFromExceptions$1.class"),
+
+    // outer fields mangling difference $$anon$$$outer vs $_$$anon$$$outer
+    // Unlikely: requies inlining in users code, cannot reproduce
     MemberReference("scala/collection/LazyZip2$$anon$7", "scala$collection$LazyZip2$$anon$$$outer", "()Lscala/collection/LazyZip2;")
       .renameTo("scala$collection$LazyZip2$_$$anon$$$outer")
       .onOpCode(Opcodes.INVOKEVIRTUAL)
@@ -673,10 +685,6 @@ private object BytecodeRewrites {
       .renameTo("scala$collection$LazyZip4$_$$anon$$$outer")
       .onOpCode(Opcodes.INVOKEVIRTUAL)
       .applyTo("scala/collection/LazyZip4$$anon$23$$anon$24.class"),
-    MemberReference("scala/Enumeration$ValueSet$", "scala$Enumeration$ValueSet$$$outer", "()Lscala/Enumeration;")
-      .renameTo("scala$Enumeration$ValueSet$$$$outer")
-      .onOpCode(Opcodes.INVOKEVIRTUAL)
-      .applyTo("scala/Enumeration$ValueSet$$anon$1.class"),
   )
 
   /** Represents a reference to member in a bytecode  */
