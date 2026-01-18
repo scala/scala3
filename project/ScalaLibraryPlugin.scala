@@ -122,9 +122,12 @@ object ScalaLibraryPlugin extends AutoPlugin {
         }
       }
 
-      BytecodeRewrites.validateRewrittenTargetsPublic(classDir)
-      BytecodeRewrites.rulesUsage.checkForUnusedRules(log)
-      BytecodeRewrites.rulesUsage.reset()
+      if (keepSJSIR.value) {
+        // No modified Scala.js bytecode, no need to check and warn. No rules would be every applied
+        BytecodeRewrites.validateRewrittenTargetsPublic(classDir)
+        BytecodeRewrites.rulesUsage.checkForUnusedRules(log)
+        BytecodeRewrites.rulesUsage.reset()
+      }
 
       previous
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
