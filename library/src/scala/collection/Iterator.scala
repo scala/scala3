@@ -387,6 +387,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     new GroupedIterator[B](self, size, step)
 
   def scanLeft[B](z: B)(op: (B, A) => B): Iterator[B]^{this, op} = new AbstractIterator[B] {
+    private val _z = z // Used only to capture `z` and patch access in scala.collection.Iterator$$anon$3$$anon$4 from 2.13
+    private val _op = op // Used to patch access in copied scala.collection.Iterator$$anon$3$$anon$4$$anon$5 from 2.13
     // We use an intermediate iterator that iterates through the first element `z`
     // and then that will be modified to iterate through the collection
     private var current: Iterator[B]^{self, op} =
@@ -401,9 +403,9 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         def next(): B = {
           // Here we change our self-reference to a new iterator that iterates through `self`
           current = new AbstractIterator[B] {
-            private var acc = z
+            private var acc = _z
             def next(): B = {
-              acc = op(acc, self.next())
+              acc = _op(acc, self.next())
               acc
             }
             def hasNext: Boolean = self.hasNext
