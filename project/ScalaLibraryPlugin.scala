@@ -521,6 +521,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction",
     "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator",
     "scala/runtime/NonLocalReturnControl",
+    "scala/util/hashing/MurmurHash3",
     "scala/util/Sorting",
     )
 
