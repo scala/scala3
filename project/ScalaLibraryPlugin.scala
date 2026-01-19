@@ -23,7 +23,8 @@ object ScalaLibraryPlugin extends AutoPlugin {
    *
    *  This version would be used to fetch sources of Scala 2.13 standard library to be used for patching the Scala 3 standard library.
    */
-  val scala2Version = "2.13.18"
+  val scala2Version      = "2.13.18"
+  val scala2NonOptimized = s"$scala2Version-NO-INLINE"
 
   /** Scala 2 pickle annotation descriptors that should be stripped from class files */
   private val Scala2PickleAnnotations = Set(
@@ -45,6 +46,9 @@ object ScalaLibraryPlugin extends AutoPlugin {
   import autoImport._
 
   override def projectSettings = Seq (
+    // Custom resolver providing access to custom scala-library artifacts
+    // Currently using stub, available until Feb 19 2026
+    externalResolvers +=  "Scala 2 no-inlined artifacts" at "https://scala3.westeurope.cloudapp.azure.com/maven2/scala2-noinline/",
     // Settings to validate that JARs don't contain Scala 2 pickle annotations and have valid TASTY attributes
     Compile / packageBin := (Compile / packageBin)
       .map{ jar =>
@@ -62,7 +66,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
       val cache  = stream.cacheDirectory
       val retrieveDir = cache / "scalajs-scalalib" / scalaVersion.value
 
-      val comp = lm.retrieve("org.scala-js" % "scalajs-scalalib_2.13" % s"$scala2Version+$scalaJSVersion", scalaModuleInfo = None, retrieveDir, log)
+      val scalalibArtifact =
+        if (keepSJSIR.value) "org.scala-js" % "scalajs-scalalib_2.13" % s"$scala2Version+$scalaJSVersion"
+        else "org.scala-lang" % "scala-library" % scala2NonOptimized
+
+      val comp = lm.retrieve(scalalibArtifact, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
           .filterNot(_.getPath().contains("javalib"))
           .filter(!_.getPath().contains("scalajs-scalalib_2.13") || keepSJSIR.value)
@@ -360,7 +368,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/jdk/FunctionWrappers$FromJavaLongToDoubleFunction",
     "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction",
     "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator",
-        "scala/runtime/NonLocalReturnControl",
+    "scala/runtime/NonLocalReturnControl",
     "scala/util/hashing/MurmurHash3",
     "scala/util/Sorting",
     )
