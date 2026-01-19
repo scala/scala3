@@ -662,6 +662,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           if param.isUseParam then markFree(arg.nuType.deepCaptureSet, errTree)
     end markFreeTypeArgs
 
+// ---- Check for leakages of reach capabilities ------------------------------
+
     /** If capability `c` refers to a parameter that is not implicitly or explicitly
      *  @use declared, report an error.
      */
@@ -694,13 +696,15 @@ class CheckCaptures extends Recheck, SymTransformer:
                     case tp: TermRef =>
                       report.warning(
                         em"""Reach capability $ref in function result refers to ${tp.symbol}.
-                            |To avoid errors of the form "Local reach capability $ref leaks into capture set ..."
+                            |To avoid errors of the form "Local reach capability $ref leaks into capture scope ..."
                             |you should replace the reach capability with a new capset variable in ${tree.symbol}.""",
                         tree.tpt.srcPos)
                     case _ =>
           case _ =>
         tpt.nuType.foreachPart(checkType, StopAt.Static)
       case _ =>
+
+// ---- Rechecking operations for different kinds of trees----------------------
 
     /** If `tp` (possibly after widening singletons) is an ExprType
      *  of a parameterless method, map Result instances in it to Fresh instances
