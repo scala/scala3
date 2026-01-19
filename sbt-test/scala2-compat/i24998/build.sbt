@@ -5,20 +5,17 @@
 val scala3Version = sys.props("plugin.scalaVersion")
 val scala2Version = sys.props("plugin.scala2Version")
 
-lazy val libNoInline = (project in file ("lib"))
-  .settings(scalaVersion := scala2Version)
-
-lazy val libWithInlines = (project in file ("lib_inline"))
+lazy val lib = (project in file ("lib"))
   .settings(scalaVersion := scala2Version)
   .settings(
     scalacOptions ++= Seq(
       // Yes, if somebody this option its code is non binary compatible https://docs.scala-lang.org/overviews/compiler-options/optimizer.html
-      // We explicitly set it to reach these cases in our rewrites logic
-      "-opt:inline:**",
+      // We explicitly set it to maximize chance of linking errors
+      "-opt:l:inline",
       "-opt-inline-from:**",
     )
   )
 
 lazy val test = (project in file ("main"))
-  .dependsOn(libNoInline, libWithInlines)
+  .dependsOn(lib)
   .settings(scalaVersion := scala3Version)
