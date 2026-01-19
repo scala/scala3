@@ -419,20 +419,6 @@ object CompilationTests extends ParallelTesting {
 
   // Coverage instrumentation support ------------------------------------------
 
-  /** Wraps test flags with coverage instrumentation flags if enabled.
-   *  Creates a unique temporary directory each time it is called.
-   */
-  private def withCoverageFlags(flags: TestFlags): TestFlags =
-    if (Properties.testsInstrumentCoverage) {
-      val coverageDir = Files.createTempDirectory("coverage")
-      val sourceRoot = Paths.get(".").toAbsolutePath.toString
-      flags.and(
-        "-Ycheck:instrumentCoverage",
-        "-coverage-out", coverageDir.toString,
-        "-sourceroot", sourceRoot
-      )
-    } else flags
-
   /** Verifies coverage file exists and is valid for a test source */
   private def verifyCoverageFile(testSource: TestSource): Unit = {
     val flags = testSource.flags.options
