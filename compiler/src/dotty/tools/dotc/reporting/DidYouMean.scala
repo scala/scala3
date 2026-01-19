@@ -6,6 +6,7 @@ import core.*
 import Contexts.*
 import Decorators.*, Symbols.*, Names.*, Types.*, Flags.*
 import typer.ProtoTypes.SelectionProto
+import collection.mutable
 
 /** A utility object to support "did you mean" hinting */
 object DidYouMean:
@@ -46,6 +47,8 @@ object DidYouMean:
       then ctx.outer
       else nextInteresting(ctx.outer)
 
+    val ignoredRootImports = mutable.Set.empty[Symbol]
+
     def recur()(using Context): Unit =
       if ctx eq NoContext then
         () // done
@@ -54,7 +57,7 @@ object DidYouMean:
         if imp.isRootImport && !rootImportOK then
           () // done
         else imp.importSym.info match
-          case ImportType(expr) =>
+          case ImportType(expr) if !ignoredRootImports.contains(expr.symbol) =>
             val candidates = memberCandidates(expr.tpe, isType, isApplied)
             if imp.isWildcardImport then
               for cand <- candidates if !imp.excluded.contains(cand.name.toTermName) do
@@ -67,6 +70,8 @@ object DidYouMean:
               else if !sel.isUnimport then
                 for cand <- candidates if cand.name.toTermName.show == selStr do
                   acc += Binding(sel.rename.likeSpaced(cand.name), cand, expr.tpe)
+            if imp.unimported.exists then
+              ignoredRootImports += imp.unimported
           case _ =>
         recur()(using nextInteresting(ctx))
       else
