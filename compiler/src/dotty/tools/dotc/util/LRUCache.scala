@@ -1,8 +1,8 @@
 package dotty.tools.dotc.util
 
 
-import scala.reflect.ClassTag
-import scala.annotation.tailrec
+import reflect.ClassTag
+import annotation.tailrec
 
 /** A least-recently-used cache for Key -> Value computations
  *  It currently keeps the last 8 associations, but this can be

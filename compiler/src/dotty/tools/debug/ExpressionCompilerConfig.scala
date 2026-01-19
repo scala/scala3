@@ -1,8 +1,12 @@
 package dotty.tools.debug
 
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.SymUtils
 
 import java.{util => ju}
 import ju.function.Consumer
