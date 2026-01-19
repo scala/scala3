@@ -5,7 +5,7 @@ object MurmurHash3Tests {
 
   def apply(): Unit = {
     arrayHashTest()
-
+    arrayHashingTest()
   }
 
   def arrayHashTest() = {
