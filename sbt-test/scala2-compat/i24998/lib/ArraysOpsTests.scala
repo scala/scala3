@@ -9,6 +9,7 @@ object ArraysOpsTests {
   def testSpecializedIterators(): Unit = {
     checkSingleElemIterator(Array(false).iterator)
     checkSingleElemIterator(Array(1: Byte).iterator)
+    checkSingleElemIterator(Array(1: Char).iterator)
     checkSingleElemIterator(Array(1: Short).iterator)
     checkSingleElemIterator(Array(1: Int).iterator)
     checkSingleElemIterator(Array(1: Long).iterator)
@@ -20,6 +21,7 @@ object ArraysOpsTests {
 
   def testSpecializedReverseIterator(): Unit = {
     checkSingleElemIterator(Array(false).reverseIterator)
+    checkSingleElemIterator(Array(1: Char).reverseIterator)
     checkSingleElemIterator(Array(1: Byte).reverseIterator)
     checkSingleElemIterator(Array(1: Short).reverseIterator)
     checkSingleElemIterator(Array(1: Int).reverseIterator)

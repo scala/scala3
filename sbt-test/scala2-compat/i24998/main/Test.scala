@@ -5,5 +5,6 @@ object TestRuntimeCompat  {
     scala.collection.immutable.test.ReadBlackTreeTests()
     EnumerationTests()
     OrderingTests()
+    MurmurHash3Tests()
   }
 }
