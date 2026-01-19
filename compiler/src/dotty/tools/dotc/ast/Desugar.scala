@@ -1486,6 +1486,7 @@ object desugar {
           then cpy.Ident(id)(WildcardParamName.fresh())
           else id
         derivedValDef(span, id1, tpt, rhs, mods)
+
       case _ =>
         // Otherwise, we need a more general approach.
         // Start by listing the variables in the pattern.
@@ -1580,25 +1581,37 @@ object desugar {
           // lower to one assignment for the tuple of items, and one assignment per item to extract the value.
           // e.g., for `val (a, (b, _)) = foo()` we'll get `val $0 = foo() match { case (a, (b, _)) => (a, b) }; val a = $0._1; val b = $0._2`.
           case _ =>
-            // Start with the assignment to the tuple:
-            // create a fresh name,
-            val tmpName = UniqueName.fresh()
-            // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }` does not leak into the API,
-            val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
-            // use the type of the tuple as declared if there is one so we don't lose information,
-            val tupType = pat match
-              case TuplePattern(_, t) => t
-              case _ => TypeTree()
-            // and define the assignment.
-            val firstDef =
-              ValDef(tmpName, tupType, loweredRhs)
-                .withSpan(pat.span.union(rhs.span))
-                .withMods(patMods)
+            // ... except we have one more optimization up our sleeve:
+            // if we're in the "simple tuple" case and the RHS is also a tuple, for `val (a, b) = (1, 2)` we can emit `val a = 1; val b = 2`.
+            // We don't do this if there are any types or wildcards involved, since those can require conversions or handling side-effects.
+            val (firstDef, splitRhs) = rhs match
+              case TuplePattern(elems, TypeTree()) if opt == Optimization.SimpleTuple
+                                                   && elems.size == variables.size
+                                                   && !pat.isInstanceOf[Typed]
+                                                   && variables.forall((n, _) => n.name != nme.WILDCARD) =>
+                (Nil, Left(elems))
+              case _ =>
+                // Start with the assignment to the tuple:
+                // create a fresh name,
+                val tmpName = UniqueName.fresh()
+                // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }` does not leak into the API,
+                val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
+                // use the type of the tuple as declared if there is one so we don't lose information,
+                val tupType = pat match
+                  case TuplePattern(_, t) => t
+                  case _ => TypeTree()
+                // and define the assignment.
+                val firstDef =
+                  ValDef(tmpName, tupType, loweredRhs)
+                    .withSpan(pat.span.union(rhs.span))
+                    .withMods(patMods)
+                (List(firstDef), Right(tmpName))
             // Then, write each assignment, keeping in mind we need special selection if we exceed the max tuple arity,
             val useSelectors = variables.length <= Definitions.MaxTupleArity
-            def selector(idx: Int) =
-              if useSelectors then Select(Ident(tmpName), nme.selectorName(idx))
-              else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
+            def selector(idx: Int) = splitRhs match
+              case Left(elems) => elems(idx)
+              case Right(tmpName) if useSelectors => Select(Ident(tmpName), nme.selectorName(idx))
+              case Right(tmpName) => Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
             // and translating to a `def` or `val` as needed depending on laziness.
             val restDefs =
                 for (((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD)
@@ -1615,7 +1628,7 @@ object desugar {
                         .withSpan(named.span)
                         .withAttachment(PatternVar, ())
                     )
-            flatTree(firstDef :: restDefs)
+            flatTree(firstDef ++ restDefs)
     }
 
   /** Expand variable identifier x to x @ _ */
