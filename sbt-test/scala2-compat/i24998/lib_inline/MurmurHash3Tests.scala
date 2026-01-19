@@ -28,7 +28,6 @@ object MurmurHash3Tests {
     assert(MurmurHash3.arrayHash(Array(1: Double)) != 0)
     assert(MurmurHash3.arrayHash(Array(true: Boolean)) != 0)
     assert(MurmurHash3.arrayHash(Array((): Unit)) != 0)
-
   }
 
   def arrayHashingTest() = {
