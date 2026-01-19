@@ -51,6 +51,7 @@ object desugar {
   val PatternVar: Property.Key[Unit] = Property.StickyKey()
 
   /** An attachment key for Trees originating in for-comprehension, such as tupling of assignments.
+   * (In practice it's also used for general pattern definitions, e.g., `val (a, _, (b, _)) = foo()`)
    */
   val ForArtifact: Property.Key[Unit] = Property.StickyKey()
 
@@ -214,9 +215,8 @@ object desugar {
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val valName = normalizeName(vdef, tpt).asTermName
-    var mods1 = vdef.mods
 
-    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(mods1)
+    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(vdef.mods)
 
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
@@ -1442,11 +1442,11 @@ object desugar {
         ids.map(expand(_, false))
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-      pats1 map (makePatDef(pdef, mods, _, rhs))
+      pats1 map (makePatDef(_, rhs, pdef.span, givenPatternsAllowed = false, overrideMods = Some(mods)))
     }
   }
 
-  /** The selector of a match, which depends of the given `checkMode`.
+  /** The selector of a match, which depends on the given `checkMode`.
    *  @param  sel  the original selector
    *  @return if `checkMode` is
    *           - None              :  sel @unchecked
@@ -1463,166 +1463,160 @@ object desugar {
        | IrrefutableGenFrom => sel.withAttachment(CheckIrrefutable, checkMode)
       // TODO: use `pushAttachment` and investigate duplicate attachment
 
-  case class TuplePatternInfo(arity: Int, varNum: Int, wildcardNum: Int)
-  object TuplePatternInfo:
-    def apply(pat: Tree)(using Context): TuplePatternInfo = pat match
-      case Tuple(pats) =>
-        var arity = 0
-        var varNum = 0
-        var wildcardNum = 0
-        pats.foreach: p =>
-          arity += 1
-          p match
-            case id: Ident if !isBackquoted(id) =>
-              if id.name.isVarPattern then
-                varNum += 1
-                if id.name == nme.WILDCARD then
-                  wildcardNum += 1
-            case _ =>
-        TuplePatternInfo(arity, varNum, wildcardNum)
-      case _ =>
-        TuplePatternInfo(-1, -1, -1)
-  end TuplePatternInfo
-
-  /** If `pat` is a variable pattern,
+  /**
+   * Desugars `pat = rhs` where `pat` is a pattern,
+   * given the `span` the overall pattern def occurs at, whether `given` patterns are allowed
+   * (they are if `rhs` comes from a `GenAlias` but not a `PatDef`),
+   * and optionally the modifiers that should apply to the result, if they can't be taken from `pat` itself.
    *
-   *    val/var/lazy val p = e
-   *
-   *  Otherwise, in case there is exactly one variable x_1 in pattern
-   *   val/var/lazy val p = e  ==>  val/var/lazy val x_1 = (e: @unchecked) match (case p => (x_1))
-   *
-   *   in case there are zero or more than one variables in pattern
-   *   val/var/lazy p = e  ==>  private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
-   *                   val/var/def x_1 = t$._1
-   *                   ...
-   *                   val/var/def x_N = t$._N
-   *  If the original pattern variable carries a type annotation, so does the corresponding
-   *  ValDef or DefDef.
+   * Outputs simpler desugaring if possible, e.g., `(a, b) = (x, y)` does not need the full generalizability of `(a, _, c) = foo()`.
    */
-  def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(using Context): Tree = pat match {
-    case IdPattern(id, tpt) =>
-      val id1 =
-        if id.name == nme.WILDCARD
-        then cpy.Ident(id)(WildcardParamName.fresh())
-        else id
-      derivedValDef(original, id1, tpt, rhs, mods)
-    case _ =>
-
-      def filterWildcardGivenBinding(givenPat: Bind): Boolean =
-        givenPat.name != nme.WILDCARD
-
-      def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
-        report.error(
-          em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
-              |please bind to an identifier and use an alias given.""", bind)
-        false
-
-      val tuplePatternInfo = TuplePatternInfo(pat)
-
-      // When desugaring a PatDef in general, we use pattern matching on the rhs
-      // and collect the variable values in a tuple, then outside the match,
-      // we destructure the tuple to get the individual variables.
-      // We can achieve two kinds of tuple optimizations if the pattern is a tuple
-      // of simple variables or wildcards:
-      // 1. Full optimization:
-      //    If the rhs is known to produce a literal tuple of the same arity,
-      //    we can directly fetch the values from the tuple.
-      //    For example: `val (x, y) = if ... then (1, "a") else (2, "b")` becomes
-      //    `val $1$ = if ...; val x = $1$._1; val y = $1$._2`.
-      // 2. Partial optimization:
-      //    If the rhs can be typed as a tuple and matched with correct arity, we can
-      //    return the tuple itself in the case if there are no more than one variable
-      //    in the pattern, or return the the value if there is only one variable.
-
-      val fullTupleOptimizable =
-        val isMatchingTuple: Tree => Boolean = {
-          case Tuple(es) => tuplePatternInfo.varNum == es.length && !hasNamedArg(es)
-          case _ => false
+  def makePatDef(pat: Tree, rhs: Tree, span: Span, givenPatternsAllowed: Boolean, overrideMods: Option[Modifiers] = None)(using Context): Tree =
+    // First, get the modifiers from the tree, or none if the tree doesn't have any
+    val mods = overrideMods.getOrElse(pat match
+      case defTree: DefTree => defTree.mods
+      case _ => Modifiers()
+    )
+    // Then, check the simplest case: a single identifier bound to the RHS,
+    pat match {
+      case IdPattern(id, tpt) =>
+        // with the caveat that we may need a fresh name to replace a wildcard.
+        val id1 =
+          if id.name == nme.WILDCARD
+          then cpy.Ident(id)(WildcardParamName.fresh())
+          else id
+        derivedValDef(span, id1, tpt, rhs, mods)
+      case _ =>
+        // Otherwise, we need a more general approach.
+        // Start by listing the variables in the pattern.
+        def generalGetVariables = getVariables(pat, b =>
+          if givenPatternsAllowed then
+            b.name != nme.WILDCARD
+          else
+            report.error(em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
+                             |please bind to an identifier and use an alias given.""", b)
+            false
+        )
+        // We can optimize the lowering depending on the pattern and RHS (for some numbers see https://github.com/scala/scala3/pull/23373#issuecomment-3024341826):
+        enum Optimization:
+          // "Simple tuple" optimization:
+          // If we have a tuple LHS with a one-to-one mapping from LHS to RHS tuple elements,
+          // possibly including wildcards, we can use the RHS as-is with `._1` etc. without using `match`.
+          // For instance, `val (a, b, _) = (1, 2, 3)`. (but patterns like `Extract(x = y)` or `(a, (b, _))` don't work)
+          // Exception: This optimization doesn't work in the presence of things that can be deconstructed as tuples but aren't,
+          //            such as named tuples, since we would need to know the item names to access them later,
+          //            and we haven't run the typer yet so all we can do is syntactically check if the RHS is a non-named tuple,
+          //            e.g., `if x then (1, 2) else (3, 4)` is OK.
+          //            In this case, `variables` may contain wildcard names, which we'll ignore when destructuring.
+          //            (Future work: We could obtain field names for named tuple literals and use them)
+          case SimpleTuple
+          // "Matchable tuple" optimization:
+          // Otherwise, we decompose the RHS to have just the parts we care about.
+          // For instance, `val Extractor(name = x) = 42` turns into `42 match { case Extractor(name = x) => x }`,
+          // and `val (a, (b, _), (_, e)) = foo()` turns into `foo() match { case (a, (b, _), (_, e)) => (a, b, e) }`.
+          // If we know the RHS can be matched with a tuple pattern, even if it's a named tuple,
+          // we can simplify the match we emit to not have any variable patterns and just use the type directly.
+          // In this case too, `variables` may contain wildcard names.
+          // Exception: This optimization cannot be used in the presence of the `@unchecked` annotation,
+          //            since given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
+          //            but `val x: List[B @unchecked] = a: @unchecked` is not.
+          //            So we cannot desugar the first one into `(a, 1) match { $1 @ (_: List[B @unchecked], _) => $1 }` because that loses track of the unchecked-ness.
+          case MatchableTuple
+          // If neither optimization applies, we do the fully general `match`.
+          // (Future work: We could try to find an "extractor" for each variable in the LHS&RHS,
+          //                 e.g., `(a, _, (b, _)) = (1, 2, (3, 4))` can obviously be handled without a `match`)
+          case None
+        val (opt, variables) = pat match {
+          case TuplePattern(pats, _) =>
+            // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
+            val allVariables = pats.map {
+              case id: Ident => Some(id, TypeTree())
+              case Typed(id: Ident, tpt) => Some((id, tpt))
+              case _ => None
+            }.flatten
+            if allVariables.size == pats.size then
+              def isMatchingTuple(t: Tree) = t match {
+                case Tuple(elems) => pats.size == elems.length && !hasNamedArg(elems)
+                case _ => false
+              }
+              if forallResults(rhs, isMatchingTuple) then (Optimization.SimpleTuple, allVariables)
+              else if rhs.isInstanceOf[Annotated] then (Optimization.None, generalGetVariables)
+              else (Optimization.MatchableTuple, allVariables)
+            else
+              (Optimization.None, generalGetVariables)
+          case _ => (Optimization.None, generalGetVariables)
         }
-        tuplePatternInfo.arity > 0
-        && tuplePatternInfo.arity == tuplePatternInfo.varNum
-        && forallResults(rhs, isMatchingTuple)
-
-      val partialTupleOptimizable =
-        tuplePatternInfo.arity > 0
-        && tuplePatternInfo.arity == tuplePatternInfo.varNum
-        // We exclude the case where there is only one variable,
-        // because it should be handled by `makeTuple` directly.
-        && tuplePatternInfo.wildcardNum < tuplePatternInfo.arity - 1
-
-      val inAliasGenerator = original match
-        case _: GenAlias => true
-        case _ => false
-
-      val vars: List[VarInfo] =
-        if fullTupleOptimizable || partialTupleOptimizable then // include `_`
-          pat match
-            case Tuple(pats) => pats.map { case id: Ident => (id, TypeTree()) }
-        else
-          getVariables(
-            tree = pat,
-            shouldAddGiven =
-              if inAliasGenerator then
-                filterWildcardGivenBinding
-              else
-                errorOnGivenBinding
-          ) // no `_`
-
-      val ids = for ((named, tpt) <- vars) yield Ident(named.name)
-
-      val matchExpr =
-        if fullTupleOptimizable then rhs
-        else
-          val caseDef =
-            if partialTupleOptimizable then
-              val tmpTuple = UniqueName.fresh()
-              // Replace all variables with wildcards in the pattern
-              val pat1 = pat match
-                case Tuple(pats) =>
-                  val wildcardPats = pats.map(p => Ident(nme.WILDCARD).withSpan(p.span))
-                  Tuple(wildcardPats).withSpan(pat.span)
-              CaseDef(
-                Bind(tmpTuple, pat1),
-                EmptyTree,
-                Ident(tmpTuple).withAttachment(ForArtifact, ())
-              )
-            else CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
-          Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
-
-      vars match {
-        case Nil if !mods.is(Lazy) =>
-          matchExpr
-        case (named, tpt) :: Nil =>
-          derivedValDef(original, named, tpt, matchExpr, mods)
-        case _ =>
-          val tmpName = UniqueName.fresh()
-          val patMods =
-            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
-          val firstDef =
-            ValDef(tmpName, TypeTree(), matchExpr)
-              .withSpan(pat.span.union(rhs.span)).withMods(patMods)
-          val useSelectors = vars.length <= 22
-          def selector(n: Int) =
-            if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
-            else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(n)) :: Nil)
-          val restDefs =
-            for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
-            yield
-              if mods.is(Lazy) then
-                DefDef(named.name.asTermName, Nil, tpt, selector(n))
-                  .withMods(mods &~ Lazy)
-                  .withSpan(named.span)
-                  .withAttachment(PatternVar, ())
-              else
-                valDef(
-                  ValDef(named.name.asTermName, tpt, selector(n))
-                    .withMods(mods)
-                    .withSpan(named.span)
-                    .withAttachment(PatternVar, ())
-                )
-          flatTree(firstDef :: restDefs)
-      }
-  }
+        // Now that we have necessary info, define the actual RHS of the resulting assignment.
+        // We attach `ForArtifact` to tuples we create so our lowered code plays nice with "unused code" warnings later in the pipeline
+        val loweredRhs = opt match
+          // In the simple tuple case, we use the RHS as-is.
+          case Optimization.SimpleTuple =>
+            rhs
+          // In the matchable tuple case, we use a pattern but replace all names in it with wildcards, name the overall pattern, and use that name.
+          case Optimization.MatchableTuple =>
+            val patAsWildcard = pat match
+              case TuplePattern(pats, _) =>
+                val wildcardPats = pats.map(p => Ident(nme.WILDCARD).withSpan(p.span))
+                Tuple(wildcardPats).withSpan(pat.span)
+            val tmpTuple = UniqueName.fresh()
+            val caseDef = CaseDef(Bind(tmpTuple, patAsWildcard), EmptyTree, Ident(tmpTuple).withAttachment(ForArtifact, ()))
+            Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+          // In the general case, we must name each individual item we want to extract.
+          case Optimization.None =>
+            val ids = for (n, _) <- variables yield Ident(n.name)
+            val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
+            Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+        // Finally, we can return the lowered pat def.
+        variables match
+          // If there are no items at all in the LHS, we don't need any assignment, unless the LHS is lazy.
+          // (e.g., if we have `val (_, _) = foo()` we can lower to `foo()`, but `lazy val (_, _) = foo()` cannot do that)
+          // (we could special case "lazy with only wildcards" to lower to nothing, but that does not seem like a common thing to do, since it's entirely pointless)
+          case Nil if !mods.is(Lazy) =>
+            loweredRhs
+          // If there's a single non-wildcard variable in the LHS, lower to a single assignment.
+          case (named, tpt) :: Nil =>
+            derivedValDef(span, named, tpt, loweredRhs, mods)
+          // With more than one item, we need the more general case:
+          // lower to one assignment for the tuple of items, and one assignment per item to extract the value.
+          // e.g., for `val (a, (b, _)) = foo()` we'll get `val $0 = foo() match { case (a, (b, _)) => (a, b) }; val a = $0._1; val b = $0._2`.
+          case _ =>
+            // Start with the assignment to the tuple:
+            // create a fresh name,
+            val tmpName = UniqueName.fresh()
+            // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }` does not leak into the API,
+            val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
+            // use the type of the tuple as declared if there is one so we don't lose information,
+            val tupType = pat match
+              case TuplePattern(_, t) => t
+              case _ => TypeTree()
+            // and define the assignment.
+            val firstDef =
+              ValDef(tmpName, tupType, loweredRhs)
+                .withSpan(pat.span.union(rhs.span))
+                .withMods(patMods)
+            // Then, write each assignment, keeping in mind we need special selection if we exceed the max tuple arity,
+            val useSelectors = variables.length <= Definitions.MaxTupleArity
+            def selector(idx: Int) =
+              if useSelectors then Select(Ident(tmpName), nme.selectorName(idx))
+              else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
+            // and translating to a `def` or `val` as needed depending on laziness.
+            val restDefs =
+                for (((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD)
+                yield
+                  if mods.is(Lazy) then
+                    DefDef(named.name.asTermName, Nil, tpt, selector(idx))
+                      .withMods(mods &~ Lazy)
+                      .withSpan(named.span)
+                      .withAttachment(PatternVar, ())
+                  else
+                    valDef(
+                      ValDef(named.name.asTermName, tpt, selector(idx))
+                        .withMods(mods)
+                        .withSpan(named.span)
+                        .withAttachment(PatternVar, ())
+                    )
+            flatTree(firstDef :: restDefs)
+    }
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(using Context): Bind = {
@@ -2009,10 +2003,10 @@ object desugar {
       ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
     FunctionWithMods(params, body, Modifiers(Given), erasedParams)
 
-  private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
+  private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
-      .withSpan(original.span.withPoint(named.span.start))
+      .withSpan(originalSpan.withPoint(named.span.start))
       .withAttachment(PatternVar, ())
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
@@ -2113,7 +2107,7 @@ object desugar {
        */
       def makeLambda(gen: GenFrom, body: Tree): Tree = gen.pat match {
         case IdPattern(named, tpt) if gen.checkMode != GenCheckMode.FilterAlways =>
-          Function(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
+          Function(derivedValDef(gen.pat.span, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
@@ -2276,14 +2270,12 @@ object desugar {
               else mapName
             Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
           else
-            val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
+            val pats = valeqs map { case GenAlias(pat, _) => pat }
             val (defpat0, id0) = makeIdPat(gen.pat)
-            val (defpats, ids) = pats.map(makeIdPat).unzip
-            val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map: (valeq, defpat, rhs) =>
-              val mods = defpat match
-                case defTree: DefTree => defTree.mods
-                case _ => Modifiers()
-              makePatDef(valeq, mods, defpat, rhs)
+            val (defpats, ids) = (pats map makeIdPat).unzip
+            val pdefs = valeqs.lazyZip(defpats).map { case (valeq@GenAlias(_, rhs), defpat) =>
+              makePatDef(defpat, rhs, valeq.span, givenPatternsAllowed = true)
+            }
             val rhs1 =
               val enums = GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil
               val body = Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ()))
@@ -2305,13 +2297,9 @@ object desugar {
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case enums @ GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
           val (valeqs, suffix) = enums.span(_.isInstanceOf[GenAlias])
-          val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
-          val (defpats, ids) = pats.map(makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map: (valeq, defpat, rhs) =>
-            val mods = defpat match
-              case defTree: DefTree => defTree.mods
-              case _ => Modifiers()
-            makePatDef(valeq, mods, defpat, rhs)
+          val pdefs = valeqs.map { case valeq @ GenAlias(pat, rhs) =>
+            makePatDef(makeIdPat(pat)._1, rhs, valeq.span, givenPatternsAllowed = true)
+          }
           Block(pdefs, makeFor(mapName, flatMapName, enums = suffix, body))
         case _ =>
           EmptyTree //may happen for erroneous input
@@ -2369,7 +2357,7 @@ object desugar {
         makeFor(nme.map, nme.flatMap, enums, body) `orElse` tree
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-        flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
+        flatTree(pats1 map (makePatDef(_, rhs, tree.span, givenPatternsAllowed = false, overrideMods = Some(mods))))
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
@@ -2483,7 +2471,7 @@ object desugar {
   }
 
   /** Returns list of all pattern variables, possibly with their types,
-   *  without duplicates
+   *  without duplicates.
    */
   private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
     val buf = ListBuffer.empty[VarInfo]
