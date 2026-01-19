@@ -2229,10 +2229,15 @@ class Namer { typer: Typer =>
         // `default-getter-variance.scala`.
         AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot, sym.span))
       else
+        inline def isJavaEnumValue = tp match
+          case tp: TermRef => tp.termSymbol.isAllOf(JavaDefined | Enum)
+          case _ => false
         // don't strip @uncheckedVariance annot for default getters
         TypeOps.simplify(tp.widenTermRefExpr,
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null)
         match
+          // For final members pointing to Java enum values, preserve the singleton type. See i24750.
+          case _ if sym.is(Final) && isJavaEnumValue => tp
           case ctp: ConstantType if sym.isInlineVal => ctp
           case tp if isTracked => tp
           case tp => TypeComparer.widenInferred(tp, pt, Widen.Unions)
