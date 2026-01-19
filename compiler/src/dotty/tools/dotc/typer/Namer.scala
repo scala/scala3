@@ -2221,7 +2221,7 @@ class Namer { typer: Typer =>
         // `default-getter-variance.scala`.
         AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot, sym.span))
       else
-        val isJavaEnumValue = tp match
+        inline def isJavaEnumValue = tp match
           case tp: TermRef => tp.termSymbol.isAllOf(JavaDefined | Enum)
           case _ => false
         // don't strip @uncheckedVariance annot for default getters
