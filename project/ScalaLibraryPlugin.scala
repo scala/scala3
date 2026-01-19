@@ -3,14 +3,19 @@ package dotty.tools.sbtplugin
 import sbt.*
 import sbt.Keys.*
 import sbt.io.Using
-import scala.jdk.CollectionConverters.*
+import sbt.librarymanagement.ModuleFilter
 import scala.collection.mutable
 import java.io.File
 import java.nio.file.Files
 import java.nio.ByteBuffer
 import xsbti.VirtualFileRef
 import sbt.internal.inc.Stamper
+import scala.jdk.CollectionConverters.*
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
+import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin
+import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkCheck
+import com.spotify.missinglink.Conflict
+
 import org.objectweb.asm.*
 
 import dotty.tools.tasty.TastyHeaderUnpickler
@@ -18,6 +23,7 @@ import dotty.tools.tasty.TastyHeaderUnpickler
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
+  override def requires: Plugins = MissingLinkPlugin
 
   /** Version of the compatible Scala 2.13 scala-library
    *  Should be updated when we synchronize with the sources of Scala 2.
@@ -25,7 +31,6 @@ object ScalaLibraryPlugin extends AutoPlugin {
    *  This version would be used to fetch sources of Scala 2.13 standard library to be used for patching the Scala 3 standard library.
    */
   val scala2Version      = "2.13.18"
-  val scala2NonOptimized = s"$scala2Version-NO-INLINE"
 
   /** Scala 2 pickle annotation descriptors that should be stripped from class files */
   private val Scala2PickleAnnotations = Set(
@@ -116,6 +121,43 @@ object ScalaLibraryPlugin extends AutoPlugin {
       previous
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
         .withHasModified(true)  // mark it as updated for sbt to update its caches
+    },
+    // The default sbt plugin has no way to filter out problems by class
+    // We need to redefine it which requires reflective access
+    Compile / missinglinkCheck := {
+      val log = streams.value.log
+      val cp = (Compile / fullClasspath).value
+      val classDir = (Compile / classDirectory).value
+
+      val conflicts: Seq[Conflict] = {
+        val method = MissingLinkPlugin.getClass.getDeclaredMethods()
+          .find(_.getName == "loadArtifactsAndCheckConflicts")
+          .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
+        method.setAccessible(true)
+        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log)
+          .asInstanceOf[Seq[Conflict]]
+      }
+
+      val filteredConflicts = conflicts.filterNot { conflict =>
+        MissingLinkFilters.excludedClassFiles.contains(
+          conflict.dependency().fromClass().getClassName()
+        )
+      }
+
+      if (filteredConflicts.isEmpty) {
+        log.info(s"No conflicts found, filtered out ${conflicts.size} problems.")
+      } else {
+        val filteredTotal = filteredConflicts.length
+        log.error(s"$filteredTotal conflicts found!")
+        locally {
+          val method = MissingLinkPlugin.getClass.getDeclaredMethods()
+            .find(_.getName == "outputConflicts")
+            .getOrElse(sys.error("MissingLinkPlugin.outputConflicts not found"))
+          method.setAccessible(true)
+          method.invoke(MissingLinkPlugin, filteredConflicts, log)
+        }
+        throw new MessageOnlyException(s"There were $filteredTotal conflicts")
+      }
     }
   )
 
@@ -545,4 +587,22 @@ object ScalaLibraryPlugin extends AutoPlugin {
     }(Set(scalaLibSourcesJar))
     targetDir
   }
+}
+
+object MissingLinkFilters {
+  val excludedClassFiles = Set(
+    // All these are copied from Scala 2,
+    // it should never be reachable unless code has heavily inlined
+    // which itself is not binary compatible
+    "scala.Enumeration$ValueSet$$anon$1",
+    "scala.collection.Iterator$$anon$3$$anon$4$$anon$5",
+    "scala.collection.Iterator$$anon$3$$anon$4",
+    "scala.collection.LazyZip2$$anon$7$$anon$8",
+    "scala.collection.LazyZip3$$anon$15$$anon$16",
+    "scala.collection.LazyZip4$$anon$23$$anon$24",
+    "scala.collection.immutable.RedBlackTree$partitioner$1$",
+    "scala.math.Ordering$$anonfun$orElse$2",
+    "scala.math.Ordering$$anonfun$orElseBy$2",
+    "scala.util.control.Exception$$anonfun$pfFromExceptions$1",
+  )
 }
