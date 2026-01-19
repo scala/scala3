@@ -1476,7 +1476,7 @@ trait Implicits:
 
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
-                if fail eq ImplicitSearchTooLargeFailure then
+                if (fail eq ImplicitSearchTooLargeFailure) || fail.reason.isInstanceOf[DivergingImplicit] then
                   fail
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
