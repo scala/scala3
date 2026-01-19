@@ -409,7 +409,7 @@ jobs:
       - name: Report MiMa issues in `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/mimaReportBinaryIssues
 
-  mima-scala-library-bootstrapped:
+  static-analysis-scala-library-bootstrapped:
     runs-on: ubuntu-latest
     needs: scala-library-bootstrapped
     steps:
@@ -426,6 +426,9 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Report MiMa issues in `scala-library-bootstrapped`
         run: ./project/scripts/sbt scala-library-bootstrapped/mimaReportBinaryIssues
+
+      - name: Report missingLink checks
+        run: ./project/scripts/sbt scala-library-bootstrapped/missinglinkCheck
 
   mima-tasty-core-bootstrapped:
     runs-on: ubuntu-latest
