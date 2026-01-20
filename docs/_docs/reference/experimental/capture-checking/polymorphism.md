@@ -60,8 +60,6 @@ Here, `X^` is a _capture-set variable_. It may appear inside capture sets throug
 The field listeners holds exactly the listeners that capture X, and register only accepts such
 listeners.
 
-Capture-set variables `X^` without user-annotated bounds by default range over the interval `>: {} <: {caps.cap}` which is the universe of capture sets instead of regular types.
-
 #### Under the hood
 
 Capture-set variables without user-provided bounds range over the interval
@@ -73,11 +71,11 @@ Under the hood, a capture-set variable is implemented as a normal type parameter
 class Source[X >: CapSet <: CapSet^]:
   ...
 ```
-`CapSet` is a sealed marker trait in `caps` used internally to distinguish capture-set variables.
-It cannot be instantiated or extended; in non–capture-checked code, `CapSet^{a}` and `CapSet^{a,b}`
+`CapSet` is a sealed marker trait in `caps` used internally to distinguish capture-set variables. It
+cannot be instantiated or extended; in non-capture-checked code, `CapSet^{a}` and `CapSet^{a,b}`
 erase to plain `CapSet`, while with capture checking enabled their capture sets remain distinct.
-This representation is an implementation detail and should not be used directly, as `CapSet`
-might be erased entirely by the compiler in the future.
+This representation is an implementation detail and should not be used directly, as `CapSet` might
+be erased entirely by the compiler in the future.
 
 #### Instantiation and inference
 Capture-set variables are inferred in the same way as ordinary type variables.
