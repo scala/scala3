@@ -1187,6 +1187,20 @@ object Build {
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       Compile / mainClass := None,
+
+      Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
+      // We do not want to list any dependency for the stdlib
+      pomPostProcess := { (node: XmlNode) =>
+        new RuleTransformer(new RewriteRule {
+          override def transform(node: XmlNode): XmlNodeSeq = node match {
+            case e: Elem if e.label == "dependencies" => XmlNodeSeq.Empty
+            case _ => node
+          }
+        }).transform(node).head
+      },
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1257,6 +1271,20 @@ object Build {
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       bspEnabled := enableBspAllProjects,
       Compile / mainClass := None,
+
+      Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
+      // We do not want to list any dependency for the stdlib
+      pomPostProcess := { (node: XmlNode) =>
+        new RuleTransformer(new RewriteRule {
+          override def transform(node: XmlNode): XmlNodeSeq = node match {
+            case e: Elem if e.label == "dependencies" => XmlNodeSeq.Empty
+            case _ => node
+          }
+        }).transform(node).head
+      },
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
