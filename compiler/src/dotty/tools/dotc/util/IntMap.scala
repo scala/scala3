@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 import scala.compiletime.uninitialized
 
-/** A dense map from some `Key` type to `Int. Dense means: All keys and values
+/** A dense map from some `Key` type to `Int`. Dense means: All keys and values
  *  are stored in arrays from 0 up to the size of the map. Keys and values
  *  can be obtained by index using `key(index)` and `value(index)`. Values
  *  can also be stored using `setValue(index, value)`.

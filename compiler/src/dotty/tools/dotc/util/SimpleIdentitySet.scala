@@ -1,6 +1,5 @@
 package dotty.tools.dotc.util
 
-
 import collection.mutable
 
 /** A simple linked set with `eq` as the comparison, optimized for small sets.

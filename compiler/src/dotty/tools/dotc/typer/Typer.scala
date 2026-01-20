@@ -34,7 +34,7 @@ import util.Spans.*
 import util.chaining.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
+import Applications.{wrapDefs, defaultArgument}
 
 import collection.mutable
 import Implicits.*
@@ -48,13 +48,11 @@ import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.{CheckCaptures, isRetainsLike}
-import config.Config
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
-import dotty.tools.dotc.ast.untpd.Mod
 
 object Typer {
 
@@ -110,7 +108,6 @@ object Typer {
    */
   private[typer] val HiddenSearchFailure = new Property.Key[List[SearchFailure]]
 
-
   /** An attachment on a Typed node. Indicates that the Typed node was synthetically
    *  inserted by the Typer phase. We might want to remove it for the purpose of inlining,
    *  but only if it was not manually inserted by the user.
@@ -125,6 +122,9 @@ object Typer {
     case TypeApply(fn, targs) => isSyntheticApply(fn) && targs.forall(_.isInstanceOf[tpd.InferredTypeTree])
     case _ => false
   }
+
+  /** Hoisted out for performance */
+  private val alwaysWildcardType: Any => WildcardType.type = Function.const(WildcardType)
 
   /** Add `fail` to the list of search failures attached to `tree` */
   def rememberSearchFailure(tree: tpd.Tree, fail: SearchFailure) =

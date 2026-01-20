@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package printing
 
-import scala.collection.mutable
-
 import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
@@ -19,7 +17,7 @@ object Formatting {
 
   /** Delay a Context => T computation so that it is generated from the embedded
    *  context of a string formatter instead of the enclosing context. This is needed
-   *  to make disambiguation work for such embedded computatons.
+   *  to make disambiguation work for such embedded computations.
    */
   def delay[T](fn: Context ?=> T): Delay[T] = new Delay[T]:
     def apply(c: Context) = fn(using c)

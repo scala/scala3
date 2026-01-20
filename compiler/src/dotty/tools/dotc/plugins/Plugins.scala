@@ -4,13 +4,11 @@ package plugins
 import core.*
 import Contexts.*
 import Decorators.em
-import config.{ PathResolver, Feature }
+import config.PathResolver
 import dotty.tools.io.*
 import Phases.*
 import config.Printers.plugins.{ println => debug }
 import config.Properties
-
-import scala.compiletime.uninitialized
 
 /** Support for run-time loading of compiler plugins.
  *
