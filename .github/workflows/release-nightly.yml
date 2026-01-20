@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
 
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
 jobs:
 
   ## TODO: Add the compilation pipeline here
@@ -18,3 +21,60 @@ jobs:
     with:
       environment: release-nightly
     secrets: inherit
+
+  nightly_documentation:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2024-10-18
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    needs: [release-maven-artifacts]
+    env:
+      NIGHTLYBUILD: yes
+    steps:
+      - name: Reset existing repo
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v6
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - uses: sbt/setup-sbt@v1
+
+      - name: Generate Website
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          ./project/scripts/genDocs -doc-snapshot
+
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SCALA_APP_ID }}
+          private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}
+          owner: scala
+          repositories: nightly.scala-lang.org
+
+      - name: Deploy Website to https://nightly.scala-lang.org
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ steps.app-token.outputs.token }}
+          publish_dir: docs/_site
+          external_repository: scala/nightly.scala-lang.org
+          publish_branch: main

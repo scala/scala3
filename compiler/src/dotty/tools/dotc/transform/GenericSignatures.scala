@@ -260,6 +260,7 @@ object GenericSignatures {
 
     @noinline
     def jsig(tp0: Type, toplevel: Boolean = false, unboxedVCs: Boolean = true): Unit = {
+      println(s"jsig: $tp0, toplevel: $toplevel, unboxedVCs: $unboxedVCs")
       inline def jsig1(tp0: Type): Unit = jsig(tp0, toplevel = false, unboxedVCs = true)
 
       val tp = tp0.dealias
