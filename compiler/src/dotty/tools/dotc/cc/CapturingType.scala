@@ -37,6 +37,9 @@ object CapturingType:
     if refs.isAlwaysEmpty && !refs.keepAlways && !parent.derivesFromCapability then
       parent
     else parent match
+      case parent @ CapturingType(parent1, refs1) if refs == CaptureSet.Fluid =>
+        // <fluid> displaces existing capture sets whether boxed or not
+        apply(parent1, refs, boxed)
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
