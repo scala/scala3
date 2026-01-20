@@ -113,7 +113,9 @@ class SourceLinks(private val sourceLinks: PathBased[SourceLink]):
 
   def fullPath(path: Path): Option[Path] =
     sourceLinks.get(path).map { case PathBased.Result(path, elem) => elem match
-      case e: WebBasedSourceLink => Paths.get(e.subPath, path.toString)
+      case e: WebBasedSourceLink =>
+        val normalizedSubPath = e.subPath.stripPrefix("/")
+        Paths.get(normalizedSubPath, path.toString)
       case _ => path
     }
 
