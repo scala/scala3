@@ -141,7 +141,7 @@ permits capabilities to escape their level for situations where this would be de
 ### Local Caps of Classes
 
 A class receives its own local `cap` for the scope of its body. This `cap` serves as a template for
-a fresh `cap` that will be attached to each instance of the class. Inside the class body, references
+a new `cap` that will be attached to each instance of the class. Inside the class body, references
 to the class's `cap` are implicitly prefixed by the path `this`:
 
 ```scala
@@ -169,13 +169,13 @@ class Logger(fs: FileSystem^) extends Super: // local cap₂
 As explained in [Capture Checking of Classes](classes.md), the capture checker infers and verifies
 constraints on the contents of a class's `cap` through its self-type, reporting any inconsistencies.
 
-When creating an instance, the class's template `cap` is substituted with a fresh `cap` specific to
+When creating an instance, the class's template `cap` is substituted with a new `cap` specific to
 the new object:
 
 ```scala
 def test(fs: FileSystem^) = /* local cap₁ */
-  val logger1 = Logger(fs)  // Fresh logger1.cap for this instance, capturing fs
-  val logger2 = Logger(fs)  // Fresh logger2.cap, distinct from logger1.cap
+  val logger1 = Logger(fs)  // New logger1.cap for this instance, capturing fs
+  val logger2 = Logger(fs)  // New logger2.cap, distinct from logger1.cap
 ```
 Note that the `cap`s attached to `logger1` and `logger2` subsume the local `cap` of method `test` in accordance
 to the rules outlined earlier.
@@ -273,10 +273,10 @@ determines the binding structure automatically from where `cap` appears in the t
 #### Summary
 
   - If a function result type follows a named parameter list and contains covariant occurrences of
-    `cap`, we replace these occurrences with a fresh existential variable which is bound by a
+    `cap`, we replace these occurrences with a new existential variable which is bound by a
     quantifier scoping over the result type.
   - If a function parameter type contains covariant occurrences of `cap`, we replace these
-    occurrences with a fresh existential variable scoping over the parameter type.
+    occurrences with a new existential variable scoping over the parameter type.
   - Occurrences of `cap` elsewhere are not translated. They can be seen as representing an
     existential in the scope of the definition in which they appear.
 
