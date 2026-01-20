@@ -1,7 +1,6 @@
 // Local selective testing:
-// scala-cli package --library -S 2.13 sbt-test/scala2-compat/i24998/lib -f -o test-lib.jar
-// scala-cli package --library -S 2.13 sbt-test/scala2-compat/i24998/lib_inline -O -opt:l:inline -O '-opt-inline-from:scala/**' -f -o test-lib-inline.jar
-// scala-cli run -S 3.8 sbt-test/scala2-compat/i24998/main --jar test-lib.jar test-lib-inline.jar
+// scala-cli package --library -S 2.13 sbt-test/scala2-compat/i24998/lib -O -opt:l:inline -O '-opt-inline-from:scala/**' -f -o test-lib.jar
+// scala-cli run -S 3.8 sbt-test/scala2-compat/i24998/main --jar test-lib.jar
 val scala3Version = sys.props("plugin.scalaVersion")
 val scala2Version = sys.props("plugin.scala2Version")
 
