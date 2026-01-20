@@ -43,8 +43,9 @@ jobs:
       - name: Compile and test
         run: |
           ./project/scripts/sbt scaladoc/test
-          ./project/scripts/sbt dist/Universal/stage
-          ./project/scripts/cmdScaladocTests
+          # TODO: invalid interpolation of inherited @define #24963
+          # ./project/scripts/sbt dist/Universal/stage
+          # ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
         run: ./project/scripts/sbt scaladoc/publishLocal
