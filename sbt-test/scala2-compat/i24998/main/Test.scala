@@ -4,10 +4,10 @@ object TestRuntimeCompat  {
     ArraysOpsTests()
     RangeTests()
     EnumerationTests()
+    MurmurHash3Tests()
 
     // Failed only in optimized and heavily inlined
     scala.collection.immutable.test.ReadBlackTreeTests()
     OrderingTests()
-    MurmurHash3Tests()
   }
 }
