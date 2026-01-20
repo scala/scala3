@@ -1,3 +1,3 @@
 object Foo {
-  val (A, B) = () // error // error
+  val (A, B) = () // error
 }
