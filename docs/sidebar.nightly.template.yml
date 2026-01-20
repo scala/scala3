@@ -30,6 +30,7 @@ subsection:
         subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
+          - page: contributing/procedures/contributing-to-stdlib.md
       - title: High Level Architecture
         directory: architecture
         index: contributing/architecture/index.md
