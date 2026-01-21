@@ -1,3 +1,5 @@
+import caps.fresh
+
 class File:
   def write(): Unit = ???
 
@@ -62,7 +64,8 @@ def attack2 =
     f1
 
 def attack3 =
-  val id: (x: File^) -> File^ = x => x // was error, now OK
+  val id: (x: File^) -> File^{fresh} = x => x // was error, now OK
+  val id2: File^ -> File^{fresh} = x => x // now also OK
 
   val leaked = usingFile[File^{id*}]: f =>
     val f1: File^{id*} = id(f)   // error

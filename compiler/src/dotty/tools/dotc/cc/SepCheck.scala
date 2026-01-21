@@ -192,7 +192,7 @@ object SepCheck:
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
           else newElem.stripRestricted.stripReadOnly match
-            case _: FreshCap if !newElem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
+            case _: LocalCap if !newElem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
               val hiddens = if followHidden then newElem.hiddenSet.toList else Nil
               recur(seen + newElem, acc + newElem, hiddens ++ newElems1)
             case _ if newElem.isTerminalCapability =>
@@ -221,7 +221,7 @@ object SepCheck:
       completeFootprint.peaks
 
     /** The shared elements between the peak sets `refs` and `other`.
-     *  These are the core capabilities and fresh capabilities that appear
+     *  These are the core capabilities and LocalCap capabilities that appear
      *  in a (possibly classified or readOnly) version in both sets and that
      *  that appear in a non-readOnly version in at least one of the sets.
      */
@@ -231,7 +231,7 @@ object SepCheck:
         refs1.foreach: ref =>
           if !ref.isReadOnly then
             val coreRef = ref.stripRestricted
-            if refs2.exists(_.stripRestricted.stripReadOnly.coversFresh(coreRef)) then
+            if refs2.exists(_.stripRestricted.stripReadOnly.coversLocalCap(coreRef)) then
               acc += coreRef
         acc
       assert(refs.forall(_.isTerminalCapability))
@@ -290,7 +290,7 @@ object SepCheck:
         else refs
 
     /** The non-terminal elements hidden directly or indirectly by a terminal
-     *  capability in `refs`. E g. if `R = {x, <cap hiding <y, <cap hiding z>>}` then
+     *  capability in `refs`. E g. if `R = {x, <any hiding <y, <any hiding z>>}` then
      *  its hidden set is `{y, z}`.
      */
     private def transHiddenSet(using Context): Refs =
@@ -346,7 +346,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
 
   /** The deep capture set of an argument or prefix widened to the formal parameter, if
-   *  the latter contains a cap.
+   *  the latter contains an `any`.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
     arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
@@ -367,9 +367,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val shared = hiddenFootprint.overlapWith(clashFootprint).reduced
     if shared.isEmpty then i"${CaptureSet(shared)}"
     else shared.nth(0) match
-      case fresh: FreshCap =>
-        val where = if ctx.settings.YccVerbose.value then "" else i" of ${fresh.ccOwnerStr}"
-        i"{$fresh$where}"
+      case localCap: LocalCap =>
+        if ctx.settings.YccVerbose.value then i"{$localCap}"
+        else i"{`$localCap` of ${localCap.ccOwnerStr}}"
       case _ =>
         i"${CaptureSet(shared)}"
 
@@ -488,7 +488,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  capability in later arguments, if the corresponding formal parameter mentions
    *  the parameter where the capability was hidden. For instance in
    *
-   *    def seq(x: () => Unit; y ->{cap, x} Unit): Unit
+   *    def seq(x: () => Unit; y ->{any, x} Unit): Unit
    *    def f: () ->{io} Unit
    *
    *  we do allow `seq(f, f)` even though `{f, io}` is in the hidden set of the
@@ -577,13 +577,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         val lhsOwner = lhsType.pathOwner
 
         /** A reference escapes into an outer var if it would have produced a
-         *  level error if it did not have an Unscoped, unprefixed FreshCap
+         *  level error if it did not have an Unscoped, unprefixed LocalCap
          *  in some underlying capture set.
          */
         def escapes(ref: Capability): Boolean = ref.pathRoot match
-          case ref @ FreshCap(NoPrefix)
+          case ref @ LocalCap(NoPrefix)
           if ref.classifier.derivesFrom(defn.Caps_Unscoped) =>
-            // we have an escaping reference if the FreshCap's adjustded owner
+            // we have an escaping reference if the LocalCap's adjustded owner
             // is properly contained inside the scope of the variable.
             ref.adjustOwner(ref.ccOwner).isProperlyContainedIn(lhsOwner)
           case _ =>
@@ -652,7 +652,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     case _ => emptyRefs
 
   /** Check validity of consumed references `refsToCheck`. The references are consumed
-   *  because they are hidden in a Fresh result type or they are referred
+   *  because they are hidden in a LocalCap result type or they are referred
    *  to in an argument to a consume parameter or in a prefix of a consume method --
    *  which one applies is determined by the role parameter.
    *
@@ -824,7 +824,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               c.add(c1)
             case t @ CapturingType(parent, cs) =>
               val c1 = this(c, parent)
-              if cs.elems.exists(_.core.isInstanceOf[FreshCap]) then c1.add(Captures.Hidden)
+              if cs.elems.exists(_.core.isInstanceOf[LocalCap]) then c1.add(Captures.Hidden)
               else if !cs.elems.isEmpty then c1.add(Captures.Explicit)
               else c1
             case t: TypeRef if t.symbol.isAbstractOrParamType =>
@@ -835,13 +835,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t =>
               foldOver(c, t)
 
-    /** Check that no fresh caps from the bounds of parameters or abstract types
+    /** Check that no LocalCaps from the bounds of parameters or abstract types
      *  are hidden in the result. See issue #24539
      */
     def checkNoTParamBounds(refsToCheck: Refs, descr: => String, pos: SrcPos): Unit =
       for ref <- refsToCheck do
         ref match
-          case ref: FreshCap =>
+          case ref: LocalCap =>
             ref.origin match
               case Origin.InDecl(sym) if sym.isAbstractOrParamType =>
                 report.error(
@@ -898,7 +898,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The inter-parameter dependencies of the function reference `fn` applied
    *  to the argument lists `argss`. For instance, if `f` has type
    *
-   *    f(x: A, y: B^{cap, x}, z: C^{x, y}): D
+   *    f(x: A, y: B^{any, x}, z: C^{x, y}): D
    *
    *  then the dependencies of an application `f(a, b, c)` of type C^{y} is the map
    *

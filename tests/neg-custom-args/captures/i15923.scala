@@ -5,7 +5,7 @@ def mkId[X](x: X): Id[X] = Id([T] => (op: X => T) => op(x))
 def bar() = {
   def withCap[X](op: (lcap: caps.Capability) ?-> Cap^{lcap} => X): X = {
     val cap: Cap = new Cap { def use() = { println("cap is used"); 0 } }
-    val result = op(using caps.cap)(cap)
+    val result = op(using caps.any)(cap)
     result
   }
 
@@ -20,7 +20,7 @@ object test2:
   def bar() = {
     def withCap[X](op: (lcap: caps.Capability) ?-> Cap^{lcap} => X): X = {
       val cap: Cap = new Cap { def use() = { println("cap is used"); 0 } }
-      val result = op(using caps.cap)(cap)
+      val result = op(using caps.any)(cap)
       result
     }
 

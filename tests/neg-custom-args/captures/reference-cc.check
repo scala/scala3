@@ -1,27 +1,27 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:29 ---------------------------------
 44 |  val later = usingLogFile { file => () => file.write(0) } // error
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability file outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
+   |Capability `file` outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (file: java.io.FileOutputStream^'s2) ->'s3 () ->{file} Unit
    |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
-   |          ^  refers to the universal root capability
+   |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:47:25 ---------------------------------
 47 |  val xs = usingLogFile: f => // error
    |                         ^
-   |Capability f outlives its scope: it leaks into outer capture set 's4 which is owned by value xs.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's4 which is owned by value xs.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 LzyList[Int]^{f}
    |Required: java.io.FileOutputStream^ => LzyList[Int]^'s4
    |
-   |where:    => refers to a fresh root capability created in value xs when checking argument to parameter op of method usingLogFile
-   |          ^  refers to the universal root capability
+   |where:    => refers to a root capability created in value xs when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the root capability caps.any
    |
 48 |    LzyList(1, 2, 3).map { x => f.write(x); x * x }
    |
@@ -30,11 +30,11 @@
 58 |    try () => xs.map(f).sum  // error TODO improve error message
    |        ^^^^^^^^^^^^^^^^^^^
    |Found:    () ->{canThrow$1} Double
-   |Required: () => Double
+   |Required: () ->{any} Double
    |
-   |Note that capability canThrow$1 is not included in capture set {cap}
-   |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from cap in an enclosing function.
+   |Note that capability `canThrow$1` is not included in capture set {any}
+   |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from any in method escaped.
    |
-   |where:    => and cap refer to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
+   |where:    any is a root capability in the result type of method escaped
    |
    | longer explanation available when compiling with `-explain`

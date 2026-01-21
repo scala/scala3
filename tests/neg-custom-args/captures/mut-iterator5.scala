@@ -1,4 +1,4 @@
-import caps.{cap, Stateful, SharedCapability}
+import caps.{any, Stateful, SharedCapability}
 
 trait Iterator[T] extends Stateful:
   def hasNext: Boolean

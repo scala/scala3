@@ -4,22 +4,22 @@
    |  Cannot call update method set of a
    |  since its capture set {a} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:12:21 ---------------------------
-12 |  val t: Ref^{cap} = a  // error // error separation
+12 |  val t: Ref^{any} = a  // error // error separation
    |                     ^
-   |              Found:    (a : Ref)
-   |              Required: Ref^
+   |                     Found:    (a : Ref)
+   |                     Required: Ref^{any}
    |
-   |              Note that {cap} is an exclusive capture set of the stateful type Ref^,
-   |              it cannot subsume a read-only capture set of the stateful type (a : Ref).
+   |                     Note that {any} is an exclusive capture set of the stateful type Ref^{any},
+   |                     it cannot subsume a read-only capture set of the stateful type (a : Ref).
    |
-   |              Note that capability cap².rd is not included in capture set {cap}.
+   |                     Note that capability `any².rd` is not included in capture set {any}.
    |
-   |              where:    ^ and cap refer to a fresh root capability classified as Unscoped in the type of value t
-   |                        cap²      is a fresh root capability classified as Unscoped in the type of parameter a
+   |                     where:    any  is a root capability classified as Unscoped in the type of value t
+   |                               any² is a root capability classified as Unscoped in the type of parameter a
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:12:9 -------------------------------------------------
-12 |  val t: Ref^{cap} = a  // error // error separation
+12 |  val t: Ref^{any} = a  // error // error separation
    |         ^^^^^^^^^
    |         Separation failure: value t's type Ref^ hides parameter a.
    |         The parameter needs to be annotated with consume to allow this.

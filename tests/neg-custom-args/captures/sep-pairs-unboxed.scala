@@ -1,5 +1,5 @@
 import caps.Mutable
-import caps.cap
+import caps.any
 
 class Ref extends Mutable:
   var x = 0

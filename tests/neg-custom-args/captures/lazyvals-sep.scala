@@ -12,7 +12,7 @@ class Wrapper(val ref: Ref^) extends Stateful:
   def compute(): Int = ref.get()
   update def mutate(x: Int): Unit = ref.set(x)
 
-class WrapperRd(val ref: Ref^{cap.rd}):
+class WrapperRd(val ref: Ref^{any.rd}):
   def compute(): Int = ref.get()
 
 class TestClass extends Stateful:
@@ -67,12 +67,12 @@ class TestClass extends Stateful:
     WrapperRd(r)
 
   // Test case 8: Wrapper type - exclusive access in initializer - should error
-  lazy val lazyVal8: Wrapper^{cap, r} =
+  lazy val lazyVal8: Wrapper^{any, r} =
     r.set(200)  // error
     Wrapper(r)  // error
 
   // Test case 9: Wrapper type - non-exclusive access in initializer - should error
-  lazy val lazyVal9: Wrapper^{cap, r} =
+  lazy val lazyVal9: Wrapper^{any, r} =
     r.get()
     Wrapper(r) // error
 

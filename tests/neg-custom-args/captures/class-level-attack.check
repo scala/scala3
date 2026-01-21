@@ -1,13 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-level-attack.scala:17:33 ---------------------------
 17 |  update def set(x: IO^) = r.put(x)  // error
    |                                 ^
-   |                                Found:    IO^{x}
-   |                                Required: IO^
+   |                                 Found:    IO^{x}
+   |                                 Required: IO^{any}
    |
-   |                                Note that capability x is not included in capture set {cap}
-   |                                because (x : IO^²) in method set is not visible from cap in value r.
+   |                                 Note that capability `x` is not included in capture set {any}
+   |                                 because (x : IO^) in method set is not visible from any in value r.
    |
-   |                                where:    ^ and cap refer to a fresh root capability in the type of value r
-   |                                          ^²        refers to a fresh root capability in the type of parameter x
+   |                                 where:    ^   refers to a root capability in the type of parameter x
+   |                                           any is a root capability in the type of value r
    |
    | longer explanation available when compiling with `-explain`

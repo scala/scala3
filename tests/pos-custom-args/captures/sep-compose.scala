@@ -1,10 +1,10 @@
-import caps.cap
+import caps.any
 
 
-def seq1(x: () => Unit, y: () ->{x, cap} Unit): Unit =
+def seq1(x: () => Unit, y: () ->{x, any} Unit): Unit =
   x(); y()
 
-def seq2(x: () => Unit)(y: () ->{x, cap} Unit): Unit =
+def seq2(x: () => Unit)(y: () ->{x, any} Unit): Unit =
   x(); y()
 
 def test(io: Object^, a: Object^{io}): Unit =

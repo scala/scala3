@@ -1,12 +1,12 @@
 import caps.Mutable
-import caps.cap
+import caps.any
 
 
 extension (x: Object^)
-  infix def eql (y: Object^{x, cap}): Boolean = x eq y
+  infix def eql (y: Object^{x, any}): Boolean = x eq y
 
-def eql1(x: Object^, y: Object^{x, cap}): Boolean = x eql y
-def eql2(x: Object^)(y: Object^{x, cap}): Boolean = x eql y
+def eql1(x: Object^, y: Object^{x, any}): Boolean = x eql y
+def eql2(x: Object^)(y: Object^{x, any}): Boolean = x eql y
 
 class LLI extends Object:
   this: LLI^ =>

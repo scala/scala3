@@ -5,11 +5,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/classified-inheritance2.scala:12:27 ----------------------
 12 |  val t: Logger^{} = Logger()  // error
    |                     ^^^^^^^^
-   |Found:    Logger^{cap.rd}
+   |Found:    Logger^{any.rd}
    |Required: Logger^{}
    |
-   |Note that capability cap.rd is not included in capture set {}.
+   |Note that capability `any.rd` is not included in capture set {}.
    |
-   |where:    cap is a fresh root capability classified as SharedCapability created in value t when constructing instance Logger
+   |where:    any is a root capability classified as SharedCapability created in value t when constructing instance Logger
    |
    | longer explanation available when compiling with `-explain`

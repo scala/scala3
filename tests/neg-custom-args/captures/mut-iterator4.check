@@ -1,19 +1,17 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator4.scala:9:26 ------------------------------------------------------
 9 |    update def next() = f(Iterator.this.next()) // error
   |                          ^^^^^^^^^^^^^
-  |                          Read-only method map accesses exclusive capability (Iterator.this : Iterator[T]^);
+  |                          Read-only method map accesses exclusive capability `Iterator.this`;
   |                          method map should be declared an update method to allow this.
-  |
-  |                          where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-iterator4.scala:21:81 --------------------------------
 21 |def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U]^{it, f} = new Iterator: // error
    |                                                                                 ^
-   |Found:    Iterator[U^'s1]^{it.rd, f, it, cap}
+   |Found:    Iterator[U^'s1]^{it.rd, f, it, any}
    |Required: Iterator[U]^{it, f}
    |
-   |Note that capability cap is not included in capture set {it, f}.
+   |Note that capability `any` is not included in capture set {it, f}.
    |
-   |where:    cap is a fresh root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{cap².rd}) {...}
+   |where:    any is a root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{any².rd}) {...}
    |
 22 |  def hasNext = it.hasNext
 23 |  update def next() = f(it.next())

@@ -4,9 +4,9 @@
    |  Found:    (contextual$1: Rand^'s1) ?->{head, tail*} A^'s2
    |  Required: (Rand^) ?->{head} A
    |
-   |  Note that capability tail* is not included in capture set {head}.
+   |  Note that capability `tail*` is not included in capture set {head}.
    |
-   |  where:    ^ refers to the universal root capability
+   |  where:    ^ refers to the root capability caps.any
    |
 11 |  all(nextInt(all.length))
    |

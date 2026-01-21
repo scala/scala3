@@ -11,22 +11,20 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:10:25 -----------------------------------
 10 |    val self2: Ref[T]^ = this // error // error separation
    |                         ^^^^
-   |          Found:    Ref[T]^{Ref.this.rd}
-   |          Required: Ref[T]^
+   |                         Found:    Ref[T]^{Ref.this.rd}
+   |                         Required: Ref[T]^{any}
    |
-   |          Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
-   |          it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
+   |                         Note that {any} is an exclusive capture set of the stateful type Ref[T]^{any},
+   |                         it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
    |
-   |          where:    ^ and cap refer to a fresh root capability classified as Unscoped in the type of value self2
+   |                         where:    any is a root capability classified as Unscoped in the type of value self2
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:11:13 --------------------------------------------------------
 11 |    self2.set(x) // error
    |    ^^^^^^^^^^^^
-   |    Read-only method sneakyHide accesses exclusive capability (Ref.this : Ref[T]^);
+   |    Read-only method sneakyHide accesses exclusive capability `Ref.this`;
    |    method sneakyHide should be declared an update method to allow this.
-   |
-   |    where:    ^ refers to a fresh root capability classified as Unscoped in the type of class Ref
 -- Error: tests/neg-custom-args/captures/mutability.scala:14:12 --------------------------------------------------------
 14 |    self3().set(x)  // error
    |    ^^^^^^^^^^^
@@ -35,23 +33,21 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:15:31 -----------------------------------
 15 |    val self4: () => Ref[T]^ = () => this // error
    |                               ^^^^^^^^^^
-   |          Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
-   |          Required: () => Ref[T]^
+   |                        Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
+   |                        Required: () => Ref[T]^{any}
    |
-   |          Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
-   |          it cannot subsume a read-only capture set of the stateful type Ref[T^'s1]^{Ref.this.rd}.
+   |                        Note that {any} is an exclusive capture set of the stateful type Ref[T]^{any},
+   |                        it cannot subsume a read-only capture set of the stateful type Ref[T^'s1]^{Ref.this.rd}.
    |
-   |          where:    =>        refers to a fresh root capability in the type of value self4
-   |                    ^ and cap refer to a fresh root capability classified as Unscoped in the type of value self4
+   |                        where:    =>  refers to a root capability in the type of value self4
+   |                                  any is a root capability classified as Unscoped in the type of value self4
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:16:15 --------------------------------------------------------
 16 |    self4().set(x) // error
    |    ^^^^^^^^^^^^^^
-   |    Read-only method sneakyHide accesses exclusive capability (Ref.this : Ref[T]^);
+   |    Read-only method sneakyHide accesses exclusive capability `Ref.this`;
    |    method sneakyHide should be declared an update method to allow this.
-   |
-   |    where:    ^ refers to a fresh root capability classified as Unscoped in the type of class Ref
 -- Error: tests/neg-custom-args/captures/mutability.scala:19:12 --------------------------------------------------------
 19 |    self5().set(x)  // error
    |    ^^^^^^^^^^^
@@ -60,22 +56,20 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:20:27 -----------------------------------
 20 |    def self6(): Ref[T]^ = this // error // error separation
    |                           ^^^^
-   |  Found:    Ref[T]^{Ref.this.rd}
-   |  Required: Ref[T]^
+   |                    Found:    Ref[T]^{Ref.this.rd}
+   |                    Required: Ref[T]^{any}
    |
-   |  Note that {cap} is an exclusive capture set of the stateful type Ref[T]^,
-   |  it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
+   |                    Note that {any} is an exclusive capture set of the stateful type Ref[T]^{any},
+   |                    it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
    |
-   |  where:    ^ and cap refer to a fresh root capability classified as Unscoped in the result type of method self6
+   |                    where:    any is a root capability classified as Unscoped in the result type of method self6
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:21:15 --------------------------------------------------------
 21 |    self6().set(x) // error
    |    ^^^^^^^^^^^^^^
-   |    Read-only method sneakyHide accesses exclusive capability (Ref.this : Ref[T]^);
+   |    Read-only method sneakyHide accesses exclusive capability `Ref.this`;
    |    method sneakyHide should be declared an update method to allow this.
-   |
-   |    where:    ^ refers to a fresh root capability classified as Unscoped in the type of class Ref
 -- Error: tests/neg-custom-args/captures/mutability.scala:25:25 --------------------------------------------------------
 25 |  def set(x: T) = this.x.set(x) // error
    |                  ^^^^^^^^^^
@@ -94,21 +88,21 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:43:29 -----------------------------------
 43 |  val r5: () => Ref2[Int]^ = () => ref2 // error
    |                             ^^^^^^^^^^
-   |             Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
-   |             Required: () => Ref2[Int]^
+   |                             Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
+   |                             Required: () => Ref2[Int]^{any}
    |
-   |             Note that {cap} is an exclusive capture set of the stateful type Ref2[Int]^,
-   |             it cannot subsume a read-only capture set of the stateful type Ref2[Int]^{ref2}.
+   |                             Note that {any} is an exclusive capture set of the stateful type Ref2[Int]^{any},
+   |                             it cannot subsume a read-only capture set of the stateful type Ref2[Int]^{ref2}.
    |
-   |             where:    =>        refers to a fresh root capability in the type of value r5
-   |                       ^ and cap refer to a fresh root capability classified as Unscoped in the type of value r5
+   |                             where:    =>  refers to a root capability in the type of value r5
+   |                                       any is a root capability classified as Unscoped in the type of value r5
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutability.scala:46:9 ---------------------------------------------------------
 46 |  r6().x.set(33) // error
    |  ^^^^^^^^^^
-   |  Cannot call update method set of Ref[Int]^{cap.rd}
-   |  since its capture set {cap.rd} is read-only.
+   |  Cannot call update method set of Ref[Int]^{any.rd}
+   |  since its capture set {any.rd} is read-only.
 -- Error: tests/neg-custom-args/captures/mutability.scala:10:15 --------------------------------------------------------
 10 |    val self2: Ref[T]^ = this // error // error separation
    |               ^^^^^^^

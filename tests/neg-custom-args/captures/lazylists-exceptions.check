@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:37:17 -------------------------
 37 |    tabulate(10) { i =>  // error
    |    ^
-   |    Capability canThrow$1 defined in an enclosing try expression outlives its scope:
+   |    Capability `canThrow$1` defined in an enclosing try expression outlives its scope:
    |    it leaks into outer capture set 's1 of method problem.
    |    The leakage occurred when trying to match the following types:
    |

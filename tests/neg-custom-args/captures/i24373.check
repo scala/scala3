@@ -4,18 +4,18 @@
    |  Separation failure: Illegal access to (x1 : Foo^), which was used as a prefix to consume method sink1
    |  on line 27 and therefore is no longer available.
    |
-   |  where:    ^ refers to a fresh root capability in the type of value x1
+   |  where:    ^ refers to a root capability in the type of value x1
 -- Error: tests/neg-custom-args/captures/i24373.scala:32:2 -------------------------------------------------------------
 32 |  x2.sink2 // error
    |  ^^
    |  Separation failure: Illegal access to (x2 : Bar^), which was used as a prefix to consume method sink2
    |  on line 31 and therefore is no longer available.
    |
-   |  where:    ^ refers to a fresh root capability in the type of value x2
+   |  where:    ^ refers to a root capability in the type of value x2
 -- Error: tests/neg-custom-args/captures/i24373.scala:49:8 -------------------------------------------------------------
 49 |  sink6(x6) // error
    |        ^^
    |      Separation failure: Illegal access to (x6 : Bar^), which was passed as a consume parameter to method sink6
    |      on line 48 and therefore is no longer available.
    |
-   |      where:    ^ refers to a fresh root capability in the type of value x6
+   |      where:    ^ refers to a root capability in the type of value x6

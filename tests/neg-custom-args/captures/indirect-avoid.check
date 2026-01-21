@@ -4,18 +4,18 @@
    |    Found:    Test.LL^{nll}
    |    Required: Test.LL^{ll}
    |
-   |    Note that capability nll is not included in capture set {ll}.
+   |    Note that capability `nll` is not included in capture set {ll}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/indirect-avoid.scala:26:14 -------------------------------
 26 |  val _: LL = x1 // error
    |              ^^
-   |Found:    (Test.x1 : Test.LL^{cap.rd})
+   |Found:    (Test.x1 : Test.LL^{any.rd})
    |Required: Test.LL
    |
-   |Note that capability cap.rd is not included in capture set {}.
+   |Note that capability `any.rd` is not included in capture set {}.
    |
-   |where:    cap is a fresh root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}
+   |where:    any is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{fresh.rd, ll}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/indirect-avoid.scala:32:4 --------------------------------
@@ -24,14 +24,14 @@
    |    Found:    Test.LL^{nll}
    |    Required: Test.LL^{ll}
    |
-   |    Note that capability nll is not included in capture set {ll}.
+   |    Note that capability `nll` is not included in capture set {ll}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/indirect-avoid.scala:24:8 -----------------------------------------------------
 24 |  val x1 = filterImpl1(LL()) // error
    |        ^
-   |value x1 needs an explicit type because it captures a root capability in its type Test.LL^{cap.rd}.
+   |value x1 needs an explicit type because it captures a root capability in its type Test.LL^{any.rd}.
    |Fields capturing a root capability need to be given an explicit type unless the capability is already
    |subsumed by the computed capability of the enclosing class.
    |
-   |where:    cap is a fresh root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{cap².rd, ll}
+   |where:    any is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{fresh.rd, ll}

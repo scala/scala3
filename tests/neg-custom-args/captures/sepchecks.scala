@@ -1,5 +1,5 @@
 import caps.Mutable
-import caps.cap
+import caps.any
 
 
 trait Rdr[T]:
@@ -21,12 +21,12 @@ def Test(c: Object^): Unit =
   val putA = (x: Int) => a.put(x)
   val _: Int ->{a} Unit = putA
 
-  def setMax(x: Ref[Int]^{cap.rd}, y: Ref[Int]^{cap.rd}, z: Ref[Int]^{cap}) =
+  def setMax(x: Ref[Int]^{any.rd}, y: Ref[Int]^{any.rd}, z: Ref[Int]^{any}) =
     val doit = () => z.put(x.get max y.get)
     val _: () ->{x.rd, y.rd, z} Unit = doit
     doit()
 
-  def setMax2(x: Rdr[Int]^{cap.rd}, y: Rdr[Int]^{cap.rd}, z: Ref[Int]^{cap}) = ???
+  def setMax2(x: Rdr[Int]^{any.rd}, y: Rdr[Int]^{any.rd}, z: Ref[Int]^{any}) = ???
 
   setMax2(aa, aa, b)
   setMax2(a, aa, b)
@@ -41,7 +41,7 @@ def Test(c: Object^): Unit =
     def apply(i: Int, j: Int): Double = arr(i)(j)
     update def update(i: Int, j: Int, x: Double): Unit = arr(i)(j) = x
 
-  def mul(x: IMatrix^{cap.rd}, y: IMatrix^{cap.rd}, z: Matrix^): Matrix^ = ???
+  def mul(x: IMatrix^{any.rd}, y: IMatrix^{any.rd}, z: Matrix^): Matrix^ = ???
 
   val m1 = Matrix(10, 10)
   val m2 = Matrix(10, 10)

@@ -1,3 +1,4 @@
+import caps.fresh
 trait A
 trait B
 
@@ -6,11 +7,11 @@ def test =
     val b: B^ = ???
     b
 
-  val f1: A^ => B^ = (a: A^) => // error -- can we make this work as for f2?
+  val f1: A^ => B^{fresh} = (a: A^) => // OK
     val b: B^ = ???
     b
 
-  val f2: (x: A^) => B^ = (a: A^) =>
+  val f2: (x: A^) => B^{fresh} = (a: A^) =>
     val b: B^ = ???
     b   // ok
 
@@ -20,11 +21,11 @@ def test =
 
   val test = g
 
-  val g1: A^ => B^ = (a: A^) => // error -- can we make this work as for g2?
+  val g1: A^ => B^{fresh} = (a: A^) => // OK
     println("")
     (??? : B^)
 
-  val g2: (x: A^) => B^ = (a: A^) =>
+  val g2: (x: A^) => B^{fresh} = (a: A^) =>
     println("")
     (??? : B^) // ok
 

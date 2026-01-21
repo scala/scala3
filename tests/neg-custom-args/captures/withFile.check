@@ -1,57 +1,57 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:14:38 -------------------------------------
 14 |  private val later1 = usingLogFile { f => () => f.write() } // error
    |                                      ^^^^^^^^^^^^^^^^^^^^
-   |Capability f outlives its scope: it leaks into outer capture set 's1 which is owned by value later1.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by value later1.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: Test2.File^'s2) ->'s3 () ->{f} Unit
    |Required: Test2.File^ => () ->'s1 Unit
    |
-   |where:    => refers to a fresh root capability created in value later1 when checking argument to parameter op of method usingLogFile
-   |          ^  refers to the universal root capability
+   |where:    => refers to a root capability created in value later1 when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:15:38 -------------------------------------
 15 |  private val later2 = usingLogFile { f => Box(f) } // error
    |                                      ^^^^^^^^^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's4 which is owned by value later2.
+   |Capability `fresh` outlives its scope: it leaks into outer capture set 's4 which is owned by value later2.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (f: Test2.File^'s5) ->'s6 Test2.Box[Test2.File^'s7]^'s8
    |Required: Test2.File^ => Test2.Box[Test2.File^'s4]^'s9
    |
-   |where:    =>  refers to a fresh root capability created in value later2 when checking argument to parameter op of method usingLogFile
-   |          ^   refers to the universal root capability
-   |          cap is a root capability associated with the result type of (f: Test2.File^): Test2.Box[Test2.File^'s4]^'s9
+   |where:    =>    refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
+   |          ^     refers to the root capability caps.any
+   |          fresh is a root capability associated with the result type of (f: Test2.File^): Test2.Box[Test2.File^'s4]^'s9
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:17:4 --------------------------------------
 17 |    f => () => f.write() // error
    |    ^^^^^^^^^^^^^^^^^^^^
    |Found:    (f: Test2.File^'s10) ->'s11 () ->{f} Unit
-   |Required: Test2.File^ => () =>² Unit
+   |Required: Test2.File^ => () ->{any} Unit
    |
-   |Note that capability f is not included in capture set {cap}
-   |because (f : Test2.File^'s10) is not visible from cap in value later3.
+   |Note that capability `f` is not included in capture set {any}
+   |because (f : Test2.File^'s10) is not visible from any in value later3.
    |
-   |where:    =>          refers to a fresh root capability created in value later3 when checking argument to parameter op of method usingLogFile
-   |          =>² and cap refer to a fresh root capability created in value later3
-   |          ^           refers to the universal root capability
+   |where:    =>  refers to a root capability created in value later3 when checking argument to parameter op of method usingLogFile
+   |          ^   refers to the root capability caps.any
+   |          any is a root capability created in value later3
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:19:4 --------------------------------------
 19 |    f => Box(f) // error
    |    ^^^^^^^^^^^
    |Found:    (f: Test2.File^'s12) ->'s13 Test2.Box[Test2.File^'s14]^'s15
-   |Required: Test2.File^ => Test2.Box[Test2.File^²]
+   |Required: Test2.File^ => Test2.Box[Test2.File^{any}]
    |
-   |Note that capability cap is not included in capture set {cap²}
-   |because cap is not visible from cap² in value later4.
+   |Note that capability `fresh` is not included in capture set {any}
+   |because fresh is not visible from any in value later4.
    |
-   |where:    =>          refers to a fresh root capability created in value later4 when checking argument to parameter op of method usingLogFile
-   |          ^           refers to the universal root capability
-   |          ^² and cap² refer to a fresh root capability created in value later4
-   |          cap         is a root capability associated with the result type of (f: Test2.File^'s12): Test2.Box[Test2.File^'s14]^'s15
+   |where:    =>    refers to a root capability created in value later4 when checking argument to parameter op of method usingLogFile
+   |          ^     refers to the root capability caps.any
+   |          any   is a root capability created in value later4
+   |          fresh is a root capability associated with the result type of (f: Test2.File^'s12): Test2.Box[Test2.File^'s14]^'s15
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/withFile.scala:16:20 ----------------------------------------------------------
@@ -61,4 +61,4 @@
    |           Fields capturing a root capability need to be given an explicit type unless the capability is already
    |           subsumed by the computed capability of the enclosing class.
    |
-   |           where:    => refers to a fresh root capability in the type of value later3
+   |           where:    => refers to a root capability in the type of value later3

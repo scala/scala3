@@ -1,15 +1,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary-homebrew.scala:19:19 ----------------------------
 19 |    boundary[Int]: l2 ?=>  // error
    |                   ^
-   |Capability cap outlives its scope: it leaks into outer capture set 's1 of parameter l1.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 of parameter l1.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (l2: boundary.Label[Int]^'s2) ?->{l1} Int
    |Required: (boundary.Label[Int]^) ?=> Int
    |
-   |where:    ?=> refers to a fresh root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^]^): boundary.Label[Int]^ when checking argument to parameter body of method apply
-   |          ^   refers to the universal root capability
-   |          cap is a fresh root capability created in anonymous function of type (using l2: boundary.Label[Int]^'s2): Int of parameter parameter l2² of method $anonfun
+   |where:    ?=> refers to a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^]^): boundary.Label[Int]^ when checking argument to parameter body of method apply
+   |          ^   refers to the root capability caps.any
+   |          any is a root capability created in anonymous function of type (using l2: boundary.Label[Int]^'s2): Int of parameter parameter l2² of method $anonfun
    |
 20 |      boundary.break(l2)(using l1)
 21 |      15

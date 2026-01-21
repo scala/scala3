@@ -107,7 +107,7 @@ class Definitions {
    *      }
    *  ImpureXYZFunctionN follow this template:
    *
-   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {cap} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = XYZFunctionN[T0,...,T{N-1}, R]^{any}
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")
@@ -1007,7 +1007,8 @@ class Definitions {
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
 
   @tu lazy val CapsModule: Symbol = requiredPackage("scala.caps")
-    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
+    @tu lazy val Caps_any: TermSymbol = CapsModule.requiredValue("any")
+    @tu lazy val Caps_fresh: TermSymbol = CapsModule.requiredValue("fresh")
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_Classifier: ClassSymbol = requiredClass("scala.caps.Classifier")
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
@@ -1769,7 +1770,7 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
+  def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
 
@@ -1778,7 +1779,12 @@ class Definitions {
     && tp.isRef(
         FunctionType(arity, sym.name.isContextFunction).typeSymbol,
         skipRefined = false)
-  end isNonRefinedFunction
+  }
+
+  /** Is a dependent function type represented as a RefinedType?
+   */
+  def isRefinedFunction(tp: Type)(using Context): Boolean =
+    tp.dropDependentRefinement ne tp
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
@@ -1991,7 +1997,7 @@ class Definitions {
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
     Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
     Caps_Shared, RequiresCapabilityAnnot,
-    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
+    Caps_any, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,

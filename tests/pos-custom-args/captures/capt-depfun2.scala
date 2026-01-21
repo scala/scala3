@@ -1,7 +1,7 @@
 import annotation.retains
 
 class C
-type Cap = C @retains[caps.cap.type]
+type Cap = C @retains[caps.any.type]
 
 class Arr[T]
 

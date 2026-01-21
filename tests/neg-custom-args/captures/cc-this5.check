@@ -4,7 +4,7 @@
    |               Found:    (A.this : A^{c})
    |               Required: A
    |
-   |               Note that capability c is not included in capture set {}.
+   |               Note that capability `c` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this5.scala:7:9 ---------------------------------------

@@ -31,7 +31,7 @@ object Levels:
     }
 
   def withFile[U](name: String)(block: File^ => U): U = block(File(name)) // unrestricted use of files & other capabilities
-  def parReduce[U](xs: Seq[U])(op: (U, U) ->{cap.only[Read]} U): U = xs.reduce(op) // only Read-classified allowed
+  def parReduce[U](xs: Seq[U])(op: (U, U) ->{any.only[Read]} U): U = xs.reduce(op) // only Read-classified allowed
 
   @main def test =
     withFile("foo.txt"): f =>

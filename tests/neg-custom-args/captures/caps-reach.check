@@ -11,10 +11,10 @@
    |                                              ^
    |                                              '}' expected, but identifier found
 -- Error: tests/neg-custom-args/captures/caps-reach.scala:6:42 ---------------------------------------------------------
-6 |  val consumers1 = ListBuffer.empty[() ->{caps.cap*} Unit]  // error
+6 |  val consumers1 = ListBuffer.empty[() ->{caps.any*} Unit]  // error
   |                                          ^^^^^^^^^
-  |                                          Cannot form a reach capability from `cap`
+  |                                          Cannot form a reach capability from `any`
 -- Error: tests/neg-custom-args/captures/caps-reach.scala:7:42 ---------------------------------------------------------
-7 |  val consumers2 = ListBuffer.empty[() ->{caps.cap*.rd} Unit] // error
+7 |  val consumers2 = ListBuffer.empty[() ->{caps.any*.rd} Unit] // error
   |                                          ^^^^^^^^^^^^
-  |                                          Cannot form a reach capability from `cap`
+  |                                          Cannot form a reach capability from `any`

@@ -2,11 +2,11 @@
 41 |      parReduce(1 to 1000): (a, b) => // error
    |                            ^
    |Found:    (a: Int, b: Int) ->{f.write, f.read} Int
-   |Required: (Int, Int) ->{cap.only[Read]} Int
+   |Required: (Int, Int) ->{any.only[Read]} Int
    |
-   |Note that capability f.write is not included in capture set {cap.only[Read]}.
+   |Note that capability `f.write` is not included in capture set {any.only[Read]}.
    |
-   |where:    cap is a fresh root capability created in anonymous function of type (f²: Levels.File^): Unit when checking argument to parameter op of method parReduce
+   |where:    any is a root capability created in anonymous function of type (f²: Levels.File^): Unit when checking argument to parameter op of method parReduce
    |
 42 |        f.write(42)         // the error stems from here
 43 |        a + b + f.read()    // ok
@@ -16,11 +16,11 @@
 53 |        parReduce(1 to 1000): (a, b) => // error
    |                              ^
    |Found:    (a: Int, b: Int) ->{f.write, f.read, g.read} Int
-   |Required: (Int, Int) ->{cap.only[Read]} Int
+   |Required: (Int, Int) ->{any.only[Read]} Int
    |
-   |Note that capability f.write is not included in capture set {cap.only[Read]}.
+   |Note that capability `f.write` is not included in capture set {any.only[Read]}.
    |
-   |where:    cap is a fresh root capability created in anonymous function of type (g²: Levels.File^): Unit when checking argument to parameter op of method parReduce
+   |where:    any is a root capability created in anonymous function of type (g²: Levels.File^): Unit when checking argument to parameter op of method parReduce
    |
 54 |          f.write(42)         // the error stems from here
 55 |          a + b + f.read() + g.read() // ok
@@ -30,11 +30,11 @@
 56 |        parReduce(1 to 1000): (a, b) => // error
    |                              ^
    |Found:    (a: Int, b: Int) ->{g.write} Int
-   |Required: (Int, Int) ->{cap.only[Read]} Int
+   |Required: (Int, Int) ->{any.only[Read]} Int
    |
-   |Note that capability g.write is not included in capture set {cap.only[Read]}.
+   |Note that capability `g.write` is not included in capture set {any.only[Read]}.
    |
-   |where:    cap is a fresh root capability created in anonymous function of type (g²: Levels.File^): Unit when checking argument to parameter op of method parReduce
+   |where:    any is a root capability created in anonymous function of type (g²: Levels.File^): Unit when checking argument to parameter op of method parReduce
    |
 57 |          g.write(42)         // the error stems from here
 58 |          0

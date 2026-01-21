@@ -4,32 +4,32 @@
    |Found:    (x$1: (() ->'s1 Unit, () ->'s2 Unit)^'s3) ->'s4 Unit
    |Required: ((() ->{op*} Unit, () ->{op*} Unit)) => Unit
    |
-   |Note that capability op* cannot be included in capture set {} of value f.
+   |Note that capability `op*` cannot be included in capture set {} of value f.
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (): Unit when checking argument to parameter op of method foreach
+   |where:    => refers to a root capability created in anonymous function of type (): Unit when checking argument to parameter op of method foreach
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:19:4 ----------------------------------
 19 |    op // error
    |    ^^
-   |    Found:    (op : (xs: List[(X, () ->{io} Unit)]) => List[() ->{xs*} Unit])
-   |    Required: (xs: List[(X, () ->{io} Unit)]) =>² List[() -> Unit]
+   |    Found:    (op : (xs: List[(X, () ->{io} Unit)]) ->{any} List[() ->{xs*} Unit])
+   |    Required: (xs: List[(X, () ->{io} Unit)]) ->{any²} List[() -> Unit]
    |
-   |    Note that capability cap is not included in capture set {cap²}.
+   |    Note that capability `any` is not included in capture set {any²}.
    |
-   |    where:    => and cap   refer to a fresh root capability in the type of parameter op
-   |              =>² and cap² refer to a fresh root capability in the result type of method foo
+   |    where:    any  is a root capability in the type of parameter op
+   |              any² is a root capability in the result type of method foo
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:26:60 ---------------------------------
 26 |  val b: (xs: List[() ->{io} Unit]) => List[() ->{} Unit] = a // error
    |                                                            ^
-   |                                  Found:    (a : (xs: List[() ->{io} Unit]) => List[() ->{xs*} Unit])
-   |                                  Required: (xs: List[() ->{io} Unit]) =>² List[() -> Unit]
+   |                                        Found:    (a : (xs: List[() ->{io} Unit]) ->{any} List[() ->{xs*} Unit])
+   |                                        Required: (xs: List[() ->{io} Unit]) ->{any²} List[() -> Unit]
    |
-   |                                  Note that capability cap is not included in capture set {cap²}.
+   |                                        Note that capability `any` is not included in capture set {any²}.
    |
-   |                                  where:    => and cap   refer to a fresh root capability in the type of value a
-   |                                            =>² and cap² refer to a fresh root capability in the type of value b
+   |                                        where:    any  is a root capability in the type of value a
+   |                                                  any² is a root capability in the type of value b
    |
    | longer explanation available when compiling with `-explain`

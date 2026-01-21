@@ -9,7 +9,7 @@ class Service extends caps.Stateful:
   def log = file.write("log") // OK, was error under unsealed
 
 def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =
-  op(using caps.cap)(new File)
+  op(using caps.any)(new File)
 
 def test =
   withFile: f =>       // error with level checking, was OK under both schemes before

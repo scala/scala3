@@ -2,21 +2,21 @@
 8 |trait Bar extends Foo[IO^]: // error
   |                  ^^^^^^^^
   |                  Type variable T of trait Foo cannot be instantiated to IO^ since
-  |                  that type captures the root capability `cap`.
+  |                  that type captures the root capability `any`.
   |
-  |                  where:    ^ refers to the universal root capability
+  |                  where:    ^ refers to the root capability caps.any
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
 9 |  val foo: IO^ -> IO^ = x => x // error
   |                        ^^^^^^
-  |                Found:    (x: IO^) ->'s1 IO^²
-  |                Required: IO^ -> IO^³
+  |                      Found:    (x: IO^) ->'s1 IO^{fresh}
+  |                      Required: IO^ -> IO^{any}
   |
-  |                Note that capability cap is not included in capture set {cap²}
-  |                because cap is not visible from cap² in value foo.
+  |                      Note that capability `fresh` is not included in capture set {any}
+  |                      because fresh is not visible from any in value foo.
   |
-  |                where:    ^           refers to the universal root capability
-  |                          ^² and cap  refer to a root capability associated with the result type of (x: IO^): IO^²
-  |                          ^³ and cap² refer to a fresh root capability in the type of value foo
+  |                      where:    ^     refers to the root capability caps.any
+  |                                any   is a root capability in the type of value foo
+  |                                fresh is a root capability associated with the result type of (x: IO^): IO^{fresh}
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------
@@ -25,10 +25,10 @@
    |                       Found:    IO^ ->{x*} IO^{x*}
    |                       Required: IO^ -> IO^²
    |
-   |                       Note that capability x* is not included in capture set {}.
+   |                       Note that capability `x*` is not included in capture set {}.
    |
-   |                       where:    ^  refers to the universal root capability
-   |                                 ^² refers to a fresh root capability in the type of value y2
+   |                       where:    ^  refers to the root capability caps.any
+   |                                 ^² refers to a root capability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 ----------------------------------
@@ -37,8 +37,8 @@
    |                           Found:    IO^ ->{x*} IO^{x*}
    |                           Required: IO^ -> IO^{x*}
    |
-   |                           Note that capability x* is not included in capture set {}.
+   |                           Note that capability `x*` is not included in capture set {}.
    |
-   |                           where:    ^ refers to the universal root capability
+   |                           where:    ^ refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`

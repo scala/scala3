@@ -20,10 +20,10 @@ def test(io: IO): Unit =
   withFile(io => io)         // error
   withFile(id)               // error
   withFile(x => id(x))       // error
-  withFile(id2)              // error, note mentions cap since we never have a more specific include failure
-  withFile(x => id2(x))      // error, note mentions cap since we never have a more specific include failure
-  withFile(identity)         // error, note mentions cap since we never have a more specific include failure
-  withFile(x => identity(x)) // error, note mentions cap since we never have a more specific include failure
+  withFile(id2)              // error, note mentions any since we never have a more specific include failure
+  withFile(x => id2(x))      // error, note mentions any since we never have a more specific include failure
+  withFile(identity)         // error, note mentions any since we never have a more specific include failure
+  withFile(x => identity(x)) // error, note mentions any since we never have a more specific include failure
 
   withFile: io =>     // error
     () => println(io)

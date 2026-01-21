@@ -7,11 +7,11 @@ object Ident1 {
 
 trait Cap
 object Ident2 {
-  def unapply(tree: Tree)(implicit cap: Cap): Ident = ???
+  def unapply(tree: Tree)(implicit any: Cap): Ident = ???
 }
 
 object Ident3 {
-  def unapply(tree: Tree)(implicit cap: Cap): Option[Ident] = ???
+  def unapply(tree: Tree)(implicit any: Cap): Option[Ident] = ???
 }
 
 

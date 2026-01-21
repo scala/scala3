@@ -4,9 +4,9 @@
    |                   Found:    (d : Test.D^)
    |                   Required: Test.D^{c1}
    |
-   |                   Note that capability d is not included in capture set {c1}.
+   |                   Note that capability `d` is not included in capture set {c1}.
    |
-   |                   where:    ^ refers to a fresh root capability in the type of value d
+   |                   where:    ^ refers to a root capability in the type of value d
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-poly-2.scala:16:20 ------------------------------------
@@ -15,6 +15,6 @@
    |                    Found:    (x : Test.D^{d})
    |                    Required: Test.D^{c1}
    |
-   |                    Note that capability x is not included in capture set {c1}.
+   |                    Note that capability `x` is not included in capture set {c1}.
    |
    | longer explanation available when compiling with `-explain`

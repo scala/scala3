@@ -22,4 +22,4 @@ def test(c: C) =
 
   val y4 = y3 match
     case Ref(xx) => xx
-  val y4c: () ->{y3} Unit = y4 // error
+  val y4c: () ->{y3} Unit = y4 // was error, now OK

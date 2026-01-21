@@ -1,11 +1,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/implied-ro.scala:12:16 -----------------------------------
 12 |  val _: C^{} = c // error
    |                ^
-   | Found:    (c : C^{cap.rd})
-   | Required: C
+   |       Found:    (c : C^{any.rd})
+   |       Required: C
    |
-   | Note that capability cap.rd is not included in capture set {}.
+   |       Note that capability `any.rd` is not included in capture set {}.
    |
-   | where:    cap is a fresh root capability classified as Unscoped created in value c when constructing instance C
+   |       where:    any is a root capability classified as Unscoped created in value c when constructing instance C
    |
    | longer explanation available when compiling with `-explain`

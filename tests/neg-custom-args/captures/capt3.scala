@@ -1,6 +1,6 @@
 import annotation.retains
 class C
-type Cap = C @retains[caps.cap.type]
+type Cap = C @retains[caps.any.type]
 
 def test1() =
   val x: Cap = C()

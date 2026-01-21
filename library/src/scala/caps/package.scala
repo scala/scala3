@@ -41,7 +41,14 @@ trait Classifier
 
 /** The universal capture reference. */
 @experimental
-object cap extends Capability
+object any extends Capability
+
+/** The universal result capture reference. */
+@experimental
+object fresh extends Capability
+
+@experimental // TODO: Drop once we bootstrap with 3.8.1
+val cap: any.type = any
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  *
@@ -86,7 +93,7 @@ trait Control extends SharedCapability, Classifier
 trait Stateful extends ExclusiveCapability
 
 /** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
- *  extending Separate is created, a fresh `cap` is automatically added to the value's capture set.
+ *  extending Separate is created, a fresh `any` is automatically added to the value's capture set.
  */
 @experimental
 trait Separate extends Stateful
@@ -169,9 +176,9 @@ object internal:
   @deprecated
   final class refineOverride extends annotation.StaticAnnotation
 
-  /** An annotation used internally for root capability wrappers of `cap` that
+  /** An annotation used internally for root capability wrappers of `any` that
    *  represent either Fresh or Result capabilities.
-   *  A capability is encoded as `caps.cap @rootCapability(...)` where
+   *  A capability is encoded as `caps.any @rootCapability(...)` where
    *  `rootCapability(...)` is a special kind of annotation of type `root.Annot`
    *  that contains either a hidden set for Fresh instances or a method type binder
    *  for Result instances.
@@ -221,11 +228,11 @@ object unsafe:
    *
    *          class A { val b B^ = ... }; new A()
    *
-   *      has type A^ since b contributes a cap. But
+   *      has type A^ since b contributes an `any`. But
    *
    *          class A { @untrackedCaptures val b: B^ = ... }; new A()
    *
-   *      has type A. The `b` field does not contribute its cap.
+   *      has type A. The `b` field does not contribute its `any`.
    *
    *   3. Allows a field to be declarewd in a class that does not extend Stateful,
    *      and suppresses checks for updates to the field.

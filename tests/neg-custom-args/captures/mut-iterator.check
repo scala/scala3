@@ -1,10 +1,8 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:9:17 -------------------------------------------------------
 9 |    def next() = f(Iterator.this.next()) // error
   |                 ^
-  |                 Read-only method next accesses exclusive capability (f : T => U);
+  |                 Read-only method next accesses exclusive capability `f`;
   |                 method next should be declared an update method to allow this.
-  |
-  |                 where:    => refers to a fresh root capability in the type of parameter f
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:17:14 ------------------------------------------------------
 17 |      current = xs1 // error
    |      ^^^^^^^^^^^^^
@@ -13,17 +11,15 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:22:15 ------------------------------------------------------
 22 |  def next() = f(it.next()) // error
    |               ^
-   |               Read-only method next accesses exclusive capability (f : T => U);
+   |               Read-only method next accesses exclusive capability `f`;
    |               method next should be declared an update method to allow this.
-   |
-   |               where:    => refers to a fresh root capability in the type of parameter f
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:7:25 -------------------------------------------------------
 7 |  def map[U](f: T => U): Iterator[U] = new Iterator: // error
   |                         ^^^^^^^^^^^
-  |   Separation failure: method map's result type Iterator[U]^{cap.rd} hides non-local this of class trait Iterator.
+  |   Separation failure: method map's result type Iterator[U]^{any.rd} hides non-local this of class trait Iterator.
   |   The access must be in a consume method to allow this.
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:20:55 ------------------------------------------------------
 20 |def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U] = new Iterator: // error
    |                                                       ^^^^^^^^^^^
-   |         Separation failure: method mappedIterator's result type Iterator[U]^{cap.rd} hides parameters it and f.
+   |         Separation failure: method mappedIterator's result type Iterator[U]^{any.rd} hides parameters it and f.
    |         The parameters need to be annotated with consume to allow this.

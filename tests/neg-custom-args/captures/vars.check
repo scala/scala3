@@ -4,7 +4,7 @@
    |                          Found:    (z : () ->{cap1, x.rd} String)
    |                          Required: () -> String
    |
-   |                          Note that capability cap1 is not included in capture set {}.
+   |                          Note that capability `cap1` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:14:24 -----------------------------------------
@@ -13,7 +13,7 @@
    |                        Found:    (z2 : () ->{x} Unit)
    |                        Required: () -> Unit
    |
-   |                        Note that capability x is not included in capture set {}.
+   |                        Note that capability `x` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------
@@ -22,7 +22,7 @@
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1} String
    |
-   |        Note that capability cap3 cannot be included in capture set {cap1} of variable a.
+   |        Note that capability `cap3` cannot be included in capture set {cap1} of variable a.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:26:8 ------------------------------------------
@@ -31,7 +31,7 @@
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1} String
    |
-   |        Note that capability cap3 cannot be included in capture set {cap1} of variable a.
+   |        Note that capability `cap3` cannot be included in capture set {cap1} of variable a.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:28:12 -----------------------------------------
@@ -40,21 +40,21 @@
    |        Found:    List[String ->{cap3} String]
    |        Required: List[String ->{cap1, cap2} String]
    |
-   |        Note that capability cap3 is not included in capture set {cap1, cap2}.
+   |        Note that capability `cap3` is not included in capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:37:10 -----------------------------------------
 37 |  local { cap3 => // error
    |          ^
-   |      Capability cap3 outlives its scope: it leaks into outer capture set {cap3²} which is owned by method test.
-   |      The leakage occurred when trying to match the following types:
+   |    Capability `cap3` outlives its scope: it leaks into outer capture set {cap3²} which is owned by method test.
+   |    The leakage occurred when trying to match the following types:
    |
-   |      Found:    (cap3: CC^) ->'s1 String ->{cap3} String
-   |      Required: CC^ -> String ->{cap3²} String
+   |    Found:    (cap3: CC^) ->'s1 String ->{cap3} String
+   |    Required: CC^ -> String ->{cap3²} String
    |
-   |      where:    ^     refers to the universal root capability
-   |                cap3  is a reference to a value parameter
-   |                cap3² is a parameter in an anonymous function in method test
+   |    where:    ^     refers to the root capability caps.any
+   |              cap3  is a reference to a value parameter
+   |              cap3² is a parameter in an anonymous function in method test
    |
 38 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 39 |    g

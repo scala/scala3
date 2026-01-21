@@ -106,9 +106,9 @@ object RefChecks {
       def checkSelfConforms(other: ClassSymbol) =
         var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists then
-          val result = CCState.withCapAsRoot:
+          if !CCState.withGlobalCapAsRoot: // OK? We need this here since self types use `caps.any` instead of a LocalCap
             cinfo.selfType <:< otherSelf
-          if !result then
+          then
             report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
               cls.srcPos)
 

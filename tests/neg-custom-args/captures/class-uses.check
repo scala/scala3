@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/class-uses.scala:17:22 --------------------------------------------------------
 17 |      Console.println(g.toString) // error
    |                      ^
-   |                      reference (A.this.g : test.File^) is not included in the allowed capture set {A.this.f}
+   |                      reference `A.this.g` is not included in the allowed capture set {A.this.f}
    |                      of the enclosing class B in class A
 -- Error: tests/neg-custom-args/captures/class-uses.scala:19:8 ---------------------------------------------------------
 19 |  class C: // error

@@ -1,24 +1,24 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-widen-empty.scala:12:24 ------------------------------
 12 |  val c: Arr[String]^ = b  // error
    |                        ^
-   |              Found:    (b : Arr[String]^{})
-   |              Required: Arr[String]^
+   |                        Found:    (b : Arr[String]^{})
+   |                        Required: Arr[String]^{any}
    |
-   |              Note that {cap} is an exclusive capture set of the stateful type Arr[String]^,
-   |              it cannot subsume a read-only capture set of the stateful type Arr[String]^{}.
+   |                        Note that {any} is an exclusive capture set of the stateful type Arr[String]^{any},
+   |                        it cannot subsume a read-only capture set of the stateful type Arr[String]^{}.
    |
-   |              where:    ^ and cap refer to a fresh root capability classified as Unscoped in the type of value c
+   |                        where:    any is a root capability classified as Unscoped in the type of value c
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-widen-empty.scala:18:26 ------------------------------
 18 |  val c: Array[String]^ = b  // error
    |                          ^
-   |              Found:    (b : Array[String]^{})
-   |              Required: Array[String]^
+   |                          Found:    (b : Array[String]^{})
+   |                          Required: Array[String]^{any}
    |
-   |              Note that {cap} is an exclusive capture set of the stateful type Array[String]^,
-   |              it cannot subsume a read-only capture set of the stateful type Array[String]^{}.
+   |                          Note that {any} is an exclusive capture set of the stateful type Array[String]^{any},
+   |                          it cannot subsume a read-only capture set of the stateful type Array[String]^{}.
    |
-   |              where:    ^ and cap refer to a fresh root capability classified as Unscoped in the type of value c
+   |                          where:    any is a root capability classified as Unscoped in the type of value c
    |
    | longer explanation available when compiling with `-explain`

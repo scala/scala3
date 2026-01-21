@@ -1,10 +1,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals3.scala:24:52 ------------------------------------
 24 |      lazy val od1: (Int ->{ev1,console} Boolean) = (n: Int) => // error
    |                                                    ^
-   |                                           Found:    (n: Int) ->{console, c} Boolean
-   |                                           Required: Int ->{ev1, console} Boolean
+   |                                         Found:    (n: Int) ->{console, c} Boolean
+   |                                         Required: Int ->{ev1, console} Boolean
    |
-   |                                           Note that capability c is not included in capture set {ev1, console}.
+   |                                         Note that capability `c` is not included in capture set {ev1, console}.
    |
 25 |        if n == 1 then
 26 |...

@@ -4,7 +4,7 @@
    |             Found:    (box.x : (b : B^{io})^{b})
    |             Required: A
    |
-   |             Note that capability io is not included in capture set {}.
+   |             Note that capability `io` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:18:13 ---------------------------------------
@@ -13,7 +13,7 @@
    |             Found:    (c : B^{b})
    |             Required: A
    |
-   |             Note that capability b is not included in capture set {}.
+   |             Note that capability `b` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:19:2 ----------------------------------------
@@ -22,7 +22,7 @@
    |  Found:    A^{c}
    |  Required: A
    |
-   |  Note that capability c is not included in capture set {}.
+   |  Note that capability `c` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:27:2 ----------------------------------------
@@ -31,6 +31,6 @@
    |  Found:    A^{c}
    |  Required: A
    |
-   |  Note that capability c is not included in capture set {}.
+   |  Note that capability `c` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

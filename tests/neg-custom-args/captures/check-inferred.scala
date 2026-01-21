@@ -1,6 +1,6 @@
 package test
 import caps.Mutable
-import caps.cap
+import caps.any
 import caps.unsafe.untrackedCaptures
 
 class Ref extends Mutable:
@@ -33,18 +33,18 @@ def test() =
       count.put(count.get - 1)
 
 class A:
-  val x: A^{cap.only[caps.Control]} = ???
-  private val y = ??? : A^{cap.only[caps.Control]}  // ok
+  val x: A^{any.only[caps.Control]} = ???
+  private val y = ??? : A^{any.only[caps.Control]}  // ok
 
 class B:
   val x: A^ = ???
-  private val y = ??? : A^{cap.only[caps.Control]}  // ok
+  private val y = ??? : A^{any.only[caps.Control]}  // ok
 
 class C:
-  val x: A^{cap.only[caps.Control]} = ???
+  val x: A^{any.only[caps.Control]} = ???
   private val y = ??? : A^    // error
 
 class D:
-  val x: A^{cap.only[caps.Control]} = ???
-  private val y = ??? : (() => A^{cap.only[caps.Unscoped]})  // error
+  val x: A^{any.only[caps.Control]} = ???
+  private val y = ??? : (() => A^{any.only[caps.Unscoped]})  // error
 

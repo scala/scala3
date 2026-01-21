@@ -2,7 +2,7 @@
 5 |  def g(x: Int) = if cap2 == cap2 then 1 else x
   |                     ^^^^
   |                     Another capture checking run needs to be scheduled because
-  |                     reference (cap2 : Cap) is not included in the previously estimated
+  |                     reference `cap2` is not included in the previously estimated
   |                     capture set {} of method f
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:10:6 ----------------------------------------
 10 |  h(f2())  // error
@@ -10,9 +10,9 @@
    |Found:    () ?->{cap1} Int ->{cap1} Int
    |Required: () ?=> Int ->{cap2} Int
    |
-   |Note that capability cap1 is not included in capture set {cap2}.
+   |Note that capability `cap1` is not included in capture set {cap2}.
    |
-   |where:    ?=> refers to a fresh root capability created in method test when checking argument to parameter ff of method h
+   |where:    ?=> refers to a root capability created in method test when checking argument to parameter ff of method h
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:19:5 ----------------------------------------
@@ -21,7 +21,7 @@
    |    Found:    () ?->{cap2} I^'s1
    |    Required: () ?->{cap1} I
    |
-   |    Note that capability cap2 is not included in capture set {cap1}.
+   |    Note that capability `cap2` is not included in capture set {cap1}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:22:5 ----------------------------------------
@@ -30,6 +30,6 @@
    |     Found:    () ->{cap2} I^'s2
    |     Required: () ->{cap1} I
    |
-   |     Note that capability cap2 is not included in capture set {cap1}.
+   |     Note that capability `cap2` is not included in capture set {cap1}.
    |
    | longer explanation available when compiling with `-explain`

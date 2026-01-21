@@ -1,5 +1,5 @@
 import caps.Mutable
-import caps.cap
+import caps.any
 
 class Ref extends Mutable:
   var x = 0
@@ -14,7 +14,7 @@ class Counter:
     count.put(count.get - 1)
 
 def par(p1: () => Unit, p2: () => Unit) = ()
-def seq(p1: () => Unit, p2: () ->{cap, p1} Unit) = ()
+def seq(p1: () => Unit, p2: () ->{any, p1} Unit) = ()
 
 def test() =
   val c = Counter()

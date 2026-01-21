@@ -4,7 +4,7 @@
    |  Found:    test.runnable.Transform{val fun: (f : Any ->{a} Any)}^{f}
    |  Required: test.runnable.Transform
    |
-   |  Note that capability f is not included in capture set {}.
+   |  Note that capability `f` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:24:2 -----------------------------------------
@@ -13,7 +13,7 @@
    |  Found:    test.runnable.Transform{val fun: Any ->{f} Any}^{x}
    |  Required: test.runnable.Transform
    |
-   |  Note that capability x is not included in capture set {}.
+   |  Note that capability `x` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:31:2 -----------------------------------------
@@ -22,6 +22,6 @@
    |  Found:    test.runnable.Transform{val fun: Any ->{f} Any}^{x}
    |  Required: test.runnable.Transform
    |
-   |  Note that capability x is not included in capture set {}.
+   |  Note that capability `x` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

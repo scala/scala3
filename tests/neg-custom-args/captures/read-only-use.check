@@ -4,7 +4,7 @@
    |                     Found:    (f : () ->{r.rd} Int)
    |                     Required: () -> Int
    |
-   |                     Note that capability r.rd is not included in capture set {}.
+   |                     Note that capability `r.rd` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/read-only-use.scala:26:21 --------------------------------
@@ -13,7 +13,7 @@
    |                     Found:    (g : () ->{r2.x.rd} Int)
    |                     Required: () -> Int
    |
-   |                     Note that capability r2.x.rd is not included in capture set {}.
+   |                     Note that capability `r2.x.rd` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/read-only-use.scala:31:21 --------------------------------
@@ -22,6 +22,6 @@
    |                     Found:    (h : () ->{r3.xx.rd} Int)
    |                     Required: () -> Int
    |
-   |                     Note that capability r3.xx.rd is not included in capture set {}.
+   |                     Note that capability `r3.xx.rd` is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
