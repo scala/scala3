@@ -19,6 +19,7 @@ import scala.annotation.implicitNotFound
 import scala.collection.mutable.Builder
 import scala.collection.immutable.WrappedString
 import scala.reflect.ClassTag
+import scala.annotation.experimental
 
 /** Builds a collection of type `C` from elements of type `A` when a source collection of type `From` is available.
   * Implicit instances of `BuildFrom` are available for all collection types.
@@ -83,6 +84,15 @@ object BuildFrom extends BuildFromLowPriority1 {
       def fromSpecific(from: Array[?])(it: IterableOnce[A]^): Array[A] = Factory.arrayFactory[A].fromSpecific(it)
       def newBuilder(from: Array[?]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
     }
+
+  @experimental
+  given buildFromIArray[A : ClassTag]: BuildFrom[IArray[Any], A, IArray[A]] =
+    // IArray[?] is unreducible wildcard, but as IArray is covariant its ok to use IArray[Any] here.
+    new BuildFrom[IArray[Any], A, IArray[A]]:
+      def fromSpecific(from: IArray[Any])(it: IterableOnce[A]^): IArray[A] =
+        // TODO: when IArray factory is added to library, delegate there.
+        IArray.unsafeFromArray(Factory.arrayFactory[A].fromSpecific(it))
+      def newBuilder(from: IArray[Any]): Builder[A, IArray[A]] = IArray.newBuilder[A]
 
   implicit def buildFromView[A, B]: BuildFrom[View[A], B, View[B]] =
     new BuildFrom[View[A], B, View[B]] {
