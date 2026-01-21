@@ -3,7 +3,7 @@ package scala.runtime
 
 import scala.language.postfixOps
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.collection.Seq

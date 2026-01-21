@@ -9,7 +9,7 @@ import org.junit.runners.JUnit4
 class MatchErrorTest {
 
   @Test def canSerializeMatchError(): Unit = {
-    import java.io._
+    import java.io.*
     val matchError = new MatchError(new Object)
     val barrayOut = new ByteArrayOutputStream()
     new ObjectOutputStream(barrayOut).writeObject(matchError)

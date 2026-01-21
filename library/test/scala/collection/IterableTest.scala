@@ -5,7 +5,7 @@ import Assert.{assertEquals, assertFalse, assertTrue}
 
 import scala.annotation.nowarn
 import scala.collection.immutable.{ArraySeq, List, Range, Vector}
-import tools.AssertUtil._
+import tools.AssertUtil.*
 
 class IterableTest {
 
@@ -260,7 +260,7 @@ class IterableTest {
     assertEquals("Fu()", foo.toString)
   }
 
-  @deprecated("Overrides deprecated stringPrefix", since="2.13.0")
+  @nowarn("cat=deprecation")
   @Test
   def overrideStringPrefix(): Unit = {
     class Foo[+A] extends Iterable[A] {
@@ -272,7 +272,7 @@ class IterableTest {
     assertEquals("Bar()", foo.toString)
   }
 
-  @deprecated("Overrides deprecated stringPrefix", since="2.13.0")
+  @nowarn("cat=deprecation")
   @Test
   def overrideClassNameAndStringPrefix(): Unit = {
     class Foo[+A] extends Iterable[A] {
@@ -295,7 +295,7 @@ class IterableTest {
     assertEquals(Seq("1", "2", "3", "4" ,"5"), right)
   }
 
-  @deprecated("Uses deprecated hasDefiniteSize, extends HashMap", since="2.13.0")
+  @nowarn("cat=deprecation") // Uses deprecated hasDefiniteSize, extends HashMap
   @Test
   def hasDefiniteSize(): Unit = {
     import scala.{collection => c}

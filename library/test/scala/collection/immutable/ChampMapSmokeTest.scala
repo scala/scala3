@@ -26,7 +26,7 @@ object ChampMapSmokeTest {
 
 class ChampMapSmokeTest {
 
-  import ChampMapSmokeTest._
+  import ChampMapSmokeTest.*
 
   val v11h1 = mkValue(11, 1)
   val v12h1 = mkValue(12, 1)

@@ -9,7 +9,7 @@ import scala.collection.Iterable
 @deprecated("Tests deprecated API", since="2.13")
 class JCollectionWrapperTest {
 
-  import scala.collection.JavaConverters._
+  import scala.collection.JavaConverters.*
 
   @Test
   def testIteratorDoesNotCauseStackOverflow(): Unit = {

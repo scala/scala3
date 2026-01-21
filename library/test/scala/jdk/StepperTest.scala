@@ -16,15 +16,12 @@ import java.util.Spliterator
 
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import scala.collection.{AnyStepper, ClassTagIterableFactory, IntStepper, IterableFactory, MapFactory, SortedIterableFactory, SortedMapFactory, SpecificIterableFactory, Stepper, StepperShape}
 import scala.collection.{concurrent => cc, immutable => ci, mutable => cm}
-import scala.jdk.StreamConverters._
-import scala.util.chaining._
+import scala.jdk.StreamConverters.*
+import scala.util.chaining.*
 
-@RunWith(classOf[JUnit4])
 class StepperTest {
   val sizes = List(0, 1, 2, 3, 4, 7, 8, 15, 16, 17, 136, 2123)
 

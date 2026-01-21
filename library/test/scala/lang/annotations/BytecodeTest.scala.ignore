@@ -1,16 +1,16 @@
 package scala.lang.annotations
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.tools.nsc.backend.jvm.AsmUtils
-import scala.tools.testkit.ASMConverters._
+import scala.tools.testkit.ASMConverters.*
 import scala.tools.testkit.BytecodeTesting
-import scala.tools.testkit.BytecodeTesting._
+import scala.tools.testkit.BytecodeTesting.*
 
 class BytecodeTest extends BytecodeTesting {
-  import compiler._
+  import compiler.*
 
   @Test
   def t8731(): Unit = {

@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException
 import scala.annotation.nowarn
 import scala.runtime.PStatics.VM_MaxArraySize
 import tools.AssertUtil.{assertSameElements, assertThrows, fail}
-import scala.util.chaining._
+import scala.util.chaining.*
 
 class ArrayBufferTest {
 
@@ -421,7 +421,7 @@ class ArrayBufferTest {
   }*/
 
   /*@Test def `array capacity must follow sizing`(): Unit = {
-    val sut = getMethodAccessible[ArrayBuffer[_]]("array")
+    val sut = getMethodAccessible[ArrayBuffer[?]]("array")
     def array[A](buf: ArrayBuffer[A]) = sut.invokeAs[Array[AnyRef]](buf)
 
     assertEquals(16, array(ArrayBuffer(1, 2, 3)).length)

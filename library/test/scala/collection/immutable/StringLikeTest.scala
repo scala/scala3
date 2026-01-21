@@ -1,15 +1,12 @@
 package scala.collection.immutable
 
-import org.junit.Assert.{ assertThrows => _, _ }
+import org.junit.Assert.{ assertThrows => _, * }
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-import tools.AssertUtil._
+import tools.AssertUtil.*
 import scala.util.Random
 
 /* Test for scala/bug#8988 */
-@RunWith(classOf[JUnit4])
 class StringLikeTest {
   @Test
   def testStringSplitWithChar(): Unit = {

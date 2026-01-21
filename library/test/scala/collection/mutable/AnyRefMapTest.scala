@@ -1,15 +1,11 @@
 package scala.collection.mutable
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.collection.immutable
 
-
 /* Test for scala/bug#10540 */
-@RunWith(classOf[JUnit4])
 @annotation.nowarn("cat=deprecation&origin=scala.collection.mutable.AnyRefMap")
 class AnyRefMapTest {
   @Test def t13048(): Unit = {

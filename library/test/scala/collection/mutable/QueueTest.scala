@@ -1,12 +1,9 @@
 package scala.collection.mutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import scala.collection.mutable
 
-@RunWith(classOf[JUnit4])
 class QueueTest {
 
   @Test

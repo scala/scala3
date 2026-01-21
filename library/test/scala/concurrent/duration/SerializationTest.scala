@@ -1,11 +1,7 @@
 package scala.concurrent.duration
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
 
-
-@RunWith(classOf[JUnit4])
 class SerializationTest {
   @Test
   def test_SI9197(): Unit = {

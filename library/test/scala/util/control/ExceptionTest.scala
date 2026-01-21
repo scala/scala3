@@ -10,18 +10,15 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.util
+package scala.util.control
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.collection.mutable.ListBuffer
 
-import scala.util.control.Exception._
+import scala.util.control.Exception.*
 
-@RunWith(classOf[JUnit4])
 class ExceptionTest {
 
   @Test

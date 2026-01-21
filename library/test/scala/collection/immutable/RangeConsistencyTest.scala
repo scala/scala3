@@ -1,19 +1,16 @@
 package scala.collection.immutable
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import scala.math._
-import scala.util._
+import scala.math.*
+import scala.util.*
 
 /* Tests various ranges by making sure they all agree on the same answers. */
-@RunWith(classOf[JUnit4])
 class RangeConsistencyTest {
   def r2nr[T: Integral](
     r: Range, puff: T, stride: T, check: (T,T) => Boolean, bi: T => BigInt
   ): List[(BigInt,Try[Int])] = {
     val num = implicitly[Integral[T]]
-    import num._
+    import num.*
     val one = num.one
 
     if (!check(puff, fromInt(r.start))) return Nil

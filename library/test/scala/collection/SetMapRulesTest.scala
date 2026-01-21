@@ -12,14 +12,12 @@
 
 package scala.collection
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.annotation.unused
 import scala.collection.{mutable, immutable, concurrent}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * Test that various set and map implementation conform to the following rules:
@@ -35,7 +33,6 @@ import scala.jdk.CollectionConverters._
   * 1 is indirectly tested by using the `Value` instances as keys in all tests. 3 cannot be tested directly. The other
   * rules have explicit tests.
   */
-@RunWith(classOf[JUnit4])
 class SetMapRulesTest {
 
   class Value private (val id: Int, extra: Int) {

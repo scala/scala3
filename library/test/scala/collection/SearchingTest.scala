@@ -1,12 +1,9 @@
 package scala.collection
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import scala.collection.Searching._
+import scala.collection.Searching.*
 
-@RunWith(classOf[JUnit4])
 class SearchingTest {
 
   @Test

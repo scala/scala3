@@ -1,13 +1,10 @@
 package scala.collection.immutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import scala.runtime.ModuleSerializationProxy
 
-@RunWith(classOf[JUnit4])
 class SerializationTest {
 
   @Test
@@ -147,7 +144,7 @@ class SerializationTest {
   }
 
   private def serializeDeserialize[T <: AnyRef](obj: T): T = {
-    import java.io._
+    import java.io.*
     val buffer = new ByteArrayOutputStream
     val out = new ObjectOutputStream(buffer)
     out.writeObject(obj)

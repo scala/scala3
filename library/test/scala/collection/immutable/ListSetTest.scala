@@ -4,10 +4,7 @@ import tools.AssertUtil.{assertSameElements, fail}
 
 import org.junit.Assert.{assertEquals, assertSame, fail => _}
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-@RunWith(classOf[JUnit4])
 class ListSetTest {
 
   @Test

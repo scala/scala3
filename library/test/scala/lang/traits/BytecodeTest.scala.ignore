@@ -1,21 +1,18 @@
 package scala.lang.traits
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
-import scala.tools.asm.Opcodes._
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.tree.ClassNode
-import scala.tools.testkit.ASMConverters._
+import scala.tools.testkit.ASMConverters.*
 import scala.tools.testkit.BytecodeTesting
-import scala.tools.testkit.BytecodeTesting._
+import scala.tools.testkit.BytecodeTesting.*
 
-@RunWith(classOf[JUnit4])
 class BytecodeTest extends BytecodeTesting {
-  import compiler._
+  import compiler.*
 
   val noForwardersCompiler = newCompiler(extraArgs = "-Xmixin-force-forwarders:false")
 

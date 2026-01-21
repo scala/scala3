@@ -24,10 +24,10 @@ import scala.runtime.BoxesRunTime
 import scala.runtime.ScalaRunTime.stringOf
 import scala.util.{Failure, Success, Try}
 import scala.util.Properties.isWin
-import scala.util.chaining._
+import scala.util.chaining.*
 import scala.util.control.{ControlThrowable, NonFatal}
 import java.lang.ref.{Reference, ReferenceQueue, SoftReference}
-import java.lang.reflect.{Array => _, _}
+import java.lang.reflect.{Array => _, *}
 import java.time.Duration
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicReference

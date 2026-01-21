@@ -28,7 +28,7 @@ object ChampSetSmokeTest {
 }
 
 class ChampSetSmokeTest {
-  import ChampSetSmokeTest._
+  import ChampSetSmokeTest.*
 
   @Test def testNodeValNode(): Unit = {
     val input = new ju.LinkedHashMap[Integer, Integer]

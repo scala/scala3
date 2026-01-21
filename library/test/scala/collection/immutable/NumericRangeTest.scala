@@ -1,13 +1,10 @@
 package scala.collection.immutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import tools.AssertUtil.assertThrows
 
-@RunWith(classOf[JUnit4])
 class NumericRangeTest {
 
   @Test
@@ -242,7 +239,7 @@ class NumericRangeTest {
 
   @Test
   def takeAndDropForCustomTypes() = {
-    import NumericRangeTest._
+    import NumericRangeTest.*
 
     // smaller than Int
     val start = NumericWrapper(Byte.MinValue)

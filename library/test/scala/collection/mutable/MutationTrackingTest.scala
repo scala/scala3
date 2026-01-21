@@ -227,7 +227,7 @@ object MutationTrackingTest {
 
 // concrete tests
 package MutationTrackingTestImpl {
-  import scala.collection.mutable.MutationTrackingTest._
+  import scala.collection.mutable.MutationTrackingTest.*
 
   class ListBufferTest extends MutationTrackingTest(ListBuffer) with BufferTest {
     @Test

@@ -3,17 +3,14 @@ package scala.collection
 import org.junit.Assert.{assertEquals, assertFalse, assertSame, assertTrue}
 import org.junit.Test
 import org.junit.Ignore
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-import tools.AssertUtil._
-import scala.util.chaining._
+import tools.AssertUtil.*
+import scala.util.chaining.*
 
 import java.lang.ref.SoftReference
 
 import mutable.ListBuffer
 
-@RunWith(classOf[JUnit4])
 class IteratorTest {
 
   private def from0 = Iterator.from(0)

@@ -21,7 +21,7 @@ import scala.{collection => co}
 @deprecated("Tests deprecated API", since="2.13")
 class StepperConversionTest {
   def isAcc[X](x: X): Boolean = x match {
-    case _: AnyAccumulatorStepper[_] => true
+    case _: AnyAccumulatorStepper[?] => true
     case _: DoubleAccumulatorStepper => true
     case _: IntAccumulatorStepper => true
     case _: LongAccumulatorStepper => true

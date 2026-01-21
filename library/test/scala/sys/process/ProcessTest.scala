@@ -8,17 +8,17 @@ import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.io.{Source => IOSource}
-import scala.jdk.CollectionConverters._
-import scala.sys.process._ // test from outside the package to ensure implicits work
+import scala.jdk.CollectionConverters.*
+import scala.sys.process.* // test from outside the package to ensure implicits work
 import scala.util.Try
 import scala.util.Using
-import scala.util.chaining._
+import scala.util.chaining.*
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
-import tools.AssertUtil._
-import tools.ReleasablePath._
+import tools.AssertUtil.*
+import tools.ReleasablePath.*
 
 
 class ProcessTest {

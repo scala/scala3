@@ -14,7 +14,7 @@ package tools
 
 import java.io.{IOException, File}
 import java.nio.file.{Files, FileVisitResult, SimpleFileVisitor, Path}, FileVisitResult.{CONTINUE => Continue}
-import java.nio.file.attribute._
+import java.nio.file.attribute.*
 
 import scala.util.Properties
 import scala.util.Using.Releasable

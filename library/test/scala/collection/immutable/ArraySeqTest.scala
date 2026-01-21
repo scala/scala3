@@ -1,14 +1,11 @@
 package scala.collection.immutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import scala.annotation.nowarn
 import scala.reflect.ClassTag
 
-@RunWith(classOf[JUnit4])
 class ArraySeqTest {
   @Test
   def slice(): Unit = {

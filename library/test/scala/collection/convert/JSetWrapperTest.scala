@@ -2,14 +2,14 @@ package scala.collection.convert
 
 import java.{util => ju}
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import scala.collection.Set
 
 @deprecated("Tests deprecated API", since="2.13")
 class JSetWrapperTest {
 
-  import scala.collection.JavaConverters._
+  import scala.collection.JavaConverters.*
 
   @Test
   def testIteratorDoesNotCauseStackOverflow(): Unit = {

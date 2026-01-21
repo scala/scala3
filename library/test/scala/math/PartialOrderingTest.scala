@@ -4,7 +4,7 @@ import org.junit.Test
 import scala.annotation.unused
 
 class PartialOrderingTest {
-  import EquivTest._
+  import EquivTest.*
 
   @Test
   def testOrderingToPartialOrderingResolution(): Unit = {

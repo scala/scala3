@@ -1,11 +1,8 @@
 package scala.util
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
-@RunWith(classOf[JUnit4])
 class SystemPropertiesTest {
   @Test
   def filterAll(): Unit = {

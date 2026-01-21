@@ -1,13 +1,10 @@
 package scala.collection
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-import tools.AssertUtil._
+import tools.AssertUtil.*
 
-@RunWith(classOf[JUnit4])
 class IndexedSeqViewTest {
   @Test
   def _toString(): Unit = {
