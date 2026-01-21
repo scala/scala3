@@ -28,7 +28,7 @@ trait Buffer[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]
     with Shrinkable[A]
-    with IterableFactoryDefaults[A, Buffer] { self =>
+    with IterableFactoryDefaults[A, Buffer] { self: Buffer[A] =>
 
   override def iterableFactory: SeqFactory[Buffer] = Buffer
 
@@ -247,6 +247,122 @@ trait Buffer[A]
     this
   }
 
+  // === ArrayDeque-style methods with default implementations ===
+
+  /** Optionally removes and returns the first element.
+   *
+   *  @return  `Some(firstElement)` if the buffer is non-empty, `None` otherwise
+   */
+  def removeHeadOption(): Option[A] =
+    if (isEmpty) None else Some(removeHead())
+
+  /** Removes and returns the first element.
+   *
+   *  @return  the removed first element
+   *  @throws NoSuchElementException if the buffer is empty
+   */
+  def removeHead(): A =
+    if (isEmpty) throw new NoSuchElementException("empty collection")
+    else remove(0)
+
+  /** Optionally removes and returns the last element.
+   *
+   *  @return  `Some(lastElement)` if the buffer is non-empty, `None` otherwise
+   */
+  def removeLastOption(): Option[A] =
+    if (isEmpty) None else Some(removeLast())
+
+  /** Removes and returns the last element.
+   *
+   *  @return  the removed last element
+   *  @throws NoSuchElementException if the buffer is empty
+   */
+  def removeLast(): A =
+    if (isEmpty) throw new NoSuchElementException("empty collection")
+    else remove(length - 1)
+
+  /** Removes all elements from this $coll and returns them.
+   *
+   *  @return a sequence containing all removed elements
+   */
+  def removeAll(): scala.collection.immutable.Seq[A] = {
+    val elems = scala.collection.immutable.Seq.newBuilder[A]
+    elems.sizeHint(length)
+    while (nonEmpty) {
+      elems += removeHead()
+    }
+    elems.result()
+  }
+
+  /** Removes all elements from this $coll and returns them in reverse order.
+   *
+   *  @return a sequence containing all removed elements in reverse order
+   */
+  def removeAllReverse(): scala.collection.immutable.Seq[A] = {
+    val elems = scala.collection.immutable.Seq.newBuilder[A]
+    elems.sizeHint(length)
+    while (nonEmpty) {
+      elems += removeLast()
+    }
+    elems.result()
+  }
+
+  /** Removes and returns elements from the head of this $coll while they satisfy the predicate.
+   *
+   *  @param f  the predicate used for choosing elements
+   *  @return   a sequence containing all removed elements
+   */
+  def removeHeadWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
+    val elems = scala.collection.immutable.Seq.newBuilder[A]
+    while (headOption.exists(f)) {
+      elems += removeHead()
+    }
+    elems.result()
+  }
+
+  /** Removes and returns elements from the tail of this $coll while they satisfy the predicate.
+   *
+   *  @param f  the predicate used for choosing elements
+   *  @return   a sequence containing all removed elements
+   */
+  def removeLastWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
+    val elems = scala.collection.immutable.Seq.newBuilder[A]
+    while (lastOption.exists(f)) {
+      elems += removeLast()
+    }
+    elems.result()
+  }
+
+  /** Finds and removes the first element satisfying a predicate.
+   *
+   *  @param p    the predicate used for choosing the first element
+   *  @param from the start index
+   *  @return the first element for which p yields true, or None if no such element exists
+   */
+  def removeFirst(p: A => Boolean, from: Int = 0): Option[A] = {
+    val i = indexWhere(p, from)
+    if (i < 0) None else Some(remove(i))
+  }
+
+  /** Removes and returns all elements satisfying the given predicate.
+   *
+   *  @param p  the predicate used for choosing elements
+   *  @return   a sequence of all removed elements
+   */
+  def removeAll(p: A => Boolean): scala.collection.immutable.Seq[A] = {
+    val res = scala.collection.immutable.Seq.newBuilder[A]
+    var i = 0
+    while (i < size) {
+      if (p(this(i))) {
+        res += remove(i)
+        // don't increment i since remove shifts elements
+      } else {
+        i += 1
+      }
+    }
+    res.result()
+  }
+
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "Buffer"
 }
@@ -311,10 +427,10 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 }
 
 @SerialVersionUID(3L)
-object Buffer extends SeqFactory.Delegate[Buffer](ArrayBuffer)
+object Buffer extends SeqFactory.Delegate[Buffer](ArrayDeque)
 
 @SerialVersionUID(3L)
-object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](ArrayBuffer)
+object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](ArrayDeque)
 
 /** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses. */
 abstract class AbstractBuffer[A] extends AbstractSeq[A] with Buffer[A]
