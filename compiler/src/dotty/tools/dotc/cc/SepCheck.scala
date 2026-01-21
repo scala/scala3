@@ -461,10 +461,19 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   def consumeError(ref: Capability, loc: (SrcPos, TypeRole), pos: SrcPos)(using Context): Unit =
     val (locPos, role) = loc
-    report.error(
-      em"""Separation failure: Illegal access to $ref, which was ${role.howConsumed}
-          |on line ${locPos.line + 1} and therefore is no longer available.""",
-      pos)
+    val parts = List(
+      reporting.Diagnostic.DiagnosticPart(
+        "The capability was consumed here.",
+        locPos.sourcePos,
+        isPrimary = false
+      ),
+      reporting.Diagnostic.DiagnosticPart(
+        "Then, it was used here",
+        pos.sourcePos,
+        isPrimary = true
+      )
+    )
+    report.error(reporting.UseAfterConsume(ref, role.howConsumed), pos, parts)
 
   /** Report a failure where a capability is consumed in a loop.
    *  @param ref     the capability

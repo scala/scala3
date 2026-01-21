@@ -1,5 +1,12 @@
 -- [E164] Declaration Error: tests/neg/exports2.scala:8:11 -------------------------------------------------------------
+error overriding method f in trait B of type => String;
+  method f of type => String cannot override since it comes from an export
+5 |  def f: String = "abc"
+  |      -
+  |      the overridden method is here
+6 |
+7 |object C extends B:
 8 |  export A._            // error
   |           ^
-  |           error overriding method f in trait B of type => String;
-  |             method f of type => String cannot override since it comes from an export
+  |           the overriding method cannot override since it comes from an export
+

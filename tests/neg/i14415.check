@@ -1,5 +1,13 @@
 -- [E164] Declaration Error: tests/neg/i14415.scala:21:6 ---------------------------------------------------------------
-21 |class X extends E with D // error
-   |      ^
-   |      error overriding method m in trait C of type (a: Int): Int;
-   |        method m in trait D of type (a: Int): Int needs `abstract override` modifiers
+error overriding method m in trait C of type (a: Int): Int;
+  method m in trait D of type (a: Int): Int needs `abstract override` modifiers
+10 |    abstract override def m(a:Int):Int = { return super.m(a); }
+   |                          -
+   |                          the overridden method is here
+11 |}
+12 |
+13 |trait D extends B with C {
+14 |    override def m(a:Int):Int = { return super.m(a); }
+   |                 ^
+   |                 the overriding method needs `abstract override` modifiers
+

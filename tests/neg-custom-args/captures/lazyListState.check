@@ -1,10 +1,20 @@
 -- [E164] Declaration Error: tests/neg-custom-args/captures/lazyListState.scala:12:39 ----------------------------------
+error overriding method tail in trait State of type -> LazyListIterable[A]^{cap};
+  value tail of type LazyListIterable[A]^ has incompatible type
+
+where:    ^   refers to a fresh root capability in the type of value tail
+          cap is a root capability associated with the result type of -> LazyListIterable[A²]^²
+ 5 |  def tail: LazyListIterable[A]^
+   |      -
+   |      the overridden method is here
+ 6 |
+ 7 |private object State:
+ 8 |  object Empty extends State[Nothing]:
+ 9 |    def head: Nothing = throw new NoSuchElementException("head of empty lazy list")
+10 |    def tail: LazyListIterable[Nothing] = throw new UnsupportedOperationException("tail of empty lazy list")
+11 |
 12 |  final class Cons[A](val head: A, val tail: LazyListIterable[A]^) extends State[A] // error
    |                                       ^
-   |                 error overriding method tail in trait State of type -> LazyListIterable[A]^{cap};
-   |                   value tail of type LazyListIterable[A]^ has incompatible type
-   |
-   |                 where:    ^   refers to a fresh root capability in the type of value tail
-   |                           cap is a root capability associated with the result type of -> LazyListIterable[A²]^²
+   |                                       the overriding value has incompatible type
    |
    | longer explanation available when compiling with `-explain`

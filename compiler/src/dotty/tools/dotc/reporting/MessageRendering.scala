@@ -12,7 +12,7 @@ import io.AbstractFile
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
-import util.{SourcePosition, NoSourcePosition}
+import util.{SourceFile, SourcePosition, NoSourcePosition}
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
@@ -94,24 +94,32 @@ trait MessageRendering {
    *  -- Error: source.scala ---------------------
    *  ```
    */
-  private def boxTitle(title: String)(using Context, Level, Offset): String =
+  private def boxTitle(title: String, isSubtitle: Boolean = false)(using Context, Level, Offset): String =
     val pageWidth = ctx.settings.pageWidth.value
     val line = "-" * (pageWidth - title.length - 4)
-    hl(s"-- $title $line")
+    val starter = if isSubtitle then ".." else "--"
+    hl(s"$starter $title $line")
 
   /** The position markers aligned under the error
    *
    *  ```
    *    |         ^^^^^
    *  ```
+   *  or for sub-diagnostics:
+   *  ```
+   *    |         -----
+   *  ```
+   *
+   *  @param pos the source position to mark
+   *  @param markerChar the character to use for marking ('^' for primary errors, '-' for notes)
    */
-  private def positionMarker(pos: SourcePosition)(using Context, Level, Offset): String = {
+  private def positionMarker(pos: SourcePosition, markerChar: Char = '^')(using Context, Level, Offset): String = {
     val padding = pos.startColumnPadding
-    val carets =
+    val markers =
       if (pos.startLine == pos.endLine)
-        "^" * math.max(1, pos.endColumn - pos.startColumn)
-      else "^"
-    hl(s"$offsetBox$padding$carets")
+        markerChar.toString * math.max(1, pos.endColumn - pos.startColumn)
+      else markerChar.toString
+    hl(s"$offsetBox$padding$markers")
   }
 
   /** The horizontal line with the given offset
@@ -187,7 +195,8 @@ trait MessageRendering {
   private def posStr(
     pos: SourcePosition,
     message: Message,
-    diagnosticString: String
+    diagnosticString: String,
+    isSubdiag: Boolean = false
   )(using Context, Level, Offset): String =
     assert(
       message.errorId.isActive,
@@ -209,7 +218,7 @@ trait MessageRendering {
         val title =
           if fileAndPos.isEmpty then s"$errId$kind:" // this happens in dotty.tools.repl.ScriptedTests // TODO add name of source or remove `:` (and update test files)
           else s"$errId$kind: $fileAndPos"
-        boxTitle(title)
+        boxTitle(title, isSubtitle = isSubdiag)
       })
     else ""
   end posStr
@@ -250,6 +259,200 @@ trait MessageRendering {
     if origin.nonEmpty then
       addHelp("origin=")(origin)
 
+  // adjust a pos at EOF if preceded by newline
+  private def adjust(pos: SourcePosition): SourcePosition =
+    if pos.span.isSynthetic
+    && pos.span.isZeroExtent
+    && pos.span.exists
+    && pos.span.start == pos.source.length
+    && pos.source(pos.span.start - 1) == '\n'
+    then
+    pos.withSpan(pos.span.shift(-1))
+    else
+    pos
+
+  /** Render parts for a single source file.
+   *  @param parts the diagnostic parts to render (all must be from the same source)
+   *  @param sb the StringBuilder to append to
+   */
+  private def renderPartsForFile(
+    parts: List[Diagnostic.DiagnosticPart],
+    sb: StringBuilder
+  )(using Context, Level, Offset): Unit =
+    if parts.isEmpty then return
+
+    val source = parts.head.srcPos.source
+
+    // Find the line range covering all positions
+    val minLine = parts.map(_.srcPos.startLine).min
+    val maxLine = parts.map(_.srcPos.endLine).max
+
+    // Render the unified code snippet
+    val startOffset = source.lineToOffset(minLine)
+    val endOffset = source.nextLine(source.lineToOffset(maxLine))
+    val content = source.content.slice(startOffset, endOffset)
+    val syntax =
+      if (summon[Context].settings.color.value != "never" && !summon[Context].isJava)
+        SyntaxHighlighting.highlight(new String(content)).toCharArray
+      else content
+
+    // Split syntax-highlighted content into lines
+    def linesFrom(arr: Array[Char]): List[String] = {
+      def pred(c: Char) = (c: @switch) match {
+        case LF | CR | FF | SU => true
+        case _ => false
+      }
+      val (line, rest0) = arr.span(!pred(_))
+      // Only consume one line terminator (CRLF counts as one)
+      val rest =
+        if rest0.isEmpty then rest0
+        else if rest0(0) == CR && rest0.length > 1 && rest0(1) == LF then rest0.drop(2)
+        else rest0.drop(1)
+      new String(line) :: { if rest.isEmpty then Nil else linesFrom(rest) }
+    }
+
+    val lines = linesFrom(syntax)
+    val maxLineNumber = maxLine + 1
+    val lineNumberWidth = maxLineNumber.toString.length
+
+    // Render each line with its markers and messages
+    for (lineNum <- minLine to maxLine) do
+      val lineIdx = lineNum - minLine
+      if lineIdx < lines.length then
+        val lineContent = lines(lineIdx)
+        val lineNbr = (lineNum + 1).toString
+        val linePrefix = String.format(s"%${lineNumberWidth}s |", lineNbr)
+        val lnum = hl(" " * math.max(0, offset - linePrefix.length - 1) + linePrefix)
+        sb.append(lnum).append(lineContent.stripLineEnd).append(EOL)
+
+        // Find all positions that should show markers after this line
+        val partsOnLine = parts.filter(_.srcPos.startLine == lineNum)
+          .sortBy(p => (p.srcPos.startColumn, !p.isPrimary))
+
+        if partsOnLine.size == 1 then
+          // Single marker on this line
+          val part = partsOnLine.head
+          val markerChar = if part.isPrimary then '^' else '-'
+          val marker = positionMarker(part.srcPos, markerChar)
+          val err = errorMsg(part.srcPos, part.text, addLine = false)
+          sb.append(marker).append(EOL)
+          sb.append(err).append(EOL)
+        else if partsOnLine.size > 1 then
+          // Multiple markers on same line
+          val markerLine = StringBuilder()
+          markerLine.append(offsetBox)
+
+          var currentCol = 0
+          for part <- partsOnLine do
+            val markerChar = if part.isPrimary then '^' else '-'
+            val targetCol = part.srcPos.startColumn
+            val padding = " " * (targetCol - currentCol)
+            markerLine.append(padding).append(markerChar)
+            currentCol = targetCol + 1
+
+          sb.append(markerLine).append(EOL)
+
+          // Render messages from right to left with connector bars
+          val sortedByColumn = partsOnLine.reverse // rightmost first
+          for (part, idx) <- sortedByColumn.zipWithIndex do
+            val remainingParts = sortedByColumn.drop(idx + 1) // parts still waiting for messages
+
+            // Build connector line with vertical bars for remaining parts
+            val connectorLine = StringBuilder()
+            connectorLine.append(offsetBox)
+
+            var col = 0
+            // First, add vertical bars for all remaining (not-yet-shown) parts
+            for p <- partsOnLine do
+              if remainingParts.contains(p) then
+                val targetCol = p.srcPos.startColumn
+                val padding = " " * (targetCol - col)
+                connectorLine.append(padding).append("|")
+                col = targetCol + 1
+
+            // Then add the message for the current part, aligned to its column
+            val msgText = part.text
+            val msgCol = part.srcPos.startColumn
+            // If we've added bars, col is position after last bar; if not, col is 0
+            // We want the message to start at msgCol, with at least one space separation
+            val msgPadding = if col == 0 then " " * msgCol else " " * Math.max(1, msgCol - col)
+            connectorLine.append(msgPadding).append(msgText)
+
+            sb.append(connectorLine).append(EOL)
+  end renderPartsForFile
+
+  /** Group consecutive parts by their source file. */
+  private def groupPartsByFile(parts: List[Diagnostic.DiagnosticPart]): List[(SourceFile, List[Diagnostic.DiagnosticPart])] =
+    if parts.isEmpty then Nil
+    else
+      val head = parts.head
+      val source = head.srcPos.source
+      val (sameSrc, rest) = parts.span(_.srcPos.source == source)
+      (source, sameSrc) :: groupPartsByFile(rest)
+
+  /** Render a message using multi-span information from Diagnostic parts. */
+  def messageAndPosFromParts(dia: Diagnostic)(using Context): String =
+    val msg = dia.msg
+    val pos = dia.pos
+    val pos1 = adjust(pos.nonInlined)
+    val diagParts = dia.parts
+
+    if diagParts.isEmpty then
+      return msg.message
+
+    // Collect all positions from diagnostic parts
+    val validParts = diagParts.filter(p => p.srcPos.exists && p.srcPos.source.file.exists)
+
+    if validParts.isEmpty then
+      return msg.message
+
+    // Group parts by consecutive source files
+    val groupedParts = groupPartsByFile(validParts)
+
+    // Calculate the maximum line number across all files for consistent offset
+    val maxLineNumber = validParts.map(_.srcPos.endLine).max + 1
+
+    given Level = Level(dia.level)
+    given Offset = Offset(maxLineNumber.toString.length + 2)
+
+    val sb = StringBuilder()
+
+    // Title using the primary position
+    val posString = posStr(pos1, msg, diagnosticLevel(dia))
+    if posString.nonEmpty then sb.append(posString).append(EOL)
+
+    // Display main message
+    sb.append(msg.message)
+    if !msg.message.endsWith(EOL) then sb.append(EOL)
+    sb.append(EOL)
+
+    // Track the current file
+    // When starting, we set it to the file of the diagnostic
+    var currentFile: SourceFile = pos1.source
+
+    // Render each group of parts
+    for (source, parts) <- groupedParts do
+      // Add a file indicator line when switching to a different file
+      if source != currentFile then
+        sb.append("... ").append(renderPath(source.file)).append(EOL)
+        currentFile = source
+      renderPartsForFile(parts, sb)
+
+    // Add explanation if needed
+    if Diagnostic.shouldExplain(dia) then
+      sb.append(newBox())
+      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
+      sb.append(EOL).append(newBox(soft = true))
+      dia.msg.explanation.split(raw"\R").foreach: line =>
+        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
+      sb.append(EOL).append(endBox)
+    else if dia.msg.canExplain then
+      sb.append(offsetBox)
+      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
+
+    sb.toString
+  end messageAndPosFromParts
+
   /** The whole message rendered from `dia.msg`.
    *
    *  For a position in an inline expansion, choose `pos1`
@@ -270,65 +473,59 @@ trait MessageRendering {
    *
    */
   def messageAndPos(dia: Diagnostic)(using Context): String =
-    // adjust a pos at EOF if preceded by newline
-    def adjust(pos: SourcePosition): SourcePosition =
-      if pos.span.isSynthetic
-      && pos.span.isZeroExtent
-      && pos.span.exists
-      && pos.span.start == pos.source.length
-      && pos.source(pos.span.start - 1) == '\n'
-      then
-        pos.withSpan(pos.span.shift(-1))
-      else
-        pos
     val msg = dia.msg
-    val pos = dia.pos
-    val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
-    val outermost = pos.outermost // call.pos
-    val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
-    given Level = Level(dia.level)
-    given Offset =
-      val maxLineNumber =
-        if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
-        else 0
-      Offset(maxLineNumber.toString.length + 2)
-    val sb = StringBuilder()
-    val posString = posStr(pos1, msg, diagnosticLevel(dia))
-    if posString.nonEmpty then sb.append(posString).append(EOL)
-    if pos.exists && pos1.exists && pos1.source.file.exists then
-      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-      val marker = positionMarker(pos1)
-      val err = errorMsg(pos1, msg.message, srcAfter.nonEmpty)
-      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+    // Check if diagnostic provides multi-span structure
+    if dia.parts.nonEmpty then
+      messageAndPosFromParts(dia)
+    else
+      val pos = dia.pos
+      val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
+      val outermost = pos.outermost // call.pos
+      val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
+      given Level = Level(dia.level)
+      given Offset =
+        val maxLineNumber =
+          if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
+          else 0
+        Offset(maxLineNumber.toString.length + 2)
+      val sb = StringBuilder()
+      val posString = posStr(pos1, msg, diagnosticLevel(dia))
+      if posString.nonEmpty then sb.append(posString).append(EOL)
+      if pos.exists && pos1.exists && pos1.source.file.exists then
+        val (srcBefore, srcAfter, offset) = sourceLines(pos1)
+        val marker = positionMarker(pos1)
+        val err = errorMsg(pos1, msg.message, srcAfter.nonEmpty)
+        sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
-      if inlineStack.nonEmpty then
+        if inlineStack.nonEmpty then
+          sb.append(EOL).append(newBox())
+          sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
+          for inlinedPos <- inlineStack do
+            sb.append(EOL).append(newBox(soft = true))
+            sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
+            if inlinedPos.source.file.exists then
+              val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
+              val marker = positionMarker(inlinedPos)
+              sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+          sb.append(EOL).append(endBox)
+        end if
+      else sb.append(msg.message)
+
+      if dia.isVerbose then
+        appendFilterHelp(dia, sb)
+
+      if Diagnostic.shouldExplain(dia) then
         sb.append(EOL).append(newBox())
-        sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
-        for inlinedPos <- inlineStack do
-          sb.append(EOL).append(newBox(soft = true))
-          sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-          if inlinedPos.source.file.exists then
-            val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
-            val marker = positionMarker(inlinedPos)
-            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+        sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
+        sb.append(EOL).append(newBox(soft = true))
+        dia.msg.explanation.split(raw"\R").foreach: line =>
+          sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
         sb.append(EOL).append(endBox)
-      end if
-    else sb.append(msg.message)
-    if dia.isVerbose then
-      appendFilterHelp(dia, sb)
+      else if dia.msg.canExplain then
+        sb.append(EOL).append(offsetBox)
+        sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
-    if Diagnostic.shouldExplain(dia) then
-      sb.append(EOL).append(newBox())
-      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
-      sb.append(EOL).append(newBox(soft = true))
-      dia.msg.explanation.split(raw"\R").foreach: line =>
-        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
-      sb.append(EOL).append(endBox)
-    else if dia.msg.canExplain then
-      sb.append(EOL).append(offsetBox)
-      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
-
-    sb.toString
+      sb.toString
   end messageAndPos
 
   private def hl(str: String)(using Context, Level): String =

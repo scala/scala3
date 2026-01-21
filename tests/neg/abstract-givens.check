@@ -3,17 +3,34 @@
    |        ^
    |instance cannot be created, since def iterator: Iterator[A] in trait IterableOnce in package scala.collection is not defined 
 -- [E164] Declaration Error: tests/neg/abstract-givens.scala:8:8 -------------------------------------------------------
+error overriding given instance y in trait T of type (using x$1: Int): String;
+  given instance y of type (using x$1: Int): String cannot override final member given instance y in trait T
+3 |  given y(using Int): String = summon[Int].toString
+  |        -
+  |        the overridden given instance is here
+4 |  given z[T](using T): List[T]
+5 |
+6 |object Test extends T:
+7 |  given x: Int = 22
 8 |  given y(using Int): String = summon[Int].toString * 22 // error
   |        ^
-  |      error overriding given instance y in trait T of type (using x$1: Int): String;
-  |        given instance y of type (using x$1: Int): String cannot override final member given instance y in trait T
+  |        the overriding given instance cannot override final member given instance y in trait T
+
 -- [E164] Declaration Error: tests/neg/abstract-givens.scala:9:8 -------------------------------------------------------
+error overriding given instance z in trait T² of type [T](using x$1: T): List[T];
+  given instance z of type [T](using x$1: T): Seq[T] has incompatible type
+
+where:    T  is a type variable
+          T² is a trait in the empty package
+4 |  given z[T](using T): List[T]
+  |        -
+  |        the overridden given instance is here
+5 |
+6 |object Test extends T:
+7 |  given x: Int = 22
+8 |  given y(using Int): String = summon[Int].toString * 22 // error
 9 |  given z[T](using T): Seq[T] = List(summon[T]) // error
   |        ^
-  |        error overriding given instance z in trait T² of type [T](using x$1: T): List[T];
-  |          given instance z of type [T](using x$1: T): Seq[T] has incompatible type
-  |
-  |        where:    T  is a type variable
-  |                  T² is a trait in the empty package
+  |        the overriding given instance has incompatible type
   |
   | longer explanation available when compiling with `-explain`

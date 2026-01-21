@@ -1,30 +1,55 @@
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:8:6 ----------------------------------
+error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
+  method foo of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
+
+where:    ^  refers to a fresh root capability in the type of type C²
+          ^² refers to a fresh root capability in the type of type C³
+4 |  def foo[@reserve C^]: Object^{C}
+  |      -
+  |      the overridden method is here
+5 |  def bar[C^]: Object^{C}
+6 |
+7 |trait B extends A:
 8 |  def foo[C^]: Object^{C}  // error
   |      ^
-  |error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
-  |  method foo of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
-  |
-  |where:    ^  refers to a fresh root capability in the type of type C²
-  |          ^² refers to a fresh root capability in the type of type C³
+  |the overriding method has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
   |
   | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:9:6 ----------------------------------
+error overriding method bar in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
+  method bar of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
+
+where:    ^  refers to a fresh root capability in the type of type C²
+          ^² refers to a fresh root capability in the type of type C³
+5 |  def bar[C^]: Object^{C}
+  |      -
+  |      the overridden method is here
+6 |
+7 |trait B extends A:
+8 |  def foo[C^]: Object^{C}  // error
 9 |  def bar[@reserve C^]: Object^{C} // error
   |      ^
-  |error overriding method bar in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
-  |  method bar of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
-  |
-  |where:    ^  refers to a fresh root capability in the type of type C²
-  |          ^² refers to a fresh root capability in the type of type C³
+  |the overriding method has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
   |
   | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:15:15 --------------------------------
-15 |abstract class C extends A, B2 // error
-   |               ^
-   |error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
-   |  method foo in trait B2 of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
-   |
-   |where:    ^  refers to a fresh root capability in the type of type C²
-   |          ^² refers to a fresh root capability in the type of type C³
+error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
+  method foo in trait B2 of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
+
+where:    ^  refers to a fresh root capability in the type of type C²
+          ^² refers to a fresh root capability in the type of type C³
+ 4 |  def foo[@reserve C^]: Object^{C}
+   |      -
+   |      the overridden method is here
+ 5 |  def bar[C^]: Object^{C}
+ 6 |
+ 7 |trait B extends A:
+ 8 |  def foo[C^]: Object^{C}  // error
+ 9 |  def bar[@reserve C^]: Object^{C} // error
+10 |
+11 |trait B2:
+12 |  def foo[C^]: Object^{C}
+   |      ^
+   |the overriding method has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
    |
    | longer explanation available when compiling with `-explain`

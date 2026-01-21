@@ -72,6 +72,12 @@ object report:
     ctx.reporter.report(new Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
+  /** Report an error with multi-span messages. */
+  def error(msg: Message, pos: SrcPos, parts: List[Diagnostic.DiagnosticPart])(using Context): Unit =
+    val fullPos = addInlineds(pos)
+    ctx.reporter.report(new Error(msg, fullPos, parts))
+    if ctx.settings.YdebugError.value then Thread.dumpStack()
+
   def error(msg: => String, pos: SrcPos)(using Context): Unit =
     error(msg.toMessage, pos)
 

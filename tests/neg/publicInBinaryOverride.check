@@ -1,5 +1,13 @@
 -- [E164] Declaration Error: tests/neg/publicInBinaryOverride.scala:8:15 -----------------------------------------------
+error overriding method f in class A of type (): Unit;
+  method f of type (): Unit also needs to be declared with @publicInBinary
+4 |  @publicInBinary def f(): Unit = ()
+  |                      -
+  |                      the overridden method is here
+5 |  @publicInBinary def g(): Unit = ()
+6 |
+7 |class B extends A:
 8 |  override def f(): Unit = () // error
   |               ^
-  |               error overriding method f in class A of type (): Unit;
-  |                 method f of type (): Unit also needs to be declared with @publicInBinary
+  |               the overriding method also needs to be declared with @publicInBinary
+
