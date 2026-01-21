@@ -2120,8 +2120,9 @@ class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(using Context) extends
   def explain(using Context) = ""
 }
 
-class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context)
+class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol, addingCaptureSet: Boolean = false)(using Context)
 extends NamingMsg(AlreadyDefinedID):
+  private def isCaptureConflict = addingCaptureSet || Feature.ccEnabled && conflicting.isDummyCaptureParam
   def msg(using Context) =
     def where: String =
       if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
@@ -2151,11 +2152,29 @@ extends NamingMsg(AlreadyDefinedID):
       else if owner.is(Method) || conflicting.is(Method) then
         "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
       else ""
-    if conflicting.isTerm != name.isTermName then
-      i"$name clashes with $conflicting$where; the two must be defined together"
-    else
-      i"$name is already defined as $conflicting$where$note"
-  def explain(using Context) = ""
+    def defaultMsg =
+      if conflicting.isTerm != name.isTermName then
+        i"$name clashes with $conflicting$where; the two must be defined together"
+      else
+        i"$name is already defined as $conflicting$where$note"
+    if addingCaptureSet then
+      val captureKind =
+        if !owner.isClass then "capture-set parameter"
+        else
+          val typeSym = owner.unforcedDecls.lookup(name.toTypeName)
+          if typeSym.is(Param) then "capture-set parameter" else "capture-set member"
+      val what = if conflicting.is(Param) then "term parameter"
+        else if conflicting.owner.isClass then i"member $conflicting" else "term"
+      i"$captureKind $name clashes with $what of the same name"
+    else if Feature.ccEnabled && conflicting.isDummyCaptureParam then
+      i"$name clashes with capture-set parameter of the same name"
+    else defaultMsg
+  def explain(using Context) =
+    if isCaptureConflict then
+      i"""Capture-set parameters (declared with ^) range over capture sets. Since both
+         |capture-set parameter names and regular term names can appear in a capture set,
+         |they must be distinct to avoid ambiguity."""
+    else ""
 
 class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
   def msg(using Context) =
