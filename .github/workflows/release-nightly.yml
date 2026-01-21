@@ -18,3 +18,33 @@ jobs:
     with:
       environment: release-nightly
     secrets: inherit
+
+  release-documentation:
+    runs-on: ubuntu-latest
+    environment: release-nightly
+    needs: release-maven-artifacts
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'adopt'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Generate The Website
+        run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SCALA_APP_ID }}
+          private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}
+          owner: scala
+          repositories: nightly.scala-lang.org
+      - name: Deploy Website to https://nightly.scala-lang.org
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ steps.app-token.outputs.token }}
+          publish_dir: docs/_site
+          external_repository: scala/nightly.scala-lang.org
+          publish_branch: main
