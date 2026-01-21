@@ -1059,10 +1059,6 @@ object SymDenotations {
     /** Is this a Scala 2 macro defined */
     final def isScala2MacroInScala3(using Context): Boolean =
       is(Macro, butNot = Inline) && flagsUNSAFE.is(Erased) // flag is set initially for macros - we check if it's a scala 2 macro before completing the type constructor so do not force the info to check the flag
-      // Consider the macros of StringContext as plain Scala 2 macros when
-      // compiling the standard library with Dotty.
-      // This should be removed on Scala 3.x
-      && owner.ne(defn.StringContextClass)
 
     /** An erased value or an erased inline method or field */
     def isErased(using Context): Boolean =
