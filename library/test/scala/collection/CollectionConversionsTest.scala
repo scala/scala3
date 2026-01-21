@@ -1,7 +1,7 @@
 package scala.collection
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.collection.mutable.Buffer
 import scala.reflect.ClassTag

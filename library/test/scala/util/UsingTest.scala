@@ -1,7 +1,7 @@
 package scala.util
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.annotation.unused
 import scala.reflect.ClassTag
@@ -9,7 +9,7 @@ import scala.util.control.ControlThrowable
 
 @deprecated("ThreadDeath is deprecated on JDK 20", "")
 class UsingTest {
-  import UsingTest._
+  import UsingTest.*
 
   /* `Using.resource` exception preference */
 

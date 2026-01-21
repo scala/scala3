@@ -1,13 +1,10 @@
 package scala.collection
 
-import org.junit.Assert.{assertThrows => _, _}
+import org.junit.Assert.{assertThrows => _, *}
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import tools.AssertUtil.assertThrows
 
-@RunWith(classOf[JUnit4])
 class SeqViewTest {
   @Test
   def _toString(): Unit = {

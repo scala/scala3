@@ -1,15 +1,12 @@
 package scala.collection.immutable
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.annotation.unused
 import scala.ref.WeakReference
 import scala.util.Try
 
-@RunWith(classOf[JUnit4])
 @deprecated("Tests deprecated Stream", since="2.13")
 class StreamTest {
 

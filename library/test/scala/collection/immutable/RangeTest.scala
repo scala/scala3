@@ -1,14 +1,11 @@
 package scala.collection.immutable
 
 import org.junit.{Assert, Test}
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import tools.AssertUtil
 
-@RunWith(classOf[JUnit4])
 class RangeTest {
-  import Assert.{ assertThrows => _, _ }
-  import AssertUtil._
+  import Assert.{ assertThrows => _, * }
+  import AssertUtil.*
 
   @Test
   def sorted(): Unit = {

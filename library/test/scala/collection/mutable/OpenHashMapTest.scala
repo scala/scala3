@@ -1,6 +1,6 @@
 package scala.collection.mutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 //import org.openjdk.jol.info.GraphWalker
 
@@ -53,7 +53,7 @@ class OpenHashMapTest {
     }
 
     val walker = new GraphWalker()
-    def countInstances(obj: AnyRef) = walker.walk(obj).getClassCounts().count(classOf[MyClass]: Class[_])
+    def countInstances(obj: AnyRef) = walker.walk(obj).getClassCounts().count(classOf[MyClass]: Class[?])
 
     val m = OpenHashMap.empty[MyClass, Int]
     val obj = new MyClass

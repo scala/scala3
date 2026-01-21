@@ -1,13 +1,13 @@
 package scala.collection.immutable
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.collection.{IterableOnce, Iterator, SeqFactory}
 import scala.compiletime.uninitialized
 
 class LazyListLazinessTest {
-  import LazyListLazinessTest._
+  import LazyListLazinessTest.*
 
   /* op laziness tests */
 
@@ -413,7 +413,7 @@ class LazyListLazinessTest {
 
   @Test
   def startsWith_properlyLazy(): Unit = {
-    import LazinessChecker._
+    import LazinessChecker.*
     assertLazyAllSkipping(_.startsWith(0 until halfCount), halfCount)
     assertLazyAllSkipping(_.startsWith(halfCount to count), 1)
   }
@@ -540,7 +540,7 @@ class LazyListLazinessTest {
 
   @Test
   def patch_properlyLazy(): Unit = {
-    import LazinessChecker._
+    import LazinessChecker.*
     val values = halfCount :: 0 :: Nil
     for {
       from <- count :: values
@@ -678,7 +678,7 @@ class LazyListLazinessTest {
   @Test
   def serialization_properlyLazy(): Unit = {
     def serializeDeserialize(obj: LazyList[Int]): LazyList[Int] = {
-      import java.io._
+      import java.io.*
       val buffer = new ByteArrayOutputStream
       val out = new ObjectOutputStream(buffer)
       out.writeObject(obj)
@@ -932,7 +932,7 @@ private object LazyListLazinessTest {
 
   /** Note: not reusable. */
   sealed abstract class LazinessChecker extends Serializable {
-    import LazinessChecker._
+    import LazinessChecker.*
 
     protected val states = new Array[Boolean](count)
 

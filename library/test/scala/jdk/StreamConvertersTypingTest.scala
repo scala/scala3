@@ -12,14 +12,14 @@
 
 package scala.jdk
 
-import java.util.stream._
+import java.util.stream.*
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.annotation.unused
 import scala.collection.Stepper.EfficientSplit
-import scala.collection._
+import scala.collection.*
 
 class StreamConvertersTypingTest {
   def anyStepper[T](c: IterableOnce[T]): AnyStepper[T] = c.stepper
@@ -448,7 +448,7 @@ class StreamConvertersTypingTest {
 
   /*@Test
   def anyStepperOfPrimitiveAsStream(): Unit = {
-    import scala.jdk.StreamConverters._
+    import scala.jdk.StreamConverters.*
     val s = new AnyStepper[Int] with EfficientSplit {
       override def trySplit(): AnyStepper[Int] = null
       override def hasStep: Boolean = false

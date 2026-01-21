@@ -1,6 +1,6 @@
 package scala.runtime
 
-import org.junit.Assert._
+import org.junit.Assert.*
 
 trait SideEffectTest {
 

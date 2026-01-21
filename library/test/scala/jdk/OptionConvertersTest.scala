@@ -12,16 +12,13 @@
 
 package scala.jdk
 
-import java.util._
+import java.util.*
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
-@RunWith(classOf[JUnit4])
 class OptionConvertersTest {
   @Test
   def scalaToEverything(): Unit = {

@@ -2,12 +2,9 @@ package scala
 package collection
 package immutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-@RunWith(classOf[JUnit4])
 class TreeSeqMapTest {
   @Test
   def t7445(): Unit = {
@@ -133,8 +130,8 @@ class TreeSeqMapTest {
 
   @Test
   def testAppend(): Unit = {
-    import TreeSeqMap._
-    import TreeSeqMap.Ordering._
+    import TreeSeqMap.*
+    import TreeSeqMap.Ordering.*
 
     for (i <- 1 until 1027) {
       val o1 = Ordering((1 until i).map(n => n -> toBinaryString(n))*).exclude(i / 2).exclude(i / 10).exclude(i - 1)
@@ -179,19 +176,5 @@ class TreeSeqMapTest {
     val m = util.Try(TreeSeqMap.empty.iterator.next())
     assertTrue(m.isFailure)
     assertFalse("empty iterator does not have next", TreeSeqMap.empty.iterator.hasNext)
-  }
-}
-object TreeSeqMapTest extends App {
-  import TreeSeqMap.Ordering._
-
-  val o0 = TreeSeqMap.Ordering(1 -> toBinaryString(1), 2 -> toBinaryString(2), -1 -> toBinaryString(-1), 5 -> toBinaryString(5), 100 -> toBinaryString(100))
-  println(o0)
-  println()
-  var o = TreeSeqMap.Ordering.empty[String]
-  for (i <- 1 until 129) {
-    val v = toBinaryString(i)
-    o = o.include(i, v)
-    println(s"$i [$v]:\n" + o)
-    println()
   }
 }

@@ -1,11 +1,11 @@
 package scala.util
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import tools.AssertUtil.assertThrows
 
 class ChainingOpsTest {
-  import scala.util.chaining._
+  import scala.util.chaining.*
 
   @Test
   def testAnyTap(): Unit = {

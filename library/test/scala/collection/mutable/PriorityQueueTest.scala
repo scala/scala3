@@ -1,17 +1,14 @@
 package scala.collection.mutable
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
 import org.junit.Assert.assertEquals
 
 import tools.AssertUtil.{assertFails, assertNotReachable, assertThrows}
 import scala.util.Random
-import scala.util.chaining._
+import scala.util.chaining.*
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
-@RunWith(classOf[JUnit4])
 /* Test for scala/bug#7568  */
 class PriorityQueueTest {
   val elements = List.fill(1000)(Random.nextInt(Int.MaxValue))

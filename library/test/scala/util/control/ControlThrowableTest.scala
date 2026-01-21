@@ -12,13 +12,10 @@
 
 package scala.util.control
 
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.{assertThrows => _, *}
 import tools.AssertUtil.assertThrown
 
-@RunWith(classOf[JUnit4])
 @deprecated("Test me, don't judge me", since = "forever")
 class ControlThrowableTest {
 

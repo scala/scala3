@@ -1,12 +1,9 @@
 package scala.collection
 
 import org.junit.{Assert, Test}
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import scala.collection.immutable.{LazyList, List, Range}
 import scala.collection.mutable.ArrayBuffer
 
-@RunWith(classOf[JUnit4])
 class EqualityTest {
 
   @Test

@@ -1,17 +1,14 @@
 package scala.runtime
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 /** Tests for the runtime object ScalaRunTime */
-@RunWith(classOf[JUnit4])
 class ScalaRunTimeTest {
   @Test
   def testStringOf(): Unit = {
     import ScalaRunTime.{replStringOf, stringOf}
-    import scala.collection._
+    import scala.collection.*
 
     assertEquals("null", stringOf(null))
     assertEquals( "\"\"", stringOf(""))

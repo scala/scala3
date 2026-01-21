@@ -14,14 +14,14 @@ package scala.jdk
 
 import java.io.NotSerializableException
 
-import org.junit.Assert.{ assertThrows => _, _ }
+import org.junit.Assert.{ assertThrows => _, * }
 import org.junit.Test
 
 import scala.annotation.unused
-import scala.jdk.FunctionConverters._
+import scala.jdk.FunctionConverters.*
 import scala.jdk.javaapi.{FunctionConverters => conv}
 import scala.language.implicitConversions
-import tools.AssertUtil._
+import tools.AssertUtil.*
 
 class FunctionConvertersTest {
   import java.io.File

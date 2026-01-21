@@ -1,13 +1,10 @@
 package scala.collection
 
 import org.junit.Test
-import org.junit.Assert.{ assertThrows => _, _ }
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
-import tools.AssertUtil._
+import org.junit.Assert.{ assertThrows => _, * }
+import tools.AssertUtil.*
 import scala.util.Try
 
-@RunWith(classOf[JUnit4])
 class StringParsersTest {
 
   def doubleOK(str: String): Unit = assertTrue(

@@ -1,16 +1,13 @@
 package scala.math
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import java.{lang => jl}
 
 import scala.collection.SortedSet
 import scala.math.Ordering.Double.TotalOrdering
 
-@RunWith(classOf[JUnit4])
 class OrderingTest {
   val floats = Seq(
     Float.NegativeInfinity,
@@ -111,7 +108,7 @@ class OrderingTest {
     check(Ordering[(Int, Long, Float, Double, Byte, Char, Short, BigInt, BigDecimal)])
     check(Ordering[Option[Int]])
 
-    import Ordering.Implicits._
+    import Ordering.Implicits.*
     check(Ordering[Seq[Int]])
     check(Ordering[SortedSet[Int]])
   }
@@ -263,7 +260,7 @@ class OrderingTest {
     check(Ordering[(Int, Long, Float, Double, Byte, Char, Short, BigInt, BigDecimal)])
     check(Ordering[Option[Int]])
 
-    import Ordering.Implicits._
+    import Ordering.Implicits.*
     check(Ordering[Seq[Int]])
     check(Ordering[SortedSet[Int]])
   }

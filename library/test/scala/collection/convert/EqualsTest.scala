@@ -2,7 +2,7 @@
 package scala.collection.convert
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import java.util.{
   AbstractList,
@@ -18,8 +18,8 @@ import java.util.{
 import java.lang.{Iterable => JIterable}
 import java.util.concurrent.{ConcurrentHashMap => JCMap}
 import scala.collection.{AbstractIterable, concurrent, mutable}
-import scala.jdk.CollectionConverters._
-import JavaCollectionWrappers._
+import scala.jdk.CollectionConverters.*
+import JavaCollectionWrappers.*
 
 class JTestList(vs: Int*) extends AbstractList[Int] {
   def this() = this(Nil*)

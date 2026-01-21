@@ -1,7 +1,7 @@
 package scala.collection.mutable
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import scala.annotation.nowarn
 import scala.collection.SeqFactory

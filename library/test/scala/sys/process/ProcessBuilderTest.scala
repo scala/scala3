@@ -1,8 +1,8 @@
 package scala.sys.process
 
 import org.junit.Test
-import org.junit.Assert._
-import tools.AssertUtil._
+import org.junit.Assert.*
+import tools.AssertUtil.*
 
 class ProcessBuilderTest {
 

@@ -2,15 +2,12 @@ package scala.collection
 
 import org.junit.Assert.{assertNotSame, assertSame}
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
 import scala.annotation.nowarn
 import scala.collection.{immutable => i, mutable => m}
 import scala.language.implicitConversions
 import scala.{collection => c}
 
-@RunWith(classOf[JUnit4])
 @nowarn("cat=deprecation")
 class ToConserveTest {
   // scala/bug#12188

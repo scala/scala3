@@ -2,7 +2,7 @@ package scala.collection.mutable
 
 import org.junit.Test
 import org.junit.Ignore
-import org.junit.Assert._
+import org.junit.Assert.*
 
 class HashSetTest {
   // based on run/hashset.scala partest
@@ -75,7 +75,7 @@ class HashSetTest {
   class Type1(val value:String)
   class Type2(val value:String)
 
-  import scala.jdk.CollectionConverters._
+  import scala.jdk.CollectionConverters.*
 
   @Test
   def addAll(): Unit = {

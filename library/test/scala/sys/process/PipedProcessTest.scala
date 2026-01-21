@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.Exception.ignoring
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import tools.AssertUtil.{readyOrNot, waitForIt}
 import tools.TestDuration

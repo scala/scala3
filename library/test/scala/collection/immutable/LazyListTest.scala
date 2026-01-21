@@ -1,7 +1,7 @@
 package scala.collection
 package immutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Ignore
 
@@ -55,7 +55,7 @@ class LazyListTest {
   }
 
   @Ignore @Test def racySerialization(): Unit = {
-    import sd._
+    import sd.*
     val ll = 1 #:: { Thread.sleep(500); 2} #:: LazyList.empty
     new Thread(() => println(ll.toList)).start()
     Thread.sleep(200)
@@ -77,7 +77,7 @@ class LazyListTest {
 
   @Test
   def serialization(): Unit = {
-    import sd._
+    import sd.*
 
     val emptyD = serializeDeserialize(LazyList.empty)
     assertNotSame(LazyList.empty, emptyD) // deserialization creates a new instance with both fields `null`
@@ -319,7 +319,7 @@ class LazyListTest {
       val cycle1: LazyList[Int] = 1 #:: 2 #:: cycle1
       val cycle2: LazyList[Int] = 1 #:: 2 #:: 3 #:: cycle2
     }
-    import i._
+    import i.*
     assert(LazyList().sameElements(LazyList()))
     assert(!LazyList().sameElements(LazyList(1)))
     assert(LazyList(1,2).sameElements(LazyList(1,2)))
@@ -511,7 +511,7 @@ object LazyListTest {
   var serializationForceCount = 0
 
   object sd {
-    import java.io._
+    import java.io.*
 
     def serialize(obj: AnyRef): Array[Byte] = {
       val buffer = new ByteArrayOutputStream

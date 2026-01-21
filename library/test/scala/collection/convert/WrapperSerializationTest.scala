@@ -1,9 +1,9 @@
 package scala.collection.convert
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class WrapperSerializationTest {
   def ser(a: AnyRef) = {

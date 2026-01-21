@@ -3,7 +3,7 @@ package scala.collection.mutable
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 
-import scala.annotation._
+import scala.annotation.*
 import scala.runtime.PStatics.VM_MaxArraySize
 import tools.AssertUtil.assertThrows
 

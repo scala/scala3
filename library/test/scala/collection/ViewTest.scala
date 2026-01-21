@@ -1,6 +1,6 @@
 package scala.collection
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}

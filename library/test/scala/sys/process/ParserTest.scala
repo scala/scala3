@@ -1,6 +1,6 @@
 package scala.sys.process
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import tools.AssertUtil.assertThrows
 

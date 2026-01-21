@@ -2,7 +2,7 @@ package scala.concurrent.impl
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext

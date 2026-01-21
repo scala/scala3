@@ -1,7 +1,7 @@
 package scala.util.hashing
 
 import scala.collection.immutable.ArraySeq
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class MurmurHash3Test {

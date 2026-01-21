@@ -16,12 +16,9 @@ import java.util.stream.{DoubleStream, IntStream, LongStream, Stream => JStream}
 
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-import scala.jdk.StreamConverters._
+import scala.jdk.StreamConverters.*
 
-@RunWith(classOf[JUnit4])
 class StreamConvertersTest {
   def assertEq[A](a1: A, a2: A, s: String): Unit = { assertEquals(s, a1, a2) }  // Weird order normally!
   def assertEq[A](a1: A, a2: A): Unit = { assertEq(a1, a2, "not equal") }

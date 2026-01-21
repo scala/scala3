@@ -4,12 +4,12 @@ package scala.concurrent
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 
-import tools.AssertUtil._
+import tools.AssertUtil.*
 import scala.util.{Success, Try}
 import duration.Duration.{Inf, Undefined}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.impl.Promise.DefaultPromise
-import scala.util.chaining._
+import scala.util.chaining.*
 import org.junit.Ignore
 
 class FutureTest {
@@ -124,7 +124,7 @@ class FutureTest {
     def numTransforms(p: Promise[?]) = {
       def count(cs: impl.Promise.Callbacks[?]): Int = cs match {
         case Noop => 0
-        case m: impl.Promise.ManyCallbacks[_] => 1 + count(m.rest)
+        case m: impl.Promise.ManyCallbacks[?] => 1 + count(m.rest)
         case _ => 1
       }
       val cs = p.asInstanceOf[DefaultPromise[?]].get().asInstanceOf[impl.Promise.Callbacks[?]]

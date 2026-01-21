@@ -1,7 +1,7 @@
 package scala.collection
 package mutable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class LongMapTest {

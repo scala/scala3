@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 
 import scala.util.hashing.Hashing
 import tools.AssertUtil.assertThrows
-import scala.util.chaining._
+import scala.util.chaining.*
 
 @deprecated("Tests deprecated API", since="2.13")
 class TrieMapTest {

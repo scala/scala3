@@ -5,7 +5,6 @@ import org.junit.Assert.{assertEquals, assertNotEquals, assertNull, assertTrue}
 import java.math.{BigDecimal => BD, MathContext => MC}
 import tools.AssertUtil.{assertEqualsAny, assertNotEqualsAny}
 
-/* Tests various maps by making sure they all agree on the same answers. */
 class BigDecimalTest {
 
   // Motivated by scala/bug#6173: BigDecimal#isWhole implementation is very heap intensive

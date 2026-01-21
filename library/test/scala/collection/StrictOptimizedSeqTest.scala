@@ -2,11 +2,8 @@ package scala.collection
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 import scala.collection.immutable.Vector
 
-@RunWith(classOf[JUnit4])
 class StrictOptimizedSeqTest {
 
   @Test

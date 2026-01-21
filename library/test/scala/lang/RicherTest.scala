@@ -2,10 +2,10 @@
 package scala
 
 import org.junit.{Assert, Test}
-import scala.util.chaining._
+import scala.util.chaining.*
 
 class RicherTest {
-  import RicherTest._
+  import RicherTest.*
 
   private def assertEqualTo(expected: String)(actual: String) = Assert.assertEquals(expected, actual)
   private def assertEqualTo(expected: Int)(actual: Int) = Assert.assertEquals(expected, actual)
