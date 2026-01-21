@@ -358,10 +358,14 @@ object ScalaLibraryPlugin extends AutoPlugin {
   }
 
   private lazy val filesToCopy = Set(
+    "scala/Function0",
+    "scala/Function1",
+    "scala/Function2",
+    "scala/Product1",
+    "scala/Product2",
     "scala/Tuple1",
     "scala/Tuple2",
-    "scala/collection/ArrayOps$ArrayIterator",
-    "scala/collection/ArrayOps$ReverseIterator",
+    "scala/collection/ArrayOps",
     "scala/collection/Stepper",
     "scala/collection/DoubleStepper",
     "scala/collection/IntStepper",
@@ -370,6 +374,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/collection/immutable/IntVectorStepper",
     "scala/collection/immutable/LongVectorStepper",
     "scala/collection/immutable/Range",
+    "scala/jdk/Accumulator",
     "scala/jdk/DoubleAccumulator",
     "scala/jdk/IntAccumulator",
     "scala/jdk/LongAccumulator",
@@ -395,9 +400,13 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/jdk/FunctionWrappers$FromJavaLongToDoubleFunction",
     "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction",
     "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator",
+    "scala/runtime/AbstractFunction0",
+    "scala/runtime/AbstractFunction1",
+    "scala/runtime/AbstractFunction2",
+    "scala/runtime/AbstractPartialFunction",
     "scala/runtime/NonLocalReturnControl",
-    "scala/util/hashing/MurmurHash3",
     "scala/util/Sorting",
+    "scala/util/hashing/MurmurHash3",
   )
 
   /** Extract the SourceFile attribute from class file bytecode */
