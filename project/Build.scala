@@ -147,8 +147,10 @@ object Build {
   val compatMode = {
     val VersionRE = """^\d+\.(\d+)\.(\d+)""".r
     developedVersion match {
-      case VersionRE(_, "0")   => CompatMode.BinaryCompatible
-      case _                   => CompatMode.SourceAndBinaryCompatible
+      // Scala 3.8.1 hotfix must be only check for backward compatibility against 3.7 + 2.13
+      case _ => CompatMode.BinaryCompatible
+      // case VersionRE(_, "0")   => CompatMode.BinaryCompatible
+      // case _                   => CompatMode.SourceAndBinaryCompatible
     }
   }
 
