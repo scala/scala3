@@ -40,20 +40,6 @@
    |                              fresh is a root capability associated with the result type of (x: A^): B^{fresh}
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:15:20 ----------------------------------
-15 |  val _: A^ -> B^ = x => g(x)      // error: g is no longer pure, since it contains the ^ of B
-   |                    ^^^^^^^^^
-   |                    Found:    (x: A^) ->'s1 B^{fresh}
-   |                    Required: A^ -> B^{any}
-   |
-   |                    Note that capability `fresh` is not included in capture set {any}
-   |                    because fresh is not visible from any in value _$6.
-   |
-   |                    where:    ^     refers to the root capability caps.any
-   |                              any   is a root capability in the type of value _$6
-   |                              fresh is a root capability associated with the result type of (x: A^): B^{fresh}
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:19:31 ----------------------------------
 19 |  val _: (x: S) -> B^{fresh} = h          // error: direct conversion fails
    |                               ^

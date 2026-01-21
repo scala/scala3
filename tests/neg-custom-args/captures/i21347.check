@@ -9,8 +9,6 @@
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21347.scala:11:15 ------------------------------------------------------------
 11 |  ops.foreach: op => // error
-   |               ^
+   |               ^^
    |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
    |               You could try to abstract the capabilities referred to by ops* in a capset variable.
-   |
-12 |    op()

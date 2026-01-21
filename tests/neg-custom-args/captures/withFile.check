@@ -4,7 +4,7 @@
    |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by value later1.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: Test2.File^'s2) ->'s3 () ->{f} Unit
+   |Found:    (f: Test2.File^) ->'s2 () ->{f} Unit
    |Required: Test2.File^ => () ->'s1 Unit
    |
    |where:    => refers to a root capability created in value later1 when checking argument to parameter op of method usingLogFile
@@ -14,44 +14,40 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:15:38 -------------------------------------
 15 |  private val later2 = usingLogFile { f => Box(f) } // error
    |                                      ^^^^^^^^^^^
-   |Capability `fresh` outlives its scope: it leaks into outer capture set 's4 which is owned by value later2.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's3 which is owned by value later2.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: Test2.File^'s5) ->'s6 Test2.Box[Test2.File^'s7]^'s8
-   |Required: Test2.File^ => Test2.Box[Test2.File^'s4]^'s9
+   |Found:    (f: Test2.File^) ->'s4 Test2.Box[Test2.File^{f}]^'s5
+   |Required: Test2.File^ => Test2.Box[Test2.File^'s3]^'s6
    |
-   |where:    =>    refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
-   |          ^     refers to the root capability caps.any
-   |          fresh is a root capability associated with the result type of (f: Test2.File^): Test2.Box[Test2.File^'s4]^'s9
+   |where:    => refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:17:4 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:17:9 --------------------------------------
 17 |    f => () => f.write() // error
-   |    ^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: Test2.File^'s10) ->'s11 () ->{f} Unit
-   |Required: Test2.File^ => () ->{any} Unit
+   |         ^^^^^^^^^^^^^^^
+   |Found:    () ->{f} Unit
+   |Required: () ->{any} Unit
    |
    |Note that capability `f` is not included in capture set {any}
-   |because (f : Test2.File^'s10) is not visible from any in value later3.
+   |because (f : Test2.File^) in an enclosing function is not visible from any in value later3.
    |
-   |where:    =>  refers to a root capability created in value later3 when checking argument to parameter op of method usingLogFile
-   |          ^   refers to the root capability caps.any
+   |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): () => Unit of parameter parameter f of method $anonfun
    |          any is a root capability created in value later3
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:19:4 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:19:12 -------------------------------------
 19 |    f => Box(f) // error
-   |    ^^^^^^^^^^^
-   |Found:    (f: Test2.File^'s12) ->'s13 Test2.Box[Test2.File^'s14]^'s15
-   |Required: Test2.File^ => Test2.Box[Test2.File^{any}]
+   |         ^^^^^^
+   |Found:    Test2.Box[Test2.File^{f}]^'s7
+   |Required: Test2.Box[Test2.File^{any}]
    |
-   |Note that capability `fresh` is not included in capture set {any}
-   |because fresh is not visible from any in value later4.
+   |Note that capability `f` is not included in capture set {any}
+   |because (f : Test2.File^) in an enclosing function is not visible from any in value later4.
    |
-   |where:    =>    refers to a root capability created in value later4 when checking argument to parameter op of method usingLogFile
-   |          ^     refers to the root capability caps.any
-   |          any   is a root capability created in value later4
-   |          fresh is a root capability associated with the result type of (f: Test2.File^'s12): Test2.Box[Test2.File^'s14]^'s15
+   |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): Test2.Box[Test2.File^²] of parameter parameter f of method $anonfun
+   |          any is a root capability created in value later4
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/withFile.scala:16:20 ----------------------------------------------------------

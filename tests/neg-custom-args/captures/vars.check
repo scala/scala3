@@ -46,15 +46,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:37:10 -----------------------------------------
 37 |  local { cap3 => // error
    |          ^
-   |    Capability `cap3` outlives its scope: it leaks into outer capture set {cap3²} which is owned by method test.
-   |    The leakage occurred when trying to match the following types:
+   |        Capability `cap3` outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
+   |        The leakage occurred when trying to match the following types:
    |
-   |    Found:    (cap3: CC^) ->'s1 String ->{cap3} String
-   |    Required: CC^ -> String ->{cap3²} String
+   |        Found:    (cap3: CC^) ->'s2 String ->{cap3} String
+   |        Required: CC^ -> String ->'s1 String
    |
-   |    where:    ^     refers to the root capability caps.any
-   |              cap3  is a reference to a value parameter
-   |              cap3² is a parameter in an anonymous function in method test
+   |        where:    ^ refers to the root capability caps.any
    |
 38 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 39 |    g

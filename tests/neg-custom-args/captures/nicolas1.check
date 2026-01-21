@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/nicolas1.scala:10:2 --------------------------------------
 10 |  val all: Seq[Rand ?->{head, tail*} A] = head +: tail // error
    |  ^
-   |  Found:    (contextual$1: Rand^'s1) ?->{head, tail*} A^'s2
+   |  Found:    (contextual$1: Rand^) ?->{head, tail*} A
    |  Required: (Rand^) ?->{head} A
    |
    |  Note that capability `tail*` is not included in capture set {head}.

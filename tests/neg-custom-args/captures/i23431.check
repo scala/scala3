@@ -24,23 +24,17 @@
    |                       any is a root capability in the type of variable myIO
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:12:12 ---------------------------------------
-12 |    withIO: io3 =>  // error
-   |            ^
-   |Found:    (io3: IO^'s1) ->{myIO} Unit
-   |Required: IO^ => Unit
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:13:13 ---------------------------------------
+13 |      myIO = io3  // error, level mismatch
+   |             ^^^
+   |Found:    (io3 : IO^)
+   |Required: IO^{any}
    |
-   |Note that capability `any` is not included in capture set {any²}
-   |because any in an enclosing function is not visible from any² in variable myIO².
+   |Note that capability `io3` is not included in capture set {any}
+   |because (io3 : IO^) in an enclosing function is not visible from any in variable myIO.
    |
-   |where:    =>    refers to a root capability created in anonymous function of type (io1: IO^): Unit when checking argument to parameter op of method withIO
-   |          ^     refers to the root capability caps.any
-   |          any   is a root capability created in anonymous function of type (io3: IO^'s1): Unit of parameter parameter io3² of method $anonfun
-   |          any²  is a root capability in the type of variable myIO²
-   |          myIO  is a value in an anonymous function in method test
-   |          myIO² is a variable in an anonymous function in method test
-   |
-13 |      myIO = io3
+   |where:    ^   refers to a root capability created in anonymous function of type (io3²: IO^²): Unit of parameter parameter io3 of method $anonfun
+   |          any is a root capability in the type of variable myIO
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i23431.scala:6:14 -------------------------------------------------------------

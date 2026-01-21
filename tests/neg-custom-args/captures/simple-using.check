@@ -4,7 +4,7 @@
   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by method test.
   |The leakage occurred when trying to match the following types:
   |
-  |Found:    (f: java.io.FileOutputStream^'s2) ->'s3 () ->{f} Unit
+  |Found:    (f: java.io.FileOutputStream^) ->'s2 () ->{f} Unit
   |Required: java.io.FileOutputStream^ => () ->'s1 Unit
   |
   |where:    => refers to a root capability created in method test when checking argument to parameter op of method usingLogFile

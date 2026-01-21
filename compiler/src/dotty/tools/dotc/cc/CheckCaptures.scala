@@ -1147,28 +1147,34 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       val anonfun = mdef.symbol
 
+      def hasCapsetVars(tp: Type) =
+        def isVarCapturing(tp: Type) = tp match
+          case CapturingType(_, refs) => !refs.isConst
+          case _ => false
+        tp.existsPart(isVarCapturing, stopAt = StopAt.Package)
+
       def matchParamsAndResult(paramss: List[ParamClause], pt: Type): Unit =
-        //println(i"match $mdef against $pt")
         paramss match
-        case params :: paramss1 => pt match
+        case params :: paramss1 => pt.dealias match
+          case CapturingType(parent, _) =>
+            matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
             assert(params.hasSameLengthAs(poly.paramInfos))
             matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
-              val paramTpt = param.asInstanceOf[ValDef].tpt
-              val paramType = localCapToGlobal(param.symbol, paramTpt.nuType)
-              checkConformsExpr(argType, paramType, param)
-                .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
-            if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
-
-              def updateTpt(localResType: Type) =
-                mdef.tpt.updNuType(localResType)
-                // Make sure we affect the info of the anonfun by the previous updNuType
-                // unless the info is already defined in a previous phase and does not change.
-                assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
-
+              inContext(ctx.withOwner(anonfun)):
+                val paramTpt = param.asInstanceOf[ValDef].tpt
+                val paramType = localCapToGlobal(param.symbol, paramTpt.nuType)
+                checkConformsExpr(argType, paramType, param)
+                  .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
+            if resType.isValueType && !hasCapsetVars(resType) && !anonfun.isCompleted then
+              // Try to oupdate the declared result type of the closure `mdef.tpt` with the expected
+              // result type, in order to propagate constraints into the closure.
+              // Note: We cannot instead use a constraint "mdef.tpt.nuType <: expected result type"
+              // since that would only constrain capset variables in mdef.tpt.nuType from above
+              // but not add any elements to it.
               pt match
                 case RefinedType(_, _, mt: MethodType) =>
                   if !mt.isResultDependent then
@@ -1178,9 +1184,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                     // from doing that and don't update the local result type instead.
                     val localResType = inContext(ctx.withOwner(anonfun)):
                       Internalize(mt)(resType)
-                    updateTpt(localResType)
+                    mdef.tpt.updNuType(localResType)
                 case _ =>
-                  updateTpt(resType)
+                  mdef.tpt.updNuType(resType)
           case _ =>
         case Nil =>
       end matchParamsAndResult
@@ -1731,7 +1737,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           if falseDeps then expected1 = unalignFunction(expected1)
           val toAdd0 = notes ++ cmpNotes
           val toAdd1 = addApproxAddenda(toAdd0, expected1)
-          fail(tree.withType(actualBoxed), expected1, toAdd1)
+          val failTree =
+            if definedSym(tree).exists then tree else tree.withType(actualBoxed)
+          fail(failTree, expected1, toAdd1)
           actual
         case /*OK*/ _ =>
           if debugSuccesses then tree match

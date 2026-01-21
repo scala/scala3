@@ -20,8 +20,8 @@ def test(c: () => Unit) =
   val foo = (p1: () => Unit) => (p2: () ->{c, any} Unit) => par(p1, p2)
   foo(c)(c) // error: separation
 
-  val bar = (p1: () => Unit) => (p2: () ->{p1, any} Unit) => par(p1, p2) // error, but error message could be better
-  bar(c)(c)
+  val bar = (p1: () => Unit) => (p2: () ->{p1, any} Unit) => par(p1, p2) // error separation
+  bar(c)(c) // error separation
 
 
 

@@ -1225,7 +1225,7 @@ object Capabilities:
         if variance > 0 then
           if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped) then
             c
-          else if sym.exists && !c.ccOwner.isContainedIn(sym.skipAnonymousOwners) then
+          else if sym.exists && !c.ccOwner.isContainedIn(sym) then
             //println(i"not mapping $c with ${c.ccOwner} in $sym")
             c
           else

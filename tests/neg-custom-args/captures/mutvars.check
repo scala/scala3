@@ -25,17 +25,16 @@
    |    ^^^^^^^^^^^^^^^
    |    Cannot assign to field fld of Ref[T^{}]^{Ref.this.rd}
    |    since its capture set {Ref.this.rd} of value self3 is read-only.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutvars.scala:14:31 --------------------------------------
-14 |    val self4: () => Ref[T]^ = () => this // error
-   |                               ^^^^^^^^^^
-   |                        Found:    () ->{Ref.this.rd} Ref[T^'s1]^{Ref.this.rd}
-   |                        Required: () => Ref[T]^{any}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutvars.scala:14:37 --------------------------------------
+14 |    val self4: () => Ref[T]^ = () => this // error // error separation
+   |                                     ^^^^
+   |                            Found:    Ref[T]^{Ref.this.rd}
+   |                            Required: Ref[T]^{any}
    |
-   |                        Note that {any} is an exclusive capture set of the stateful type Ref[T]^{any},
-   |                        it cannot subsume a read-only capture set of the stateful type Ref[T^'s1]^{Ref.this.rd}.
+   |                            Note that {any} is an exclusive capture set of the stateful type Ref[T]^{any},
+   |                            it cannot subsume a read-only capture set of the stateful type Ref[T]^{Ref.this.rd}.
    |
-   |                        where:    =>  refers to a root capability in the type of value self4
-   |                                  any is a root capability classified as Unscoped in the type of value self4
+   |                            where:    any is a root capability classified as Unscoped in the type of value self4
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutvars.scala:18:16 -----------------------------------------------------------
@@ -70,17 +69,19 @@
    |  ^^^^^^^^^^^^^
    |  Cannot assign to field fld of r3.x
    |  since the capture set {r3} of its prefix (r3 : Ref2[Int]) is read-only.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutvars.scala:41:29 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutvars.scala:41:35 --------------------------------------
 41 |  val r5: () => Ref2[Int]^ = () => ref2 // error
-   |                             ^^^^^^^^^^
-   |                             Found:    () ->{ref2.rd} Ref2[Int]^{ref2}
-   |                             Required: () => Ref2[Int]^{any}
+   |                                   ^^^^
+   |                            Found:    (ref2 : Ref2[Int])
+   |                            Required: Ref2[Int]^{any}
    |
-   |                             Note that {any} is an exclusive capture set of the stateful type Ref2[Int]^{any},
-   |                             it cannot subsume a read-only capture set of the stateful type Ref2[Int]^{ref2}.
+   |                            Note that {any} is an exclusive capture set of the stateful type Ref2[Int]^{any},
+   |                            it cannot subsume a read-only capture set of the stateful type (ref2 : Ref2[Int]).
    |
-   |                             where:    =>  refers to a root capability in the type of value r5
-   |                                       any is a root capability classified as Unscoped in the type of value r5
+   |                            Note that capability `any².rd` is not included in capture set {any}.
+   |
+   |                            where:    any  is a root capability classified as Unscoped in the type of value r5
+   |                                      any² is a root capability classified as Unscoped in the type of value ref2
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/mutvars.scala:44:13 -----------------------------------------------------------
@@ -93,6 +94,11 @@
   |               ^^^^^^^
   |               Separation failure: value self2's type Ref[T]^ hides non-local this of class class Ref.
   |               The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/mutvars.scala:14:18 -----------------------------------------------------------
+14 |    val self4: () => Ref[T]^ = () => this // error // error separation
+   |               ^^^^^^^^^^^^^
+   |               Separation failure: value self4's type () => Ref[T]^ hides non-local this of class class Ref.
+   |               The access must be in a consume method to allow this.
 -- Error: tests/neg-custom-args/captures/mutvars.scala:19:17 -----------------------------------------------------------
 19 |    def self6(): Ref[T]^ = this // error // error separation
    |                 ^^^^^^^

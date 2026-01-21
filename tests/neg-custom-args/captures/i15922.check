@@ -1,0 +1,26 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15922.scala:17:21 ---------------------------------------
+17 |  val bad1 = withCap(ll)       // error, was ok
+   |                     ^^
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by value bad1.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (c: Cap^{any}) -> Id[Cap^{c}]
+   |Required: Cap^{any} => Id[Cap^'s1]^'s2
+   |
+   |where:    =>  refers to a root capability created in value bad1 when checking argument to parameter op of method withCap
+   |          any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15922.scala:18:21 ---------------------------------------
+18 |  val bad2 = withCap(leaking)  // error
+   |                     ^^^^^^^
+   |Capability `c` outlives its scope: it leaks into outer capture set 's3 which is owned by value bad2.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (c: Cap^) ->'s4 Id[Cap^{c}]^'s5
+   |Required: Cap^ => Id[Cap^'s3]^'s6
+   |
+   |where:    => refers to a root capability created in value bad2 when checking argument to parameter op of method withCap
+   |          ^  refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`

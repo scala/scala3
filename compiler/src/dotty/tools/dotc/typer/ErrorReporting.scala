@@ -194,7 +194,11 @@ object ErrorReporting {
       def badTreeNote =
         val span = tree.span
         if tree.span.isZeroExtent && isCaptureChecking then
-          Note(i"\n\nThe error occurred for a synthesized tree:  $tree") :: Nil
+          def synthText =
+            if tree.isInstanceOf[DefTree]
+            then i"definition of ${tree.symbol} in:  $tree"
+            else i"tree:  $tree"
+          Note(i"\n\nThe error occurred for a synthesized $synthText") :: Nil
         else Nil
 
       errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ missingElse ++ badTreeNote))
