@@ -695,7 +695,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               else
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
-                    return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
+                    return
+                      try isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
+                      catch case ex: AssertionError =>
+                        println(i"error while subInfo ${tp1.refinedInfo} <:< ${tp2.refinedInfo}")
+                        throw ex
                   case _ =>
           end if
 

@@ -105,7 +105,12 @@ extension (tp: Type)
 
   /** A list of capabilities of a retained set. */
   def retainedElements(using Context): List[Capability] =
-    retainedElementsRaw.map(_.toCapability)
+    retainedElementsRaw.flatMap: elem =>
+      elem match
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+          refs.elems.toList
+        case _ =>
+          elem.toCapability :: Nil
 
   /** Is this type a Capability that can be tracked?
    *  This is true for
@@ -456,20 +461,31 @@ extension (tp: Type)
       tp
   end withReachCaptures
 
-  /** Does this type contain no-flip covariant occurrences of `any`? */
-  def containsCap(using Context): Boolean =
-    val acc = new TypeAccumulator[Boolean]:
+  private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
+    val search = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
-        x
-        || variance > 0 && t.dealiasKeepAnnots.match
-          case t @ CapturingType(p, cs) if cs.containsGlobalCapDerivs =>
+        if x then true
+        else if variance <= 0 then false
+        else if directly && defn.isFunctionSymbol(t.typeSymbol) then false
+        else t match
+          case CapturingType(_, refs) if refs.elems.exists(_.core == c) =>
             true
           case t @ AnnotatedType(parent, ann) =>
             // Don't traverse annotations, which includes capture sets
             this(x, parent)
           case _ =>
             foldOver(x, t)
-    acc(false, tp)
+    search(false, tp)
+
+  /** Does this type contain no-flip covariant occurrences of `any`? */
+  def containsGlobalAny(using Context): Boolean =
+    containsGlobal(GlobalAny, directly = false)
+
+  /** Does `tp` contain contain no-flip covariant occurrences of `fresh` directly,
+   *  which are not in the result of some function type?
+   */
+  def containsGlobalFreshDirectly(using Context): Boolean =
+    containsGlobal(GlobalFresh, directly = true)
 
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
     RefinedType.precise(tp, name, rinfo)
@@ -502,20 +518,7 @@ extension (tp: Type)
     if tp.isArrayUnderStrictMut then defn.Caps_Unscoped
     else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
-  /** Does `tp` contain a `fresh` directly, which is not in the result of some function type?
-   */
-  def containsFresh(using Context): Boolean =
-    val search = new TypeAccumulator[Boolean]:
-      def apply(x: Boolean, tp: Type): Boolean =
-        if x then true
-        else if defn.isFunctionType(tp) then false
-        else tp match
-          case CapturingType(parent, refs) =>
-            refs.elems.exists(_.core == GlobalFresh) || apply(x, parent)
-          case _ => foldOver(x, tp)
-    search(false, tp)
-
-extension (tp: MethodType)
+extension (tp: MethodOrPoly)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
     !tp.resType.isInstanceOf[MethodOrPoly]

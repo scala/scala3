@@ -143,9 +143,6 @@ sealed abstract class CaptureSet extends Showable:
         case _: LocalCap => true
         case _ => false
 
-  final def containsGlobalCapDerivs(using Context) =
-    elems.exists(_.core.isInstanceOf[GlobalCap])
-
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
 
@@ -392,9 +389,13 @@ sealed abstract class CaptureSet extends Showable:
   /** Capture set obtained by applying `tm` to all elements of the current capture set
    *  and joining the results. If the current capture set is a variable we handle this as
    *  follows:
-   *    - If the map is a BiTypeMap, the same transformation is applied to all
-   *      future additions of new elements. We try to fuse with previous maps to
-   *      avoid long paths of BiTypeMapped sets.
+   *    - If the map is a BiTypeMap, and CCState.mapVars is true,
+   *      the same transformation is applied to all future additions of new elements.
+   *      We try to fuse with previous maps to avoid long paths of BiTypeMapped sets.
+   *    - If the map is a BiTypeMap, and CCState.mapVars is false,
+   *      we return the original capture set. In this case any elements that are
+   *      already in the set must be invariant under the mapping. This mode is
+   *      necessary for bootstrap when we create capset variables the first time.
    *    - If the map is some other map that maps the current set of elements
    *      to itself, return the current var. We implicitly assume that the map
    *      will also map any elements added in the future to themselves. This assumption
@@ -410,7 +411,7 @@ sealed abstract class CaptureSet extends Showable:
         if isConst then
           if mappedElems == elems then this
           else Const(mappedElems)
-        else if ccState.mapFutureElems then
+        else if ccState.mapVars then
           def unfused =
             if debugVars then
               try BiMapped(asVar, tm, mappedElems)
@@ -423,7 +424,9 @@ sealed abstract class CaptureSet extends Showable:
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
               case _ => unfused
             case _ => unfused
-        else this
+        else
+          assert(mappedElems == elems)
+          this
       case tm: IdentityCaptRefMap =>
         this
       case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
@@ -928,7 +931,7 @@ object CaptureSet:
         this
       else if isUniversal || computingApprox then
         universal
-      else if containsGlobalCapDerivs && isReadOnly then
+      else if elems.exists(_.core == GlobalAny) && isReadOnly then
         shared
       else
         computingApprox = true
@@ -1091,8 +1094,8 @@ object CaptureSet:
 
     // ----------- Longest path recording -------------------------
 
-    /** Summarize for set displaying in a path */
-    def summarize: String = getClass.toString
+    /** Summarize set when displaying a propagation path */
+    def summarize(using Context): String = getClass.toString
 
     /** The length of the path of DerivedVars ending in this set */
     def pathLength: Int = source match
@@ -1132,7 +1135,6 @@ object CaptureSet:
         try
           reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
             source.tryInclude(bimap.inverse.mapCapability(elem), this)
-              .showing(i"propagating new elem $elem backward from $this/$id to $source = $result", captDebug)
         catch case ex: AssertionError =>
           println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}")
           throw ex
@@ -1151,7 +1153,7 @@ object CaptureSet:
 
     override def isMaybeSet: Boolean = bimap.isInstanceOf[MaybeMap]
     override def toString = s"BiMapped$id($source, elems = $elems)"
-    override def summarize = bimap.getClass.toString
+    override def summarize(using Context) = bimap.summarize
     override def repr(using Context): Name = source.repr
   end BiMapped
 
