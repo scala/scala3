@@ -744,6 +744,12 @@ object CaptureSet:
      */
     private var solved: Int = 0
 
+    /** A variable that indicates that a solved empty capture set should be ignored
+     *  when printing error messages. Capturing types with ignored capsets are printed
+     *  like their parents.
+     */
+    private var ignored = false
+
     /** The elements currently known to be in the set */
     protected var myElems: Refs = initialElems
 
@@ -769,6 +775,7 @@ object CaptureSet:
     def isConst(using Context) = solved >= ccState.iterationId
     def isAlwaysEmpty(using Context) = isConst && elems.isEmpty
     def isProvisionallySolved(using Context): Boolean = solved > 0 && solved != Int.MaxValue
+    def isIgnored: Boolean = ignored
 
     def isMaybeSet = false // overridden in BiMapped
 
@@ -970,6 +977,11 @@ object CaptureSet:
       deps.foreach(_.propagateSolved(provisional))
       if mutability == Writer && !maybeExclusive then mutability = Reader
 
+    /** Mark an empty capture set solved and ignored for printing */
+    def markIgnored()(using Context): Unit =
+      assert(elems.isEmpty)
+      markSolved(provisional = false)
+      ignored = true
 
     var skippedMaps: Set[TypeMap] = Set.empty
 

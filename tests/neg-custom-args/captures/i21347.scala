@@ -8,5 +8,5 @@ def boom(f: () => Unit): () -> Unit =
   () => runOps(f :: Nil) // error
 
 def runOpsAlt(ops: List[() => Unit]): Unit =
-  ops.foreach: op =>
-    op() // error
+  ops.foreach: op => // error
+    op()

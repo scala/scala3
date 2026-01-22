@@ -1,12 +1,8 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i24309-region-orig.scala:20:26 ---------------------------
+-- Error: tests/neg-custom-args/captures/i24309-region-orig.scala:20:26 ------------------------------------------------
 20 |      val c: Ref^{r1.R} = b     // error, limitation
    |                          ^
-   |                          Found:    (b : Ref^{r2.R})
-   |                          Required: Ref^{r1.R}
-   |
-   |                          Note that capability `r2.R` is not included in capture set {r1.R}.
-   |
-   | longer explanation available when compiling with `-explain`
+   |                          Local reach capability r2.R leaks into capture scope of an enclosing function.
+   |                          You could try to abstract the capabilities referred to by r2.R in a capset variable.
 -- Error: tests/neg-custom-args/captures/i24309-region-orig.scala:21:6 -------------------------------------------------
 21 |      a                         // error, limitation
    |      ^

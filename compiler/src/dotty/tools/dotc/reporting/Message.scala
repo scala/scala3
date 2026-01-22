@@ -284,6 +284,8 @@ object Message:
         boxText
         ~ toTextLocal(parent)
         ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
+      case refs: CaptureSet.Var if refs.isIgnored =>
+        toText(parent)
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 

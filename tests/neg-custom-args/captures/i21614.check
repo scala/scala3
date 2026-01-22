@@ -10,15 +10,15 @@
    |          any² is a root capability classified as SharedCapability in the type of parameter f
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:23 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
-   |                       ^
-   |Found:    File^{C}
-   |Required: File^{any}
+   |            ^^^^^^^^^^^^^
+   |Capability `_$1` outlives its scope: it leaks into outer capture set 's1 which is owned by method mkLoggers2.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability `C` is not included in capture set {any}
-   |because `any` is classified as trait SharedCapability but `C` is not.
+   |Found:    (_$1: File^{C}) ->{C} Logger{val f: File^{_$1}}^{_$1}
+   |Required: File^{C} => Logger{val f: File^'s2}^'s1
    |
-   |where:    any is a root capability classified as SharedCapability created in anonymous function of type (_$1: File^{C}): Logger when checking argument to parameter f of constructor Logger
+   |where:    => refers to a root capability created in method mkLoggers2 when checking argument to parameter f of method map
    |
    | longer explanation available when compiling with `-explain`
