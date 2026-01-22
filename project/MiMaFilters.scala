@@ -19,6 +19,7 @@ object MiMaFilters {
 
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[MissingTypesProblem]("scala.util.control.NonLocalReturns$ReturnThrowable")
       )
     )
   }
