@@ -6,6 +6,20 @@ import org.junit.{ Ignore, Test }
 
 class SignatureHelpSuite extends BaseSignatureHelpSuite:
 
+  @Test def `parametric-extension` =
+    check(
+      """
+        |object A:
+        |  extension [T](x: T)
+        |    def foo(p: T): T = x
+        |  
+        |  val _ = 1.foo(@@)
+      """.stripMargin,
+      """|foo[Int](x: Int)(p: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
   @Test def `method` =
     check(
       """
@@ -39,8 +53,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option(1).fold("")(_ => a@@)
         |}
       """.stripMargin,
-      """|fold[B](ifEmpty: => B)(f: Int => B): B
-         |                       ^^^^^^^^^^^
+      """|fold[String | a](ifEmpty: => String | a)(f: Int => String | a): String | a
+         |                                          ^^^^^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -63,7 +77,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  val random = new scala.util.Random(@@)
         |}
       """.stripMargin,
-      """|Random()
+      """|Random(): (): scala.util.Random
          |Random(seed: Int)
          |Random(seed: Long)
          |Random(self: Random)
@@ -77,8 +91,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new ProcessBuilder(@@)
         |}
       """.stripMargin,
-      """|ProcessBuilder(x$0: String*)
-         |               ^^^^^^^^^^^^
+      """|ProcessBuilder(x$0: String*): ProcessBuilder
+         |                ^^^^^^^^^^^^
          |ProcessBuilder(x$0: java.util.List[String])
          |""".stripMargin
     )
@@ -90,8 +104,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new Some(10@@)
         |}
       """.stripMargin,
-      """|Some[A](value: A)
-         |        ^^^^^^^^
+      """|Some[Int](value: Int): Some[Int]
+         |            ^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -150,8 +164,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  }
         |}
       """.stripMargin,
-      """|collect[B](pf: PartialFunction[Int, B]): Option[B]
-         |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      """|collect[Unit](pf: PartialFunction[Int, Unit]): Option[Unit]
+         |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -162,8 +176,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  List(Option(1@@))
         |}
       """.stripMargin,
-      """|apply[A](x: A | Null): Option[A]
-         |         ^^^^^^^^^^^
+      """|apply[Int](x: Int | Null): Option[Int]
+         |             ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -174,8 +188,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  List(Opt@@ion(1))
         |}
       """.stripMargin,
-      """|apply[A](elems: A*): List[A]
-         |         ^^^^^^^^^
+      """|apply[Option[Int]](elems: Option[Int]*): List[Option[Int]]
+         |                   ^^^^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -199,8 +213,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  List(1, 2@@)
         |}
     """.stripMargin,
-      """|apply[A](elems: A*): List[A]
-         |         ^^^^^^^^^
+      """|apply[Int](elems: Int*): List[Int]
+         |             ^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -212,7 +226,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|identity[A](x: A): A
-         |         ^
+         |           ^
          |""".stripMargin
     )
 
@@ -286,8 +300,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option[Int](1).getOrElse(@@)
         |}
       """.stripMargin,
-      """|getOrElse[B >: Int](default: => B): B
-         |                    ^^^^^^^^^^^^^
+      """|getOrElse[Int](default: => Int): Int
+         |                 ^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -345,8 +359,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  } yield k
         |}
       """.stripMargin,
-      """|apply[A](x: A | Null): Option[A]
-         |         ^^^^^^^^^^^
+      """|apply[Int](x: Int | Null): Option[Int]
+         |             ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -376,8 +390,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Map.empty[Int, String].applyOrElse(1@@)
         |}
       """.stripMargin,
-      """|applyOrElse[K1 <: Int, V1 >: String](x: K1, default: K1 => V1): V1
-         |                                     ^^^^^
+      """|applyOrElse[Int, String](x: Int, default: Int => String): String
+         |                         ^^^^^^
          |""".stripMargin
     )
 
@@ -424,6 +438,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |      collapseState = "",
         |    )
         |}
+        |
         |
         |
       """.stripMargin,
@@ -541,7 +556,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new scala.util.control.Exception.Catch(@@)
         |}
       """.stripMargin,
-      """|Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
+      """|Catch[T](pf: Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
          |         ^^^^^^^^^^^^^^
          |""".stripMargin
     )
@@ -617,8 +632,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  List(1).map(a => 2 @@)
         |}
       """.stripMargin,
-      """|map[B](f: Int => B): List[B]
-         |       ^^^^^^^^^^^
+      """|map[Int](f: Int => Int): List[Int]
+         |           ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -666,8 +681,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  foo(4@@2)
         |}
       """.stripMargin,
-      """|conv[T](e: T): Text[T]
-         |        ^^^^
+      """|conv[Int](e: Int): Text[Int]
+         |            ^^^^^^
          |""".stripMargin
     )
 
@@ -712,8 +727,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  identity(42@@)
         |}
         |""".stripMargin,
-      """|identity[A](x: A): A
-         |            ^^^^
+      """|identity[Int](x: Int): Int
+         |              ^^^^^^
          |""".stripMargin
     )
 
@@ -724,8 +739,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option(1).fold(2)@@(_ + 1)
         |}
         |""".stripMargin,
-      """|fold[B](ifEmpty: => B)(f: Int => B): B
-         |                       ^^^^^^^^^^^
+      """|fold[Int](ifEmpty: => Int)(f: Int => Int): Int
+         |                            ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -736,8 +751,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option(1).fold(2@@)(_ + 1)
         |}
         |""".stripMargin,
-      """|fold[B](ifEmpty: => B)(f: Int => B): B
-         |        ^^^^^^^^^^^^^
+      """|fold[Int](ifEmpty: => Int)(f: Int => Int): Int
+         |          ^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -748,8 +763,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option(1).fold(2)(@@_ + 1)
         |}
         |""".stripMargin,
-      """|fold[B](ifEmpty: => B)(f: Int => B): B
-         |                       ^^^^^^^^^^^
+      """|fold[Int](ifEmpty: => Int)(f: Int => Int): Int
+         |                            ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -880,7 +895,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc",
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment(fst: String, snd: Int): Option[Int]
          |           ^^^^^^^^^^^
@@ -898,7 +913,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc", @@
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment(fst: String, snd: Int): Option[Int]
          |                        ^^^^^^^^
@@ -918,7 +933,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |
          |    ,snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment(fst: String, snd: Int): Option[Int]
          |           ^^^^^^^^^^^
@@ -938,7 +953,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment(fst: String, snd: Int): Option[Int]
          |                        ^^^^^^^^
@@ -956,7 +971,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc",
          |    snd = 1
          |  @@)
-         |}
+         |  }
          |""".stripMargin,
       """|deployment(fst: String, snd: Int): Option[Int]
          |                        ^^^^^^^^
@@ -971,13 +986,13 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    snd: B,
          |  ): Option[Int] = ???
          |  val abc = deployment[@@
-             Int,
+         |    Int,
          |   String,
          |  ](
          |    fst = "abc",
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |           ^
@@ -998,7 +1013,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc",
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
@@ -1021,7 +1036,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc",
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |           ^
@@ -1044,7 +1059,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc",
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
@@ -1065,7 +1080,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc",
          |    snd = 1
          |  )
-         |}
+         |  }
          |""".stripMargin,
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
@@ -1077,7 +1092,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object Main {
          |  def test(a: Int, b: Int): Int = ???
          |  test(1, 2)@@
-         |}
+         |  }
          |""".stripMargin,
       ""
      )
@@ -1096,7 +1111,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object Main {
          |  def test(a: Int, b: Int): Int = ???
          |  test(1, (2 + 1)@@
-         |}
+         |  }
          |""".stripMargin,
       ""
      )
@@ -1106,7 +1121,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object Main {
          |  def test(a: Int, b: Int): Int = ???
          |  test(1, 2) @@
-         |}
+         |  }
          |""".stripMargin,
       ""
      )
@@ -1116,7 +1131,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object Main {
          |  def test(a: Int, b: Int): Int = ???
          |  test(1, 2)  @@
-         |}
+         |  }
          |""".stripMargin,
       ""
      )
@@ -1127,7 +1142,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(a: Int, b: Int): Int = ???
          |  test(1, 2)
          |@@
-         |}
+         |  }
          |""".stripMargin,
       ""
      )
@@ -1175,7 +1190,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  test(1, 2
          |
          |  @@
-         |}
+         |  }
          |""".stripMargin,
        ""
      )
@@ -1188,8 +1203,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(a: Foo.Test, b: Foo.Test): Int = ???
          |  test(Foo.Test(1), @@)
          |""".stripMargin,
-      """|test(a: Test, b: Test): Int
-         |              ^^^^^^^
+      """|test(a: Main.Foo.Test, b: Main.Foo.Test): Int
+         |                       ^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -1200,7 +1215,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    class Test(x: Int, y: Int)
          |  new Foo.Test(1, @@)
          |""".stripMargin,
-      """|Test(x: Int, y: Int)
+      """|Test(x: Int, y: Int): Main.Foo.Test
          |             ^^^^^^
          |""".stripMargin
     )
@@ -1231,7 +1246,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(): (Int, Int) = ???
          |  test(@@)
          |""".stripMargin,
-      "test(): (Int, Int)"
+      "test(): (): (Int, Int)"
     )
 
   @Test def `show-methods-returning-tuples-2` =
@@ -1281,8 +1296,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test[A](x: A): Foo[A] = ???
          |  test[Int](@@)
          |""".stripMargin,
-      """|test[A](x: A): Foo[A]
-         |        ^^^^
+      """|test[Int](x: Int): Foo[A]
+         |            ^^^^^^
          |""".stripMargin
     )
 
@@ -1292,8 +1307,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test[T <: java.io.File](x: Int): Int = ???
          |  test(@@)
          |""".stripMargin,
-      """|test[T <: File](x: Int): Int
-         |                ^^^^^^
+      """|test[java.io.File](x: Int): Int
+         |                   ^^^^^^
          |""".stripMargin
     )
 
@@ -1304,8 +1319,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(x: Int)(using ctx: Context): Int = ???
          |  test(@@)
          |""".stripMargin,
-      """|test(x: Int)(using ctx: Context): Int
-         |     ^^^^^^
+      """|test(x: Int)(using ctx: M.Context): Int
+         |       ^^^^^^
          |""".stripMargin
     )
 
@@ -1575,7 +1590,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  foo(@@)
         |}
         |""".stripMargin,
-      "foo[K, V](): Unit"
+      "foo[K, V](): (): Unit"
     )
 
   @Test def `proper-param-list-after-param-empty-list` =
@@ -1587,8 +1602,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |}
         |""".stripMargin,
       """
-      |foo[K, V]()(x: Int): Unit
-      |            ^^^^^^
+      |foo[K, V]()(x: Int): (x: Int): Unit
+      |              ^^^^^^
       """.stripMargin
     )
 
@@ -1637,7 +1652,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  History.build(@@)
          |}
          |""".stripMargin,
-      """|build(b: Builder[Unit]): Int
-         |      ^^^^^^^^^^^^^^^^
+      """|build(b: History.Builder[Unit]): Int
+         |        ^^^^^^^^^^^^^^^^^^^^^^^^
          |""".stripMargin
     )

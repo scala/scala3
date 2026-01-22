@@ -12,6 +12,10 @@ import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j as l
 
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Types.{MethodType, TypeVar}
+import dotty.tools.dotc.util.Spans.Span
+
 import scala.jdk.CollectionConverters.*
 import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
@@ -44,8 +48,9 @@ object SignatureHelpProvider:
           .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
 
         val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
+        val refinedAlternatives = refineSignatures(alternatives, path, pos.span)(using driver.currentCtx)
 
-        val infos = alternatives.flatMap: signature =>
+        val infos = refinedAlternatives.flatMap: signature =>
           signature.denot.map(signature -> _)
 
         val signatureInfos = infos.map { case (signature, denot) =>
@@ -162,5 +167,100 @@ object SignatureHelpProvider:
       markup.setKind("markdown")
       markup.setValue(content.trim())
       markup
+
+  private def refineSignatures(
+      help: List[Signatures.Signature],
+      path: List[tpd.Tree],
+      span: Span
+  )(using Context): List[Signatures.Signature] =
+    val enclosingApply = path.find {
+      case tpd.Apply(fun, _) => !fun.span.contains(span)
+      case _ => false
+    }
+
+    enclosingApply match
+      case Some(tpd.Apply(fun, _)) =>
+        help.map { signature =>
+          val matches = signature.denot.exists(_.symbol == fun.symbol)
+          if matches then
+            val (head, actions) = unwind(fun)
+            var currType = head.tpe.widenTermRefExpr
+            var actionIndex = 0
+
+            val newParamss = signature.paramss.map { paramList =>
+              paramList match
+                case (p: Signatures.MethodParam) :: _ =>
+                  // Handle PolyTypes if they were skipped in signature but exist in type
+                  while currType.isInstanceOf[dotty.tools.dotc.core.Types.PolyType] do
+                    if actionIndex < actions.size && actions(actionIndex).isInstanceOf[tpd.TypeApply] then
+                      val targs = actions(actionIndex).asInstanceOf[tpd.TypeApply].args.map(_.tpe)
+                      currType = currType.appliedTo(targs)
+                      actionIndex += 1
+                    else
+                      // Fallback: strip aliases or stop if strict matching fails
+                      currType = currType.resultType
+
+                  if currType.isInstanceOf[MethodType] then
+                    val mt = currType.asInstanceOf[MethodType]
+                    val paramNames = mt.paramNames.map(_.show)
+                    val res = paramList.map {
+                      case p: Signatures.MethodParam =>
+                        val idx = paramNames.indexOf(p.name)
+                        val shown = if idx >= 0 then mt.paramInfos(idx).widenTermRefExpr.show else p.tpe
+                        if shown.contains("Any") || shown.contains("Nothing") || shown.contains("error") then p
+                        else p.copy(tpe = shown)
+                      case other => other
+                    }
+                    currType = mt.resultType
+                    if actionIndex < actions.size && actions(actionIndex).isInstanceOf[tpd.Apply] then
+                      actionIndex += 1
+                    res
+                  else paramList
+
+                case (p: Signatures.TypeParam) :: _ =>
+                  if currType.isInstanceOf[dotty.tools.dotc.core.Types.PolyType] then
+                    if actionIndex < actions.size && actions(actionIndex).isInstanceOf[tpd.TypeApply] then
+                      val targs = actions(actionIndex).asInstanceOf[tpd.TypeApply].args.map(_.tpe)
+                      val newParams = paramList.zip(targs).map {
+                        case (p: Signatures.TypeParam, targ) =>
+                          val shown = targ.show
+                          if shown.contains("Any") || shown.contains("Nothing") || shown.contains("error") then p
+                          else p.copy(tpe = shown)
+                        case (p, _) => p
+                      }
+                      currType = currType.appliedTo(targs)
+                      actionIndex += 1
+                      newParams
+                    else paramList
+                  else paramList
+
+                case _ => paramList
+            }
+            // Update return type if we have consumed all actions and ended up with a result type
+            val finalType = currType.widen.show
+            val returnTypeLabel = 
+              if actionIndex == actions.size && !finalType.contains("error") && !finalType.contains("Any") && !finalType.contains("Nothing") then Some(finalType)
+              else signature.returnType
+            
+            signature.copy(paramss = newParamss, returnType = returnTypeLabel)
+          else signature
+        }
+      case _ => help
+
+  private def unwind(tree: tpd.Tree): (tpd.Tree, List[tpd.Tree]) =
+    tree match
+      case tpd.Apply(fn, _) =>
+        val (head, actions) = unwind(fn)
+        (head, actions :+ tree)
+      case tpd.TypeApply(fn, _) =>
+        val (head, actions) = unwind(fn)
+        (head, actions :+ tree)
+      case _ => (tree, Nil)
+
+  private def countParams(tree: tpd.Tree): Int =
+    tree match
+      case tpd.Apply(fun, _) => 1 + countParams(fun)
+      case tpd.TypeApply(fun, _) => 1 + countParams(fun)
+      case _ => 0
 
 end SignatureHelpProvider

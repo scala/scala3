@@ -30,8 +30,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[Int](@@1)[String]("1")
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |        ^^^^
+        |pair[Int](a: Int)[B](b: B): (Int, B)
+        |          ^^^^^^
         |""".stripMargin
     )
 
@@ -56,8 +56,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[Int](1)[String](@@"1")
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[Int](a: Int)[String](b: String): (Int, String)
+        |                          ^^^^^^^^^
         |""".stripMargin
     )
 
@@ -83,8 +83,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[Int](@@1)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |        ^^^^
+        |pair[Int](a: Int)[B](b: B): (Int, B)
+        |          ^^^^^^
         |""".stripMargin
     )
 
@@ -121,8 +121,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair(1@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |        ^^^^
+        |pair[Int](a: Int)[B](b: B): (Int, B)
+        |          ^^^^^^
         |""".stripMargin
     )
 
@@ -147,8 +147,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair(1)[String]("1"@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[Int](a: Int)[String](b: String): (Int, String)
+        |                           ^^^^^^^^^
         |""".stripMargin
     )
 
@@ -160,8 +160,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair(1)("1"@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[Int](a: Int)[String](b: String): (Int, String)
+        |                           ^^^^^^^^^
         |""".stripMargin
     )
 
@@ -186,8 +186,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[Int](@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |        ^^^^
+        |pair[Int](a: Int)[B](b: B): (Int, B)
+        |            ^^^^^^
         |""".stripMargin
     )
 
@@ -212,8 +212,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[Int](1)[String](@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[Int](a: Int)[String](b: String): (Int, String)
+        |                           ^^^^^^^^^
         |""".stripMargin
     )
 
@@ -238,8 +238,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair(1)(@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[Int](a: Int)[B](b: B): (A, B)
+        |                       ^^^^
         |""".stripMargin
     )
 
@@ -329,8 +329,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[String]()[Int](@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[String](a: String)[Int](b: Int): (String, Int)
+        |                              ^^^^^^
         |""".stripMargin
     )
 
@@ -355,8 +355,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  pair[String](52)[Int](""@@)
       """.stripMargin,
       """
-        |pair[A](a: A)[B](b: B): (A, B)
-        |                 ^^^^
+        |pair[String](a: String)[Int](b: Int): (String, Int)
+        |                              ^^^^^^
         |""".stripMargin
     )
 
@@ -368,8 +368,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  foo[Int](using 1)(List(1, 2, 3))(@@)
       """.stripMargin,
       """
-        |foo[A](using a: A)(b: List[A])[C <: a.type, D](cd: (C, D))[E]: Foo[A, B, C, D, E]
-        |                                               ^^^^^^^^^^
+        |foo[Int](using a: Int)(b: List[Int])[(1 : Int), D](cd: (C, D))[E]: Foo[A, B, C, D, E]
+        |                                                   ^^^^^^^^^^
         |""".stripMargin
     )
 
@@ -418,8 +418,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
          |  test[Int](@@)
          |""".stripMargin,
-      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
-         |        ^^^^
+      """|test[Int](a: Int)[B](b: B)[C](c: C)[D](d: D): Int
+         |          ^^^^^^
          |""".stripMargin
     )
 
@@ -442,8 +442,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
          |  test[Int](1)[String](@@)
          |""".stripMargin,
-      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
-         |                 ^^^^
+      """|test[Int](a: Int)[String](b: String)[C](c: C)[D](d: D): Int
+         |                           ^^^^^^^^^
          |""".stripMargin
     )
 
@@ -466,8 +466,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
          |  test[Int](1)[String]("1")[Int](@@)
          |""".stripMargin,
-      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
-         |                          ^^^^
+      """|test[Int](a: Int)[String](b: String)[Int](c: Int)[D](d: D): Int
+         |                                          ^^^^^^
          |""".stripMargin
     )
 
@@ -488,8 +488,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
          |  test[Int](1)[String]("1")[Int](2)[String](@@)
          |""".stripMargin,
-      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
-         |                                   ^^^^
+      """|test[Int](a: Int)[String](b: String)[Int](c: Int)[String](d: String): Int
+         |                                                           ^^^^^^^^^
          |""".stripMargin
     )
 
@@ -499,8 +499,8 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |  def test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int = ???
          |  test[Int](1)(using 5)[String]("1")[Int](@@)
          |""".stripMargin,
-      """|test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int
-         |                                     ^^^^
+      """|test[Int](a: Int)(using Int)[String](b: String)[Int](c: Int)[D](d: D): Int
+         |                                                      ^^^^^^
          |""".stripMargin
     )
 
@@ -510,8 +510,7 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |  def test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int = ???
          |  test[Int](1)(5)[String]("1")[Int](@@)
          |""".stripMargin,
-      """|test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int
-         |                                     ^^^^
+      """|test[Int](a: Int)(using Int)[B](b: B)[String](c: String)[Int](d: Int): Int
+         |                                               ^^^^^^^^^
          |""".stripMargin
     )
-
