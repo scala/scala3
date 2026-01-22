@@ -154,11 +154,11 @@ val a = Ref(1)
 val b: Ref^ = incr(a)
 ```
 Here, `b` aliases `a` but does not hide it. If we referred to `a` afterwards we would be surprised to see that the reference has now a value of 2.
-Therefore, parameters cannot appear in the hidden sets of fresh result caps either, at least not in general. An exception to this rule is described in the next section.
+Therefore, parameters cannot appear in the hidden sets of fresh result `fresh`s either, at least not in general. An exception to this rule is described in the next section.
 
 ### Consume Parameters
 
-Returning parameters in fresh result caps is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
+Returning parameters in fresh result `fresh`s is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
 ```scala
 def incr(consume a: Ref^): Ref^ =
   a.set(a.get + 1)
