@@ -343,7 +343,13 @@ object SymbolLoaders {
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
       else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
-        () // skip
+        // For scala packages, enter new classes into the existing scope without
+        // replacing the package info (which would cause cyclic references).
+        // Use jarClasspath (not fullClasspath) to only enter new classes from the JAR.
+        // This allows libraries like scala-parallel-collections to work with :dep/:jar
+        val loader = new PackageLoader(packageVal, jarClasspath)
+        loader.enterClasses(packageClass, fullPackageName, flat = false)
+        loader.enterClasses(packageClass, fullPackageName, flat = true)
       else if fullClasspath.hasPackage(fullPackageName) then
         packageClass.info = new PackageLoader(packageVal, fullClasspath)
       else
