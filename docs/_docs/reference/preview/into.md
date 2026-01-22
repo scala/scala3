@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: The `into` Type and Modifier
-redirectFrom: /docs/reference/other-new-features/into.html
+redirectFrom: /experimental/into.html
 nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/into.html
 ---
 

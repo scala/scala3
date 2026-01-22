@@ -1975,29 +1975,33 @@ object Build {
           IO.write(path, newContent)
         }
 
+        val outputDir = "scaladoc/output/reference"
         val languageReferenceConfig = Def.task {
           Scala3.value
-            .add(OutputDir("scaladoc/output/reference"))
+            .add(OutputDir(outputDir))
             .add(SiteRoot(docs.getAbsolutePath))
             .add(ProjectName("Scala 3 Reference"))
             .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              s"${docs.getParentFile().getAbsolutePath}=github://scala/scala3/language-reference-stable"
+              s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"
             )))
+        }
+
+        val generateDocs = generateDocumentation(languageReferenceConfig).map{ _ =>
+          sbt.io.IO.delete(file(outputDir) / "api") // Remove API docs generated along the reference docs
         }
 
         val expectedLinksRegeneration = Def.task {
           if (shouldRegenerateExpectedLinks) {
             val script = (file("project") / "scripts" / "regenerateExpectedLinks").toString
-            val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
             val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
             import _root_.scala.sys.process._
             s"$script $outputDir $expectedLinksFile".!
           }
         }
 
-        expectedLinksRegeneration.dependsOn(generateDocumentation(languageReferenceConfig))
+        expectedLinksRegeneration.dependsOn(generateDocs)
       }.evaluated,
 
     )

@@ -41,9 +41,6 @@
 ./contextual/right-associative-extension-methods.html
 ./contextual/type-classes.html
 ./contextual/using-clauses.html
-./docs/reference/experimental/package-object-values.html
-./docs/reference/other-new-features/into.html
-./docs/reference/other-new-features/named-typeargs.html
 ./dropped-features.html
 ./dropped-features/auto-apply.html
 ./dropped-features/class-shadowing-spec.html
@@ -68,6 +65,7 @@
 ./enums/desugarEnums.html
 ./enums/enums.html
 ./enums/index.html
+./experimental/better-fors.html
 ./experimental/canthrow.html
 ./experimental/capture-checking/advanced.html
 ./experimental/capture-checking/basics.html
@@ -96,6 +94,8 @@
 ./experimental/package-object-values.html
 ./experimental/purefuns.html
 ./experimental/quoted-patterns-with-polymorphic-functions.html
+./experimental/relaxed-lambdas.html
+./experimental/runtimeChecked.html
 ./experimental/tupled-function.html
 ./experimental/typeclasses.html
 ./experimental/unrolled-defs.html
@@ -137,6 +137,7 @@
 ./other-new-features/kind-polymorphism.html
 ./other-new-features/matchable.html
 ./other-new-features/named-tuples.html
+./other-new-features/named-typeargs.html
 ./other-new-features/opaques-details.html
 ./other-new-features/opaques.html
 ./other-new-features/open-classes.html
@@ -152,7 +153,9 @@
 ./other-new-features/transparent-traits.html
 ./other-new-features/type-test.html
 ./overview.html
+./preview/better-fors.html
 ./preview/index.html
+./preview/into.html
 ./preview/overview.html
 ./soft-modifier.html
 ./syntax.html
