@@ -11,37 +11,37 @@ That is, capture sets can contain only capabilities that are visible at the poin
 defined. But that raises the question: where is a universal capability `any` defined? In fact, what
 is written as the top type `any` can mean different capabilities, depending on scope.
 
-## Different Kinds of Caps
+## Different Kinds of `any`
 
 We will discuss three distinct kinds of `any` in this chapter:
 
-**Local caps**: Every class, method body, and block has its own local `any`. It abstracts over the
+**Local `any`s**: Every class, method body, and block has its own local `any`. It abstracts over the
 capabilities used inside that scope, representing them by a single name to the outside world. Local
-caps form a subcapturing hierarchy based on lexical nesting.
+`any`s form a subcapturing hierarchy based on lexical nesting.
 
-**Parameter caps**: When `any` appears in a function parameter type (e.g., `def foo(x: T^)`), it
-gets its own `any` scoped to that parameter. At call sites, parameter caps are instantiated to the
+**Parameter `any`s**: When `any` appears in a function parameter type (e.g., `def foo(x: T^)`), it
+gets its own `any` scoped to that parameter. At call sites, parameter `any`s are instantiated to the
 actual capabilities passed in.
 
-**Result caps**: When `fresh` appears in a function result type (e.g., `def foo(x: T): U^`), it
+**Result `fresh`s**: When `fresh` appears in a function result type (e.g., `def foo(x: T): U^`), it
 becomes an existentially-bound capability that describes what the caller receives.
 
 So, when writing `T^` (shorthand for `T^{any}`), `any` is a way of saying "captures something"
-without naming what it is precisely, and depending of the context occurrence of such caps, the
+without naming what it is precisely, and depending of the context occurrence of such `any`s, the
 capture checker imposes restrictions on which capabilities are allowed to flow into them by means of
-subcapturing. We will further expand on this idea (and other kinds of caps) later when discussing
+subcapturing. We will further expand on this idea (and other kinds of `any`s) later when discussing
 [separation checking](separation-checking.md).
 
-Another analogy for the different caps is that they are some form of implicitly named existential
+Another analogy for the different `any`s is that they are some form of implicitly named existential
 or abstract self-capture set attached to elements of the program structure, e.g., scopes,
 parameters, or return values.
 
-## Local Caps
+## Local `any`s
 
-Local caps form a subcapturing hierarchy based on lexical nesting: a nested scope's local `any`
+Local `any`s form a subcapturing hierarchy based on lexical nesting: a nested scope's local `any`
 subsumes its enclosing scope's local `any`. This makes sense because the inner scope can use any
 capability available in the outer scope as well as locally defined ones. At the top level, there is
-a true universal `any` — the local `any` of the global scope — which all other local caps
+a true universal `any` — the local `any` of the global scope — which all other local `any`s
 ultimately subsume:
 
 ```scala
@@ -60,7 +60,7 @@ class Outer: // has local any₁
 ```
 
 Each capability has a _level_ corresponding to the local `any` of its defining scope. The level
-determines where a capability can flow: it can flow into caps at the same level or more deeply
+determines where a capability can flow: it can flow into `any`s at the same level or more deeply
 nested, but not outward to enclosing scopes (which would mean a capability lives longer than its
 lexical lifetime). The compiler computes a capability's level by walking up the ownership chain
 until reaching a symbol that represents a level boundary. Level boundaries are:
