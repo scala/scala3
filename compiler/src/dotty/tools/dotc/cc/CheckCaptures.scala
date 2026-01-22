@@ -1164,11 +1164,17 @@ class CheckCaptures extends Recheck, SymTransformer:
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
+              val paramTpt = param.asInstanceOf[ValDef].tpt
               inContext(ctx.withOwner(anonfun)):
-                val paramTpt = param.asInstanceOf[ValDef].tpt
-                val paramType = localCapToGlobal(param.symbol, paramTpt.nuType)
-                checkConformsExpr(argType, paramType, param)
-                  .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
+                paramTpt match
+                  case tpt: InferredTypeTree if !hasCapsetVars(argType) && !anonfun.isCompleted =>
+                    val localArgType =
+                      globalCapToLocal(argType, Origin.Parameter(param.symbol))
+                    param.symbol.info = localArgType
+                  case _ =>
+                    val paramType = localCapToGlobal(param.symbol, paramTpt.nuType)
+                    checkConformsExpr(argType, paramType, param)
+                      .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}, completed = ${anonfun.isCompleted}", capt)
             if resType.isValueType && !hasCapsetVars(resType) && !anonfun.isCompleted then
               // Try to oupdate the declared result type of the closure `mdef.tpt` with the expected
               // result type, in order to propagate constraints into the closure.

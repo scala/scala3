@@ -1,11 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary-homebrew.scala:20:31 ----------------------------
 20 |      boundary.break(l2)(using l1) // error
    |                               ^^
-   |Found:    (l1 : boundary.Label[boundary.Label[Int]^'s1]^{any})
+   |Found:    (l1 : boundary.Label[boundary.Label[Int]^]^{any})
    |Required: boundary.Label[boundary.Label[Int]^{l2}]
    |
    |Note that capability `any` is not included in capture set {}.
    |
-   |where:    any is a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^]^): boundary.Label[Int]^ of parameter parameter l1 of method $anonfun
+   |where:    ^   refers to a root capability created in method test
+   |          any is a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^²]^²): boundary.Label[Int]^² of parameter parameter l1 of method $anonfun
    |
    | longer explanation available when compiling with `-explain`

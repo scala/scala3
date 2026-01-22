@@ -21,7 +21,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:72 ---------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error
    |                                                                        ^
-   |                                        Found:    Boxed[IO^{x*}]^'s1
+   |                                        Found:    Boxed[IO^{x*}]
    |                                        Required: Boxed[IO^{any}]
    |
    |                                        Note that capability `x*` is not included in capture set {any}
