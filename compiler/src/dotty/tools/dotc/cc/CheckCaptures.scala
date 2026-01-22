@@ -1167,7 +1167,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               val paramTpt = param.asInstanceOf[ValDef].tpt
               inContext(ctx.withOwner(anonfun)):
                 paramTpt match
-                  case tpt: InferredTypeTree if !hasCapsetVars(argType) && !anonfun.isCompleted =>
+                  case tpt: InferredTypeTree if !anonfun.isCompleted =>
                     val localArgType =
                       globalCapToLocal(argType, Origin.Parameter(param.symbol))
                     param.symbol.info = localArgType
