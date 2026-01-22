@@ -78,7 +78,7 @@ we know that the type of `this` must be pure, since `this` is the right hand sid
 ### Traits and Open Classes
 
 The self-type inference behaves differently depending on whether all subclasses of a class are known. For a regular (non-open, non-abstract) class, all subclasses are known at compile time,¹ so the capture checker can precisely infer the self-type. However, for traits, abstract classes, and [`open`](../../other-new-features/open-classes.md) classes, arbitrary subclasses may exist, so the capture checker conservatively assumes that `this` may capture arbitrary capabilities
-(i.e., it infers the universal capture set `cap`).
+(i.e., it infers the universal capture set `any`).
 
 ¹We ignore here the possibility that non-open classes have subclasses in other compilation units (e.g. for testing) and assume that these subclasses do not change the inferred self type.
 
@@ -114,7 +114,7 @@ abstract class Root:
   this: Root^ => // the default, can capture anything
 
 abstract class Sub extends Root:
-  this: Sub^{a, b} => // ok, refinement {a, b} <: {cap}
+  this: Sub^{a, b} => // ok, refinement {a, b} <: {any}
 
 class SubGood extends Sub:
   val fld: AnyRef^{a} = a // ok, {a} included in {a, b}
@@ -337,7 +337,7 @@ Their capture annotations are all as one would expect:
  - Concatenating two lazy lists produces a lazy list that captures both arguments.
  - Dropping elements from a lazy list gives a safe approximation where the original list is captured in the result. In fact, it's only some suffix of the list that is retained at run time, but our modeling identifies lazy lists and their suffixes, so this additional knowledge would not be useful.
 
-Of course the function passed to `map` or `filter` could also be pure. After all, `A -> B` is a subtype of `(A -> B)^{cap}` which is the same as `A => B`. In that case, the pure function
+Of course the function passed to `map` or `filter` could also be pure. After all, `A -> B` is a subtype of `(A -> B)^{any}` which is the same as `A => B`. In that case, the pure function
 argument will _not_ show up in the result type of `map` or `filter`. For instance:
 ```scala
 val xs = squares(10)
