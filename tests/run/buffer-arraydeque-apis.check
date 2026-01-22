@@ -1,4 +1,3 @@
-testBufferUsesArrayDeque passed
 testRemoveHead passed
 testRemoveLast passed
 testRemoveHeadOption passed
