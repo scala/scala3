@@ -28,7 +28,17 @@ jobs:
           gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
           passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
           fingerprint    : ${{ vars.SCALA_PGP_FINGERPRINT }}
+      - name: Get version string for this build
+        run: |
+          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
+      - name: Check whether not yet published
+        id: not_yet_published
+        continue-on-error: true
+        run: |
+          ! ./project/scripts/is-version-published.sh "$THISBUILD_VERSION"
       - name: Publish Artifacts to the Maven Repository
+        if: "steps.not_yet_published.outcome == 'success'"
         run : sbt scala3-bootstrapped/publishSigned
         env:
           MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
@@ -38,6 +48,7 @@ jobs:
           MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
           NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
           NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
+
   release-maven-lts-artifacts:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
@@ -64,8 +75,18 @@ jobs:
           echo "$PGP_SECRET" > "/home/runner/.sbt/gpg/secring.asc"
         env:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
+      - name: Get version string for this build
+        run: |
+          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
+      - name: Check whether not yet published
+        id: not_yet_published
+        continue-on-error: true
+        run: |
+          ! ./project/scripts/is-version-published.sh "$THISBUILD_VERSION"
       - uses: sbt/setup-sbt@v1
       - name: Publish Artifacts to the Maven Repository
+        if: "steps.not_yet_published.outcome == 'success'"
         run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned"
         env:
           SONATYPE_USER         : ${{ secrets.MAVEN_REPOSITORY_USER }}
