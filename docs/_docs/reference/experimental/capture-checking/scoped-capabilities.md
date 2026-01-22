@@ -214,7 +214,7 @@ type of `makeLogger` like this:
 makeLogger: (fs: ∃any₁.FileSystem^{any₁}): ∃fresh. Logger^{fresh}
 ```
 In words: `makeLogger` takes a parameter `fs` of type `Filesystem` capturing _some_ universal
-capability `any₁` and returns a `Logger` capturing some (possibly different) fresh capability.
+capability `any₁` and returns a `Logger` capturing some (possibly different) `fresh` capability.
 
 We can also turn the existential in the function parameter to a universal "forall" in the function
 itself. In that alternative notation, the type of `makeLogger` would read like this:
@@ -227,58 +227,69 @@ arbitrary capabilities.
 
 ### Expansion Rules for Function Types
 
-The conventions for method types carry over to function types. A dependent function type
+The conventions for method types carry over to function types. A function type with `fresh` in the
+result, such as
 ```scala
-(x: T) -> U^
+(x: T) -> U^{fresh}
 ```
-is interpreted as having an existentially bound `fresh` in the result, like this:
+is interpreted as having an existentially bound `fresh`:
 ```scala
 (x: T) -> ∃fresh.U^{fresh}
 ```
-The same rules hold for the other kinds of function arrows, `=>`, `?->`, and `?=>`. So `fresh` can in
+The same rules hold for all kinds of function arrows: `->`, `=>`, `?->`, and `?=>`. So `fresh` can in
 this case absorb the function parameter `x` since `x` is locally bound in the function result.
 
-However, the expansion of `any` into an existentially bound variable only applies to functions that
-use the dependent function style syntax, with explicitly named parameters. Parametric functions such
-as `A => B^` or `(A₁, ..., Aₖ) -> B^` don't bind the `any` in their return types in an existential
-quantifier. For instance, the function
+Only `fresh` expands to existentially bound capabilities, and it does so regardless of how the
+function is written. For instance, both of these types have existentially bound result capabilities:
 ```scala
-(x: A) -> B -> C^
+A => B^{fresh}                         // ∃fresh. A ->{any} B^{fresh}
+(x: A) -> B -> C^{fresh}               // (x: A) -> ∃fresh. B -> C^{fresh}
 ```
-is interpreted as
-```scala
-(x: A) -> ∃fresh.B -> C^{fresh}
-```
-In other words, existential quantifiers are only inserted in results of function arrows that follow
-an explicitly named parameter list.
-
-The placement of the existential reveals something about the behavior of a function of such a type.
-For example, what flows into the `fresh` of the result `C^{fresh}` depends solely on `x` of type `A`
-and is independent of the second
-parameter of type `B`.
 
 In effect, we have some form of "second-class" existential capture types which are carefully
-restricted and implied by the type structure and `any`/`fresh` occurrences. Unlike first-class existential
+restricted and implied by the type structure and `fresh` occurrences. Unlike first-class existential
 types, this approach does not require programmers to explicitly pack and unpack: the system
-determines the binding structure automatically from where `any` or `fresh` appears in the type.
-
-#### Examples
-
- - `A => B` is an alias type that expands to `A ->{any} B`, referring to a scoped `any` in the context as outlined above.
- -  Therefore
-   `(x: T) -> A => B` expands to `(x: T) -> ∃c.(A ->{c} B)`.
-
- - `(x: T) -> Iterator[A => B]` expands to `(x: T) -> ∃c.Iterator[A ->{c} B]`.
+determines the binding structure automatically from where `fresh` appears in the type.
 
 #### Summary
 
-  - If a function result type follows a named parameter list and contains covariant occurrences of
-    `any`, we replace these occurrences with a new existential variable (`fresh`) which is bound by a
-    quantifier scoping over the result type.
+  - Occurrences of `fresh` in a function result type are replaced by a new existential variable
+    bound by a quantifier scoping over the result type.
   - If a function parameter type contains covariant occurrences of `any`, we replace these
     occurrences with a new existential variable scoping over the parameter type.
-  - Occurrences of `any` elsewhere are not translated. They can be seen as representing an
-    existential in the scope of the definition in which they appear.
+  - Occurrences of `any` in result types are not translated to existential variables. They refer to
+    the local `any` in the scope of the definition in which they appear.
+
+#### Outer-Bound `fresh`
+
+By default, `fresh` in a function result type is bound by the immediately enclosing function. But
+sometimes we want the `fresh` to be bound by an _outer_ function instead. This can be achieved by
+using type aliases or capture-set parameters to "tunnel" the `fresh` through an inner function type.
+
+Consider these type definitions:
+```scala
+class A
+type F[X] = (t: String) -> X
+type G[C^] = (t: String) -> A^{C}
+```
+
+With these aliases, we can write:
+```scala
+val x: (s: String) -> F[A^{fresh}] = ???
+val y: (s: String) -> G[{fresh}] = ???
+```
+
+In both cases, the `fresh` is bound by the outer function `(s: String) -> ...`, not by the inner
+function `(t: String) -> ...`. This works because `fresh` appears outside the inner function type
+definition—it is passed as a type argument or capture-set argument to the alias. The expanded types
+are:
+```scala
+x: ∃fresh. (s: String) -> (t: String) -> A^{fresh}
+y: ∃fresh. (s: String) -> (t: String) -> A^{fresh}
+```
+
+This technique is useful when a capability needs to span nested function calls while remaining
+existentially bound at an outer scope.
 
 ### Parameter `any`s and Local `any`s
 
@@ -337,7 +348,7 @@ smuggle it out of its scope.
 
 Beyond preventing escaping capabilities, the principle of isolating result `fresh`s is important for
 [tracking mutation and allocation effects](mutability.md) and
-[separation checking](separation-checking.md), e.g., for a function returning a fresh new mutable
+[separation checking](separation-checking.md), e.g., for a function returning a new mutable
 reference cell on each call
 ```scala
 def freshCell(init: Int): Cell^ = new Cell(s)
