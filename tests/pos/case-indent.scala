@@ -38,6 +38,37 @@ class Functional:
     i =>
     case _ => i
 
+def `one for all`(xs: List[Int]) =
+  println(s"Ah! $xs")
+  xs.map:
+  case 42 => "expected"
+  case 27 => "unexpected"
+  case y => s"weird $y"
+
+def `twice and for all`(xs: List[Int]) =
+  xs.map: x =>
+    x match
+    case 42 => "expected"
+    case 27 => "unexpected"
+    case y => s"weird $y"
+
+/* DNC
+def `one line for all`(xs: List[Int]) =
+  xs.map: x => x match case 42 => "expected"
+
+def `twice and for all`(xs: List[Int]) =
+  xs.map: x => x match
+    case 42 => "expected"
+    case 27 => "unexpected"
+    case y => s"weird $y"
+
+def `once and for all`(xs: List[Int]) =
+  for x <- xs yield
+  case 42 => "expected"
+  case 27 => "unexpected"
+  case y => s"weird $y"
+*/
+
 @main def main =
   println:
     f(List(42))
