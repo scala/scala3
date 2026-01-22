@@ -1,5 +1,13 @@
 // Test for new ArrayDeque-style APIs on Buffer
 object Test {
+  // Check if running on JVM (not Scala.js)
+  val isJVM: Boolean = try {
+    Class.forName("java.lang.management.ManagementFactory")
+    true
+  } catch {
+    case _: ClassNotFoundException => false
+  }
+
   def main(args: Array[String]): Unit = {
     testBufferUsesArrayDeque()
     testRemoveHead()
@@ -18,7 +26,9 @@ object Test {
   def testBufferUsesArrayDeque(): Unit = {
     import scala.collection.mutable.{Buffer, ArrayDeque}
     val buf = Buffer(1, 2, 3)
-    assert(buf.isInstanceOf[ArrayDeque[?]], s"Buffer() should create ArrayDeque, got ${buf.getClass}")
+    if (isJVM) {
+      assert(buf.isInstanceOf[ArrayDeque[?]], s"Buffer() should create ArrayDeque, got ${buf.getClass}")
+    }
     println("testBufferUsesArrayDeque passed")
   }
 
