@@ -141,9 +141,9 @@ class Namer { typer: Typer =>
     def conflict(conflicting: Symbol) =
       val other =
         if conflicting.is(PhantomSymbol) then
-          val companion = conflicting.companionClass
-          if companion.exists then companion else conflicting
-        else conflicting
+          conflicting.companionClass.orElse(conflicting)
+        else
+          conflicting
       report.error(AlreadyDefined(name, owner, other), ctx.source.atSpan(span))
       conflictsDetected = true
 
