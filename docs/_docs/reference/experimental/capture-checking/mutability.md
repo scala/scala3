@@ -143,7 +143,7 @@ of other objects. This property is expressed by extending the `Separate` trait i
 ```scala
 trait Separate extends Stateful
 ```
-If a value of a type extending Separate is created, a fresh `cap` is automatically
+If a value of a type extending Separate is created, a fresh `any` is automatically
 added to the value's capture set:
 ```scala
 class S extends Separate
@@ -259,16 +259,16 @@ If `x` is an exclusive capability of a type extending `Stateful`, `x.rd` is its 
 
 **Implicitly added capture sets**
 
-A reference to a type extending trait `Stateful` gets an implicit capture set `{cap.rd}` provided no explicit capture set is given. This is different from other capability traits which implicitly add `{cap}`.
+A reference to a type extending trait `Stateful` gets an implicit capture set `{any.rd}` provided no explicit capture set is given. This is different from other capability traits which implicitly add `{any}`.
 
 For instance, consider:
 ```scala
 def addContents(from: Ref[Int], to: Ref[Int]^): Unit =
   to.set(to.get + from.get)
 ```
-Here, `from` is implicitly read-only, and `to`'s type has capture set `cap`. I.e. with explicit capture sets this would read:
+Here, `from` is implicitly read-only, and `to`'s type has capture set `any`. I.e. with explicit capture sets this would read:
 ```scala
-def addContents(from: Ref[Int]^{cap.rd}, to: Ref[Int]^{cap}): Unit
+def addContents(from: Ref[Int]^{any.rd}, to: Ref[Int]^{any}): Unit
 ```
 In other words, the explicit `^` indicates where state changes can happen.
 
@@ -286,7 +286,7 @@ A _read-only access_ is a reference to a type extending `Stateful` where one of 
     ```
  2. The reference is a path where the path itself or a prefix of that path has a read-only capture set. For instance:
     ```scala
-    val r: Ref[Int]^{cap.rd} = new Ref[T](22)
+    val r: Ref[Int]^{any.rd} = new Ref[T](22)
     def get = r.get // read-only access to `r`
     ```
     Another example:
@@ -296,7 +296,7 @@ A _read-only access_ is a reference to a type extending `Stateful` where one of 
     val c: RefContainer = RefContainer()
     def get = c.r.get // read-only access to `c.r`
     ```
-    In the last example, `c.r` is a read-only access since the prefix `c` is a read-only reference. Note that `^{cap.rd}` was implicitly added to `c: RefContainer` since `RefContainer` is a `Stateful` capability class.
+    In the last example, `c.r` is a read-only access since the prefix `c` is a read-only reference. Note that `^{any.rd}` was implicitly added to `c: RefContainer` since `RefContainer` is a `Stateful` capability class.
  3. The expected type of the reference is a value type that is not a stateful type. For instance:
     ```scala
     val r: Ref[Int]^ = Ref(22)
@@ -330,7 +330,7 @@ A reference to a stateful type with an exclusive capture set can be widened to a
 ```scala
 val a: Ref[Int]^ = Ref(1)
 val b1: Ref[Int]^{a.rd} = a
-val b2: Ref[Int]^{cap.rd} = a
+val b2: Ref[Int]^{any.rd} = a
 ```
 
 ## Lazy Vals and Read-Only Restrictions
@@ -428,13 +428,13 @@ The `untrackedCaptures` annotation can also be used in some other contexts unrel
 
 ## Read-Only Capsets
 
-If we consider subtyping and subcapturing, we observe what looks like a contradiction: `x.rd` is seen as a restricted capability, so `{x.rd}` should subcapture `{x}`. Yet, we have seen in the example above that sometimes it goes the other way: `a`'s capture set is either `{a}` or `{cap}`, yet `a` can be used to define `b1` and `b2`, with capture sets `{a.rd}` and `{cap.rd}`, respectively.
+If we consider subtyping and subcapturing, we observe what looks like a contradiction: `x.rd` is seen as a restricted capability, so `{x.rd}` should subcapture `{x}`. Yet, we have seen in the example above that sometimes it goes the other way: `a`'s capture set is either `{a}` or `{any}`, yet `a` can be used to define `b1` and `b2`, with capture sets `{a.rd}` and `{any.rd}`, respectively.
 
 The contradiction can be explained by noting that we use a capture set in two different roles.
 
 First, and as always, a capture set defines _retained capabilities_ that may or may be not used by a value. More capabilities give larger types, and the empty capture set is the smallest set according to that ordering. That makes sense: If a higher-order function like `map` is willing to accept a function `A => B` that can have arbitrary effects it's certainly OK to pass a pure function of type `A -> B` to it.
 
-But for mutations, we use a capture set in a second role, in which it defines a set of _access permissions_. If we have a `Ref[T]^`, we can access all its methods, but if we have a `Ref[T]^{cap.rd}`, we can access only regular methods, not update methods. From that viewpoint a stateful type with exclusive capabilities lets you do more than a stateful type with just read-only capabilities. So by the Liskov substitution principle, sets with exclusive capabilities subcapture sets with only read-only capabilities.
+But for mutations, we use a capture set in a second role, in which it defines a set of _access permissions_. If we have a `Ref[T]^`, we can access all its methods, but if we have a `Ref[T]^{any.rd}`, we can access only regular methods, not update methods. From that viewpoint a stateful type with exclusive capabilities lets you do more than a stateful type with just read-only capabilities. So by the Liskov substitution principle, sets with exclusive capabilities subcapture sets with only read-only capabilities.
 
 The contradiction can be solved by distinguishing these two roles. For access permissions, we express read-only sets with an additional _qualifier_ `reader`. That qualifier is used only in the formal theory and the implementation, it currently cannot be expressed in source.
 We add an implicit read-only qualifier `reader` to all capture sets on stateful types that consist only of shared or read-only capabilities.
