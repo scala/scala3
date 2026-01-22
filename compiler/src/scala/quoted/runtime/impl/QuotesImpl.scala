@@ -1593,6 +1593,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Bind(sym, pattern))
       def copy(original: Tree)(name: String, pattern: Tree): Bind =
         withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
+          .withSpan(original.span)
       def unapply(pattern: Bind): (String, Tree) =
         (pattern.name.toString, pattern.pattern)
     end Bind
