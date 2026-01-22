@@ -1,0 +1,14 @@
+# sbt configuration file for Windows
+
+# Set the java args
+
+#-mem 1024 was added in sbt.bat as default
+
+#-Xms1024m
+#-Xmx1024m
+#-Xss4M
+#-XX:ReservedCodeCacheSize=128m
+
+# Set the extra sbt options
+
+# -Dsbt.log.format=true

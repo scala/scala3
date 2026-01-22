@@ -342,8 +342,6 @@ object SymbolLoaders {
         val loader = new PackageLoader(packageVal, fullClasspath)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
-      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
-        () // skip
       else if fullClasspath.hasPackage(fullPackageName) then
         packageClass.info = new PackageLoader(packageVal, fullClasspath)
       else

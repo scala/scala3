@@ -1,0 +1,49 @@
+# ------------------------------------------------ #
+#  The SBT Configuration file.                     #
+# ------------------------------------------------ #
+
+
+# Disable ANSI color codes
+#
+#-no-colors
+
+# Starts sbt even if the current directory contains no sbt project.
+#
+#--allow-empty
+
+# Path to global settings/plugins directory (default: ~/.sbt)
+#
+#-sbt-dir  /etc/sbt
+
+# Path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
+#
+#-sbt-boot ~/.sbt/boot
+
+# Path to local Ivy repository (default: ~/.ivy2)
+#
+#-ivy ~/.ivy2
+
+# set memory options
+#
+#-mem   <integer>
+
+# Use local caches for projects, no sharing.
+#
+#-no-share
+
+# Put sbt in offline mode.
+#
+#-offline
+
+# Sets the sbt version to use.
+#-sbt-version  0.11.3
+
+# Scala version (default: latest release)
+#
+#-scala-home <path>
+#-scala-version <version>
+
+# java version (default: java from PATH, currently $(java -version |& grep version))
+#
+#-java-home <path>
+
