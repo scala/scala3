@@ -342,6 +342,12 @@ object SymbolLoaders {
         val loader = new PackageLoader(packageVal, fullClasspath)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
+      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
+        // For packages under scala.*, don't replace the package info to avoid cyclic references,
+        // but still enter new classes from the JAR into the existing package scope.
+        val loader = new PackageLoader(packageVal, fullClasspath)
+        loader.enterClasses(packageClass, fullPackageName, flat = false)
+        loader.enterClasses(packageClass, fullPackageName, flat = true)
       else if fullClasspath.hasPackage(fullPackageName) then
         packageClass.info = new PackageLoader(packageVal, fullClasspath)
       else
