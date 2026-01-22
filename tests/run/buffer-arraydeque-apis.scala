@@ -1,6 +1,7 @@
 // Test for new ArrayDeque-style APIs on Buffer
 object Test {
   def main(args: Array[String]): Unit = {
+    testBufferUsesArrayDeque()
     testRemoveHead()
     testRemoveLast()
     testRemoveHeadOption()
@@ -12,6 +13,13 @@ object Test {
     testRemoveFirst()
     testRemoveAllPredicate()
     println("All tests passed!")
+  }
+
+  def testBufferUsesArrayDeque(): Unit = {
+    import scala.collection.mutable.{Buffer, ArrayDeque}
+    val buf = Buffer(1, 2, 3)
+    assert(buf.isInstanceOf[ArrayDeque[?]], s"Buffer() should create ArrayDeque, got ${buf.getClass}")
+    println("testBufferUsesArrayDeque passed")
   }
 
   def testRemoveHead(): Unit = {
