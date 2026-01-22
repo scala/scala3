@@ -1,5 +1,5 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:33 ---------------------------------------
-12 |  files.map((f: F) => new Logger(f)) // error // error, Q: can we make this pass (see #19076)?
+12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
    |                                 ^
    |Found:    (f : F)
    |Required: File^{any}
@@ -22,8 +22,3 @@
    |where:    any is a root capability classified as SharedCapability created in anonymous function of type (_$1: File^{C}): Logger when checking argument to parameter f of constructor Logger
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i21614.scala:12:13 ------------------------------------------------------------
-12 |  files.map((f: F) => new Logger(f)) // error // error, Q: can we make this pass (see #19076)?
-   |             ^^^^
-   |             Local reach capability files* leaks into capture scope of method mkLoggers1.
-   |             You could try to abstract the capabilities referred to by files* in a capset variable.
