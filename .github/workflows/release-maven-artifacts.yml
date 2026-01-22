@@ -62,6 +62,7 @@ jobs:
           distribution: 'temurin'
           java-version: 8
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
       - name: Setup PGP Key
         run: |
           echo -n "$PGP_SECRET" | gpg --batch --import
@@ -84,7 +85,6 @@ jobs:
         continue-on-error: true
         run: |
           ! ./project/scripts/is-version-published.sh "$THISBUILD_VERSION"
-      - uses: sbt/setup-sbt@v1
       - name: Publish Artifacts to the Maven Repository
         if: "steps.not_yet_published.outcome == 'success'"
         run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned"
