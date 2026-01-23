@@ -662,6 +662,22 @@ object ProtoTypes {
     override def typedArg(arg: untpd.Tree, formal: Type)(using Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
     override def allArgTypesAreCurrent()(using Context): Boolean = true
     override def withContext(ctx: Context): FunProtoTyped = this
+
+    override def map(tm: TypeMap)(using Context): FunProtoTyped =
+      derivedFunProtoTyped(args, tm(resultType), typer)
+
+    override def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
+      ta(ta.foldOver(x, typedArgs().tpes), resultType)
+
+    def derivedFunProtoTyped(
+        args: List[tpd.Tree] = this.args,
+        resultType: Type = this.resultType,
+        typer: Typer = this.typer): FunProtoTyped =
+      if (args eq this.args)
+        && (resultType eq this.resultType)
+        && (typer eq this.typer)
+      then this
+      else FunProtoTyped(args, resultType)(typer, applyKind)
   }
 
 
@@ -1043,10 +1059,7 @@ object ProtoTypes {
           case tp => wildApprox(tp, theMap, seen, internal)
         arg.withType(argTp))
       val resTp = wildApprox(tp.resultType, theMap, seen, internal)
-      if (args eq tp.args) && (resTp eq tp.resultType) then
-        tp
-      else
-        FunProtoTyped(args, resTp)(ctx.typer, tp.applyKind)
+      FunProtoTyped(args, resTp)(ctx.typer, tp.applyKind)
     case tp: IgnoredProto =>
       WildcardType
     case  _: ThisType | _: BoundType => // default case, inlined for speed

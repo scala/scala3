@@ -1869,11 +1869,7 @@ trait Implicits:
             else loop(outer, tp.isByName || belowByname)
           case _ => false
 
-      (cand.ref.info, ctx.searchHistory) match
-        case (meth: MethodOrPoly, search: OpenSearch) if meth.isImplicitMethod && cand.level >= search.cand.level =>
-          val res = meth.paramInfoss.flatten.exists(tp => wildApprox(tp.widenExpr) =:= wildPt)
-          res || loop(ctx.searchHistory, pt.isByName)
-        case _ => loop(ctx.searchHistory, pt.isByName)
+      loop(ctx.searchHistory, pt.isByName)
     end checkDivergence
 
     /**
