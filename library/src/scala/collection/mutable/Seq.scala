@@ -25,18 +25,17 @@ trait Seq[A]
   override def iterableFactory: SeqFactory[Seq] = Seq
 }
 
-/**
-  * $factoryInfo
-  * @define coll mutable sequence
-  * @define Coll `mutable.Seq`
-  */
+/** $factoryInfo
+ *  @define coll mutable sequence
+ *  @define Coll `mutable.Seq`
+ */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](ArrayBuffer)
 
 /**
-  * @define coll mutable sequence
-  * @define Coll `mutable.Seq`
-  */
+ *  @define coll mutable sequence
+ *  @define Coll `mutable.Seq`
+ */
 transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   extends collection.SeqOps[A, CC, C]
     with Cloneable[C]
@@ -49,11 +48,11 @@ transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   }
 
   /** Replaces element at given index with a new value.
-    *
-    *  @param idx      the index of the element to replace.
-    *  @param elem     the new value.
-    *  @throws   IndexOutOfBoundsException if the index is not valid.
-    */
+   *
+   *  @param idx      the index of the element to replace.
+   *  @param elem     the new value.
+   *  @throws   IndexOutOfBoundsException if the index is not valid.
+   */
   @throws[IndexOutOfBoundsException]
   def update(idx: Int, elem: A): Unit
 

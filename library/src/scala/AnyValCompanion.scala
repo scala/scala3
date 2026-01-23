@@ -19,9 +19,9 @@ import scala.language.`2.13`
  *  A common trait for /companion/ objects of primitive types comes handy
  *  when parameterizing code on types. For instance, the specialized
  *  annotation is passed a sequence of types on which to specialize:
- *  {{{
+ *  ```
  *     class Tuple1[@specialized(Unit, Int, Double) T]
- *  }}}
+ *  ```
  *
  */
 private[scala] trait AnyValCompanion extends Specializable { }

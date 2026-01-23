@@ -16,8 +16,7 @@ package sys
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
-/** A few additional conveniences for Boolean properties.
- */
+/** A few additional conveniences for Boolean properties. */
 trait BooleanProp extends Prop[Boolean] {
   /** The semantics of value are determined at Prop creation.  See methods
    *  `valueIsTrue` and `keyExists` in object BooleanProp for examples.
@@ -81,8 +80,7 @@ object BooleanProp {
    */
   def keyExists[T](key: String): BooleanProp = new BooleanPropImpl(key, s => s == "" || s.equalsIgnoreCase("true"))
 
-  /** A constant true or false property which ignores all method calls.
-   */
+  /** A constant true or false property which ignores all method calls. */
   def constant(key: String, isOn: Boolean): BooleanProp = new ConstantImpl(key, isOn)
 
   implicit def booleanPropAsBoolean(b: BooleanProp): Boolean = b.value

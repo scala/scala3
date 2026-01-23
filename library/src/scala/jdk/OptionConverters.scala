@@ -16,34 +16,34 @@ import scala.language.`2.13`
 import java.util.{Optional, OptionalDouble, OptionalInt, OptionalLong}
 
 /** This object provides extension methods that convert between Scala `Option` and Java `Optional`
-  * types.
-  *
-  * When writing Java code, use the explicit conversion methods defined in
-  * [[javaapi.OptionConverters]] instead.
-  *
-  * Scala `Option` is extended with a `toJava` method that creates a corresponding `Optional`, and
-  * a `toJavaPrimitive` method that creates a specialized variant (e.g., `OptionalInt`) if
-  * applicable.
-  *
-  * Java `Optional` is extended with a `toScala` method and a `toJavaPrimitive` method.
-  *
-  * Finally, specialized `Optional` types are extended with `toScala` and `toJavaGeneric` methods.
-  *
-  * Example usage:
-  *
-  * {{{
-  *   import scala.jdk.OptionConverters._
-  *   val a = Option("example").toJava      // Creates java.util.Optional[String] containing "example"
-  *   val b = (None: Option[String]).toJava // Creates an empty java.util.Optional[String]
-  *   val c = a.toScala                     // Back to Option("example")
-  *   val d = b.toScala                     // Back to None typed as Option[String]
-  *   val e = Option(2.7).toJava            // java.util.Optional[Double] containing boxed 2.7
-  *   val f = Option(2.7).toJavaPrimitive   // java.util.OptionalDouble containing 2.7 (not boxed)
-  *   val g = f.toScala                     // Back to Option(2.7)
-  *   val h = f.toJavaGeneric               // Same as e
-  *   val i = e.toJavaPrimitive             // Same as f
-  * }}}
-  */
+ *  types.
+ *
+ *  When writing Java code, use the explicit conversion methods defined in
+ *  [[javaapi.OptionConverters]] instead.
+ *
+ *  Scala `Option` is extended with a `toJava` method that creates a corresponding `Optional`, and
+ *  a `toJavaPrimitive` method that creates a specialized variant (e.g., `OptionalInt`) if
+ *  applicable.
+ *
+ *  Java `Optional` is extended with a `toScala` method and a `toJavaPrimitive` method.
+ *
+ *  Finally, specialized `Optional` types are extended with `toScala` and `toJavaGeneric` methods.
+ *
+ *  Example usage:
+ *
+ *  ```
+ *   import scala.jdk.OptionConverters._
+ *   val a = Option("example").toJava      // Creates java.util.Optional[String] containing "example"
+ *   val b = (None: Option[String]).toJava // Creates an empty java.util.Optional[String]
+ *   val c = a.toScala                     // Back to Option("example")
+ *   val d = b.toScala                     // Back to None typed as Option[String]
+ *   val e = Option(2.7).toJava            // java.util.Optional[Double] containing boxed 2.7
+ *   val f = Option(2.7).toJavaPrimitive   // java.util.OptionalDouble containing 2.7 (not boxed)
+ *   val g = f.toScala                     // Back to Option(2.7)
+ *   val h = f.toJavaGeneric               // Same as e
+ *   val i = e.toJavaPrimitive             // Same as f
+ *  ```
+ */
 object OptionConverters {
   /** Provides conversions from Java `Optional` to Scala `Option` and specialized `Optional` types. */
   implicit class RichOptional[A](private val o: java.util.Optional[A]) extends AnyVal {

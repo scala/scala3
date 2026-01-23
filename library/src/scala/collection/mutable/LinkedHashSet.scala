@@ -329,8 +329,7 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
 
   def newBuilder[A]: GrowableBuilder[A, LinkedHashSet[A]] = new GrowableBuilder(empty[A])
 
-  /** Class for the linked hash set entry, used internally.
-   */
+  /** Class for the linked hash set entry, used internally. */
   private[mutable] final class Entry[A](val key: A, val hash: Int) {
     @annotation.stableNull var earlier: Entry[A] | Null = null
     @annotation.stableNull var later: Entry[A] | Null = null

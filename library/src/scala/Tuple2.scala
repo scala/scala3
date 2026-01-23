@@ -28,8 +28,8 @@ final case class Tuple2[@specialized(Int, Long, Double, Char, Boolean/*, AnyRef*
   override def toString(): String = "(" + _1 + "," + _2 + ")"
   
   /** Swaps the elements of this `Tuple`.
-   * @return a new Tuple where the first element is the second element of this Tuple and the
-   * second element is the first element of this Tuple.
+   *  @return a new Tuple where the first element is the second element of this Tuple and the
+   *  second element is the first element of this Tuple.
    */
   def swap: Tuple2[T2,T1] = Tuple2(_2, _1)
 

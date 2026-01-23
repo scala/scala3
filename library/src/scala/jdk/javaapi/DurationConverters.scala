@@ -20,18 +20,18 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /** This object contains methods that convert between Scala and Java duration types.
-  *
-  * The explicit conversion methods defined here are intended to be used in Java code. For Scala
-  * code, it is recommended to use the extension methods defined in [[scala.jdk.DurationConverters]].
-  */
+ *
+ *  The explicit conversion methods defined here are intended to be used in Java code. For Scala
+ *  code, it is recommended to use the extension methods defined in [[scala.jdk.DurationConverters]].
+ */
 object  DurationConverters {
   /** Converts a Java duration to a Scala duration. If the nanosecond part of the Java duration is
-    * zero, the returned duration will have a time unit of seconds. If there is a nanoseconds part,
-    * the Scala duration will have a time unit of nanoseconds.
-    *
-    * @throws IllegalArgumentException If the given Java Duration is out of bounds of what can be
-    *                                  expressed by [[scala.concurrent.duration.FiniteDuration]].
-    */
+   *  zero, the returned duration will have a time unit of seconds. If there is a nanoseconds part,
+   *  the Scala duration will have a time unit of nanoseconds.
+   *
+   *  @throws IllegalArgumentException If the given Java Duration is out of bounds of what can be
+   *                                  expressed by [[scala.concurrent.duration.FiniteDuration]].
+   */
   def toScala(duration: JDuration): FiniteDuration = {
     val originalSeconds = duration.getSeconds
     val originalNanos = duration.getNano
@@ -56,9 +56,9 @@ object  DurationConverters {
   }
 
   /** Converts a Scala `FiniteDuration` to a Java duration. Note that the Scala duration keeps the
-    * time unit it was created with, while a Java duration always is a pair of seconds and nanos,
-    * so the unit it lost.
-    */
+   *  time unit it was created with, while a Java duration always is a pair of seconds and nanos,
+   *  so the unit it lost.
+   */
   def toJava(duration: FiniteDuration): JDuration = {
     if (duration.length == 0) JDuration.ZERO
     else duration.unit match {

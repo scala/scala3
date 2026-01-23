@@ -16,17 +16,17 @@ import scala.annotation.implicitNotFound
  *    - Better performance: breaks to enclosing scopes in the same method can
  *      be rewritten to jumps.
  *
- * Example usage:
- * 
- * ```scala
- * import scala.util.boundary, boundary.break
+ *  Example usage:
  *
- * def firstIndex[T](xs: List[T], elem: T): Int =
+ *  ```scala
+ *  import scala.util.boundary, boundary.break
+ *
+ *  def firstIndex[T](xs: List[T], elem: T): Int =
  *   boundary:
  *     for (x, i) <- xs.zipWithIndex do
  *       if x == elem then break(i)
  *     -1
- * ```
+ *  ```
  */
 object boundary:
 
@@ -48,8 +48,7 @@ object boundary:
       // SAFETY: labels cannot leak from [[Break]], and is only used for equality comparison.
       new Break(label.unsafeAssumePure, value)
 
-  /** Labels are targets indicating which boundary will be exited by a `break`.
-   */
+  /** Labels are targets indicating which boundary will be exited by a `break`. */
   @implicitNotFound("explain=A Label is generated from an enclosing `scala.util.boundary` call.\nMaybe that boundary is missing?")
   final class Label[-T] extends caps.Control
 

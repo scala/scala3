@@ -22,18 +22,18 @@ import scala.collection.generic.DefaultSerializationProxy
 import scala.util.hashing.MurmurHash3
 
 /** This class implements mutable maps using a hashtable.
-  *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables "Scala's Collection Library overview"]]
-  *  section on `Hash Tables` for more information.
-  *
-  *  @tparam K    the type of the keys contained in this hash map.
-  *  @tparam V    the type of the values assigned to keys in this hash map.
-  *
-  *  @define Coll `mutable.HashMap`
-  *  @define coll mutable hash map
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables)
+ *  section on `Hash Tables` for more information.
+ *
+ *  @tparam K    the type of the keys contained in this hash map.
+ *  @tparam V    the type of the values assigned to keys in this hash map.
+ *
+ *  @define Coll `mutable.HashMap`
+ *  @define coll mutable hash map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @deprecatedInheritance("HashMap will be made final; use .withDefault for the common use case of computing a default value", "2.13.0")
 class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   extends AbstractMap[K, V]
@@ -221,12 +221,12 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   }
 
   /** Adds a key-value pair to this map
-    *
-    * @param key the key to add
-    * @param value the value to add
-    * @param hash the **improved** hashcode of `key` (see computeHash)
-    * @param getOld if true, then the previous value for `key` will be returned, otherwise, false
-    */
+   *
+   *  @param key the key to add
+   *  @param value the value to add
+   *  @param hash the **improved** hashcode of `key` (see computeHash)
+   *  @param getOld if true, then the previous value for `key` will be returned, otherwise, false
+   */
   private def put0(key: K, value: V, hash: Int, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     val idx = index(hash)
@@ -267,11 +267,11 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   private def remove0(elem: K) : Node[K, V] | Null = remove0(elem, computeHash(elem))
 
   /** Removes a key from this map if it exists
-    *
-    * @param elem the element to remove
-    * @param hash the **improved** hashcode of `element` (see computeHash)
-    * @return the node that contained element if it was present, otherwise null
-    */
+   *
+   *  @param elem the element to remove
+   *  @param hash the **improved** hashcode of `element` (see computeHash)
+   *  @return the node that contained element if it was present, otherwise null
+   */
   private def remove0(elem: K, hash: Int) : Node[K, V] | Null = {
     val idx = index(hash)
     table(idx) match {
@@ -594,11 +594,10 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   }
 }
 
-/**
-  * $factoryInfo
-  *  @define Coll `mutable.HashMap`
-  *  @define coll mutable hash map
-  */
+/** $factoryInfo
+ *  @define Coll `mutable.HashMap`
+ *  @define coll mutable hash map
+ */
 @SerialVersionUID(3L)
 object HashMap extends MapFactory[HashMap] {
 

@@ -34,20 +34,20 @@ import scala.runtime.Statics.releaseFence
  *  This class is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access
  *  pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
  *
- *  ==Performance==
- *  '''Time:''' `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
+ *  ## Performance
+ *  **Time:** `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
  *  This includes the index-based lookup of elements, `length`, `append` and `reverse`.
  *
- *  '''Space:''' `List` implements '''structural sharing''' of the tail list. This means that many operations are either
+ *  **Space:** `List` implements **structural sharing** of the tail list. This means that many operations are either
  *  zero- or constant-memory cost.
- *  {{{
+ *  ```
  *  val mainList = List(3, 2, 1)
  *  val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
  *  val with42 =   42 :: mainList // also re-uses mainList, cost one :: instance
  *  val shorter =  mainList.tail  // costs nothing as it uses the same 2::1::Nil instances as mainList
- *  }}}
+ *  ```
  *
- *  @example {{{
+ *  @example ```
  *  // Make a list via the companion object factory
  *  val days = List("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
  *
@@ -61,7 +61,7 @@ import scala.runtime.Statics.releaseFence
  *    case Nil =>
  *      println("There don't seem to be any week days.")
  *  }
- *  }}}
+ *  ```
  *
  *  @note The functional list is characterized by persistence and structural sharing, thus offering considerable
  *        performance and space consumption benefits in some scenarios if used correctly.
@@ -92,23 +92,23 @@ sealed abstract class List[+A]
   override def iterableFactory: SeqFactory[List] = List
 
   /** Adds an element at the beginning of this list.
-    *  @param elem the element to prepend.
-    *  @return  a list which contains `x` as first element and
-    *           which continues with this list.
-    *  Example:
-    *  {{{1 :: List(2, 3) = List(2, 3).::(1) = List(1, 2, 3)}}}
-    */
+   *  @param elem the element to prepend.
+   *  @return  a list which contains `x` as first element and
+   *           which continues with this list.
+   *  Example:
+   *  ```1 :: List(2, 3) = List(2, 3).::(1) = List(1, 2, 3) ```
+   */
   def :: [B >: A](elem: B): List[B] =  new ::(elem, this)
 
   /** Adds the elements of a given list in front of this list.
-    *
-    * Example:
-    * {{{List(1, 2) ::: List(3, 4) = List(3, 4).:::(List(1, 2)) = List(1, 2, 3, 4)}}}
-    *
-    *  @param prefix  The list elements to prepend.
-    *  @return a list resulting from the concatenation of the given
-    *    list `prefix` and this list.
-    */
+   *
+   *  Example:
+   *  ```List(1, 2) ::: List(3, 4) = List(3, 4).:::(List(1, 2)) = List(1, 2, 3, 4) ```
+   *
+   *  @param prefix  The list elements to prepend.
+   *  @return a list resulting from the concatenation of the given
+   *    list `prefix` and this list.
+   */
   def ::: [B >: A](prefix: List[B]): List[B] =
     if (isEmpty) prefix
     else if (prefix.isEmpty) this
@@ -127,12 +127,12 @@ sealed abstract class List[+A]
     }
 
   /** Adds the elements of a given list in reverse order in front of this list.
-    *  `xs reverse_::: ys` is equivalent to
-    *  `xs.reverse ::: ys` but is more efficient.
-    *
-    *  @param prefix the prefix to reverse and then prepend
-    *  @return       the concatenation of the reversed prefix and the current list.
-    */
+   *  `xs reverse_::: ys` is equivalent to
+   *  `xs.reverse ::: ys` but is more efficient.
+   *
+   *  @param prefix the prefix to reverse and then prepend
+   *  @return       the concatenation of the reversed prefix and the current list.
+   */
   def reverse_:::[B >: A](prefix: List[B]): List[B] = {
     var these: List[B] = this
     var pres = prefix
@@ -441,14 +441,14 @@ sealed abstract class List[+A]
   override protected def className = "List"
 
   /** Builds a new list by applying a function to all elements of this list.
-    *  Like `xs map f`, but returns `xs` unchanged if function
-    *  `f` maps all elements to themselves (as determined by `eq`).
-    *
-    *  @param f      the function to apply to each element.
-    *  @tparam B     the element type of the returned collection.
-    *  @return       a list resulting from applying the given function
-    *                `f` to each element of this list and collecting the results.
-    */
+   *  Like `xs map f`, but returns `xs` unchanged if function
+   *  `f` maps all elements to themselves (as determined by `eq`).
+   *
+   *  @tparam B     the element type of the returned collection.
+   *  @param f      the function to apply to each element.
+   *  @return       a list resulting from applying the given function
+   *                `f` to each element of this list and collecting the results.
+   */
   @`inline` final def mapConserve[B >: A <: AnyRef](f: A => B): List[B] = {
     // Note to developers: there exists a duplication between this function and `reflect.internal.util.Collections#map2Conserve`.
     // If any successful optimization attempts or other changes are made, please rehash them there too.
@@ -670,11 +670,10 @@ case object Nil extends List[Nothing] {
   private val EmptyUnzip = (Nil, Nil)
 }
 
-/**
-  * $factoryInfo
-  * @define coll list
-  * @define Coll `List`
-  */
+/** $factoryInfo
+ *  @define coll list
+ *  @define Coll `List`
+ */
 @SerialVersionUID(3L)
 object List extends StrictOptimizedSeqFactory[List] {
   private val TupleOfNil = (Nil, Nil)

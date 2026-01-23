@@ -19,22 +19,22 @@ import scala.collection.mutable.ListBuffer
 
 /** The `App` trait can be used to quickly turn objects
  *  into executable programs. Here is an example:
- *  {{{
+ *  ```
  *  object Main extends App {
  *    Console.println("Hello World: " + (args mkString ", "))
  *  }
- *  }}}
+ *  ```
  *
  *  No explicit `main` method is needed.  Instead,
  *  the whole class body becomes the “main method”.
  *
  *  `args` returns the current command line arguments as an array.
  *
- *  ==Caveats==
+ *  ## Caveats
  *
- *  '''''It should be noted that this trait is implemented using the [[DelayedInit]]
+ *  ***It should be noted that this trait is implemented using the [[DelayedInit]]
  *  functionality, which means that fields of the object will not have been initialized
- *  before the main method has been executed.'''''
+ *  before the main method has been executed.***
  *
  *  Future versions of this trait will no longer extend `DelayedInit`.
  *
