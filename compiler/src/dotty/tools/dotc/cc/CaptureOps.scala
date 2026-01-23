@@ -357,7 +357,9 @@ extension (tp: Type)
 
   /** Is this a reference to caps.any? Note this is _not_ the GlobalAny capability. */
   def isCapsAnyRef(using Context): Boolean = tp match
-    case tp: TermRef => tp.name == nme.any && tp.symbol == defn.Caps_any
+    case tp: TermRef =>
+         tp.name == nme.any && tp.symbol == defn.Caps_any
+      || tp.name == nme.cap && tp.symbol == defn.Caps_cap
     case _ => false
 
   /** Is this a reference to caps.any? Note this is _not_ the GlobalFresh capability. */
