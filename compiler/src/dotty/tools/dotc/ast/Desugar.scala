@@ -1786,26 +1786,38 @@ object desugar {
    *     (n1 = t1, ..., nN = tN)  ==>   NamedTuple.build[(n1, ..., nN)]()(TupleN(t1, ..., tN))
    */
   def tuple(tree: Tuple, pt: Type)(using Context): Tree =
-    var elems = checkWellFormedTupleElems(tree.trees)
-    if ctx.mode.is(Mode.Pattern) then elems = adaptPatternArgs(elems, pt, tree.srcPos)
+    // Don't adapt pattern args in Type mode (e.g., a typed pattern such as `case _: (a: Int, b: String)`)
+    val modePatternNotType = (ctx.mode & Mode.PatternOrTypeBits) == Mode.Pattern
+    val elems =
+      val wfte = checkWellFormedTupleElems(tree.trees)
+      if modePatternNotType then
+        adaptPatternArgs(wfte, pt, tree.srcPos)
+      else
+        wfte
     val elemValues = elems.mapConserve(stripNamedArg)
     val tup =
       val arity = elems.length
       if arity <= Definitions.MaxTupleArity then
         def tupleTypeRef = defn.TupleType(arity).nn
         val tree1 =
-          if arity == 0 then
-            if ctx.mode is Mode.Type then TypeTree(defn.UnitType) else unitLiteral
-          else if ctx.mode is Mode.Type then AppliedTypeTree(ref(tupleTypeRef), elemValues)
-          else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), elemValues)
+          if ctx.mode is Mode.Type then
+            if arity == 0 then
+              TypeTree(defn.UnitType)
+            else
+              AppliedTypeTree(ref(tupleTypeRef), elemValues)
+          else
+            if arity == 0 then
+              unitLiteral
+            else
+              Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), elemValues)
         tree1.withSpan(tree.span)
       else
         cpy.Tuple(tree)(elemValues)
-    val names = elems.collect:
-      case NamedArg(name, arg) => name
-    if names.isEmpty || ctx.mode.is(Mode.Pattern) then
+    if modePatternNotType || !elems.exists(_.isInstanceOf[NamedArg]) then
       tup
     else
+      val names = elems.collect:
+        case NamedArg(name, arg) => name
       def namesTuple = withModeBits(ctx.mode &~ Mode.Pattern | Mode.Type):
         tuple(Tuple(
           names.map: name =>
