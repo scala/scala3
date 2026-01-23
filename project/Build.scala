@@ -1927,7 +1927,7 @@ object Build {
           if (!justAPI) {
             IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
             // This file is used by GitHub Pages when the page is available in a custom domain
-            IO.write(dest / "CNAME", "dotty.epfl.ch")
+            IO.write(dest / "CNAME", "nightly.scala-lang.org")
           }
         }
         val applyPatches = Def.task {
