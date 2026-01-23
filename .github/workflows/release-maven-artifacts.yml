@@ -14,6 +14,12 @@ jobs:
   release-maven-artifacts:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
+      MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
+      MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
+      NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
+      NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -43,15 +49,16 @@ jobs:
         env:
           MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
           MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
-          MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
-          MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
-          MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
-          NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
-          NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
 
   release-maven-lts-artifacts:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
+      MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
+      MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
+      NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
+      NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -89,12 +96,7 @@ jobs:
         if: "steps.not_yet_published.outcome == 'success'"
         run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned"
         env:
-          SONATYPE_USER         : ${{ secrets.MAVEN_REPOSITORY_USER }}
-          SONATYPE_PW           : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
-          MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
-          MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
-          MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
-          NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
-          NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
-          PGP_PW                : ${{ secrets.PGP_PW }}
-          PGP_SECRET            : ${{ secrets.PGP_SECRET }}
+          SONATYPE_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
+          SONATYPE_PW   : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
+          PGP_PW        : ${{ secrets.PGP_PW }}
+          PGP_SECRET    : ${{ secrets.PGP_SECRET }}
