@@ -2009,6 +2009,46 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertEquals(expected, clsNode.interfaces.asScala)
     }
   }
+
+  // Test for https://github.com/scala/scala3/issues/24997
+  // Automatic untupling should not introduce extra CHECKCAST instructions for unused tuple elements
+  @Test def i24997 = {
+    val source =
+      """class Wrapper[A](value: A):
+        |  def use[B](f: A => B): B = f(value)
+        |
+        |class Test:
+        |  def withCase: Int =
+        |    val w = Wrapper((42, "Answer"))
+        |    w.use { case (number, _) => number }
+        |
+        |  def withoutCase: Int =
+        |    val w = Wrapper((42, "Answer"))
+        |    w.use { (number, _) => number }
+        |""".stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+
+      // Get instructions for both methods
+      def getCheckCastCount(methodName: String): Int = {
+        val method = getMethod(clsNode, methodName)
+        instructionsFromMethod(method).count {
+          case TypeOp(Opcodes.CHECKCAST, _) => true
+          case _ => false
+        }
+      }
+
+      val withCaseCasts = getCheckCastCount("withCase")
+      val withoutCaseCasts = getCheckCastCount("withoutCase")
+
+      // Both methods should have the same number of CHECKCAST instructions
+      // (specifically, they should NOT have extra ones for unused wildcard elements)
+      assertEquals(s"withCase has $withCaseCasts CHECKCASTs, withoutCase has $withoutCaseCasts",
+        withCaseCasts, withoutCaseCasts)
+    }
+  }
 }
 
 object invocationReceiversTestCode {

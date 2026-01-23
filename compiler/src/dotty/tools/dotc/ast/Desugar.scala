@@ -1974,8 +1974,8 @@ object desugar {
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
-      params.zipWithIndex.map {
-        case (param, idx) =>
+      params.zipWithIndex.collect {
+        case (param, idx) if param.name != nme.WILDCARD =>
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
