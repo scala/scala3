@@ -45,6 +45,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ steps.app-token.outputs.token }}
-          publish_dir: docs/_site
+          publish_dir: scaladoc/output/scala3
           external_repository: scala/nightly.scala-lang.org
           publish_branch: main
