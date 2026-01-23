@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: release-nightly
     needs: release-maven-artifacts
+    env:
+      NIGHTLYBUILD: ${{ vars.NIGHTLYBUILD }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
