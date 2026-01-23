@@ -1209,7 +1209,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if resType.isValueType && !hasCapsetVars(resType) then
                 // Try to update the declared result type of the closure `mdef.tpt` with the expected
                 // result type, in order to propagate constraints into the closure.
-                // Note: We culd use adoptCaptures instead, but this seems to give somewhat worse
+                // Note: We could use adoptCaptures instead, but this seems to give somewhat worse
                 // error messages.
                 pt match
                   case RefinedType(_, _, mt: MethodType) =>

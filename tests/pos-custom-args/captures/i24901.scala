@@ -9,7 +9,7 @@ object Plan:
 
   val ok: (Rand => Unit) => Boolean =
     test =>
-      execute(test) // error
+      execute(test) // was error
 
   val err: (Rand => Unit) => Boolean =
     test =>
