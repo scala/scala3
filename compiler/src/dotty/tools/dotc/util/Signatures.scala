@@ -246,8 +246,14 @@ object Signatures {
 
       val pre = treeQualifier(fun)
       val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe))
+      val typeArgs = extractTypeArgs(fun)
+      def isBoring(tp: Type) =
+        val t = tp.widenTermRefExpr
+        t.isRef(ctx.definitions.AnyClass) || t.isRef(ctx.definitions.NothingClass) || t.isRef(ctx.definitions.NullClass)
+
+      val usefulTypeArgs = if typeArgs.flatten.exists(!isBoring(_)) then typeArgs else Nil
       val alternativeSignatures = alternativesWithTypes
-        .flatMap(toApplySignature(_, findOutermostCurriedApply(untpdPath), safeParamssListIndex))
+        .flatMap(denot => toApplySignature(denot, findOutermostCurriedApply(untpdPath), usefulTypeArgs))
 
       val totalParamCount = alternativeSymbol.paramSymss.foldLeft(0)(_ + _.length)
       val finalParamIndex =
@@ -471,12 +477,9 @@ object Signatures {
    *
    * @return Signature if denot is a function, None otherwise
    */
-  private def toApplySignature(
-    denot: SingleDenotation,
-    untpdFun: Option[untpd.GenericApply],
-    paramssIndex: Int
-  )(using Context): Option[Signature] = {
+  private def toApplySignature(denot: SingleDenotation, untpdFun: Option[untpd.GenericApply], typeArgs: List[List[Type]] = Nil)(using Context): Option[Signatures.Signature] = {
     val symbol = denot.symbol
+    val info = denot.info
     val docComment = ParsedComment.docOf(symbol)
 
     def isDummyImplicit(res: MethodType): Boolean =
@@ -494,11 +497,6 @@ object Signatures {
       tree match
         case untpd.GenericApply(fun: untpd.GenericApply, args) => toApplyList(fun) :+ tree
         case _ => List(tree)
-
-    def toMethodTypeList(tpe: Type): List[Type] =
-      tpe.resultType match
-        case res: MethodOrPoly => toMethodTypeList(res) :+ tpe
-        case res => List(tpe)
 
     def isSyntheticEvidence(name: String) =
       name.startsWith(NameKinds.ContextBoundParamName.separator)
@@ -518,33 +516,49 @@ object Signatures {
           case Some(evidenceTypeName) => TypeParam(s"${name.show}: ${evidenceTypeName}")
           case None => TypeParam(name.show + info.show)
 
-    def toParamss(tp: Type, fun: Option[untpd.GenericApply])(using Context): List[List[Param]] =
+    def toParamss(tp: Type, fun: Option[untpd.GenericApply], typeArgs: List[List[Type]])(using Context): List[List[Param]] =
       val paramSymss = symbol.paramSymss
+      val applies = fun.map(toApplyList).getOrElse(Nil)
 
-      def reduceToParamss(applies: List[untpd.Tree], types: List[Type], paramList: Int = 0): List[List[Param]] =
-        applies -> types match
-          case ((_: untpd.TypeApply) :: restTrees, (poly: PolyType) :: restTypes) =>
-            toTypeParam(poly) :: reduceToParamss(restTrees, restTypes, paramList + 1)
-          case (restTrees, (poly: PolyType) :: restTypes) =>
-            toTypeParam(poly) :: reduceToParamss(restTrees, restTypes, paramList + 1)
-          case ((apply: untpd.GenericApply) :: other, tpe :: otherType) =>
-            toParams(tpe, Some(apply), paramList) :: reduceToParamss(other, otherType, paramList + 1)
-          case (other, (tpe @ MethodTpe(names, _, _)) :: otherType) if !isDummyImplicit(tpe) =>
-            toParams(tpe, None, paramList) :: reduceToParamss(other, otherType, paramList + 1)
-          case _ => Nil
+      def loop(tp: Type, applies: List[untpd.Tree], typeArgs: List[List[Type]], paramListIndex: Int): List[List[Param]] = tp match
+        case pt: PolyType =>
+          val (visualParams, nextTp, nextTypeArgs) = typeArgs match
+            case head :: tail =>
+              (head.map(arg => TypeParam(arg.show)), pt.appliedTo(head), tail)
+            case _ =>
+              (toTypeParam(pt), pt.resType, Nil)
+          
+          val nextApplies = applies match
+             case (head: untpd.TypeApply) :: tail => tail
+             case _ => applies
+
+          visualParams :: loop(nextTp, nextApplies, nextTypeArgs, paramListIndex + 1)
+
+        case mt: MethodType =>
+          if isDummyImplicit(mt) then
+             loop(mt.resType, applies, typeArgs, paramListIndex + 1)
+          else
+             val (currentApply, nextApplies) = applies match
+               case (head: untpd.GenericApply) :: tail => (Some(head), tail)
+               case _ => (None, applies)
+            
+             toParams(mt, currentApply, paramListIndex) :: loop(mt.resType, nextApplies, typeArgs, paramListIndex + 1)
+
+        case _ => Nil
 
       def toParams(tp: Type, apply: Option[untpd.GenericApply], paramList: Int)(using Context): List[Param] =
         val currentParams = (paramSymss.lift(paramList), tp.paramInfoss.headOption) match
           case (Some(params), Some(infos)) => params zip infos
           case _ => Nil
 
-        val params = currentParams.map: (symbol, info) =>
+        val params = currentParams.zipWithIndex.map: (p, index) =>
+          val (symbol, info) = p
           // TODO after we migrate ShortenedTypePrinter into the compiler, it should rely on its api
           val name = if symbol.isAllOf(Flags.Given | Flags.Param) && symbol.name.startsWith("x$") then nme.EMPTY else symbol.name.asTermName
 
           Signatures.MethodParam(
             name.show,
-            info.widenTermRefExpr.show,
+            tp.paramInfoss.head(index).widenTermRefExpr.show,
             docComment.flatMap(_.paramDoc(name)),
             isImplicit = tp.isImplicitMethod,
           )
@@ -586,12 +600,20 @@ object Signatures {
         finalParams.getOrElse(params)
       end toParams
 
-      val applies = untpdFun.map(toApplyList).getOrElse(Nil)
-      val types = toMethodTypeList(tp).reverse
+      loop(tp, applies, typeArgs, 0)
+    end toParamss
 
-      reduceToParamss(applies, types)
+    val paramss = toParamss(info, untpdFun, typeArgs)
+    
+    // Compute instantiated return type
+    var instantiatedInfo = info
+    var remainingTypeArgs = typeArgs
+    while (remainingTypeArgs.nonEmpty && instantiatedInfo.isInstanceOf[PolyType]) {
+       instantiatedInfo = instantiatedInfo.asInstanceOf[PolyType].appliedTo(remainingTypeArgs.head)
+       remainingTypeArgs = remainingTypeArgs.tail
+    }
 
-    val paramss = toParamss(denot.info, untpdFun)
+
     val (name, returnType) =
       if (symbol.isConstructor) then
         (symbol.owner.name.show, None)
@@ -599,8 +621,19 @@ object Signatures {
         denot.symbol.defTree match
           // if there is an error in denotation type, we will fallback to source tree
           case defn: tpd.DefDef if denot.info.isErroneous => (denot.name.show, Some(defn.tpt.show))
-          case _ => (denot.name.show, Some(denot.info.finalResultType.widenTermRefExpr.show))
+          case _ => (denot.name.show, Some(instantiatedInfo.finalResultType.widenTermRefExpr.show))
     Some(Signatures.Signature(name, paramss, returnType, docComment.map(_.mainDoc), Some(denot)))
+  }
+
+  private def extractTypeArgs(tree: tpd.Tree)(using Context): List[List[Type]] = {
+    tree match {
+      case tpd.TypeApply(fun, args) =>
+        extractTypeArgs(fun) :+ args.map(_.tpe)
+      case tpd.Apply(fun, _) =>
+        extractTypeArgs(fun)
+      case _ =>
+        Nil
+    }
   }
 
   /**
