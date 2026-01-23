@@ -335,7 +335,10 @@ object SymbolLoaders {
     packageClass: ClassSymbol, fullPackageName: String,
     jarClasspath: ClassPath, fullClasspath: ClassPath,
   )(using Context): Unit =
-    if jarClasspath.classes(fullPackageName).nonEmpty then
+    val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
+    val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
+
+    if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
       val packageVal = packageClass.sourceModule.asInstanceOf[TermSymbol]
       if packageClass.isRoot then
@@ -354,7 +357,12 @@ object SymbolLoaders {
         packageClass.info = new PackageLoader(packageVal, fullClasspath)
       else
         packageClass.owner.info.decls.openForMutations.unlink(packageVal)
-    else
+
+    // Always process sub-packages, even when hasClasses is true.
+    // This is needed when a package has BOTH classes AND sub-packages,
+    // e.g. scala-parallel-collections adds both classes to scala.collection
+    // and the new scala.collection.parallel sub-package.
+    if hasPackages then
       for p <- jarClasspath.packages(fullPackageName) do
         val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
         val subPackage = packageClass.info.decl(subPackageName).orElse:
