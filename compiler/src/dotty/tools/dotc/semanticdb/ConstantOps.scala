@@ -7,7 +7,7 @@ import dotty.tools.dotc.{semanticdb => s}
 import core.Contexts.Context
 import core.Constants.*
 
-object ConstantOps:
+private[semanticdb] object ConstantOps:
   extension (const: Constant)
     def toSemanticConst(using Context): s.Constant = const.tag match {
       case UnitTag => s.UnitConstant()

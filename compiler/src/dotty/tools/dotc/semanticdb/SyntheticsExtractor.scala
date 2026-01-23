@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.{semanticdb => s}
 
 
-class SyntheticsExtractor:
+private[semanticdb] class SyntheticsExtractor:
   import Scala3.{_, given}
 
   val visited = collection.mutable.HashSet[Tree]()
