@@ -30,7 +30,7 @@ class CompilerCachingSuite extends BasePCSuite:
       case pc: ScalaPresentationCompiler =>
         val compilations = pc.compilerAccess.withNonInterruptableCompiler(-1, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx.runId
-        }(emptyQueryContext).get(timeout.length, timeout.unit)
+        }(using emptyQueryContext).get(timeout.length, timeout.unit)
         assertEquals(expected, compilations, s"Expected $expected compilations but got $compilations")
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
@@ -39,7 +39,7 @@ class CompilerCachingSuite extends BasePCSuite:
       case pc: ScalaPresentationCompiler =>
         pc.compilerAccess.withNonInterruptableCompiler(null, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx
-        }(emptyQueryContext).get(timeout.length, timeout.unit)
+        }(using emptyQueryContext).get(timeout.length, timeout.unit)
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
   private def emptyQueryContext = PcQueryContext(None, () => "")(using EmptyReportContext())
@@ -133,7 +133,7 @@ class CompilerCachingSuite extends BasePCSuite:
     checkCompilationCount(6)
 
 
-  private val testFunctions: List[OffsetParams => CompletableFuture[_]] = List(
+  private val testFunctions: List[OffsetParams => CompletableFuture[?]] = List(
     presentationCompiler.complete(_),
     presentationCompiler.convertToNamedArguments(_, Collections.emptyList()),
     presentationCompiler.autoImports("a", _, false),
