@@ -1,0 +1,44 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try-boundary.scala:6:4 -----------------------------------
+ 5 |  val t = boundary:
+ 6 |    Try: // error // error
+   |          ^
+   |          Capability `local.only[Control]` outlives its scope: it leaks into outer capture set 's1 of value t.
+   |          The leakage occurred when trying to match the following types:
+   |
+   |          Found:    scala.util.Try[Int]^{local.only[Control], any.only[Control]}
+   |          Required: scala.util.Try[Int]^'s1
+   |
+   |          where:    any is a root capability classified as Control in the type of value local
+   |
+ 7 |      if x > 0 then
+ 8 |        boundary.break(Try(-x))
+ 9 |      x + 1
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from boundary.scala:72
+72 |  inline def apply[T](inline body: Label[T] ?=> T): T =
+   |                                                    ^
+73 |    val local = Label[T]()
+74 |...
+77 |      else throw ex
+    --------------------------------------------------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try-boundary.scala:6:4 -----------------------------------
+5 |  val t = boundary:
+6 |    Try: // error // error
+  |          ^
+  |          Capability `local.only[Control]` outlives its scope: it leaks into outer capture set 's1 of value t.
+  |          The leakage occurred when trying to match the following types:
+  |
+  |          Found:    scala.util.Try[Int]^{local.only[Control], any.only[Control]}
+  |          Required: scala.util.Try[Int]^'s1
+  |
+  |          where:    any is a root capability classified as Control in the type of value local
+  |
+7 |      if x > 0 then
+8 |        boundary.break(Try(-x))
+9 |      x + 1
+  |
+  | longer explanation available when compiling with `-explain`

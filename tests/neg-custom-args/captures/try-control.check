@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try-control.scala:20:3 -----------------------------------
+20 |  b: b => // error
+   |  ^
+   |  Found:    scala.util.Try[Unit]^{b.only[Control]}
+   |  Required: scala.util.Try[Unit]
+   |
+   |  Note that capability `b.only[Control]` is not included in capture set {}.
+   |
+21 |    Try(b.hi)
+   |
+   | longer explanation available when compiling with `-explain`
