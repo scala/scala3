@@ -24,9 +24,9 @@ import org.junit.Test
 
 class CompletionCancelSuite extends BaseCompletionSuite:
 
-  override protected def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
-      // to make "break-compilation" test faster
+  override def config: PresentationCompilerConfigImpl =
+    if isDebug then super.config else super.config.copy(
+      // to make "break-compilation" test faster when run outside a debugger
       timeoutDelay = 5
     )
 
