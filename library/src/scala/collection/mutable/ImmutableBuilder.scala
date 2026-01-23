@@ -17,9 +17,7 @@ package mutable
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/**
-  * Reusable builder for immutable collections
-  */
+/** Reusable builder for immutable collections */
 abstract class ImmutableBuilder[-A, C <: IterableOnce[?]](empty: C)
   extends ReusableBuilder[A, C] {
 

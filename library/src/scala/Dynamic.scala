@@ -22,7 +22,7 @@ import scala.language.`2.13`
  *  If a call is not natively supported by `x` (i.e. if type checking
  *  fails), it is rewritten according to the following rules:
  *
- *  {{{
+ *  ```
  *  foo.method("blah")      ~~> foo.applyDynamic("method")("blah")
  *  foo.method(x = "blah")  ~~> foo.applyDynamicNamed("method")(("x", "blah"))
  *  foo.method(x = 1, 2)    ~~> foo.applyDynamicNamed("method")(("x", 1), ("", 2))
@@ -30,7 +30,7 @@ import scala.language.`2.13`
  *  foo.varia = 10      ~~> foo.updateDynamic("varia")(10)
  *  foo.arr(10) = 13    ~~> foo.selectDynamic("arr").update(10, 13)
  *  foo.arr(10)         ~~> foo.applyDynamic("arr")(10)
- *  }}}
+ *  ```
  *
  *  Defining direct or indirect subclasses of this trait
  *  is only possible if the language feature `dynamics` is enabled.

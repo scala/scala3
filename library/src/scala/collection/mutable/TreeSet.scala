@@ -20,15 +20,14 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{RedBlackTree => RB}
 import scala.collection.{SortedIterableFactory, SortedSetFactoryDefaults, Stepper, StepperShape, StrictOptimizedIterableOps, StrictOptimizedSortedSetOps, mutable}
 
-/**
-  * A mutable sorted set implemented using a mutable red-black tree as underlying data structure.
-  *
-  * @param ordering the implicit ordering used to compare objects of type `A`.
-  * @tparam A the type of the keys contained in this tree set.
-  *
-  * @define Coll mutable.TreeSet
-  * @define coll mutable tree set
-  */
+/** A mutable sorted set implemented using a mutable red-black tree as underlying data structure.
+ *
+ *  @tparam A the type of the keys contained in this tree set.
+ *  @param ordering the implicit ordering used to compare objects of type `A`.
+ *
+ *  @define Coll mutable.TreeSet
+ *  @define coll mutable tree set
+ */
 // Original API designed in part by Lucien Pereira
 sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit val ordering: Ordering[A])
   extends AbstractSet[A]
@@ -42,11 +41,10 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
   if (ordering eq null)
     throw new NullPointerException("ordering must not be null")
 
-  /**
-    * Creates an empty `TreeSet`.
-    * @param ord the implicit ordering used to compare objects of type `A`.
-    * @return an empty `TreeSet`.
-    */
+  /** Creates an empty `TreeSet`.
+   *  @param ord the implicit ordering used to compare objects of type `A`.
+   *  @return an empty `TreeSet`.
+   */
   def this()(implicit ord: Ordering[A]) = this(RB.Tree.empty)(using ord)
 
   override def sortedIterableFactory: SortedIterableFactory[TreeSet] = TreeSet
@@ -102,43 +100,36 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
   override def foreach[U](f: A => U): Unit = RB.foreachKey(tree, f)
 
 
-  /**
-    * A ranged projection of a [[TreeSet]]. Mutations on this set affect the original set and vice versa.
-    *
-    * Only keys between this projection's key range will ever appear as elements of this set, independently of whether
-    * the elements are added through the original set or through this view. That means that if one inserts an element in
-    * a view whose key is outside the view's bounds, calls to `contains` will _not_ consider the newly added element.
-    * Mutations are always reflected in the original set, though.
-    *
-    * @param from the lower bound (inclusive) of this projection wrapped in a `Some`, or `None` if there is no lower
-    *             bound.
-    * @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
-    *              bound.
-    */
+  /** A ranged projection of a [[TreeSet]]. Mutations on this set affect the original set and vice versa.
+   *
+   *  Only keys between this projection's key range will ever appear as elements of this set, independently of whether
+   *  the elements are added through the original set or through this view. That means that if one inserts an element in
+   *  a view whose key is outside the view's bounds, calls to `contains` will _not_ consider the newly added element.
+   *  Mutations are always reflected in the original set, though.
+   *
+   *  @param from the lower bound (inclusive) of this projection wrapped in a `Some`, or `None` if there is no lower
+   *             bound.
+   *  @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
+   *              bound.
+   */
   private final class TreeSetProjection(from: Option[A], until: Option[A]) extends TreeSet[A](tree) {
     self: TreeSetProjection^{} =>
 
-    /**
-      * Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
-      */
+    /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum). */
     private def pickLowerBound(newFrom: Option[A]): Option[A] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
       case (None, _) => newFrom
       case _ => from
     }
 
-    /**
-      * Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
-      */
+    /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum). */
     private def pickUpperBound(newUntil: Option[A]): Option[A] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
       case (None, _) => newUntil
       case _ => until
     }
 
-    /**
-      * Returns true if the argument is inside the view bounds (between `from` and `until`).
-      */
+    /** Returns true if the argument is inside the view bounds (between `from` and `until`). */
     private def isInsideViewBounds(key: A): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0
       val beforeUntil = until.isEmpty || ordering.compare(key, until.get) < 0
@@ -186,11 +177,10 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
 
 }
 
-/**
-  * $factoryInfo
-  * @define Coll `mutable.TreeSet`
-  * @define coll mutable tree set
-  */
+/** $factoryInfo
+ *  @define Coll `mutable.TreeSet`
+ *  @define coll mutable tree set
+ */
 @SerialVersionUID(3L)
 object TreeSet extends SortedIterableFactory[TreeSet] {
 

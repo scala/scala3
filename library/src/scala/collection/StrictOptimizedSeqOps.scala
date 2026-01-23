@@ -15,10 +15,9 @@ package scala.collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/**
-  * Trait that overrides operations on sequences in order
-  * to take advantage of strict builders.
-  */
+/** Trait that overrides operations on sequences in order
+ *  to take advantage of strict builders.
+ */
 transparent trait StrictOptimizedSeqOps [+A, +CC[_] <: caps.Pure, +C]
   extends Any with SeqOps[A, CC, C] with StrictOptimizedIterableOps[A, CC, C] with caps.Pure {
 

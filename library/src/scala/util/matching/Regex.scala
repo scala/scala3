@@ -10,18 +10,17 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * This package is concerned with regular expression (regex) matching against strings,
- * with the main goal of pulling out information from those matches, or replacing
- * them with something else.
+/** This package is concerned with regular expression (regex) matching against strings,
+ *  with the main goal of pulling out information from those matches, or replacing
+ *  them with something else.
  *
- * [[scala.util.matching.Regex]] is the class users instantiate to do regular expression matching.
+ *  [[scala.util.matching.Regex]] is the class users instantiate to do regular expression matching.
  *
- * The companion object to [[scala.util.matching.Regex]] contains supporting members:
- * * [[scala.util.matching.Regex.Match]] makes more information about a match available.
- * * [[scala.util.matching.Regex.MatchIterator]] is used to iterate over matched strings.
- * * [[scala.util.matching.Regex.MatchData]] is just a base trait for the above classes.
- * * [[scala.util.matching.Regex.Groups]] extracts group from a [[scala.util.matching.Regex.Match]]
+ *  The companion object to [[scala.util.matching.Regex]] contains supporting members:
+ *  * [[scala.util.matching.Regex.Match]] makes more information about a match available.
+ *  * [[scala.util.matching.Regex.MatchIterator]] is used to iterate over matched strings.
+ *  * [[scala.util.matching.Regex.MatchData]] is just a base trait for the above classes.
+ *  * [[scala.util.matching.Regex.Groups]] extracts group from a [[scala.util.matching.Regex.Match]]
  *   without recomputing the match.
  */
 package scala.util.matching
@@ -33,9 +32,8 @@ import java.util.regex.{ Pattern, Matcher }
 /** A regular expression is used to determine whether a string matches a pattern
  *  and, if it does, to extract or transform the parts that match.
  *
- *  === Usage ===
-
- *  This class delegates to the [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/package-summary.html java.util.regex]] package of the Java Platform.
+ *  ### Usage
+ *  This class delegates to the [java.util.regex](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/package-summary.html) package of the Java Platform.
  *  See the documentation for [[java.util.regex.Pattern]] for details about
  *  the regular expression syntax for pattern strings.
  *
@@ -46,56 +44,56 @@ import java.util.regex.{ Pattern, Matcher }
  *  The canonical way to create a `Regex` is by using the method `r`, provided
  *  implicitly for strings:
  *
- *  {{{
+ *  ```
  *  val date = raw"(\d{4})-(\d{2})-(\d{2})".r
- *  }}}
+ *  ```
  *
  *  Since escapes are not processed in multi-line string literals, using triple quotes
  *  avoids having to escape the backslash character, so that `"\\d"` can be written `"""\d"""`.
  *  The same result is achieved with certain interpolators, such as `raw"\d".r` or
  *  a custom interpolator `r"\d"` that also compiles the `Regex`.
  *
- *  === Extraction ===
+ *  ### Extraction
  *  To extract the capturing groups when a `Regex` is matched, use it as
  *  an extractor in a pattern match:
  *
- *  {{{
+ *  ```
  *  "2004-01-20" match {
  *    case date(year, month, day) => s"\$year was a good year for PLs."
  *  }
- *  }}}
+ *  ```
  *
  *  To check only whether the `Regex` matches, ignoring any groups,
  *  use a sequence wildcard:
  *
- *  {{{
+ *  ```
  *  "2004-01-20" match {
  *    case date(_*) => "It's a date!"
  *  }
- *  }}}
+ *  ```
  *
  *  That works because a `Regex` extractor produces a sequence of strings.
  *  Extracting only the year from a date could also be expressed with
  *  a sequence wildcard:
  *
- *  {{{
+ *  ```
  *  "2004-01-20" match {
  *    case date(year, _*) => s"\$year was a good year for PLs."
  *  }
- *  }}}
+ *  ```
  *
  *  In a pattern match, `Regex` normally matches the entire input.
  *  However, an unanchored `Regex` finds the pattern anywhere
  *  in the input.
  *
- *  {{{
+ *  ```
  *  val embeddedDate = date.unanchored
  *  "Date: 2004-01-20 17:25:18 GMT (10 years, 28 weeks, 5 days, 17 hours and 51 minutes ago)" match {
  *    case embeddedDate("2004", "01", "20") => "A Scala is born."
  *  }
- *  }}}
+ *  ```
  *
- *  === Find Matches ===
+ *  ### Find Matches
  *  To find or replace matches of the pattern, use the various find and replace methods.
  *  For each method, there is a version for working with matched strings and
  *  another for working with `Match` objects.
@@ -104,43 +102,43 @@ import java.util.regex.{ Pattern, Matcher }
  *  can also be accomplished using `findFirstMatchIn`. The `findFirst` methods return an `Option`
  *  which is non-empty if a match is found, or `None` for no match:
  *
- *  {{{
+ *  ```
  *  val dates = "Important dates in history: 2004-01-20, 1958-09-05, 2010-10-06, 2011-07-15"
  *  val firstDate = date.findFirstIn(dates).getOrElse("No date found.")
  *  val firstYear = for (m <- date.findFirstMatchIn(dates)) yield m.group(1)
- *  }}}
+ *  ```
  *
  *  To find all matches:
  *
- *  {{{
+ *  ```
  *  val allYears = for (m <- date.findAllMatchIn(dates)) yield m.group(1)
- *  }}}
+ *  ```
  *
  *  To check whether input is matched by the regex:
  *
- *  {{{
+ *  ```
  *  date.matches("2018-03-01")                     // true
  *  date.matches("Today is 2018-03-01")            // false
  *  date.unanchored.matches("Today is 2018-03-01") // true
- *  }}}
+ *  ```
  *
  *  To iterate over the matched strings, use `findAllIn`, which returns a special iterator
  *  that can be queried for the `MatchData` of the last match:
  *
- *  {{{
+ *  ```
  *  val mi = date.findAllIn(dates)
  *  while (mi.hasNext) {
  *    val d = mi.next
  *    if (mi.group(1).toInt < 1960) println(s"\$d: An oldie but goodie.")
  *  }
- *  }}}
+ *  ```
  *
  *  Although the `MatchIterator` returned by `findAllIn` is used like any `Iterator`,
  *  with alternating calls to `hasNext` and `next`, `hasNext` has the additional
  *  side effect of advancing the underlying matcher to the next unconsumed match.
  *  This effect is visible in the `MatchData` representing the "current match".
  *
- *  {{{
+ *  ```
  *  val r = "(ab+c)".r
  *  val s = "xxxabcyyyabbczzz"
  *  r.findAllIn(s).start    // 3
@@ -152,7 +150,7 @@ import java.util.regex.{ Pattern, Matcher }
  *  mi.hasNext              // true
  *  mi.start                // 9
  *  mi.next()               // "abbc"
- *  }}}
+ *  ```
  *
  *  The example shows that methods on `MatchData` such as `start` will advance to
  *  the first match, if necessary. It also shows that `hasNext` will advance to
@@ -164,32 +162,32 @@ import java.util.regex.{ Pattern, Matcher }
  *
  *  Note that `findAllIn` finds matches that don't overlap. (See [[findAllIn]] for more examples.)
  *
- *  {{{
+ *  ```
  *  val num = raw"(\d+)".r
  *  val all = num.findAllIn("123").toList  // List("123"), not List("123", "23", "3")
- *  }}}
+ *  ```
  *
- *  === Replace Text ===
+ *  ### Replace Text
  *  Text replacement can be performed unconditionally or as a function of the current match:
  *
- *  {{{
+ *  ```
  *  val redacted    = date.replaceAllIn(dates, "XXXX-XX-XX")
  *  val yearsOnly   = date.replaceAllIn(dates, m => m.group(1))
  *  val months      = (0 to 11).map { i => val c = Calendar.getInstance; c.set(2014, i, 1); f"\$c%tb" }
  *  val reformatted = date.replaceAllIn(dates, _ match { case date(y,m,d) => f"\${months(m.toInt - 1)} \$d, \$y" })
- *  }}}
+ *  ```
  *
  *  Pattern matching the `Match` against the `Regex` that created it does not reapply the `Regex`.
  *  In the expression for `reformatted`, each `date` match is computed once. But it is possible to apply a
  *  `Regex` to a `Match` resulting from a different pattern:
  *
- *  {{{
+ *  ```
  *  val docSpree = """2011(?:-\d{2}){2}""".r
  *  val docView  = date.replaceAllIn(dates, _ match {
  *    case docSpree() => "Historic doc spree!"
  *    case _          => "Something else happened"
  *  })
- *  }}}
+ *  ```
  *
  *  @see [[java.util.regex.Pattern]]
  *
@@ -215,10 +213,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  If group names are supplied, they can be used this way:
    *
-   *  {{{
+   *  ```
    *  val namedDate  = new Regex("""(\d\d\d\d)-(\d\d)-(\d\d)""", "year", "month", "day")
    *  val namedYears = for (m <- namedDate findAllMatchIn dates) yield m group "year"
-   *  }}}
+   *  ```
    *
    *  Inline group names are preferred over group names supplied to the constructor
    *  when retrieving matched groups by name. Group names supplied to the constructor
@@ -246,7 +244,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  For example:
    *
-   *  {{{
+   *  ```
    *  val p1 = "ab*c".r
    *  val p1Matches = "abbbc" match {
    *    case p1() => true               // no groups
@@ -279,7 +277,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *    case p4(_, c) => c
    *    case _        => ""
    *  }
-   *  }}}
+   *  ```
    *
    *  @param  s     The string to match
    *  @return       The matches
@@ -297,7 +295,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  For example:
    *
-   *  {{{
+   *  ```
    *  val cat = "cat"
    *  // the case must consume the group to match
    *  val r = """(\p{Lower})""".r
@@ -317,7 +315,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  val r = """((.))""".r
    *  cat(0) match { case r(_) => true }    // matches
    *  cat(0) match { case r(_,_) => true }  // no match
-   *  }}}
+   *  ```
    *
    *  @param  c     The Char to match
    *  @return       The match
@@ -360,22 +358,22 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  followed by the next match that follows the input consumed by the
    *  first match:
    *
-   *  {{{
+   *  ```
    *  val hat  = "hat[^a]+".r
    *  val hathaway = "hathatthattthatttt"
    *  val hats = hat.findAllIn(hathaway).toList                     // List(hath, hattth)
    *  val pos  = hat.findAllMatchIn(hathaway).map(_.start).toList   // List(0, 7)
-   *  }}}
+   *  ```
    *
    *  To return overlapping matches, it is possible to formulate a regular expression
    *  with lookahead (`?=`) that does not consume the overlapping region.
    *
-   *  {{{
+   *  ```
    *  val madhatter = "(h)(?=(at[^a]+))".r
    *  val madhats   = madhatter.findAllMatchIn(hathaway).map {
    *    case madhatter(x,y) => s"\$x\$y"
    *  }.toList                                       // List(hath, hatth, hattth, hatttt)
-   *  }}}
+   *  ```
    *
    *  Attempting to retrieve match information after exhausting the iterator
    *  results in [[java.lang.IllegalStateException]].
@@ -383,7 +381,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.util.matching.Regex.MatchIterator]] of matched substrings.
-   *  @example      {{{for (words <- """\w+""".r findAllIn "A simple example.") yield words}}}
+   *  @example      ```for (words <- """\w+""".r findAllIn "A simple example.") yield words ```
    */
   def findAllIn(source: CharSequence): MatchIterator = new Regex.MatchIterator(source, this, groupNames)
 
@@ -392,7 +390,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.collection.Iterator]] of [[scala.util.matching.Regex.Match]] for all matches.
-   *  @example      {{{for (words <- """\w+""".r findAllMatchIn "A simple example.") yield words.start}}}
+   *  @example      ```for (words <- """\w+""".r findAllMatchIn "A simple example.") yield words.start ```
    */
   def findAllMatchIn(source: CharSequence): Iterator[Match] = {
     val matchIterator = findAllIn(source)
@@ -410,7 +408,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       An [[scala.Option]] of the first matching string in the text.
-   *  @example      {{{"""\w+""".r findFirstIn "A simple example." foreach println // prints "A"}}}
+   *  @example      ```"""\w+""".r findFirstIn "A simple example." foreach println // prints "A" ```
    */
   def findFirstIn(source: CharSequence): Option[String] = {
     val m = pattern.matcher(source)
@@ -425,7 +423,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.Option]] of [[scala.util.matching.Regex.Match]] of the first matching string in the text.
-   *  @example      {{{("""[a-z]""".r findFirstMatchIn "A simple example.") map (_.start) // returns `Some(2)`, the index of the first match in the text}}}
+   *  @example      ```("""[a-z]""".r findFirstMatchIn "A simple example.") map (_.start) // returns `Some(2)`, the index of the first match in the text ```
    */
   def findFirstMatchIn(source: CharSequence): Option[Match] = {
     val m = pattern.matcher(source)
@@ -441,7 +439,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.Option]] of the matched prefix.
-   *  @example      {{{"""\p{Lower}""".r findPrefixOf "A simple example." // returns `None`, since the text does not begin with a lowercase letter}}}
+   *  @example      ```"""\p{Lower}""".r findPrefixOf "A simple example." // returns `None`, since the text does not begin with a lowercase letter ```
    */
   def findPrefixOf(source: CharSequence): Option[String] = {
     val m = pattern.matcher(source)
@@ -457,7 +455,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  @param source The text to match against.
    *  @return       A [[scala.Option]] of the [[scala.util.matching.Regex.Match]] of the matched string.
-   *  @example      {{{"""\w+""".r findPrefixMatchOf "A simple example." map (_.after) // returns `Some(" simple example.")`}}}
+   *  @example      ```"""\w+""".r findPrefixMatchOf "A simple example." map (_.after) // returns `Some(" simple example.")` ```
    */
   def findPrefixMatchOf(source: CharSequence): Option[Match] = {
     val m = pattern.matcher(source)
@@ -465,14 +463,14 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
   }
 
   /** Returns whether this `Regex` matches the given character sequence.
-    *
-    * Like the extractor, this method takes anchoring into account.
-    *
-    * @param source The text to match against
-    * @return       true if and only if `source` matches this `Regex`.
-    * @see          [[Regex#unanchored]]
-    * @example      {{{"""\d+""".r matches "123" // returns true}}}
-    */
+   *
+   *  Like the extractor, this method takes anchoring into account.
+   *
+   *  @param source The text to match against
+   *  @return       true if and only if `source` matches this `Regex`.
+   *  @see          [[Regex#unanchored]]
+   *  @example      ```"""\d+""".r matches "123" // returns true ```
+   */
   def matches(source: CharSequence): Boolean =
     runMatcher(pattern.matcher(source))
 
@@ -483,30 +481,29 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  @param target      The string to match
    *  @param replacement The string that will replace each match
    *  @return            The resulting string
-   *  @example           {{{"""\d+""".r replaceAllIn ("July 15", "<NUMBER>") // returns "July <NUMBER>"}}}
+   *  @example           ```"""\d+""".r replaceAllIn ("July 15", "<NUMBER>") // returns "July <NUMBER>" ```
    */
   def replaceAllIn(target: CharSequence, replacement: String): String = {
     val m = pattern.matcher(target)
     m.replaceAll(replacement)
   }
 
-  /**
-   * Replaces all matches using a replacer function. The replacer function takes a
-   * [[scala.util.matching.Regex.Match]] so that extra information can be obtained
-   * from the match. For example:
+  /** Replaces all matches using a replacer function. The replacer function takes a
+   *  [[scala.util.matching.Regex.Match]] so that extra information can be obtained
+   *  from the match. For example:
    *
-   * {{{
-   * import scala.util.matching.Regex
-   * val datePattern = new Regex("""(\d\d\d\d)-(\d\d)-(\d\d)""", "year", "month", "day")
-   * val text = "From 2011-07-15 to 2011-07-17"
-   * val repl = datePattern replaceAllIn (text, m => s"\${m group "month"}/\${m group "day"}")
-   * }}}
+   *  ```
+   *  import scala.util.matching.Regex
+   *  val datePattern = new Regex("""(\d\d\d\d)-(\d\d)-(\d\d)""", "year", "month", "day")
+   *  val text = "From 2011-07-15 to 2011-07-17"
+   *  val repl = datePattern replaceAllIn (text, m => s"\${m group "month"}/\${m group "day"}")
+   *  ```
    *
-   * $replacementString
+   *  $replacementString
    *
-   * @param target      The string to match.
-   * @param replacer    The function which maps a match to another string.
-   * @return            The target string after replacements.
+   *  @param target      The string to match.
+   *  @param replacer    The function which maps a match to another string.
+   *  @return            The target string after replacements.
    */
   def replaceAllIn(target: CharSequence, replacer: Match => String): String = {
     val rit = new Regex.MatchIterator(target, this, groupNames).replacementData
@@ -515,26 +512,25 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
     rit.replaced
   }
 
-  /**
-   * Replaces some of the matches using a replacer function that returns an [[scala.Option]].
-   * The replacer function takes a [[scala.util.matching.Regex.Match]] so that extra
-   * information can be obtained from the match. For example:
+  /** Replaces some of the matches using a replacer function that returns an [[scala.Option]].
+   *  The replacer function takes a [[scala.util.matching.Regex.Match]] so that extra
+   *  information can be obtained from the match. For example:
    *
-   * {{{
-   * import scala.util.matching.Regex._
+   *  ```
+   *  import scala.util.matching.Regex._
    *
-   * val vars = Map("x" -> "a var", "y" -> """some \$ and \ signs""")
-   * val text = "A text with variables %x, %y and %z."
-   * val varPattern = """%(\w+)""".r
-   * val mapper = (m: Match) => vars get (m group 1) map (quoteReplacement(_))
-   * val repl = varPattern replaceSomeIn (text, mapper)
-   * }}}
+   *  val vars = Map("x" -> "a var", "y" -> """some \$ and \ signs""")
+   *  val text = "A text with variables %x, %y and %z."
+   *  val varPattern = """%(\w+)""".r
+   *  val mapper = (m: Match) => vars get (m group 1) map (quoteReplacement(_))
+   *  val repl = varPattern replaceSomeIn (text, mapper)
+   *  ```
    *
-   * $replacementString
+   *  $replacementString
    *
-   * @param target      The string to match.
-   * @param replacer    The function which optionally maps a match to another string.
-   * @return            The target string after replacements.
+   *  @param target      The string to match.
+   *  @param replacer    The function which optionally maps a match to another string.
+   *  @return            The target string after replacements.
    */
   def replaceSomeIn(target: CharSequence, replacer: Match => Option[String]): String = {
     val rit = new Regex.MatchIterator(target, this, groupNames).replacementData
@@ -577,7 +573,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  Calling `anchored` returns the original `Regex`.
    *
-   *  {{{
+   *  ```
    *  val date = """(\d\d\d\d)-(\d\d)-(\d\d)""".r.unanchored
    *
    *  val date(year, month, day) = "Date 2011-07-15"                       // OK
@@ -586,7 +582,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *    case date(year, month, day) => s"Copyright \$year"                  // OK
    *    case _                      => "No copyright"
    *  }
-   *  }}}
+   *  ```
    *
    *  @return        The new unanchored regex
    */
@@ -761,11 +757,10 @@ object Regex {
    *  This can be used to help writing replacer functions when you
    *  are not interested in match data. For example:
    *
-   *  {{{
+   *  ```
    *  import scala.util.matching.Regex.Match
    *  """\w+""".r replaceAllIn ("A simple example.", _ match { case Match(s) => s.toUpperCase })
-   *  }}}
-   *
+   *  ```
    */
   object Match {
     def unapply(m: Match): Some[String] = Some(m.matched.nn)
@@ -774,13 +769,13 @@ object Regex {
   /** An extractor object that yields the groups in the match. Using this extractor
    *  rather than the original `Regex` ensures that the match is not recomputed.
    *
-   *  {{{
+   *  ```
    *  import scala.util.matching.Regex.Groups
    *
    *  val date = """(\d\d\d\d)-(\d\d)-(\d\d)""".r
    *  val text = "The doc spree happened on 2011-07-15."
    *  val day = date replaceAllIn(text, _ match { case Groups(_, month, day) => s"\$month/\$day" })
-   *  }}}
+   *  ```
    */
   object Groups {
     def unapplySeq(m: Match): Option[Seq[String | Null]] = {
@@ -881,8 +876,7 @@ object Regex {
     }
   }
 
-  /** Internal trait used by `replaceAllIn` and `replaceSomeIn`.
-   */
+  /** Internal trait used by `replaceAllIn` and `replaceSomeIn`. */
   private[matching] trait Replacement {
     protected def matcher: Matcher
 
@@ -902,7 +896,7 @@ object Regex {
    *
    *  All regex metacharacters in the input match themselves literally in the output.
    *
-   *  @example {{{List("US\$", "CAN\$").map(Regex.quote).mkString("|").r}}}
+   *  @example ```List("US\$", "CAN\$").map(Regex.quote).mkString("|").r ```
    */
   def quote(text: String): String = Pattern.quote(text)
 
@@ -916,7 +910,7 @@ object Regex {
    *
    *  @param text The string one wishes to use as literal replacement.
    *  @return A string that can be used to replace matches with `text`.
-   *  @example {{{"CURRENCY".r.replaceAllIn(input, Regex quoteReplacement "US\$")}}}
+   *  @example ```"CURRENCY".r.replaceAllIn(input, Regex quoteReplacement "US\$") ```
    */
   def quoteReplacement(text: String): String = Matcher.quoteReplacement(text)
 }

@@ -19,20 +19,20 @@ import scala.util.Try
 
 /** This package object contains primitives for concurrent and parallel programming.
  *
- * == Guide ==
+ * ## Guide
  *
  * A more detailed guide to Futures and Promises, including discussion and examples
  * can be found at
  * [[https://docs.scala-lang.org/overviews/core/futures.html]].
  *
- * == Common Imports ==
+ * ## Common Imports
  *
  * When working with Futures, you will often find that importing the whole concurrent
  * package is convenient:
  *
- * {{{
+ * ```
  * import scala.concurrent._
- * }}}
+ * ```
  *
  * When using things like `Future`s, it is often required to have an implicit `ExecutionContext`
  * in scope. The general advice for these implicits are as follows.
@@ -40,39 +40,39 @@ import scala.util.Try
  * If the code in question is a class or method definition, and no `ExecutionContext` is available,
  * request one from the caller by adding an implicit parameter list:
  *
- * {{{
+ * ```
  * def myMethod(myParam: MyType)(implicit ec: ExecutionContext) = …
  * //Or
  * class MyClass(myParam: MyType)(implicit ec: ExecutionContext) { … }
- * }}}
+ * ```
  *
  * This allows the caller of the method, or creator of the instance of the class, to decide which
  * `ExecutionContext` should be used.
  *
  * For typical REPL usage and experimentation, importing the global `ExecutionContext` is often desired.
  *
- * {{{
+ * ```
  * import scala.concurrent.ExecutionContext.Implicits.global
- * }}}
+ * ```
  *
- * == Specifying Durations ==
+ * ## Specifying Durations
  *
  * Operations often require a duration to be specified. A duration DSL is available
  * to make defining these easier:
  *
- * {{{
+ * ```
  * import scala.concurrent.duration._
  * val d: Duration = 10.seconds
- * }}}
+ * ```
  *
- * == Using Futures For Non-blocking Computation ==
+ * ## Using Futures For Non-blocking Computation
  *
  * Basic use of futures is easy with the factory method on Future, which executes a
  * provided function asynchronously, handing you back a future result of that function
  * without blocking the current thread. In order to create the Future you will need
  * either an implicit or explicit ExecutionContext to be provided:
  *
- * {{{
+ * ```
  * import scala.concurrent._
  * import ExecutionContext.Implicits.global  // implicit execution context
  *
@@ -80,23 +80,23 @@ import scala.util.Try
  *   val words = Files.readAllLines("/etc/dictionaries-common/words").asScala
  *   words.indexOfSlice("zebra")
  * }
- * }}}
+ * ```
  *
- * == Avoid Blocking ==
+ * ## Avoid Blocking
  *
  * Although blocking is possible in order to await results (with a mandatory timeout duration):
  *
- * {{{
+ * ```
  * import scala.concurrent.duration._
  * Await.result(firstZebra, 10.seconds)
- * }}}
+ * ```
  *
  * and although this is sometimes necessary to do, in particular for testing purposes, blocking
  * in general is discouraged when working with Futures and concurrency in order to avoid
  * potential deadlocks and improve performance. Instead, use callbacks or combinators to
  * remain in the future domain:
  *
- * {{{
+ * ```
  * val animalRange: Future[Int] = for {
  *   aardvark <- firstAardvark
  *   zebra <- firstZebra
@@ -105,7 +105,7 @@ import scala.util.Try
  * animalRange.onSuccess {
  *   case x if x > 500000 => println("It's a long way from Aardvark to Zebra")
  * }
- * }}}
+ * ```
  */
 package object concurrent {
   type ExecutionException =    java.util.concurrent.ExecutionException

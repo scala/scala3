@@ -19,13 +19,12 @@ import language.experimental.captureChecking
 import scala.annotation.implicitNotFound
 import scala.annotation.unchecked.uncheckedVariance
 
-/**
-  * Trait that overrides sorted set operations to take advantage of strict builders.
-  *
-  * @tparam A  Elements type
-  * @tparam CC Collection type constructor
-  * @tparam C  Collection type
-  */
+/** Trait that overrides sorted set operations to take advantage of strict builders.
+ *
+ *  @tparam A  Elements type
+ *  @tparam CC Collection type constructor
+ *  @tparam C  Collection type
+ */
 transparent trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
   extends SortedSetOps[A, CC, C]
     with StrictOptimizedSetOps[A, Set, C] {

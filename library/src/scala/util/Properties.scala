@@ -175,14 +175,14 @@ private[scala] trait PropertiesTrait {
    *    is equal to or higher than the version denoted by the given string.
    *  @throws NumberFormatException if the given string is not a version string
    *
-   *  @example {{{
+   *  @example ```
    *  // In this example, the runtime's Java specification is assumed to be at version 8.
    *  isJavaAtLeast("1.8")            // true
    *  isJavaAtLeast("8")              // true
    *  isJavaAtLeast("9")              // false
    *  isJavaAtLeast("9.1")            // false
    *  isJavaAtLeast("1.9")            // throws
-   *  }}}
+   *  ```
    */
   def isJavaAtLeast(version: String): Boolean = {
     def versionOf(s: String, depth: Int): (Int, String) =
