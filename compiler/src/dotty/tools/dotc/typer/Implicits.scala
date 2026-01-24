@@ -1478,6 +1478,8 @@ trait Implicits:
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
+                else if fail.reason.isInstanceOf[DivergingImplicit] && remaining.forall(compareAlternatives(_, cand) == 0) then
+                  found.recoverWith(_ => (fail :: rfailures).reverse.maxBy(_.tree.treeSize))
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
