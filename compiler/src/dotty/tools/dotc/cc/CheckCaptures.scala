@@ -1292,7 +1292,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               && !sym.owner.derivesFrom(defn.Caps_Stateful)
               && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
             report.error(
-              em"""Mutable $sym is defined in a class that does not extend `Stateful`.
+              em"""Mutable $sym is defined in a class that does not extend `Stateful` or `Mutable`.
                   |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
               tree.namePos)
 
