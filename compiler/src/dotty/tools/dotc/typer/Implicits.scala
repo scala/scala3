@@ -1478,8 +1478,6 @@ trait Implicits:
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
-                else if fail.reason.isInstanceOf[DivergingImplicit] && remaining.forall(_.level >= cand.level) then
-                  fail
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
@@ -1871,11 +1869,7 @@ trait Implicits:
             else loop(outer, tp.isByName || belowByname)
           case _ => false
 
-      (cand.ref.info, ctx.searchHistory) match
-//        case (meth: MethodOrPoly, search: OpenSearch) if meth.isImplicitMethod && cand.level == search.cand.level =>
-//          val res = meth.paramInfoss.flatten.exists(tp => tp.widenExpr frozen_=:= wideProto)
-//          res || loop(ctx.searchHistory, pt.isByName)
-        case _ => loop(ctx.searchHistory, pt.isByName)
+      loop(ctx.searchHistory, pt.isByName)
     end checkDivergence
 
     /**

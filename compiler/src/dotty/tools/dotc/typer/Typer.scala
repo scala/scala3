@@ -4481,6 +4481,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
+            val pt1 = pt.deepenProtoTrans
+            val containsUninst = new TypeAccumulator[Boolean]:
+              def apply(need: Boolean, tp: Type): Boolean =
+                need || tp.match
+                  case tvar: TypeVar => !tvar.isInstantiated
+                  case _ => foldOver(need, tp)
+            lazy val formalNotFullyDefined = !isFullyDefined(formal, ForceDegree.none)
+            val preConstrain 
+              = (pt1 `ne` pt)
+              && (pt1 ne sharpenedPt)
+              && !ctx.mode.is(Mode.ImplicitExploration)
+              && !containsUninst(false, formal)
+              && formalNotFullyDefined
+            if preConstrain then
+              constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             lazy val defaultArg = findDefaultArgument(argIndex)
@@ -4492,25 +4507,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && {
               arg.tpe.isInstanceOf[AmbiguousImplicits]
                     // Ambiguity could be decided by more constraints
-                || !isFullyDefined(formal, ForceDegree.none) && !argHasDefault
+              || formalNotFullyDefined && !argHasDefault
                     // More context might constrain type variables which could make implicit scope larger.
                     // But in this case we should search with additional arguments typed only if there
                     // is no default argument.
               }
 
-            // Try to constrain the result using `pt1`, but back out if a BadTyperStateAssertion
-            // is thrown. TODO Find out why the bad typer state arises and prevent it. The try-catch
-            // is a temporary hack to keep projects compiling that would fail otherwise due to
-            // searching more arguments to instantiate implicits (PR #23532). A failing project
-            // is described in issue #23609.
-            def tryConstrainResult(pt: Type): Boolean =
-              try constrainResult(tree.symbol, wtp, pt)
-              catch case ex: TyperState.BadTyperStateAssertion => false
-            
             arg.tpe match
-              case failed: SearchFailureType if canProfitFromMoreConstraints =>
-                val pt1 = pt.deepenProtoTrans
-                if (pt1 ne pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
+              case failed: SearchFailureType if !preConstrain && canProfitFromMoreConstraints =>
+                if (pt1 ne pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1) then
                   return implicitArgs(formals, argIndex, pt1)
               case _ =>
 
