@@ -45,6 +45,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.internal$",
   "scala.caps.any",
   "scala.caps.any$",
+  "scala.caps.cap",
+  "scala.caps.cap$",
   "scala.caps.fresh",
   "scala.caps.fresh$",
   "scala.caps.unsafe",
@@ -54,7 +56,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.package$package$.freeze",
   "scala.caps.package$package$.Exclusive",
   "scala.caps.package$package$.Shared",
-  "scala.caps.package$package$.cap",
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
