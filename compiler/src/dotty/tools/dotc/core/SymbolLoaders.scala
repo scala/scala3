@@ -366,8 +366,7 @@ object SymbolLoaders {
     if hasPackages then
       for p <- jarClasspath.packages(fullPackageName) do
         val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
-        val existingDecl = packageClass.info.decl(subPackageName)
-        val subPackage = existingDecl.orElse:
+        val subPackage = packageClass.info.decl(subPackageName).orElse:
           // package does not exist in symbol table, create a new symbol
           enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
         mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
