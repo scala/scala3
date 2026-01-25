@@ -37,6 +37,11 @@ object TestImportShadowing:
     // Should NOT warn - B was not imported
     type Test6[B] = B
 
+  object WildcardGivenTest:
+    import MyModule.given
+    // Should NOT warn - no types imported
+    type Test[A] = A
+
   object WildcardAndDiscardTest:
     import MyModule.{A => _, *}
     // Should NOT warn - A was explicitly discarded
