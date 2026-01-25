@@ -782,11 +782,11 @@ object CaptureSet:
     private var emptiesDropped = false
 
     def dropEmpties()(using Context): this.type =
+      assert(ccState.isSepCheck)
       if !emptiesDropped then
         emptiesDropped = true
         for elem <- elems do
-          if elem.isKnownEmpty then
-            elems -= empty
+          if elem.isKnownEmpty then elems -= elem
       this
 
     /** A list of handlers to be invoked when a new element is added to this set */
