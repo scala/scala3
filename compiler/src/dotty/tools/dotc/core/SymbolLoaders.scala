@@ -349,7 +349,8 @@ object SymbolLoaders {
       else if isUnderScala then
         // For scala packages, enter new classes into the existing scope without
         // replacing the package info (which would cause cyclic references).
-        // Use jarClasspath to iterate only over new classes from the JAR.
+        // Use jarClasspath (not fullClasspath) to only enter new classes from the JAR.
+        // This allows libraries like scala-parallel-collections to work with :dep/:jar
         val loader = new PackageLoader(packageVal, jarClasspath)
         loader.enterClasses(packageClass, fullPackageName, flat = false)
         loader.enterClasses(packageClass, fullPackageName, flat = true)

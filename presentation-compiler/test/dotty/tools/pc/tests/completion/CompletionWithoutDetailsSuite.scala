@@ -9,8 +9,8 @@ import org.junit.Test
 
 class CompletionWithoutDetailsSuite extends BaseCompletionSuite:
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       isDetailIncludedInLabel = false
     )
 

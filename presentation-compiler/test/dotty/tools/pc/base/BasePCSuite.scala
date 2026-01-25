@@ -32,7 +32,7 @@ object TestResources:
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:
   val completionItemPriority: CompletionItemPriority = (_: String) => 0
-  private val isDebug = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("-agentlib:jdwp")
+  protected val isDebug = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("-agentlib:jdwp")
 
   val tmp: Path = Files.createTempDirectory("stable-pc-tests")
   val executorService: ScheduledExecutorService =
@@ -58,7 +58,7 @@ abstract class BasePCSuite extends PcAssertions:
       .withCompletionItemPriority(completionItemPriority)
       .newInstance("", myclasspath.asJava, scalacOpts.asJava)
 
-  protected def config: PresentationCompilerConfig =
+  protected def config: PresentationCompilerConfigImpl =
     PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 10)
 
   private def inspectDialect(filename: String, code: String) =

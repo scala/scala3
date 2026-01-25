@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.1-RC1"
+  val referenceVersion = "3.8.2-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -1927,7 +1927,7 @@ object Build {
           if (!justAPI) {
             IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
             // This file is used by GitHub Pages when the page is available in a custom domain
-            IO.write(dest / "CNAME", "dotty.epfl.ch")
+            IO.write(dest / "CNAME", "nightly.scala-lang.org")
           }
         }
         val applyPatches = Def.task {

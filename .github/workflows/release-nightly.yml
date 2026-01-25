@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: release-nightly
     needs: release-maven-artifacts
+    env:
+      NIGHTLYBUILD: ${{ vars.NIGHTLYBUILD }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -45,6 +47,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ steps.app-token.outputs.token }}
-          publish_dir: docs/_site
+          publish_dir: scaladoc/output/scala3
           external_repository: scala/nightly.scala-lang.org
           publish_branch: main

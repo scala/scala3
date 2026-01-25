@@ -10,8 +10,8 @@ import org.junit.Test
 
 class CompletionOverrideConfigSuite extends BaseCompletionSuite:
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       _symbolPrefixes = Map(
         "a/Weekday." -> "w",
         "java/util/function/" -> "f"

@@ -11,8 +11,8 @@ import scala.meta.pc.PresentationCompilerConfig
 
 class HoverPlainTextSuite extends BaseHoverSuite:
 
-  override protected def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       snippetAutoIndent = false,
       hoverContentType = ContentType.PLAINTEXT
     )

@@ -47,8 +47,9 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.1
-val cap: any.type = any
+@experimental // TODO: Drop once we bootstrap with 3.8.2
+@deprecated
+object cap extends Capability
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  *
