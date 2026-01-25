@@ -337,7 +337,6 @@ object SymbolLoaders {
   )(using Context): Unit =
     val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
     val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
-    val isUnderScala = packageClass.ownersIterator.contains(defn.ScalaPackageClass)
 
     if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
@@ -346,7 +345,7 @@ object SymbolLoaders {
         val loader = new PackageLoader(packageVal, fullClasspath)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
-      else if isUnderScala then
+      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
         // For scala packages, enter new classes into the existing scope without
         // replacing the package info (which would cause cyclic references).
         // Use jarClasspath (not fullClasspath) to only enter new classes from the JAR.
