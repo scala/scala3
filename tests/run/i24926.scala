@@ -1,5 +1,3 @@
-import language.experimental.namedTuples
-
 case class User(name: String, age: Int)
 case class Person(first: String, last: String, age: Int, city: String)
 
