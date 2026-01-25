@@ -983,6 +983,7 @@ object CaptureSet:
       markSolved(provisional = false)
       ignored = true
 
+    // See Config.checkSkippedMaps
     var skippedMaps: Set[TypeMap] = Set.empty
 
     def withDescription(description: String): this.type =

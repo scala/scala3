@@ -700,6 +700,9 @@ object Capabilities:
         isEmpty || ref1.isKnownEmpty
       case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
+      case _: RootCapability => false
+      case _: ObjectCapability if ccState.isSepCheck =>
+        captureSetOfInfo.dropEmpties().elems.isEmpty
       case _ => false
 
     def invalidateCaches() =

@@ -2363,14 +2363,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         def isExternalRef(c: Capability) = !c.isTerminalCapability
 
         def checkExternalUses(sym: Symbol)(using Context): Unit = capturedVars(sym) match
-          case cs: CaptureSet.Var
-          if cs.elems.exists(isExternalRef) && !isExemptFromExplicitChecks(sym) =>
-            val usesStr = if sym.isClass then "uses" else "uses_init"
-            println(i"bad uses in ${ctx.owner}")
-            report.error(
-              em"""Publicly visible $sym uses external capabilities $cs.
-                |These dependencies need to be declared explicitly in a `$usesStr ...` clause.""",
-              sym.srcPos)
+          case cs: CaptureSet.Var =>
+            val extRefs = cs.dropEmpties().elems.filter(isExternalRef)
+            if !extRefs.isEmpty && !isExemptFromExplicitChecks(sym) then
+              val usesStr = if sym.isClass then "uses" else "uses_init"
+              report.error(
+                em"""Publicly visible $sym uses external capabilities ${CaptureSet(extRefs)}.
+                  |These dependencies need to be declared explicitly in a `$usesStr ...` clause.""",
+                sym.srcPos)
           case _ =>
 
         def check(tree: Tree)(using Context) = tree match
@@ -2390,8 +2390,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             val cls = tree.symbol.asClass
             checkStatefulInheritance(cls, impl.parents)
             inContext(ctx.withOwner(cls)):
-              checkExternalUses(cls)
-              checkExternalUses(cls.primaryConstructor)
+              ccState.inSepCheck: // Turn sepCheck on, so that dropEmpties works recursively
+                checkExternalUses(cls)
+                checkExternalUses(cls.primaryConstructor)
           case _ =>
       end checker
 
