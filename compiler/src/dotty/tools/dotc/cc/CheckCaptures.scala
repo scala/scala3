@@ -1515,15 +1515,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
 
-      def checkExplicitUses(sym: Symbol): Unit = capturedVars(sym) match
-        case cs: CaptureSet.Var
-        if cs.elems.exists(!_.isTerminalCapability) && !isExemptFromExplicitChecks(sym) =>
-          val usesStr = if sym.isClass then "uses" else "uses_init"
-          report.error(
-            em"""Publicly visible $sym uses external capabilities $cs.
-               |These dependencies need to be declared explicitly in a `$usesStr ...` clause.""",
-            sym.srcPos)
-        case _ =>
 
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
@@ -1563,8 +1554,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         super.recheckClassDef(tree, impl, cls)
       finally
-        checkExplicitUses(cls)
-        checkExplicitUses(cls.primaryConstructor)
         if cls.is(ModuleClass) then
           interpolate(cls.sourceModule.info, cls.sourceModule)
         completed += cls
@@ -2283,7 +2272,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Check that no uses refer to reach capabilities of parameters of enclosing
      *  methods or classes.
      */
-    def checkEscapingUses()(using Context) =
+    def checkEscapingReachUses()(using Context) = {
       for (tree, uses, env) <- useInfos do
         val seen = util.EqHashSet[Capability]()
 
@@ -2327,7 +2316,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         check(uses)
       end for
-    end checkEscapingUses
+    }
 
     /** Check all parent class constructors of classes extending Stateful
      *  either also extend Stateful or are read-only.
@@ -2371,6 +2360,19 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverseChildren(tree)(using lctx)
             check(tree)
 
+        def isExternalRef(c: Capability) = !c.isTerminalCapability
+
+        def checkExternalUses(sym: Symbol)(using Context): Unit = capturedVars(sym) match
+          case cs: CaptureSet.Var
+          if cs.elems.exists(isExternalRef) && !isExemptFromExplicitChecks(sym) =>
+            val usesStr = if sym.isClass then "uses" else "uses_init"
+            println(i"bad uses in ${ctx.owner}")
+            report.error(
+              em"""Publicly visible $sym uses external capabilities $cs.
+                |These dependencies need to be declared explicitly in a `$usesStr ...` clause.""",
+              sym.srcPos)
+          case _ =>
+
         def check(tree: Tree)(using Context) = tree match
           case TypeApply(fun, args) =>
             fun.nuType.widen match
@@ -2385,12 +2387,16 @@ class CheckCaptures extends Recheck, SymTransformer:
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case TypeDef(_, impl: Template) =>
-            checkStatefulInheritance(tree.symbol.asClass, impl.parents)
+            val cls = tree.symbol.asClass
+            checkStatefulInheritance(cls, impl.parents)
+            inContext(ctx.withOwner(cls)):
+              checkExternalUses(cls)
+              checkExternalUses(cls.primaryConstructor)
           case _ =>
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      checkEscapingUses()
+      checkEscapingReachUses()
       if sepChecksEnabled then
         for (tree, cs, env) <- useInfos do
           usedSet(tree) = tree.markedFree ++ cs
