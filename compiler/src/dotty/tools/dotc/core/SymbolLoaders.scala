@@ -295,7 +295,7 @@ object SymbolLoaders {
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
-            (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
+            isAbsent(classRep)) // Always check isAbsent to avoid re-entering existing classes (important for REPL :jar/:dep)
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classReps)
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -337,6 +337,7 @@ object SymbolLoaders {
   )(using Context): Unit =
     val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
     val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
+    val isUnderScala = packageClass.ownersIterator.contains(defn.ScalaPackageClass)
 
     if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
@@ -345,11 +346,10 @@ object SymbolLoaders {
         val loader = new PackageLoader(packageVal, fullClasspath)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
         loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
-      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
+      else if isUnderScala then
         // For scala packages, enter new classes into the existing scope without
         // replacing the package info (which would cause cyclic references).
-        // Use jarClasspath (not fullClasspath) to only enter new classes from the JAR.
-        // This allows libraries like scala-parallel-collections to work with :dep/:jar
+        // Use jarClasspath to iterate only over new classes from the JAR.
         val loader = new PackageLoader(packageVal, jarClasspath)
         loader.enterClasses(packageClass, fullPackageName, flat = false)
         loader.enterClasses(packageClass, fullPackageName, flat = true)
@@ -365,7 +365,8 @@ object SymbolLoaders {
     if hasPackages then
       for p <- jarClasspath.packages(fullPackageName) do
         val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
-        val subPackage = packageClass.info.decl(subPackageName).orElse:
+        val existingDecl = packageClass.info.decl(subPackageName)
+        val subPackage = existingDecl.orElse:
           // package does not exist in symbol table, create a new symbol
           enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
         mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
