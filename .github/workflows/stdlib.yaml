@@ -473,8 +473,6 @@ jobs:
   test-scala3-compiler-nonbootstrapped:
     runs-on: ubuntu-latest
     needs: [scala3-compiler-nonbootstrapped, tasty-core-nonbootstrapped, scala-library-nonbootstrapped]
-    # Non-bootstrapped can definetely not be enabled until we have at least 3.8.0-RC1 as a reference compiler
-    if: false
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
