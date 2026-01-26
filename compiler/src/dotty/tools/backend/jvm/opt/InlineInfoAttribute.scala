@@ -15,7 +15,7 @@ package backend.jvm
 package opt
 
 import scala.collection.mutable
-import scala.tools.asm._
+import scala.tools.asm.*
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.UnknownScalaInlineInfoVersion
 
@@ -32,7 +32,7 @@ import dotty.tools.backend.jvm.BackendReporting.UnknownScalaInlineInfoVersion
  * However, the inliner requires an InlineInfo for inlining mixin members. That problem is solved by
  * reading the InlineInfo from this attribute.
  *
- * In principle we could encode the InlineInfo into a Java annotation (instead of a classfile attribute).
+ * In principle, we could encode the InlineInfo into a Java annotation (instead of a classfile attribute).
  * However, an attribute allows us to save many bits. In particular, note that the strings in an
  * InlineInfo are serialized as references to constants in the constant pool, and those strings
  * (method names, method signatures) would exist in there anyway. So the
@@ -58,20 +58,20 @@ case class InlineInfoAttribute(inlineInfo: InlineInfo) extends Attribute(InlineI
     var flags = 0
     if (inlineInfo.isEffectivelyFinal)      flags |= 1
     //                                      flags |= 2 // no longer written
-    if (inlineInfo.sam.nn.isDefined)           flags |= 4
+    if (inlineInfo.sam.isDefined)           flags |= 4
     result.putByte(flags)
 
-    for (samNameDesc <- inlineInfo.sam.nn) {
+    for (samNameDesc <- inlineInfo.sam) {
       val (name, desc) = samNameDesc.span(_ != '(')
       result.putShort(cw.newUTF8(name))
       result.putShort(cw.newUTF8(desc))
     }
 
     // The method count fits in a short (the methods_count in a classfile is also a short)
-    result.putShort(inlineInfo.methodInfos.nn.size)
+    result.putShort(inlineInfo.methodInfos.size)
 
     // Sort the methodInfos for stability of classfiles
-    inlineInfo.methodInfos.nn.foreachEntry {
+    inlineInfo.methodInfos.foreachEntry {
       case ((name, desc), info) =>
         result.putShort(cw.newUTF8(name))
         result.putShort(cw.newUTF8(desc))
@@ -144,7 +144,7 @@ object InlineInfoAttribute {
    *  - `traitImplClassSelfType` is no longer emitted, `hasTraitImplClassSelfType` is always emitted
    *    as 0. Similarly, `traitMethodWithStaticImplementation` is always emitted 0.
    *  - When reading an existing attribute where `hasTraitImplClassSelfType` is 1, the
-   *    `traitImplClassSelfType` is ignored. Also the value of `traitMethodWithStaticImplementation`
+   *    `traitImplClassSelfType` is ignored. Also, the value of `traitMethodWithStaticImplementation`
    *    is ignored.
    *
    * [u1]    version
@@ -157,13 +157,13 @@ object InlineInfoAttribute {
    *   [u2]  descriptor (reference)
    *   [u1]  isFinal (<< 0), traitMethodWithStaticImplementation (<< 1), hasInlineAnnotation (<< 2), hasNoInlineAnnotation (<< 3)
    */
-  final val VERSION: Byte = 1
+  private final val VERSION: Byte = 1
 
-  final val attributeName = "ScalaInlineInfo"
+  private final val attributeName = "ScalaInlineInfo"
 }
 
 /**
  * In order to instruct the ASM framework to deserialize the ScalaInlineInfo attribute, we need
  * to pass a prototype instance when running the class reader.
  */
-object InlineInfoAttributePrototype extends InlineInfoAttribute(InlineInfo(isEffectivelyFinal = false, sam = null, methodInfos = null, warning = null))
+object InlineInfoAttributePrototype extends InlineInfoAttribute(InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = collection.SortedMap(), warning = None))

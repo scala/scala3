@@ -16,28 +16,28 @@ package opt
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.tools.asm
-import scala.tools.asm.Opcodes._
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
-import dotty.tools.backend.jvm.AsmUtils._
+import dotty.tools.backend.jvm.AsmUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting._
-import dotty.tools.backend.jvm.analysis._
+import dotty.tools.backend.jvm.BackendReporting.*
+import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 class Inliner(postProcessor: PostProcessor) {
 
-  import postProcessor._
-  import bTypes._
-  import bTypesFromClassfile._
-  import backendUtils._
-  import callGraph._
+  import postProcessor.*
+  import bTypes.*
+  import bTypesFromClassfile.*
+  import backendUtils.*
+  import callGraph.*
   import frontendAccess.{backendReporting, compilerSettings}
-  import inlinerHeuristics._
+  import inlinerHeuristics.*
 
   // A callsite that was inlined and the IllegalAccessInstructions warning that was delayed.
   // The inliner speculatively inlines a callsite even if the method then has instructions that would
@@ -723,7 +723,7 @@ class Inliner(postProcessor: PostProcessor) {
 
     //// find out for which argument values on the stack there is already a local variable ////
 
-    val calleeFirstNonParamSlot = BytecodeUtils.parametersSize(callee)
+    val calleeFirstNonParamSlot = ByteCodeUtils.parametersSize(callee)
 
     // Maps callee-local-variable-index to callsite-local-variable-index.
     val calleeParamLocals = new Array[Int](calleeFirstNonParamSlot)
@@ -829,9 +829,9 @@ class Inliner(postProcessor: PostProcessor) {
     val postCallLabel = newLabelNode
     clonedInstructions.add(postCallLabel)
     if (sameSourceFile) {
-      BytecodeUtils.previousLineNumber(callsiteInstruction) match {
+      ByteCodeUtils.previousLineNumber(callsiteInstruction) match {
         case Some(line) =>
-          BytecodeUtils.nextExecutableInstruction(callsiteInstruction).flatMap(BytecodeUtils.previousLineNumber) match {
+          ByteCodeUtils.nextExecutableInstruction(callsiteInstruction).flatMap(BytecodeUtils.previousLineNumber) match {
             case Some(line1) =>
               if (line == line1)
               // SD-479 code follows on the same line, restore the line number
@@ -1042,7 +1042,7 @@ class Inliner(postProcessor: PostProcessor) {
     assert(callsiteInstruction.name == callee.name, methodMismatch)
     assert(callsiteInstruction.desc == callee.desc, methodMismatch)
     assert(!isConstructor(callee), s"Constructors cannot be inlined: $calleeDesc")
-    assert(!BytecodeUtils.isAbstractMethod(callee), s"Callee is abstract: $calleeDesc")
+    assert(!ByteCodeUtils.isAbstractMethod(callee), s"Callee is abstract: $calleeDesc")
     assert(callsiteMethod.instructions.contains(callsiteInstruction), s"Callsite ${textify(callsiteInstruction)} is not an instruction of $callsiteClass.${callsiteMethod.name}${callsiteMethod.desc}")
 
     // When an exception is thrown, the stack is cleared before jumping to the handler. When

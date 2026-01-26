@@ -17,7 +17,7 @@ import dotty.tools.backend.jvm.opt.*
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
   self =>
-  import bTypes.{classBTypeFromInternalName}
+  import bTypes.classBTypeFromInternalName
   import frontendAccess.{backendReporting, compilerSettings}
 
   val backendUtils        = new BackendUtils(this)
@@ -27,11 +27,12 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   val inlinerHeuristics   = new InlinerHeuristics(this)
   val closureOptimizer    = new ClosureOptimizer(this)
   val callGraph           = new CallGraph(this)
+  val bTypesFromClassfile = new BTypesFromClassfile(this)
   val classfileWriters    = new ClassfileWriters(frontendAccess)
   val classfileWriter     = classfileWriters.ClassfileWriter()
 
 
-  type ClassnamePosition = (String, SourcePosition)
+  private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
   def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !compilerSettings.outputOnlyTasty then {
@@ -65,7 +66,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
     classfileWriter.writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
   }
 
-  private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass) = {
+  private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
     val name = clazz.classNode.name
     val lowerCaseJavaName = name.toLowerCase
     val clsPos = clazz.position
@@ -104,7 +105,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
     addInnerClasses(classNode, declared, referred)
   }
 
-  def serializeClass(classNode: ClassNode): Array[Byte] = {
+  private def serializeClass(classNode: ClassNode): Array[Byte] = {
     val cw = new ClassWriterWithBTypeLub(backendUtils.extraProc)
     classNode.accept(cw)
     cw.toByteArray.nn
@@ -122,7 +123,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
    *  The internal name of the least common ancestor of the types given by inameA and inameB.
    *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
    */
-  final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
+  private final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
 
     /**
      * This method is used by asm when computing stack map frames. It is thread-safe: it depends

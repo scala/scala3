@@ -15,18 +15,18 @@ package backend.jvm
 package analysis
 
 import scala.annotation.switch
-import scala.tools.asm.Opcodes._
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.{Frame, Value}
-import opt.BytecodeUtils._
+import opt.ByteCodeUtils.*
 
 object InstructionStackEffect {
-  val consShift = 3
-  val prodMask = (1 << consShift) - 1
+  private val consShift = 3
+  private val prodMask = (1 << consShift) - 1
 
-  def cons(i: Int) = i >>> consShift
-  def prod(i: Int) = i & prodMask
+  def cons(i: Int): Int = i >>> consShift
+  def prod(i: Int): Int = i & prodMask
 
   private def t(x: Int, y: Int): Int = (x << consShift) | y
 

@@ -20,7 +20,7 @@ import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.*
-import dotty.tools.backend.jvm.opt.BytecodeUtils.*
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
@@ -43,7 +43,7 @@ abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opco
     case _ => super.binaryOperation(insn, value1, value2)
   }
 
-  override def naryOperation(insn: AbstractInsnNode, values: java.util.List[_ <: BasicValue]): BasicValue = {
+  override def naryOperation(insn: AbstractInsnNode, values: java.util.List[? <: BasicValue]): BasicValue = {
     val v = super.naryOperation(insn, values)
     insn.getOpcode match {
       case Opcodes.INVOKEDYNAMIC => insn match {
@@ -92,8 +92,8 @@ object TypeFlowInterpreter {
     }
   }
 
-  val ObjectValue = new SpecialAwareBasicValue(BasicValue.REFERENCE_VALUE.getType)
-  val UninitializedValue = new SpecialAwareBasicValue(null)
+  private val ObjectValue = new SpecialAwareBasicValue(BasicValue.REFERENCE_VALUE.getType)
+  private val UninitializedValue = new SpecialAwareBasicValue(null)
 
   // In the interpreter, visiting an AALOAD, we don't know the type of the array
   // just by looking at the instruction. By using an AaloadValue for the value produced

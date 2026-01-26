@@ -17,15 +17,15 @@ package opt
 import scala.annotation.switch
 import scala.collection.immutable.IntMap
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.Opcodes._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendUtils._
-import dotty.tools.backend.jvm.BackendReporting._
+import dotty.tools.backend.jvm.BackendUtils.*
+import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 class ClosureOptimizer(val postProcessor: PostProcessor) {
 
@@ -42,13 +42,13 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
     override def compare(x: ClosureInstantiation, y: ClosureInstantiation): Int = {
       if (x eq y) return 0
 
-      val cls = x.ownerClass.internalName compareTo y.ownerClass.internalName
+      val cls = x.ownerClass.internalName.compareTo(y.ownerClass.internalName)
       if (cls != 0) return cls
 
-      val mName = x.ownerMethod.name compareTo y.ownerMethod.name
+      val mName = x.ownerMethod.name.compareTo(y.ownerMethod.name)
       if (mName != 0) return mName
 
-      val mDesc = x.ownerMethod.desc compareTo y.ownerMethod.desc
+      val mDesc = x.ownerMethod.desc.compareTo(y.ownerMethod.desc)
       if (mDesc != 0) return mDesc
 
       def pos(inst: ClosureInstantiation) = inst.ownerMethod.instructions.indexOf(inst.lambdaMetaFactoryCall.indy)

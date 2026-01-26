@@ -10,11 +10,11 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 
 import scala.language.unsafeNulls
-import dotty.tools.backend.jvm.opt.BytecodeUtils
+import dotty.tools.backend.jvm.opt.ByteCodeUtils
 import dotty.tools.backend.jvm.analysis.{InstructionStackEffect, ProdConsAnalyzer}
 import scala.tools.asm.Opcodes
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.BytecodeUtils.FrameExtensions
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.FrameExtensions
 import scala.annotation.switch
 import java.util.concurrent.ConcurrentHashMap
 
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class BackendUtils(val postProcessor: PostProcessor) {
   import postProcessor.{bTypes, frontendAccess}
-  import frontendAccess.{compilerSettings, recordPerRunJavaMapCache}
+  import frontendAccess.*
   import bTypes.*
   import coreBTypes.*
 
@@ -287,7 +287,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
   }
 
   // unused objects created by these constructors are eliminated by pushPop
-  private[this] lazy val sideEffectFreeConstructors: LazyVar[Set[(String, String)]] = perRunLazy(this) {
+  private lazy val sideEffectFreeConstructors: LazyVar[Set[(String, String)]] = perRunLazy(this) {
     val ownerDesc = (p: (InternalName, MethodNameAndType)) => (p._1, p._2.methodType.descriptor)
     primitiveBoxConstructors.map(ownerDesc).toSet ++
       srRefConstructors.map(ownerDesc) ++
@@ -310,7 +310,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
       "scala/collection/StringOps$",
     ) ++ BackendUtils.primitiveTypes.keysIterator
 
-  private[this] lazy val classesOfSideEffectFreeConstructors: LazyVar[Set[String]] = perRunLazy(this)(sideEffectFreeConstructors.get.map(_._1))
+  private lazy val classesOfSideEffectFreeConstructors: LazyVar[Set[String]] = perRunLazy(this)(sideEffectFreeConstructors.get.map(_._1))
 
   def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
     indyLambdaImplMethods.get(hostClass) match {
@@ -414,13 +414,13 @@ object BackendUtils {
    * Analyzer: its implementation also skips over unreachable code in the same way.
    */
   def computeMaxLocalsMaxStack(method: MethodNode): Unit = {
-    if (BytecodeUtils.isAbstractMethod(method) || BytecodeUtils.isNativeMethod(method)) {
+    if (ByteCodeUtils.isAbstractMethod(method) || ByteCodeUtils.isNativeMethod(method)) {
       method.maxLocals = 0
       method.maxStack = 0
     } else if (!isMaxsComputed(method)) {
       val size = method.instructions.size
 
-      var maxLocals = BytecodeUtils.parametersSize(method)
+      var maxLocals = ByteCodeUtils.parametersSize(method)
       var maxStack = 0
 
       // queue of instruction indices where analysis should start
@@ -493,7 +493,7 @@ object BackendUtils {
           // update maxLocals
           insn match {
             case v: VarInsnNode =>
-              val longSize = if (BytecodeUtils.isSize2LoadOrStore(v.getOpcode)) 1 else 0
+              val longSize = if (ByteCodeUtils.isSize2LoadOrStore(v.getOpcode)) 1 else 0
               maxLocals = math.max(maxLocals, v.`var` + longSize + 1) // + 1 because local numbers are 0-based
 
             case i: IincInsnNode =>
@@ -533,7 +533,7 @@ object BackendUtils {
               // the target is already enqueued, see subroutine shape assumption above
 
             case _ =>
-              if (insn.getOpcode != Opcodes.ATHROW && !BytecodeUtils.isReturn(insn))
+              if (insn.getOpcode != Opcodes.ATHROW && !ByteCodeUtils.isReturn(insn))
                 enqInsnIndex(insnIndex + 1, heightAfter)
           }
         }
@@ -644,7 +644,7 @@ object BackendUtils {
               asm.Type.getType(implMethod.getDesc) == expectedImplMethodType             // (1)
                 && receiverType.forall(rt => implMethod.getOwner == rt.getInternalName)  // (2)
                 && samMethodType.getArgumentTypes.corresponds(instantiatedMethodArgTypes)((samArgType, instArgType) =>
-                samArgType == instArgType || BytecodeUtils.isReference(samArgType) && BytecodeUtils.isReference(instArgType)) // (3)
+                samArgType == instArgType || ByteCodeUtils.isReference(samArgType) && ByteCodeUtils.isReference(instArgType)) // (3)
               )
 
             if (isIndyLambda) Some((indy, samMethodType, implMethod, instantiatedMethodType, indyParamTypes))

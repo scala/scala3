@@ -17,21 +17,22 @@ package opt
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.IntMap
 import scala.collection.{concurrent, mutable}
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.tree._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting._
+import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
-import dotty.tools.backend.jvm.analysis._
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.analysis.*
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import dotty.tools.dotc.util.SrcPos
 
 class CallGraph(val postProcessor: PostProcessor) {
 
-  import postProcessor._
-  import bTypes._
-  //import bTypesFromClassfile._
+  import postProcessor.*
+  import bTypes.*
+  import bTypesFromClassfile.*
   import postProcessor.frontendAccess.recordPerRunCache
 
   /**
@@ -129,7 +130,7 @@ class CallGraph(val postProcessor: PostProcessor) {
   }
 
   def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
-    if (!BytecodeUtils.isAbstractMethod(methodNode) && !BytecodeUtils.isNativeMethod(methodNode) && AsmAnalyzer.sizeOKForBasicValue(methodNode)) {
+    if (!ByteCodeUtils.isAbstractMethod(methodNode) && !ByteCodeUtils.isNativeMethod(methodNode) && AsmAnalyzer.sizeOKForBasicValue(methodNode)) {
       lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
       var methodCallsites = Map.empty[MethodInsnNode, Callsite]
@@ -258,7 +259,7 @@ class CallGraph(val postProcessor: PostProcessor) {
   def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): IntMap[ClassBType] = {
     val paramTypes = {
       val params = paramTps.map(t => bTypeForDescriptorFromClassfile(t.getDescriptor))
-      val isStatic = BytecodeUtils.isStaticMethod(methodNode)
+      val isStatic = ByteCodeUtils.isStaticMethod(methodNode)
       if (isStatic) params else receiverType +: params
     }
     samTypes(paramTypes)
@@ -278,8 +279,8 @@ class CallGraph(val postProcessor: PostProcessor) {
   }
 
   final class FLazy[@specialized(Int) T](_init: => T) {
-    private[this] var init: (() => T) | Null = () => _init
-    private[this] var v: T = _
+    private var init: (() => T) | Null = () => _init
+    private var v: T = uninitialized
     def get: T = {
       if (init != null) {
         v = init()
@@ -387,10 +388,10 @@ class CallGraph(val postProcessor: PostProcessor) {
                             callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: Position,
                             annotatedInline: Boolean, annotatedNoInline: Boolean) {
     // an annotation at the callsite takes precedence over an annotation at the definition site
-    def isInlineAnnotated = annotatedInline || (callee.get.annotatedInline && !annotatedNoInline)
-    def isNoInlineAnnotated = annotatedNoInline || (callee.get.annotatedNoInline && !annotatedInline)
+    def isInlineAnnotated: Boolean = annotatedInline || (callee.get.annotatedInline && !annotatedNoInline)
+    def isNoInlineAnnotated: Boolean = annotatedNoInline || (callee.get.annotatedNoInline && !annotatedInline)
 
-    override def toString =
+    override def toString: String =
       "Invocation of" +
         s" ${callee.map(_.calleeDeclarationClass.internalName).getOrElse("?")}.${callsiteInstruction.name + callsiteInstruction.desc}" +
         s"@${callsiteMethod.instructions.indexOf(callsiteInstruction)}" +
@@ -428,11 +429,11 @@ class CallGraph(val postProcessor: PostProcessor) {
                           calleeInfoWarning: Option[CalleeInfoWarning]) {
     override def toString = s"Callee($calleeDeclarationClass.${callee.name})"
 
-    def canInlineFromSource = inlinerHeuristics.canInlineFromSource(sourceFilePath, calleeDeclarationClass.internalName)
-    def isAbstract = isAbstractMethod(callee)
-    def isSpecialMethod = isConstructor(callee) || isNativeMethod(callee) || hasCallerSensitiveAnnotation(callee)
+    def canInlineFromSource: Boolean = inlinerHeuristics.canInlineFromSource(sourceFilePath, calleeDeclarationClass.internalName)
+    def isAbstract: Boolean = isAbstractMethod(callee)
+    def isSpecialMethod: Boolean = isConstructor(callee) || isNativeMethod(callee) || hasCallerSensitiveAnnotation(callee)
 
-    def safeToInline = isStaticallyResolved && canInlineFromSource && !isAbstract && !isSpecialMethod
+    def safeToInline: Boolean = isStaticallyResolved && canInlineFromSource && !isAbstract && !isSpecialMethod
   }
 
   /**

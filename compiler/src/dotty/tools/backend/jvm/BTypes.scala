@@ -963,9 +963,9 @@ object BTypes {
    *                               the classpath. This warning can be reported later by the inliner.
    */
   final case class InlineInfo(isEffectivelyFinal: Boolean,
-                              sam: Option[String] | Null,
-                              methodInfos: collection.SortedMap[(String, String), MethodInlineInfo] | Null,
-                              warning: Option[BackendReporting.ClassInlineInfoWarning] | Null) {
+                              sam: Option[String],
+                              methodInfos: collection.SortedMap[(String, String), MethodInlineInfo],
+                              warning: Option[BackendReporting.ClassInlineInfoWarning]) {
     lazy val methodInfosSorted: IndexedSeq[((String, String), MethodInlineInfo)] = {
       val result = new Array[((String, String), MethodInlineInfo)](methodInfos.size)
       var i = 0
@@ -973,7 +973,8 @@ object BTypes {
         result(i) = (ownerAndName, info)
         i += 1
       }
-      scala.util.Sorting.quickSort(result)(Ordering.by(_._1))
+      given Ordering[((String, String), MethodInlineInfo)].by(_._1)
+      scala.util.Sorting.quickSort(result)
       ArraySeq.unsafeWrapArray(result)
     }
   }

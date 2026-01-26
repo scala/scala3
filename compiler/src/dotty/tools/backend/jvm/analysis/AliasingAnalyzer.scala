@@ -18,11 +18,11 @@ import scala.annotation.switch
 import scala.collection.AbstractIterator
 import scala.collection.mutable
 import scala.tools.asm.Opcodes
-import scala.tools.asm.tree._
-import scala.tools.asm.tree.analysis._
+import scala.tools.asm.tree.*
+import scala.tools.asm.tree.analysis.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.AliasSet.SmallBitSet
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 /**
  * A subclass of Frame that tracks aliasing of values stored in local variables and on the stack.
@@ -34,10 +34,10 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  * See the doc of package object `analysis` for some notes on the performance of alias analysis.
  */
 class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLocals, nStack) {
-  import Opcodes._
+  import Opcodes.*
 
   // Auxiliary constructor required for implementing `AliasingAnalyzer.newFrame`
-  def this(src: Frame[_ <: V]) = {
+  def this(src: Frame[? <: V]) = {
     this(src.getLocals, src.getMaxStackSize)
     init(src)
   }
@@ -293,7 +293,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
    * }
    * [...]       // (x, a) -- merge of ((x, y, a)) and ((x, a), (y, b))
    */
-  override def merge(other: Frame[_ <: V], interpreter: Interpreter[V]): Boolean = {
+  override def merge(other: Frame[? <: V], interpreter: Interpreter[V]): Boolean = {
     // merge is the main performance hot spot of a data flow analysis.
 
     // in nullness analysis, super.merge (which actually merges the nullness values) takes 20% of
@@ -305,7 +305,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     // andNotIterator, see its comment.
 
     var aliasesChanged = false
-    val aliasingOther = other.asInstanceOf[AliasingFrame[_]]
+    val aliasingOther = other.asInstanceOf[AliasingFrame[?]]
 
     val numValues = getLocals + getStackSize
     // assume (a, b) are aliases both in this frame, and the other frame. when merging the alias set
@@ -326,7 +326,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
             }
           } else {
             // The iterator yields elements that are in `thisAliases` but not in `otherAliases`.
-            // As a side-effect, for every index `i` that is in both alias sets, the iterator sets
+            // As a side effect, for every index `i` that is in both alias sets, the iterator sets
             // `knownOk(i) = true`: the alias sets for these values don't need to be merged again.
             val thisNotOtherIt = AliasSet.andNotIterator(thisAliases, otherAliases, knownOk)
             if (thisNotOtherIt.hasNext) {
@@ -355,9 +355,9 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     r
   }
 
-  override def init(src: Frame[_ <: V]): Frame[V] = {
+  override def init(src: Frame[? <: V]): Frame[V] = {
     super.init(src) // very quick (just an arraycopy)
-    System.arraycopy(src.asInstanceOf[AliasingFrame[_]].aliases, 0, aliases, 0, aliases.length) // also quick
+    System.arraycopy(src.asInstanceOf[AliasingFrame[?]].aliases, 0, aliases, 0, aliases.length) // also quick
 
     val newSets = mutable.HashMap.empty[AliasSet, AliasSet]
 
@@ -386,9 +386,9 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
             if (small.d != -1) aliases(small.d) = newSet
           }
         } else {
-          // the actual hot spot is the hash map operations here: this is where almost all of the 20%
+          // the actual hot spot is the hash map operations here: this is where almost all the 20%
           // mentioned above is spent.
-          // i also benchmarked an alternative implementation: keep an array of booleans for indexes
+          // I also benchmarked an alternative implementation: keep an array of booleans for indexes
           // that already contain the cloned set. iterate through all elements of the cloned set and
           // assign the cloned set. this approach is 50% slower than using a hash map.
           if (newSets contains set) aliases(i) = newSets(set)
@@ -411,7 +411,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
  */
 class AliasingAnalyzer[V <: Value](interpreter: Interpreter[V]) extends Analyzer[V](interpreter) {
   override def newFrame(nLocals: Int, nStack: Int): AliasingFrame[V] = new AliasingFrame(nLocals, nStack)
-  override def newFrame(src: Frame[_ <: V]): AliasingFrame[V] = new AliasingFrame(src)
+  override def newFrame(src: Frame[? <: V]): AliasingFrame[V] = new AliasingFrame(src)
 }
 
 // Marker trait for AsmAnalyzers that use AliasingFrame
@@ -507,7 +507,7 @@ object AliasSet {
     override def toString = s"($a, $b, $c, $d)"
   }
 
-  def bsEmpty: Array[Long] = new Array[Long](1)
+  private def bsEmpty: Array[Long] = new Array[Long](1)
 
   private def bsEnsureCapacity(set: Array[Long], index: Int): Array[Long] = {
     if (index < set.length) set
@@ -520,7 +520,7 @@ object AliasSet {
     }
   }
 
-  def bsAdd(set: AliasSet, bit: Int): Unit = {
+  private def bsAdd(set: AliasSet, bit: Int): Unit = {
     val bits = set.set.asInstanceOf[Array[Long]]
     val index = bit >> 6
     val resSet = bsEnsureCapacity(bits, index)
@@ -533,7 +533,7 @@ object AliasSet {
     }
   }
 
-  def bsRemove(set: AliasSet, bit: Int): Unit = {
+  private def bsRemove(set: AliasSet, bit: Int): Unit = {
     val bits = set.set.asInstanceOf[Array[Long]]
     val index = bit >> 6
     if (index < bits.length) {
@@ -546,7 +546,7 @@ object AliasSet {
     }
   }
 
-  def bsContains(set: Array[Long], bit: Int): Boolean = {
+  private def bsContains(set: Array[Long], bit: Int): Boolean = {
     val index = bit >> 6
     bit >= 0 && index < set.length && (set(index) & (1L << bit)) != 0L
   }
@@ -556,7 +556,7 @@ object AliasSet {
   /**
    * Convert a bit array to a SmallBitSet. Requires the bit array to contain exactly four bits.
    */
-  def bsToSmall(bits: Array[Long]): SmallBitSet | Null = {
+  private def bsToSmall(bits: Array[Long]): SmallBitSet | Null = {
     var a = -1
     var b = -1
     var c = -1
@@ -605,8 +605,8 @@ object AliasSet {
     }
 
     // for each value that exists both in this AND (&) the other bit, `thisAndOther` is set to true.
-    // hacky side-effect, used for performance of AliasingFrame.merge.
-    private def setThisAndOther(x: Int) = if (thisAndOther != null) thisAndOther(x) = true
+    // hacky side effect, used for performance of AliasingFrame.merge.
+    private def setThisAndOther(x: Int): Unit = if (thisAndOther != null) thisAndOther(x) = true
 
     private def checkABCD(x: Int, num: Int): Boolean = {
       // assert(x == a && num == 1 || x == b && num == 2 || ...)

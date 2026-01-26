@@ -15,16 +15,15 @@ package backend.jvm
 
 import scala.annotation.{switch, unused}
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.{NoClassBTypeInfoMissingBytecode, NoInlineInfoAttribute}
-import dotty.tools.backend.jvm.opt.{BytecodeUtils, InlineInfoAttribute}
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.jvm.opt.{ByteCodeUtils, InlineInfoAttribute}
 
-abstract class BTypesFromClassfile {
-  val postProcessor: PostProcessor
-
+class BTypesFromClassfile(val postProcessor: PostProcessor) {
   import postProcessor.{bTypes, byteCodeRepository, inlinerHeuristics}
   import bTypes._
   import coreBTypes._
@@ -120,7 +119,7 @@ abstract class BTypesFromClassfile {
     // if classNode is a nested class, it has an innerClass attribute for itself. in this
     // case we build the NestedInfo.
     def nestedInfo = classNode.innerClasses.asScala.find(_.name == classNode.name) map {
-      case innerEntry =>
+      innerEntry =>
         val enclosingClass =
           if (innerEntry.outerName != null) {
             // if classNode is a member class, the outerName is non-null
@@ -145,7 +144,7 @@ abstract class BTypesFromClassfile {
   /**
    * Build the InlineInfo for a class. For Scala classes, the information is stored in the
    * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
-   * metadata available in the classfile (ACC_FINAL flags, etc).
+   * metadata available in the classfile (ACC_FINAL flags, etc.).
    */
   def inlineInfoFromClassfile(classNode: ClassNode): InlineInfo = {
     def fromClassfileAttribute: Option[InlineInfo] = {
@@ -167,14 +166,14 @@ abstract class BTypesFromClassfile {
       val methodInfos = new mutable.TreeMap[(String, String), MethodInlineInfo]()
       classNode.methods.forEach(methodNode => {
         val info = MethodInlineInfo(
-          effectivelyFinal                    = BytecodeUtils.isFinalMethod(methodNode),
+          effectivelyFinal                    = ByteCodeUtils.isFinalMethod(methodNode),
           annotatedInline                     = false,
           annotatedNoInline                   = false)
         methodInfos((methodNode.name, methodNode.desc)) = info
       })
 
       InlineInfo(
-        isEffectivelyFinal = BytecodeUtils.isFinalClass(classNode),
+        isEffectivelyFinal = ByteCodeUtils.isFinalClass(classNode),
         sam = inlinerHeuristics.javaSam(classNode.name),
         methodInfos = methodInfos,
         warning)

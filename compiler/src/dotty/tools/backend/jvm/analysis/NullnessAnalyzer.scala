@@ -17,11 +17,11 @@ package analysis
 import java.util
 
 import scala.annotation.switch
-import scala.tools.asm.tree.analysis._
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.analysis.*
+import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
 /**
@@ -35,9 +35,9 @@ import dotty.tools.backend.jvm.BackendUtils.*
  * required context. See https://github.com/scala/scala-asm/commit/8133d75032.
  *
  * After some operations we know that a certain value is not null (e.g. the receiver of an instance
- * call). However, the receiver is an value on the stack and consumed while interpreting the
+ * call). However, the receiver is a value on the stack and consumed while interpreting the
  * instruction - so we can only gain some knowledge if we know that the receiver was an alias of
- * some other local variable or stack slot. Therefore we use the AliasingFrame class.
+ * some other local variable or stack slot. Therefore, we use the AliasingFrame class.
  */
 
 /**
@@ -52,13 +52,12 @@ sealed abstract class NullnessValue(final val isSize2: Boolean) extends Value {
    **/
   def getSize: Int = if (isSize2) 2 else 1
 
-  def merge(other: NullnessValue) = {
+  def merge(other: NullnessValue): NullnessValue =
     if (this eq other) this
     else if (this eq UnknownValue2) this // the only possible value of size two
     else UnknownValue1
-  }
 
-  final override def equals(other: Any) = this eq other.asInstanceOf[Object]
+  final override def equals(other: Any): Boolean = this eq other.asInstanceOf[Object]
 
   def invert: NullnessValue = if (this == NullValue) NotNullValue else if (this == NotNullValue) NullValue else this
 }
@@ -69,8 +68,8 @@ object UnknownValue2 extends NullnessValue(isSize2 = true ) { override def toStr
 object NotNullValue  extends NullnessValue(isSize2 = false) { override def toString = "NotNull"  }
 
 object NullnessValue {
-  def unknown(isSize2: Boolean) = if (isSize2) UnknownValue2 else UnknownValue1
-  def unknown(insn: AbstractInsnNode) = if (instructionResultSize(insn) == 2) UnknownValue2 else UnknownValue1
+  def unknown(isSize2: Boolean): NullnessValue = if (isSize2) UnknownValue2 else UnknownValue1
+  def unknown(insn: AbstractInsnNode): NullnessValue = if (instructionResultSize(insn) == 2) UnknownValue2 else UnknownValue1
 }
 
 final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean, method: MethodNode) extends Interpreter[NullnessValue](Opcodes.ASM5) {
@@ -134,7 +133,7 @@ final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolea
 
   def ternaryOperation(insn: AbstractInsnNode, value1: NullnessValue, value2: NullnessValue, value3: NullnessValue): NullnessValue = UnknownValue1
 
-  def naryOperation(insn: AbstractInsnNode, values: util.List[_ <: NullnessValue]): NullnessValue = insn match {
+  def naryOperation(insn: AbstractInsnNode, values: util.List[? <: NullnessValue]): NullnessValue = insn match {
     case mi: MethodInsnNode if knownNonNullInvocation(mi) =>
       NotNullValue
 
@@ -145,19 +144,19 @@ final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolea
 
   def returnOperation(insn: AbstractInsnNode, value: NullnessValue, expected: NullnessValue): Unit = ()
 
-  def merge(a: NullnessValue, b: NullnessValue): NullnessValue = a merge b
+  def merge(a: NullnessValue, b: NullnessValue): NullnessValue = a.merge(b)
 }
 
 class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessValue](nLocals, nStack) {
-  private[this] var ifNullAliases: AliasSet | Null = null
+  private var ifNullAliases: AliasSet | Null = null
 
   // Auxiliary constructor required for implementing `NullnessAnalyzer.newFrame`
-  def this(src: Frame[_ <: NullnessValue]) = {
+  def this(src: Frame[? <: NullnessValue]) = {
     this(src.getLocals, src.getMaxStackSize)
     init(src)
   }
 
-  private def setNullness(s: AliasSet | Null, v: NullnessValue) = {
+  private def setNullness(s: AliasSet | Null, v: NullnessValue): Unit = {
     val it = s.nn.iterator
     while (it.hasNext)
       this.setValue(it.next(), v)
@@ -252,7 +251,7 @@ class NullnessAnalyzerImpl(methodNode: MethodNode, knownNonNullInvocation: Metho
   extends Analyzer[NullnessValue](new NullnessInterpreter(knownNonNullInvocation, modulesNonNull, methodNode)) {
   // override the `newFrame` methods to make sure the analyzer uses NullnessFrames.
   override def newFrame(nLocals: Int, nStack: Int): NullnessFrame = new NullnessFrame(nLocals, nStack)
-  override def newFrame(src: Frame[_ <: NullnessValue]): NullnessFrame = new NullnessFrame(src)
+  override def newFrame(src: Frame[? <: NullnessValue]): NullnessFrame = new NullnessFrame(src)
 }
 
 class NullnessAnalyzer(methodNode: MethodNode, classInternalName: InternalName, knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean)

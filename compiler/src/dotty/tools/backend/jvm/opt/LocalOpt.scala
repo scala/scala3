@@ -16,14 +16,14 @@ package opt
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.Opcodes._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis._
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.analysis.*
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing
@@ -46,7 +46,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  *   + enables downstream:
  *     - stale stores (loads may be eliminated, removing consumers of a store)
  *     - empty handlers (try blocks may become empty)
- *     - simplify jumps (goto l; [dead code]; l: ..) => remove goto
+ *     - simplify jumps (goto l; [dead code]; l: ...) => remove goto
  *     - stale local variable descriptors
  *     - (not box-unbox, which is implemented using prod-cons, so it doesn't consider dead code)
  *
@@ -104,7 +104,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  *
  * store-load pairs (remove `STORE x; LOAD x` if x is otherwise not used in the method)
  *   + enables downstream:
- *     - empty handlers (code is removes, a try block may become empty
+ *     - empty handlers (code is removes, a try block may become empty)
  *     - simplify jumps (code is removed, a goto may become redundant for example)
  *     - stale local variable descriptors
  *
@@ -151,7 +151,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  */
 class LocalOpt(pp: PostProcessor) {
 
-  import LocalOptImpls._
+  import LocalOptImpls.*
 
   val boxUnbox = new BoxUnbox(pp)
   val copyProp = new CopyProp(pp)
@@ -173,7 +173,7 @@ class LocalOpt(pp: PostProcessor) {
     if (BackendUtils.isDceDone(method)) return false // we know there is no unreachable code
 
     // For correctness, after removing unreachable code, we have to eliminate empty exception
-    // handlers, see scaladoc of def methodOptimizations. Removing an live handler may render more
+    // handlers, see scaladoc of def methodOptimizations. Removing a live handler may render more
     // code unreachable and therefore requires running another round.
     def removalRound(): Boolean = {
       val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName)
@@ -210,7 +210,7 @@ class LocalOpt(pp: PostProcessor) {
    *
    * Returns `true` if the bytecode of `method` was changed.
    */
-  def methodOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
+  private def methodOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     if (method.instructions.size == 0) return false // fast path for abstract methods
 
     // unreachable-code also removes unused local variable nodes and empty exception handlers.
@@ -414,7 +414,7 @@ class LocalOpt(pp: PostProcessor) {
    *   - INSTANCEOF of null is replaced by `ICONST_0`
    *   - scala.runtime.BoxesRunTime.unboxToX(null) is rewritten to a zero-value load
    */
-  def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
+  private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     AsmAnalyzer.sizeOKForNullness(method) && {
       lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, compilerSettings.optAssumeModulesNonNull)
 
@@ -507,7 +507,7 @@ class LocalOpt(pp: PostProcessor) {
    * When this method returns, each `labelNode.getLabel` has a status set whether the label is live
    * or not. This can be queried using `BackendUtils.isLabelReachable`.
    */
-  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName): Boolean = {
+  private def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName): Boolean = {
     val size = method.instructions.size
 
     // queue of instruction indices where analysis should start
@@ -570,7 +570,7 @@ class LocalOpt(pp: PostProcessor) {
      */
 
     enq(0)
-    while (top != -1) {
+    while (top != -1) { // TODO suspicious: top never updated in the loop...
       val insnIndex = deq()
       val insn = method.instructions.get(insnIndex)
       visited.addOne(insnIndex)
@@ -664,7 +664,7 @@ class LocalOpt(pp: PostProcessor) {
    *
    * The type of the tested object is determined using a NonLubbingTypeFlowAnalyzer. Note that this
    * analysis collapses LUBs of non-equal references types to Object for simplicity. Example:
-   * given `B <: A <: Object`, the cast in `(if (..) new B else new A).asInstanceOf[A]` would not
+   * given `B <: A <: Object`, the cast in `(if (...) new B else new A).asInstanceOf[A]` would not
    * be eliminated.
    *
    * Note: to rewrite `INSTANCEOF` tests, we also run a nullness analyzer. We need to know nullness
@@ -672,7 +672,7 @@ class LocalOpt(pp: PostProcessor) {
    *
    * Returns two booleans (typeInsnChanged, intrinsicRewritten)
    */
-  def eliminateRedundantCastsAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = if (!AsmAnalyzer.sizeOKForNullness(method)) (false, false) else {
+  private def eliminateRedundantCastsAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = if (!AsmAnalyzer.sizeOKForNullness(method)) (false, false) else {
     def isSubType(aDescOrIntN: String, bDescOrIntN: String): Boolean = {
       // Neither a nor b may be descriptors for primitive types. INSTANCEOF and CHECKCAST require
       //   - "objectref must be of type reference" and
@@ -768,8 +768,11 @@ class LocalOpt(pp: PostProcessor) {
     var intrinsicRewritten = false
 
     for ((oldOp, newOp) <- toReplace) {
-      if (oldOp.isInstanceOf[TypeInsnNode]) typeInsnChanged = true
-      else if (oldOp.isInstanceOf[MethodInsnNode]) intrinsicRewritten = true
+      oldOp match {
+        case _: TypeInsnNode => typeInsnChanged = true
+        case _: MethodInsnNode => intrinsicRewritten = true
+        case _ =>
+      }
       for (n <- newOp) method.instructions.insertBefore(oldOp, n)
       method.instructions.remove(oldOp)
     }
@@ -781,9 +784,9 @@ class LocalOpt(pp: PostProcessor) {
 object LocalOptImpls {
   /**
    * Remove exception handlers that cover empty code blocks. A block is considered empty if it
-   * consist only of labels, frames, line numbers, nops and gotos.
+   * consists only of labels, frames, line numbers, nops and gotos.
    *
-   * There are no executable instructions that we can assume don't throw (eg ILOAD). The JVM spec
+   * There are no executable instructions that we can assume don't throw (e.g., ILOAD). The JVM spec
    * basically says that a VirtualMachineError may be thrown at any time:
    *   https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.3
    *
@@ -944,7 +947,7 @@ object LocalOptImpls {
   /**
    * Removes LineNumberNodes that don't describe any executable instructions.
    *
-   * As a side-effect, this traversal removes the `LABEL_REACHABLE_STATUS` flag from all label's
+   * As a side effect, this traversal removes the `LABEL_REACHABLE_STATUS` flag from all label's
    * `status` fields.
    *
    * This method expects (and asserts) that the `start` label of each LineNumberNode is the
@@ -1007,12 +1010,12 @@ object LocalOptImpls {
       _jumpTargets
     }
 
-    def removeJumpFromMap(jump: JumpInsnNode) = {
+    def removeJumpFromMap(jump: JumpInsnNode): Unit = {
       jumpInsns.subtractOne(jump)
       _jumpTargets = null
     }
 
-    def replaceJumpByPop(jump: JumpInsnNode) = {
+    def replaceJumpByPop(jump: JumpInsnNode): Unit = {
       removeJumpAndAdjustStack(method, jump)
       removeJumpFromMap(jump)
     }

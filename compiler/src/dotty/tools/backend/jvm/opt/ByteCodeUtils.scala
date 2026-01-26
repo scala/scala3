@@ -16,22 +16,22 @@ package opt
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.Opcodes._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.commons.CodeSizeEvaluator
-import scala.tools.asm.tree._
-import scala.tools.asm.tree.analysis._
+import scala.tools.asm.tree.*
+import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.{Label, Type}
-import dotty.tools.backend.jvm.GenBCode._
+import dotty.tools.backend.jvm.GenBCode.*
 import dotty.tools.backend.jvm.analysis.InstructionStackEffect
 
-object BytecodeUtils {
+object ByteCodeUtils {
 
   // https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.9.1
-  final val maxJVMMethodSize = 65535
+  private final val maxJVMMethodSize = 65535
 
   // 5% margin, more than enough for the instructions added by the inliner (store / load args, null check for instance methods)
-  final val maxMethodSizeAfterInline = maxJVMMethodSize - (maxJVMMethodSize / 20)
+  private final val maxMethodSizeAfterInline = maxJVMMethodSize - (maxJVMMethodSize / 20)
 
   object Goto {
     def unapply(instruction: AbstractInsnNode): Option[JumpInsnNode] = {
@@ -263,9 +263,9 @@ object BytecodeUtils {
     new InsnNode(op)
   }
 
-  def instructionResultSize(insn: AbstractInsnNode) = InstructionStackEffect.prod(InstructionStackEffect.forClassfile(insn))
+  def instructionResultSize(insn: AbstractInsnNode): Int = InstructionStackEffect.prod(InstructionStackEffect.forClassfile(insn))
 
-  def loadZeroForTypeSort(sort: Int) = (sort: @switch) match {
+  def loadZeroForTypeSort(sort: Int): InsnNode = (sort: @switch) match {
     case Type.BOOLEAN |
          Type.BYTE |
          Type.CHAR |
@@ -285,11 +285,11 @@ object BytecodeUtils {
   }
 
   def substituteLabel(reference: AnyRef, from: LabelNode, to: LabelNode): Unit = {
-    def substList(list: java.util.List[LabelNode]) = {
+    def substList(list: java.util.List[LabelNode]): Unit = {
       def foreachWithIndex[A](xs: List[A])(f: (A, Int) => Unit): Unit = {
         var index = 0
         var ys = xs
-        while (!ys.isEmpty) {
+        while (ys.nonEmpty) {
           f(ys.head, index)
           ys = ys.tail
           index += 1
@@ -403,7 +403,7 @@ object BytecodeUtils {
    * with stack map frames.
    *
    * For example, `opt.getOrElse(throw e)` is re-written to an invocation of the lambda body, a
-   * method with return type `Nothing$`. Similarly for `opt.getOrElse(null)` and `Null$`.
+   * method with return type `Nothing$`. Same for `opt.getOrElse(null)` and `Null$`.
    *
    * During bytecode generation this is handled by BCodeBodyBuilder.adapt. See the comment in that
    * method which explains the issue with such phantom values.
@@ -430,7 +430,7 @@ object BytecodeUtils {
     /**
      * The index of the current stack top.
      */
-    def stackTop = frame.getLocals + frame.getStackSize - 1
+    def stackTop: Int = frame.getLocals + frame.getStackSize - 1
 
     /**
      * Gets the value at slot i, where i may be a local or a stack index.

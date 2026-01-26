@@ -6,13 +6,13 @@ import java.util
 
 import scala.annotation.switch
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.Opcodes._
-import scala.tools.asm.tree._
-import scala.tools.asm.tree.analysis._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.Opcodes.*
+import scala.tools.asm.tree.*
+import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.{MethodVisitor, Type}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 /**
  * This class provides additional queries over ASM's built-in `SourceValue` analysis.
@@ -49,7 +49,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  * If ever needed, we could introduce a mode where primitive conversions (l2i) are considered as
  * copying operations.
  *
- * Note on performance: thee data flow analysis (SourceValue / SourceInterpreter, provided by ASM)
+ * Note on performance: the data flow analysis (SourceValue / SourceInterpreter, provided by ASM)
  * is roughly 2-3x slower than a simple analysis (like BasicValue). The reason is that the merge
  * function (merging producer sets) is more complex than merging simple basic values.
  * See also the doc comment in the package object `analysis`.
@@ -77,7 +77,7 @@ class ProdConsAnalyzer(methodNode: MethodNode, classInternalName: InternalName) 
   }
 
   /**
-   * Returns the potential producer instructions of any of the values consumed by `insn`.
+   * Returns the potential producer instructions of the values consumed by `insn`.
    */
   def producersForInputsOf(insn: AbstractInsnNode): Set[AbstractInsnNode] = {
     inputValues(insn).iterator.flatMap(v => v.insns.asScala).toSet
@@ -118,7 +118,7 @@ class ProdConsAnalyzer(methodNode: MethodNode, classInternalName: InternalName) 
 
   /**
    * Returns the potential ultimate consumers of a value in the frame of `insn`. Consumers are
-   * tracked through copying operations such as SOTRE and LOAD.
+   * tracked through copying operations such as STORE and LOAD.
    */
   def ultimateConsumersOfValueAt(insn: AbstractInsnNode, slot: Int): Set[AbstractInsnNode] = {
     def ultimateConsumers(insn: AbstractInsnNode, consumedSlot: Int): Set[AbstractInsnNode] = {

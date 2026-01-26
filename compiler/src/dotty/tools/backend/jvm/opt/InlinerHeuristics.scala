@@ -18,20 +18,20 @@ import java.util.regex.Pattern
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.MethodNode
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, OptimizerWarning}
 import dotty.tools.backend.jvm.BackendUtils
-import dotty.tools.backend.jvm.opt.InlinerHeuristics._
+import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 
 class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
 
   import postProcessor._
   import bTypes._
   import callGraph._
-  import postProcessor.frontendAccess.{backendReporting, compilerSettings}
+  import postProcessor.frontendAccess.*
 
   lazy val inlineSourceMatcher: LazyVar[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
 
@@ -194,12 +194,12 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
       }
     }
 
-    // don't inline into synthetic forwarders (anonfun-adapted methods, bridges, etc). the heuristics
+    // don't inline into synthetic forwarders (anonfun-adapted methods, bridges, etc.). the heuristics
     // will instead inline such methods at callsite. however, *do* inline into user-written forwarders
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      BytecodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0 ||
+      ByteCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0 ||
         backendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass) // seems mixin forwarders are not synthetic...
 
     if (isGeneratedForwarder) None
@@ -262,7 +262,7 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
               val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
               if (forwarderKind < 0)
                 null
-              else if (BytecodeUtils.isSyntheticMethod(callee.callee) || backendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+              else if (ByteCodeUtils.isSyntheticMethod(callee.callee) || backendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
                 SyntheticForwarder
               else forwarderKind match {
                 case 1 => TrivialMethod
@@ -434,12 +434,12 @@ object InlinerHeuristics {
       def matches(internalName: InternalName): Boolean = pattern.matcher(internalName).matches()
     }
     private val patternStrings = inlineFromSetting.filterNot(_.isEmpty)
-    val startAllow: Boolean = patternStrings.headOption.contains("**")
-    private[this] var _allowFromSources: Boolean = false
+    private val startAllow: Boolean = patternStrings.headOption.contains("**")
+    private var _allowFromSources: Boolean = false
 
     val entries: List[Entry] = parse()
 
-    def allowFromSources = _allowFromSources
+    def allowFromSources: Boolean = _allowFromSources
 
     def allow(internalName: InternalName): Boolean = {
       var answer = startAllow
@@ -474,7 +474,7 @@ object InlinerHeuristics {
 
           def current = if (index < len) p.charAt(index) else 0.toChar
 
-          def next() = index += 1
+          def next(): Unit = index += 1
 
           val negated = current == '!'
           if (negated) next()

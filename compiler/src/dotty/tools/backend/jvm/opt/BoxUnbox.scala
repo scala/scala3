@@ -17,13 +17,13 @@ package opt
 import scala.annotation.{tailrec, unused}
 import scala.collection.AbstractIterator
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.Opcodes._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 final class BoxUnbox(pp: PostProcessor) {
 
@@ -234,9 +234,9 @@ final class BoxUnbox(pp: PostProcessor) {
           val localSlots = Vector.from[(Int, Type)](boxKind.boxedTypes.iterator.map(tp => (getLocal(tp.getSize), tp)))
 
           // store boxed value(s) into localSlots
-          val storeOps = localSlots.reverseIterator map { case (slot, tp) =>
+          val storeOps = localSlots.reverseIterator.map { case (slot, tp) =>
             new VarInsnNode(tp.getOpcode(ISTORE), slot)
-          } to(List)
+          }.toList
           val storeInitialValues = creation.loadInitialValues match {
             case Some(ops) => ops ::: storeOps
             case None => storeOps
@@ -291,7 +291,7 @@ final class BoxUnbox(pp: PostProcessor) {
          * Finally, note that variables that become unused are removed later from the table by
          * removeUnusedLocalVariableNodes in LocalOpt.
          *
-         * Unlike modifications that affect the method's instructions (which uses toReplace etc),
+         * Unlike modifications that affect the method's instructions (which uses toReplace etc.),
          * we can directly modify the local variable table - it does not affect the frames of the
          * ProdCons analysis.
          */
@@ -375,7 +375,7 @@ final class BoxUnbox(pp: PostProcessor) {
             replaceCreationOps()
             replaceExtractionOps()
             // Conservative (safe) value for stack growth. In every frame that initially has a multi-value
-            // box on the stack, the stack now contains all of the individual values. So for every eliminated
+            // box on the stack, the stack now contains all the individual values. So for every eliminated
             // box, the maxStack may be up to N-1 slots larger.
             maxStackGrowth += boxKind.boxedTypes.length - 1
 
@@ -821,7 +821,7 @@ final class BoxUnbox(pp: PostProcessor) {
     private val tupleGetterR = "_\\d\\d?".r
     private def isTupleGetter(mi: MethodInsnNode) = tupleGetterR.pattern.matcher(mi.name).matches
 
-    def checkTupleExtraction(insn: AbstractInsnNode, kind: Tuple, prodCons: ProdConsAnalyzer): Option[BoxConsumer] = {
+    private def checkTupleExtraction(insn: AbstractInsnNode, kind: Tuple, prodCons: ProdConsAnalyzer): Option[BoxConsumer] = {
       val expectedTupleClass = kind.tupleClass
       insn match {
         case mi: MethodInsnNode =>
@@ -844,7 +844,10 @@ final class BoxUnbox(pp: PostProcessor) {
     }
 
     private val getterIndexPattern = "_(\\d{1,2}).*".r
-    def tupleGetterIndex(getterName: String) = getterName match { case getterIndexPattern(i) => i.toInt - 1 case x => throw new MatchError(x) }
+    private def tupleGetterIndex(getterName: String): Int = getterName match {
+      case getterIndexPattern(i) => i.nn.toInt - 1
+      case x => throw new MatchError(x)
+    }
   }
 
   // TODO: add more
@@ -899,7 +902,7 @@ final class BoxUnbox(pp: PostProcessor) {
     val loadInitialValues: Option[List[AbstractInsnNode]] = None
   }
   case class InstanceCreation(newOp: TypeInsnNode, dupOp: InsnNode, initCall: MethodInsnNode) extends BoxCreation {
-    def producer = newOp
+    def producer: AbstractInsnNode = newOp
     val loadInitialValues: Option[List[AbstractInsnNode]] = None
   }
 
@@ -920,12 +923,12 @@ final class BoxUnbox(pp: PostProcessor) {
       prodCons.initialProducersForValueAt(consumer, slot)
     }
 
-    def isEscaping = this match {
+    def isEscaping: Boolean = this match {
       case _: EscapingConsumer => true
       case _ => false
     }
 
-    def isWrite = this match {
+    def isWrite: Boolean = this match {
       case _: StaticSetterOrInstanceWrite => true
       case _ => false
     }

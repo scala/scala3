@@ -14,10 +14,11 @@ package dotty.tools
 package backend.jvm
 package opt
 
+import java.util
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
-import java.util.{LinkedHashMap, Map => JMap}
+import java.util.{LinkedHashMap, Map as JMap}
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object FifoCache {
   def apply[K,V](maxSize: Int, threadsafe: Boolean): mutable.Map[K,V] = {
@@ -25,7 +26,7 @@ object FifoCache {
     if (threadsafe) new ConcFifoCache(maxSize) else new FifoCache[K, V](maxSize).asScala
   }
 
-  private class FifoCache[K, V](maxSize: Int) extends LinkedHashMap[K,V] {
+  private class FifoCache[K, V](maxSize: Int) extends util.LinkedHashMap[K,V] {
     override def removeEldestEntry(eldest: JMap.Entry[K, V]): Boolean = {
       size() > maxSize
     }

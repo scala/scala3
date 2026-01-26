@@ -16,14 +16,14 @@ package opt
 
 import scala.annotation.nowarn
 import scala.collection.{concurrent, mutable}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.tools.asm
 import scala.tools.asm.{Attribute, Type}
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting._
+import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 /**
  * The ByteCodeRepository provides utilities to read the bytecode of classfiles from the compilation
@@ -32,7 +32,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
 class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
 
   import postProcessor.{bTypes, bTypesFromClassfile}
-  import bTypes._
+  import bTypes.*
   import frontendAccess.{backendReporting, backendClassPath, recordPerRunCache}
 
   /**
@@ -54,7 +54,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
    * Note - although this is typed a mutable.Map, individual simple get and put operations are threadsafe as the
    * underlying data structure is synchronized.
    */
-  val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassNode]] =
+  private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassNode]] =
     recordPerRunCache(FifoCache[InternalName, Either[ClassNotFound, ClassNode]](maxCacheSize, threadsafe = true))
 
   /**
@@ -63,7 +63,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
    */
   private lazy val javaDefinedClasses = perRunLazy(this)(frontendAccess.javaDefinedClasses)
 
-  def add(classNode: ClassNode, sourceFilePath: Option[String]) = sourceFilePath match {
+  def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
     case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = (classNode, path)
     case _                                 => parsedClasses(classNode.name) = Right(classNode)
   }
@@ -319,7 +319,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
       } catch {
         case ex: Exception =>
           if (frontendAccess.compilerSettings.debug) ex.printStackTrace()
-          backendReporting.warning(NoPosition, s"Error while reading InlineInfoAttribute from ${fullName}\n${ex.getMessage}")
+          backendReporting.warning(NoPosition, s"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
           None
       }
     } match {

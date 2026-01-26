@@ -87,10 +87,10 @@ package dotty.tools.backend.jvm
  * For running an ASM Analyzer, long and double values occupy two local variable slots, but only
  * a single slot on the call stack, as shown by the following snippet:
  *
- *   import scala.tools.nsc.backend.jvm._
- *   import scala.tools.nsc.backend.jvm.opt.BytecodeUtils._
- *   import scala.collection.convert.decorateAsScala._
- *   import scala.tools.asm.tree.analysis._
+ *   import backend.jvm.*
+ *   import backend.jvm.opt.ByteCodeUtils.*
+ *   import scala.collection.convert.decorateAsScala.*
+ *   import scala.tools.asm.tree.analysis.*
  *
  *   val cn = AsmUtils.readClass("/Users/luc/scala/scala/sandbox/A.class")
  *   val m = cn.methods.iterator.asScala.find(_.name == "f").head

@@ -14,10 +14,10 @@ package dotty.tools
 package backend.jvm
 package analysis
 
-import scala.tools.asm.tree.analysis._
+import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.{AbstractInsnNode, MethodNode}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 
 
 /**

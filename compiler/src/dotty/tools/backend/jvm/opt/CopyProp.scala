@@ -16,13 +16,13 @@ package opt
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.Opcodes._
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis._
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.analysis.*
+import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
 class CopyProp(postProcessor: PostProcessor) {
