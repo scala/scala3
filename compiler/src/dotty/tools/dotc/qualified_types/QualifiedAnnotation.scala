@@ -7,8 +7,7 @@ import dotty.tools.dotc.core.Decorators.i
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.{TermLambda, TermParamRef, Type, ConstantType, TypeMap}
 import dotty.tools.dotc.printing.Printer
-import dotty.tools.dotc.printing.Texts.Text
-import dotty.tools.dotc.printing.Texts.stringToText
+import dotty.tools.dotc.printing.Texts.{Text, given}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.report
 
