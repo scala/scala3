@@ -4678,16 +4678,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
         lazy val msg = MissingEmptyArgumentList(sym.show, tree)
+        def applyAction: true =
+          msg.actions
+            .headOption
+            .foreach(Rewrites.applyAction)
+          true
+        def warnScala2 =
+          if {
+            var isScala2 = sym.owner.is(Scala2x)
+            val isJavaEtc =
+              sym.allOverriddenSymbols.exists: m =>
+                if m.owner.is(Scala2x) then
+                  isScala2 = true
+                m.is(JavaDefined) || m == defn.Object_clone || m.owner == defn.AnyClass
+            isScala2 && !isJavaEtc
+          }
+          then report.warning(msg, tree.srcPos)
+          applyAction
 
         sym.isConstructor
-        || sym.matchNullaryLoosely
-        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
-          && {
-            msg.actions
-              .headOption
-              .foreach(Rewrites.applyAction)
-            true
-          }
+        || sym.matchNullaryLoosely && warnScala2
+        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`) && applyAction
+      end isAutoApplied
 
       /** If this is a selection prototype of the form `.apply(...): R`, return the nested
        *  function prototype `(...)R`. Otherwise `pt`.

@@ -1088,7 +1088,7 @@ object SymDenotations {
            sym.is(JavaDefined)
         || sym.owner == defn.AnyClass
         || sym == defn.Object_clone
-        || sym.owner.is(Scala2x) && sym.name != nme.apply
+        || sym.owner.is(Scala2x)
       this.exists && (test(symbol) || allOverriddenSymbols.exists(test))
     }
 
