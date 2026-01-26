@@ -14,7 +14,7 @@ case object B extends A:
     def productElement(n: Int): Any = ???
 
 case object C extends A:
-  override enum Blah:
+  override enum Blah: // error
     case Testing
 
 sealed trait Alt:
@@ -22,12 +22,12 @@ sealed trait Alt:
   val Blah: AnyRef
 
 case object Alternatively extends Alt:
-  override enum Blah:
+  override enum Blah: // error
     case Testing
 
 trait Blahful:
   type Blah[A, B]
 
 object D extends Blahful:
-  override infix enum Blah[A, B]:
+  override infix enum Blah[A, B]: // error
     case Baz[A, B](a: A, b: B) extends Blah[A, B]

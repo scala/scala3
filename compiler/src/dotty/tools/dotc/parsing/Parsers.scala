@@ -4367,7 +4367,7 @@ object Parsers {
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      val mods1 = checkEnumModifiers(mods, allowedForEnum | Override, "")
+      val mods1 = checkEnumModifiers(mods, allowedForEnum, "")
       val modulName = ident()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)

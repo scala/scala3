@@ -1,5 +1,3 @@
-override enum Foo7 { case C } // error
-
 override class X // error
 
 package object p:

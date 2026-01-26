@@ -18,6 +18,10 @@
 8 |lazy     enum Foo5 { case C } // error: only access modifiers allowed
   |^^^^
   |This modifier is not allowed on an enum
+-- Error: tests/neg/i5525.scala:9:0 ------------------------------------------------------------------------------------
+9 |override enum Foo7 { case C } // error: only access modifiers allowed
+  |^^^^^^^^
+  |This modifier is not allowed on an enum
 -- Error: tests/neg/i5525.scala:10:0 -----------------------------------------------------------------------------------
 10 |inline   enum Foo8 { case C } // error: only access modifiers allowed
    |^^^^^^
