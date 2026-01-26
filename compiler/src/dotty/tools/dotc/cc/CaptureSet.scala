@@ -1389,12 +1389,18 @@ object CaptureSet:
      *      when comparing types with different box status
      */
     override def covers(other: Note)(using Context) = other match
-      case other @ IncludeFailure(cs1, elem1, _) =>
-        val strictlySubsumes =
-          cs.elems == cs1.elems
-          && (elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
-              || cs1.isInstanceOf[EmptyOfBoxed] && !cs.isInstanceOf[EmptyOfBoxed])
-        !strictlySubsumes
+      case other @ IncludeFailure(cs2, elem2, _) =>
+        def isStaticOwner(elem: Capability) = elem.core match
+          case elem: TermRef => elem.symbol.moduleClass.isStaticOwner
+          case elem: ThisType => elem.cls.isStaticOwner
+          case _ => false
+        val strictlySubsumes2 =
+          cs.elems == cs2.elems
+          && (elem2.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+              || cs2.isInstanceOf[EmptyOfBoxed] && !cs.isInstanceOf[EmptyOfBoxed]
+              || isStaticOwner(elem) && !isStaticOwner(elem2)
+            )
+        !strictlySubsumes2
       case _ => false
 
     def trailing(msg: String)(using Context): String =
