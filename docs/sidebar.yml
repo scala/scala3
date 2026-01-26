@@ -73,6 +73,7 @@ subsection:
       - page: reference/other-new-features/parameter-untupling.md
       - page: reference/other-new-features/parameter-untupling-spec.md
         hidden: true
+      - page: reference/other-new-features/generalized-method-syntax.md
       - page: reference/other-new-features/kind-polymorphism.md
       - page: reference/other-new-features/matchable.md
       - page: reference/other-new-features/threadUnsafe-annotation.md
@@ -124,6 +125,7 @@ subsection:
       - page: reference/dropped-features/type-projection.md
       - page: reference/dropped-features/do-while.md
       - page: reference/dropped-features/procedure-syntax.md
+      - page: reference/dropped-features/package-objects.md
       - page: reference/dropped-features/early-initializers.md
       - page: reference/dropped-features/class-shadowing.md
       - page: reference/dropped-features/class-shadowing-spec.md
@@ -180,12 +182,13 @@ subsection:
       - page: reference/experimental/tupled-function.md
       - page: reference/experimental/modularity.md
       - page: reference/experimental/typeclasses.md
-      - page: reference/other-new-features/runtimeChecked.md
+      - page: reference/experimental/runtimeChecked.md
         hidden: true
       - page: reference/experimental/unrolled-defs.md
       - page: reference/experimental/package-object-values.md
       - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
       - page: reference/experimental/relaxed-lambdas.md
+      - page: reference/experimental/sub-cases.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md
