@@ -1107,28 +1107,24 @@ object SymDenotations {
     /** If this a module, return the corresponding class, if this is a module, return itself,
      *  otherwise NoSymbol
      */
-    final def moduleClass(using Context): Symbol = {
-      def notFound = {
+    final def moduleClass(using Context): Symbol =
+      def notFound =
         if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
         NoSymbol
-      }
-      if (this.is(ModuleVal))
-        myInfo match {
-          case info: TypeRef           => info.symbol
-          case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
-          case info: LazyType          => info.moduleClass
-          case t: MethodType           =>
-            t.resultType match {
+      if this.is(ModuleVal) then
+        myInfo.stripAnnots match
+          case info: TypeRef            => info.symbol
+          case ExprType(info: TypeRef)  => info.symbol // needed after uncurry, when module terms might be accessor defs
+          case info: LazyType           => info.moduleClass
+          case t: MethodType            =>
+            t.resultType match
               case info: TypeRef => info.symbol
               case _ => notFound
-            }
           case _ => notFound
-        }
-      else if (this.is(ModuleClass))
+      else if this.is(ModuleClass) then
         symbol
       else
         NoSymbol
-    }
 
     /** If this a module class, return the corresponding module, if this is a module, return itself,
      *  otherwise NoSymbol
