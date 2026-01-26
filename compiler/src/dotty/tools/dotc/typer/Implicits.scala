@@ -1474,33 +1474,34 @@ trait Implicits:
                 case _ => fail
             end healAmbiguous
 
-            inline def unrecoverableDivergentImplicit(failure: DivergingImplicit): Boolean =
-              (pt frozen_=:= failure.expectedType) && remaining.forall(compareAlternatives(_, cand) == 0)
+            inline def unrecoverableDivergentImplicit(failure: SearchFailureType): Boolean = {
+              failure match
+                case failure: DivergingImplicit =>
+                  (pt frozen_=:= failure.expectedType) && remaining.forall(compareAlternatives(_, cand) == 0)
+                case _ => false
+            }
 
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
-                else fail.reason match {
-                  case failure: DivergingImplicit if unrecoverableDivergentImplicit(failure)
-                    => found.recoverWith(_ => (fail :: rfailures).reverse.maxBy(_.tree.treeSize))
-                  case _ =>
-                    if (fail.isAmbiguous)
-                      if migrateTo3 then
-                        val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
-                        if (result.isSuccess)
-                          warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
-                        result
-                      else
-                        // The ambiguity happened in a nested search: to recover we
-                        // need a candidate better than `cand`
-                        healAmbiguous(fail, cand :: Nil)
-                    else
-                      // keep only warnings that don't involve the failed candidate reference
-                      priorityChangeWarnings.filterInPlace: (critical, _) =>
-                        !critical.contains(cand.ref)
-                      rank(remaining, found, fail :: rfailures)
-                }
+                else if (unrecoverableDivergentImplicit(fail.reason))
+                  found.recoverWith(_ => (fail :: rfailures).reverse.maxBy(_.tree.treeSize))
+                else if (fail.isAmbiguous)
+                  if migrateTo3 then
+                    val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
+                    if (result.isSuccess)
+                      warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
+                    result
+                  else
+                    // The ambiguity happened in a nested search: to recover we
+                    // need a candidate better than `cand`
+                    healAmbiguous(fail, cand :: Nil)
+                else
+                  // keep only warnings that don't involve the failed candidate reference
+                  priorityChangeWarnings.filterInPlace: (critical, _) =>
+                    !critical.contains(cand.ref)
+                  rank(remaining, found, fail :: rfailures)
               case best: SearchSuccess =>
                 if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
                   best
