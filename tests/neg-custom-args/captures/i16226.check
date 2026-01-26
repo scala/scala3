@@ -1,34 +1,26 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:13:4 ----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:13:27 ---------------------------------------
 13 |    (ref1, f1) => map[A, B](ref1, f1) // error
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (ref1: LazyRef[A^'s1]{val elem: () ->'s2 A^'s3}^'s4, f1: A^'s5 ->'s6 B^'s7) ->'s8
-   |  LazyRef[B^'s9]{val elem: () ->{fresh} B^'s10}^{f1, ref1}
-   |Required: (LazyRef[A]^{io}, A => B) =>² LazyRef[B]^{any}
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |Found:    LazyRef[B]^{f1, ref1}
+   |Required: LazyRef[B]^{any}
    |
    |Note that capability `f1` is not included in capture set {any}
-   |because (f1 : A^'s5 ->'s6 B^'s7) is not visible from any in method mapc.
+   |because (f1 : A => B) in an enclosing function is not visible from any in method mapc.
    |
-   |where:    =>    refers to the root capability caps.any
-   |          =>²   refers to a root capability in the result type of method mapc
-   |          any   is a root capability in the result type of method mapc
-   |          fresh is a root capability associated with the result type of (ref1: LazyRef[A^'s1]{val elem: () ->'s2 A^'s3}^'s4, f1: A^'s5 ->'s6 B^'s7):
-   |  LazyRef[B^'s9]{val elem: () ->{fresh} B^'s10}^{f1, ref1}
+   |where:    =>  refers to a root capability created in anonymous function of type (ref1²: LazyRef[A]^{io}, f1²: A => B): LazyRef[B]^ of parameter parameter f1 of method $anonfun
+   |          any is a root capability in the result type of method mapc
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:4 ----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:27 ---------------------------------------
 15 |    (ref1, f1) => map[A, B](ref1, f1) // error
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (ref1: LazyRef[A^'s11]{val elem: () ->'s12 A^'s13}^'s14, f1: A^'s15 ->'s16 B^'s17) ->'s18
-   |  LazyRef[B^'s19]{val elem: () ->{fresh} B^'s20}^{f1, ref1}
-   |Required: (ref: LazyRef[A]^{io}, f: A => B) =>² LazyRef[B]^{any}
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |Found:    LazyRef[B]^{f1, ref1}
+   |Required: LazyRef[B]^{any}
    |
    |Note that capability `f1` is not included in capture set {any}
-   |because (f1 : A^'s15 ->'s16 B^'s17) is not visible from any in method mapd.
+   |because (f1 : A => B) in an enclosing function is not visible from any in method mapd.
    |
-   |where:    =>    refers to the root capability caps.any
-   |          =>²   refers to a root capability in the result type of method mapd
-   |          any   is a root capability in the result type of method mapd
-   |          fresh is a root capability associated with the result type of (ref1: LazyRef[A^'s11]{val elem: () ->'s12 A^'s13}^'s14, f1: A^'s15 ->'s16 B^'s17):
-   |  LazyRef[B^'s19]{val elem: () ->{fresh} B^'s20}^{f1, ref1}
+   |where:    =>  refers to a root capability created in anonymous function of type (ref1²: LazyRef[A]^{io}, f1²: A => B): LazyRef[B]^ of parameter parameter f1 of method $anonfun
+   |          any is a root capability in the result type of method mapd
    |
    | longer explanation available when compiling with `-explain`

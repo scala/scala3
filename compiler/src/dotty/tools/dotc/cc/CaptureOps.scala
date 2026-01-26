@@ -714,10 +714,6 @@ extension (sym: Symbol)
         info = defn.Caps_Var.typeRef.appliedTo(sym.info)
             .capturing(LocalCap(sym, Origin.InDecl(sym)))))
 
-  def skipAnonymousOwners(using Context): Symbol =
-    if sym.isAnonymousFunction then sym.owner.skipAnonymousOwners
-    else sym
-
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match

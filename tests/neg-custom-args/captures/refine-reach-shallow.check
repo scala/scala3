@@ -1,15 +1,14 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:5:22 --------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:5:27 --------------------------
 5 |  val f: IO^ => IO^ = x => x // error
-  |                      ^^^^^^
-  |                      Found:    (x: IO^'s1) ->'s2 IO^{x}
-  |                      Required: IO^ => IO^{any}
+  |                           ^
+  |Found:    (x : IO^)
+  |Required: IO^{any}
   |
-  |                      Note that capability `x` is not included in capture set {any}
-  |                      because (x : IO^'s1) is not visible from any in value f.
+  |Note that capability `x` is not included in capture set {any}
+  |because (x : IO^) in an enclosing function is not visible from any in value f.
   |
-  |                      where:    =>  refers to a root capability in the type of value f
-  |                                ^   refers to the root capability caps.any
-  |                                any is a root capability in the type of value f
+  |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
+  |          any is a root capability in the type of value f
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:10:38 -------------------------

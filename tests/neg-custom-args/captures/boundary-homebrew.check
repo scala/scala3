@@ -1,17 +1,12 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary-homebrew.scala:19:19 ----------------------------
-19 |    boundary[Int]: l2 ?=>  // error
-   |                   ^
-   |Capability `any` outlives its scope: it leaks into outer capture set 's1 of parameter l1.
-   |The leakage occurred when trying to match the following types:
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary-homebrew.scala:20:31 ----------------------------
+20 |      boundary.break(l2)(using l1) // error
+   |                               ^^
+   |Found:    (l1 : boundary.Label[boundary.Label[Int]^]^{any})
+   |Required: boundary.Label[boundary.Label[Int]^{l2}]
    |
-   |Found:    (l2: boundary.Label[Int]^'s2) ?->{l1} Int
-   |Required: (boundary.Label[Int]^) ?=> Int
+   |Note that capability `any` is not included in capture set {}.
    |
-   |where:    ?=> refers to a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^]^): boundary.Label[Int]^ when checking argument to parameter body of method apply
-   |          ^   refers to the root capability caps.any
-   |          any is a root capability created in anonymous function of type (using l2: boundary.Label[Int]^'s2): Int of parameter parameter l2² of method $anonfun
-   |
-20 |      boundary.break(l2)(using l1)
-21 |      15
+   |where:    ^   refers to a root capability created in method test
+   |          any is a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^²]^²): boundary.Label[Int]^² of parameter parameter l1 of method $anonfun
    |
    | longer explanation available when compiling with `-explain`

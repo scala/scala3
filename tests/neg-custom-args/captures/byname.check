@@ -7,18 +7,16 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:10:6 ----------------------------------------
 10 |  h(f2())  // error
    |    ^^^^
-   |Found:    () ?->{cap1} Int ->{cap1} Int
-   |Required: () ?=> Int ->{cap2} Int
+   |    Found:    Int ->{cap1} Int
+   |    Required: Int ->{cap2} Int
    |
-   |Note that capability `cap1` is not included in capture set {cap2}.
-   |
-   |where:    ?=> refers to a root capability created in method test when checking argument to parameter ff of method h
+   |    Note that capability `cap1` is not included in capture set {cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:19:5 ----------------------------------------
 19 |  h(g()) // error
    |    ^^^
-   |    Found:    () ?->{cap2} I^'s1
+   |    Found:    () ?->{cap2} I
    |    Required: () ?->{cap1} I
    |
    |    Note that capability `cap2` is not included in capture set {cap1}.
@@ -27,7 +25,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:22:5 ----------------------------------------
 22 |  h2(() => g())() // error
    |     ^^^^^^^^^
-   |     Found:    () ->{cap2} I^'s2
+   |     Found:    () ->{cap2} I
    |     Required: () ->{cap1} I
    |
    |     Note that capability `cap2` is not included in capture set {cap1}.

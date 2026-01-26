@@ -4,7 +4,7 @@
    |Capability `file` outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (file: java.io.FileOutputStream^'s2) ->'s3 () ->{file} Unit
+   |Found:    (file: java.io.FileOutputStream^) ->'s2 () ->{file} Unit
    |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
    |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingLogFile
@@ -14,11 +14,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:47:25 ---------------------------------
 47 |  val xs = usingLogFile: f => // error
    |                         ^
-   |Capability `f` outlives its scope: it leaks into outer capture set 's4 which is owned by value xs.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's3 which is owned by value xs.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: java.io.FileOutputStream^'s5) ->'s6 LzyList[Int]^{f}
-   |Required: java.io.FileOutputStream^ => LzyList[Int]^'s4
+   |Found:    (f: java.io.FileOutputStream^) ->'s4 LzyList[Int]^{f}
+   |Required: java.io.FileOutputStream^ => LzyList[Int]^'s3
    |
    |where:    => refers to a root capability created in value xs when checking argument to parameter op of method usingLogFile
    |          ^  refers to the root capability caps.any

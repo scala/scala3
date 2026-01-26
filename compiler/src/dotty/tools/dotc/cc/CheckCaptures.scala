@@ -1147,53 +1147,101 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       val anonfun = mdef.symbol
 
-      def matchParamsAndResult(paramss: List[ParamClause], pt: Type): Unit =
-        //println(i"match $mdef against $pt")
-        paramss match
-        case params :: paramss1 => pt match
+      /** Does `tp` contain capturing types with unsolved capture set variables? */
+      def hasCapsetVars(tp: Type) =
+        def isVarCapturing(tp: Type) = tp match
+          case CapturingType(_, refs) => !refs.isConst
+          case _ => false
+        tp.existsPart(isVarCapturing, stopAt = StopAt.Package)
+
+      /** Use the capture sets of `tp2` in matching capture set variables in `tp1`.
+       *  This is done by copying the elements from `tp2` sets to `tp1` sets
+       *  and marking the `tp1` sets as solved.
+       */
+      def adoptCaptures(tp1: Type, tp2: Type)(using Context): Unit = (tp1.dealias, tp2.dealias) match
+        case (CapturingType(parent1, refs1), CapturingType(parent2, refs2)) =>
+          if !refs1.isConst && refs2.isConst && refs1.elems.forall(refs2.elems.contains) then
+            refs1.asVar.elems = refs2.elems
+            refs1.asVar.markSolved(provisional = false)
+          adoptCaptures(parent1, parent2)
+        case (CapturingType(parent1, refs1), tp2) =>
+          if !refs1.isConst && refs1.elems.isEmpty then
+            refs1.asVar.markIgnored()
+          adoptCaptures(parent1, tp2)
+        case (tp1, CapturingType(parent2, _)) =>
+          adoptCaptures(tp1, parent2)
+        case (FunctionOrMethod(args1, res1), FunctionOrMethod(args2, res2)) =>
+          args1.lazyZip(args2).foreach(adoptCaptures)
+          adoptCaptures(res1, res2)
+        case (AppliedType(fn1, args1), AppliedType(fn2, args2)) =>
+          adoptCaptures(fn1, fn2)
+          args1.lazyZip(args2).foreach(adoptCaptures)
+        case (RefinedType(parent1, _, rinfo1), RefinedType(parent2, _, rinfo2)) =>
+          adoptCaptures(parent1, parent2)
+          adoptCaptures(rinfo1, rinfo2)
+        case _ =>
+
+      def updateResult(tp: Type) = mdef.tpt.updNuType(tp)
+
+      /** Propagate what we know of parameters and results into the closure.
+       *  This improves error messages and avoids shortcomings of inference
+       *  which cannot infer new quantifiers (i24901.scala is an example).
+       */
+      def matchParamsAndResult(paramss: List[ParamClause], pt: Type): Unit = paramss match
+        case params :: paramss1 => pt.dealias match
+          case CapturingType(parent, _) =>
+            matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
             assert(params.hasSameLengthAs(poly.paramInfos))
             matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
-            for (argType, param) <- argTypes.lazyZip(params) do
-              val paramTpt = param.asInstanceOf[ValDef].tpt
-              val paramType = localCapToGlobal(param.symbol, paramTpt.nuType)
-              checkConformsExpr(argType, paramType, param)
-                .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
-            if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
+            inContext(ctx.withOwner(anonfun)) {
+              // Propagate argument types to parameter types with inferred types
+              for (argType, param) <- argTypes.lazyZip(params) do
+                param.asInstanceOf[ValDef].tpt match
+                  case paramTpt: InferredTypeTree =>
+                    val localArgType = globalCapToLocal(argType, Origin.Parameter(param.symbol))
+                    adoptCaptures(param.symbol.info, localArgType)
+                  case _ =>
 
-              def updateTpt(localResType: Type) =
-                mdef.tpt.updNuType(localResType)
-                // Make sure we affect the info of the anonfun by the previous updNuType
-                // unless the info is already defined in a previous phase and does not change.
-                assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
-
-              pt match
-                case RefinedType(_, _, mt: MethodType) =>
-                  if !mt.isResultDependent then
-                    // If mt is result dependent we could compensate this by
-                    // internalizing `resType.substParams(mt, params.tpes)`.
-                    // But this tends to give worse error messages, so we refrain
-                    // from doing that and don't update the local result type instead.
-                    val localResType = inContext(ctx.withOwner(anonfun)):
-                      Internalize(mt)(resType)
-                    updateTpt(localResType)
-                case _ =>
-                  updateTpt(resType)
+              // Propagate fully defined result types
+              if resType.isValueType && !hasCapsetVars(resType) then
+                // Try to update the declared result type of the closure `mdef.tpt` with the expected
+                // result type, in order to propagate constraints into the closure.
+                // Note: We could use adoptCaptures instead, but this seems to give somewhat worse
+                // error messages.
+                pt match
+                  case RefinedType(_, _, mt: MethodType) =>
+                    if !mt.isResultDependent then
+                      // If mt is result dependent we could compensate this by
+                      // internalizing `resType.substParams(mt, params.tpes)`.
+                      // But this tends to give worse error messages, so we refrain
+                      // from doing that and don't update the local result type instead.
+                      updateResult(Internalize(mt)(resType))
+                  case _ =>
+                    updateResult(resType)
+            }
+          case SAMType(mt1, _) =>
+            matchParamsAndResult(paramss, mt1.derivedLambdaType(resType = WildcardType))
+              // We get failures in stdlib's JavaCollectionWrappers.scala when we
+              // match result types against results of SAM methods. Not clear where
+              // they come from. We work aorund this by not passing down the result
+              // type of a SAM method.
           case _ =>
         case Nil =>
-      end matchParamsAndResult
 
       openClosures = (anonfun, pt) :: openClosures
         // openClosures is needed for errors but currently makes no difference
         // TODO follow up on this
       try
-        matchParamsAndResult(mdef.paramss, pt)
         capt.println(i"recheck closure block $mdef: ${anonfun.infoOrCompleter}")
-        if !anonfun.isCompleted
-        then anonfun.ensureCompleted() // this will recheck def
-        else recheckDef(mdef, anonfun)
+        if !anonfun.isCompleted then
+          // anonfun is already completed if its parameter and result types do not change in cc.
+          matchParamsAndResult(mdef.paramss, pt)
+          anonfun.ensureCompleted() // this will recheck def
+        else
+          recheckDef(mdef, anonfun)
         recheckClosure(expr, pt, forceDependent = true)
       finally
         openClosures = openClosures.tail
@@ -1731,7 +1779,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           if falseDeps then expected1 = unalignFunction(expected1)
           val toAdd0 = notes ++ cmpNotes
           val toAdd1 = addApproxAddenda(toAdd0, expected1)
-          fail(tree.withType(actualBoxed), expected1, toAdd1)
+          val failTree =
+            if definedSym(tree).exists then tree else tree.withType(actualBoxed)
+          fail(failTree, expected1, toAdd1)
           actual
         case /*OK*/ _ =>
           if debugSuccesses then tree match

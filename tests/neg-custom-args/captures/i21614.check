@@ -13,11 +13,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |Found:    (_$1: File^'s1) ->{C} Logger{val f: File^{_$1}}^{_$1}
-   |Required: File^{C} => Logger{val f: File^'s2}^'s3
+   |Capability `_$1` outlives its scope: it leaks into outer capture set 's1 which is owned by method mkLoggers2.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability `C` is not classified as trait SharedCapability, therefore it
-   |cannot be included in capture set 's1 of parameter _$1 of SharedCapability elements.
+   |Found:    (_$1: File^{C}) ->{C} Logger{val f: File^{_$1}}^{_$1}
+   |Required: File^{C} => Logger{val f: File^'s2}^'s1
    |
    |where:    => refers to a root capability created in method mkLoggers2 when checking argument to parameter f of method map
    |

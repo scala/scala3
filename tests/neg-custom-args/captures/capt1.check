@@ -45,32 +45,6 @@
 28 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
-36 |  val z2 = h[() -> Cap](() => x) // error
-   |                        ^^^^^^^
-   |                        Found:    () ->'s2 C^{fresh}
-   |                        Required: () -> C^{any}
-   |
-   |                        Note that capability `fresh` is not included in capture set {any}
-   |                        because fresh is not visible from any in value z2.
-   |
-   |                        where:    any   is a root capability created in value z2
-   |                                  fresh is a root capability associated with the result type of (): C^{fresh}
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:37:5 -----------------------------------------
-37 |    (() => C()) // error
-   |     ^^^^^^^^^
-   |     Found:    () ->'s3 C^{fresh}
-   |     Required: () -> C^{any}
-   |
-   |     Note that capability `fresh` is not included in capture set {any}
-   |     because fresh is not visible from any in value z2.
-   |
-   |     where:    any   is a root capability created in value z2
-   |               fresh is a root capability associated with the result type of (): C^{fresh}
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:51 -------------------------------------------------------------
 38 |  val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

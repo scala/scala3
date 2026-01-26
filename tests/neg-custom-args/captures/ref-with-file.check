@@ -1,44 +1,28 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:18:12 --------------------------------
 18 |  withFile: f => // error
    |            ^
-   |Found:    (f: File^'s1) ->'s2 Ref[File^'s3]^
-   |Required: (f: File^²) => Ref[File^'s4]^'s5
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by method Test.
+   |The leakage occurred when trying to match the following types:
    |
-   |Note that capability `any` cannot be included in capture set {} of value r.
+   |Found:    (f: File^) ->'s2 Ref[File^{f}]^²
+   |Required: (f: File^) => Ref[File^'s1]^'s3
    |
-   |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFile
-   |          ^   refers to a root capability classified as Unscoped in the type of value r
-   |          ^²  refers to the root capability caps.any
-   |          any is a root capability created in anonymous function of type (f: File^'s1): Ref[File^'s3]^ of parameter parameter f² of method $anonfun
+   |where:    => refers to a root capability created in method Test when checking argument to parameter op of method withFile
+   |          ^  refers to the root capability caps.any
+   |          ^² refers to a root capability classified as Unscoped in the type of value r
    |
 19 |    val r = Ref(f)
 20 |    r
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:21:12 --------------------------------
-21 |  withFile: f => // error
-   |            ^
-   |Found:    (f: File^'s6) ->'s7 (??? : -> Nothing)
-   |Required: (f: File^) => Nothing
-   |
-   |Note that capability `any` cannot be included in capture set {} of value r.
-   |
-   |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFile
-   |          ^   refers to the root capability caps.any
-   |          any is a root capability created in anonymous function of type (f: File^'s6): (??? : -> Nothing) of parameter parameter f² of method $anonfun
-   |
-22 |    val r = Ref(f)
-23 |    ???
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:25:18 --------------------------------
 25 |  withFileAndRef: (f, r: Ref[String]^) => // error
    |                  ^
-   |Capability `any` outlives its scope: it leaks into outer capture set 's8 which is owned by method Test.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's4 which is owned by method Test.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: File^'s9, r: Ref[String]^{any}) ->'s10 Ref[String]^{any}
-   |Required: (f: File^{any}, r: Ref[String]^{any}) => Ref[String]^'s8
+   |Found:    (f: File^{any}, r: Ref[String]^{any}) ->'s5 Ref[String]^{any}
+   |Required: (f: File^{any}, r: Ref[String]^{any}) => Ref[String]^'s4
    |
    |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFileAndRef
    |          any is the root capability caps.any

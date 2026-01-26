@@ -18,8 +18,8 @@ def foo9a(i: Int)
   : (x$1: CT[Ex3]^)
     ?=> (x$2: CT[Ex2]^)
     ?=> Unit
-  = (x$1: CT[Ex3]^)  // error
-     ?=> (x$2: CT[Ex2]^)
+  = (x$1: CT[Ex3]^)
+     ?=> (x$2: CT[Ex2]^) // error
      ?=>
       //given (CT[Ex3]^) = x$1
       Throw(new Ex3)
@@ -29,7 +29,7 @@ def foo10a(i: Int)
     ?=> (erased x$1: CT[Ex2]^)
     ?=> (erased x$2: CT[Ex1]^)
     ?=> Unit
-  = (erased x$1: CT[Ex3]^) // error
+  = (erased x$1: CT[Ex3]^)
      ?=> (erased x$2: CT[Ex2]^)
-     ?=> (erased x$3: CT[Ex1]^)
+     ?=> (erased x$3: CT[Ex1]^) // error
      ?=> Throw(new Ex3)

@@ -1,0 +1,39 @@
+-- [E007] Type Mismatch Error: tests/neg/cc-fresh-levels.scala:14:10 ---------------------------------------------------
+14 |    r.put(x)  // error
+   |          ^
+   |          Found:    IO^{x}
+   |          Required: IO^{any}
+   |
+   |          Note that capability `x` is not included in capture set {any}
+   |          because (x : IO^) in method outer is not visible from any in value r.
+   |
+   |          where:    ^   refers to a root capability in the type of parameter x
+   |                    any is a root capability in the type of value r
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/cc-fresh-levels.scala:17:10 ---------------------------------------------------
+17 |    r.put(innerIO)  // error
+   |          ^^^^^^^
+   |          Found:    IO^{innerIO}
+   |          Required: IO^{any}
+   |
+   |          Note that capability `innerIO` is not included in capture set {any}
+   |          because (innerIO : IO^) in an enclosing function is not visible from any in value r.
+   |
+   |          where:    ^   refers to a root capability in the type of parameter innerIO
+   |                    any is a root capability in the type of value r
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/cc-fresh-levels.scala:19:10 ---------------------------------------------------
+19 |    r.put(innerIO) // error
+   |          ^^^^^^^
+   |Found:    IO^{innerIO}
+   |Required: IO^{any}
+   |
+   |Note that capability `innerIO` is not included in capture set {any}
+   |because (innerIO : IO^) in an enclosing function is not visible from any in value r.
+   |
+   |where:    ^   refers to a root capability created in anonymous function of type (innerIO²: IO^²): Unit of parameter parameter innerIO of method $anonfun
+   |          any is a root capability in the type of value r
+   |
+   | longer explanation available when compiling with `-explain`

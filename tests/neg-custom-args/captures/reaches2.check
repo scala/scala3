@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches2.scala:10:10 -------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |          Found:    (x$1: (A^'s1 ->{ps*} A^'s2, A^'s3 ->{ps*} A^'s4)^'s5) ->{ps*} A^'s6 ->{ps*} A^'s7
-   |          Required: ((A ->{ps*} A, A ->{ps*} A)) -> A^'s6 ->{ps*} A^'s7
+   |          Found:    (x$1: (A ->{ps*} A, A ->{ps*} A)) ->{ps*} A^'s1 ->{ps*} A^'s2
+   |          Required: ((A ->{ps*} A, A ->{ps*} A)) -> A^'s3 ->'s4 A^'s5
    |
    |          Note that capability `ps*` is not included in capture set {}.
    |

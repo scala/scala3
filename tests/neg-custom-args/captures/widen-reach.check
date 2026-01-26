@@ -5,18 +5,17 @@
   |                  that type captures the root capability `any`.
   |
   |                  where:    ^ refers to the root capability caps.any
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:29 -----------------------------------
 9 |  val foo: IO^ -> IO^ = x => x // error
-  |                        ^^^^^^
-  |                      Found:    (x: IO^) ->'s1 IO^{fresh}
-  |                      Required: IO^ -> IO^{any}
+  |                             ^
+  |Found:    (x : IO^)
+  |Required: IO^{any}
   |
-  |                      Note that capability `fresh` is not included in capture set {any}
-  |                      because fresh is not visible from any in value foo.
+  |Note that capability `x` is not included in capture set {any}
+  |because (x : IO^) in an enclosing function is not visible from any in value foo.
   |
-  |                      where:    ^     refers to the root capability caps.any
-  |                                any   is a root capability in the type of value foo
-  |                                fresh is a root capability associated with the result type of (x: IO^): IO^{fresh}
+  |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
+  |          any is a root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------
