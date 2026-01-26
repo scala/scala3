@@ -53,6 +53,7 @@
 ./dropped-features/limit22.html
 ./dropped-features/macros.html
 ./dropped-features/nonlocal-returns.html
+./dropped-features/package-objects.html
 ./dropped-features/procedure-syntax.html
 ./dropped-features/symlits.html
 ./dropped-features/this-qualifier.html
