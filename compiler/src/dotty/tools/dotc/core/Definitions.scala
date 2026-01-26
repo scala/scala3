@@ -718,6 +718,10 @@ class Definitions {
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
   @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
+  @tu lazy val JavaUtilObjectsClass: ClassSymbol = requiredModule("java.util.Objects").moduleClass.asClass
+  def Objects_hashCode(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
+
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
     // jl.Enum has a single constructor protected(name: String, ordinal: Int).
