@@ -25,7 +25,6 @@ import scala.tools.asm.Opcodes
 abstract class BTypes { self =>
   val frontendAccess: PostProcessorFrontendAccess
   val int: DottyBackendInterface
-  import int.given
 
   /**
    * Every ClassBType is cached on construction and accessible through this method.
@@ -41,7 +40,7 @@ abstract class BTypes { self =>
   // Concurrent maps because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   // Note usage should be private to this file, except for tests
-  val classBTypeCache: ju.concurrent.ConcurrentHashMap[InternalName, ClassBType] =
+  private val classBTypeCache: ju.concurrent.ConcurrentHashMap[InternalName, ClassBType] =
     frontendAccess.recordPerRunJavaMapCache(new ju.concurrent.ConcurrentHashMap[InternalName, ClassBType])
 
   /**
@@ -637,7 +636,7 @@ abstract class BTypes { self =>
       assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
 
       assert(
-        if (info.get.superClass.isEmpty) { isJLO(this) || (DottyBackendInterface.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
+        if (info.get.superClass.isEmpty) { isJLO(this) || (int.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
         else if (isInterface.get) isJLO(info.get.superClass.get)
         else !isJLO(this) && ifInit(info.get.superClass.get)(!_.isInterface.get),
         s"Invalid superClass in $this: ${info.get.superClass}"
@@ -973,8 +972,7 @@ object BTypes {
         result(i) = (ownerAndName, info)
         i += 1
       }
-      given Ordering[((String, String), MethodInlineInfo)].by(_._1)
-      scala.util.Sorting.quickSort(result)
+      scala.util.Sorting.quickSort(result)(using Ordering.by(_._1))
       ArraySeq.unsafeWrapArray(result)
     }
   }

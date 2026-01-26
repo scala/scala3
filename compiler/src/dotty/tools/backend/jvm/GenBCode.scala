@@ -33,7 +33,7 @@ class GenBCode extends Phase { self =>
   private val entryPoints = new mutable.HashSet[String]()
   def registerEntryPoint(s: String): Unit = entryPoints += s
 
-  private var _backendInterface: DottyBackendInterface = uninitialized
+  private var _backendInterface: DottyBackendInterface | Null = null
   def backendInterface(using ctx: Context): DottyBackendInterface = {
     if _backendInterface eq null then
       // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
@@ -41,40 +41,40 @@ class GenBCode extends Phase { self =>
         case fc: FreshContext => fc
         case ctx => ctx.fresh
       _backendInterface = DottyBackendInterface(superCallsMap)(using backendCtx)
-    _backendInterface
+    _backendInterface.nn
   }
 
-  private var _codeGen: CodeGen = uninitialized
+  private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
       val int = backendInterface
       val dottyPrimitives = new DottyPrimitives(ctx)
       _codeGen = new CodeGen(int, dottyPrimitives)(bTypes.asInstanceOf[BTypesFromSymbols[int.type]])
-    _codeGen
+    _codeGen.nn
   }
 
-  private var _bTypes: BTypesFromSymbols[DottyBackendInterface] = uninitialized
+  private var _bTypes: BTypesFromSymbols[DottyBackendInterface] | Null = null
   def bTypes(using Context): BTypesFromSymbols[DottyBackendInterface] = {
     if _bTypes eq null then
       _bTypes = BTypesFromSymbols(backendInterface, frontendAccess)
-    _bTypes
+    _bTypes.nn
   }
 
-  private var _frontendAccess: PostProcessorFrontendAccess = uninitialized
+  private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
       _frontendAccess = PostProcessorFrontendAccess.Impl(backendInterface, entryPoints)
     _frontendAccess.nn
   }
 
-  private var _postProcessor: PostProcessor = uninitialized
+  private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       _postProcessor = new PostProcessor(frontendAccess, bTypes)
     _postProcessor.nn
   }
 
-  private var _generatedClassHandler: GeneratedClassHandler = uninitialized
+  private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
       _generatedClassHandler = GeneratedClassHandler(postProcessor)

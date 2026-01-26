@@ -33,9 +33,9 @@ sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackend
 
   def recordPerRunCache[T <: Clearable](cache: T): T
 
-  def recordPerRunJavaMapCache[T <: JMap[_,_]](cache: T): T
+  def recordPerRunJavaMapCache[T <: JMap[?, ?]](cache: T): T
 
-  def recordPerRunJavaCache[T <: JCollection[_]](cache: T): T
+  def recordPerRunJavaCache[T <: JCollection[?]](cache: T): T
 }
 
 object PostProcessorFrontendAccess {

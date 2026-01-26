@@ -23,10 +23,10 @@ import java.util.concurrent.ConcurrentHashMap
  * instance.
  */
 class BackendUtils(val postProcessor: PostProcessor) {
-  import postProcessor.{bTypes, frontendAccess}
-  import frontendAccess.*
-  import bTypes.*
-  import coreBTypes.*
+  //import postProcessor.{bTypes, frontendAccess}
+  //import frontendAccess.*
+  //import bTypes.*
+  //import coreBTypes.*
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -189,7 +189,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
 
   // ==============================================================================================
 
-   def primitiveAsmTypeToBType(primitiveType: asm.Type): PrimitiveBType = (primitiveType.getSort: @switch) match {
+  def primitiveAsmTypeToBType(primitiveType: asm.Type): PrimitiveBType = (primitiveType.getSort: @switch) match {
     case asm.Type.BOOLEAN => BOOL
     case asm.Type.BYTE    => BYTE
     case asm.Type.CHAR    => CHAR
@@ -386,7 +386,7 @@ object BackendUtils {
 
   // ==============================================================================================
 
-    def maxLocals(method: MethodNode): Int = {
+  def maxLocals(method: MethodNode): Int = {
     computeMaxLocalsMaxStack(method)
     method.maxLocals
   }
@@ -546,7 +546,7 @@ object BackendUtils {
     }
   }
 
-    def isModuleLoad(insn: AbstractInsnNode, nameMatches: InternalName => Boolean): Boolean = insn match {
+  def isModuleLoad(insn: AbstractInsnNode, nameMatches: InternalName => Boolean): Boolean = insn match {
     case fi: FieldInsnNode =>
       fi.getOpcode == Opcodes.GETSTATIC &&
         nameMatches(fi.owner) &&
@@ -568,7 +568,7 @@ object BackendUtils {
 
   // ==============================================================================================
 
-    final case class LambdaMetaFactoryCall(indy: InvokeDynamicInsnNode, samMethodType: asm.Type, implMethod: Handle, instantiatedMethodType: asm.Type)
+  final case class LambdaMetaFactoryCall(indy: InvokeDynamicInsnNode, samMethodType: asm.Type, implMethod: Handle, instantiatedMethodType: asm.Type)
 
   object LambdaMetaFactoryCall {
     val lambdaMetaFactoryMetafactoryHandle = new Handle(

@@ -16,7 +16,6 @@ import dotty.tools.backend.jvm.opt.*
  * optimizations, post-processing and classfile serialization and writing.
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
-  self =>
   import bTypes.classBTypeFromInternalName
   import frontendAccess.{backendReporting, compilerSettings}
 

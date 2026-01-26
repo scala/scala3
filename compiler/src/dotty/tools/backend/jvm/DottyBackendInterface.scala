@@ -81,13 +81,33 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSym
     var field: T | Null = null
     def get: this.type = this
     def isEmpty: Boolean = field eq null
-    def isDefined = !isEmpty
+    def isDefined: Boolean = !isEmpty
     def unapply(s: T): this.type ={
       field = s
       this
     }
   }
 
+
+  private val primitiveCompilationUnits = Set(
+    "Unit.scala",
+    "Boolean.scala",
+    "Char.scala",
+    "Byte.scala",
+    "Short.scala",
+    "Int.scala",
+    "Float.scala",
+    "Long.scala",
+    "Double.scala"
+  )
+
+  /**
+   * True if the current compilation unit is of a primitive class (scala.Boolean et al.).
+   * Used only in assertions.
+   */
+  def isCompilingPrimitive: Boolean = {
+    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
+  }
 }
 
 object DottyBackendInterface {
@@ -115,7 +135,7 @@ object DottyBackendInterface {
   given symExtensions: AnyRef with
     extension (sym: Symbol)
 
-      def isInterface(using Context): Boolean = (sym.is(PureInterface)) || sym.is(Trait)
+      def isInterface(using Context): Boolean = sym.is(PureInterface) || sym.is(Trait)
 
       def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
@@ -127,20 +147,20 @@ object DottyBackendInterface {
        *  TODO: remove the special handing of `LazyBitMapName` once we swtich to
        *        the new lazy val encoding: https://github.com/scala/scala3/issues/7140
        */
-      def isStaticModuleField(using Context): Boolean =
+      private def isStaticModuleField(using Context): Boolean =
         sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName) && !sym.name.is(LazyLocalName)
 
-      def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-          (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
-
-        // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
+      def isStaticMember(using Context): Boolean =
+        // guard against no symbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
+        (sym ne NoSymbol) &&
+        (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
 
       /**
       * True for module classes of modules that are top-level or owned only by objects. Module classes
       * for such objects will get a MODULE$ flag and a corresponding static initializer.
       */
       def isStaticModuleClass(using Context): Boolean =
-        (sym.is(Module)) && {
+        sym.is(Module) && {
           // scalac uses atPickling here
           // this would not work if modules are created after pickling
           // for example by specialization
@@ -150,9 +170,7 @@ object DottyBackendInterface {
             toDenot(sym).isStatic
           }
         }
-
-
-
+      
       def originalLexicallyEnclosingClass(using Context): Symbol =
         // used to populate the EnclosingMethod attribute.
         // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
@@ -180,25 +198,4 @@ object DottyBackendInterface {
     end extension
 
   end symExtensions
-
-  private val primitiveCompilationUnits = Set(
-    "Unit.scala",
-    "Boolean.scala",
-    "Char.scala",
-    "Byte.scala",
-    "Short.scala",
-    "Int.scala",
-    "Float.scala",
-    "Long.scala",
-    "Double.scala"
-  )
-
-  /**
-   * True if the current compilation unit is of a primitive class (scala.Boolean et al).
-   * Used only in assertions.
-   */
-  def isCompilingPrimitive(using Context) = {
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
-  }
-
 }
