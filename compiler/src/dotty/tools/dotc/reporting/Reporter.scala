@@ -230,9 +230,11 @@ abstract class Reporter extends interfaces.ReporterResult {
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)
 
-  def finalizeReporting()(using Context) =
-    if (hasWarnings && ctx.settings.Werror.value)
-      report(new Error("No warnings can be incurred under -Werror", NoSourcePosition))
+  def finalizeReporting()(using Context) = werror()
+
+  private def werror()(using Context) =
+    if hasWarnings && ctx.settings.Werror.value then
+      report(Error("No warnings can be incurred under -Werror", NoSourcePosition))
 
   /** Summary of warnings and errors */
   def summary: String =
@@ -244,10 +246,13 @@ abstract class Reporter extends interfaces.ReporterResult {
     b.mkString("\n")
 
   def summarizeUnreportedWarnings()(using Context): Unit =
+    val warned = hasWarnings
     for (settingName, count) <- unreportedWarnings do
       val were = if count == 1 then "was" else "were"
-      val msg = em"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
+      val warnings = countString(count, s"${settingName.tail} warning")
+      val msg = em"there $were $warnings; re-run with $settingName for details"
       report(Warning(msg, NoSourcePosition))
+    if !warned then werror()
 
   /** Print the summary of warnings and errors */
   def printSummary()(using Context): Unit =

@@ -42,7 +42,6 @@ object Matcher {
   }
 }
 
-
 // Patter Matching Using Extractors
 
 // Option Extractors
@@ -61,8 +60,6 @@ object OptionMatcher {
   println(result)
 }
 
-
-
 // Boolean Extractors
 object Adult {
   def unapply(person: Person): Boolean = person.age >= 18
@@ -79,8 +76,6 @@ object BooleanMatcher {
   println(adultResult)
 }
 
-
-
 // Variadic Extractors
 // Add cases for exceptions
 //
@@ -92,7 +87,7 @@ object VariadicExtractor {
   def unapplySeq[A](list: List[A]): Option[Seq[A]] = Some(list)
 }
 
-object PatternMatchExample extends App {
+object PatternMatchExample {
   def describeList(list: List[Int]): String = list match {
     case VariadicExtractor(1, 2, rest @ _*) =>
       s"Starts with 1, 2 followed by: ${rest.mkString(", ")}"
@@ -115,4 +110,3 @@ object PatternMatchExample extends App {
   println(describeList(List(1)))             // Output: Only one element: 1
   println(describeList(List()))              // Output: Empty list
 }
-
