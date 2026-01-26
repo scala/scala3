@@ -151,7 +151,7 @@ class Completions(
 
     val application = CompletionApplication.fromPath(path)
     val ordering = completionOrdering(application)
-    val sorted = all.sorted(ordering)
+    val sorted = all.sorted(using ordering)
     val values = application.postProcess(sorted)
     (values, result)
   end completions
@@ -737,8 +737,8 @@ class Completions(
       if enrich then
         val searchResult =
           enrichWithSymbolSearch(visit, qualType).getOrElse(SymbolSearch.Result.COMPLETE)
-        (deduplicateCompletions(buf.result), searchResult)
-      else (deduplicateCompletions(buf.result), SymbolSearch.Result.COMPLETE)
+        (deduplicateCompletions(buf.result()), searchResult)
+      else (deduplicateCompletions(buf.result()), SymbolSearch.Result.COMPLETE)
     end filterInteresting
   end extension
 
