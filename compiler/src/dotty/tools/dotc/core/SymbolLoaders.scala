@@ -304,7 +304,7 @@ object SymbolLoaders {
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
-            (forceAbsentCheck || !flat || isAbsent(classRep))) // Check isAbsent: always if forceAbsentCheck, or on 2nd enter of flat names
+            ((!forceAbsentCheck && !flat) || isAbsent(classRep))) // Check isAbsent: always if forceAbsentCheck, or on 2nd enter of flat names
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classReps)
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
