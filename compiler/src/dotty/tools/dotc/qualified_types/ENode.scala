@@ -44,7 +44,7 @@ import dotty.tools.dotc.core.Types.{
 import dotty.tools.dotc.parsing
 import dotty.tools.dotc.printing.{Printer, Showable}
 import dotty.tools.dotc.printing.GlobalPrec
-import dotty.tools.dotc.printing.Texts.{stringToText, Text}
+import dotty.tools.dotc.printing.Texts.{Text, given}
 import dotty.tools.dotc.qualified_types.ENode.Op
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.transform.TreeExtractors.{BinaryOp, UnaryOp}
