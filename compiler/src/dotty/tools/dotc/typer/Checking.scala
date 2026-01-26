@@ -703,7 +703,7 @@ object Checking {
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
     checkCombination(Private, Protected)
-    if !sym.is(Enum, butNot = Case) then checkCombination(Abstract, Override)
+    checkCombination(Abstract, Override)
     checkCombination(Private, Override)
     if sym.isType && !sym.isClass then checkCombination(Private, Opaque)
     checkCombination(Lazy, Inline)

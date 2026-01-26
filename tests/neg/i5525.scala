@@ -6,7 +6,7 @@ final    enum Foo2 { case C } // error: only access modifiers allowed
 sealed   enum Foo3 { case C } // error: only access modifiers allowed
 implicit enum Foo4 { case C } // error: only access modifiers allowed
 lazy     enum Foo5 { case C } // error: only access modifiers allowed
-override enum Foo7 { case C } // refcheck error
+override enum Foo7 { case C } // error: only access modifiers allowed
 inline   enum Foo8 { case C } // error: only access modifiers allowed
 opaque   enum Foo9 { case C } // error: only access modifiers allowed
 

@@ -131,7 +131,7 @@ end Planet
 ```
 
 Enum cases accept only access modifiers.
-Enum classes accept only access modifiers and `into`, `infix`, and `override`.
+Enum classes accept only access modifiers and `into` or `infix`.
 
 ## Deprecation of Enum Cases
 
