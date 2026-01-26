@@ -1059,7 +1059,7 @@ object CaptureSet:
             case _ => isSubsumed
         if !isSubsumed then
           if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
-            val fc = LocalCap(owner, Origin.InDecl(owner))
+            val fc = LocalCap(owner, Origin.InDecl(owner, elem.origin.contributingFields))
             assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
             hideIn(fc)
             super.includeElem(fc)
@@ -1408,52 +1408,75 @@ object CaptureSet:
          |
          |"""
 
-    def render(using Context): String = cs match
-      case cs: Var =>
-        def ownerStr =
-          if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
-        if !cs.levelOK(elem) then
-          val outlivesStr = elem match
-            case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
-            case _ => " outlives its scope: "
-          leading:
-            i"""Capability `${elem.showAsCapability}`${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
-        else if !elem.tryClassifyAs(cs.classifier) then
+    def render(using Context): String = {
+      val msg = cs match
+        case cs: Var =>
+          def ownerStr =
+            if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
+          if !cs.levelOK(elem) then
+            val outlivesStr = elem match
+              case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
+              case _ => " outlives its scope: "
+            leading:
+              i"""Capability `${elem.showAsCapability}`${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+          else if !elem.tryClassifyAs(cs.classifier) then
+            trailing:
+              i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
+                |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
+          else if cs.isBadRoot(elem) then
+            elem match
+              case elem: LocalCap =>
+                leading:
+                  i"""Local capability `${elem.showAsCapability}` created in ${elem.ccOwner} outlives its scope:
+                      |It leaks into outer capture set $cs$ownerStr"""
+              case _ =>
+                trailing:
+                  i"universal capability `${elem.showAsCapability}` cannot be included in capture set $cs"
+          else
+            trailing:
+              i"capability `${elem.showAsCapability}` cannot be included in capture set $cs"
+        case cs: EmptyOfBoxed =>
           trailing:
-            i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
-              |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
-        else if cs.isBadRoot(elem) then
-          elem match
-            case elem: LocalCap =>
-              leading:
-                i"""Local capability `${elem.showAsCapability}` created in ${elem.ccOwner} outlives its scope:
-                    |It leaks into outer capture set $cs$ownerStr"""
-            case _ =>
-              trailing:
-                i"universal capability `${elem.showAsCapability}` cannot be included in capture set $cs"
-        else
+            val (boxed, unboxed) =
+              if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+            i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
+        case _ =>
+          def why =
+            val reasons = cs.elems.toList.collect:
+              case c: LocalCap if !c.acceptsLevelOf(elem) =>
+                i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
+              case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+                i"`$c` is classified as ${c.hiddenSet.classifier} but `${elem.showAsCapability}` is not"
+              case c: ResultCap if !c.subsumes(elem) =>
+                val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
+                i"`$c`, which is existentially bound in ${c.originalBinder.resType}, cannot subsume `${elem.showAsCapability}`$toAdd"
+            if reasons.isEmpty then ""
+            else reasons.mkString("\nbecause ", "\nand ", "")
           trailing:
-            i"capability `${elem.showAsCapability}` cannot be included in capture set $cs"
-      case cs: EmptyOfBoxed =>
-        trailing:
-          val (boxed, unboxed) =
-            if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
-          i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
-      case _ =>
-        def why =
-          val reasons = cs.elems.toList.collect:
-            case c: LocalCap if !c.acceptsLevelOf(elem) =>
-              i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
-            case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
-              i"`$c` is classified as ${c.hiddenSet.classifier} but `${elem.showAsCapability}` is not"
-            case c: ResultCap if !c.subsumes(elem) =>
-              val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
-              i"`$c`, which is existentially bound in ${c.originalBinder.resType}, cannot subsume `${elem.showAsCapability}`$toAdd"
-          if reasons.isEmpty then ""
-          else reasons.mkString("\nbecause ", "\nand ", "")
+            i"capability `${elem.showAsCapability}` is not included in capture set $cs$why"
 
-        trailing:
-          i"capability `${elem.showAsCapability}` is not included in capture set $cs$why"
+      def moduleExplanation(sym: Symbol, ref: CoreCapability): String =
+        val allElems = sym.info.captureSet.elems.toList
+        val (rootElems, otherElems) = allElems.partition(_.isTerminalCapability)
+        val fields =
+          for
+            case rootElem: LocalCap <- rootElems.map(_.core)
+            field <- rootElem.origin.contributingFields
+          yield field
+        val shownElems = if otherElems.nonEmpty then otherElems else allElems
+        val why =
+          if fields.nonEmpty && otherElems.isEmpty
+          then i"contains fields ${fields.map(_.show).mkString(", ")}"
+          else i"uses capabilities ${CaptureSet(shownElems*)}"
+        i"\nNote that $sym is a capability because it $why"
+
+      val elemNote = elem match
+        case elem: TermRef if elem.symbol.is(Module) => moduleExplanation(elem.symbol, elem)
+        case elem: ThisType if elem.cls.is(Module) => moduleExplanation(elem.cls.sourceModule, elem)
+        case elem => ""
+
+      msg ++ elemNote
+    }
 
     override def mentions = cs.elems + elem
 

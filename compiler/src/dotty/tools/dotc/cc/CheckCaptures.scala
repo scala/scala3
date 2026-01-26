@@ -273,9 +273,9 @@ class CheckCaptures extends Recheck, SymTransformer:
   val ccState1 = new CCState // Dotty problem: Rename to ccState ==> Crash in ExplicitOuter
 
   /** A cache that stores for each class the classifiers of all LocalCap instances
-   *  in the types of its fields.
+   *  in the types of its fields and the fields that contribute such LocalCap instances.
    */
-  val knownLocalCapClassifiers = new util.EqHashMap[Symbol, List[ClassSymbol]]
+  val knownLocalCapClassifiersAndFields = new util.EqHashMap[Symbol, (List[ClassSymbol], List[Symbol])]
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx), CheckerAPI:
 
@@ -1037,7 +1037,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  mutability in array vals if separation checking is off, an example is
      *  neg-customargs/captures/matrix.scala.
      */
-    def captureSetImpliedByFields(cls: ClassSymbol, core: Type)(using Context): CaptureSet =
+    def captureSetImpliedByFields(cls: ClassSymbol, core: Type)(using Context): CaptureSet = {
       var infos: List[String] = Nil
       def pushInfo(msg: => String) =
         if ctx.settings.YccVerbose.value then infos = msg :: infos
@@ -1059,33 +1059,34 @@ class CheckCaptures extends Recheck, SymTransformer:
           else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
         case _ => Nil
 
-      def impliedReadOnly(cls: Symbol): Boolean = cls match
+      def contributingFields(cls: Symbol): List[Symbol] = cls match
         case cls: ClassSymbol =>
-          val fieldsRO = knownFields(cls).forall(allLocalCapsInTypeAreRO)
-          val parentsRO = cls.parentSyms.forall(impliedReadOnly)
-          fieldsRO && parentsRO
-        case _ =>
-          false
+          var ownFields = knownFields(cls).filter(memberCaps(_).nonEmpty)
+          val parentFields = cls.parentSyms.flatMap(contributingFields)
+          ownFields ++ parentFields
+        case _ => Nil
 
-      def maybeRO(ref: Capability) =
-        if !cls.isSeparate && impliedReadOnly(cls) then ref.readOnly else ref
+      def maybeRO(ref: Capability, fields: List[Symbol]) =
+        if !cls.isSeparate && fields.forall(allLocalCapsInTypeAreRO)
+        then ref.readOnly
+        else ref
 
-      def localCap = // TODO Maybe drop this?
-        LocalCap(Origin.NewInstance(core)).tap: localCap =>
-          if ctx.settings.YccVerbose.value then
-            pushInfo(i"Note: instance of $cls captures an $localCap that comes from a field")
-            report.echo(infos.mkString("\n"), ctx.owner.srcPos)
+      def localCap(fields: List[Symbol]) =
+        LocalCap(Origin.NewInstance(core, fields))
 
       var implied = impliedClassifiers(cls)
       if cls.isSeparate then implied = dominators(cls.classifier :: Nil, implied)
-      knownLocalCapClassifiers.getOrElseUpdate(cls, implied) match
-        case Nil => CaptureSet.empty
-        case cl :: Nil =>
-          val result = localCap
+      val fields = contributingFields(cls)
+      knownLocalCapClassifiersAndFields.getOrElseUpdate(cls, (implied, fields)) match
+        case (Nil, _) =>
+          CaptureSet.empty
+        case (cl :: Nil, fields) =>
+          val result = localCap(fields)
           result.hiddenSet.adoptClassifier(cl)
-          maybeRO(result).singletonCaptureSet
-        case _ => maybeRO(localCap).singletonCaptureSet
-    end captureSetImpliedByFields
+          maybeRO(result, fields).singletonCaptureSet
+        case (_, fields) =>
+          maybeRO(localCap(fields), fields).singletonCaptureSet
+    }
 
     /** Recheck type applications:
      *   - Map existential captures in result to new local `any`s
@@ -2363,9 +2364,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         def isExternalRef(c: Capability) = !c.isTerminalCapability
 
         def checkExternalUses(sym: Symbol)(using Context): Unit = capturedVars(sym) match
-          case cs: CaptureSet.Var =>
+          case cs: CaptureSet.Var if !isExemptFromExplicitChecks(sym) =>
             val extRefs = cs.dropEmpties().elems.filter(isExternalRef)
-            if !extRefs.isEmpty && !isExemptFromExplicitChecks(sym) then
+            if !extRefs.isEmpty then
               val usesStr = if sym.isClass then "uses" else "uses_init"
               report.error(
                 em"""Publicly visible $sym uses external capabilities ${CaptureSet(extRefs)}.

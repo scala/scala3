@@ -843,7 +843,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         ref match
           case ref: LocalCap =>
             ref.origin match
-              case Origin.InDecl(sym) if sym.isAbstractOrParamType =>
+              case Origin.InDecl(sym, _) if sym.isAbstractOrParamType =>
                 report.error(
                   em"""Separation failure: $descr $ref, which appears in the bound of $sym.
                       |This is not allowed. The $sym has to be returned explicitly in the result type.""",
