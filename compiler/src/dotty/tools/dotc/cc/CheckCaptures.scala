@@ -732,15 +732,23 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Lazy vals are like parameterless methods: accessing them may trigger initialization
         // that uses captured references.
         includeCallCaptures(sym, sym.info, tree)
-      else
+      else {
         if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
           // When we have `var x: A^{c} = ...` where `x` is a local variable then
           // when dereferencing `x` we also need to charge `c`.
           // For fields it's not a problem since `c` would already have been
           // charged for the prefix `p` in `p.x`.
           markFree(sym.info.captureSet, tree)
-        if sym.exists then
-          markPathFree(sym.termRef, pt, tree)
+        //else if sym.is(Lazy) then
+        //  includeCallCaptures(sym, sym.info, tree)
+
+        sym.maybeOwner.thisType match
+          case ref: ThisType
+          if ref.isTracked && sym.isTerm && !sym.is(Package) =>
+            markPathFree(ref, PathSelectionProto(sym, pt, tree), tree)
+          case _ =>
+            if sym.exists then markPathFree(sym.termRef, pt, tree)
+      }
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
     override def recheckThis(tree: This, pt: Type)(using Context): Type =
@@ -760,7 +768,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // if `ref` is not tracked then the selection could not give anything new
         // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
         val sel = ref.select(pt.selector).asInstanceOf[TermRef]
-        markPathFree(sel, pt.pt, pt.select)
+        markPathFree(sel, pt.pt, pt.tree)
       case _ =>
         markFree(ref.mapLocalMutable.adjustReadOnly(pt), tree)
 
@@ -770,7 +778,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
       if tree.symbol.is(Package) then super.selectionProto(tree, pt)
-      else PathSelectionProto(tree, pt)
+      else PathSelectionProto(tree.symbol, pt, tree)
 
     /** A specialized implementation of the selection rule.
      *
@@ -2019,7 +2027,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def noWiden(actual: Type, expected: Type)(using Context): Boolean =
       actual.isSingleton
       && expected.match
-          case expected: PathSelectionProto => !expected.select.symbol.isOneOf(UnstableValueFlags)
+          case expected: PathSelectionProto => !expected.selector.isOneOf(UnstableValueFlags)
           case _ => expected.stripCapturing.isSingleton || expected == LhsProto
 
     /** Adapt `actual` type to `expected` type. This involves:
