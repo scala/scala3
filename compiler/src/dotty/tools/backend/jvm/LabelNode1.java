@@ -27,5 +27,5 @@ public class LabelNode1 extends LabelNode {
         super(label);
     }
 
-    public int flags;
+    //public int flags;
 }
