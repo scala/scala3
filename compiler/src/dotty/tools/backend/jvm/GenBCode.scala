@@ -49,7 +49,7 @@ class GenBCode extends Phase { self =>
     if _codeGen eq null then
       val int = backendInterface
       val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(int, dottyPrimitives)(bTypes)
+      _codeGen = new CodeGen(int, dottyPrimitives, bTypes)
     _codeGen.nn
   }
 
