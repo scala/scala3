@@ -53,6 +53,7 @@
 ./dropped-features/limit22.html
 ./dropped-features/macros.html
 ./dropped-features/nonlocal-returns.html
+./dropped-features/package-objects.html
 ./dropped-features/procedure-syntax.html
 ./dropped-features/symlits.html
 ./dropped-features/this-qualifier.html
@@ -96,6 +97,7 @@
 ./experimental/quoted-patterns-with-polymorphic-functions.html
 ./experimental/relaxed-lambdas.html
 ./experimental/runtimeChecked.html
+./experimental/sub-cases.html
 ./experimental/tupled-function.html
 ./experimental/typeclasses.html
 ./experimental/unrolled-defs.html
@@ -132,6 +134,7 @@
 ./other-new-features/creator-applications.html
 ./other-new-features/experimental-defs.html
 ./other-new-features/export.html
+./other-new-features/generalized-method-syntax.html
 ./other-new-features/indentation.html
 ./other-new-features/index.html
 ./other-new-features/kind-polymorphism.html
@@ -157,5 +160,6 @@
 ./preview/index.html
 ./preview/into.html
 ./preview/overview.html
+./preview/runtimeChecked.html
 ./soft-modifier.html
 ./syntax.html
