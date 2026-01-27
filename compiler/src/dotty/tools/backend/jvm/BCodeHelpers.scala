@@ -151,11 +151,6 @@ trait BCodeHelpers extends BCodeIdiomatic {
       assert(sym != defn.ArrayClass || compilingArray, sym)
     }
 
-    private def assertClassNotArrayNotPrimitive(sym: Symbol): Unit = {
-      assertClassNotArray(sym)
-      assert(!primitiveTypeMap.contains(sym) || isCompilingPrimitive, sym)
-    }
-
     /**
      * The ClassBType for a class symbol.
      *
@@ -170,8 +165,6 @@ trait BCodeHelpers extends BCodeIdiomatic {
      * ClassBType.
      */
     final def getClassBType(sym: Symbol): ClassBType = {
-      assertClassNotArrayNotPrimitive(sym)
-
       if (sym == defn.NothingClass) srNothingRef
       else if (sym == defn.NullClass) srNullRef
       else classBTypeFromSymbol(sym)

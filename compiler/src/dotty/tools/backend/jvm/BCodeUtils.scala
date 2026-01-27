@@ -13,10 +13,14 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.backend.jvm.GenBCode.*
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Flags.{AbstractOrTrait, Artifact, Bridge, Deferred, Enum, Final, JavaEnum, JavaVarargs, Mutable, Private, Synchronized, Trait}
+import dotty.tools.dotc.core.Symbols.*
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
+import scala.tools.asm
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.commons.CodeSizeEvaluator
 import scala.tools.asm.tree.*
@@ -393,26 +397,6 @@ object BCodeUtils {
     )).toList
   }
 
-  /**
-   * This method is used by optimizer components to eliminate phantom values of instruction
-   * that load a value of type `Nothing$` or `Null$`. Such values on the stack don't interact well
-   * with stack map frames.
-   *
-   * For example, `opt.getOrElse(throw e)` is re-written to an invocation of the lambda body, a
-   * method with return type `Nothing$`. Same for `opt.getOrElse(null)` and `Null$`.
-   *
-   * During bytecode generation this is handled by BCodeBodyBuilder.adapt. See the comment in that
-   * method which explains the issue with such phantom values.
-   */
-  def fixLoadedNothingOrNullValue(loadedType: Type, loadInstr: AbstractInsnNode, methodNode: MethodNode, bTypes: BTypes): Unit = {
-    if (loadedType == bTypes.coreBTypes.srNothingRef.toASMType) {
-      methodNode.instructions.insert(loadInstr, new InsnNode(ATHROW))
-    } else if (loadedType == bTypes.coreBTypes.srNullRef.toASMType) {
-      methodNode.instructions.insert(loadInstr, new InsnNode(ACONST_NULL))
-      methodNode.instructions.insert(loadInstr, new InsnNode(POP))
-    }
-  }
-
   implicit class AnalyzerExtensions[V <: Value](val analyzer: Analyzer[V]) extends AnyVal {
     def frameAt(instruction: AbstractInsnNode, methodNode: MethodNode): Frame[V] = analyzer.getFrames()(methodNode.instructions.indexOf(instruction))
   }
@@ -443,5 +427,60 @@ object BCodeUtils {
       if (i < frame.getLocals) frame.setLocal(i, value)
       else frame.setStack(i - frame.getLocals, value)
     }
+  }
+
+
+  /**
+   * Return the Java modifiers for the given symbol.
+   * Java modifiers for classes:
+   *  - public, abstract, final, strictfp (not used)
+   * for interfaces:
+   *  - the same as for classes, without 'final'
+   * for fields:
+   *  - public, private (*)
+   *  - static, final
+   * for methods:
+   *  - the same as for fields, plus:
+   *  - abstract, synchronized (not used), strictfp (not used), native (not used)
+   * for all:
+   *  - deprecated
+   *
+   *  (*) protected cannot be used, since inner classes 'see' protected members,
+   *      and they would fail verification after lifted.
+   */
+  final def javaFlags(sym: Symbol)(using Context): Int = {
+    import DottyBackendInterface.symExtensions
+
+    // Classes are always emitted as public. This matches the behavior of Scala 2
+    // and is necessary for object deserialization to work properly, otherwise
+    // ModuleSerializationProxy may fail with an accessiblity error (see
+    // tests/run/serialize.scala and https://github.com/typelevel/cats-effect/pull/2360).
+    val privateFlag = !sym.isClass && (sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass))
+
+    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.isMutableVar && !sym.enclosingClass.is(Trait)
+
+    import asm.Opcodes.*
+    import GenBCodeOps.addFlagIf
+    0 .addFlagIf(privateFlag, ACC_PRIVATE)
+      .addFlagIf(!privateFlag, ACC_PUBLIC)
+      .addFlagIf(sym.is(Deferred) || sym.isOneOf(AbstractOrTrait), ACC_ABSTRACT)
+      .addFlagIf(sym.isInterface, ACC_INTERFACE)
+      .addFlagIf(finalFlag
+        // Primitives are "abstract final" to prohibit instantiation
+        // without having to provide any implementations, but that is an
+        // illegal combination of modifiers at the bytecode level so
+        // suppress final if abstract if present.
+        && !sym.isOneOf(AbstractOrTrait)
+        // Bridges can be final, but final bridges confuse some frameworks
+        && !sym.is(Bridge), ACC_FINAL)
+      .addFlagIf(sym.isStaticMember, ACC_STATIC)
+      .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
+      .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
+      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
+      .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
+      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+      .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
+      .addFlagIf(sym.is(Enum), ACC_ENUM)
   }
 }

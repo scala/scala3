@@ -20,6 +20,8 @@ import java.util.{LinkedHashMap, Map as JMap}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
+// TODO it seems the !threadsafe case (admittedly not much code) is dead?
+
 object FifoCache {
   def apply[K,V](maxSize: Int, threadsafe: Boolean): mutable.Map[K,V] = {
     require(maxSize > 0)

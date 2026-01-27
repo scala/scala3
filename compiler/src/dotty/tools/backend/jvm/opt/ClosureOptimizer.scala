@@ -325,6 +325,26 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
     }
   }
 
+  /**
+   * This method is used to eliminate phantom values of instruction
+   * that load a value of type `Nothing$` or `Null$`. Such values on the stack don't interact well
+   * with stack map frames.
+   *
+   * For example, `opt.getOrElse(throw e)` is re-written to an invocation of the lambda body, a
+   * method with return type `Nothing$`. Same for `opt.getOrElse(null)` and `Null$`.
+   *
+   * During bytecode generation this is handled by BCodeBodyBuilder.adapt. See the comment in that
+   * method which explains the issue with such phantom values.
+   */
+  private def fixLoadedNothingOrNullValue(loadedType: Type, loadInstr: AbstractInsnNode, methodNode: MethodNode, bTypes: BTypes): Unit = {
+    if (loadedType == bTypes.coreBTypes.srNothingRef.toASMType) {
+      methodNode.instructions.insert(loadInstr, new InsnNode(ATHROW))
+    } else if (loadedType == bTypes.coreBTypes.srNullRef.toASMType) {
+      methodNode.instructions.insert(loadInstr, new InsnNode(ACONST_NULL))
+      methodNode.instructions.insert(loadInstr, new InsnNode(POP))
+    }
+  }
+
   private def rewriteClosureApplyInvocation(closureInit: ClosureInstantiation, invocation: MethodInsnNode, stackHeight: Int, localsForCapturedValues: LocalsList, argumentLocalsList: LocalsList): Unit = {
     val ownerMethod = closureInit.ownerMethod
     val lambdaBodyHandle = closureInit.lambdaMetaFactoryCall.implMethod

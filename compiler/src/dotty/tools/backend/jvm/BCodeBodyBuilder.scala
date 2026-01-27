@@ -23,6 +23,7 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
 
@@ -49,6 +50,29 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   abstract class PlainBodyBuilder(cunit: CompilationUnit) extends PlainSkelBuilder(cunit) {
 
     import Primitives.TestOp
+
+    private object DesugaredSelect {
+      private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
+
+      def unapply(s: tpd.Tree): Option[(Tree, Name)] = {
+        s match {
+          case t: tpd.Select => Some((t.qualifier, t.name))
+          case t: Ident =>
+            val found: tpd.Tree = desugared.get(t.tpe)
+            if (found == null) {
+              tpd.desugarIdent(t) match
+                case sel: tpd.Select =>
+                  desugared.put(t.tpe, sel)
+                  Some((sel.qualifier, sel.name))
+                case _ =>
+                  None
+            }
+            else None
+
+          case _ => None
+        }
+      }
+    }
 
     /* ---------------- helper utils for generating methods and code ---------------- */
 
@@ -430,16 +454,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val sym = tree.symbol
           val tk = symInfoTK(sym)
           generatedType = tk
-
-          val desugared = cachedDesugarIdent(t)
-          desugared match {
-            case None =>
-              if (!sym.is(Package)) {
-                if (sym.is(Module)) genLoadModule(sym)
-                else locals.load(sym)
-              }
-            case Some(t) =>
-              genLoad(t, generatedType)
+          if (!sym.is(Package)) {
+            if (sym.is(Module)) genLoadModule(sym)
+            else locals.load(sym)
           }
 
         case Literal(value) =>
@@ -469,7 +486,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = UNIT
           genStat(tree)
 
-        case av @ ArrayValue(_, _) =>
+        case av: tpd.JavaSeqLiteral =>
           generatedType = genArrayValue(av)
 
         case mtch @ Match(_, _) =>
@@ -750,10 +767,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args: @unchecked
+          val List(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
 
           generatedType = toTypeKind(c.typeValue)
-          mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
+          mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
         case Apply(t :TypeApply, _) =>
           generatedType =
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
@@ -878,10 +895,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     } // end of genApply()
 
     private def genArrayValue(av: tpd.JavaSeqLiteral): BType = {
-      val ArrayValue(tpt, elems) = av: @unchecked
+      val tpt = av.tpe match {
+        case JavaArrayType(elem) => elem
+        case _ =>
+          report.error(em"JavaSeqArray with type ${av.tpe} reached backend: $av", ctx.source.atSpan(av.span))
+          UnspecifiedErrorType
+      }
 
       lineNumber(av)
-      genArray(elems, tpt)
+      genArray(av.elems, tpt)
     }
 
     private def genArray(elems: List[Tree], elemType: Type): BType = {
@@ -1190,12 +1212,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       tree match {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
-          cachedDesugarIdent(t) match {
-            case Some(sel) => genLoadQualifier(sel)
-            case None =>
-              assert(t.symbol.owner == this.claszSymbol)
-              UNIT
-          }
+          assert(t.symbol.owner == this.claszSymbol)
+          UNIT
         case _                    => abort(s"Unknown qualifier $tree")
       }
     }

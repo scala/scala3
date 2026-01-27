@@ -40,7 +40,7 @@ class GenBCode extends Phase { self =>
       val backendCtx = ctx match
         case fc: FreshContext => fc
         case ctx => ctx.fresh
-      _backendInterface = DottyBackendInterface(superCallsMap)(using backendCtx)
+      _backendInterface = DottyBackendInterface(using backendCtx)
     _backendInterface.nn
   }
 
@@ -56,14 +56,14 @@ class GenBCode extends Phase { self =>
   private var _bTypes: BTypesFromSymbols | Null = null
   def bTypes(using Context): BTypesFromSymbols = {
     if _bTypes eq null then
-      _bTypes = BTypesFromSymbols(backendInterface, frontendAccess)
+      _bTypes = BTypesFromSymbols(superCallsMap, frontendAccess)
     _bTypes.nn
   }
 
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
-      _frontendAccess = PostProcessorFrontendAccess.Impl(backendInterface, entryPoints)
+      _frontendAccess = PostProcessorFrontendAccess.Impl(ctx, entryPoints)
     _frontendAccess.nn
   }
 

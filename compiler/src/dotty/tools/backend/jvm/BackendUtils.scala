@@ -41,8 +41,8 @@ class BackendUtils(val postProcessor: PostProcessor) {
 
   lazy val extraProc: Int = {
     import GenBCodeOps.addFlagIf
-    val majorVersion: Int = (classfileVersion & 0xFF)
-    val emitStackMapFrame = (majorVersion >= 50)
+    val majorVersion: Int = classfileVersion & 0xFF
+    val emitStackMapFrame = majorVersion >= 50
     asm.ClassWriter.COMPUTE_MAXS
       .addFlagIf(emitStackMapFrame, asm.ClassWriter.COMPUTE_FRAMES)
   }
@@ -325,7 +325,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
 
 object BackendUtils {
 
-  lazy val primitiveTypes: Map[String, asm.Type] = Map(
+  private lazy val primitiveTypes: Map[String, asm.Type] = Map(
     ("Unit", asm.Type.VOID_TYPE),
     ("Boolean", asm.Type.BOOLEAN_TYPE),
     ("Char", asm.Type.CHAR_TYPE),
@@ -570,14 +570,14 @@ object BackendUtils {
   final case class LambdaMetaFactoryCall(indy: InvokeDynamicInsnNode, samMethodType: asm.Type, implMethod: Handle, instantiatedMethodType: asm.Type)
 
   object LambdaMetaFactoryCall {
-    val lambdaMetaFactoryMetafactoryHandle = new Handle(
+    private val lambdaMetaFactoryMetafactoryHandle = new Handle(
       Opcodes.H_INVOKESTATIC,
       "java/lang/invoke/LambdaMetafactory",
       "metafactory",
       "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
       /* itf = */ false)
 
-    val lambdaMetaFactoryAltMetafactoryHandle = new Handle(
+    private val lambdaMetaFactoryAltMetafactoryHandle = new Handle(
       Opcodes.H_INVOKESTATIC,
       "java/lang/invoke/LambdaMetafactory",
       "altMetafactory",
@@ -587,7 +587,7 @@ object BackendUtils {
     def unapply(insn: AbstractInsnNode): Option[(InvokeDynamicInsnNode, asm.Type, Handle, asm.Type, Array[asm.Type])] = insn match {
       case indy: InvokeDynamicInsnNode if indy.bsm == lambdaMetaFactoryMetafactoryHandle || indy.bsm == lambdaMetaFactoryAltMetafactoryHandle =>
         indy.bsmArgs match {
-          case Array(samMethodType: asm.Type, implMethod: Handle, instantiatedMethodType: asm.Type, _@_*) =>
+          case Array(samMethodType: asm.Type, implMethod: Handle, instantiatedMethodType: asm.Type, _*) =>
             // LambdaMetaFactory performs a number of automatic adaptations when invoking the lambda
             // implementation method (casting, boxing, unboxing, and primitive widening, see Javadoc).
             //

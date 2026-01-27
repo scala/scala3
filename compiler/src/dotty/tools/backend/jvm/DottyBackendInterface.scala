@@ -24,91 +24,7 @@ import StdNames.nme
 import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
-class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSymbol]])(using val ctx: Context) {
-
-  private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
-
-  def cachedDesugarIdent(i: Ident): Option[tpd.Select] = {
-    var found = desugared.get(i.tpe)
-    if (found == null) {
-      tpd.desugarIdent(i) match {
-        case sel: tpd.Select =>
-          desugared.put(i.tpe, sel)
-          found = sel
-        case _ =>
-      }
-    }
-    if (found == null) None else Some(found)
-  }
-
-  object DesugaredSelect extends DeconstructorCommon[tpd.Tree] {
-
-    var desugared: tpd.Select | Null = null
-
-    override def isEmpty: Boolean =
-      desugared eq null
-
-    def _1: Tree =  desugared.nn.qualifier
-
-    def _2: Name = desugared.nn.name
-
-    override def unapply(s: tpd.Tree): this.type = {
-      s match {
-        case t: tpd.Select => desugared = t
-        case t: Ident  =>
-          cachedDesugarIdent(t) match {
-            case Some(t) => desugared = t
-            case None => desugared = null
-          }
-        case _ => desugared = null
-      }
-
-      this
-    }
-  }
-
-  object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral] {
-    def _1: Type = field.nn.tpe match {
-      case JavaArrayType(elem) => elem
-      case _ =>
-        report.error(em"JavaSeqArray with type ${field.nn.tpe} reached backend: $field", ctx.source.atSpan(field.nn.span))
-        UnspecifiedErrorType
-    }
-    def _2: List[Tree] = field.nn.elems
-  }
-
-  abstract class DeconstructorCommon[T <: AnyRef] {
-    var field: T | Null = null
-    def get: this.type = this
-    def isEmpty: Boolean = field eq null
-    def isDefined: Boolean = !isEmpty
-    def unapply(s: T): this.type ={
-      field = s
-      this
-    }
-  }
-
-
-  private val primitiveCompilationUnits = Set(
-    "Unit.scala",
-    "Boolean.scala",
-    "Char.scala",
-    "Byte.scala",
-    "Short.scala",
-    "Int.scala",
-    "Float.scala",
-    "Long.scala",
-    "Double.scala"
-  )
-
-  /**
-   * True if the current compilation unit is of a primitive class (scala.Boolean et al.).
-   * Used only in assertions.
-   */
-  def isCompilingPrimitive: Boolean = {
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
-  }
-}
+// TODO: Remove this altogether. There's no use pretending we don't depend on a context, we call way too many context-taking functions elsewhere already.
 
 object DottyBackendInterface {
 
@@ -173,7 +89,7 @@ object DottyBackendInterface {
       
       def originalLexicallyEnclosingClass(using Context): Symbol =
         // used to populate the EnclosingMethod attribute.
-        // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
+        // it is very tricky in presence of classes(and anonymous classes) defined inside supper calls.
         if (sym.exists) {
           val validity = toDenot(sym).initial.validFor
           atPhase(validity.phaseId) {

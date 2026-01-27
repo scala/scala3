@@ -390,6 +390,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
       clinit.visitEnd()
     }
+    
+    private lazy val TransientAttr = requiredClass[scala.transient]
+    private lazy val VolatileAttr = requiredClass[scala.volatile]
+
+    private def javaFieldFlags(sym: Symbol) = {
+      import asm.Opcodes.*
+      import GenBCodeOps.addFlagIf
+      javaFlags(sym)
+        .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
+        .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
+        .addFlagIf(!sym.is(Mutable), ACC_FINAL)
+    }
 
     def addClassFields(): Unit = {
       /*  Non-method term members are fields, except for module members. Module
