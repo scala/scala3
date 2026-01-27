@@ -49,12 +49,12 @@ class GenBCode extends Phase { self =>
     if _codeGen eq null then
       val int = backendInterface
       val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(int, dottyPrimitives)(bTypes.asInstanceOf[BTypesFromSymbols[int.type]])
+      _codeGen = new CodeGen(int, dottyPrimitives)(bTypes)
     _codeGen.nn
   }
 
-  private var _bTypes: BTypesFromSymbols[DottyBackendInterface] | Null = null
-  def bTypes(using Context): BTypesFromSymbols[DottyBackendInterface] = {
+  private var _bTypes: BTypesFromSymbols | Null = null
+  def bTypes(using Context): BTypesFromSymbols = {
     if _bTypes eq null then
       _bTypes = BTypesFromSymbols(backendInterface, frontendAccess)
     _bTypes.nn

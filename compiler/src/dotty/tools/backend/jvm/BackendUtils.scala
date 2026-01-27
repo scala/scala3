@@ -10,11 +10,10 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 
 import scala.language.unsafeNulls
-import dotty.tools.backend.jvm.opt.ByteCodeUtils
 import dotty.tools.backend.jvm.analysis.{InstructionStackEffect, ProdConsAnalyzer}
 import scala.tools.asm.Opcodes
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.FrameExtensions
+import BCodeUtils.FrameExtensions
 import scala.annotation.switch
 import java.util.concurrent.ConcurrentHashMap
 
@@ -414,13 +413,13 @@ object BackendUtils {
    * Analyzer: its implementation also skips over unreachable code in the same way.
    */
   def computeMaxLocalsMaxStack(method: MethodNode): Unit = {
-    if (ByteCodeUtils.isAbstractMethod(method) || ByteCodeUtils.isNativeMethod(method)) {
+    if (BCodeUtils.isAbstractMethod(method) || BCodeUtils.isNativeMethod(method)) {
       method.maxLocals = 0
       method.maxStack = 0
     } else if (!isMaxsComputed(method)) {
       val size = method.instructions.size
 
-      var maxLocals = ByteCodeUtils.parametersSize(method)
+      var maxLocals = BCodeUtils.parametersSize(method)
       var maxStack = 0
 
       // queue of instruction indices where analysis should start
@@ -493,7 +492,7 @@ object BackendUtils {
           // update maxLocals
           insn match {
             case v: VarInsnNode =>
-              val longSize = if (ByteCodeUtils.isSize2LoadOrStore(v.getOpcode)) 1 else 0
+              val longSize = if (BCodeUtils.isSize2LoadOrStore(v.getOpcode)) 1 else 0
               maxLocals = math.max(maxLocals, v.`var` + longSize + 1) // + 1 because local numbers are 0-based
 
             case i: IincInsnNode =>
@@ -533,7 +532,7 @@ object BackendUtils {
               // the target is already enqueued, see subroutine shape assumption above
 
             case _ =>
-              if (insn.getOpcode != Opcodes.ATHROW && !ByteCodeUtils.isReturn(insn))
+              if (insn.getOpcode != Opcodes.ATHROW && !BCodeUtils.isReturn(insn))
                 enqInsnIndex(insnIndex + 1, heightAfter)
           }
         }
@@ -644,7 +643,7 @@ object BackendUtils {
               asm.Type.getType(implMethod.getDesc) == expectedImplMethodType             // (1)
                 && receiverType.forall(rt => implMethod.getOwner == rt.getInternalName)  // (2)
                 && samMethodType.getArgumentTypes.corresponds(instantiatedMethodArgTypes)((samArgType, instArgType) =>
-                samArgType == instArgType || ByteCodeUtils.isReference(samArgType) && ByteCodeUtils.isReference(instArgType)) // (3)
+                samArgType == instArgType || BCodeUtils.isReference(samArgType) && BCodeUtils.isReference(instArgType)) // (3)
               )
 
             if (isIndyLambda) Some((indy, samMethodType, implMethod, instantiatedMethodType, indyParamTypes))

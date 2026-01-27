@@ -19,7 +19,7 @@ import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.{Frame, Value}
-import opt.ByteCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.*
 
 object InstructionStackEffect {
   private val consShift = 3

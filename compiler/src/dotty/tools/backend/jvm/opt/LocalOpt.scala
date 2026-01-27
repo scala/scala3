@@ -23,7 +23,7 @@ import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import BCodeUtils.*
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing

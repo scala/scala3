@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import BCodeUtils.*
 
 class Inliner(postProcessor: PostProcessor) {
 
@@ -723,7 +723,7 @@ class Inliner(postProcessor: PostProcessor) {
 
     //// find out for which argument values on the stack there is already a local variable ////
 
-    val calleeFirstNonParamSlot = ByteCodeUtils.parametersSize(callee)
+    val calleeFirstNonParamSlot = BCodeUtils.parametersSize(callee)
 
     // Maps callee-local-variable-index to callsite-local-variable-index.
     val calleeParamLocals = new Array[Int](calleeFirstNonParamSlot)
@@ -829,9 +829,9 @@ class Inliner(postProcessor: PostProcessor) {
     val postCallLabel = newLabelNode
     clonedInstructions.add(postCallLabel)
     if (sameSourceFile) {
-      ByteCodeUtils.previousLineNumber(callsiteInstruction) match {
+      BCodeUtils.previousLineNumber(callsiteInstruction) match {
         case Some(line) =>
-          ByteCodeUtils.nextExecutableInstruction(callsiteInstruction).flatMap(BytecodeUtils.previousLineNumber) match {
+          BCodeUtils.nextExecutableInstruction(callsiteInstruction).flatMap(BytecodeUtils.previousLineNumber) match {
             case Some(line1) =>
               if (line == line1)
               // SD-479 code follows on the same line, restore the line number
@@ -1042,7 +1042,7 @@ class Inliner(postProcessor: PostProcessor) {
     assert(callsiteInstruction.name == callee.name, methodMismatch)
     assert(callsiteInstruction.desc == callee.desc, methodMismatch)
     assert(!isConstructor(callee), s"Constructors cannot be inlined: $calleeDesc")
-    assert(!ByteCodeUtils.isAbstractMethod(callee), s"Callee is abstract: $calleeDesc")
+    assert(!BCodeUtils.isAbstractMethod(callee), s"Callee is abstract: $calleeDesc")
     assert(callsiteMethod.instructions.contains(callsiteInstruction), s"Callsite ${textify(callsiteInstruction)} is not an instruction of $callsiteClass.${callsiteMethod.name}${callsiteMethod.desc}")
 
     // When an exception is thrown, the stack is cleared before jumping to the handler. When

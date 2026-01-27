@@ -11,8 +11,7 @@ import scala.tools.asm.Opcodes.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.{MethodVisitor, Type}
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.*
 
 /**
  * This class provides additional queries over ASM's built-in `SourceValue` analysis.
@@ -54,7 +53,7 @@ import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
  * function (merging producer sets) is more complex than merging simple basic values.
  * See also the doc comment in the package object `analysis`.
  */
-class ProdConsAnalyzer(methodNode: MethodNode, classInternalName: InternalName) extends AsmAnalyzer(methodNode, classInternalName, new Analyzer(new InitialProducerSourceInterpreter)) {
+class ProdConsAnalyzer(methodNode: MethodNode, classInternalName: String) extends AsmAnalyzer(methodNode, classInternalName, new Analyzer(new InitialProducerSourceInterpreter)) {
   /**
    * Returns the potential producer instructions of a (local or stack) value in the frame of `insn`.
    * This method simply returns the producer information computed by the SourceValue analysis.

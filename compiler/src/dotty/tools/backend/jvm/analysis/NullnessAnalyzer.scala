@@ -20,8 +20,7 @@ import scala.annotation.switch
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
 /**
@@ -254,6 +253,6 @@ class NullnessAnalyzerImpl(methodNode: MethodNode, knownNonNullInvocation: Metho
   override def newFrame(src: Frame[? <: NullnessValue]): NullnessFrame = new NullnessFrame(src)
 }
 
-class NullnessAnalyzer(methodNode: MethodNode, classInternalName: InternalName, knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean)
+class NullnessAnalyzer(methodNode: MethodNode, classInternalName: String, knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean)
   extends AsmAnalyzer(methodNode, classInternalName, new NullnessAnalyzerImpl(methodNode, knownNonNullInvocation, modulesNonNull))
     with AliasingAsmAnalyzerMarker

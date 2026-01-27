@@ -25,7 +25,7 @@ import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.*
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import BCodeUtils.*
 import dotty.tools.dotc.util.SrcPos
 
 class CallGraph(val postProcessor: PostProcessor) {
@@ -130,7 +130,7 @@ class CallGraph(val postProcessor: PostProcessor) {
   }
 
   def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
-    if (!ByteCodeUtils.isAbstractMethod(methodNode) && !ByteCodeUtils.isNativeMethod(methodNode) && AsmAnalyzer.sizeOKForBasicValue(methodNode)) {
+    if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && AsmAnalyzer.sizeOKForBasicValue(methodNode)) {
       lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
       var methodCallsites = Map.empty[MethodInsnNode, Callsite]
@@ -259,7 +259,7 @@ class CallGraph(val postProcessor: PostProcessor) {
   def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): IntMap[ClassBType] = {
     val paramTypes = {
       val params = paramTps.map(t => bTypeForDescriptorFromClassfile(t.getDescriptor))
-      val isStatic = ByteCodeUtils.isStaticMethod(methodNode)
+      val isStatic = BCodeUtils.isStaticMethod(methodNode)
       if (isStatic) params else receiverType +: params
     }
     samTypes(paramTypes)

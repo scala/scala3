@@ -199,7 +199,7 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      ByteCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0 ||
+      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0 ||
         backendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass) // seems mixin forwarders are not synthetic...
 
     if (isGeneratedForwarder) None
@@ -262,7 +262,7 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
               val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
               if (forwarderKind < 0)
                 null
-              else if (ByteCodeUtils.isSyntheticMethod(callee.callee) || backendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+              else if (BCodeUtils.isSyntheticMethod(callee.callee) || backendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
                 SyntheticForwarder
               else forwarderKind match {
                 case 1 => TrivialMethod

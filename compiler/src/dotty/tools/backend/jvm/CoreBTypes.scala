@@ -7,12 +7,17 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
 import scala.tools.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.StdNames
-import BTypes.InternalName
+import BTypes.*
 import PostProcessorFrontendAccess.Lazy
 
+/**
+ * Just a named pair, used in CoreBTypes.asmBoxTo/asmUnboxTo.
+ */
+case class MethodNameAndType(name: String, methodType: MethodBType)
+
 abstract class CoreBTypes {
-  val bTypes: BTypes
-  import bTypes.*
+  //val bTypes: BTypes
+  //import bTypes.*
 
    def primitiveTypeMap: Map[Symbol, PrimitiveBType]
 
@@ -70,18 +75,18 @@ abstract class CoreBTypes {
    def typeOfArrayOp: Map[Int, BType]
 }
 
-abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTypes {
-  val bTypes: BTypesFromSymbols[I]
+final class CoreBTypesFromSymbols extends CoreBTypes {
+//  val bTypes: BTypesFromSymbols
 
-  import bTypes.*
+//  import bTypes.*
   import DottyBackendInterface.*
   import dotty.tools.dotc.core.Contexts.Context
-  import frontendAccess.perRunLazy
+//  import frontendAccess.perRunLazy
   /**
    * Maps primitive types to their corresponding PrimitiveBType. The map is defined lexically above
    * the first use of `classBTypeFromSymbol` because that method looks at the map.
    */
-  override def primitiveTypeMap: Map[Symbol, bTypes.PrimitiveBType] = _primitiveTypeMap.get
+  override def primitiveTypeMap: Map[Symbol, PrimitiveBType] = _primitiveTypeMap.get
   private lazy val _primitiveTypeMap: Lazy[Map[Symbol, PrimitiveBType]] = perRunLazy:
     Map(
     defn.UnitClass    -> UNIT,

@@ -18,12 +18,12 @@ import scala.annotation.tailrec
 import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.*
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
+  import TypeFlowInterpreter.*
+
   override def newParameterValue(isInstanceMethod: Boolean, local: Int, tpe: Type): BasicValue =
     new ParamValue(local, tpe)
 
@@ -92,7 +92,7 @@ object TypeFlowInterpreter {
     }
   }
 
-  private val ObjectValue = new SpecialAwareBasicValue(BasicValue.REFERENCE_VALUE.getType)
+  val ObjectValue = new SpecialAwareBasicValue(BasicValue.REFERENCE_VALUE.getType)
   private val UninitializedValue = new SpecialAwareBasicValue(null)
 
   // In the interpreter, visiting an AALOAD, we don't know the type of the array
@@ -119,13 +119,13 @@ object TypeFlowInterpreter {
  * the `jvmWiseLUB` method.
  */
 class NonLubbingTypeFlowInterpreter extends TypeFlowInterpreter {
-  def refLub(a: BasicValue, b: BasicValue): BasicValue = ObjectValue
+  def refLub(a: BasicValue, b: BasicValue): BasicValue = TypeFlowInterpreter.ObjectValue
 }
 
-class NonLubbingTypeFlowAnalyzer(methodNode: MethodNode, classInternalName: InternalName) extends AsmAnalyzer(methodNode, classInternalName, new Analyzer(new NonLubbingTypeFlowInterpreter)) {
+class NonLubbingTypeFlowAnalyzer(methodNode: MethodNode, classInternalName: String) extends AsmAnalyzer(methodNode, classInternalName, new Analyzer(new NonLubbingTypeFlowInterpreter)) {
   // see [[AaloadValue]]
   def preciseAaloadTypeDesc(value: BasicValue): String = value match {
-    case aaloadValue: AaloadValue =>
+    case aaloadValue: TypeFlowInterpreter.AaloadValue =>
       val f = frameAt(aaloadValue.aaload)
       val arrDesc = f.getValue(f.stackTop - 1).getType.getDescriptor
       // TODO make it safe in case we don't get an array type

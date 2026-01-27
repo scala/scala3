@@ -21,17 +21,15 @@ import dotty.tools.dotc.core.Phases
  * information from a symbol and its type to create the corresponding ClassBType. It requires
  * access to the compiler (global parameter).
  */
-class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAccess: PostProcessorFrontendAccess) extends BTypes {
-  import int.{_, given}
-  import DottyBackendInterface.{symExtensions, _}
+class BTypesFromSymbols extends BTypes {
+  import DottyBackendInterface.{given, *}
 
   lazy val TransientAttr = requiredClass[scala.transient]
   lazy val VolatileAttr = requiredClass[scala.volatile]
 
-  val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
-  import bCodeAsmCommon.*
+  import BCodeAsmCommon.*
 
-  val coreBTypes = new CoreBTypesFromSymbols[I]{
+  val coreBTypes = new CoreBTypesFromSymbols{
     val bTypes: BTypesFromSymbols.this.type = BTypesFromSymbols.this
   }
   import coreBTypes.*

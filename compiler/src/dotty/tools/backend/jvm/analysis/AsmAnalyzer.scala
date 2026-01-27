@@ -16,14 +16,13 @@ package analysis
 
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.{AbstractInsnNode, MethodNode}
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.*
 
 
 /**
  * A wrapper to make ASM's Analyzer a bit easier to use.
  */
-abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: InternalName, val analyzer: Analyzer[V]) {
+abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: String, val analyzer: Analyzer[V]) {
   BackendUtils.computeMaxLocalsMaxStack(methodNode)
   try {
     analyzer.analyze(classInternalName, methodNode)
@@ -34,7 +33,7 @@ abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName
   def frameAt(instruction: AbstractInsnNode): Frame[V] = analyzer.frameAt(instruction, methodNode)
 }
 
-class BasicAnalyzer(methodNode: MethodNode, classInternalName: InternalName) extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new Analyzer(new BasicInterpreter))
+class BasicAnalyzer(methodNode: MethodNode, classInternalName: String) extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new Analyzer(new BasicInterpreter))
 
 /**
  * See the doc comment on package object `analysis` for a discussion on performance.

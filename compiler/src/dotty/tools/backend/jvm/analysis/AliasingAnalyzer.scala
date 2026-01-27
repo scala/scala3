@@ -20,9 +20,7 @@ import scala.collection.mutable
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.*
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.AliasSet.SmallBitSet
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.*
 
 /**
  * A subclass of Frame that tracks aliasing of values stored in local variables and on the stack.
@@ -347,7 +345,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     valuesChanged || aliasesChanged
   }
 
-  private def min(s: SmallBitSet) = {
+  private def min(s: AliasSet.SmallBitSet) = {
     var r = s.a
     if (             s.b < r) r = s.b
     if (s.c != -1 && s.c < r) r = s.c
@@ -417,7 +415,7 @@ class AliasingAnalyzer[V <: Value](interpreter: Interpreter[V]) extends Analyzer
 // Marker trait for AsmAnalyzers that use AliasingFrame
 trait AliasingAsmAnalyzerMarker
 
-class BasicAliasingAnalyzer(methodNode: MethodNode, classInternalName: InternalName)
+class BasicAliasingAnalyzer(methodNode: MethodNode, classInternalName: String)
   extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new AliasingAnalyzer(new BasicInterpreter))
     with AliasingAsmAnalyzerMarker
 

@@ -6,13 +6,13 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.report
 
+import DottyBackendInterface.symExtensions
+
 /**
- * This trait contains code shared between GenBCode and GenASM that depends on types defined in
+ * Code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).
  */
-final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface.given
-  import DottyBackendInterface.symExtensions
+object BCodeAsmCommon {
 
   /**
    * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a
@@ -99,9 +99,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
       None
     }
   }
-}
 
-object BCodeAsmCommon{
   def ubytesToCharArray(bytes: Array[Byte]): Array[Char] = {
     val ca = new Array[Char](bytes.length)
     var idx = 0
@@ -115,7 +113,7 @@ object BCodeAsmCommon{
     ca
   }
 
-  final def arrEncode(bSeven: Array[Byte]): Array[String] = {
+  def arrEncode(bSeven: Array[Byte]): Array[String] = {
     var strs: List[String]  = Nil
     // chop into slices of at most 65535 bytes, counting 0x00 as taking two bytes (as per JVMS 4.4.7 The CONSTANT_Utf8_info Structure)
     var prevOffset = 0
@@ -142,7 +140,6 @@ object BCodeAsmCommon{
     assert(strs.size > 1, "encode instead as one String via strEncode()") // TODO too strict?
     strs.reverse.toArray
   }
-
 
   def strEncode(bSeven: Array[Byte]): String = {
     val ca = ubytesToCharArray(bSeven)

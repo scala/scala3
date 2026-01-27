@@ -23,7 +23,7 @@ import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import BCodeUtils.*
 
 /**
  * The ByteCodeRepository provides utilities to read the bytecode of classfiles from the compilation

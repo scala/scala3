@@ -10,9 +10,10 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools
-package backend.jvm
-package opt
+package dotty.tools.backend.jvm
+
+import dotty.tools.backend.jvm.GenBCode.*
+import dotty.tools.backend.jvm.analysis.InstructionStackEffect
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
@@ -22,10 +23,8 @@ import scala.tools.asm.commons.CodeSizeEvaluator
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.{Label, Type}
-import dotty.tools.backend.jvm.GenBCode.*
-import dotty.tools.backend.jvm.analysis.InstructionStackEffect
 
-object ByteCodeUtils {
+object BCodeUtils {
 
   // https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.9.1
   private final val maxJVMMethodSize = 65535

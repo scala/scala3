@@ -14,18 +14,41 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 import scala.tools.asm.Opcodes
 
+/*
+* TODO:
+- the intent is that we have one stateful "CoreBTypes" that does per-run laziness via the dotty interface
+  - then it can be used in stuff declared in BTypes, e.g., type is nothing
+  - basically, we want to translate common compiler concepts *once*
+  - and we'd like to carry this state implicitly whenever we refer to any implementation of a BType
+- plus, there's other state like "a map of names to class b types" that should be global to this phase
+
+- ... this all needs to be explicit in parameters though, not random "import this other thing"
+
+so we need to write it like I did in the playground, I think
+
+BUT merge BTypes and CoreBTypes, no need for a silly circular reference
+also fix the weird naming of "BTypesFRomClassfile" (= load BTypes from classfile)
+                             "BTypesFromSymbols" (= implementation of BTypes from symbols)
+                             --> "BTypesImpl" ?
+
+ALSO kill uses of BTypes.InternalName where it's obviously just a string, not worth it (e.g. in analysis)
+
+* */
+
+
 /**
  * The BTypes component defines The BType class hierarchy. BTypes encapsulates all type information
- * that is required after building the ASM nodes. This includes optimizations, geneartion of
+ * that is required after building the ASM nodes. This includes optimizations, generation of
  * InnerClass attributes and generation of stack map frames.
  *
  * This representation is immutable and independent of the compiler data structures, hence it can
  * be queried by concurrent threads.
  */
-abstract class BTypes { self =>
-  val frontendAccess: PostProcessorFrontendAccess
-  val int: DottyBackendInterface
+//abstract class BTypes {
+  //val frontendAccess: PostProcessorFrontendAccess
+  //val int: DottyBackendInterface
 
+  /*
   /**
    * Every ClassBType is cached on construction and accessible through this method.
    *
@@ -60,9 +83,9 @@ abstract class BTypes { self =>
    * Obtain a previously constructed ClassBType for a given internal name.
    */
   def classBTypeFromInternalName(internalName: String) = classBTypeFromInternalNameMap(internalName)
-
-  val coreBTypes: CoreBTypes { val bTypes: self.type}
-  import coreBTypes.*
+*/
+//  val coreBTypes: CoreBTypes { val bTypes: BTypes.this.type}
+//  import coreBTypes.*
 
   /**
    * A BType is either a primitve type, a ClassBType, an ArrayBType of one of these, or a MethodType
@@ -91,7 +114,7 @@ abstract class BTypes { self =>
      *  - int[]: [I
      *  - Object m(String s, double d): (Ljava/lang/String;D)Ljava/lang/Object;
      */
-    final def descriptor = toString
+    final def descriptor: String = toString
 
     /**
      * @return 0 for void, 2 for long and double, 1 otherwise
@@ -584,7 +607,63 @@ abstract class BTypes { self =>
    * TODO: innerclass attributes on mirror class
    */
 
-  /**
+/**
+ * The type info for a class. Used for symboltable-independent subtype checks in the backend.
+ *
+ * @param superClass    The super class, not defined for class java/lang/Object.
+ * @param interfaces    All transitively implemented interfaces, except for those inherited
+ *                      through the superclass.
+ *
+ * @param flags         The java flags, obtained through `javaFlags`. Used also to derive
+ *                      the flags for InnerClass entries.
+ *
+ * @param nestedClasses Classes nested in this class. Those need to be added to the
+ *                      InnerClass table, see the InnerClass spec summary above.
+ *
+ * @param nestedInfo    If this describes a nested class, information for the InnerClass table.
+ * @param inlineInfo    Information about this class for the inliner.
+ */
+final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[ClassBType], flags: Int,
+                           nestedClasses: Lazy[List[ClassBType]], nestedInfo: Lazy[Option[NestedInfo]],
+                           inlineInfo: InlineInfo)
+
+/**
+ * Information required to add a class to an InnerClass table.
+ * The spec summary above explains what information is required for the InnerClass entry.
+ *
+ * @param enclosingClass      The enclosing class, if it is also nested. When adding a class
+ *                            to the InnerClass table, enclosing nested classes are also added.
+ *
+ * @param outerName           The outerName field in the InnerClass entry, may be None.
+ * @param innerName           The innerName field, may be None.
+ * @param isStaticNestedClass True if this is a static nested class (not inner class) (*)
+ *
+ *                            (*) Note that the STATIC flag in ClassInfo.flags, obtained through javaFlags(classSym), is not
+ *                            correct for the InnerClass entry, see javaFlags. The static flag in the InnerClass describes
+ *                            a source-level propety: if the class is in a static context (does not have an outer pointer).
+ *                            This is checked when building the NestedInfo.
+ */
+case class NestedInfo(enclosingClass: ClassBType,
+                      outerName: Option[String],
+                      innerName: Option[String],
+                      isStaticNestedClass: Boolean,
+                      enteringTyperPrivate: Boolean)
+
+/**
+ * This class holds the data for an entry in the InnerClass table. See the InnerClass summary
+ * above in this file.
+ *
+ * There's some overlap with the class NestedInfo, but it's not exactly the same and cleaner to
+ * keep separate.
+ *
+ * @param name      The internal name of the class.
+ * @param outerName The internal name of the outer class, may be null.
+ * @param innerName The simple name of the inner class, may be null.
+ * @param flags     The flags for this class in the InnerClass entry.
+ */
+case class InnerClassEntry(name: String, outerName: String, innerName: String, flags: Int)
+
+/**
    * A ClassBType represents a class or interface type. The necessary information to build a
    * ClassBType is extracted from compiler symbols and types, see BTypesFromSymbols.
    *
@@ -623,7 +702,7 @@ abstract class BTypes { self =>
       checkInfoConsistency()
     }
 
-    classBTypeFromInternalNameMap(internalName) = this
+    //classBTypeFromInternalNameMap(internalName) = this
 
     private def checkInfoConsistency(): Unit = {
       // we assert some properties. however, some of the linked ClassBType (members, superClass,
@@ -636,7 +715,8 @@ abstract class BTypes { self =>
       assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
 
       assert(
-        if (info.get.superClass.isEmpty) { isJLO(this) || (int.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
+        // TODO surely we can test for isCompilingPrimitive without needing a ctx, same way we check JLO? carrying a DottyBackendInterface just for this is excessive
+        if (info.get.superClass.isEmpty) true // { isJLO(this) || (int.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
         else if (isInterface.get) isJLO(info.get.superClass.get)
         else !isJLO(this) && ifInit(info.get.superClass.get)(!_.isInterface.get),
         s"Invalid superClass in $this: ${info.get.superClass}"
@@ -855,83 +935,19 @@ abstract class BTypes { self =>
     )
   }
 
-  /**
-   * The type info for a class. Used for symboltable-independent subtype checks in the backend.
-   *
-   * @param superClass    The super class, not defined for class java/lang/Object.
-   * @param interfaces    All transitively implemented interfaces, except for those inherited
-   *                      through the superclass.
-   * @param flags         The java flags, obtained through `javaFlags`. Used also to derive
-   *                      the flags for InnerClass entries.
-   * @param nestedClasses Classes nested in this class. Those need to be added to the
-   *                      InnerClass table, see the InnerClass spec summary above.
-   * @param nestedInfo    If this describes a nested class, information for the InnerClass table.
-   * @param inlineInfo    Information about this class for the inliner.
-   */
-  final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[ClassBType], flags: Int,
-                             nestedClasses: Lazy[List[ClassBType]], nestedInfo: Lazy[Option[NestedInfo]],
-                             inlineInfo: InlineInfo)
-
-  /**
-   * Information required to add a class to an InnerClass table.
-   * The spec summary above explains what information is required for the InnerClass entry.
-   *
-   * @param enclosingClass      The enclosing class, if it is also nested. When adding a class
-   *                            to the InnerClass table, enclosing nested classes are also added.
-   * @param outerName           The outerName field in the InnerClass entry, may be None.
-   * @param innerName           The innerName field, may be None.
-   * @param isStaticNestedClass True if this is a static nested class (not inner class) (*)
-   *
-   * (*) Note that the STATIC flag in ClassInfo.flags, obtained through javaFlags(classSym), is not
-   * correct for the InnerClass entry, see javaFlags. The static flag in the InnerClass describes
-   * a source-level propety: if the class is in a static context (does not have an outer pointer).
-   * This is checked when building the NestedInfo.
-   */
-  case class NestedInfo(enclosingClass: ClassBType,
-                        outerName: Option[String],
-                        innerName: Option[String],
-                        isStaticNestedClass: Boolean,
-                        enteringTyperPrivate: Boolean)
-
-  /**
-   * This class holds the data for an entry in the InnerClass table. See the InnerClass summary
-   * above in this file.
-   *
-   * There's some overlap with the class NestedInfo, but it's not exactly the same and cleaner to
-   * keep separate.
-   * @param name      The internal name of the class.
-   * @param outerName The internal name of the outer class, may be null.
-   * @param innerName The simple name of the inner class, may be null.
-   * @param flags     The flags for this class in the InnerClass entry.
-   */
-  case class InnerClassEntry(name: String, outerName: String, innerName: String, flags: Int)
-
-  case class ArrayBType(componentType: BType) extends RefBType {
-    def dimension: Int = componentType match {
-      case a: ArrayBType => 1 + a.dimension
-      case _ => 1
-    }
-
-    def elementType: BType = componentType match {
-      case a: ArrayBType => a.elementType
-      case t => t
-    }
+case class ArrayBType(componentType: BType) extends RefBType {
+  def dimension: Int = componentType match {
+    case a: ArrayBType => 1 + a.dimension
+    case _ => 1
   }
 
-  case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType
-
-  /* Some definitions that are required for the implementation of BTypes. They are abstract because
-   * initializing them requires information from types / symbols, which is not accessible here in
-   * BTypes.
-   *
-   * They are defs (not vals) because they are implemented using vars (see comment on CoreBTypes).
-   */
-
-  /**
-   * Just a named pair, used in CoreBTypes.asmBoxTo/asmUnboxTo.
-   */
-  /*final*/ case class MethodNameAndType(name: String, methodType: MethodBType)
+  def elementType: BType = componentType match {
+    case a: ArrayBType => a.elementType
+    case t => t
+  }
 }
+
+case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType
 
 object BTypes {
   /**

@@ -65,8 +65,6 @@ trait BCodeHelpers extends BCodeIdiomatic {
   @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
   @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
 
-  val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
-
   final def traitSuperAccessorName(sym: Symbol): String = {
     val nameString = sym.javaSimpleName.toString
     if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString

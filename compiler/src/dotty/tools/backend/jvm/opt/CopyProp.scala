@@ -22,7 +22,7 @@ import scala.tools.asm.Type
 import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
-import dotty.tools.backend.jvm.opt.ByteCodeUtils.*
+import BCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
 class CopyProp(postProcessor: PostProcessor) {

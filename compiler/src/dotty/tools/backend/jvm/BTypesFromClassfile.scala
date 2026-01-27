@@ -21,7 +21,7 @@ import scala.tools.asm.tree.{ClassNode, InnerClassNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.{NoClassBTypeInfoMissingBytecode, NoInlineInfoAttribute}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
-import dotty.tools.backend.jvm.opt.{ByteCodeUtils, InlineInfoAttribute}
+import dotty.tools.backend.jvm.opt.InlineInfoAttribute
 
 class BTypesFromClassfile(val postProcessor: PostProcessor) {
   import postProcessor.{bTypes, byteCodeRepository, inlinerHeuristics}
@@ -166,14 +166,14 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
       val methodInfos = new mutable.TreeMap[(String, String), MethodInlineInfo]()
       classNode.methods.forEach(methodNode => {
         val info = MethodInlineInfo(
-          effectivelyFinal                    = ByteCodeUtils.isFinalMethod(methodNode),
+          effectivelyFinal                    = BCodeUtils.isFinalMethod(methodNode),
           annotatedInline                     = false,
           annotatedNoInline                   = false)
         methodInfos((methodNode.name, methodNode.desc)) = info
       })
 
       InlineInfo(
-        isEffectivelyFinal = ByteCodeUtils.isFinalClass(classNode),
+        isEffectivelyFinal = BCodeUtils.isFinalClass(classNode),
         sam = inlinerHeuristics.javaSam(classNode.name),
         methodInfos = methodInfos,
         warning)

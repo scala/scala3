@@ -5,17 +5,21 @@ import scala.collection.mutable.{Clearable, HashSet}
 import dotty.tools.dotc.util.*
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.io.AbstractFile
-import java.util.{Collection => JCollection, Map => JMap}
+
+import java.util.{Collection as JCollection, Map as JMap}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.config.ScalaSettings
+
+import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 /**
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackendInterface) {
+sealed abstract class PostProcessorFrontendAccess(private val ctx: Context) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
@@ -27,11 +31,11 @@ sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackend
   def getEntryPoints: List[String]
 
   private val frontendLock: AnyRef = new Object()
-  inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
+  inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using ctx))
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
   inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
 
-  def recordPerRunCache[T <: Clearable](cache: T): T
+  def recordPerRunCache[T <: mutable.Clearable](cache: T): T
 
   def recordPerRunJavaMapCache[T <: JMap[?, ?]](cache: T): T
 
@@ -113,8 +117,8 @@ object PostProcessorFrontendAccess {
   }
 
   final class BufferingBackendReporting(using Context) extends BackendReporting {
-    // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
-    // We could use a listBuffer etc - but that would be extra allocation in the common case
+    // We optimize access to the buffered reports for the common case - that there are no warning/errors to report
+    // We could use a listBuffer etc. - but that would be extra allocation in the common case
     // Note - all access is externally synchronized, as this allow the reports to be generated in on thread and
     // consumed in another
     private var bufferedReports = List.empty[Report]
@@ -139,18 +143,19 @@ object PostProcessorFrontendAccess {
   }
 
 
-  class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess(int) {
+  class Impl(ctx: Context, entryPoints: mutable.HashSet[String]) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
 
-    def recordPerRunCache[T <: Clearable](cache: T): T = cache // TODO FIX ME: This doesn't cache anything
+    def recordPerRunCache[T <: mutable.Clearable](cache: T): T = cache // TODO FIX ME: This doesn't cache anything
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
          def valueSetByUser: Option[T] = Option(s.value).filter(_ != s.default)
-      inline def s = ctx.settings
 
-      override val target =
+      inline def s: ScalaSettings = ctx.settings
+
+      override val target: String =
         val releaseValue = Option(s.javaOutputVersion.value).filter(_.nonEmpty)
         val targetValue = Option(s.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
         (releaseValue, targetValue) match
