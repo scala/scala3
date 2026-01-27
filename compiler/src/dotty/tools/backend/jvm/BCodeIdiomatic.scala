@@ -21,7 +21,7 @@ trait BCodeIdiomatic {
   val int: DottyBackendInterface
   val bTypes: BTypesFromSymbols[int.type]
 
-  import int.{_, given}
+//  import int.{_, given}
   import bTypes.*
   import coreBTypes.*
 
@@ -554,14 +554,14 @@ trait BCodeIdiomatic {
       jmethod.visitTypeInsn(Opcodes.INSTANCEOF, tk.classOrArrayType)
     }
 
-    // can-multi-thread
+    // can-multire-thread
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
     }
 
-    def abort(msg: String): Nothing = {
-      report.error(msg)
+    private def abort(msg: String): Nothing = {
+      //report.error(msg)
       throw new RuntimeException(msg)
     }
 

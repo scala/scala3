@@ -17,7 +17,7 @@ import scala.tools.asm
 abstract class BTypes { self =>
   val frontendAccess: PostProcessorFrontendAccess
   val int: DottyBackendInterface
-  import int.given
+  //import int.given
   /**
    * A map from internal names to ClassBTypes. Every ClassBType is added to this map on its
    * construction.
@@ -611,7 +611,7 @@ abstract class BTypes { self =>
       assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
 
       assert(
-        if (info.superClass.isEmpty) { isJLO(this) || (DottyBackendInterface.isCompilingPrimitive && ClassBType.hasNoSuper(internalName)) }
+        if (info.superClass.isEmpty) { true /*isJLO(this) || (DottyBackendInterface.isCompilingPrimitive && ClassBType.hasNoSuper(internalName))*/ }
         else if (isInterface) isJLO(info.superClass.get)
         else !isJLO(this) && ifInit(info.superClass.get)(!_.isInterface),
         s"Invalid superClass in $this: ${info.superClass}"

@@ -863,7 +863,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
   }
 
   def abort(msg: String): Nothing = {
-    report.error(msg)
+    //report.error(msg)
     throw new RuntimeException(msg)
   }
 
