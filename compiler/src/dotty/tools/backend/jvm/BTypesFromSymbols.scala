@@ -105,23 +105,21 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
     val superClass = if (superClassSym == NoSymbol) None
                      else Some(classBTypeFromSymbol(superClassSym))
 
-    /**
-     * All interfaces implemented by a class, except for those inherited through the superclass.
+    /*
+     * Find all interfaces implemented by a class, except for those inherited through the superclass.
      * Redundant interfaces are removed unless there is a super call to them.
      */
-    extension (sym: Symbol) def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = sym.directlyInheritedTraits
+    val interfaces = {
+      val directlyInheritedTraits = classSym.directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
-      val superCalls = superCallsMap.getOrElse(sym, List.empty)
+      val superCalls = superCallsMap.getOrElse(classSym, List.empty)
       val superCallsSet = superCalls.toSet
       val additional = superCalls.filter(t => !directlyInheritedTraitsSet(t) && t.is(Trait))
 //      if (additional.nonEmpty)
 //        println(s"$fullName: adding supertraits $additional")
       directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCallsSet(t)) ++ additional
-    }
-
-    val interfaces = classSym.superInterfaces.map(classBTypeFromSymbol)
+    }.map(classBTypeFromSymbol)
 
     val flags = javaFlags(classSym)
 
