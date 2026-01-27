@@ -933,7 +933,11 @@ object Contexts {
      *  This initializes the `platform` and the `definitions`.
      */
     def initialize()(using Context): Unit = {
-      _platform = newPlatform
+      // Only create a new platform if not already initialized.
+      // This is important for the REPL where :dep/:jar commands add JARs to the platform's classpath.
+      // If we always create a new platform, those JARs would be lost on the next run.
+      if _platform == null then
+        _platform = newPlatform
       definitions.init()
     }
 
