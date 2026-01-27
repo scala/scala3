@@ -54,7 +54,7 @@ class Compiler {
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
-    List(new CheckUnused.PostInlining) ::  // Check for unused elements
+    //List(CheckUnused.PostInlining()) :: // Check for unused elements
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -88,7 +88,8 @@ class Compiler {
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
     List(new cc.Setup) ::            // Preparations for check captures phase, enabled under captureChecking
     List(new cc.CheckCaptures) ::    // Check captures, enabled under captureChecking
-    List(new ElimOpaque,             // Turn opaque into normal aliases
+    List(CheckUnused.PostPatMat(),   // Check for unused elements and report
+         new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts

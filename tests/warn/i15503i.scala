@@ -1,4 +1,4 @@
-//> using options -Wunused:all -Ystop-after:checkUnusedPostInlining
+//> using options -Wunused:all -Wconf:name=InlinedAnonClassWarning:s
 
 import collection.mutable.{Map => MutMap} // warn
 import collection.mutable.Set // warn
