@@ -2,7 +2,6 @@
 layout: doc-page
 title: "Better fors"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/better-fors.html
-redirectFrom: /experimental/better-fors.html
 ---
 
 Starting in Scala `3.8` or under `-preview` mode using Scala `3.7`, the usability of `for`-comprehensions has improved.

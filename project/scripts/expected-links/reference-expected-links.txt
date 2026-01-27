@@ -84,10 +84,12 @@
 ./experimental/erased-defs.html
 ./experimental/explicit-nulls.html
 ./experimental/fewer-braces.html
+./experimental/generalized-method-syntax.html
 ./experimental/index.html
 ./experimental/into.html
 ./experimental/main-annotation.html
 ./experimental/modularity.html
+./experimental/named-tuples.html
 ./experimental/named-typeargs-spec.html
 ./experimental/named-typeargs.html
 ./experimental/numeric-literals.html
@@ -97,6 +99,7 @@
 ./experimental/quoted-patterns-with-polymorphic-functions.html
 ./experimental/relaxed-lambdas.html
 ./experimental/runtimeChecked.html
+./experimental/sub-cases.html
 ./experimental/tupled-function.html
 ./experimental/typeclasses.html
 ./experimental/unrolled-defs.html
@@ -133,6 +136,7 @@
 ./other-new-features/creator-applications.html
 ./other-new-features/experimental-defs.html
 ./other-new-features/export.html
+./other-new-features/generalized-method-syntax.html
 ./other-new-features/indentation.html
 ./other-new-features/index.html
 ./other-new-features/kind-polymorphism.html
@@ -157,6 +161,8 @@
 ./preview/better-fors.html
 ./preview/index.html
 ./preview/into.html
+./preview/named-tuples.html
 ./preview/overview.html
+./preview/runtimeChecked.html
 ./soft-modifier.html
 ./syntax.html
