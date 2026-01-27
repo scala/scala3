@@ -518,8 +518,8 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
-      - name: Run `scala3-bootstrapped/testCompilation --enable-coverage-phase tests/pos`
-        run: ./project/scripts/sbt "scala3-bootstrapped/testCompilation --enable-coverage-phase tests/pos"
+      - name: Run `scala3-bootstrapped/testCompilation --enable-coverage-phase tests/pos/`
+        run: ./project/scripts/sbt "scala3-bootstrapped/testCompilation --enable-coverage-phase tests/pos/"
 
   test-scala3-sbt-bridge-nonbootstrapped:
     runs-on: ubuntu-latest
