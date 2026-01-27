@@ -4678,12 +4678,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
         lazy val msg = MissingEmptyArgumentList(sym.show, tree)
-        def applyAction: true =
+        def applyAction(): Unit =
           msg.actions
             .headOption
             .foreach(Rewrites.applyAction)
-          true
-        def warnScala2 =
+        def warnScala2(): Unit =
           if {
             var isScala2 = sym.owner.is(Scala2x)
             val isJavaEtc =
@@ -4693,12 +4692,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 m.is(JavaDefined) || m == defn.Object_clone || m.owner == defn.AnyClass
             isScala2 && !isJavaEtc
           }
-          then report.warning(msg, tree.srcPos)
-          applyAction
-
+          then
+            report.warning(msg, tree.srcPos)
+            applyAction()
         sym.isConstructor
-        || sym.matchNullaryLoosely && warnScala2
-        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`) && applyAction
+        || sym.matchNullaryLoosely.tap(if _ then warnScala2())
+        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`).tap(if _ then applyAction())
       end isAutoApplied
 
       /** If this is a selection prototype of the form `.apply(...): R`, return the nested
