@@ -198,9 +198,11 @@ sealed abstract class CaptureSet extends Showable:
   protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
     accountsFor(elem) || addNewElem(elem)
 
-  /** Try to include all element in `refs` to this capture set. */
+  /** Try to include all elements in `refs` to this capture set. */
   protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
-    newElems.forall(tryInclude(_, origin))
+    if newElems.size == 0 then true
+    else if newElems.size == 1 then tryInclude(newElems.nth(0), origin)
+    else TypeComparer.jointOp(newElems.forall(tryInclude(_, origin)))
 
   protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
     if mutability == Writer then toReader() else true
@@ -1213,15 +1215,20 @@ object CaptureSet:
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
       else
-        val res = super.tryInclude(elem, origin)
-        // If this is the union of a constant and a variable,
-        // propagate `elem` to the variable part to avoid slack
-        // between the operands and the union.
-        if res && (origin ne cs1) && (origin ne cs2) then
-          if cs1.isConst then cs2.tryInclude(elem, origin)
-          else if cs2.isConst then cs1.tryInclude(elem, origin)
+        TypeComparer.jointOp:
+          val res = super.tryInclude(elem, origin)
+          // If this is the union of a constant and a variable,
+          // propagate `elem` to the variable part to avoid slack
+          // between the operands and the union.
+          if res && (origin ne cs1) && (origin ne cs2) then
+            try
+              if cs1.isConst then cs2.tryInclude(elem, origin)
+              else if cs2.isConst then cs1.tryInclude(elem, origin)
+              else res
+            catch case ex: AssertionError =>
+              println(i"err while tryinclude $elem in $cs1 | $cs2, ${cs1.isConst}, ${cs2.isConst}")
+              throw ex
           else res
-        else res
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1251,9 +1258,10 @@ object CaptureSet:
         else true
       !inIntersection
       || accountsFor(elem)
-      || addNewElem(elem)
-        && ((origin eq cs1) || cs1.tryInclude(elem, this))
-        && ((origin eq cs2) || cs2.tryInclude(elem, this))
+      || TypeComparer.jointOp:
+            addNewElem(elem)
+            && ((origin eq cs1) || cs1.tryInclude(elem, this))
+            && ((origin eq cs2) || cs2.tryInclude(elem, this))
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
