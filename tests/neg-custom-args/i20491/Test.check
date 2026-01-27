@@ -1,0 +1,3 @@
+-- Error: A.scala:3:6 --------------------------------------------------------------------------------------------------
+Cannot resolve reference to type otherpkg.type.MissingDep.
+The classfile defining the type might be missing from the classpath.
