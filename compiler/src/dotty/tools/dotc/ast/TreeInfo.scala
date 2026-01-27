@@ -10,6 +10,7 @@ import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
 import config.Feature
+import inlines.Inliner.OpaqueProxy
 import util.SrcPos
 
 import Decorators.*
@@ -561,7 +562,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | DefDef(_, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>
-      if vdef.symbol.flags.is(Mutable) then Impure else exprPurity(vdef.rhs) `min` Pure
+      if vdef.symbol.flags.is(Mutable) then Impure
+      else if OpaqueProxy.unapply(vdef.symbol.termRef).isDefined then Pure
+      else exprPurity(vdef.rhs) `min` Pure
     case _ =>
       Impure
       // TODO: It seem like this should be exprPurity(tree)
