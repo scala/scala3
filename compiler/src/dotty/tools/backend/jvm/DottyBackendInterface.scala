@@ -28,7 +28,7 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSym
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
-  def cachedDesugarIdent(i: Ident): Option[tpd.Select] = {
+  private def cachedDesugarIdent(i: Ident): Option[tpd.Select] = {
     var found = desugared.get(i.tpe)
     if (found == null) {
       tpd.desugarIdent(i) match {
@@ -67,7 +67,7 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSym
     }
   }
 
-  object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral] {
+  /*object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral] {
     def _1: Type = field.nn.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
@@ -75,7 +75,7 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSym
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.nn.elems
-  }
+  }*/
 
   abstract class DeconstructorCommon[T <: AnyRef] {
     var field: T | Null = null
