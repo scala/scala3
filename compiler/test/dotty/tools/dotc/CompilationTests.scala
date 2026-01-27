@@ -466,15 +466,24 @@ object CompilationTests extends ParallelTesting {
     if (Properties.testsInstrumentCoverage) {
       val ignoreList = scoverageIgnoreExcludelisted.toSet
       
-      // Filter out test sources whose filenames match the excludelist
+      // Filter out test sources whose filenames or directory names match the excludelist
       val filteredTargets = test.targets.filter { target =>
         val sourceFiles = target.sourceFiles
-        val shouldInclude = !sourceFiles.exists { file =>
+        // Check individual file names
+        val fileMatches = sourceFiles.exists { file =>
           ignoreList.contains(file.getName)
         }
+        // Check directory name from test title (for directory tests)
+        val titleMatches = {
+          val title = target.title
+          // Extract the last component (directory name or filename) from the path
+          val lastComponent = new java.io.File(title).getName
+          ignoreList.contains(lastComponent)
+        }
+        val shouldInclude = !fileMatches && !titleMatches
         if (!shouldInclude) {
           // Log skipped test for visibility
-          val testName = sourceFiles.map(_.getName).mkString(", ")
+          val testName = if (sourceFiles.length == 1) sourceFiles.head.getName else target.title
           println(s"[Scoverage] Skipping test: $testName (matches scoverage ignore excludelist)")
         }
         shouldInclude
