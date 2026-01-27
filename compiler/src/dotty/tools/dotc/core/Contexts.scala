@@ -933,10 +933,11 @@ object Contexts {
      *  This initializes the `platform` and the `definitions`.
      */
     def initialize()(using Context): Unit = {
-      // Only create a new platform if not already initialized.
-      // This is important for the REPL where :dep/:jar commands add JARs to the platform's classpath.
-      // If we always create a new platform, those JARs would be lost on the next run.
-      if _platform == null then
+      // In interactive mode (REPL), preserve the existing platform if already initialized.
+      // This is important because :dep/:jar commands add JARs to the platform's classpath,
+      // and we don't want to lose those when a new Run is created for each REPL input.
+      // In non-interactive mode, always create a fresh platform for each compilation.
+      if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
       definitions.init()
     }
