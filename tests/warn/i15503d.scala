@@ -121,3 +121,6 @@ class `i22743 lazy vals are defs`:
   lazy val (i, s) = f // no warn because def is neither local nor private
   val (j, t) = f // existing no warn for val with attachment
   private lazy val (k, u) = f // warn // warn a warning so nice, they warn it twice
+
+def `i25100 type vars are also pat vars` =
+  ??? match { case _: List[t] => ??? }
