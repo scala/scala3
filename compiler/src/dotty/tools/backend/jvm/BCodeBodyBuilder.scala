@@ -36,7 +36,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   // import global.*
   // import definitions.*
   import tpd.*
-  import int.{_, given}
+  import int.{*, given}
   import DottyBackendInterface.symExtensions
   import bTypes.*
   import coreBTypes.*
@@ -439,7 +439,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
                 else locals.load(sym)
               }
             case Some(t) =>
-              genLoad(t, generatedType)
+              throw new AssertionError("How could we reach here? " + t.show) //genLoad(t, generatedType)
           }
 
         case Literal(value) =>
@@ -1191,7 +1191,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
           cachedDesugarIdent(t) match {
-            case Some(sel) => genLoadQualifier(sel)
+            case Some(sel) =>
+              throw new AssertionError("how could this happen? " + t.show)
+              //genLoadQualifier(sel)
             case None =>
               assert(t.symbol.owner == this.claszSymbol)
               UNIT
