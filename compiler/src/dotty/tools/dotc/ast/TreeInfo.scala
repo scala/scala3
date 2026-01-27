@@ -596,6 +596,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           || sym == defn.Predef_classOf
           || sym == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType]
           || defn.capsErasedValueMethods.contains(sym)
+          || sym == defn.Any_typeCast && sym.is(Synthetic)
       then Pure
       else Impure
     case Apply(fn, args) =>

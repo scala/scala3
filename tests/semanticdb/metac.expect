@@ -3764,7 +3764,7 @@ Text => empty
 Language => Scala
 Symbols => 13 entries
 Occurrences => 35 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 4 entries
 
 Symbols:
@@ -3820,9 +3820,12 @@ Occurrences:
 [23:4..23:19): StructuralTypes -> example/StructuralTypes.
 
 Diagnostics:
+[15:2..15:11): [warning] A pure expression does nothing in statement position
+[16:2..16:10): [warning] A pure expression does nothing in statement position
 [17:20..17:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
 Instead, use method syntax .foo(...) or backticked identifier `foo`.
 The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+[22:2..22:13): [warning] A pure expression does nothing in statement position
 
 Synthetics:
 [15:2..15:6):user => reflectiveSelectable(*)
