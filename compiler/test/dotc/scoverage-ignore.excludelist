@@ -1,0 +1,8 @@
+# Tests to skip when scoverage coverage instrumentation is enabled
+# This excludelist only applies when running tests with --enable-coverage-phase
+# Format: one test filename per line (just the filename, not full path)
+# Lines starting with # are comments
+# Empty lines are ignored
+
+# Example test to skip
+t1185.scala
