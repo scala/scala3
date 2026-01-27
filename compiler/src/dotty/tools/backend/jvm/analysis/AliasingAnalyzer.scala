@@ -20,7 +20,7 @@ import scala.collection.mutable
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.*
-import dotty.tools.backend.jvm.BCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 
 /**
  * A subclass of Frame that tracks aliasing of values stored in local variables and on the stack.

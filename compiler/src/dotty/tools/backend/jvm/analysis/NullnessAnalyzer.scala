@@ -20,8 +20,8 @@ import scala.annotation.switch
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
-import dotty.tools.backend.jvm.BCodeUtils.*
-import dotty.tools.backend.jvm.BackendUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
+import dotty.tools.backend.jvm.BackendUtils.isModuleLoad
 
 /**
  * See the package object `analysis` for details on the ASM analysis framework.
@@ -68,7 +68,7 @@ object NotNullValue  extends NullnessValue(isSize2 = false) { override def toStr
 
 object NullnessValue {
   def unknown(isSize2: Boolean): NullnessValue = if (isSize2) UnknownValue2 else UnknownValue1
-  def unknown(insn: AbstractInsnNode): NullnessValue = if (instructionResultSize(insn) == 2) UnknownValue2 else UnknownValue1
+  def unknown(insn: AbstractInsnNode): NullnessValue = if (InstructionStackEffect.instructionResultSize(insn) == 2) UnknownValue2 else UnknownValue1
 }
 
 final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean, method: MethodNode) extends Interpreter[NullnessValue](Opcodes.ASM5) {

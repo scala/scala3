@@ -13,7 +13,6 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.backend.jvm.GenBCode.*
-import dotty.tools.backend.jvm.analysis.InstructionStackEffect
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
@@ -261,8 +260,6 @@ object BCodeUtils {
     val op = if (size == 1) POP else POP2
     new InsnNode(op)
   }
-
-  def instructionResultSize(insn: AbstractInsnNode): Int = InstructionStackEffect.prod(InstructionStackEffect.forClassfile(insn))
 
   def loadZeroForTypeSort(sort: Int): InsnNode = (sort: @switch) match {
     case Type.BOOLEAN |

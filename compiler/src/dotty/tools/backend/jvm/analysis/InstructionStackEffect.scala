@@ -19,7 +19,7 @@ import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.{Frame, Value}
-import dotty.tools.backend.jvm.BCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 
 object InstructionStackEffect {
   private val consShift = 3
@@ -63,7 +63,9 @@ object InstructionStackEffect {
    * into a classfile (see doc on the `analysis` package object).
    */
   def forClassfile(insn: AbstractInsnNode): Int = computeConsProd(insn, forClassfile = true, conservative = false)
-
+  
+  def instructionResultSize(insn: AbstractInsnNode): Int = prod(forClassfile(insn))
+  
   private def invokeConsProd(methodDesc: String, insn: AbstractInsnNode, forClassfile: Boolean): Int = {
     val consumesReceiver = insn.getOpcode != INVOKESTATIC && insn.getOpcode != INVOKEDYNAMIC
     if (forClassfile) {

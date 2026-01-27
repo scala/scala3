@@ -16,7 +16,7 @@ package analysis
 
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.{AbstractInsnNode, MethodNode}
-import dotty.tools.backend.jvm.BCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.AnalyzerExtensions
 
 
 /**

@@ -18,8 +18,8 @@ import scala.annotation.tailrec
 import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
-import dotty.tools.backend.jvm.BCodeUtils.*
-import dotty.tools.backend.jvm.BackendUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
+import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
   import TypeFlowInterpreter.*

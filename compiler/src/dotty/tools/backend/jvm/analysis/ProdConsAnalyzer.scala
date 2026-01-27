@@ -11,7 +11,7 @@ import scala.tools.asm.Opcodes.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.{MethodVisitor, Type}
-import dotty.tools.backend.jvm.BCodeUtils.*
+import dotty.tools.backend.jvm.BCodeUtils.{FrameExtensions, isLoad, isStore, isLoadOrStore}
 
 /**
  * This class provides additional queries over ASM's built-in `SourceValue` analysis.
