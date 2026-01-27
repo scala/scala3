@@ -1014,10 +1014,11 @@ object Capabilities:
       case NewInstance(tp, fields) => fields
       case _ => Nil
 
-    private def contributingStr(using Context): String = contributingFields match
-      case Nil => ""
-      case field :: Nil => s" with contributing field $field"
-      case fields => s" with contributing fields ${fields.map(_.show).mkString(", ")}"
+    private def contributingStr(using Context): String =
+      contributingFields match
+        case Nil => ""
+        case field :: Nil => s" with contributing field $field"
+        case fields => s" with contributing fields ${fields.map(_.show).mkString(", ")}"
 
     def explanation(using Context): String = this match
       case InDecl(sym, fields) =>

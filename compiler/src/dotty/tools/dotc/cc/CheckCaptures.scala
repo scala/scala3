@@ -417,15 +417,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         case TypeComparer.CompareResult.Fail(notes) =>
           val (includeFailures, otherNotes) = notes.partition(_.isInstanceOf[IncludeFailure])
           val realTarget = includeFailures match
-            case (fail: IncludeFailure) :: _ => fail.cs
-            case _ => target
+            case (fail: IncludeFailure) :: _ if !fail.cs.isInstanceOf[CaptureSet.EmptyOfBoxed] =>
+              fail.cs
+            case _ =>
+              target
           def msg(provisional: Boolean) =
             def toAdd: String = otherNotes.map(_.render).mkString
-            def descr: String =
-              val d = realTarget.description
-              if d.isEmpty then provenance else ""
+            def provenanceStr: String =
+              if realTarget.description.isEmpty then provenance else ""
             def kind = if provisional then "previously estimated\n" else "allowed "
-            em"$prefix included in the ${kind}capture set $realTarget$descr$toAdd"
+            em"$prefix included in the ${kind}capture set $realTarget$provenanceStr$toAdd"
           target match
             case target: CaptureSet.Var
             if realTarget.isProvisionallySolved =>

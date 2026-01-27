@@ -593,6 +593,7 @@ object CaptureSet:
     cs
 
   class EmptyOfBoxed(val tp1: Type, val tp2: Type) extends Const(emptyRefs):
+    override def description = "{} of boxed mismatch"
     override def toString = "{} of boxed mismatch"
 
   /** The universal capture set `{caps.any}` */
@@ -617,7 +618,7 @@ object CaptureSet:
     if elems.isEmpty then empty else Const(elems)
 
   /** The subclass of constant capture sets with given elements `elems` */
-  class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
+  class Const private[CaptureSet] (val elems: Refs, descr: String = "") extends CaptureSet:
     def isConst(using Context) = true
     def isAlwaysEmpty(using Context) = elems.isEmpty
     def isProvisionallySolved(using Context) = false
@@ -655,6 +656,8 @@ object CaptureSet:
         myMut = if maybeExclusive then Writer else Reader
         isComplete = true
       myMut
+
+    def description = descr
 
     override def toString = elems.toString
   end Const
