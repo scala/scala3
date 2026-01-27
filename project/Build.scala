@@ -1922,28 +1922,30 @@ object Build {
           .andThen(justAPIOverride)
           .apply(Scala3.value)
         }
-        val writeAdditionalFiles = Def.task {
-          val dest = file(config.value.get[OutputDir].get.value)
-          if (!justAPI) {
-            IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
-            // This file is used by GitHub Pages when the page is available in a custom domain
-            IO.write(dest / "CNAME", "nightly.scala-lang.org")
+        // Use taskDyn with .result to ensure patches are always reverted, even if generation fails
+        Def.taskDyn {
+          val log = streams.value.log
+          log.info(s"Generating snapshot scaladoc, applying patches to ${sourcePatches.map(_.file)}")
+          sourcePatches.foreach(_.apply())
+
+          Def.task {
+            val docResult = generateDocumentation(config).result.value
+            log.info(s"Generated snapshot scaladoc, reverting changes made to ${sourcePatches.map(_.file)}")
+            sourcePatches.foreach(_.revert())
+
+            docResult match {
+              case Inc(inc) =>
+                throw inc.directCause.getOrElse(new RuntimeException("Documentation generation failed", inc))
+              case Value(_) =>
+                val dest = file(config.value.get[OutputDir].get.value)
+                if (!justAPI) {
+                  IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
+                  // This file is used by GitHub Pages when the page is available in a custom domain
+                  IO.write(dest / "CNAME", "nightly.scala-lang.org")
+                }
+            }
           }
         }
-        val applyPatches = Def.task {
-          streams.value.log.info(s"Generating snapshot scaladoc, would apply patches to ${sourcePatches.map(_.file)}")
-          sourcePatches.foreach(_.apply())
-        }
-        val revertPatches = Def.task {
-          streams.value.log.info(s"Generated snapshot scaladoc, reverting changes made to ${sourcePatches.map(_.file)}")
-          sourcePatches.foreach(_.revert())
-        }
-        writeAdditionalFiles.dependsOn(
-          revertPatches.dependsOn(
-            generateDocumentation(config)
-              .dependsOn(applyPatches)
-          )
-        )
       }.evaluated,
 
       generateStableScala3Documentation := Def.inputTaskDyn {
