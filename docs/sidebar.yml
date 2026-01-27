@@ -153,6 +153,10 @@ subsection:
         hidden: true
       - page: reference/experimental/fewer-braces.md
         hidden: true
+      - page: reference/experimental/generalized-method-syntax.md
+        hidden: true
+      - page: reference/experimental/named-tuples.md
+        hidden: true
       - page: reference/experimental/canthrow.md
       - page: reference/experimental/erased-defs.md
       - page: reference/experimental/erased-defs-spec.md

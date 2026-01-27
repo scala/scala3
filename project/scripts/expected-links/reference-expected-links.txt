@@ -84,10 +84,12 @@
 ./experimental/erased-defs.html
 ./experimental/explicit-nulls.html
 ./experimental/fewer-braces.html
+./experimental/generalized-method-syntax.html
 ./experimental/index.html
 ./experimental/into.html
 ./experimental/main-annotation.html
 ./experimental/modularity.html
+./experimental/named-tuples.html
 ./experimental/named-typeargs-spec.html
 ./experimental/named-typeargs.html
 ./experimental/numeric-literals.html
@@ -159,6 +161,7 @@
 ./preview/better-fors.html
 ./preview/index.html
 ./preview/into.html
+./preview/named-tuples.html
 ./preview/overview.html
 ./preview/runtimeChecked.html
 ./soft-modifier.html
