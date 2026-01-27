@@ -16,6 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
+import TestSources.scoverageIgnoreExcludelisted
 import reporting.TestReporter
 import vulpix._
 import dotty.tools.dotc.config.ScalaSettings
@@ -459,10 +460,27 @@ object CompilationTests extends ParallelTesting {
 
   /** Wraps a CompilationTest to add coverage flags to all targets.
    *  Each target gets its own unique temporary coverage directory.
+   *  Filters out test sources that match the scoverage ignore excludelist.
    */
   private def withCoverage(test: CompilationTest): CompilationTest = {
     if (Properties.testsInstrumentCoverage) {
-      val modifiedTargets = test.targets.map { target =>
+      val ignoreList = scoverageIgnoreExcludelisted.toSet
+      
+      // Filter out test sources whose filenames match the excludelist
+      val filteredTargets = test.targets.filter { target =>
+        val sourceFiles = target.sourceFiles
+        val shouldInclude = !sourceFiles.exists { file =>
+          ignoreList.contains(file.getName)
+        }
+        if (!shouldInclude) {
+          // Log skipped test for visibility
+          val testName = sourceFiles.map(_.getName).mkString(", ")
+          println(s"[Scoverage] Skipping test: $testName (matches scoverage ignore excludelist)")
+        }
+        shouldInclude
+      }
+      
+      val modifiedTargets = filteredTargets.map { target =>
         val coverageDir = Files.createTempDirectory("coverage")
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
         target.withFlags(
