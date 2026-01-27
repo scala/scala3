@@ -623,7 +623,7 @@ object Inlines:
             val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
             (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
           else (call.tpe, false)
-        val resultType = target.widenTermRefExpr
+        val resultType = target.widenIfUnstable
         if forceCast then
           // we need to force the cast for issues with ThisTypes, as ensureConforms will just
           // check subtyping and then choose not to cast, leaving the previous, incorrect type
