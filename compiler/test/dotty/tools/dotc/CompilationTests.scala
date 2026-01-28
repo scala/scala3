@@ -392,6 +392,16 @@ class CompilationTests {
     ).checkRuns()
 
   }
+
+  // Valhalla Value Classes tests
+  @Test def checkValhallaValueClasses: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkValhallaVC")
+    val options = defaultOptions.and("-Yvalue-classes").and("-experimental")
+    val valhallaAnnotationPath = "library/target/scala-library-nonbootstrapped/scala-library-3.8.1-RC1-bin-SNAPSHOT-nonbootstrapped.jar"
+
+    compileFilesInDir("tests/valhalla/pos", options).checkCompile()
+    compileFilesInDir("tests/valhalla/neg", options).checkExpectedErrors()
+  }
 }
 
 object CompilationTests extends ParallelTesting {

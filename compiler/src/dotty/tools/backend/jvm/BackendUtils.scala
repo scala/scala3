@@ -19,7 +19,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
   import bTypes.*
   import coreBTypes.jliLambdaMetaFactoryAltMetafactoryHandle
 
-  lazy val classfileVersion: Int = BackendUtils.classfileVersionMap(compilerSettings.target.toInt)
+  lazy val classfileVersion: Int = if compilerSettings.experimental then (69 + (65535 << 16)) else BackendUtils.classfileVersionMap(compilerSettings.target.toInt)
 
   lazy val extraProc: Int = {
     import GenBCodeOps.addFlagIf
