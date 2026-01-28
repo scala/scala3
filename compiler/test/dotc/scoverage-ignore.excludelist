@@ -6,6 +6,7 @@
 
 16583.scala
 alphanumeric-infix-operator-compat
+annotation-named-pararamters
 applied_constructor_types.scala
 backwardCompat-3.0
 backwardCompat-3.1
@@ -14,6 +15,7 @@ bridges.scala
 capt1.scala
 capture.scala
 catch-sub-cases.scala
+colltest5
 erased-24.scala
 erased-class-as-args.scala
 erased-class-separate
@@ -23,6 +25,7 @@ experimental-imports-top.scala
 experimentalErased.scala
 gadt-cast-singleton.scala
 gadt-ycheck.scala
+generic-java-array-src
 getclass.scala
 help.scala
 i10848a.scala
@@ -44,6 +47,7 @@ i15980
 i16943.scala
 i18263.orig.scala
 i18263.scala
+i18589
 i19637.scala
 i19955a.scala
 i19955b.scala
@@ -74,17 +78,20 @@ i8955.scala
 i8963.scala
 i9228.scala
 infersingle.scala
+interop-unsound-src
 large2.scala
 match-single-sub-case.scala
 match-sub-cases.scala
 match-sub-sub-cases.scala
 matchtype.scala
+minicheck.scala
 mt-scrutinee-widen3.scala
 null.scala
 pf-sub-cases.scala
 phantom-Eq.scala
 pos_valueclasses
 precise-ctx-bound.scala
+quote-function-applied-to.scala
 safeThrowsStrawman.scala
 safeThrowsStrawman2.scala
 skolems2.scala
