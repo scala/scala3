@@ -868,10 +868,10 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |   over@@
          |}
          |""".stripMargin,
-      /**
-       * NOTE(tgodzik) observe that the "override" is not needed here but the completion
-       * has "override" because the identifier name starts with "o". It's a known limitation
-       * due to the feature that allows for easily auto-completing on writing o... .
+      /** NOTE(tgodzik) observe that the "override" is not needed here but the
+       *  completion has "override" because the identifier name starts with "o".
+       *  It's a known limitation due to the feature that allows for easily
+       *  auto-completing on writing o... .
        */
       """|override def overTop: Int
          |overTop: Int
@@ -926,7 +926,6 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |   def@@
          |}
          |""".stripMargin,
-
       """|def hello1: Int
          |override def equals(x$0: Any): Boolean
          |override def hashCode(): Int

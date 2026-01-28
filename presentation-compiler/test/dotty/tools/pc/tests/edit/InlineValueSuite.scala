@@ -2,12 +2,12 @@ package dotty.tools.pc.tests.edit
 
 import java.net.URI
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.pc.InlineValueProvider.Errors as InlineErrors
 import scala.meta.pc.DisplayableException
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -302,7 +302,6 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |}""".stripMargin
     )
 
-
   @Test def `i6924` =
     checkEdit(
       """|object O {
@@ -449,8 +448,8 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
     )
 
   @Test def `i7137b` =
-      checkEdit(
-        """|object O {
+    checkEdit(
+      """|object O {
             |  def foo = {
             |    val newValue = {
             |      val x = true
@@ -461,7 +460,7 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
             |  }
             |}
             |""".stripMargin,
-        """|object O {
+      """|object O {
             |  def foo = {
             |    def bar =
             |      val xx = {
@@ -471,7 +470,7 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
             |  }
             |}
             |""".stripMargin
-      )
+    )
 
   @Test def `no-new-line` =
     checkEdit(

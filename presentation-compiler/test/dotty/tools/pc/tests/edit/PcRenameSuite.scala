@@ -511,7 +511,7 @@ class PcRenameSuite extends BasePcRenameSuite:
 
   @Test def `apply-rename` =
     check(
-     """|object B {
+      """|object B {
         |  def locally = {
         |    object A{ def app@@ly(a: Int) = ??? }
         |    A(123)
@@ -519,12 +519,12 @@ class PcRenameSuite extends BasePcRenameSuite:
         |  }
         |}
         |""".stripMargin,
-     wrap = false
-   )
+      wrap = false
+    )
 
   @Test def `constructor-rename` =
-   check(
-     """|object B {
+    check(
+      """|object B {
         |  def locally = {
         |    class A(a : String){ def th@@is(a: Int) = this(a.toString) }
         |    A(123)
@@ -532,16 +532,16 @@ class PcRenameSuite extends BasePcRenameSuite:
         |  }
         |}
         |""".stripMargin,
-     wrap = false
-   )
+      wrap = false
+    )
 
   @Test def `local-object-with-end-rename` =
-   check(
-     """|def bar =
+    check(
+      """|def bar =
         |  object <<fo@@o>>:
         |    def aaa = ???
         |  end <<foo>>
         |  1
         |""".stripMargin,
-     wrap = false
-   )
+      wrap = false
+    )

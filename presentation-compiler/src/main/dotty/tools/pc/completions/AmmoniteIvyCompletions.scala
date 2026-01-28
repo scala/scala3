@@ -40,6 +40,3 @@ object AmmoniteIvyCompletions:
               Some(ivyEditRange)
             )
           )
-    end match
-  end contribute
-end AmmoniteIvyCompletions

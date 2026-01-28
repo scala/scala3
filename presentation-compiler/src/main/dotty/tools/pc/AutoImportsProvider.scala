@@ -4,13 +4,14 @@ import java.nio.file.Paths
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.AutoImportsResultImpl
 import scala.meta.pc.*
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Flags.Method
 import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
@@ -18,7 +19,6 @@ import dotty.tools.pc.completions.CompletionPos
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
-import dotty.tools.dotc.core.Flags.Method
 
 final class AutoImportsProvider(
     search: SymbolSearch,
@@ -48,7 +48,6 @@ final class AutoImportsProvider(
       using Interactive.contextOfPath(path)(using newctx)
     )
     import indexedContext.ctx
-
 
     def correctInTreeContext(sym: Symbol) = path match
       case (_: Ident) :: (sel: Select) :: _ =>
@@ -101,15 +100,18 @@ final class AutoImportsProvider(
               )
             (sym: Symbol) => generator.forSymbol(sym)
         end match
-      end mkEdit
 
-      val all = for
-        sym <- results
-        edits <- mkEdit(sym)
-      yield (AutoImportsResultImpl(
-        sym.owner.showFullName,
-        edits.asJava
-      ), sym)
+      val all =
+        for
+          sym   <- results
+          edits <- mkEdit(sym)
+        yield (
+          AutoImportsResultImpl(
+            sym.owner.showFullName,
+            edits.asJava
+          ),
+          sym
+        )
 
       all match
         case (onlyResult, _) :: Nil => List(onlyResult)
@@ -120,7 +122,6 @@ final class AutoImportsProvider(
           }
           if moreExact.nonEmpty then moreExact.map(_._1)
           else moreResults.map(_._1)
-
     else List.empty
     end if
   end autoImports

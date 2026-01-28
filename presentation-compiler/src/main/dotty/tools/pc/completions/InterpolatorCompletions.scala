@@ -1,11 +1,11 @@
 package dotty.tools.pc.completions
 
 import scala.collection.mutable.ListBuffer
-import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.internal.pc.InterpolationSplice
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
@@ -60,13 +60,11 @@ object InterpolatorCompletions:
           buildTargetIdentifier
         )
     end match
-  end contribute
 
-  /**
-   * Find the identifier that corresponds to the previous interpolation splice.
-   * For string `s" $Main.metho@@ "` we want to get `Main` identifier.
-   * The difference with Scala 2 is that we search for it through the path using
-   * the created partial function.
+  /** Find the identifier that corresponds to the previous interpolation splice.
+   *  For string `s" $Main.metho@@ "` we want to get `Main` identifier. The
+   *  difference with Scala 2 is that we search for it through the path using
+   *  the created partial function.
    */
   private def interpolatorMemberArg(
       lit: Literal,
@@ -87,17 +85,16 @@ object InterpolatorCompletions:
               i
           }
         case _ => None
-  end interpolatorMemberArg
 
-  /**
-   * A completion to select type members inside string interpolators.
+  /** A completion to select type members inside string interpolators.
    *
-   * Example: {{{
-   *   // before
-   *   s"Hello $name.len@@!"
-   *   // after
-   *   s"Hello ${name.length()$0}"
-   * }}}
+   *  Example:
+   *  ```
+   *    // before
+   *    s"Hello $name.len@@!"
+   *    // after
+   *    s"Hello ${name.length()$0}"
+   *  ```
    */
   private def contributeMember(
       lit: Literal,
@@ -111,7 +108,7 @@ object InterpolatorCompletions:
   )(using Context, ReportContext): List[CompletionValue] =
     def newText(
         label: String,
-        affix: CompletionAffix ,
+        affix: CompletionAffix,
         identOrSelect: Ident | Select
     ): String =
       val snippetCursor = suffixEnding(affix.toSuffixOpt, areSnippetsSupported)
@@ -124,7 +121,6 @@ object InterpolatorCompletions:
         .append(snippetCursor)
         .append('}')
         .toString
-    end newText
 
     def extensionMethods(qualType: Type) =
       val buffer = ListBuffer.empty[Symbol]
@@ -134,11 +130,10 @@ object InterpolatorCompletions:
         then
           buffer.append(sym)
           true
-        else false,
+        else false
       )
       search.searchMethods(completionPos.query, buildTargetIdentifier, visitor)
       buffer.toList
-    end extensionMethods
 
     def completionValues(
         syms: Seq[Symbol],
@@ -166,17 +161,18 @@ object InterpolatorCompletions:
                 Some(identOrSelect.name.toString() + "." + label),
                 denot.symbol,
                 isExtension = isExtension
-              ),
+              )
           )
       }.flatten
 
-    val qualType = for
-      parent <- path.tail.headOption.toList
-      if lit.span.exists && text.charAt(lit.span.point - 1) != '}'
-      identOrSelect <- path
-        .collectFirst(interpolatorMemberArg(lit, parent))
-        .flatten
-    yield identOrSelect
+    val qualType =
+      for
+        parent <- path.tail.headOption.toList
+        if lit.span.exists && text.charAt(lit.span.point - 1) != '}'
+        identOrSelect <- path
+          .collectFirst(interpolatorMemberArg(lit, parent))
+          .flatten
+      yield identOrSelect
 
     qualType.flatMap(identOrSelect =>
       val tp = identOrSelect.symbol.info
@@ -198,18 +194,19 @@ object InterpolatorCompletions:
       case None if areSnippetsSupported => "$0"
       case _ => ""
 
-  /**
-   * contributeScope provides completions to convert a string literal into splice,
-   * example `"Hello $na@@"`.
+  /** contributeScope provides completions to convert a string literal into
+   *  splice, example `"Hello $na@@"`.
    *
-   * When converting a string literal into an interpolator we need to ensure a few cases:
+   *  When converting a string literal into an interpolator we need to ensure a
+   *  few cases:
    *
-   * - escape existing `$` characters into `$$`, which are printed as `\$\$` in order to
-   *   escape the TextMate snippet syntax.
-   * - wrap completed name in curly braces `s"Hello ${name}_` when the trailing character
-   *   can be treated as an identifier part.
-   * - insert the  leading `s` interpolator.
-   * - place the cursor at the end of the completed name using TextMate `$0` snippet syntax.
+   *    - escape existing `$` characters into `$$`, which are printed as `\$\$`
+   *      in order to escape the TextMate snippet syntax.
+   *    - wrap completed name in curly braces `s"Hello ${name}_` when the
+   *      trailing character can be treated as an identifier part.
+   *    - insert the leading `s` interpolator.
+   *    - place the cursor at the end of the completed name using TextMate `$0`
+   *      snippet syntax.
    */
   private def contributeScope(
       text: String,
@@ -241,13 +238,13 @@ object InterpolatorCompletions:
           val range = lit.sourcePos.withEnd(litStartPos).toLsp
           List(new l.TextEdit(range, "s"))
         else Nil
-      val dollarEdits = for
-        i <- litStartPos to litEndPos
-        if !hasStringInterpolator &&
-          text.charAt(i) == '$' && i != interpolator.dollar
-      yield new l.TextEdit(lit.sourcePos.focusAt(i).toLsp, "$")
+      val dollarEdits =
+        for
+          i <- litStartPos to litEndPos
+          if !hasStringInterpolator &&
+            text.charAt(i) == '$' && i != interpolator.dollar
+        yield new l.TextEdit(lit.sourcePos.focusAt(i).toLsp, "$")
       interpolatorEdit ++ dollarEdits
-    end additionalEdits
 
     def newText(symbolName: String, affix: CompletionAffix): String =
       val out = new StringBuilder()
@@ -263,7 +260,6 @@ object InterpolatorCompletions:
       out.append(suffixEnding(affix.toSuffixOpt, areSnippetsSupported))
       if symbolNeedsBraces && !hasClosingBrace then out.append('}')
       out.toString
-    end newText
 
     val workspaceSymbols = ListBuffer.empty[Symbol]
     val visitor = new CompilerSearchVisitor(sym =>
@@ -271,7 +267,7 @@ object InterpolatorCompletions:
         case IndexedContext.Result.InScope => false
         case _ =>
           if sym.is(Flags.Module) then workspaceSymbols += sym
-          true,
+          true
     )
     if interpolator.name.nonEmpty then
       search.search(interpolator.name, buildTargetIdentifier, visitor)
@@ -298,9 +294,8 @@ object InterpolatorCompletions:
               None,
               sym,
               isWorkspace
-            ),
+            )
         )
-    end collectCompletions
 
     val fromWorkspace =
       workspaceSymbols.toList.collect(collectCompletions(isWorkspace = true))

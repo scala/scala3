@@ -18,8 +18,8 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.IndexedContext.Result
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
 
@@ -30,22 +30,21 @@ final class PcInlineValueProvider(
 
   // We return a result or an error
   def getInlineTextEdits(): Either[String, List[l.TextEdit]] =
-    defAndRefs() match {
+    defAndRefs() match
       case Right((defn, refs)) =>
         val edits =
-          if (defn.shouldBeRemoved) {
+          if defn.shouldBeRemoved then
             val defEdit = definitionTextEdit(defn)
             val refsEdits = refs.map(referenceTextEdit(defn))
             defEdit :: refsEdits
-          } else refs.map(referenceTextEdit(defn))
+          else refs.map(referenceTextEdit(defn))
         Right(edits)
       case Left(error) => Left(error)
-    }
 
   private def referenceTextEdit(
       definition: Definition
   )(ref: Reference): l.TextEdit =
-    if (definition.requiresBrackets && ref.requiresBrackets)
+    if definition.requiresBrackets && ref.requiresBrackets then
       new l.TextEdit(
         ref.range,
         s"""(${ref.rhs})"""
@@ -66,7 +65,7 @@ final class PcInlineValueProvider(
       startOffset: Int,
       endOffset: Int,
       range: l.Range
-  ): l.Range = {
+  ): l.Range =
     val (startWithSpace, endWithSpace): (Int, Int) =
       extendRangeToIncludeWhiteCharsAndTheFollowingNewLine(
         text
@@ -76,7 +75,7 @@ final class PcInlineValueProvider(
       range.getStart.getCharacter - (startOffset - startWithSpace)
     )
     val endPos =
-      if (endWithSpace - 1 >= 0 && text(endWithSpace - 1) == '\n')
+      if endWithSpace - 1 >= 0 && text(endWithSpace - 1) == '\n' then
         new l.Position(range.getEnd.getLine + 1, 0)
       else
         new l.Position(
@@ -85,7 +84,6 @@ final class PcInlineValueProvider(
         )
 
     new l.Range(startPos, endPos)
-  }
 
   val position: l.Position = pos.toLsp.getStart().nn
 
@@ -128,7 +126,12 @@ final class PcInlineValueProvider(
     end for
   end defAndRefs
 
-  private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String, hasNextLineAfterEqualsSign: Boolean): String =
+  private def stripIndentPrefix(
+      rhs: String,
+      refIndent: String,
+      defIndent: String,
+      hasNextLineAfterEqualsSign: Boolean
+  ): String =
     val rhsLines = rhs.split("\n").toList
     rhsLines match
       case h :: Nil => rhs
@@ -170,7 +173,9 @@ final class PcInlineValueProvider(
   end referenceRequiresBrackets
 
   private def extendWithSurroundingParens(pos: SourcePosition) =
-    /** Move `point` by `step` as long as the character at `point` is `acceptedChar` */
+    /** Move `point` by `step` as long as the character at `point` is
+     *  `acceptedChar`
+     */
     def extend(point: Int, acceptedChar: Char, step: Int): Int =
       val newPoint = point + step
       if newPoint > 0 && newPoint < text.length &&
@@ -198,7 +203,6 @@ final class PcInlineValueProvider(
 
     val traverser = new DeepFolder[Set[Symbol]](collectNames)
     traverser(Set(), rhs)
-  end symbolsUsedInDefn
 
   private def getReferencesToInline(
       definition: DefinitionTree,
@@ -223,21 +227,17 @@ final class PcInlineValueProvider(
               .toRight(Errors.didNotFindReference)
             refEdits <- makeRefsEdits(List(ref), symbols, definition)
           yield (false, refEdits)
-    end if
-  end getReferencesToInline
 
   extension (pos: SourcePosition)
-    def startColumnIndentPadding: String = {
+    def startColumnIndentPadding: String =
       val source = pos.source
       val offset = pos.start
       var idx = source.startOfLine(offset)
       val pad = new StringBuilder
-      while (idx != offset && idx < source.content().length && source.content()(idx).isWhitespace) {
+      while idx != offset && idx < source.content().length && source.content()(idx).isWhitespace do
         pad.append(source.content()(idx))
         idx += 1
-      }
       pad.result()
-    }
 
   private def makeRefsEdits(
       refs: List[Occurence],
@@ -280,14 +280,12 @@ final class PcInlineValueProvider(
           )
         )
       else Left(Errors.variablesAreShadowed(conflictingSymbols.mkString(", ")))
-    end buildRef
     refs.foldLeft((Right(List())): Either[String, List[Reference]])((acc, r) =>
       for
         collectedEdits <- acc
-        currentEdit <- buildRef(r)
+        currentEdit    <- buildRef(r)
       yield currentEdit :: collectedEdits
     )
-  end makeRefsEdits
 
 end PcInlineValueProvider
 

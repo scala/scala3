@@ -3,10 +3,10 @@ package dotty.tools.pc.tests.edit
 import java.net.URI
 import java.util.concurrent.ExecutionException
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.pc.CodeActionErrorMessages
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits

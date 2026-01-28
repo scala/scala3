@@ -1,6 +1,6 @@
 package dotty.tools.pc.base
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
 
 import org.junit.runners.BlockJUnit4ClassRunner
@@ -25,7 +25,7 @@ class ReusableClassRunner(testClass: Class[BasePCSuite])
         try
           newStatement.evaluate()
         finally
-          if (isLastTestCase(method)) then instance.clean()
+          if isLastTestCase(method) then instance.clean()
 
   private def isLastTestCase(method: FrameworkMethod): Boolean =
     val testMethods =

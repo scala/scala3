@@ -1,25 +1,25 @@
 package dotty.tools.pc
 
+import scala.annotation.tailrec
 import scala.util.Try
 
 import dotty.tools.dotc.ast.Trees.ValDef
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Denotations.MultiDenotation
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.Method
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.core.SymDenotations.NoDenotation
-import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.SymDenotations.NoDenotation
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.utils.InteractiveEnrichments.*
-import scala.annotation.tailrec
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.Denotations.MultiDenotation
-import dotty.tools.dotc.util.Spans.Span
 
 object ApplyExtractor:
   def unapply(path: List[Tree])(using Context): Option[Apply] =
@@ -42,12 +42,11 @@ object ApplyExtractor:
         yield app
     end match
 
-
 object ApplyArgsExtractor:
   def getArgsAndParams(
-    optIndexedContext: Option[IndexedContext],
-    apply: Apply,
-    span: Span
+      optIndexedContext: Option[IndexedContext],
+      apply: Apply,
+      span: Span
   )(using Context): List[(List[Tree], List[ParamSymbol])] =
     def collectArgss(a: Apply): List[List[Tree]] =
       def stripContextFuntionArgument(argument: Tree): List[Tree] =
@@ -60,12 +59,10 @@ object ApplyArgsExtractor:
                 stripContextFuntionArgument(b)
               case _ => Nil
           case v => List(v)
-
       val args = a.args.flatMap(stripContextFuntionArgument)
       a.fun match
         case app: Apply => collectArgss(app) :+ args
         case _ => List(args)
-    end collectArgss
 
     val method = apply.fun
 
@@ -79,8 +76,8 @@ object ApplyArgsExtractor:
       // fallback for when multiple overloaded methods match the supplied args
     def fallbackFindMatchingMethods() =
       def matchingMethodsSymbols(
-        indexedContext: IndexedContext,
-        method: Tree
+          indexedContext: IndexedContext,
+          method: Tree
       ): List[Symbol] =
         method match
           case Ident(name) => indexedContext.findSymbol(name).getOrElse(Nil)
@@ -91,30 +88,32 @@ object ApplyArgsExtractor:
               if symbol.is(Method) && symbol.owner.isClass then
                 Some(symbol.owner)
               else Try(symbol.info.classSymbol).toOption
-            ownerSymbol.map(sym =>  sym.info.member(name)).collect{
+            ownerSymbol.map(sym => sym.info.member(name)).collect {
               case single: SingleDenotation => List(single.symbol)
               case multi: MultiDenotation => multi.allSymbols
             }.getOrElse(Nil)
           case Apply(fun, _) => matchingMethodsSymbols(indexedContext, fun)
           case _ => Nil
+
       val matchingMethods =
         for
           indexedContext <- optIndexedContext.toList
           potentialMatch <- matchingMethodsSymbols(indexedContext, method)
           if potentialMatch.is(Flags.Method) &&
-                potentialMatch.vparamss.length >= argss.length &&
-                Try(potentialMatch.isAccessibleFrom(apply.symbol.info)).toOption
-                  .getOrElse(false) &&
-                potentialMatch.vparamss
-                  .zip(argss)
-                  .reverse
-                  .zipWithIndex
-                  .forall { case (pair, index) =>
-                    FuzzyArgMatcher(potentialMatch.tparams)
-                      .doMatch(allArgsProvided = index != 0, span)
-                      .tupled(pair)
-                    }
+            potentialMatch.vparamss.length >= argss.length &&
+            Try(potentialMatch.isAccessibleFrom(apply.symbol.info)).toOption
+              .getOrElse(false) &&
+            potentialMatch.vparamss
+              .zip(argss)
+              .reverse
+              .zipWithIndex
+              .forall { case (pair, index) =>
+                FuzzyArgMatcher(potentialMatch.tparams)
+                  .doMatch(allArgsProvided = index != 0, span)
+                  .tupled(pair)
+              }
         yield potentialMatch
+
       matchingMethods
     end fallbackFindMatchingMethods
 
@@ -143,7 +142,6 @@ object ApplyArgsExtractor:
         fallbackFindMatchingMethods()
       else fallbackFindApply(method.symbol)
       end if
-    end matchingMethods
 
     matchingMethods.map { methodSym =>
       val vparamss = methodSym.vparamss
@@ -162,6 +160,7 @@ object ApplyArgsExtractor:
 
       val baseParams: List[ParamSymbol] =
         def defaultBaseParams = baseParams0.map(JustSymbol(_))
+
         @tailrec
         def getRefinedParams(refinedType: Type, level: Int): List[ParamSymbol] =
           if level > 0 then
@@ -180,6 +179,7 @@ object ApplyArgsExtractor:
                   RefinedSymbol(sym, name, arg)
                 }
               case _ => defaultBaseParams
+
         // finds param refinements for lambda expressions
         // val hello: (x: Int, y: Int) => Unit = (x, _) => println(x)
         @tailrec
@@ -194,7 +194,9 @@ object ApplyArgsExtractor:
               refineParams(f, level + 1)
             case _ => getRefinedParams(method.symbol.info, level)
         refineParams(method, 0)
+
       end baseParams
+
       (baseArgs, baseParams)
     }
 
@@ -216,14 +218,12 @@ case class JustSymbol(symbol: Symbol)(using Context) extends ParamSymbol:
 case class RefinedSymbol(symbol: Symbol, name: Name, info: Type)
     extends ParamSymbol
 
-
 class FuzzyArgMatcher(tparams: List[Symbol])(using Context):
 
-  /**
-   * A heuristic for checking if the passed arguments match the method's arguments' types.
-   * For non-polymorphic methods we use the subtype relation (`<:<`)
-   * and for polymorphic methods we use a heuristic.
-   * We check the args types not the result type.
+  /** A heuristic for checking if the passed arguments match the method's
+   *  arguments' types. For non-polymorphic methods we use the subtype relation
+   *  (`<:<`) and for polymorphic methods we use a heuristic. We check the args
+   *  types not the result type.
    */
   def doMatch(
       allArgsProvided: Boolean,

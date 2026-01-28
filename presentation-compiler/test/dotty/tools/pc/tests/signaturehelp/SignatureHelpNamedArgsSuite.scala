@@ -6,7 +6,6 @@ import org.junit.Test
 
 class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
 
-
   @Test def `new-named-param-style-1` =
     check(
       """|object O:
@@ -297,4 +296,3 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |                ^^^^^^^^^^
          |""".stripMargin
     )
-

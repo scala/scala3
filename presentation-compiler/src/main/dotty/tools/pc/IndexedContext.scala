@@ -27,7 +27,8 @@ sealed trait IndexedContext:
   def findSymbolInLocalScope(name: String): Option[List[Symbol]]
 
   final def lookupSym(sym: Symbol, fromPrefix: Option[Type] = None): Result =
-    def all(symbol: Symbol): Set[Symbol] = Set(symbol, symbol.companionModule, symbol.companionClass, symbol.companion).filter(_ != NoSymbol)
+    def all(symbol: Symbol): Set[Symbol] =
+      Set(symbol, symbol.companionModule, symbol.companionClass, symbol.companion).filter(_ != NoSymbol)
     val isRelated = all(sym) ++ all(sym.dealiasType)
     findSymbol(sym.name, fromPrefix) match
       case Some(symbols) if symbols.exists(isRelated) => Result.InScope
@@ -37,7 +38,6 @@ sealed trait IndexedContext:
       case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
       case Some(symbols) => Result.InScope
       case _ => Result.Missing
-  end lookupSym
 
   final def hasRename(sym: Symbol, as: String): Boolean =
     rename(sym) match
@@ -89,11 +89,12 @@ object IndexedContext:
   class LazyWrapper(pos: SourcePosition)(using val ctx: Context) extends IndexedContext:
 
     val completionContext = Completion.scopeContext(pos)
-    val names: Map[String, Seq[SingleDenotation]] = completionContext.names.toList.groupBy(_._1.show).map{
+    val names: Map[String, Seq[SingleDenotation]] = completionContext.names.toList.groupBy(_._1.show).map {
       case (name, denotations) =>
         val denots = denotations.flatMap(_._2)
         val nonRoot = denots.filter(!_.symbol.owner.isRoot)
-        val (importedByDefault, conflictingValue) = denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
+        val (importedByDefault, conflictingValue) =
+          denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
         if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
           name.trim -> conflictingValue
         else
@@ -128,8 +129,7 @@ object IndexedContext:
                   case tref: TermRef =>
                     tref.termSymbol.info <:< target
                   case otherPrefix =>
-                    otherPrefix <:< target
-                )
+                    otherPrefix <:< target)
               }
             case None => denots
 
@@ -150,6 +150,5 @@ object IndexedContext:
     def exists: Boolean = this match
       case InScope | Conflict => true
       case Missing => false
-
 
 end IndexedContext

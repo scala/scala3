@@ -3,12 +3,12 @@ package completions
 
 import java.util as ju
 
-import scala.jdk.CollectionConverters._
-import scala.meta.pc.reports.ReportContext
+import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.tpd.Tree
@@ -18,8 +18,8 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -39,11 +39,11 @@ object OverrideCompletions:
   private def defaultIndent(tabIndent: Boolean) =
     if tabIndent then 1 else 2
 
-  /**
-   * @param td A surrounded type definition being complete
-   * @param filterName A prefix string for filtering, if None no filter
-   * @param start The starting point of the completion. For example, starting point is `*`
-   *              `*override def f|` (where `|` represents the cursor position).
+  /** @param td A surrounded type definition being complete
+   *  @param filterName A prefix string for filtering, if None no filter
+   *  @param start The starting point of the completion. For example, starting
+   *    point is `*` `*override def f|` (where `|` represents the cursor
+   *    position).
    */
   def contribute(
       td: TypeDef,
@@ -79,7 +79,6 @@ object OverrideCompletions:
       !sym.isSetter &&
       // exclude symbols desugared by default args
       !sym.name.is(DefaultGetterName)
-    end isOverrideable
     // Given the base class `trait Foo { def foo: Int; val bar: Int; var baz: Int }`
     // and typing `def @@` in the subclass of `Foo`,
     // suggest `def foo` and exclude `val bar`, and `var baz` from suggestion
@@ -171,7 +170,6 @@ object OverrideCompletions:
             dd.symbol.owner.decodedName
           )
         case _ => None
-    end FindTypeDef
 
     val uri = params.uri().nn
     val text = params.text().nn
@@ -191,9 +189,7 @@ object OverrideCompletions:
               template :: path
             case path => path
 
-        val indexedContext = IndexedContext(pos)(using
-          Interactive.contextOfPath(path)(using newctx)
-        )
+        val indexedContext = IndexedContext(pos)(using Interactive.contextOfPath(path)(using newctx))
         import indexedContext.ctx
 
         lazy val autoImportsGen = AutoImports.generator(
@@ -278,14 +274,16 @@ object OverrideCompletions:
         then "\n" + indentChar * necessaryIndent
         else ""
       (indent, indent, lastIndent)
-    end calcIndent
     val abstractMembers =
       defn.tpe.abstractTermMembers.map(_.symbol).groupBy(_.owner).map {
-        case (owner, members) => (owner, members.sortWith{ (sym1, sym2) =>
-          if(sym1.sourcePos.exists && sym2.sourcePos.exists)
-            sym1.sourcePos.start <= sym2.sourcePos.start
-          else !sym2.sourcePos.exists
-        })
+        case (owner, members) => (
+            owner,
+            members.sortWith { (sym1, sym2) =>
+              if sym1.sourcePos.exists && sym2.sourcePos.exists then
+                sym1.sourcePos.start <= sym2.sourcePos.start
+              else !sym2.sourcePos.exists
+            }
+          )
       }.toSeq.sortBy(_._1.name.decoded).flatMap(_._2)
 
     val caseClassOwners = Set("Product", "Equals")
@@ -435,17 +433,15 @@ object OverrideCompletions:
           sym.symbol,
           seenFrom,
           additionalMods =
-            if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil,
+            if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil
         )
       else
         printer.defaultValueSignature(
           sym.symbol,
           seenFrom,
           additionalMods =
-            if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil,
+            if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil
         )
-      end if
-    end signature
 
     val label = s"$overrideDefLabel$signature"
     val stub =
@@ -465,20 +461,17 @@ object OverrideCompletions:
 
   private val interestingFlags = Flags.Method | Flags.Mutable
 
-  /**
-   * Infer the editPosition for "implement all" code action for the given TypeDef.
+  /** Infer the editPosition for "implement all" code action for the given
+   *  TypeDef.
    *
-   * If there're braces like `class FooImpl extends Foo {}`,
-   * editPosition will be inside the braces.
-   * Otherwise, e.g. `class FooImpl extends Foo`, editPosition will be
-   * after the `extends Foo`.
+   *  If there're braces like `class FooImpl extends Foo {}`, editPosition will
+   *  be inside the braces. Otherwise, e.g. `class FooImpl extends Foo`,
+   *  editPosition will be after the `extends Foo`.
    *
-   * @param text the whole text of the source file
-   * @param td the class/object to impement all
+   *  @param text the whole text of the source file
+   *  @param td the class/object to impement all
    */
-  private def inferEditPosition(text: String, defn: TargetDef)(using
-      Context
-  ): SourcePosition =
+  private def inferEditPosition(text: String, defn: TargetDef)(using Context): SourcePosition =
     val span = hasBracesOrColon(text, defn)
       .map { offset =>
         defn.sourcePos.span.withStart(offset + 1).withEnd(offset + 1)
@@ -487,11 +480,8 @@ object OverrideCompletions:
         defn.sourcePos.span.withStart(defn.span.end)
       })
     defn.sourcePos.withSpan(span)
-  end inferEditPosition
 
-  private def hasBracesOrColon(text: String, defn: TargetDef)(using
-      Context
-  ): Option[Int] =
+  private def hasBracesOrColon(text: String, defn: TargetDef)(using Context): Option[Int] =
     def hasSelfTypeAnnot = defn match
       case td: TypeDef =>
         td.rhs match
@@ -505,15 +495,12 @@ object OverrideCompletions:
       else text.indexOf("{", start)
     if braceOffset > 0 && braceOffset < defn.span.end then Some(braceOffset)
     else hasColon(text, defn)
-  end hasBracesOrColon
 
-  private def hasColon(text: String, defn: TargetDef)(using
-      Context
-  ): Option[Int] =
+  private def hasColon(text: String, defn: TargetDef)(using Context): Option[Int] =
     defn match
       case td: TypeDef if (td.rhs.span.end < text.length) && text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
-      case TypeDef(_, temp : Template) =>
+      case TypeDef(_, temp: Template) =>
         temp.parentsOrDerived.lastOption.map(_.span.end).filter(idx => text.length > idx && text.charAt(idx) == ':')
       case _ => None
 
@@ -546,7 +533,7 @@ object OverrideCompletions:
               completing,
               dd.sourcePos.start,
               true,
-              None,
+              None
             )
           )
 
@@ -563,7 +550,7 @@ object OverrideCompletions:
               None,
               ident.sourcePos.start,
               false,
-              None,
+              None
             )
           )
 
@@ -580,7 +567,7 @@ object OverrideCompletions:
               None,
               id.sourcePos.start,
               true,
-              None,
+              None
             )
           )
 
@@ -597,7 +584,7 @@ object OverrideCompletions:
               None,
               id.sourcePos.start,
               false,
-              Some(id.name.show),
+              Some(id.name.show)
             )
           )
 
@@ -614,7 +601,7 @@ object OverrideCompletions:
               None,
               sel.sourcePos.start,
               false,
-              Some(name.show),
+              Some(name.show)
             )
           )
 

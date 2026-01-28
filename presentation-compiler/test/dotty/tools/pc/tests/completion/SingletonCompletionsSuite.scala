@@ -263,11 +263,11 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
 
   @Test def `match-case` =
     check(
-       """|def h(foo: "foo") =
+      """|def h(foo: "foo") =
           |  foo match
           |    case "@@" =>
           |""".stripMargin,
-       """|"foo": "foo"
+      """|"foo": "foo"
           |""".stripMargin
     )
 
@@ -320,7 +320,7 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
          |def test =
          |  Consumer7.eat(@@)
          |""".stripMargin,
-        "7: 7",
-        topLines = Some(1)
-      )
+      "7: 7",
+      topLines = Some(1)
+    )
 }

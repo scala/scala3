@@ -1,5 +1,9 @@
 package dotty.tools.pc
 
+import scala.meta.pc.OffsetParams
+import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
+
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
@@ -16,10 +20,6 @@ import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.InteractiveEnrichments.*
-
-import scala.meta.pc.reports.ReportContext
-import scala.meta.pc.OffsetParams
-import scala.meta.pc.SymbolSearch
 
 class InferExpectedType(
     search: SymbolSearch,
@@ -42,15 +42,13 @@ class InferExpectedType(
           Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
         val newctx = ctx.fresh.setCompilationUnit(unit)
         val tpdPath =
-          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using
-            newctx
-          )
+          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
         val locatedCtx =
           Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(pos)(using locatedCtx)
         val printer =
           ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedCtx)
-        InferCompletionType.inferType(path)(using newctx).map{
+        InferCompletionType.inferType(path)(using newctx).map {
           tpe => printer.tpe(tpe)
         }
       case None => None
@@ -58,7 +56,8 @@ class InferExpectedType(
 object InferCompletionType:
   def inferType(path: List[Tree])(using Context): Option[Type] =
     path match
-      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(s: Select)) :: rest if s.symbol == defn.Predef_undefined => inferType(rest, lit.span)
+      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(s: Select)) :: rest
+          if s.symbol == defn.Predef_undefined => inferType(rest, lit.span)
       case ident :: rest => inferType(rest, ident.span)
       case _ => None
 
@@ -70,15 +69,18 @@ object InferCompletionType:
       case Bind(_, body) :: rest if body.span.contains(span) => inferType(rest, span)
       case Alternative(_) :: rest => inferType(rest, span)
       case Try(block, _, _) :: rest if block.span.contains(span) => inferType(rest, span)
-      case CaseDef(_, _, body) :: Try(_, cases, _) :: rest if body.span.contains(span) && cases.exists(_.span.contains(span)) => inferType(rest, span)
+      case CaseDef(_, _, body) :: Try(_, cases, _) :: rest
+          if body.span.contains(span) && cases.exists(_.span.contains(span)) => inferType(rest, span)
       case If(cond, _, _) :: rest if !cond.span.contains(span) => inferType(rest, span)
       case If(cond, _, _) :: rest if cond.span.contains(span) => Some(defn.BooleanType)
-      case CaseDef(_, _, body) :: Match(_, cases) :: rest if body.span.contains(span) && cases.exists(_.span.contains(span)) =>
+      case CaseDef(_, _, body) :: Match(_, cases) :: rest
+          if body.span.contains(span) && cases.exists(_.span.contains(span)) =>
         inferType(rest, span)
       case NamedArg(_, arg) :: rest if arg.span.contains(span) => inferType(rest, span)
       // x match
       //  case @@
-      case CaseDef(pat, _, _) :: Match(sel, cases) :: rest if pat.span.contains(span) && cases.exists(_.span.contains(span)) && !sel.tpe.isErroneous =>
+      case CaseDef(pat, _, _) :: Match(sel, cases) :: rest
+          if pat.span.contains(span) && cases.exists(_.span.contains(span)) && !sel.tpe.isErroneous =>
         sel.tpe match
           case tpe: TermRef => Some(tpe.symbol.info).filterNot(_.isErroneous)
           case tpe => Some(tpe)
@@ -97,4 +99,3 @@ object InferCompletionType:
         val idx = app.args.indexWhere(_.span.contains(span))
         app.fun.tpe.widenTermRefExpr.paramInfoss.flatten.get(idx)
       case _ => None
-

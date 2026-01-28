@@ -476,7 +476,6 @@ class ExtractMethodSuite extends BaseExtractMethodSuite:
          |""".stripMargin
     )
 
-
   @Test def `i6476-2` =
     checkEdit(
       """|object O {

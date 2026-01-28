@@ -58,6 +58,5 @@ class SemanticdbTextDocumentProvider(
     document.writeTo(out)
     out.flush()
     byteStream.toByteArray().nn
-  end textDocument
 
 end SemanticdbTextDocumentProvider
