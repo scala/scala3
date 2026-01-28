@@ -1,10 +1,11 @@
 package dotty.tools.pc.tests.signaturehelp
 
+import java.nio.file.Path
+
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
-import org.junit.Test
 import org.junit.Ignore
-import java.nio.file.Path
+import org.junit.Test
 
 class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
 
@@ -20,7 +21,6 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |     ^
         |""".stripMargin
     )
-
 
   @Test def `proper-position-2` =
     check(
@@ -73,7 +73,6 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |     ^
         |""".stripMargin
     )
-
 
   @Test def `not-fully-applied-2` =
     check(
@@ -514,4 +513,3 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |                                     ^^^^
          |""".stripMargin
     )
-

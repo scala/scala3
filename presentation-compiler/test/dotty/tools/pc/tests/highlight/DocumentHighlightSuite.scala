@@ -767,7 +767,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    a <- List(1)
          |  } yield a + 1
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `for-comp-map1` =
@@ -779,7 +779,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    if true
          |  } yield a + 1
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `for-comp-foreach` =
@@ -790,7 +790,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    a <- List(1)
          |  } {}
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `for-comp-withFilter` =
@@ -802,7 +802,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    if true
          |  } {}
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `for-comp-withFilter1` =
@@ -814,7 +814,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    if true
          |  } yield a + 1
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `for-comp-flatMap1` =
@@ -827,7 +827,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    if true
          |  } yield a + 1
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `for-comp-flatMap2` =
@@ -840,18 +840,18 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    b <- List(2)
          |  } yield a + 1
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `named-arg-backtick` =
     check(
-        """|object Main {
+      """|object Main {
            |  def foo(<<`type`>>: String): String = <<`type`>>
            |  val x = foo(
            |    <<`ty@@pe`>> = "abc"
            |  )
            |}
-           |""".stripMargin,
+           |""".stripMargin
     )
 
   @Test def `enum1` =
@@ -1111,7 +1111,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  case MyNone
          |
          |val alpha = MyOption.<<MySome>>(1)
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-params-in-enum` =
@@ -1119,7 +1119,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|enum MyOption[+<<A@@A>>]:
          |  case MySome(value: <<AA>>)
          |  case MyNone
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-params-in-enum2` =
@@ -1127,7 +1127,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|enum MyOption[+<<AA>>]:
          |  case MySome(value: <<A@@A>>)
          |  case MyNone
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-params-in-enum3` =
@@ -1135,7 +1135,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|enum MyOption[<<AA>>](v: <<AA>>):
          |  def get: <<A@@A>> = ???
          |  case MySome[AA](value: AA) extends MyOption[Int](1)
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-params-in-enum4` =
@@ -1144,7 +1144,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  def get: <<A@@A>> = ???
          |  case MySome(value: <<AA>>)
          |  case MyNone
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-params-in-enum5` =
@@ -1152,7 +1152,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|enum MyOption[AA]:
          |  def get: AA = ???
          |  case MySome[<<AA>>](value: <<A@@A>>) extends MyOption[Int]
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `implicit-extension` =
@@ -1163,7 +1163,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |
          |val a = MyIntOut(1)
          |val m = a.<<un@@even>>
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `implicit-extension-2` =
@@ -1173,7 +1173,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  extension (i: MyIntOut) def <<uneven>>(u: Int) = i.value % 2 == 1
          |
          |val a = MyIntOut(1).<<un@@even>>(3)
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `implicit-extension-infix` =
@@ -1183,7 +1183,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  extension (i: MyIntOut) def <<++>>(u: Int) = i.value + u
          |
          |val a = MyIntOut(1) <<+@@+>> 3
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `constructor` =
@@ -1505,7 +1505,6 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |val i = <<methodA>>
          |""".stripMargin
     )
-
 
   @Test def `i7256-3` =
     check(
