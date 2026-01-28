@@ -82,6 +82,8 @@ abstract class CoreBTypes {
    def asmUnboxTo: Map[BType, MethodNameAndType]
 
    def typeOfArrayOp: Map[Int, BType]
+   
+   
 }
 
 final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val superCallsMap: ReadOnlyMap[Symbol, List[ClassSymbol]]) extends CoreBTypes {
