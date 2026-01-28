@@ -10,29 +10,30 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools
-package backend.jvm
-package opt
+package dotty.tools.backend.jvm
+
+import dotty.tools.backend.jvm.BCodeUtils.*
+import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.BackendReporting.*
+import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
+import dotty.tools.backend.jvm.opt.{FifoCache, InlineInfoAttributePrototype}
 
 import scala.annotation.nowarn
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm
-import scala.tools.asm.{Attribute, Type}
 import scala.tools.asm.tree.*
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting.*
-import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import BCodeUtils.*
+import scala.tools.asm.{Attribute, Type}
+
+// TODO rename to BCodeRepository for consistency
 
 /**
  * The ByteCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
+class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) extends PerRunInit {
 
-  import postProcessor.bTypesFromClassfile
-  import frontendAccess.{backendReporting, backendClassPath, recordPerRunCache}
+  import frontendAccess.{backendClassPath, backendReporting, recordPerRunCache}
 
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
@@ -60,7 +61,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
    * Contains the internal names of all classes that are defined in Java source files of the current
    * compilation run (mixed compilation). Used for more detailed error reporting.
    */
-  private lazy val javaDefinedClasses = perRunLazy(this)(frontendAccess.javaDefinedClasses)
+  private lazy val javaDefinedClasses = frontendAccess.perRunLazy(this)(frontendAccess.javaDefinedClasses)
 
   def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
     case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = (classNode, path)
@@ -163,11 +164,11 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
     // https://docs.oracle.com/javase/specs/jvms/se11/html/jvms-2.html#jvms-2.9.3
     def findSignaturePolymorphic(owner: ClassNode): Option[MethodNode] = {
       def hasObjectArrayParam(m: MethodNode) = Type.getArgumentTypes(m.desc) match {
-        case Array(pt) => pt.getDimensions == 1 && pt.getElementType.getInternalName == coreBTypes.ObjectRef.internalName
+        case Array(pt) => pt.getDimensions == 1 && pt.getElementType.getInternalName == ts.ObjectRef.internalName
         case _ => false
       }
       // Don't try to build a BType for `VarHandle`, it doesn't exist on JDK 8
-      if (owner.name == coreBTypes.jliMethodHandleRef.internalName || owner.name == "java/lang/invoke/VarHandle")
+      if (owner.name == ts.jliMethodHandleRef.internalName || owner.name == "java/lang/invoke/VarHandle")
         owner.methods.asScala.find(m =>
           m.name == name &&
             isNativeMethod(m) &&
@@ -218,12 +219,10 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
             else {
               val maxSpecific = found.filterNot {
                 case (method, owner) =>
-                  val ownerTp = bTypesFromClassfile.classBTypeFromClassNode(owner)
                   found.exists {
                     case (other, otherOwner) =>
                       (other ne method) && {
-                        val otherTp = bTypesFromClassfile.classBTypeFromClassNode(otherOwner)
-                        otherTp.isSubtypeOf(ownerTp).get
+                        otherOwner.interfaces.asScala.contains(owner.name)
                       }
                   }
               }
@@ -282,7 +281,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
             iter.remove()
           case AbstractInsnNode.INVOKE_DYNAMIC_INSN => insn match {
             case LambdaMetaFactoryCall(indy, _, implMethod, _, _) =>
-              postProcessor.backendUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
+              backendUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
             case _ =>
           }
           case _ =>
@@ -317,7 +316,6 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
         Some(classNode)
       } catch {
         case ex: Exception =>
-          if (frontendAccess.compilerSettings.debug) ex.printStackTrace()
           backendReporting.warning(NoPosition, s"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
           None
       }

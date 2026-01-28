@@ -32,11 +32,9 @@ import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
 import dotty.tools.dotc.util.NoSourcePosition
+import DottyBackendInterface.symExtensions
 
-
-class CodeGen(val primitives: DottyPrimitives, val bTypes: BTypesFromSymbols) { self =>
-  import DottyBackendInterface.symExtensions
-  import bTypes.*
+class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols) { self =>
 
   private lazy val mirrorCodeGen = Impl.JMirrorBuilder()
 
@@ -166,10 +164,5 @@ class CodeGen(val primitives: DottyPrimitives, val bTypes: BTypesFromSymbols) { 
   }
 
 
-  sealed transparent trait ImplEarlyInit{
-    val int: self.int.type = self.int
-    val bTypes: self.bTypes.type = self.bTypes
-    protected val primitives: DottyPrimitives = self.primitives
-  }
-  object Impl extends ImplEarlyInit with BCodeSyncAndTry
+  object Impl extends BCodeHelpers(backendUtils, ts), BCodeSkelBuilder(ts), BCodeBodyBuilder(primitives, ts), BCodeSyncAndTry(ts)
 }

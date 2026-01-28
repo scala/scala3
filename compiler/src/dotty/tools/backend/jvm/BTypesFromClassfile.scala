@@ -23,8 +23,7 @@ import dotty.tools.backend.jvm.BackendReporting.{NoClassBTypeInfoMissingBytecode
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
 import dotty.tools.backend.jvm.opt.InlineInfoAttribute
 
-class BTypesFromClassfile(val postProcessor: PostProcessor, inlineEnabled: Boolean) {
-  import postProcessor.byteCodeRepository
+class BTypesFromClassfile(val byteCodeRepository: ByteCodeRepository, inlineEnabled: Boolean) {
 
   /**
    * Obtain the BType for a type descriptor or internal name. For class descriptors, the ClassBType

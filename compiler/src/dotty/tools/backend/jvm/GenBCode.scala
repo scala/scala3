@@ -21,7 +21,7 @@ class GenBCode extends Phase { self =>
 
   override def description: String = GenBCode.description
 
-  override def isRunnable(using Context) = super.isRunnable && !ctx.usedBestEffortTasty
+  override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
   private val superCallsMap = new MutableSymbolMap[List[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
@@ -40,26 +40,19 @@ class GenBCode extends Phase { self =>
         case ctx => ctx.fresh
   }
 
-  private var _codeGen: CodeGen | Null = null
-  def codeGen(using Context): CodeGen = {
-    if _codeGen eq null then
-      val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(dottyPrimitives, bTypes)
-    _codeGen.nn
+
+  private var _frontendAccess: PostProcessorFrontendAccess | Null = null
+  def frontendAccess(using Context): PostProcessorFrontendAccess = {
+    if _frontendAccess eq null then
+      _frontendAccess = PostProcessorFrontendAccess.Impl(entryPoints)(using context)
+    _frontendAccess.nn
   }
 
   private var _bTypes: CoreBTypesFromSymbols | Null = null
   def bTypes(using Context): CoreBTypesFromSymbols = {
     if _bTypes eq null then
-      _bTypes = CoreBTypesFromSymbols(context, frontendAccess, superCallsMap)
+      _bTypes = CoreBTypesFromSymbols(frontendAccess, superCallsMap)(using context)
     _bTypes.nn
-  }
-
-  private var _frontendAccess: PostProcessorFrontendAccess | Null = null
-  def frontendAccess(using Context): PostProcessorFrontendAccess = {
-    if _frontendAccess eq null then
-      _frontendAccess = PostProcessorFrontendAccess.Impl(context, entryPoints)
-    _frontendAccess.nn
   }
 
   private var _postProcessor: PostProcessor | Null = null
@@ -67,6 +60,21 @@ class GenBCode extends Phase { self =>
     if _postProcessor eq null then
       _postProcessor = new PostProcessor(frontendAccess, bTypes)
     _postProcessor.nn
+  }
+
+  private var _backendUtils: BackendUtils | Null = null
+  def backendUtils(using Context): BackendUtils = {
+    if _backendUtils eq null then
+      _backendUtils = BackendUtils(frontendAccess, bTypes)
+    _backendUtils.nn
+  }
+  
+  private var _codeGen: CodeGen | Null = null
+  def codeGen(using Context): CodeGen = {
+    if _codeGen eq null then
+      val dottyPrimitives = new DottyPrimitives(ctx)
+      _codeGen = new CodeGen(backendUtils, dottyPrimitives, frontendAccess, bTypes)
+    _codeGen.nn
   }
 
   private var _generatedClassHandler: GeneratedClassHandler | Null = null

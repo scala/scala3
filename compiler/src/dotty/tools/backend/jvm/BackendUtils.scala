@@ -16,12 +16,13 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import BCodeUtils.FrameExtensions
 import scala.annotation.switch
 import java.util.concurrent.ConcurrentHashMap
+import PostProcessorFrontendAccess.Lazy
 
 /**
  * This component hosts tools and utilities used in the backend that require access to a `BTypes`
  * instance.
  */
-class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
+class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(using Context) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -179,6 +180,44 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
     }
   }
 
+  def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
+    indyLambdaImplMethods.get(hostClass) match {
+      case null => None
+      case methods => Some(methods.synchronized(action(methods)))
+    }
+
+  def onIndyLambdaImplMethod[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): T = {
+    val methods = indyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
+    methods.synchronized(action(methods))
+  }
+
+  def addIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode, handle: asm.Handle): Unit = {
+    onIndyLambdaImplMethod(hostClass)(_.getOrElseUpdate(method, mutable.Map.empty)(indy) = handle)
+  }
+
+  def removeIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode): Unit = {
+    onIndyLambdaImplMethodIfPresent(hostClass)(_.get(method).foreach(_.remove(indy)))
+  }
+
+  /**
+   * The methods used as lambda bodies for IndyLambda instructions within `hostClass`. Note that
+   * the methods are not necessarily defined within the `hostClass` (when an IndyLambda is inlined
+   * into a different class).
+   */
+  def indyLambdaBodyMethods(hostClass: InternalName): mutable.SortedSet[Handle] = {
+    given Ordering[Handle] = handleOrdering
+    val res = mutable.TreeSet.empty[Handle]
+    onIndyLambdaImplMethodIfPresent(hostClass)(methods => res.addAll(methods.valuesIterator.flatMap(_.valuesIterator)))
+    res
+  }
+
+  /**
+   * The methods used as lambda bodies for IndyLambda instructions within `method` of `hostClass`.
+   */
+  def indyLambdaBodyMethods(hostClass: InternalName, method: MethodNode): Map[InvokeDynamicInsnNode, Handle] = {
+    onIndyLambdaImplMethodIfPresent(hostClass)(ms => ms.getOrElse(method, Nil).toMap).getOrElse(Map.empty)
+  }
+  
   def isPredefLoad(insn: AbstractInsnNode): Boolean = BackendUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
 
   // ==============================================================================================
@@ -229,18 +268,18 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
     case _ => false
   }
 
-  def isJavaBox(insn: MethodInsnNode): Boolean = calleeInMap(insn, javaBoxMethods)
-  def isJavaUnbox(insn: MethodInsnNode): Boolean = calleeInMap(insn, javaUnboxMethods)
+  def isJavaBox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaBoxMethods)
+  def isJavaUnbox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaUnboxMethods)
 
   def isPredefAutoBox(insn: MethodInsnNode): Boolean = {
-    insn.owner == PredefRef.internalName && (ts.predefAutoBoxMethods.get(insn.name) match {
+    insn.owner == ts.PredefRef.internalName && (ts.predefAutoBoxMethods.get(insn.name) match {
       case Some(tp) => insn.desc == tp.descriptor
       case _ => false
     })
   }
 
   def isPredefAutoUnbox(insn: MethodInsnNode): Boolean = {
-    insn.owner == PredefRef.internalName && (ts.predefAutoUnboxMethods.get(insn.name) match {
+    insn.owner == ts.PredefRef.internalName && (ts.predefAutoUnboxMethods.get(insn.name) match {
       case Some(tp) => insn.desc == tp.descriptor
       case _ => false
     })
@@ -281,19 +320,19 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
   }
 
   // unused objects created by these constructors are eliminated by pushPop
-  private lazy val sideEffectFreeConstructors: LazyVar[Set[(String, String)]] = perRunLazy(this) {
+  private lazy val sideEffectFreeConstructors: Lazy[Set[(String, String)]] = ppa.perRunLazy(this) {
     val ownerDesc = (p: (InternalName, MethodNameAndType)) => (p._1, p._2.methodType.descriptor)
-    primitiveBoxConstructors.map(ownerDesc).toSet ++
-      srRefConstructors.map(ownerDesc) ++
-      tupleClassConstructors.map(ownerDesc) ++ Set(
-      (ts.ObjectRef.internalName, MethodBType(BType.emptyArray, UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(BType.emptyArray, UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(Array(StringRef), UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(Array(ArrayBType(CHAR)), UNIT).descriptor))
+    ts.primitiveBoxConstructors.map(ownerDesc).toSet ++
+      ts.srRefConstructors.map(ownerDesc) ++
+      ts.tupleClassConstructors.map(ownerDesc) ++ Set(
+      (ts.ObjectRef.internalName, MethodBType(Nil, UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
   }
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
-    if (!compilerSettings.optAllowSkipCoreModuleInit) Set.empty
+    if (!ppa.compilerSettings.optAllowSkipCoreModuleInit) Set.empty
     else Set(
       "scala/Predef$",
       "scala/runtime/ScalaRunTime$",
@@ -304,17 +343,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
       "scala/collection/StringOps$",
     ) ++ BackendUtils.primitiveTypes.keysIterator
 
-  private lazy val classesOfSideEffectFreeConstructors: LazyVar[Set[String]] = perRunLazy(this)(sideEffectFreeConstructors.get.map(_._1))
-
-  def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
-    indyLambdaImplMethods.get(hostClass) match {
-      case null => None
-      case methods => Some(methods.synchronized(action(methods)))
-    }
-
-  def removeIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode): Unit = {
-    onIndyLambdaImplMethodIfPresent(hostClass)(_.get(method).foreach(_.remove(indy)))
-  }
+  private lazy val classesOfSideEffectFreeConstructors: Lazy[Set[String]] = ppa.perRunLazy(this)(sideEffectFreeConstructors.get.map(_._1))
 
 }
 

@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.config.ScalaSettings
+import BTypes.InternalName
 
 import scala.collection.mutable
 import scala.compiletime.uninitialized
@@ -39,6 +40,8 @@ sealed abstract class PostProcessorFrontendAccess {
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
 
   inline def perRunLazy[T](inline init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
+
+  def javaDefinedClasses: Set[InternalName]
 
   def recordPerRunCache[T <: mutable.Clearable](cache: T): T
 
@@ -166,7 +169,7 @@ object PostProcessorFrontendAccess {
   }
 
 
-  class Impl(using ctx: Context, entryPoints: mutable.HashSet[String]) extends PostProcessorFrontendAccess {
+  class Impl(entryPoints: mutable.HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
 
@@ -225,5 +228,11 @@ object PostProcessorFrontendAccess {
     }
 
     def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
+
+    def javaDefinedClasses: Set[InternalName] = frontendSynch {
+      currentRun.symSource.keys.iterator.collect {
+        case sym if sym.isJavaDefined => sym.javaBinaryNameString
+      }.toSet
+    }
   }
 }

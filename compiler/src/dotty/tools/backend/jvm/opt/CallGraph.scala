@@ -31,7 +31,6 @@ import dotty.tools.dotc.util.SrcPos
 class CallGraph(val postProcessor: PostProcessor) {
 
   import postProcessor.*
-  import bTypes.*
   import bTypesFromClassfile.*
   import postProcessor.frontendAccess.recordPerRunCache
 

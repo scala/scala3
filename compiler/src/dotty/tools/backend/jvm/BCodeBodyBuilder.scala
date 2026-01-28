@@ -29,15 +29,14 @@ import dotty.tools.dotc.ast.Trees.SyntheticUnit
 
 import tpd.*
 import DottyBackendInterface.symExtensions
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeSkelBuilder {
-
-  protected val primitives: DottyPrimitives
+trait BCodeBodyBuilder(val primitives: DottyPrimitives, val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeSkelBuilder {
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.

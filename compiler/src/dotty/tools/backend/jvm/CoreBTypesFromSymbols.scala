@@ -1,6 +1,6 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
 import dotty.tools.dotc.transform.Erasure
 
 import scala.tools.asm.{Handle, Opcodes}
@@ -19,7 +19,7 @@ import scala.annotation.threadUnsafe
 import scala.tools.asm
 
 
-final class CoreBTypesFromSymbols(using val ctx: Context, val ppa: PostProcessorFrontendAccess, val superCallsMap: ReadOnlyMap[Symbol, List[ClassSymbol]]) extends CoreBTypes(ppa) {
+final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val superCallsMap: ReadOnlyMap[Symbol, List[ClassSymbol]])(using val ctx: Context) extends CoreBTypes(ppa) {
 
   @threadUnsafe private lazy val classBTypeFromInternalNameMap =
     collection.concurrent.TrieMap.empty[String, ClassBType]
@@ -214,7 +214,7 @@ final class CoreBTypesFromSymbols(using val ctx: Context, val ppa: PostProcessor
           val outerNameModule =
             if (innerClassSym.originalOwner.originalLexicallyEnclosingClass.isTopLevelModuleClass) dropModule(outerName)
             else outerName
-          Some(outerNameModule.toString)
+          Some(outerNameModule)
         }
       }
 
@@ -296,7 +296,7 @@ final class CoreBTypesFromSymbols(using val ctx: Context, val ppa: PostProcessor
 
   /**
    * Maps the method symbol for an unbox method to the primitive type of the result.
-   * For example, the method symbol for `Byte.unbox()`) is mapped to the PrimitiveBType BYTE. */
+   * For example, the method symbol for `Byte.unbox()` is mapped to the PrimitiveBType BYTE. */
   override def unboxResultType: Map[Symbol, PrimitiveBType] = _unboxResultType.get
   private lazy val _unboxResultType = ppa.perRunLazy[Map[Symbol, PrimitiveBType]]{
     val unboxMethods: Map[Symbol, Symbol] =
@@ -372,7 +372,7 @@ final class CoreBTypesFromSymbols(using val ctx: Context, val ppa: PostProcessor
   private lazy val _srLambdaDeserialize: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize]))
 
 
-  override def jliLambdaMetaFactoryMetafactoryHandle = _jliLambdaMetaFactoryMetafactoryHandle.get
+  override def jliLambdaMetaFactoryMetafactoryHandle: Handle = _jliLambdaMetaFactoryMetafactoryHandle.get
   private lazy val _jliLambdaMetaFactoryMetafactoryHandle: Lazy[Handle] = ppa.perRunLazy{new Handle(
     Opcodes.H_INVOKESTATIC,
     jliLambdaMetafactoryRef.internalName,
@@ -383,7 +383,7 @@ final class CoreBTypesFromSymbols(using val ctx: Context, val ppa: PostProcessor
     ).descriptor,
     /* itf = */ false)}
 
-  override def jliLambdaMetaFactoryAltMetafactoryHandle = _jliLambdaMetaFactoryAltMetafactoryHandle.get
+  override def jliLambdaMetaFactoryAltMetafactoryHandle: Handle = _jliLambdaMetaFactoryAltMetafactoryHandle.get
   private lazy val _jliLambdaMetaFactoryAltMetafactoryHandle: Lazy[Handle] = ppa.perRunLazy{ new Handle(
     Opcodes.H_INVOKESTATIC,
     jliLambdaMetafactoryRef.internalName,
@@ -405,7 +405,7 @@ final class CoreBTypesFromSymbols(using val ctx: Context, val ppa: PostProcessor
     ).descriptor,
     /* itf = */ false)}
 
-  override def jliStringConcatFactoryMakeConcatWithConstantsHandle = _jliStringConcatFactoryMakeConcatWithConstantsHandle.get
+  override def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle = _jliStringConcatFactoryMakeConcatWithConstantsHandle.get
   private lazy val _jliStringConcatFactoryMakeConcatWithConstantsHandle: Lazy[Handle] = ppa.perRunLazy{ new Handle(
     Opcodes.H_INVOKESTATIC,
     jliStringConcatFactoryRef.internalName,
