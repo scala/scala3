@@ -23,15 +23,15 @@ import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, 
 import scala.util.hashing.MurmurHash3
 
 /** The `Range` class represents integer values in range
- *  ''[start;end)'' with non-zero step value `step`.
+ *  *[start;end)* with non-zero step value `step`.
  *  It's a special case of an indexed sequence.
  *  For example:
  *
- *  {{{
+ *  ```
  *     val r1 = 0 until 10
  *     val r2 = r1.start until r1.end by r1.step + 1
  *     println(r2.length) // = 5
- *  }}}
+ *  ```
  *
  *  Ranges that contain more than `Int.MaxValue` elements can be created, but
  *  these overfull ranges have only limited capabilities. Any method that
@@ -57,7 +57,7 @@ import scala.util.hashing.MurmurHash3
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  *  @define doesNotUseBuilders
- *    '''Note:''' this method does not use builders to construct a new range,
+ *    **Note:** this method does not use builders to construct a new range,
  *         and its complexity is O(1).
  */
 @SerialVersionUID(4L)
@@ -182,28 +182,28 @@ sealed abstract class Range(
   }
 
   /** The last element of this range.  This method will return the correct value
-    *  even if there are too many elements to iterate over.
-    */
+   *  even if there are too many elements to iterate over.
+   */
   final override def last: Int =
     if (isEmpty) throw Range.emptyRangeError("last") else lastElement
   final override def head: Int =
     if (isEmpty) throw Range.emptyRangeError("head") else start
 
   /** Creates a new range containing all the elements of this range except the last one.
-    *
-    *  $doesNotUseBuilders
-    *
-    *  @return  a new range consisting of all the elements of this range except the last one.
-    */
+   *
+   *  $doesNotUseBuilders
+   *
+   *  @return  a new range consisting of all the elements of this range except the last one.
+   */
   final override def init: Range =
     if (isEmpty) throw Range.emptyRangeError("init") else dropRight(1)
 
   /** Creates a new range containing all the elements of this range except the first one.
-    *
-    *  $doesNotUseBuilders
-    *
-    *  @return  a new range consisting of all the elements of this range except the first one.
-    */
+   *
+   *  $doesNotUseBuilders
+   *
+   *  @return  a new range consisting of all the elements of this range except the first one.
+   */
   final override def tail: Range = {
     if (isEmpty) throw Range.emptyRangeError("tail")
     if (numRangeElements == 1) newEmptyRange(end)
@@ -220,10 +220,10 @@ sealed abstract class Range(
     if(isInclusive) new Range.Inclusive(start, end, step) else new Range.Exclusive(start, end, step)
 
   /** Creates a new range with the `start` and `end` values of this range and
-    *  a new `step`.
-    *
-    *  @return a new range with a different step
-    */
+   *  a new `step`.
+   *
+   *  @return a new range with a different step
+   */
   final def by(step: Int): Range = copy(start, end, step)
 
   // Check cannot be evaluated eagerly because we have a pattern where
@@ -304,29 +304,29 @@ sealed abstract class Range(
     (n ^ Int.MinValue) > ((numRangeElements - 1) ^ Int.MinValue) // unsigned comparison
 
   /** Creates a new range containing the first `n` elements of this range.
-    *
-    *  @param n  the number of elements to take.
-    *  @return   a new range consisting of `n` first elements.
-    */
+   *
+   *  @param n  the number of elements to take.
+   *  @return   a new range consisting of `n` first elements.
+   */
   final override def take(n: Int): Range =
     if (n <= 0 || isEmpty) newEmptyRange(start)
     else if (greaterEqualNumRangeElements(n)) this
     else new Range.Inclusive(start, locationAfterN(n - 1), step)
 
   /** Creates a new range containing all the elements of this range except the first `n` elements.
-    *
-    *  @param n  the number of elements to drop.
-    *  @return   a new range consisting of all the elements of this range except `n` first elements.
-    */
+   *
+   *  @param n  the number of elements to drop.
+   *  @return   a new range consisting of all the elements of this range except `n` first elements.
+   */
   final override def drop(n: Int): Range =
     if (n <= 0 || isEmpty) this
     else if (greaterEqualNumRangeElements(n)) newEmptyRange(end)
     else copy(locationAfterN(n), end, step)
 
   /** Creates a new range consisting of the last `n` elements of the range.
-    *
-    *  $doesNotUseBuilders
-    */
+   *
+   *  $doesNotUseBuilders
+   */
   final override def takeRight(n: Int): Range = {
     if (n <= 0 || isEmpty) newEmptyRange(start)
     else if (greaterEqualNumRangeElements(n)) this
@@ -334,9 +334,9 @@ sealed abstract class Range(
   }
 
   /** Creates a new range consisting of the initial `length - n` elements of the range.
-    *
-    *  $doesNotUseBuilders
-    */
+   *
+   *  $doesNotUseBuilders
+   */
   final override def dropRight(n: Int): Range = {
     if (n <= 0 || isEmpty) this
     else if (greaterEqualNumRangeElements(n)) newEmptyRange(end)
@@ -386,13 +386,13 @@ sealed abstract class Range(
   }
 
   /** Creates a new range containing the elements starting at `from` up to but not including `until`.
-    *
-    *  $doesNotUseBuilders
-    *
-    *  @param from  the element at which to start
-    *  @param until  the element at which to end (not included in the range)
-    *  @return   a new range consisting of a contiguous interval of values in the old range
-    */
+   *
+   *  $doesNotUseBuilders
+   *
+   *  @param from  the element at which to start
+   *  @param until  the element at which to end (not included in the range)
+   *  @return   a new range consisting of a contiguous interval of values in the old range
+   */
   final override def slice(from: Int, until: Int): Range =
     if (isEmpty) this
     else if (from <= 0) take(until)
@@ -412,14 +412,12 @@ sealed abstract class Range(
   // based on the given value.
   private def newEmptyRange(value: Int) = new Range.Exclusive(value, value, step)
 
-  /** Returns the reverse of this range.
-    */
+  /** Returns the reverse of this range. */
   final override def reverse: Range =
     if (isEmpty) this
     else new Range.Inclusive(last, start, -step)
 
-  /** Makes range inclusive.
-    */
+  /** Makes range inclusive. */
   final def inclusive: Range =
     if (isInclusive) this
     else new Range.Inclusive(start, end, step)
@@ -584,10 +582,10 @@ sealed abstract class Range(
 object Range {
 
   /** Counts the number of range elements.
-    *  precondition:  step != 0
-    *  If the size of the range exceeds Int.MaxValue, the
-    *  result will be negative.
-    */
+   *  precondition:  step != 0
+   *  If the size of the range exceeds Int.MaxValue, the
+   *  result will be negative.
+   */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
       throw new IllegalArgumentException("step cannot be 0.")
@@ -618,21 +616,19 @@ object Range {
     count(start, end, step, isInclusive = false)
 
   /** Makes a range from `start` until `end` (exclusive) with given step value.
-    * @note step != 0
-    */
+   *  @note step != 0
+   */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
-  /** Makes a range from `start` until `end` (exclusive) with step value 1.
-    */
+  /** Makes a range from `start` until `end` (exclusive) with step value 1. */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
   /** Makes an inclusive range from `start` to `end` with given step value.
-    * @note step != 0
-    */
+   *  @note step != 0
+   */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
-  /** Makes an inclusive range from `start` to `end` with step value 1.
-    */
+  /** Makes an inclusive range from `start` to `end` with step value 1. */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 
   @SerialVersionUID(4L)
@@ -691,9 +687,9 @@ object Range {
 }
 
 /**
-  * @param lastElement The last element included in the Range
-  * @param initiallyEmpty Whether the Range was initially empty or not
-  */
+ *  @param lastElement The last element included in the Range
+ *  @param initiallyEmpty Whether the Range was initially empty or not
+ */
 @SerialVersionUID(4L)
 private class RangeIterator(
   start: Int,

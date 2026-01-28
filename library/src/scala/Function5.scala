@@ -16,9 +16,7 @@ package scala
 
 import scala.language.`2.13`
 
-/** A function of 5 parameters.
- *
- */
+/** A function of 5 parameters. */
 trait Function5[-T1, -T2, -T3, -T4, -T5, +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
    *  @return   the result of function application.

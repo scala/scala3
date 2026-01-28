@@ -6,9 +6,9 @@ import language.experimental.captureChecking
 object CommandLineParser {
 
   /** An exception raised for an illegal command line.
-    *  @param idx  The index of the argument that's faulty (starting from 0)
-    *  @param msg  The error message
-    */
+   *  @param idx  The index of the argument that's faulty (starting from 0)
+   *  @param msg  The error message
+   */
   class ParseError(val idx: Int, val msg: String) extends Exception
 
   /** Parses command line argument `s`, which has index `n`, as a value of type `T`.

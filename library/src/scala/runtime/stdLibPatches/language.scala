@@ -13,11 +13,11 @@ private[scala] object language:
   /** The experimental object contains features that have been recently added but have not
    *  been thoroughly tested in production yet.
    *
-   *  Experimental features '''may undergo API changes''' in future releases, so production
+   *  Experimental features **may undergo API changes** in future releases, so production
    *  code should not rely on them.
    *
    *  Programmers are encouraged to try out experimental features and
-   *  [[https://github.com/scala/scala3/issues report any bugs or API inconsistencies]]
+   *  [report any bugs or API inconsistencies](https://github.com/scala/scala3/issues)
    *  they encounter so they can be improved in future releases.
    *
    *  @group experimental
@@ -202,12 +202,12 @@ private[scala] object language:
 
   /** Where imported, auto-tupling is disabled.
     *
-    * '''Why control the feature?''' Auto-tupling can lead to confusing and
+    * **Why control the feature?** Auto-tupling can lead to confusing and
     * brittle code in presence of overloads. In particular, surprising overloads
     * can be selected, and adding new overloads can change which overload is selected
     * in suprising ways.
     *
-    * '''Why allow it?''' Not allowing auto-tupling is difficult to reconcile with
+    * **Why allow it?** Not allowing auto-tupling is difficult to reconcile with
     * operators accepting tuples.
     */
   @compileTimeOnly("`noAutoTupling` can only be used at compile time in import statements")
@@ -215,7 +215,7 @@ private[scala] object language:
 
   /** Where imported, loose equality using eqAny is disabled.
     *
-    * '''Why allow and control the feature?''' For compatibility and migration reasons,
+    * **Why allow and control the feature?** For compatibility and migration reasons,
     * strict equality is opt-in. See linked documentation for more information.
     *
     * @see [[https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality]]
@@ -226,14 +226,14 @@ private[scala] object language:
   /** Where imported, ad hoc extensions of non-open classes in other
    *  compilation units are allowed.
    *
-   *  '''Why control the feature?''' Ad-hoc extensions should usually be avoided
+   *  **Why control the feature?** Ad-hoc extensions should usually be avoided
    *  since they typically cannot rely on an "internal" contract between a class
    *  and its extensions. Only open classes need to specify such a contract.
    *  Ad-hoc extensions might break for future versions of the extended class,
    *  since the extended class is free to change its implementation without
    *  being constrained by an internal contract.
    *
-   *  '''Why allow it?''' An ad-hoc extension can sometimes be necessary,
+   *  **Why allow it?** An ad-hoc extension can sometimes be necessary,
    *  for instance when mocking a class in a testing framework, or to work
    *  around a bug or missing feature in the original class. Nevertheless,
    *  such extensions should be limited in scope and clearly documented.

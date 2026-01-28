@@ -26,7 +26,7 @@ import annotation.tailrec
  *  [[https://blog.higher-order.com/assets/trampolines.pdf]]
  *
  *  Here's a usage example:
- *  {{{
+ *  ```
  *  import scala.util.control.TailCalls._
  *
  *  def isEven(xs: List[Int]): TailRec[Boolean] =
@@ -44,19 +44,19 @@ import annotation.tailrec
  *    } yield x + y
  *
  *  fib(40).result
- *  }}}
+ *  ```
  */
 object TailCalls {
 
-  /** This class represents a tailcalling computation.
-   */
+  /** This class represents a tailcalling computation. */
   sealed abstract class TailRec[+A] {
 
     /** Continue the computation with `f`. */
     final def map[B](f: A => B): TailRec[B] = flatMap(a => Call(() => Done(f(a))))
 
     /** Continue the computation with `f` and merge the trampolining
-     *  of this computation with that of `f`. */
+     *  of this computation with that of `f`. 
+     */
     final def flatMap[B](f: A => TailRec[B]): TailRec[B] = this match {
       case Done(a)         => Call(() => f(a))
       case Call(_)         => Cont(this, f)
@@ -65,7 +65,8 @@ object TailCalls {
     }
 
     /** Returns either the next step of the tailcalling computation,
-      * or the result if there are no more steps. */
+     *  or the result if there are no more steps. 
+     */
     @tailrec final def resume: Either[() => TailRec[A], A] = this match {
       case Done(a)    => Right(a)
       case Call(k)    => Left(k)
@@ -76,8 +77,7 @@ object TailCalls {
       }
     }
 
-    /** Returns the result of the tailcalling computation.
-     */
+    /** Returns the result of the tailcalling computation. */
     @tailrec final def result: A = this match {
       case Done(a)    => a
       case Call(t)    => t().result
@@ -93,11 +93,13 @@ object TailCalls {
   protected case class Call[A](rest: () => TailRec[A]) extends TailRec[A]
 
   /** Internal class representing the final result returned from a tailcalling
-   *  computation. */
+   *  computation. 
+   */
   protected case class Done[A](value: A) extends TailRec[A]
 
   /** Internal class representing a continuation with function A => TailRec[B].
-   *  It is needed for the flatMap to be implemented. */
+   *  It is needed for the flatMap to be implemented. 
+   */
   protected case class Cont[A, B](a: TailRec[A], f: A => TailRec[B]) extends TailRec[B]
 
   /** Perform a tailcall.

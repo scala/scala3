@@ -17,18 +17,18 @@ import scala.language.`2.13`
 
 /** ANSI escape codes providing control over text formatting and color on supporting text terminals.
   *
-  * ==ANSI Style and Control Codes==
+  * ## ANSI Style and Control Codes
   *
   * This group of escape codes provides control over text styling. For example, to turn on reverse video with bold and
   * then turn off all styling embed these codes,
   *
-  * {{{
+  * ```
   * import io.AnsiColor._
   *
   * println(s"\${REVERSED}\${BOLD}Hello 1979!\${RESET}")
-  * }}}
+  * ```
   *
-  * ==Foreground and Background Colors==
+  * ## Foreground and Background Colors
   *
   * Embedding ANSI color codes in text output will control the text foreground and background colors.
   *

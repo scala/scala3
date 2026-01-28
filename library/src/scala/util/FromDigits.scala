@@ -5,8 +5,7 @@ import annotation.internal.sharable
 
 import language.experimental.captureChecking
 
-/** A type class for types that admit numeric literals.
- */
+/** A type class for types that admit numeric literals. */
 trait FromDigits[T] {
 
   /** Converts `digits` string to value of type `T`
@@ -14,9 +13,9 @@ trait FromDigits[T] {
    *  - sign `+` or `-`
    *  - sequence of digits between 0 and 9
    *
-   * @throws FromDigits.MalformedNumber if digit string is not legal for the given type
-   * @throws FromDigits.NumberTooLarge  if value of result does not fit into `T`'s range
-   * @throws FromDigits.NumberTooSmall  in case of numeric underflow (e.g. a non-zero
+   *  @throws FromDigits.MalformedNumber if digit string is not legal for the given type
+   *  @throws FromDigits.NumberTooLarge  if value of result does not fit into `T`'s range
+   *  @throws FromDigits.NumberTooSmall  in case of numeric underflow (e.g. a non-zero
    *                         floating point literal that produces a zero value)
    */
   def fromDigits(digits: String): T
