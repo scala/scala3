@@ -3,6 +3,7 @@ package dotc
 package core
 
 import interfaces.CompilerCallback
+import CacheStores.{CacheStore, DefaultCacheStore}
 import Decorators.*
 import Periods.*
 import Names.*
@@ -57,8 +58,9 @@ object Contexts {
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
   private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
+  private val (cacheStoreLoc,       store12) = store11.newLocation[CacheStore](DefaultCacheStore)
 
-  private val initialStore = store11
+  private val initialStore = store12
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -189,6 +191,8 @@ object Contexts {
       val local = progressCallback
       if local != null then op(local)
 
+    def cacheStore: CacheStore = store(cacheStoreLoc)
+
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
 
@@ -256,7 +260,9 @@ object Contexts {
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
-      base.sources.getOrElseUpdate(file, SourceFile(file, codec))
+      // `base.sources` is run-local (it is reset at the beginning of each run),
+      // while `cacheStore.sources` can cache files across runs.
+      base.sources.getOrElseUpdate(file, cacheStore.sources(file, SourceFile(file, codec)))
     }
 
     /** SourceFile with given path name, memoized */
@@ -273,7 +279,9 @@ object Contexts {
         file
       case None =>
         try
-          val file = new PlainFile(Path(name.toString))
+          // `base.files` is run-local (it is reset at the beginning of each run),
+          // while `cacheStore.files` can cache files across runs.
+          val file = cacheStore.files(name, new PlainFile(Path(name.toString)))
           base.files(name) = file
           file
         catch
@@ -712,6 +720,7 @@ object Contexts {
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
     def setProgressCallback(callback: ProgressCallback): this.type = updateStore(progressCallbackLoc, callback)
+    def setCacheStore(cacheStore: CacheStore): this.type = updateStore(cacheStoreLoc, cacheStore)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
@@ -990,7 +999,11 @@ object Contexts {
     private var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
-    /** Sources and Files that were loaded */
+    /** Sources and Files that were loaded.
+     *
+     *  Those are intra-run caches. See also [[CacheStore.sources]] and
+     *  [[CCacheStore.files]] for inter-run caching of source files and files.
+     */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
 

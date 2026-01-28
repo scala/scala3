@@ -78,5 +78,5 @@ class JavaPlatform extends Platform {
     new ClassfileLoader(bin)
 
   def newTastyLoader(bin: AbstractFile)(using Context): SymbolLoader =
-    new TastyLoader(bin)
+    new TastyLoader(bin, ctx.cacheStore.tastyBytes)
 }
