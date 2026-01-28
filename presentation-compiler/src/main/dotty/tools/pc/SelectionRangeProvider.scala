@@ -96,7 +96,7 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
         case list =>
           val srcPos = list.head.sourcePos
           val lastSpan = list.last.span
-          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer)
+          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span `union` lastSpan, srcPos.outer)
           maybeToSelectionRange(allArgsSrcPos)
 
     val allSelectionRanges: Iterable[SelectionRange] = tree match
