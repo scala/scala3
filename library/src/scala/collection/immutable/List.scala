@@ -652,7 +652,7 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   override def tail: List[A] = next
 
   @publicInBinary
-  private[::] def next$access$1 = next
+  private[::] def `next$access$1` = next
 
 }
 
