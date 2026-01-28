@@ -1971,6 +1971,7 @@ object Build {
           .add(Revision(version))
           .add(OutputDir(s"scaladoc/output/${version}"))
           .add(SiteRoot(docs.getAbsolutePath))
+          .add(defaultSourceLinks(version = version, allowGitSHA = false))
           .remove[ApiSubdirectory]
         }
         generateDocumentation(config)
@@ -2848,10 +2849,10 @@ object ScaladocConfigs {
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
   def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
-  def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
-  def defaultSourceLinks(version: String) = {
+  def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/"
+  def defaultSourceLinks(version: String, allowGitSHA: Boolean = true) = {
     def dottySrcLink(v: String) = sys.env.get("GITHUB_SHA") match {
-      case Some(sha) => s"github://scala/scala3/$sha"
+      case Some(sha) if allowGitSHA => s"github://scala/scala3/$sha"
       case None => s"github://scala/scala3/$v"
     }
     SourceLinks(List(dottySrcLink(version), "docs=github://scala/scala3/main#docs"))
