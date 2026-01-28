@@ -165,7 +165,7 @@ given [T: Value] => HyArray[T] is Value:
     def copy(): HyArray[T] =
       self.copy()
 
-    def eq(other: HyArray[T]): Boolean =
+    infix def eq(other: HyArray[T]): Boolean =
       self.elementsEqual(other)
 
     def hashInto(hasher: Hasher): Hasher =
