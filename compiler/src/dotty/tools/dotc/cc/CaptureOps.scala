@@ -721,8 +721,7 @@ extension (tp: AnnotatedType)
     case _ => false
 
 /** A prototype that indicates selection */
-class PathSelectionProto(val select: Select, val pt: Type) extends typer.ProtoTypes.WildcardSelectionProto:
-  def selector(using Context): Symbol = select.symbol
+class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as

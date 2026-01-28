@@ -1,8 +1,8 @@
--- Error: tests/neg-custom-args/captures/constructor-uses.scala:13:4 ---------------------------------------------------
+-- Error: tests/neg-custom-args/captures/constructor-uses.scala:13:12 --------------------------------------------------
 13 |    val u = f.toString // error
-   |    ^
-   |    Publicly visible constructor C uses external capabilities {A.this.f}.
-   |    These dependencies need to be declared explicitly in a `uses_init ...` clause.
+   |            ^
+   |            reference `A.this.f` is not included in the allowed capture set {}
+   |            of the enclosing class C in class A
 -- Error: tests/neg-custom-args/captures/constructor-uses.scala:17:12 --------------------------------------------------
 17 |    val v = g.toString // error
    |            ^

@@ -67,7 +67,7 @@ object Mutability:
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
       else if sym.isUpdateMethod then OK
       else if sym.owner == cls then
-        if sym.isConstructor then OK
+        if sym.isConstructor || !sym.isOneOf(MethodOrLazy) then OK
         else NotInUpdateMethod(sym, cls)
       else if sym.isRoot then OutsideClass(cls)
       else sym.owner.inExclusivePartOf(cls)
