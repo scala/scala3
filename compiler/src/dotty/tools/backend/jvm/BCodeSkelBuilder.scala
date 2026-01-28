@@ -21,6 +21,8 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 
+import DottyBackendInterface.{symExtensions, *}
+import tpd.*
 
 /*
  *
@@ -29,12 +31,6 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
-  import int.{_, given}
-  import DottyBackendInterface.{symExtensions, _}
-  import tpd.*
-  import bTypes.*
-  import coreBTypes.*
-  import bCodeAsmCommon.*
 
   lazy val NativeAttr: Symbol = requiredClass[scala.native]
 
@@ -156,7 +152,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      (funSym.info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      funSym.info.firstParamTypes.map(toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {
@@ -714,7 +710,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           val body =
             if (tree.constr.rhs.isEmpty) tree.body
             else tree.constr :: tree.body
-          body foreach gen
+          body.foreach(gen)
 
         case _ => abort(s"Illegal tree in gen: $tree")
       }
@@ -742,7 +738,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         mkArrayS(thrownExceptions)
       ).asInstanceOf[MethodNode1]
 
-      // TODO param names: (m.params map (p => javaName(p.sym)))
+      // TODO param names: (m.params.map(p => javaName(p.sym)))
 
       emitAnnotations(mnode, others)
       emitParamNames(mnode, params)

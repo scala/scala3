@@ -38,24 +38,17 @@ import dotty.tools.dotc.report
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 /*
- *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
+ *  Encapsulates functionality to convert Scala AST Trees into ASM ClassNodes.
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded
  *  @version 1.0
  *
  */
-trait BCodeHelpers extends BCodeIdiomatic {
+trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeIdiomatic {
   // for some reason singleton types aren't allowed in constructor calls. will need several casts in code to enforce
   //import global.*
-  import bTypes.*
   import tpd.*
-  import coreBTypes.*
-  import int.{_, given}
   import DottyBackendInterface.*
-
-  // We need to access GenBCode phase to get access to post-processor components.
-  // At this point it should always be initialized already.
-  protected lazy val backendUtils = genBCodePhase.asInstanceOf[GenBCode].postProcessor.backendUtils
 
   def ScalaATTRName: String = "Scala"
   def ScalaSignatureATTRName: String = "ScalaSig"
@@ -165,9 +158,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
      * ClassBType.
      */
     final def getClassBType(sym: Symbol): ClassBType = {
-      if (sym == defn.NothingClass) srNothingRef
-      else if (sym == defn.NullClass) srNullRef
-      else classBTypeFromSymbol(sym)
+      if (sym == defn.NothingClass) ts.srNothingRef
+      else if (sym == defn.NullClass) ts.srNullRef
+      else ts.classBTypeFromSymbol(sym)
     }
 
     /*
@@ -178,7 +171,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) UNIT
         else toTypeKind(msym.info.resultType)
-      MethodBType(msym.info.firstParamTypes map toTypeKind, resT)
+      MethodBType(msym.info.firstParamTypes.map(toTypeKind), resT)
     }
 
     /**
@@ -191,7 +184,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
      */
     final def symDescriptor(sym: Symbol): String = getClassBType(sym).descriptor
 
-    final def toTypeKind(tp: Type): BType = typeToTypeKind(tp)(BCodeHelpers.this)(this)
+    final def toTypeKind(tp: Type): BType = typeToTypeKind(tp)(this)
 
   } // end of trait BCInnerClassGen
 
@@ -205,7 +198,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
         val av = cw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(av, assocs, BCodeHelpers.this)(this)
+        emitAssocs(av, assocs)(this)
       }
 
     /*
@@ -216,7 +209,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
         val av = mw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(av, assocs, BCodeHelpers.this)(this)
+        emitAssocs(av, assocs)(this)
       }
 
     /*
@@ -227,7 +220,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
         val av = fw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(av, assocs, BCodeHelpers.this)(this)
+        emitAssocs(av, assocs)(this)
       }
 
     /*
@@ -243,14 +236,13 @@ trait BCodeHelpers extends BCodeIdiomatic {
      * must-single-thread
      */
     def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]): Unit =
-      val annotationss = pannotss map (_ filter shouldEmitAnnotation)
-      if (annotationss forall (_.isEmpty)) return
-      for ((annots, idx) <- annotationss.zipWithIndex;
-        annot <- annots) {
+      val annotationss = pannotss.map(_.filter(shouldEmitAnnotation))
+      if (annotationss.forall(_.isEmpty)) return
+      for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
-        emitAssocs(pannVisitor, assocs, BCodeHelpers.this)(this)
+        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, typeDescriptor(typ), isRuntimeVisible(annot))
+        emitAssocs(pannVisitor, assocs)(this)
       }
 
 
@@ -259,16 +251,16 @@ trait BCodeHelpers extends BCodeIdiomatic {
         retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
     }
 
-    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
-        (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])
+        (innerClasesStore: BCInnerClassGen) = {
       for ((name, value) <- assocs)
-        emitArgument(av, name.mangledString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
+        emitArgument(av, name.mangledString, value.asInstanceOf[Tree])(innerClasesStore)
       av.visitEnd()
     }
 
     private def emitArgument(av:   AnnotationVisitor,
                            name: String,
-                           arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
+                           arg:  Tree)(innerClasesStore: BCInnerClassGen): Unit = {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
       // `constToLiteral` at this point.
@@ -280,7 +272,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(bcodeStore)(innerClasesStore).toASMType)
+            case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(innerClasesStore).toASMType)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
@@ -301,7 +293,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
           av.visitEnum(name, edesc, evalue)
         case t: SeqLiteral =>
           val arrAnnotV: AnnotationVisitor = av.visitArray(name)
-          for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+          for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg)(innerClasesStore) }
           arrAnnotV.visitEnd()
 
         case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
@@ -320,7 +312,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
             }
           }
           for arg <- flatArgs do
-            emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore)
+            emitArgument(arrAnnotV, null, arg)(innerClasesStore)
           arrAnnotV.visitEnd()
   /*
         case sb @ ScalaSigBytes(bytes) =>
@@ -339,10 +331,10 @@ trait BCodeHelpers extends BCodeIdiomatic {
           val assocs = assocsFromApply(t)
           val desc = innerClasesStore.typeDescriptor(typ) // the class descriptor of the nested annotation class
           val nestedVisitor = av.visitAnnotation(name, desc)
-          emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
+          emitAssocs(nestedVisitor, assocs)(innerClasesStore)
 
         case Inlined(_, _, expansion) =>
-          emitArgument(av, name, arg = expansion, bcodeStore)(innerClasesStore)
+          emitArgument(av, name, arg = expansion)(innerClasesStore)
 
         case t =>
           report.error(em"Annotation argument is not a constant", t.sourcePos)
@@ -375,7 +367,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         case Apply(fun, args) =>
           fun.tpe.widen match {
             case MethodType(names) =>
-              (names zip args).filter {
+              names.zip(args).filter {
                 case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
                 case _ => true
               }
@@ -385,7 +377,6 @@ trait BCodeHelpers extends BCodeIdiomatic {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int.given
 
     def getCurrentCUnit(): CompilationUnit
 
@@ -429,8 +420,8 @@ trait BCodeHelpers extends BCodeIdiomatic {
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean): Unit = {
       val moduleName     = internalName(module)
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes map toTypeKind
-      // val paramNames     = 0 until paramJavaTypes.length map ("x_" + _)
+      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(toTypeKind)
+      // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
        *  as the JVM will not allow redefinition of a final static method,
@@ -605,7 +596,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
       this.cunit = cunit
-      val bType      = mirrorClassBTypeFromSymbol(moduleClass)
+      val bType      = ts.mirrorClassBTypeFromSymbol(moduleClass)
       val moduleName = internalName(moduleClass) // + "$"
       val mirrorName = bType.internalName
       val mirrorClass = new asm.tree.ClassNode
@@ -614,7 +605,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         bType.info.get.flags,
         mirrorName,
         null /* no java-generic-signature */,
-        ObjectRef.internalName,
+        ts.ObjectRef.internalName,
         EMPTY_STRING_ARRAY
       )
 
@@ -712,10 +703,8 @@ trait BCodeHelpers extends BCodeIdiomatic {
    * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
    * classes.
    */
-  private def typeToTypeKind(tp: Type)(ct: BCodeHelpers)(storage: ct.BCInnerClassGen): ct.bTypes.BType = {
-    import ct.bTypes.*
+  private def typeToTypeKind(tp: Type)(storage: BCInnerClassGen): BType = {
     val defn = ctx.definitions
-    import coreBTypes.*
     import Types.*
     /**
       * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
@@ -724,7 +713,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
       assert(sym != defn.ArrayClass || compilingArray, sym)
-      primitiveTypeMap.getOrElse(sym, storage.getClassBType(sym)).asInstanceOf[BType]
+      ts.primitiveTypeMap.getOrElse(sym, storage.getClassBType(sym))
     }
 
     /**
@@ -733,11 +722,11 @@ trait BCodeHelpers extends BCodeIdiomatic {
       */
     def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
       assert(sym.isType && compilingArray, sym)
-      ObjectRef.asInstanceOf[ct.bTypes.ClassBType]
+      ts.ObjectRef
     }
 
     tp.widenDealias match {
-      case JavaArrayType(el) =>ArrayBType(typeToTypeKind(el)(ct)(storage)) // Array type such as Array[Int] (kept by erasure)
+      case JavaArrayType(el) =>ArrayBType(typeToTypeKind(el)(storage)) // Array type such as Array[Int] (kept by erasure)
       case t: TypeRef =>
         t.info match {
 
@@ -753,7 +742,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         */
       case a @ AnnotatedType(t, _) =>
         report.debuglog(s"typeKind of annotated type $a")
-        typeToTypeKind(t)(ct)(storage)
+        typeToTypeKind(t)(storage)
 
       /* The cases below should probably never occur. They are kept for now to avoid introducing
         * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
@@ -766,11 +755,11 @@ trait BCodeHelpers extends BCodeIdiomatic {
             "If possible, please file a bug on https://github.com/scala/scala3/issues")
 
         tp match {
-          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectRef.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+          case tp: ThisType if tp.cls == defn.ArrayClass => ts.ObjectRef // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
           case tp: ThisType                         => storage.getClassBType(tp.cls)
           // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
-          case t: SingletonType                     => typeToTypeKind(t.underlying)(ct)(storage)
-          case t: RefinedType                       => typeToTypeKind(t.parent)(ct)(storage) //parents.map(_.toTypeKind(ct)(storage).asClassBType).reduceLeft((a, b) => a.jvmWiseLUB(b))
+          case t: SingletonType                     => typeToTypeKind(t.underlying)(storage)
+          case t: RefinedType                       => typeToTypeKind(t.parent)(storage)
         }
     }
   }
