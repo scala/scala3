@@ -2378,19 +2378,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverseChildren(tree)(using lctx)
             check(tree)
 
-        def isExternalRef(c: Capability) = !c.isTerminalCapability
-
-        def checkExternalUses(sym: Symbol)(using Context): Unit = capturedVars(sym) match
-          case cs: CaptureSet.Var if !isExemptFromExplicitChecks(sym) =>
-            val extRefs = cs.dropEmpties().elems.filter(isExternalRef)
-            if !extRefs.isEmpty then
-              val usesStr = if sym.isClass then "uses" else "uses_init"
-              report.error(
-                em"""Publicly visible $sym uses external capabilities ${CaptureSet(extRefs)}.
-                  |These dependencies need to be declared explicitly in a `$usesStr ...` clause.""",
-                sym.srcPos)
-          case _ =>
-
         def check(tree: Tree)(using Context) = tree match
           case TypeApply(fun, args) =>
             fun.nuType.widen match
@@ -2407,10 +2394,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           case TypeDef(_, impl: Template) =>
             val cls = tree.symbol.asClass
             checkStatefulInheritance(cls, impl.parents)
-            inContext(ctx.withOwner(cls)):
-              ccState.inSepCheck: // Turn sepCheck on, so that dropEmpties works recursively
-                checkExternalUses(cls)
-                checkExternalUses(cls.primaryConstructor)
           case _ =>
       end checker
 
