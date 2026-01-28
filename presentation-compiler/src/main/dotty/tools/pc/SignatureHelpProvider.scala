@@ -12,6 +12,10 @@ import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j as l
 
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Types.{MethodType, TypeVar}
+import dotty.tools.dotc.util.Spans.Span
+
 import scala.jdk.CollectionConverters.*
 import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
@@ -44,7 +48,6 @@ object SignatureHelpProvider:
           .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
 
         val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
-
         val infos = alternatives.flatMap: signature =>
           signature.denot.map(signature -> _)
 

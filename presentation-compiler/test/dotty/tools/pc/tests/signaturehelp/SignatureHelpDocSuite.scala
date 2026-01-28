@@ -43,9 +43,9 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       s"""Found documentation for scala/Option#fold().
-         |fold[B](ifEmpty: => B)(f: Int => B): B
-         |                       ^^^^^^^^^^^
-         |  @param B Found documentation for type param B
+         |fold[String](ifEmpty: => String)(f: Int => String): String
+         |                                  ^^^^^^^^^^^^^^^^
+         |  @param String Found documentation for type param B
          |  @param ifEmpty Found documentation for param ifEmpty
          |  @param f Found documentation for param f
           """.stripMargin
@@ -59,9 +59,9 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       s"""|Found documentation for scala/Option#fold().
-          |fold[B](ifEmpty: => B)(f: Int => B): B
-          |        ^^^^^^^^^^^^^
-          |  @param B Found documentation for type param B
+          |fold[String](ifEmpty: => String)(f: Int => String): String
+          |              ^^^^^^^^^^^^^^^^^^
+          |  @param String Found documentation for type param B
           |  @param ifEmpty Found documentation for param ifEmpty
           |  @param f Found documentation for param f
           |""".stripMargin
@@ -77,9 +77,9 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/collection/LinearSeqOps#foldLeft().
-         |foldLeft[B](z: B)(op: (B, Int) => B): B
-         |                  ^^^^^^^^^^^^^^^^^
-         |  @param B Found documentation for type param B
+         |foldLeft[Int](z: Int)(op: (Int, Int) => Int): Int
+         |                      ^^^^^^^^^^^^^^^^^^^^^
+         |  @param Int Found documentation for type param B
          |  @param z Found documentation for param z
          |  @param op Found documentation for param op
          |""".stripMargin
@@ -136,9 +136,9 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for java/util/Collections#singleton().
-         |singleton[T](o: T): java.util.Set[T]
-         |             ^^^^
-         |  @param T Found documentation for type param T
+         |singleton[Object](o: Object): java.util.Set[Object]
+         |                  ^^^^^^^^^
+         |  @param Object Found documentation for type param T
          |  @param o Found documentation for param o
          |""".stripMargin
     )
@@ -151,7 +151,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/util/control/Exception.Catch#
-         |Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
+         |Catch[T](pf: Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
          |         ^^^^^^^^^^^^^^
          |  @param pf Found documentation for param pf
          |  @param fin Found documentation for param fin
@@ -235,7 +235,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/Some#
-         |Some[A](value: A)
-         |        ^^^^^^^^
+         |Some[Int](value: Int): Some[Int]
+         |            ^^^^^^^^^^
          |""".stripMargin
     )
