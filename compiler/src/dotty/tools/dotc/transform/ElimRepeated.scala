@@ -13,6 +13,7 @@ import Decorators.*
 import Denotations.*, SymDenotations.*
 import DenotTransformers.*
 import NullOpsDecorator.*
+import util.Spans.Span
 
 object ElimRepeated {
   val name: String = "elimRepeated"
@@ -183,7 +184,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .get
         .symbol.asTerm
       // Generate the method
-      val forwarderDef = DefDef(forwarderSym, prefss => {
+      val forwarderDef = DefDef(forwarderSym, prefss =>
         val init :+ (last :+ vararg) = prefss: @unchecked
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
@@ -191,7 +192,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref(sym.termRef)
           .appliedToArgss(init)
           .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
-        })
+          .withSpan(Span(tree.span.start))
+      ).withSpan(tree.span.toSynthetic)
       Thicket(tree, forwarderDef)
     else
       tree
