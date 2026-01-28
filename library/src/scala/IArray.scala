@@ -3,7 +3,9 @@ import reflect.ClassTag
 
 import language.experimental.captureChecking
 
-import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
+import scala.annotation.experimental
+
+import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape, Factory}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{ArrayBuilder, Builder}
 
@@ -13,6 +15,19 @@ opaque type IArray[+T] = Array[? <: T]
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
  */
 object IArray:
+
+  // OLD style implicit conversion so no import is needed at use-site.
+  // once `into` feature is made stable, we could make `Factory` an `into` trait, and
+  // change this to the new style `given Conversion`.
+  /** Provides an implicit conversion from the IArray object to a collection Factory */
+  @experimental
+  implicit def convertIArrayToFactory[A : ClassTag](@annotation.unused asFactory: IArray.type): Factory[A, IArray[A]] =
+    // copied from ArrayFactory, i guess its possible to capture a factory?
+    @SerialVersionUID(3L)
+    class ConcreteIArrayFactory extends Factory[A, IArray[A]] with Serializable:
+      def fromSpecific(it: IterableOnce[A]^): IArray[A] = IArray.from[A](it)
+      def newBuilder: Builder[A, IArray[A]] = IArray.newBuilder[A]
+    ConcreteIArrayFactory()
 
   /** The selection operation on an immutable array.
     *

@@ -102,6 +102,9 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
+
+  // New API: IArray Factory conversion
+  "scala.IArray$package$.IArray$.convertIArrayToFactory",
 )
 
 
