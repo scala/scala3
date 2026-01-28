@@ -632,7 +632,13 @@ object Scanners {
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
         if nextWidth < lastWidth
-           || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
+           || nextWidth == lastWidth
+              && token != CASE
+              && indentPrefix.match
+                 case MATCH | CATCH => true
+                 case CASE => featureEnabled(Feature.relaxedColonSyntax)
+                 case _ => false
+        then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
           else if canDedent then
@@ -658,9 +664,13 @@ object Scanners {
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
                   report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
         else if lastWidth < nextWidth
-             || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
+             || lastWidth == nextWidth
+                && token == CASE
+                && (lastToken == MATCH || lastToken == CATCH || featureEnabled(Feature.relaxedColonSyntax))
+        then
           if canStartIndentTokens.contains(lastToken) then
-            currentRegion = Indented(nextWidth, lastToken, currentRegion)
+            val prefix = if token == CASE && featureEnabled(Feature.relaxedColonSyntax) then CASE else lastToken
+            currentRegion = Indented(nextWidth, prefix, currentRegion)
             insert(INDENT, offset)
           else if lastToken == SELFARROW then
             currentRegion.knownWidth = nextWidth
@@ -1698,7 +1708,7 @@ object Scanners {
   case class Indented(width: IndentWidth, prefix: Token, outer: Region | Null) extends Region(OUTDENT):
     knownWidth = width
 
-    /** Other indendation widths > width of lines in the same region */
+    /** Other indentation widths > width of lines in the same region */
     var otherIndentWidths: Set[IndentWidth] = Set()
 
     override def coversIndent(w: IndentWidth) = width == w || otherIndentWidths.contains(w)
