@@ -68,7 +68,7 @@ class ProtectedAccessors extends MiniPhase {
   private class Accessors extends AccessProxies {
     val insert: Insert = new Insert {
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName = ProtectedAccessorName(name)
-      def needsAccessor(sym: Symbol)(using Context) = ProtectedAccessors.needsAccessor(sym)
+      def needsAccessor(refTree: RefTree | Apply | TypeApply)(using Context) = ProtectedAccessors.needsAccessor(refTree.symbol)
 
       override def ifNoHost(reference: RefTree)(using Context): Tree = {
         val curCls = ctx.owner.enclosingClass
