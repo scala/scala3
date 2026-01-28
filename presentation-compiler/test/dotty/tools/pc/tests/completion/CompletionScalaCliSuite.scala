@@ -2,8 +2,8 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class CompletionScalaCliSuite extends BaseCompletionSuite:
 
@@ -154,7 +154,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       expected: String,
       filename: String = "A.scala",
       enablePackageWrap: Boolean = true
-  ) = {
+  ) =
     val expectedAtLeast = expected.linesIterator.toSet
     check(
       original,
@@ -163,7 +163,6 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       filename = filename,
       enablePackageWrap = enablePackageWrap
     )
-  }
 
   private def scriptWrapper(code: String, filename: String): String =
     // Vaguely looks like a scala file that ScalaCLI generates

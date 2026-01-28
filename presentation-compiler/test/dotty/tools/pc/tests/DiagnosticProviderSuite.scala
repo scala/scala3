@@ -1,13 +1,15 @@
 package dotty.tools.pc.tests
 
+import java.net.URI
+
+import scala.meta.internal.jdk.CollectionConverters.*
+
 import dotty.tools.pc.base.BaseDiagnosticsSuite
+
 import org.eclipse.lsp4j.CodeAction
 import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DiagnosticSeverity
 import org.junit.Test
-
-import java.net.URI
-import scala.meta.internal.jdk.CollectionConverters.*
 
 class DiagnosticProviderSuite extends BaseDiagnosticsSuite {
 
@@ -93,5 +95,4 @@ class DiagnosticProviderSuite extends BaseDiagnosticsSuite {
           "There should be one change"
         )
     )
-
 }

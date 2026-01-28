@@ -4,13 +4,13 @@ import java.nio.file.Paths
 import java.util.Collections
 
 import scala.jdk.CollectionConverters.*
+import scala.language.unsafeNulls
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
 import scala.meta.pc.CancelToken
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.completions.CompletionSource
-import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.utils.{TestCompletions, TextEdits}
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.{CompletionItem, CompletionList}
 
@@ -49,12 +49,12 @@ abstract class BaseCompletionSuite extends BasePCSuite:
       .sortBy(item => Option(item.getSortText).getOrElse(item.getLabel()))
       .toSeq
 
-  /**
-   * Check completions using `fn` returned at @@ cursor position indicated in the `original` string.
+  /** Check completions using `fn` returned at @@ cursor position indicated in
+   *  the `original` string.
    *
-   * @param name name of the test
-   * @param original snippet to test with `@@` indicating the cursor position
-   * @param fn function used to run assertions on completion items
+   *  @param name name of the test
+   *  @param original snippet to test with `@@` indicating the cursor position
+   *  @param fn function used to run assertions on completion items
    */
   def checkItems(
       original: String,
@@ -62,19 +62,22 @@ abstract class BaseCompletionSuite extends BasePCSuite:
   ): Unit =
     assert(fn(getItems(original)))
 
-  /**
-   * Check completion line `original`, which if included in the `template` should be
-   * changed to `expected` if first completion on the list is applied.
+  /** Check completion line `original`, which if included in the `template`
+   *  should be changed to `expected` if first completion on the list is
+   *  applied.
    *
-   * @param name name of the tests
-   * @param template whole source file with `---` indicating where line `original`
-   * should be inserted.
-   * @param original line to be inserted and checked
-   * @param expected expected line `original` after being modified with the first completion
-   * @param filterText filter returned completions according to text
-   * @param assertSingleItem make sure only one item is suggested, true by default
-   * @param filter similar to filterText, but uses a function
-   * @param command additional command that should be applied after this completion is inserted
+   *  @param name name of the tests
+   *  @param template whole source file with `---` indicating where line
+   *    `original` should be inserted.
+   *  @param original line to be inserted and checked
+   *  @param expected expected line `original` after being modified with the
+   *    first completion
+   *  @param filterText filter returned completions according to text
+   *  @param assertSingleItem make sure only one item is suggested, true by
+   *    default
+   *  @param filter similar to filterText, but uses a function
+   *  @param command additional command that should be applied after this
+   *    completion is inserted
    */
   def checkEditLine(
       template: String,
@@ -94,17 +97,18 @@ abstract class BaseCompletionSuite extends BasePCSuite:
       command = command
     )
 
-  /**
-   * Check the results of applying the first completion suggested at a cursor position
-   *     indicated by `@@`.
+  /** Check the results of applying the first completion suggested at a cursor
+   *  position indicated by `@@`.
    *
-   * @param name name of the test
-   * @param original snippet to test with `@@` indicating the cursor position
-   * @param expected snippet after applying the first completion
-   * @param filterText filter returned completions according to text
-   * @param assertSingleItem make sure only one item is suggested, true by default
-   * @param filter similar to filterText, but uses a function
-   * @param command additional command that should be applied after this completion is inserted
+   *  @param name name of the test
+   *  @param original snippet to test with `@@` indicating the cursor position
+   *  @param expected snippet after applying the first completion
+   *  @param filterText filter returned completions according to text
+   *  @param assertSingleItem make sure only one item is suggested, true by
+   *    default
+   *  @param filter similar to filterText, but uses a function
+   *  @param command additional command that should be applied after this
+   *    completion is inserted
    */
   def checkEdit(
       original: String,
@@ -121,12 +125,12 @@ abstract class BaseCompletionSuite extends BasePCSuite:
 
     assertNonEmpty(items, "Obtained empty completions, can't check for edits.")
 
-    if (assertSingleItem && items.length != 1) then
+    if assertSingleItem && items.length != 1 then
       fail(
         s"expected single completion item, obtained ${items.length} items.\n${items.map(_.getLabel.nn + "\n")}"
       )
 
-    if (items.size <= itemIndex) then
+    if items.size <= itemIndex then
       fail(s"Not enough completion items: $items")
     val item = items(itemIndex)
     val (code, _) = params(original)
@@ -134,7 +138,7 @@ abstract class BaseCompletionSuite extends BasePCSuite:
 
     assertNoDiff(expected, obtained)
 
-    if (filterText.nonEmpty) then
+    if filterText.nonEmpty then
       assertEquals(item.getFilterText, filterText, "Invalid filter text")
 
     assertEquals(
@@ -143,12 +147,12 @@ abstract class BaseCompletionSuite extends BasePCSuite:
       "Invalid command"
     )
 
-  /**
-   * Check snippet syntax returned in the completions. Snippets show the editor where the cursor should end up ($0).
+  /** Check snippet syntax returned in the completions. Snippets show the editor
+   *  where the cursor should end up ($0).
    *
-   * @param name name of the test
-   * @param original snippet to test with `@@` indicating the cursor position
-   * @param expected string with a list of obtained completions
+   *  @param name name of the test
+   *  @param original snippet to test with `@@` indicating the cursor position
+   *  @param expected string with a list of obtained completions
    */
   def checkSnippet(
       original: String,
@@ -168,31 +172,35 @@ abstract class BaseCompletionSuite extends BasePCSuite:
           .map(_.getNewText)
           .orElse(Option(item.getInsertText()))
           .getOrElse(item.getLabel)
-        if (includeDetail) results + " - " + item.getDetail()
+        if includeDetail then results + " - " + item.getDetail()
         else results
       }
       .mkString("\n")
 
     assertWithDiff(expected, obtained, includeSources = false, Some(original))
 
-  /**
-   * Check completions that will be shown in original param after `@@` marker
-   * correspoding to the cursor positions
-   * @param name test name
-   * @param original snippet to test with `@@` indicating the cursor position, by default wrapped in package
-   * @param expected expected list of completions
-   * @param includeDocs whether to include documentation in the completion description
-   * @param includeCommitCharacter  show commit characters, which when typed will
-   *    indicate that completion is accepted.
-   * @param postProcessObtained function used to modify resulting completion list
-   * @param stableOrder we should not sort completions if set to true
-   * @param postAssert additional assertions to make on the results
-   * @param topLines a number of completions to include, by default all
-   * @param filterText filter returned completions according to text
-   * @param includeDetail include the completion detail in the results, true by default
-   * @param filename name of the file to run the test on, `A.scala` by default
-   * @param filter similar to filterText, but uses a function
-   * @param enablePackageWrap whether to wrap the code in a package, true by default
+  /** Check completions that will be shown in original param after `@@` marker
+   *  correspoding to the cursor positions
+   *  @param name test name
+   *  @param original snippet to test with `@@` indicating the cursor position,
+   *    by default wrapped in package
+   *  @param expected expected list of completions
+   *  @param includeDocs whether to include documentation in the completion
+   *    description
+   *  @param includeCommitCharacter show commit characters, which when typed
+   *    will indicate that completion is accepted.
+   *  @param postProcessObtained function used to modify resulting completion
+   *    list
+   *  @param stableOrder we should not sort completions if set to true
+   *  @param postAssert additional assertions to make on the results
+   *  @param topLines a number of completions to include, by default all
+   *  @param filterText filter returned completions according to text
+   *  @param includeDetail include the completion detail in the results, true by
+   *    default
+   *  @param filename name of the file to run the test on, `A.scala` by default
+   *  @param filter similar to filterText, but uses a function
+   *  @param enablePackageWrap whether to wrap the code in a package, true by
+   *    default
    */
 
   def check(
@@ -208,11 +216,11 @@ abstract class BaseCompletionSuite extends BasePCSuite:
       filename: String = "A.scala",
       filter: String => Boolean = _ => true,
       enablePackageWrap: Boolean = true,
-      includeCompletionKind: Boolean = false,
+      includeCompletionKind: Boolean = false
   ): Unit =
     val out = new StringBuilder()
     val withPkg =
-      if (original.contains("package") || !enablePackageWrap) original
+      if original.contains("package") || !enablePackageWrap then original
       else s"package test\n$original"
     val baseItems = getItems(withPkg, filename)
     val items = topLines match
@@ -230,19 +238,18 @@ abstract class BaseCompletionSuite extends BasePCSuite:
         else ""
       val documentation = doc(item.getDocumentation)
       val completionKind = Option.when(includeCompletionKind)(s" (${item.getKind.toString})").getOrElse("")
-      if (includeDocs && documentation.nonEmpty) {
+      if includeDocs && documentation.nonEmpty then
         out.append("> ").append(documentation).append("\n")
-      }
       out
         .append(label)
         .append({
           val detailIsDefined = Option(item.getDetail).isDefined
-          if (
+          if
             includeDetail && detailIsDefined && !item.getLabel
               .contains(item.getDetail)
-          ) {
+          then
             item.getDetail
-          } else
+          else
             ""
         })
         .append(commitCharacter)
@@ -251,19 +258,19 @@ abstract class BaseCompletionSuite extends BasePCSuite:
     }
     val completionSources = filteredItems
       .map(_.data.map(data => CompletionSource.fromOrdinal(data.kind))
-      .getOrElse(CompletionSource.Empty))
+        .getOrElse(CompletionSource.Empty))
       .toList
 
     val (expectedResult, _) = sortLines(stableOrder, expected)
     val (actualResult, sources) = sortLines(
       stableOrder,
       postProcessObtained(trimTrailingSpace(out.toString())),
-      completionSources,
+      completionSources
     )
 
     assertWithDiff(expectedResult, actualResult, includeSources = true, Some(original), sources)
 
-    if (filterText.nonEmpty) {
+    if filterText.nonEmpty then
       filteredItems.foreach { item =>
         assertEquals(
           item.getFilterText,
@@ -271,7 +278,6 @@ abstract class BaseCompletionSuite extends BasePCSuite:
           s"Invalid filter text for item:\n$item"
         )
       }
-    }
 
   private def trimTrailingSpace(string: String): String =
     string.linesIterator

@@ -1,25 +1,26 @@
 package dotty.tools.pc.tests.info
 
-import scala.meta.internal.jdk.CollectionConverters._
+import java.nio.file.Paths
+
+import scala.annotation.nowarn
+import scala.language.unsafeNulls
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.CompilerOffsetParams
+import scala.meta.pc.PcSymbolInformation
 import scala.meta.pc.PcSymbolKind
 import scala.meta.pc.PcSymbolProperty
 
-import scala.meta.pc.PcSymbolInformation
 import dotty.tools.pc.base.BasePCSuite
-import scala.language.unsafeNulls
+
 import org.junit.Test
-import scala.meta.internal.metals.CompilerOffsetParams
-import java.nio.file.Paths
-import scala.annotation.nowarn
 
 class InfoSuite extends BasePCSuite {
 
-  def getInfo(symbol: String): PcSymbolInformation = {
+  def getInfo(symbol: String): PcSymbolInformation =
     val result = presentationCompiler.info(symbol).get()
     assertEquals(true, result.isPresent(), s"no info returned for symbol $symbol")
     assertNoDiff(result.get().symbol(), symbol)
     result.get()
-  }
 
   @Test def `list` =
     val info = getInfo("scala/collection/immutable/List#")
@@ -99,5 +100,4 @@ class InfoSuite extends BasePCSuite {
     val filename = "Hover.scala"
     val pcParams = CompilerOffsetParams(Paths.get(filename).toUri(), code, 0)
     presentationCompiler.hover(pcParams).get()
-
 }

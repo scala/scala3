@@ -1,10 +1,11 @@
 package dotty.tools.pc.tests.hover
 
+import scala.meta.pc.SymbolDocumentation
+
 import dotty.tools.pc.base.BaseHoverSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
-import dotty.tools.pc.utils.MockEntries
-import scala.meta.pc.SymbolDocumentation
 
 class HoverDocSuite extends BaseHoverSuite:
 
@@ -14,7 +15,7 @@ class HoverDocSuite extends BaseHoverSuite:
       ScalaMockDocumentation("java/util/Collections#emptyList().", "emptyList"),
       ScalaMockDocumentation("_empty_/Alpha.apply().", "apply", List(), List(MockParam("x"))),
       ScalaMockDocumentation("_empty_/Alpha#", "init", List(), List(MockParam("x"))),
-      ScalaMockDocumentation("scala/collection/LinearSeqOps#headOption().", "headOption"),
+      ScalaMockDocumentation("scala/collection/LinearSeqOps#headOption().", "headOption")
     )
 
   @Test def `doc` =
@@ -23,7 +24,7 @@ class HoverDocSuite extends BaseHoverSuite:
         |  <<java.util.Collections.empty@@List[Int]>>
         |}
         |""".stripMargin,
-     """|**Expression type**:
+      """|**Expression type**:
         |```scala
         |java.util.List[Int]
         |```
@@ -32,7 +33,7 @@ class HoverDocSuite extends BaseHoverSuite:
         |final def emptyList[T](): java.util.List[T]
         |```
         |Found documentation for java/util/Collections#emptyList().
-        |""".stripMargin,
+        |""".stripMargin
     )
 
   @Test def `doc-parent` =
@@ -46,8 +47,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |override def headOption: Option[Int]
          |```
          |Found documentation for scala/collection/LinearSeqOps#headOption().
-         |""".stripMargin,
-
+         |""".stripMargin
     )
 
   @Test def `java-method` =
@@ -61,7 +61,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |```
          |Found documentation for java/lang/String#substring().
          |""".stripMargin
-  )
+    )
 
   @Test def `object` =
     check(
@@ -81,7 +81,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def apply(x: Int): Int
          |```
          |Found documentation for _empty_/Alpha.apply().
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `object1` =
@@ -105,7 +105,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def apply(x: Int): Int
          |```
          |Found documentation for _empty_/Alpha.apply().
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `case-class` =
@@ -135,7 +135,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def apply(x: Int): Int
          |```
          |Found documentation for _empty_/Alpha.apply().
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `case-class1` =
@@ -163,7 +163,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |```
          |Found documentation for _empty_/Alpha.apply().
          |
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `case-class2` =
@@ -187,7 +187,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def apply(x: Int): Int
          |```
          |Found documentation for _empty_/Alpha.apply().
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `case-class3` =
@@ -208,7 +208,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def apply(x: Int): Alpha
          |```
          |Found documentation for _empty_/Alpha.apply().
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `class` =
@@ -232,7 +232,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def apply(x: Int): Int
          |```
          |Found documentation for _empty_/Alpha.apply().
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `universal-apply` =
@@ -252,7 +252,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |def this(x: Int): Alpha
          |```
          |Found documentation for _empty_/Alpha#
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `i7093` =

@@ -23,7 +23,7 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
           |}
           |""".stripMargin,
       """|scala.concurrent
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `basic-function-apply` =
@@ -444,7 +444,7 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
          |  //some comment
          |  val p: Path = ???
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `toplevels-import` =
@@ -465,7 +465,7 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
          |//some other comment
          |
          |val v = 1
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `i6477` =

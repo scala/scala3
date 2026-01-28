@@ -3,6 +3,7 @@ package dotty.tools.pc.utils
 import java.util.Optional
 
 import scala.annotation.tailrec
+import scala.jdk.OptionConverters.*
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.mtags.KeywordWrapper
@@ -12,7 +13,6 @@ import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 import scala.util.control.NonFatal
-import scala.jdk.OptionConverters.*
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
@@ -21,8 +21,8 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.core.SymDenotations.NoDenotation
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.SymDenotations.NoDenotation
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -57,7 +57,6 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
-    end sourcePosition
 
     def localContext(params: OffsetParams): Context =
       if driver.currentCtx.run.nn.units.isEmpty then
@@ -68,11 +67,8 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       val pos = driver.sourcePosition(params)
       val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
       val tpdPath =
-        Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using
-          newctx
-        )
+        Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
       Interactive.contextOfPath(tpdPath)(using newctx)
-    end localContext
 
   end extension
 
@@ -107,12 +103,11 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def encloses(other: RangeParams): Boolean =
       pos.start <= other.offset() && pos.end >= other.endOffset()
 
-    /**
-     * @return (adjusted position, should strip backticks)
+    /** @return (adjusted position, should strip backticks)
      */
     def adjust(
         text: Array[Char],
-        forRename: Boolean = false,
+        forRename: Boolean = false
     )(using Context): (SourcePosition, Boolean) =
       if !pos.span.isCorrect(text) then (pos, false)
       else
@@ -203,7 +198,6 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
           )
       upd.rawParamss = paramsWithFlags
       upd
-    end withUpdatedTpe
 
     // Returns true if this symbol is locally defined from an old version of the source file.
     def isStale: Boolean =
@@ -232,7 +226,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def stripBackticks: String = s.stripPrefix("`").stripSuffix("`")
 
   extension (text: Array[Char])
-    def indexAfterSpacesAndComments: Int = {
+    def indexAfterSpacesAndComments: Int =
       var isInComment = false
       var startedStateChange = false
       val index = text.indexWhere {
@@ -255,14 +249,12 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
           false
         case _ => true
       }
-      if (startedStateChange) index - 1
+      if startedStateChange then index - 1
       else index
-    }
 
   extension (search: SymbolSearch)
     def symbolDocumentation(symbol: Symbol, contentType: ContentType = ContentType.MARKDOWN)(using
-        Context
-    ): Option[SymbolDocumentation] =
+        Context): Option[SymbolDocumentation] =
       def toSemanticdbSymbol(symbol: Symbol) =
         SemanticdbSymbols.symbolName(
           if !symbol.is(JavaDefined) && symbol.isPrimaryConstructor then
@@ -274,7 +266,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         if symbol.name == nme.apply && symbol.maybeOwner.is(ModuleClass) then
           List(
             symbol.maybeOwner,
-            symbol.maybeOwner.companion,
+            symbol.maybeOwner.companion
           ).filter(_ != NoSymbol) ++ symbol.allOverriddenSymbols
         else symbol.allOverriddenSymbols
       val documentation =
@@ -283,11 +275,10 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
           search.documentation(
             sym,
             () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
-            contentType,
+            contentType
           )
       documentation.nn.toScala
     end symbolDocumentation
-  end extension
 
   private val infixNames =
     Set(nme.apply, nme.unapply, nme.unapplySeq)
@@ -328,8 +319,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         .foldOver(Nil, tree)
         .reverse
 
-    /**
-     * Returns the children of the tree that overlap with the given span.
+    /** Returns the children of the tree that overlap with the given span.
      */
     def enclosedChildren(span: Span)(using Context): List[Tree] =
       tree.children
@@ -399,7 +389,6 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case _ =>
           List(EmptyTree)
     end expandRangeToEnclosingApply
-  end extension
 
   extension (tpe: Type)
     def deepDealiasAndSimplify(using Context): Type =
@@ -415,7 +404,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case dealised => dealised
       dealiased.simplified
 
-  extension[T] (list: List[T])
+  extension [T](list: List[T])
     def get(n: Int): Option[T] = if 0 <= n && n < list.size then Some(list(n)) else None
 
 end InteractiveEnrichments

@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.tokens
 
-import dotty.tools.pc.base.BaseSemanticTokensSuite
 import java.nio.file.Path
+
+import dotty.tools.pc.base.BaseSemanticTokensSuite
 
 import org.junit.Test
 
@@ -38,8 +39,8 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     )
 
   @Test def `metals-6823` =
-      check(
-        s"""|package <<example>>/*namespace*/
+    check(
+      s"""|package <<example>>/*namespace*/
             |
             | @<<main>>/*class*/ def <<main1>>/*method,definition*/(): <<Unit>>/*class,abstract*/ =
             |     val <<array>>/*variable,definition,readonly*/ = <<Array>>/*class*/(1, 2, 3)
@@ -53,7 +54,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
             |   val <<list>>/*variable,definition,readonly*/ = <<List>>/*class*/(1, 2, 3)
             |   <<println>>/*method*/(<<list>>/*variable,readonly*/)
             |""".stripMargin
-      )
+    )
 
   @Test def `Comment(Single-Line, Multi-Line)` =
     check(
@@ -378,21 +379,21 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
 
   @Test def `named-arg-backtick` =
     check(
-        """|object <<Main>>/*class*/ {
+      """|object <<Main>>/*class*/ {
            |  def <<foo>>/*method,definition*/(<<`type`>>/*parameter,declaration,readonly*/: <<String>>/*type*/): <<String>>/*type*/ = <<`type`>>/*parameter,readonly*/
            |  val <<x>>/*variable,definition,readonly*/ = <<foo>>/*method*/(
            |    <<`type`>>/*parameter,readonly*/ = "abc"
            |  )
            |}
-          |""".stripMargin,
+          |""".stripMargin
     )
 
   @Test def `end-marker` =
     check(
-        """|def <<foo>>/*method,definition*/ =
+      """|def <<foo>>/*method,definition*/ =
            |  1
            |end <<foo>>/*method,definition*/
-           |""".stripMargin,
+           |""".stripMargin
     )
 
   @Test def `constructor` =
@@ -453,13 +454,13 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     )
 
   @Test def `local-object-with-end-i7246` =
-   check(
+    check(
       """|def <<bar>>/*method,definition*/ =
          |  object <<foo>>/*class*/:
          |    def <<aaa>>/*method,definition*/ = <<???>>/*method*/
          |  end <<foo>>/*class,definition*/
          |""".stripMargin
-   )
+    )
 
   @Test def i7256 =
     check(
