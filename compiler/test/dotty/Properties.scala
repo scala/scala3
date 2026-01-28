@@ -51,6 +51,9 @@ object Properties {
    */
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
+  /** Enable Scoverage instrumentation for compilation tests */
+  val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
+
   /** Extra directory containing sources for the compiler */
   def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
