@@ -1,5 +1,5 @@
 // scalajs: --skip
-// test: -jvm 17
+// test: -jvm 21+
 class Foo:
     val hello = 1337
     val x: hello.type = ???
