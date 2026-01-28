@@ -220,7 +220,7 @@ sealed abstract class CaptureSet extends Showable:
         && vs.isOpen
         && {
           val underlying = elem.captureSetOfInfo
-          val res = tryInclude(underlying.elems, this)
+          val res = ifNotTried(elem)(tryInclude(underlying.elems, this))
           if res then underlying.addDependent(this)
           res
         }
@@ -265,7 +265,7 @@ sealed abstract class CaptureSet extends Showable:
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
             // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
             // and might therefore insert an element that is too unspecific.
-          && x.captureSetOfInfo.subCaptures(this, VarState.Separate)
+          && ifNotTried(x)(x.captureSetOfInfo.subCaptures(this, VarState.Separate))
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -287,10 +287,9 @@ sealed abstract class CaptureSet extends Showable:
         TypeComparer.noNotes:
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
-        && {
+        && ifNotTried(x):
           val xelems = x.captureSetOfInfo.elems
-          !xelems.isEmpty && xelems.forall(mightAccountFor)
-        }
+          !xelems.isEmpty && xelems.forall(mightAccountFor(_))
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
