@@ -19,21 +19,26 @@ import scala.compiletime.uninitialized
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess(private val ctx: Context) {
+sealed abstract class PostProcessorFrontendAccess {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
 
   def withThreadLocalReporter[T](reporter: BackendReporting)(fn: => T): T
+
   def backendReporting: BackendReporting
+
   def directBackendReporting: BackendReporting
 
   def getEntryPoints: List[String]
 
   private val frontendLock: AnyRef = new Object()
-  inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using ctx))
+
+  inline final def frontendSynch[T](inline x: Context ?=> T)(using Context): T = frontendLock.synchronized(x)
+
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
-  inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
+
+  inline def perRunLazy[T](inline init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
 
   def recordPerRunCache[T <: mutable.Clearable](cache: T): T
 
@@ -43,15 +48,33 @@ sealed abstract class PostProcessorFrontendAccess(private val ctx: Context) {
 }
 
 object PostProcessorFrontendAccess {
-  /* A container for value with lazy initialization synchronized on compiler frontend
-   * Used for sharing variables requiring a Context for initialization, between different threads
-   * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
-   */
-  class Lazy[T](init: Context ?=> T)(using frontendAccess: PostProcessorFrontendAccess) {
+  abstract class Lazy[T] {
+    def get: T
+  }
+
+  /** Does not synchronize on the frontend. (But still synchronizes on itself, so terrible name) */
+  class LazyWithoutLock[T](init: => T) extends Lazy[T] {
     @volatile private var isInit: Boolean = false
     private var v: T = uninitialized
 
-    def get: T =
+    override def get: T =
+      if isInit then v
+      else this.synchronized {
+        if !isInit then v = init
+        isInit = true
+        v
+      }
+  }
+
+  /** A container for value with lazy initialization synchronized on compiler frontend
+   * Used for sharing variables requiring a Context for initialization, between different threads
+   * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
+   */
+  private class SynchronizedLazy[T](frontendAccess: PostProcessorFrontendAccess, init: Context ?=> T)(using Context) extends Lazy[T] {
+    @volatile private var isInit: Boolean = false
+    private var v: T = uninitialized
+
+    override def get: T =
       if isInit then v
       else frontendAccess.frontendSynch {
         if !isInit then v = init
@@ -143,7 +166,7 @@ object PostProcessorFrontendAccess {
   }
 
 
-  class Impl(ctx: Context, entryPoints: mutable.HashSet[String]) extends PostProcessorFrontendAccess(ctx) {
+  class Impl(using ctx: Context, entryPoints: mutable.HashSet[String]) extends PostProcessorFrontendAccess {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
 

@@ -34,7 +34,7 @@ import dotty.tools.dotc.util
 import dotty.tools.dotc.util.NoSourcePosition
 
 
-class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives, val bTypes: BTypesFromSymbols) { self =>
+class CodeGen(val primitives: DottyPrimitives, val bTypes: BTypesFromSymbols) { self =>
   import DottyBackendInterface.symExtensions
   import bTypes.*
 

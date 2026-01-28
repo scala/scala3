@@ -33,37 +33,32 @@ class GenBCode extends Phase { self =>
   private val entryPoints = new mutable.HashSet[String]()
   def registerEntryPoint(s: String): Unit = entryPoints += s
 
-  private var _backendInterface: DottyBackendInterface | Null = null
-  def backendInterface(using ctx: Context): DottyBackendInterface = {
-    if _backendInterface eq null then
+  def context(using ctx: Context): FreshContext = {
       // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
-      val backendCtx = ctx match
+      ctx match
         case fc: FreshContext => fc
         case ctx => ctx.fresh
-      _backendInterface = DottyBackendInterface(using backendCtx)
-    _backendInterface.nn
   }
 
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      val int = backendInterface
       val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(int, dottyPrimitives, bTypes)
+      _codeGen = new CodeGen(dottyPrimitives, bTypes)
     _codeGen.nn
   }
 
-  private var _bTypes: BTypesFromSymbols | Null = null
-  def bTypes(using Context): BTypesFromSymbols = {
+  private var _bTypes: CoreBTypesFromSymbols | Null = null
+  def bTypes(using Context): CoreBTypesFromSymbols = {
     if _bTypes eq null then
-      _bTypes = BTypesFromSymbols(superCallsMap, frontendAccess)
+      _bTypes = CoreBTypesFromSymbols(context, frontendAccess, superCallsMap)
     _bTypes.nn
   }
 
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
-      _frontendAccess = PostProcessorFrontendAccess.Impl(ctx, entryPoints)
+      _frontendAccess = PostProcessorFrontendAccess.Impl(context, entryPoints)
     _frontendAccess.nn
   }
 
@@ -83,8 +78,7 @@ class GenBCode extends Phase { self =>
 
   override def run(using Context): Unit =
     frontendAccess.frontendSynchWithoutContext {
-      backendInterface.ctx
-      .asInstanceOf[FreshContext]
+      context
       .setCompilationUnit(ctx.compilationUnit)
     }
     codeGen.genUnit(ctx.compilationUnit)

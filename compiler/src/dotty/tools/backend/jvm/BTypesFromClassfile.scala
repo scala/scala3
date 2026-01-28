@@ -20,13 +20,11 @@ import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.{NoClassBTypeInfoMissingBytecode, NoInlineInfoAttribute}
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
 import dotty.tools.backend.jvm.opt.InlineInfoAttribute
 
 class BTypesFromClassfile(val postProcessor: PostProcessor) {
-  import postProcessor.{bTypes, byteCodeRepository, inlinerHeuristics}
-  import bTypes._
-  import coreBTypes._
+  import postProcessor.{byteCodeRepository, inlinerHeuristics, frontendAccess}
   import frontendAccess.compilerSettings
 
   /**
@@ -39,13 +37,13 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
    *
    * This method supports both descriptors and internal names.
    */
-  def bTypeForDescriptorOrInternalNameFromClassfile(descOrIntN: String): BType = (descOrIntN(0): @switch) match {
-    case '['                           => ArrayBType(bTypeForDescriptorFromClassfile(descOrIntN.substring(1)))
-    case 'L' if descOrIntN.last == ';' => bTypeForDescriptorFromClassfile(descOrIntN)
-    case _                             => classBTypeFromParsedClassfile(descOrIntN)
+  def bTypeForDescriptorOrInternalNameFromClassfile(descOrIntN: String, ts: CoreBTypes): BType = (descOrIntN(0): @switch) match {
+    case '['                           => ArrayBType(bTypeForDescriptorFromClassfile(descOrIntN.substring(1), ts))
+    case 'L' if descOrIntN.last == ';' => bTypeForDescriptorFromClassfile(descOrIntN, ts)
+    case _                             => classBTypeFromParsedClassfile(descOrIntN, ts)
   }
 
-  def bTypeForDescriptorFromClassfile(desc: String): BType = (desc(0): @switch) match {
+  def bTypeForDescriptorFromClassfile(desc: String, ts: CoreBTypes): BType = (desc(0): @switch) match {
     case 'V'                     => UNIT
     case 'Z'                     => BOOL
     case 'C'                     => CHAR
@@ -55,8 +53,8 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
     case 'F'                     => FLOAT
     case 'J'                     => LONG
     case 'D'                     => DOUBLE
-    case '['                     => ArrayBType(bTypeForDescriptorFromClassfile(desc.substring(1)))
-    case 'L' if desc.last == ';' => classBTypeFromParsedClassfile(desc.substring(1, desc.length - 1))
+    case '['                     => ArrayBType(bTypeForDescriptorFromClassfile(desc.substring(1), ts))
+    case 'L' if desc.last == ';' => classBTypeFromParsedClassfile(desc.substring(1, desc.length - 1), ts)
     case _                       => throw new IllegalArgumentException(s"Not a descriptor: $desc")
   }
 
@@ -64,11 +62,11 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
    * Parse the classfile for `internalName` and construct the [[BTypes.ClassBType]]. If the classfile cannot
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
-  def classBTypeFromParsedClassfile(internalName: InternalName): ClassBType = {
-    ClassBType(internalName, internalName, fromSymbol = false) { (res: ClassBType, internalName) =>
-      byteCodeRepository.classNode(internalName) match {
+  def classBTypeFromParsedClassfile(internalName: InternalName, ts: CoreBTypes): ClassBType = {
+    ts.classBType(internalName, (internalName, ts), fromSymbol = false) { (_, pair) =>
+      byteCodeRepository.classNode(pair._1) match {
         case Left(msg) => Left(NoClassBTypeInfoMissingBytecode(msg))
-        case Right(c) => computeClassInfoFromClassNode(c, res)
+        case Right(c) => computeClassInfoFromClassNode(c, pair._2)
       }
     }
   }
@@ -76,19 +74,19 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
   /**
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
-  def classBTypeFromClassNode(classNode: ClassNode): ClassBType = {
-    ClassBType(classNode.name, classNode, fromSymbol = false) { (res: ClassBType, classNode) =>
-      computeClassInfoFromClassNode(classNode, res)
+  def classBTypeFromClassNode(classNode: ClassNode, ts: CoreBTypes): ClassBType = {
+    ts.classBType(classNode.name, (classNode, ts), fromSymbol = false) { (_, pair) =>
+      computeClassInfoFromClassNode(pair._1, pair._2)
     }
   }
 
-  private def computeClassInfoFromClassNode(classNode: ClassNode, @unused classBType: ClassBType): Right[Nothing, ClassInfo] = {
+  private def computeClassInfoFromClassNode(classNode: ClassNode, ts: CoreBTypes): Right[Nothing, ClassInfo] = {
     val superClass = classNode.superName match {
       case null =>
-        assert(classNode.name == ObjectRef.internalName, s"class with missing super type: ${classNode.name}")
+        assert(classNode.name == ts.ObjectRef.internalName, s"class with missing super type: ${classNode.name}")
         None
       case superName =>
-        Some(classBTypeFromParsedClassfile(superName))
+        Some(classBTypeFromParsedClassfile(superName, ts))
     }
 
     val flags = classNode.access
@@ -113,7 +111,7 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
     }
 
     def nestedClasses: List[ClassBType] = classNode.innerClasses.asScala.iterator.collect({
-      case i if nestedInCurrentClass(i) => classBTypeFromParsedClassfile(i.name)
+      case i if nestedInCurrentClass(i) => classBTypeFromParsedClassfile(i.name, ts)
     }).toList
 
     // if classNode is a nested class, it has an innerClass attribute for itself. in this
@@ -123,11 +121,11 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
         val enclosingClass =
           if (innerEntry.outerName != null) {
             // if classNode is a member class, the outerName is non-null
-            classBTypeFromParsedClassfile(innerEntry.outerName)
+            classBTypeFromParsedClassfile(innerEntry.outerName, ts)
           } else {
             // for anonymous or local classes, the outerName is null, but the enclosing class is
             // stored in the EnclosingMethod attribute (which ASM encodes in classNode.outerClass).
-            classBTypeFromParsedClassfile(classNode.outerClass)
+            classBTypeFromParsedClassfile(classNode.outerClass, ts)
           }
         val staticFlag = (innerEntry.access & Opcodes.ACC_STATIC) != 0
         NestedInfo(enclosingClass, Option(innerEntry.outerName), Option(innerEntry.innerName), staticFlag,
@@ -136,9 +134,9 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
 
     val inlineInfo = inlineInfoFromClassfile(classNode)
 
-    val interfaces: List[ClassBType] = classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile).toList
+    val interfaces: List[ClassBType] = classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile(_, ts)).toList
 
-    Right(ClassInfo(superClass, interfaces, flags, Lazy.withoutLock(nestedClasses), Lazy.withoutLock(nestedInfo), inlineInfo))
+    Right(ClassInfo(superClass, interfaces, flags, LazyWithoutLock(nestedClasses), LazyWithoutLock(nestedInfo), inlineInfo))
   }
 
   /**
@@ -146,7 +144,7 @@ class BTypesFromClassfile(val postProcessor: PostProcessor) {
    * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
    * metadata available in the classfile (ACC_FINAL flags, etc.).
    */
-  def inlineInfoFromClassfile(classNode: ClassNode): InlineInfo = {
+  private def inlineInfoFromClassfile(classNode: ClassNode): InlineInfo = {
     def fromClassfileAttribute: Option[InlineInfo] = {
       if (classNode.attrs == null) None
       else classNode.attrs.asScala.collectFirst{ case a: InlineInfoAttribute => a.inlineInfo}

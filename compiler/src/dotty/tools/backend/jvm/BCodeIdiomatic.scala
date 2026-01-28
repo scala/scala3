@@ -60,7 +60,7 @@ trait BCodeIdiomatic {
     val a = new Array[String](len)
     var i = len - 1
     var rest = xs
-    while (!rest.isEmpty) {
+    while (rest.nonEmpty) {
       a(i) = rest.head
       rest = rest.tail
       i -= 1
@@ -77,7 +77,7 @@ trait BCodeIdiomatic {
     val a = new Array[Int](len)
     var i = len - 1
     var rest = xs
-    while (!rest.isEmpty) {
+    while (rest.nonEmpty) {
       a(i) = rest.head
       rest = rest.tail
       i -= 1

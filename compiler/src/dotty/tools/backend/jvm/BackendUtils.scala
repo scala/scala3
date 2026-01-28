@@ -82,6 +82,8 @@ class BackendUtils(val postProcessor: PostProcessor) {
   *           ...
   *             return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup${NUM_GROUPS-1}](l)
   *       }
+  *   }
+  * }
   *
   * We use invokedynamic here to enable caching within the deserializer without needing to
   * host a static field in the enclosing class. This allows us to add this method to interfaces
@@ -110,7 +112,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
       mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLamdaObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods*)
     }
 
-    val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See See MAX_MH_ARITY in CallSite.java
+    val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See MAX_MH_ARITY in CallSite.java
     val groups: Array[Array[Handle]] = implMethodsArray.grouped(targetMethodGroupLimit).toArray
     val numGroups = groups.length
 
@@ -360,14 +362,15 @@ object BackendUtils {
    *   - ACC_SYNTHETIC_ATTRIBUTE = 0x40000
    *   - ACC_CONSTRUCTOR = 0x80000
    *
-   * I haven't seen the value picked here in use anywhere. We make sure to remove the flag when
+   * TODO: I haven't seen the value picked here in use anywhere. We make sure to remove the flag when
    * it's no longer needed.
    */
+  /*
   private val ACC_MAXS_COMPUTED = 0x1000000
-  def isMaxsComputed(method: MethodNode) = (method.access & ACC_MAXS_COMPUTED) != 0
-  def setMaxsComputed(method: MethodNode) = method.access |= ACC_MAXS_COMPUTED
-  def clearMaxsComputed(method: MethodNode) = method.access &= ~ACC_MAXS_COMPUTED
-
+  def isMaxsComputed(method: MethodNode): Boolean = (method.access & ACC_MAXS_COMPUTED) != 0
+  def setMaxsComputed(method: MethodNode): Unit = method.access |= ACC_MAXS_COMPUTED
+  def clearMaxsComputed(method: MethodNode): Unit = method.access &= ~ACC_MAXS_COMPUTED
+  */
   /**
    * A pseudo-flag indicating if a MethodNode's unreachable code has been eliminated.
    *
@@ -379,9 +382,9 @@ object BackendUtils {
    * is already optimized, DCE can return early.
    */
   private val ACC_DCE_DONE = 0x2000000
-  def isDceDone(method: MethodNode) = (method.access & ACC_DCE_DONE) != 0
-  def setDceDone(method: MethodNode) = method.access |= ACC_DCE_DONE
-  def clearDceDone(method: MethodNode) = method.access &= ~ACC_DCE_DONE
+  def isDceDone(method: MethodNode): Boolean = (method.access & ACC_DCE_DONE) != 0
+  def setDceDone(method: MethodNode): Unit = method.access |= ACC_DCE_DONE
+  def clearDceDone(method: MethodNode): Unit = method.access &= ~ACC_DCE_DONE
 
   // ==============================================================================================
 
@@ -557,7 +560,7 @@ object BackendUtils {
 
   // ==============================================================================================
 
-  def isArrayGetLength(mi: MethodInsnNode): Boolean = mi.owner == "java/lang/reflect/Array" && mi.name == "getLength" && mi.desc == "(Ljava/lang/Object;)I"
+  private def isArrayGetLength(mi: MethodInsnNode): Boolean = mi.owner == "java/lang/reflect/Array" && mi.name == "getLength" && mi.desc == "(Ljava/lang/Object;)I"
 
   // If argument i of the method is null-checked, the bit `i+1` of the result is 1
   def argumentsNullCheckedByCallee(mi: MethodInsnNode): Long = {
@@ -639,12 +642,11 @@ object BackendUtils {
                 }
               }
 
-            val isIndyLambda = (
+            val isIndyLambda =
               asm.Type.getType(implMethod.getDesc) == expectedImplMethodType             // (1)
                 && receiverType.forall(rt => implMethod.getOwner == rt.getInternalName)  // (2)
                 && samMethodType.getArgumentTypes.corresponds(instantiatedMethodArgTypes)((samArgType, instArgType) =>
                 samArgType == instArgType || BCodeUtils.isReference(samArgType) && BCodeUtils.isReference(instArgType)) // (3)
-              )
 
             if (isIndyLambda) Some((indy, samMethodType, implMethod, instantiatedMethodType, indyParamTypes))
             else None
@@ -688,7 +690,7 @@ object BackendUtils {
     }
   }
 
-  def isClassTagApply(mi: MethodInsnNode): Boolean = {
+  private def isClassTagApply(mi: MethodInsnNode): Boolean = {
     mi.owner == "scala/reflect/ClassTag$" && {
       mi.name == "apply" && mi.desc == "(Ljava/lang/Class;)Lscala/reflect/ClassTag;" ||
         primitiveManifestApplies.get(mi.name).contains(mi.desc)

@@ -398,7 +398,7 @@ class LocalOpt(pp: PostProcessor) {
     assert(nullOrEmpty(method.invisibleLocalVariableAnnotations), method.invisibleLocalVariableAnnotations)
 
     // clear the non-official "access" flags once we're done and no longer look at them
-    BackendUtils.clearMaxsComputed(method)
+    // BackendUtils.clearMaxsComputed(method)
     BackendUtils.clearDceDone(method)
 
     nullnessDceBoxesCastsCopypropPushpopOrJumpsChanged || localsRemoved || lineNumbersRemoved

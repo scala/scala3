@@ -3,8 +3,7 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
-import java.{util => ju}
+import java.util.concurrent.ConcurrentHashMap
 import scala.tools.asm
 import scala.collection.SortedMap
 import scala.collection.immutable.ArraySeq
@@ -12,32 +11,9 @@ import dotty.tools.backend.jvm.BTypes.InlineInfo
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
+
+import scala.annotation.tailrec
 import scala.tools.asm.Opcodes
-
-/*
-
-NEW (01-27) TODO: I wonder if CoreBTypes should really just be inside ClassBType, so that eg "isNullType" is an override there etc.
-  basically each ClassBType should carry its own CoreBTypes, and then CoreBTypesFromSymbols is a factory for ClassBTypes
-
-* TODO:
-- the intent is that we have one stateful "CoreBTypes" that does per-run laziness via the dotty interface
-  - then it can be used in stuff declared in BTypes, e.g., type is nothing
-  - basically, we want to translate common compiler concepts *once*
-  - and we'd like to carry this state implicitly whenever we refer to any implementation of a BType
-- plus, there's other state like "a map of names to class b types" that should be global to this phase
-
-- ... this all needs to be explicit in parameters though, not random "import this other thing"
-
-so we need to write it like I did in the playground, I think
-
-BUT merge BTypes and CoreBTypes, no need for a silly circular reference
-also fix the weird naming of "BTypesFRomClassfile" (= load BTypes from classfile)
-                             "BTypesFromSymbols" (= implementation of BTypes from symbols)
-                             --> "BTypesImpl" ?
-
-ALSO kill uses of BTypes.InternalName where it's obviously just a string, not worth it (e.g. in analysis)
-
-* */
 
 
 /**
@@ -48,54 +24,12 @@ ALSO kill uses of BTypes.InternalName where it's obviously just a string, not wo
  * This representation is immutable and independent of the compiler data structures, hence it can
  * be queried by concurrent threads.
  */
-//abstract class BTypes {
-  //val frontendAccess: PostProcessorFrontendAccess
-  //val int: DottyBackendInterface
-
-  /*
-  /**
-   * Every ClassBType is cached on construction and accessible through this method.
-   *
-   * The cache is used when computing stack map frames. The asm.ClassWriter invokes the method
-   * `getCommonSuperClass`. In this method we need to obtain the ClassBType for a given internal
-   * name. The method assumes that every class type that appears in the bytecode exists in the map
-   */
-  // OPT: not returning Option[ClassBType] because the Some allocation shows up as a hotspot
-  def cachedClassBType(internalName: InternalName): ClassBType =
-    classBTypeCache.get(internalName)
-
-  // Concurrent maps because stack map frames are computed when in the class writer, which
-  // might run on multiple classes concurrently.
-  // Note usage should be private to this file, except for tests
-  private val classBTypeCache: ju.concurrent.ConcurrentHashMap[InternalName, ClassBType] =
-    frontendAccess.recordPerRunJavaMapCache(new ju.concurrent.ConcurrentHashMap[InternalName, ClassBType])
-
-  /**
-   * A map from internal names to ClassBTypes. Every ClassBType is added to this map on its
-   * construction.
-   *
-   * This map is used when computing stack map frames. The asm.ClassWriter invokes the method
-   * `getCommonSuperClass`. In this method we need to obtain the ClassBType for a given internal
-   * name. The method assumes that every class type that appears in the bytecode exists in the map.
-   *
-   * Concurrent because stack map frames are computed when in the class writer, which might run
-   * on multiple classes concurrently.
-   */
-  protected lazy val classBTypeFromInternalNameMap: collection.concurrent.Map[String, ClassBType]
-
-  /**
-   * Obtain a previously constructed ClassBType for a given internal name.
-   */
-  def classBTypeFromInternalName(internalName: String) = classBTypeFromInternalNameMap(internalName)
-*/
-//  val coreBTypes: CoreBTypes { val bTypes: BTypes.this.type}
-//  import coreBTypes.*
 
 /**
  * A BType is either a primitve type, a ClassBType, an ArrayBType of one of these, or a MethodType
  * referring to BTypes.
  */
-/*sealed*/ trait BType { // Not sealed for now due to SI-8546
+sealed trait BType {
   final override def toString: String = this match {
     case UNIT   => "V"
     case BOOL   => "Z"
@@ -135,50 +69,53 @@ ALSO kill uses of BTypes.InternalName where it's obviously just a string, not wo
   final def isClass: Boolean     = this.isInstanceOf[ClassBType]
   final def isMethod: Boolean    = this.isInstanceOf[MethodBType]
 
-  final def isNonVoidPrimitiveType = isPrimitive && this != UNIT
-  
+  final def isNonVoidPrimitiveType: Boolean = isPrimitive && this != UNIT
+
+  def isObjectType: Boolean
+  def isJlCloneableType: Boolean
+  def isJiSerializableType: Boolean
   def isNullType: Boolean
   def isNothingType: Boolean
   def isBoxed: Boolean
 
-  final def isIntSizedType = this == BOOL || this == CHAR || this == BYTE ||
-                               this == SHORT || this == INT
-  final def isIntegralType = this == INT || this == BYTE || this == LONG ||
-                               this == CHAR || this == SHORT
-  final def isRealType     = this == FLOAT || this == DOUBLE
-  final def isNumericType  = isIntegralType || isRealType
-  final def isWideType     = size == 2
+  final def isIntSizedType: Boolean = this == BOOL || this == CHAR || this == BYTE ||
+                                      this == SHORT || this == INT
+  final def isIntegralType: Boolean = this == INT || this == BYTE || this == LONG ||
+                                      this == CHAR || this == SHORT
+  final def isNumericType: Boolean  = isIntegralType || this == FLOAT || this == DOUBLE
+  final def isWideType: Boolean     = size == 2
 
   /*
    * Subtype check `this <:< other` on BTypes that takes into account the JVM built-in numeric
    * promotions (e.g. BYTE to INT). Its operation can be visualized more easily in terms of the
    * Java bytecode type hierarchy.
    */
+  @tailrec
   final def conformsTo(other: BType): Boolean = {
     assert(isRef || isPrimitive, s"conformsTo cannot handle $this")
     assert(other.isRef || other.isPrimitive, s"conformsTo cannot handle $other")
 
     this match {
       case ArrayBType(component) =>
-        if (other == ts.ObjectRef || other == ts.jlCloneableRef || other == ts.jiSerializableRef) true
+        if (other.isObjectType || other.isJlCloneableType || other.isJiSerializableType) true
         else other match {
-          case ArrayBType(otherComponent) => component.conformsTo(otherComponent, ts)
+          case ArrayBType(otherComponent) => component.conformsTo(otherComponent)
           case _ => false
         }
 
       case classType: ClassBType =>
-        if isBoxed {
-          if (other.isBoxed this == other
-          else if (other == ts.ObjectRef) true
+        if (isBoxed) {
+          if (other.isBoxed) this == other
+          else if (other.isObjectType) true
           else other match {
             case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType).get // e.g., java/lang/Double conforms to java/lang/Number
             case _ => false
           }
-        } else if (isNullType {
-          if other.isNothingType false
-          else if other.isPrimitive false
+        } else if (isNullType) {
+          if (other.isNothingType) false
+          else if (other.isPrimitive) false
           else true // Null conforms to all classes (except Nothing) and arrays.
-        } else if isNothingType {
+        } else if (isNothingType) {
           true
         } else other match {
           case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType).get
@@ -202,13 +139,13 @@ ALSO kill uses of BTypes.InternalName where it's obviously just a string, not wo
    * Compute the upper bound of two types.
    * Takes promotions of numeric primitives into account.
    */
-  final def maxType(other: BType): BType = this match {
-    case pt: PrimitiveBType => pt.maxValueType(other, ts)
+  final def maxType(other: BType, ts: CoreBTypes): BType = this match {
+    case pt: PrimitiveBType => pt.maxValueType(other)
 
     case _: ArrayBType | _: ClassBType =>
-      if isNothingType       return other
-      if other.isNothingType return this
-      if this == other       return this
+      if isNothingType       then return other
+      if other.isNothingType then return this
+      if this == other       then return this
 
       assert(other.isRef, s"Cannot compute maxType: $this, $other")
       // Approximate `lub`. The common type of two references is always ObjectReference.
@@ -267,7 +204,7 @@ ALSO kill uses of BTypes.InternalName where it's obviously just a string, not wo
    * name, i.e. without the surrounding 'L' and ';'. For array types on the other hand, the
    * method expects a full descriptor, for example "[Ljava/lang/String;".
    *
-   * See method asm.Type.getType that creates a asm.Type from a type descriptor
+   * See method asm.Type.getType that creates an asm.Type from a type descriptor
    *  - for an OBJECT type, the 'L' and ';' are not part of the range of the created Type
    *  - for an ARRAY type, the full descriptor is part of the range
    */
@@ -305,10 +242,10 @@ sealed trait PrimitiveBType extends BType {
 
     def uncomparable: Nothing = throw new AssertionError(s"Cannot compute maxValueType: $this, $other")
 
-    if !other.isPrimitive && !other.isNothingType uncomparable
+    if !other.isPrimitive && !other.isNothingType then uncomparable
 
-    if other.isNothingType return this
-    if this == other       return this
+    if other.isNothingType then return this
+    if this == other       then return this
 
     this match {
       case BYTE =>
@@ -478,7 +415,7 @@ sealed trait RefBType extends BType {
  * the Java compiler seems to add such classes anyway. For example, when using an annotation, the
  * annotation class is stored as a CONSTANT_Utf8_info in the CP:
  *
- *   @O.Ann void foo() { }
+ *   `@O.Ann void foo() { }`
  *
  * adds "const #13 = Asciz LO$Ann;;" in the constant pool. The "RuntimeInvisibleAnnotations"
  * attribute refers to that constant pool entry. Even though there is no other reference to
@@ -556,7 +493,7 @@ sealed trait RefBType extends BType {
  *   object N { class C2 }
  * }
  *
- * Reason: java compat. It's a "best effort" "solution". If you want to use "C1" from Java, you
+ * Reason: java compatibility. It's a "best effort" "solution". If you want to use "C1" from Java, you
  * can write "T.C1", and the Java compiler will translate that to the classfile T$C1.
  *
  * If we would emit the "outer class" of C1 as "T$", then in Java you'd need to write "T$.C1"
@@ -585,7 +522,7 @@ sealed trait RefBType extends BType {
  *
  *   class A {
  *     void f()        { class B {} }
- *     static void g() { calss C {} }
+ *     static void g() { class C {} }
  *   }
  *
  * B has an outer pointer, C doesn't. Both B and C are NOT marked static in the InnerClass table.
@@ -684,7 +621,7 @@ case class InnerClassEntry(name: String, outerName: String, innerName: String, f
    * ClassBType is not a case class because we want a custom equals method, and because the
    * extractor extracts the internalName, which is what you typically need.
    */
-final class ClassBType private (val internalName: String, val fromSymbol: Boolean, private val ts: CoreBTypes) extends RefBType {
+final class ClassBType private(val internalName: String, val fromSymbol: Boolean, private val ts: CoreBTypes) extends RefBType {
   /**
    * Write-once variable allows initializing a cyclic graph of infos. This is required for
    * nested classes. Example: for the definition `class A { class B }` we have
@@ -705,14 +642,12 @@ final class ClassBType private (val internalName: String, val fromSymbol: Boolea
     checkInfoConsistency()
   }
 
-  override def isNullType = this == ts.srNullRef
-
-  override def isNothingType = this == ts.srNothingRef
-
-  override def isBoxed = this.isClass && ts.boxedClasses(this.asClassBType)
-
-
-  //classBTypeFromInternalNameMap(internalName) = this
+  override def isObjectType: Boolean = this == ts.ObjectRef
+  override def isJlCloneableType: Boolean = this == ts.jlCloneableRef
+  override def isJiSerializableType: Boolean = this == ts.jiSerializableRef
+  override def isNullType: Boolean = this == ts.srNullRef
+  override def isNothingType: Boolean = this == ts.srNothingRef
+  override def isBoxed: Boolean = this.isClass && ts.boxedClasses(this.asClassBType)
 
   private def checkInfoConsistency(): Unit = {
     // we assert some properties. however, some of the linked ClassBType (members, superClass,
@@ -752,7 +687,7 @@ final class ClassBType private (val internalName: String, val fromSymbol: Boolea
 
   def isInterface: Either[NoClassBTypeInfo, Boolean] = info.map(i => (i.flags & asm.Opcodes.ACC_INTERFACE) != 0)
 
-  def superClassesTransitive: Either[NoClassBTypeInfo, List[ClassBType]] = try {
+  private def superClassesTransitive: Either[NoClassBTypeInfo, List[ClassBType]] = try {
     var res = List(this)
     var sc = info.orThrow.superClass
     while (sc.nonEmpty) {
@@ -873,77 +808,68 @@ final class ClassBType private (val internalName: String, val fromSymbol: Boolea
   }
 }
 
-  object ClassBType {
+object ClassBType {
 
-    /**
-     * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
-     * already exist
-     *
-     * @param internalName The name of the class
-     * @param t            A value that will be passed to the `init` function. For efficiency, callers should use this
-     *                     value rather than capturing it in the `init` lambda, allowing that lambda to be hoisted.
-     * @param fromSymbol   Is this type being initialized from a `Symbol`, rather than from byte code?
-     * @param init         Function to initialize the info of this `BType`. During execution of this function,
-     *                     code _may_ reenter into `apply(internalName, ...)` and retrieve the initializing
-     *                     `ClassBType`.
-     * @tparam T           The type of the state that will be threaded into the `init` function.
-     * @return             The `ClassBType`
-     */
-    final def apply[T](internalName: InternalName, t: T, fromSymbol: Boolean, ts: CoreBTypes)(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType = {
-      val cached = classBTypeCache.get(internalName)
-      if (cached ne null) cached
-      else {
-        val newRes = new ClassBType(internalName, fromSymbol, ts)
-        // synchronized is required to ensure proper initialisation of info.
-        // see comment on def info
-        newRes.synchronized {
-          classBTypeCache.putIfAbsent(internalName, newRes) match {
-            case null =>
-              newRes._info = init(newRes, t)
-              newRes.checkInfoConsistency()
-              newRes
-          case old =>
-              old
-          }
+  /**
+   * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
+   * already exist in the cache
+   *
+   * @param internalName The name of the class
+   * @param t            A value that will be passed to the `init` function. For efficiency, callers should use this
+   *                     value rather than capturing it in the `init` lambda, allowing that lambda to be hoisted.
+   * @param fromSymbol   Is this type being initialized from a `Symbol`, rather than from byte code?
+   * @param ts           The core types associated with the compilation
+   * @param cache        The cache to use. If you're wondering what to pass here, you're in the wrong place and should not be directly calling this.
+   * @param init         Function to initialize the info of this `BType`. During execution of this function,
+   *                     code _may_ reenter into `apply(internalName, ...)` and retrieve the initializing
+   *                     `ClassBType`.
+   * @tparam T           The type of the state that will be threaded into the `init` function.
+   * @return             The `ClassBType`
+   */
+  final def apply[T](internalName: InternalName, t: T, fromSymbol: Boolean, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType = {
+    val cached = cache.get(internalName)
+    if cached ne null then cached
+    else {
+      val newRes = new ClassBType(internalName, fromSymbol, ts)
+      // synchronized is required to ensure proper initialization of info.
+      // see comment on def info
+      newRes.synchronized {
+        cache.putIfAbsent(internalName, newRes) match {
+          case null =>
+            newRes._info = init(newRes, t)
+            newRes.checkInfoConsistency()
+            newRes
+        case old =>
+            old
         }
       }
     }
-
-    /**
-     * Pattern matching on a ClassBType extracts the `internalName` of the class.
-     */
-    def unapply(c: ClassBType): Some[String] = Some(c.internalName)
-
-    /**
-     * Valid flags for InnerClass attribute entry.
-     * See http://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.6
-     */
-    private val INNER_CLASSES_FLAGS = {
-      asm.Opcodes.ACC_PUBLIC   | asm.Opcodes.ACC_PRIVATE   | asm.Opcodes.ACC_PROTECTED  |
-      asm.Opcodes.ACC_STATIC   | asm.Opcodes.ACC_FINAL     | asm.Opcodes.ACC_INTERFACE  |
-      asm.Opcodes.ACC_ABSTRACT | asm.Opcodes.ACC_SYNTHETIC | asm.Opcodes.ACC_ANNOTATION |
-      asm.Opcodes.ACC_ENUM
-    }
-
-    // Primitive classes have no super class. A ClassBType for those is only created when
-    // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
-    private val hasNoSuper = Set(
-      "scala/Unit",
-      "scala/Boolean",
-      "scala/Char",
-      "scala/Byte",
-      "scala/Short",
-      "scala/Int",
-      "scala/Float",
-      "scala/Long",
-      "scala/Double"
-    )
-
-    private val isInternalPhantomType = Set(
-      "scala/Null",
-      "scala/Nothing"
-    )
   }
+
+  /**
+   * Pattern matching on a ClassBType extracts the `internalName` of the class.
+   */
+  def unapply(c: ClassBType): Some[String] = Some(c.internalName)
+
+  // Primitive classes have no super class. A ClassBType for those is only created when
+  // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
+  private val hasNoSuper = Set(
+    "scala/Unit",
+    "scala/Boolean",
+    "scala/Char",
+    "scala/Byte",
+    "scala/Short",
+    "scala/Int",
+    "scala/Float",
+    "scala/Long",
+    "scala/Double"
+  )
+
+  private val isInternalPhantomType = Set(
+    "scala/Null",
+    "scala/Nothing"
+  )
+}
 
 case class ArrayBType(componentType: BType) extends RefBType {
   def dimension: Int = componentType match {
@@ -958,6 +884,8 @@ case class ArrayBType(componentType: BType) extends RefBType {
 }
 
 case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType
+
+// TODO CLEANUP unclear why these need to be in a companion object
 
 object BTypes {
   /**
@@ -983,7 +911,7 @@ object BTypes {
    *                               The map is indexed by the string s"\$name\$descriptor" (to
    *                               disambiguate overloads).
    *
-   * @param warning                Contains an warning message if an error occurred when building this
+   * @param warning                Contains a warning message if an error occurred when building this
    *                               InlineInfo, for example if some classfile could not be found on
    *                               the classpath. This warning can be reported later by the inliner.
    */
