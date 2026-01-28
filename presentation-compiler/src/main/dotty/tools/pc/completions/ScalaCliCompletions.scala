@@ -36,7 +36,7 @@ class ScalaCliCompletions(
     val editRange = pos.withStart(editStart).withEnd(editEnd).toLsp
     completions
       .map(insertText =>
-        CompletionValue.IvyImport(
+        CompletionValue.Coursier(
           insertText.stripPrefix(":"),
           Some(insertText),
           Some(editRange)
