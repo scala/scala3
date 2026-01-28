@@ -18,14 +18,6 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeIdiomatic {
-  val int: DottyBackendInterface
-  val bTypes: BTypesFromSymbols[int.type]
-
-  import int.{_, given}
-  import bTypes.*
-  import coreBTypes.*
-
-
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"
@@ -121,11 +113,11 @@ trait BCodeIdiomatic {
             jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
             jmethod.visitInsn(Opcodes.LXOR)
           } else {
-            abort(s"Impossible to negate an $kind")
+            throw new AssertionError(s"Impossible to negate an $kind")
           }
 
         case _ =>
-          abort(s"Unknown arithmetic primitive $op")
+          throw new AssertionError(s"Unknown arithmetic primitive $op")
       }
 
     } // end of method genPrimitiveArithmetic()
@@ -196,12 +188,13 @@ trait BCodeIdiomatic {
     final def genIndyStringConcat(
       recipe: String,
       argTypes: Seq[asm.Type],
-      constants: Seq[String]
+      constants: Seq[String],
+      ts: CoreBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes*),
-        coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
+        asm.Type.getMethodDescriptor(ts.StringRef.toASMType, argTypes*),
+        ts.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants)*
       )
     }
@@ -405,7 +398,7 @@ trait BCodeIdiomatic {
       else            { emitTypeBased(JCodeMethodN.returnOpcodes, tk)      }
     }
 
-    /* Emits one of tableswitch or lookoupswitch.
+    /* Emits one of tableswitch or lookupswitch.
      *
      * can-multi-thread
      */
@@ -441,7 +434,7 @@ trait BCodeIdiomatic {
       i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
-          abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
         }
         i += 1
       }
@@ -558,11 +551,6 @@ trait BCodeIdiomatic {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
-    }
-
-    def abort(msg: String): Nothing = {
-      report.error(msg)
-      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN

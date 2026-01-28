@@ -77,4 +77,8 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
   /** See doc of ClassBType.apply. This is where to use that method from. */
   def classBType[T](internalName: InternalName, t: T, fromSymbol: Boolean)(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType =
     ClassBType(internalName, t, fromSymbol, this, classBTypeCache)(init)
+
+  /** Obtain a previously constructed ClassBType for a given internal name. */
+  def classBTypeFromInternalName(internalName: InternalName): ClassBType = classBTypeCache(internalName)
+
 }

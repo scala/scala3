@@ -15,8 +15,8 @@ import dotty.tools.backend.jvm.opt.*
  * Implements late stages of the backend that don't depend on a Global instance, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
-  import bTypes.classBTypeFromInternalName
+class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypes) {
+  import ts.classBTypeFromInternalName
   import frontendAccess.{backendReporting, compilerSettings}
 
   val backendUtils        = new BackendUtils(this)

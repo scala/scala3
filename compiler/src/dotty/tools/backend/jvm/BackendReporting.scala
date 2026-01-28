@@ -240,7 +240,7 @@ object BackendReporting {
 
   // TODO: this should be a subtype of CannotInlineWarning
   // but at the place where it's created (in findIllegalAccess) we don't have the necessary data (calleeName, calleeDescriptor).
-  final case object UnknownInvokeDynamicInstruction extends OptimizerWarning {
+  case object UnknownInvokeDynamicInstruction extends OptimizerWarning {
     override def toString = "The callee contains an InvokeDynamic instruction with an unknown bootstrap method (not a LambdaMetaFactory)."
     def emitWarning(settings: CompilerSettings): Boolean = settings.optWarningEmitAnyInlineFailed
   }
