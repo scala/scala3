@@ -108,8 +108,6 @@ final abstract class Boolean private extends AnyVal {
     */
   def ^(x: Boolean): Boolean
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Boolean] = ???
 }
 
 object Boolean extends AnyValCompanion {
