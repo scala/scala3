@@ -31,8 +31,7 @@ import BCodeUtils.*
  */
 class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
 
-  import postProcessor.{bTypes, bTypesFromClassfile}
-  import bTypes.*
+  import postProcessor.bTypesFromClassfile
   import frontendAccess.{backendReporting, backendClassPath, recordPerRunCache}
 
   /**
@@ -197,7 +196,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
       val visited = mutable.Set.empty[InternalName]
       val found = mutable.ListBuffer.empty[(MethodNode, ClassNode)]
 
-      @nowarn("cat=lint-nonlocal-return")
+      //@nowarn("cat=lint-nonlocal-return")
       def findIn(owner: ClassNode): Option[ClassNotFound] = {
         for (i <- owner.interfaces.asScala if !visited(i)) classNode(i) match {
           case Left(e) => return Some(e)
@@ -260,7 +259,7 @@ class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
       def notFound(cnf: Option[ClassNotFound]) = Left(MethodNotFound(name, descriptor, ownerInternalNameOrArrayDescriptor, cnf))
       val res: Either[ClassNotFound, Option[(MethodNode, InternalName)]] = classNode(ownerInternalNameOrArrayDescriptor).flatMap(c =>
         // TODO: if `c` is an interface, should directly go to `findInInterfaces`
-        findInSuperClasses(c) flatMap {
+        findInSuperClasses(c).flatMap {
           case None => findInInterfaces(c)
           case res => Right(res)
         }
