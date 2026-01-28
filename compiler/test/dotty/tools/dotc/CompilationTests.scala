@@ -267,8 +267,13 @@ class CompilationTests {
 
   @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
-    compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
-  }.checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
+  }
 
   // initialization tests for global objects
   @Test def checkInitGlobal: Unit = {
