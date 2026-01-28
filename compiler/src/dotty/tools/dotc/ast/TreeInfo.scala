@@ -516,7 +516,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   /** An extractor for trees of the form `id` or `id: T` */
   object IdPattern {
     def unapply(tree: Tree)(using Context): Option[VarInfo] = tree match {
-      case id: Ident if id.name != nme.WILDCARD => Some(id, TypeTree())
+      case id: Ident if id.name != nme.WILDCARD => Some((id, TypeTree()))
       case Typed(id: Ident, tpt) => Some((id, tpt))
       case _ => None
     }
