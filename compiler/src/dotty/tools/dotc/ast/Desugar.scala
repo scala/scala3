@@ -64,9 +64,16 @@ object desugar {
   val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
 
   /** An attachment key to indicate that an Apply is created as a last `map`
-   *  scall in a for-comprehension.
+   *  call in a for-comprehension.
    */
   val TrailingForMap: Property.Key[Unit] = Property.StickyKey()
+
+  /** An attachment key to indicate that an Apply (`map` or `flatMap`)
+   *  in a for-comprehension has a nested tupling operation that no longer
+   *  generates an extra `map` call. That call would select the other overload
+   *  of `Map#map` and change the result to `List`. `DropForMap` warns about it.
+   */
+  val TuplingMigrationForMap: Property.Key[Unit] = Property.StickyKey()
 
   val WasTypedInfix: Property.Key[Unit] = Property.StickyKey()
 
@@ -2286,7 +2293,9 @@ object desugar {
             val selectName =
               if suffix.exists(_.isInstanceOf[GenFrom]) then flatMapName
               else mapName
-            Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+            val app = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+            if valeqs.lengthIs > 1 then app.withAttachment(TuplingMigrationForMap, ())
+            else app
           else
             val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
             val (defpat0, id0) = makeIdPat(gen.pat)
