@@ -19,20 +19,20 @@ class HoverDocSuite extends BaseHoverSuite:
 
   @Test def `doc` =
     check(
-      """object a {
-        |  <<java.util.Collections.empty@@List[Int]>>
-        |}
-        |""".stripMargin,
-     """|**Expression type**:
-        |```scala
-        |java.util.List[Int]
-        |```
-        |**Symbol signature**:
-        |```scala
-        |final def emptyList[T](): java.util.List[T]
-        |```
-        |Found documentation for java/util/Collections#emptyList().
-        |""".stripMargin,
+      """|object a {
+         |  <<java.util.Collections.empty@@List[Int]>>
+         |}
+         |""".stripMargin,
+      """|**Expression type**:
+         |```scala
+         |java.util.List[Int]
+         |```
+         |**Symbol signature**:
+         |```scala
+         |final def emptyList[T](): java.util.List[T]
+         |```
+         |Found documentation for java/util/Collections#emptyList().
+         |""".stripMargin,
     )
 
   @Test def `doc-parent` =
@@ -47,7 +47,6 @@ class HoverDocSuite extends BaseHoverSuite:
          |```
          |Found documentation for scala/collection/LinearSeqOps#headOption().
          |""".stripMargin,
-
     )
 
   @Test def `java-method` =
@@ -61,7 +60,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |```
          |Found documentation for java/lang/String#substring().
          |""".stripMargin
-  )
+    )
 
   @Test def `object` =
     check(
