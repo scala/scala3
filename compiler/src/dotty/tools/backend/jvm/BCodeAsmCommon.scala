@@ -9,6 +9,8 @@ import dotty.tools.dotc.report
 
 import DottyBackendInterface.symExtensions
 
+// TODO this is an old leftover, GenASM does not exist anymore
+
 /**
  * Code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).

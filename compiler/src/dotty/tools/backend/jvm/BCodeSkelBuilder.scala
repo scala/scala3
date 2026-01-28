@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
@@ -30,7 +30,7 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSkelBuilder extends BCodeHelpers {
+trait BCodeSkelBuilder(val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeHelpers {
 
   lazy val NativeAttr: Symbol = requiredClass[scala.native]
 
@@ -302,8 +302,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ObjectRef.internalName else internalName(ps.head.typeSymbol)
-      val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces.map(_.internalName)
+      val superClass: String = if (ps.isEmpty) ts.ObjectRef.internalName else internalName(ps.head.typeSymbol)
+      val Right(info) = ts.classBTypeFromSymbol(claszSymbol).info.runtimeChecked
+      val interfaceNames0 = info.interfaces.map(_.internalName)
       /* To avoid deadlocks when combining objects, lambdas and multi-threading,
        * lambdas in objects are compiled to instance methods of the module class
        * instead of static methods (see tests/run/deadlock.scala and
@@ -324,7 +325,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         else
           interfaceNames0
 
-      val flags = javaFlags(claszSymbol)
+      val flags = BCodeUtils.javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
       cnode.visit(backendUtils.classfileVersion, flags,
@@ -335,8 +336,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
-        case Some(EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
+      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
+        case Some(BCodeAsmCommon.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
       }
@@ -393,7 +394,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def javaFieldFlags(sym: Symbol) = {
       import asm.Opcodes.*
       import GenBCodeOps.addFlagIf
-      javaFlags(sym)
+      BCodeUtils.javaFlags(sym)
         .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
         .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
         .addFlagIf(!sym.is(Mutable), ACC_FINAL)
@@ -853,7 +854,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
       val flags =
         import GenBCodeOps.addFlagIf
-        javaFlags(methSymbol)
+        BCodeUtils.javaFlags(methSymbol)
           .addFlagIf(isAbstractMethod, asm.Opcodes.ACC_ABSTRACT)
           .addFlagIf(false /*methSymbol.isStrictFP*/, asm.Opcodes.ACC_STRICT)
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
@@ -966,7 +967,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // android creator code
       if (isCZParcelable) {
         // add a static field ("CREATOR") to this class to cache android.os.Parcelable$Creator
-        val andrFieldDescr = classBTypeFromSymbol(AndroidCreatorClass).descriptor
+        val andrFieldDescr = ts.classBTypeFromSymbol(AndroidCreatorClass).descriptor
         cnode.visitField(
           asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
           "CREATOR",
