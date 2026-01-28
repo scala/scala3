@@ -28,17 +28,18 @@ object LazyVals {
 
   private val base: Int = {
     val processors = java.lang.Runtime.getRuntime.availableProcessors()
-    8 * processors * processors
+    val rawSize = 8 * processors * processors
+    //find the next power of 2
+    1 << (32 - Integer.numberOfLeadingZeros(rawSize - 1))
   }
+
+  private val mask: Int = base - 1
 
   private val monitors: Array[Object] =
     Array.tabulate(base)(_ => new Object)
 
   private def getMonitor(obj: Object, fieldId: Int = 0) = {
-    var id = (java.lang.System.identityHashCode(obj) + fieldId) % base
-
-    if (id < 0) id += base
-    monitors(id)
+    monitors((java.lang.System.identityHashCode(obj) + fieldId) & mask)
   }
 
   private final val LAZY_VAL_MASK = 3L
