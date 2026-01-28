@@ -1,5 +1,4 @@
 //> using options -Werror
-object Main extends App:
    infix enum Extends[A, B]:
      case Ev[B, A <: B]() extends (A Extends B)
 
