@@ -233,7 +233,7 @@ object Capabilities:
     def apply(owner: Symbol, prefix: Type, origin: Origin)(using Context): LocalCap =
       new LocalCap(prefix)(owner, origin, null)
     def apply(owner: Symbol, origin: Origin)(using Context): LocalCap =
-      apply(owner, owner.skipWeakOwner.thisType, origin)
+      apply(owner, owner.skipStrictValDef.thisType, origin)
     def apply(origin: Origin)(using Context): LocalCap =
       apply(ctx.owner, origin)
 
@@ -820,7 +820,7 @@ object Capabilities:
               case NoPrefix => true
               case pre: ThisType => x.ccOwner.isContainedIn(pre.cls)
               case pre =>
-                capt.println(i"LocalCap not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipWeakOwner.thisType}")
+                capt.println(i"LocalCap not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipStrictValDef.thisType}")
                 false
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))

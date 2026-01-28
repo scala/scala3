@@ -1010,13 +1010,16 @@ object SymDenotations {
         setFlag(if result then HasDefaultParams else NoDefaultParams)
         result
 
+    /** Symbol is a non-lazy value definition */
+    def isStrictValDef(using Context): Boolean =
+      isTerm && !isOneOf(MethodOrLazy) && !isLocalDummy
+
     /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
      *   - package objects
      *   - non-lazy valdefs
      */
     def isWeakOwner(using Context): Boolean =
-      isPackageObject ||
-      isTerm && !isOneOf(MethodOrLazy) && !isLocalDummy
+      isPackageObject || isStrictValDef
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
@@ -1178,12 +1181,16 @@ object SymDenotations {
       }
     }
 
-    /** If this is a weak owner, its owner, otherwise the denoting symbol. */
+    /** The closest enclosing symbol that is not a weak owner */
     final def skipWeakOwner(using Context): Symbol =
-      if (isWeakOwner) owner.skipWeakOwner else symbol
+      if isWeakOwner then owner.skipWeakOwner else symbol
 
-    /** The owner, skipping package objects and non-lazy valdefs. */
+    /** The closest properly enclosing symbol that is not a weak owner */
     final def effectiveOwner(using Context): Symbol = owner.skipWeakOwner
+
+    /** The closest enclosing symbol that is not a strict value definition */
+    final def skipStrictValDef(using Context): Symbol =
+      if isStrictValDef then owner.skipStrictValDef else symbol
 
     /** The class containing this denotation.
      *  If this denotation is already a class, return itself

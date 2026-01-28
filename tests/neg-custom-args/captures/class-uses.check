@@ -3,8 +3,8 @@
    |                      ^
    |                      reference `A.this.g` is not included in the allowed capture set {A.this.f}
    |                      of the enclosing class B in class A
--- Error: tests/neg-custom-args/captures/class-uses.scala:19:8 ---------------------------------------------------------
-19 |  class C: // error
-   |        ^
-   |        Publicly visible class C uses external capabilities {A.this.f}.
-   |        These dependencies need to be declared explicitly in a `uses ...` clause.
+-- Error: tests/neg-custom-args/captures/class-uses.scala:21:22 --------------------------------------------------------
+21 |      Console.println(f.toString) // error
+   |                      ^
+   |                      reference `A.this.f` is not included in the allowed capture set {}
+   |                      of the enclosing class C in class A

@@ -60,7 +60,7 @@ object CheckCaptures:
     val owner: Symbol,
     val kind: EnvKind,
     val captured: CaptureSet,
-    outer0: Env | Null,
+    val outer0: Env | Null,
     val nestedClosure: Symbol = NoSymbol)(using @constructorOnly ictx: Context) {
 
     assert(definesEnv(owner))
@@ -471,8 +471,15 @@ class CheckCaptures extends Recheck, SymTransformer:
             catch case ex: IllegalCaptureRef =>
               report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
               CaptureSet.empty
-          case _ if sym.is(Package) => CaptureSet.empty
-          case _ => CaptureSet.Var(sym, nestedOK = false)
+          case _ =>
+            if sym.is(Package)
+              || (sym.isClass || sym.isConstructor) && !isExemptFromExplicitChecks(sym)
+              // If `sym` does not have a `uses` clause (or `uses_init` for constructors)
+              // set its capture set to the empty set, unless it is local to the current
+              // compilation unit. For local classes and constructors we infer their
+              // use set.
+            then CaptureSet.empty
+            else CaptureSet.Var(sym, nestedOK = false)
       )
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
@@ -480,9 +487,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
      */
-    def nextEnvToCharge(env: Env)(using Context): Env =
-      if env.owner.isConstructor then env.outer.outer
-      else env.outer
+    def nextEnvToCharge(env: Env)(using Context): Env | Null =
+      if env.owner.isConstructor then env.outer.outer0
+      else env.outer0
 
     /** A description where this environment comes from */
     private def provenance(env: Env)(using Context): String =
@@ -604,9 +611,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             isVisible
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          if !isOfNestedMethod(env) then
+          if !isOfNestedMethod(env) && !env.isRoot then
             val nextEnv = nextEnvToCharge(env)
-            if !nextEnv.isRoot then
+            if nextEnv != null && !nextEnv.isRoot then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
                   && env.owner.owner.derivesFrom(defn.Caps_Stateful)
@@ -2292,7 +2299,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           else if isOfNestedMethod(env) then env.owner.owner
           else
             val nextEnv = nextEnvToCharge(env)
-            if nextEnv.isRoot then NoSymbol else boxedOwner(nextEnv)
+            if nextEnv != null && !nextEnv.isRoot then boxedOwner(nextEnv)
+            else NoSymbol
 
         def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
