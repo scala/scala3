@@ -2945,21 +2945,10 @@ trait Applications extends Compatibility {
 
   def captureWildcardsCompat(tp: Type, pt: Type)(using Context): Type =
     val captured = captureWildcards(tp)
-    if (captured ne tp) && isCompatible(captured, pt) then captured
-    else
-      // Also try recursively capturing nested wildcards when the expected type
-      // contains type variables. This handles cases like S[M[?]] matching S[M[T]]
-      // where T needs to be inferred from the nested wildcard. See #25130.
-      // Only do this when the expected type has type variables to infer,
-      // to avoid breaking code like Set[Class[?]].apply(Class[?]).
-      if hasTypeVars(pt) then
-        val capturedDeep = captureWildcardsDeep(tp)
-        if (capturedDeep ne tp) && isCompatible(capturedDeep, pt) then capturedDeep
-        else tp
-      else tp
+    if (captured ne tp) && isCompatible(captured, pt) then captured else tp
 
   /** Check if a type contains any type variables (TypeVar or TypeParamRef) */
-  private def hasTypeVars(tp: Type)(using Context): Boolean =
+  def hasTypeVars(tp: Type)(using Context): Boolean =
     tp.existsPart {
       case _: TypeVar => true
       case _: TypeParamRef => true
@@ -2967,7 +2956,7 @@ trait Applications extends Compatibility {
     }
 
   /** Recursively capture wildcards in nested AppliedTypes */
-  private def captureWildcardsDeep(tp: Type)(using Context): Type = tp match
+  def captureWildcardsDeep(tp: Type)(using Context): Type = tp match
     case tp @ AppliedType(tycon, args) =>
       val args1 = args.mapConserve(captureWildcardsDeep)
       val tp1 = if args1 eq args then tp else tp.derivedAppliedType(tycon, args1)

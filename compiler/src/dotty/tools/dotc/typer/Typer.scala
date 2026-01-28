@@ -4910,6 +4910,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (captured `ne` wtp)
         return readapt(tree.cast(captured))
 
+      // Also try recursively capturing nested wildcards when the expected type
+      // contains type variables. This handles cases like S[M[?]] matching S[M[T]]
+      // where T needs to be inferred from the nested wildcard. See #25130.
+      // This is only done during adapt, not during overload resolution applicability
+      // testing, to preserve existing overload selection behavior.
+      if hasTypeVars(pt) then
+        val capturedDeep = captureWildcardsDeep(wtp)
+        if (capturedDeep ne wtp) && isCompatible(capturedDeep, pt) then
+          return readapt(tree.cast(capturedDeep))
+
       // drop type if prototype is Unit
       if pt.isRef(defn.UnitClass) then
         // local adaptation makes sure every adapted tree conforms to its pt
