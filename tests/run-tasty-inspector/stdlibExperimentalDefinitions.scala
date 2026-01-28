@@ -57,6 +57,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.package$package$.Exclusive",
   "scala.caps.package$package$.Shared",
 
+  // Experimental feature: qualified types
+  "scala.annotation.qualified",
+
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 

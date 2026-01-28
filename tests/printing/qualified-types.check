@@ -1,0 +1,152 @@
+[[syntax trees at end of                     typer]] // tests/printing/qualified-types.scala
+package example {
+  class Foo() extends Object() {
+    val x: Int @qualified[Int]((x: Int) => x > 0) = 1
+  }
+  trait A() extends Object {}
+  final lazy module val qualified-types$package: example.qualified-types$package
+     = new example.qualified-types$package()
+  final module class qualified-types$package() extends Object() {
+    this: example.qualified-types$package.type =>
+    type Neg = Int @qualified[Int]((x: Int) => x < 0)
+    type Pos = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos2 = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos3 = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos4 = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos5 = Int @qualified[Int]((x: Int) => (_$1: Int) => (x > 0).apply(42))
+    type UninhabitedInt = Int @qualified[Int]((_: Int) => false)
+    def id[T >: Nothing <: Any](x: T): T = x
+    type Nested =
+      Int @qualified[Int]((x: Int) =>
+        example.id[Boolean @qualified[Boolean]((b: Boolean) => b == x > 42)](
+          (x > 42).$asInstanceOf[Boolean with x > 42 == eparam0])
+      )
+    type Intersection = Int & Int @qualified[Int]((x: Int) => x > 0)
+    type ValRefinement =
+      Object
+        {
+          val x: Int @qualified[Int]((x: Int) => x > 0)
+        }
+    def test(): Unit =
+      {
+        val x: example.Pos = 1
+        val x2: Int @qualified[Int]((x: Int) => x > 0) = 1
+        val x3: Int @qualified[Int]((x: Int) => x > 0) = 1
+        val x4: Int @qualified[Int]((x: Int) => x > 0) = 1
+        val x5: Int @qualified[Int]((x5: Int) => x > 0) = 1
+        val x6: Int =
+          example.id[Int @qualified[Int]((x: Int) => x < 0)](-1) +
+            example.id[example.Neg](-1)
+        ()
+      }
+    def implicitArgumentName(): Unit =
+      {
+        val x0:
+          Int @qualified[Int]((x0: Int) => x0 > 0) |
+            String @qualified[String]((x0: String) => x0 == "foo")
+         = ???
+        val x1: Int @qualified[Int]((x1: Int) => x1 > 0) = ???
+        val x2: Int @qualified[Int]((x2: Int) => x2 > 0) = ???
+        val x3:
+          Int @qualified[Int]((x3: Int) => x3 > 0) &
+            Int @qualified[Int]((x3: Int) => x3 < 10)
+         = ???
+        val x4:
+          (Int @qualified[Int]((x4: Int) => x4 > 0) & Int) @qualified[
+            Int @qualified[Int]((x4: Int) => x4 > 0) & Int]((
+            x4: Int @qualified[Int]((x4: Int) => x4 > 0) & Int) => x4 < 10)
+         = ???
+        val x5:
+          (Int & String) @qualified[Int & String]((x5: Int & String) => false)
+           = ???
+        val x6:
+          (Int @qualified[Int]((x6: Int) => x6 > 0) & Int) @qualified[
+            Int @qualified[Int]((x6: Int) => x6 > 0) & Int]((
+            x6: Int @qualified[Int]((x6: Int) => x6 > 0) & Int) => x5 < 10)
+         = ???
+        val x7:
+          Int @qualified[Int]((x7: Int) => x7 > 0) @qualified[
+            Int @qualified[Int]((x7: Int) => x7 > 0)]((
+            x7: Int @qualified[Int]((x7: Int) => x7 > 0)) => x6 < 10)
+         = ???
+        val x8:
+          Int @qualified[Int]((x8: Int) => x8 > 0) @qualified[
+            Int @qualified[Int]((x8: Int) => x8 > 0)]((
+            x8: Int @qualified[Int]((x8: Int) => x8 > 0)) => x7 < 10)
+         = ???
+        val x9: Any = 42
+        x9 match
+          {
+            case y @ _:Int @qualified[Int]((y: Int) => y > 0) =>
+              println(
+                _root_.scala.StringContext.apply([""," is positive" : String]*).
+                  s([y : Any]*)
+              )
+            case _ =>
+              ()
+          }
+        Tuple2.apply[Int, Int](42, 42) match
+          {
+            case
+              Tuple2.unapply[Int, Int](
+                y @ _:Int @qualified[Int]((y: Int) => y > 0),
+                z @ _:Int @qualified[Int]((z: Int) => z > 0))
+             =>
+              println(
+                _root_.scala.StringContext.apply(
+                  [""," and "," are both positive" : String]*).s([y,z : Any]*)
+              )
+            case _ =>
+              ()
+          }
+      }
+    def bar(x: Int @qualified[Int]((x: Int) => x > 0)): Nothing = ???
+    def secondGreater1(x: Int, y: Int)(z: Int @qualified[Int]((w: Int) => x > y)
+      ): Nothing = ???
+    def secondGreater2(x: Int, y: Int)(z: Int @qualified[Int]((z: Int) => x > y)
+      ): Nothing = ???
+    final lazy module given val given_A: example.given_A = new example.given_A()
+    final module class given_A() extends Object(), example.A {
+      this: example.given_A.type =>
+      val b: Boolean = false
+      example.id[Boolean](true)
+    }
+    type T1 =
+      Object
+        {
+          val x: Int
+        }
+    type T2 =
+      Object
+        {
+          val x: Int
+        }
+    type T3 =
+      Object
+        {
+          type T = Int
+        }
+    type T4 =
+      Object
+        {
+          def x: Int
+        }
+    type T5 =
+      Object
+        {
+          def x: Int
+          def x_=(x$1: Int): _root_.scala.Unit
+        }
+    type T6 =
+      Object
+        {
+          val x: Int
+        }
+    type T7 =
+      Object
+        {
+          val x: Int
+        }
+  }
+}
+
