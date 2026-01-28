@@ -96,8 +96,8 @@ must be a capturing type with a non-empty capture set. We also say that
 variables that are capabilities are _tracked_.
 
 In a sense, every
-capability gets its authority from some other, more sweeping capability which it captures. The recursion stops with a _universal capability_,  written `cap`, from which all other capabilities are ultimately derived.
-If `T` is a type, then `T^` is a shorthand for `T^{cap}`, meaning `T` can capture arbitrary capabilities.
+capability gets its authority from some other, more sweeping capability which it captures. The recursion stops with a _universal capability_,  written `any`, from which all other capabilities are ultimately derived.
+If `T` is a type, then `T^` is a shorthand for `T^{any}`, meaning `T` can capture arbitrary capabilities.
 
 Here is an example:
 ```scala
@@ -139,7 +139,7 @@ One can add a capture set after the arrow of an otherwise pure function.
 For instance, `A ->{c, d} B` would be a function that can capture capabilities `c` and `d`, but no others.
 This type is a shorthand for `(A -> B)^{c, d}`, i.e. the function type `A -> B` with possible captures `{c, d}`.
 
-The impure function type `A => B` is treated as an alias for `A ->{cap} B`. That is, impure functions are functions that can capture anything.
+The impure function type `A => B` is treated as an alias for `A ->{any} B`. That is, impure functions are functions that can capture anything.
 
 A capture annotation `^` binds more strongly than a function arrow. So
 `A -> B^{c}` is read as `A -> (B^{c})` and `A -> B^` is read as `A -> (B^)`.
@@ -257,12 +257,12 @@ l : Logger^{fs}
 ```
 we have
 ```
-{l}  <: {fs}     <: {cap}
-{fs} <: {fs, ct} <: {cap}
-{ct} <: {fs, ct} <: {cap}
+{l}  <: {fs}     <: {any}
+{fs} <: {fs, ct} <: {any}
+{ct} <: {fs, ct} <: {any}
 ```
-The set consisting of the root capability `{cap}` covers every other capture set. This is
-a consequence of the fact that, ultimately, every capability is created from `cap`.
+The set consisting of the root capability `{any}` covers every other capture set. This is
+a consequence of the fact that, ultimately, every capability is created from `any`.
 
 **Example 2.** Consider again the FileSystem/Logger example from before. `LzyList[Int]` is a proper subtype of `LzyList[Int]^{l}`. So if the `test` method in that example
 was declared with a result type `LzyList[Int]`, we'd get a type error. Here is the error message:
@@ -279,7 +279,7 @@ This widening is called _avoidance_; it is not specific to capture checking but 
 
 Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `SharedCapability` class defined in object `caps`.
 
-A type extending `SharedCapability` always comes with a capture set. If no capture set is given explicitly, we assume the capture set is `{cap}`.
+A type extending `SharedCapability` always comes with a capture set. If no capture set is given explicitly, we assume the capture set is `{any}`.
 
 This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
 

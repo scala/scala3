@@ -74,7 +74,7 @@ Under the language import `language.experimental.captureChecking`, the code is i
 ```
 14 |  try () => xs.map(f).sum
    |  ^
-   |The expression's type () => Double is not allowed to capture the root capability `cap`.
+   |The expression's type () => Double is not allowed to capture the root capability `any`.
    |This usually means that a capability persists longer than its allowed lifetime.
 15 |  catch case ex: LimitExceeded => () => -1
 ```
