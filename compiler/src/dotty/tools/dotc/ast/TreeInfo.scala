@@ -1087,8 +1087,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
+      def isDynamicMethod(name: Name): Boolean =
+        name == nme.applyDynamic || name == nme.selectDynamic ||
+        name == nme.updateDynamic || name == nme.applyDynamicNamed
       !tree.symbol.exists
       && tree.isTerm
+      && !isDynamicMethod(tree.name)  // Don't treat dynamic method calls as structural (prevents infinite recursion)
       && hasRefinement(tree.qualifier.tpe)
     funPart(tree) match
       case tree: Select =>
