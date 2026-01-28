@@ -85,6 +85,10 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
         |$reason."""
 end MissingType
 
+class MatchTypeDivergence(val msg: TypeMsg)(using Context) extends TypeError:
+  override def toMessage(using Context): Message = msg
+end MatchTypeDivergence
+
 class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)
 extends TypeError:
 
