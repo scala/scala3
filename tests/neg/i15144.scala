@@ -1,5 +1,5 @@
-//> using options --release 11
-// test: -jvm 17+
+//> using options --release 17
+// test: -jvm 21+
 // Must be tested where release target < current JVM.
 // Maybe a bug that ct.sym is not used if release == JVM version.
 
