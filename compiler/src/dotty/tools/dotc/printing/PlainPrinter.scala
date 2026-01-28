@@ -508,13 +508,28 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextPrefixOf(tp: NamedType): Text = controlled {
       homogenize(tp.prefix) match {
         case NoPrefix => ""
-        case tp: SingletonType => toTextRef(tp) ~ "."
-        case tp => trimPrefix(toTextLocal(tp)) ~ "#"
+        case prefix: SingletonType => toTextRef(prefix) ~ "."
+        case prefix =>
+          // Use "." for Java nested classes (e.g., java.util.Map.Entry)
+          // Use "#" for Scala type projections (e.g., Outer#Inner)
+          val separator = if (isJavaNestedClass(tp)) "." else "#"
+          trimPrefix(toTextLocal(prefix)) ~ separator
       }
   }
 
   protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
+
+  /** Check if tp represents a Java nested class that should use "." separator. */
+  protected def isJavaNestedClass(tp: NamedType)(using Context): Boolean = {
+    val sym = tp.symbol
+    sym.exists &&
+    sym.is(JavaDefined) &&
+    sym.isClass &&
+    sym.owner.exists &&
+    sym.owner.is(JavaDefined) &&
+    sym.owner.isClass
+  }
 
   /** String representation of a definition's type following its name,
    *  if symbol is completed, ": ?" otherwise.
