@@ -180,13 +180,18 @@ class CompilationTests {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
-    aggregateTests(
+    val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
-    ).checkRuns()
+    ))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
   }
 
   // Generic java signatures tests ---------------------------------------------
@@ -511,6 +516,22 @@ object CompilationTests extends ParallelTesting {
   )(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = {
+      verifyCoverageFile(testSource)
+    }
+  }
+
+  /** Custom RunTest that verifies coverage files in onSuccess callback */
+  private final class RunTestWithCoverage(
+    testSources: List[TestSource],
+    times: Int,
+    threadLimit: Option[Int],
+    suppressAllOutput: Boolean
+  )(implicit summaryReport: SummaryReporting)
+  extends RunTest(testSources, times, threadLimit, suppressAllOutput) {
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = {
+      // First, run the standard run test verification (checks output, runs main, etc.)
+      super.onSuccess(testSource, reporters, logger)
+      // Then verify coverage file
       verifyCoverageFile(testSource)
     }
   }
