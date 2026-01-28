@@ -268,7 +268,7 @@ trait Dynamic {
             if tpe.paramInfoss.nestedExists(!TypeErasure.hasStableErasure(_)) then
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
-              TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
+              tpe.paramInfoss.flatten.map(tp => clsOf(tp.baseType(tp.classSymbol)))
           structuralCall(nme.applyDynamic, classOfs).maybeBoxingCast(tpe.finalResultType)
         }
 
