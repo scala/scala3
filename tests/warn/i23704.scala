@@ -19,7 +19,7 @@ class C:
     27
 
 class D:
-  private var myvar: Int = 0 // nowarn (although read is RHS of assignment)
+  private var myvar: Int = 0 // warn (because read is in RHS of assignment; see incr)
   def incr(): Unit = myvar = myvar + 1
 
   def local(): Unit =

@@ -51,28 +51,25 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
-    refInfos.isAssignment = tree.hasAttachment(AssignmentTarget)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
-      val resolving =
+      val resolvingImports =
            tree.srcPos.isUserCode(using if tree.hasAttachment(InlinedParameter) then ctx.outer else ctx)
         || tree.srcPos.isZeroExtentSynthetic // take as summonInline
       if !ignoreTree(tree) then
         def loopOverPrefixes(prefix: Type, depth: Int): Unit =
           if depth < 10 && prefix.exists && !prefix.classSymbol.isEffectiveRoot then
-            resolveUsage(prefix.classSymbol, nme.NO_NAME, NoPrefix, imports = resolving)
+            resolveUsage(prefix.classSymbol, nme.NO_NAME, NoPrefix, tree.srcPos, resolvingImports)
             loopOverPrefixes(prefix.normalizedPrefix, depth + 1)
         if tree.srcPos.isZeroExtentSynthetic then
           loopOverPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, imports = resolving)
+        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
     else if tree.hasType then
-      resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject)
-    refInfos.isAssignment = false
+      resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
   override def transformSelect(tree: Select)(using Context): tree.type =
-    refInfos.isAssignment = tree.hasAttachment(AssignmentTarget)
     val name = tree.removeAttachment(OriginalName).getOrElse(nme.NO_NAME)
     inline def isImportable = tree.qualifier.srcPos.isSynthetic
       && tree.qualifier.tpe.match
@@ -89,14 +86,13 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           else if tycon.typeSymbol == defn.TypeableType then args(0) // T in Typeable[T]
           else return tree
         val target = res.dealias.typeSymbol
-        resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
+        resolveUsage(target, target.name, res.importPrefix.skipPackageObject, tree.srcPos) // case _: T =>
       case _ =>
     else if isImportable || name.exists(_ != sym.name) then
       if !ignoreTree(tree) then
-        resolveUsage(sym, name, tree.qualifier.tpe)
+        resolveUsage(sym, name, tree.qualifier.tpe, tree.srcPos)
     else if !ignoreTree(tree) then
-      refUsage(sym)
-    refInfos.isAssignment = false
+      refUsage(sym, tree.srcPos)
     tree
 
   override def transformLiteral(tree: Literal)(using Context): tree.type =
@@ -128,22 +124,21 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree match
     case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
       val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
-      resolveScoped(caneq)
+      resolveScoped(caneq, tree.srcPos)
     case tree =>
-      refUsage(tree.tpe.typeSymbol)
+      refUsage(tree.tpe.typeSymbol, tree.srcPos)
     tree
 
   override def transformTypeApply(tree: TypeApply)(using Context): tree.type =
     if tree.symbol.exists && tree.symbol.isConstructor then
-      refUsage(tree.symbol.owner) // redundant with use of resultType in transformSelect of fun
+      refUsage(tree.symbol.owner, tree.srcPos) // redundant with use of resultType in transformSelect of fun
     tree
 
   override def prepareForAssign(tree: Assign)(using Context): Context =
-    tree.lhs.putAttachment(AssignmentTarget, ()) // don't take LHS reference as a read
-    ctx
-  override def transformAssign(tree: Assign)(using Context): tree.type =
-    tree.lhs.removeAttachment(AssignmentTarget)
-    tree
+    if tree.lhs.symbol.exists then
+      refInfos.addAssignmentTarget(tree.lhs.symbol)
+      ctx.fresh.setTree(tree)
+    else ctx
 
   override def prepareForMatch(tree: Match)(using Context): Context =
     // allow case.pat against tree.selector (simple var pat only for now)
@@ -154,13 +149,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformMatch(tree: Match)(using Context): tree.type =
     if tree.isInstanceOf[InlineMatch] && tree.selector.isEmpty then
       val sf = defn.Compiletime_summonFrom
-      resolveUsage(sf, sf.name, NoPrefix)
+      resolveUsage(sf, sf.name, NoPrefix, tree.srcPos)
     tree
 
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
     tree.tpe match
     case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
-    case tpt if !tree.isInferred && tpt.typeSymbol.exists => resolveUsage(tpt.typeSymbol, tpt.typeSymbol.name, NoPrefix)
+    case tpt if !tree.isInferred && tpt.typeSymbol.exists =>
+      resolveUsage(tpt.typeSymbol, tpt.typeSymbol.name, NoPrefix, tree.srcPos)
     case _ =>
     tree
 
@@ -201,12 +197,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     traverseAnnotations(tree.symbol)
     if tree.name.startsWith("derived$") && tree.hasType then
       def loop(t: Tree): Unit = t match
-        case Ident(name)  => resolveUsage(t.tpe.typeSymbol, name, t.tpe.underlyingPrefix.skipPackageObject)
-        case Select(t, _) => loop(t)
-        case _            =>
+        case Ident(name) =>
+          resolveUsage(t.tpe.typeSymbol, name, t.tpe.underlyingPrefix.skipPackageObject, tree.srcPos)
+        case Select(t, _) =>
+          loop(t)
+        case _ =>
       tree.getAttachment(OriginalTypeClass).foreach(loop)
     if tree.symbol.isAllOf(DeferredGivenFlags) then
-      resolveUsage(defn.Compiletime_deferred, nme.NO_NAME, NoPrefix)
+      resolveUsage(defn.Compiletime_deferred, nme.NO_NAME, NoPrefix, tree.srcPos)
     tree
 
   override def prepareForDefDef(tree: DefDef)(using Context): Context =
@@ -226,7 +224,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.is(Inline) then
       refInfos.inliners -= 1
     if tree.symbol.isAllOf(DeferredGivenFlags) then
-      resolveUsage(defn.Compiletime_deferred, nme.NO_NAME, NoPrefix)
+      resolveUsage(defn.Compiletime_deferred, nme.NO_NAME, NoPrefix, tree.srcPos)
     tree
 
   override def prepareForTypeDef(tree: TypeDef)(using Context): Context =
@@ -294,7 +292,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             def resolve(tpe: Type): Unit =
               val sym = tpe.typeSymbol
               if sym.exists then
-                resolveUsage(sym, sym.name, NoPrefix)
+                resolveUsage(sym, sym.name, NoPrefix, tree.srcPos)
             resolve(lo)
             resolve(hi)
           case _ =>
@@ -319,12 +317,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     for annot <- sym.denot.annotations do
       transformAllDeep(annot.tree)
 
-  /** If sym is not an enclosing element with respect to the give context, record the reference
+  /** If sym is not an enclosing element with respect to the given context, record the reference
    *
    *  Also check that every enclosing element is not a synthetic member
    *  of the sym's case class companion module.
+   *
+   *  The LHS of a current Assign is never recorded as a reference (that is, a usage).
    */
-  def refUsage(sym: Symbol)(using Context): Unit =
+  def refUsage(sym: Symbol, pos: SrcPos)(using Context): Unit =
     if !refInfos.hasRef(sym) then
       val isCase = sym.is(Case) && sym.isClass
       if !ctx.outersIterator.exists: outer =>
@@ -334,6 +334,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
            && owner.exists
            && owner.is(Synthetic)
            && owner.owner.eq(sym.companionModule.moduleClass)
+        || outer.tree.match
+           case Assign(lhs, _) => lhs.symbol.eq(sym) && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
+           case _ => false
       then
         refInfos.addRef(sym)
 
@@ -348,7 +351,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  The `imports` flag is whether an identifier can mark an import as used: the flag is false
    *  for inlined code, except for `summonInline` (and related constructs) which are resolved at inlining.
    */
-  def resolveUsage(sym0: Symbol, name: Name, prefix: Type, imports: Boolean = true)(using Context): Unit =
+  def resolveUsage(sym0: Symbol, name: Name, prefix: Type, pos: SrcPos, imports: Boolean = true)(using Context): Unit =
     import PrecedenceLevels.*
     val sym = sym0.userSymbol
 
@@ -451,7 +454,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     end while
     // record usage and possibly an import
     if !enclosed then
-      refUsage(sym)
+      refUsage(sym, pos)
     if imports && candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
@@ -459,7 +462,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   /** Simulate implicit search for contextual implicits in lexical scope and mark any definitions or imports as used.
    *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
    */
-  def resolveScoped(tp: Type)(using Context): Unit =
+  def resolveScoped(tp: Type, pos: SrcPos)(using Context): Unit =
     var done = false
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
@@ -471,7 +474,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refUsage(found.denot.symbol)
+        refUsage(found.denot.symbol, pos)
         if cur.isImportContext then
           cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
@@ -479,7 +482,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           case _ =>
         return
       case Some(found: RenamedImplicitRef) if cur.isImportContext =>
-        refUsage(found.underlyingRef.denot.symbol)
+        refUsage(found.underlyingRef.denot.symbol, pos)
         cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
@@ -513,9 +516,6 @@ object CheckUnused:
 
   /** Ignore reference. */
   val Ignore = Property.StickyKey[Unit]
-
-  /** Tree is LHS of Assign. */
-  val AssignmentTarget = Property.StickyKey[Unit]
 
   /** Tree is an inlined parameter. */
   val InlinedParameter = Property.StickyKey[Unit]
@@ -568,18 +568,12 @@ object CheckUnused:
 
     var inliners = 0 // depth of inline def (not inlined yet)
 
-    // instead of refs.addOne, use refUsage -> addRef to distinguish a read from a write to var
-    var isAssignment = false
+    def addAssignmentTarget(sym: Symbol): Unit =
+      asss.addOne(sym)
     def addRef(sym: Symbol): Unit =
-      if isAssignment then
-        asss.addOne(sym)
-      else
-        refs.addOne(sym)
+      refs.addOne(sym)
     def hasRef(sym: Symbol): Boolean =
-      if isAssignment then
-        asss(sym)
-      else
-        refs(sym)
+      refs(sym)
 
     // currently compiletime.testing is completely erased, so ignore the unit
     var isNullified = false
