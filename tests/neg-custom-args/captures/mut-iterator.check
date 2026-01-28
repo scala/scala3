@@ -6,7 +6,7 @@
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:17:14 ------------------------------------------------------
 17 |      current = xs1 // error
    |      ^^^^^^^^^^^^^
-   |      Cannot assign to field current of $anon.this
+   |      Cannot assign to field current of this
    |      since the access is in method next, which is not an update method.
 -- Error: tests/neg-custom-args/captures/mut-iterator.scala:22:15 ------------------------------------------------------
 22 |  def next() = f(it.next()) // error
