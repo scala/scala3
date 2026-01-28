@@ -51,7 +51,6 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
     val rec = ctx.compilationUnit.depRecorder
     if unit.needsInlining || unit.hasMacroAnnotations then
       super.run
-    rec.sendToZinc()
 
     if ctx.settings.YdumpSbtInc.value then
       val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
@@ -73,6 +72,8 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
             deps.foreach(pw.println)
           finally pw.close()
         case null => ()
+
+    rec.sendToZinc()
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
