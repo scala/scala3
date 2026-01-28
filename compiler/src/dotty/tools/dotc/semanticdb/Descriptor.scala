@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import java.lang.System.{lineSeparator => EOL}
 import dotty.tools.dotc.semanticdb.{Descriptor => d}
 
-class DescriptorParser(s: String) {
+private[semanticdb] class DescriptorParser(s: String) {
   var i = s.length
   def fail() = {
     val message = "invalid symbol format"
@@ -94,14 +94,14 @@ class DescriptorParser(s: String) {
   }
 }
 
-object DescriptorParser {
+private[semanticdb] object DescriptorParser {
   def apply(symbol: String): (Descriptor, String) = {
     val parser = new DescriptorParser(symbol)
     parser.entryPoint()
   }
 }
 
-sealed trait Descriptor {
+private[semanticdb] sealed trait Descriptor {
   def isNone: Boolean = this == d.None
   def isTerm: Boolean = this.isInstanceOf[d.Term]
   def isMethod: Boolean = this.isInstanceOf[d.Method]
@@ -111,7 +111,8 @@ sealed trait Descriptor {
   def isTypeParameter: Boolean = this.isInstanceOf[d.TypeParameter]
   def value: String
 }
-object Descriptor {
+
+private[semanticdb] object Descriptor {
   case object None extends Descriptor { def value: String = "" }
   final case class Term(value: String) extends Descriptor
   final case class Method(value: String, disambiguator: String) extends Descriptor
