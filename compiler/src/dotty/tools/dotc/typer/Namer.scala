@@ -1287,7 +1287,10 @@ class Namer { typer: Typer =>
           val forwarder =
             if mbr.isType then
               val forwarderName = checkNoConflict(alias.toTypeName, span)
-              var target = pathType.select(sym)
+              // Use TypeRef directly instead of pathType.select(sym) to avoid
+              // reduceProjection which would expose the underlying type of opaque aliases
+              // through the self-type refinement. See issue #24051.
+              var target: Type = TypeRef(pathType, sym)
               if target.typeParams.nonEmpty then
                 target = target.etaExpand
               newSymbol(
@@ -2244,7 +2247,14 @@ class Namer { typer: Typer =>
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
     // it would be erased to BoxedUnit.
-    def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
+    // However, we must not dealias opaque types to Unit - they should preserve
+    // their opacity. See issue #24051.
+    def dealiasIfUnit(tp: Type) =
+      def involvesOpaqueAlias(tp: Type): Boolean = tp match
+        case tp: AppliedType => involvesOpaqueAlias(tp.tycon)
+        case tp: TypeRef => tp.symbol.isOpaqueAlias
+        case _ => false
+      if !involvesOpaqueAlias(tp) && tp.isRef(defn.UnitClass) then defn.UnitType else tp
 
     def cookedRhsType = dealiasIfUnit(rhsType)
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
