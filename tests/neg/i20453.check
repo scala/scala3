@@ -1,0 +1,14 @@
+-- [E007] Type Mismatch Error: tests/neg/i20453.scala:7:4 --------------------------------------------------------------
+7 |    ("name", "age") // error
+  |    ^^^^^^^^^^^^^^^
+  |    Found:    (String, String)
+  |    Required: NamedTupleDecomposition.Names[(f : (name : String, age : Int))]
+  |
+  |    Note: a match type could not be fully reduced:
+  |
+  |      trying to reduce  NamedTupleDecomposition.Names[(f : (name : String, age : Int))]
+  |      failed since selector (f : (name : String, age : Int))
+  |      does not match  case NamedTuple.NamedTuple[n, _] => n
+  |      and cannot be shown to be disjoint from it either.
+  |
+  | longer explanation available when compiling with `-explain`
