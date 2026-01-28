@@ -2849,7 +2849,7 @@ object ScaladocConfigs {
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
   def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
-  def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
+  def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/"
   def defaultSourceLinks(version: String, allowGitSHA: Boolean = true) = {
     def dottySrcLink(v: String) = sys.env.get("GITHUB_SHA") match {
       case Some(sha) if allowGitSHA => s"github://scala/scala3/$sha"
