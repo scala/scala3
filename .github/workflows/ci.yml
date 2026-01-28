@@ -15,6 +15,8 @@ jobs:
         fetch-depth: 0
         # submodules: true
     - uses: coursier/setup-action@v2
+    - name: Setup Mill
+      run: .github/scripts/setup-dev-mill.sh
     - name: No modules with empty sources
       run: ./mill -i ci.noEmptySources --tasks __.allSourceFiles
     - name: No orphan sources
@@ -28,6 +30,8 @@ jobs:
         if test -d ~/.cache/mill/download; then
           chmod +x ~/.cache/mill/download/*
         fi
+        mkdir -p ~/.ivy2/local
+        mv ~/.ivy2/local ivy2-local
     - name: Upload build output
       uses: actions/upload-artifact@v4
       with:
@@ -47,6 +51,13 @@ jobs:
       with:
         name: mill-cache
         path: mill-cache
+        if-no-files-found: error
+        retention-days: 3
+    - name: Upload ivy2 local
+      uses: actions/upload-artifact@v4
+      with:
+        name: ivy2-local
+        path: ivy2-local
         if-no-files-found: error
         retention-days: 3
 
@@ -70,6 +81,10 @@ jobs:
       with:
         name: mill-cache
         path: mill-cache
+    - uses: actions/download-artifact@v4
+      with:
+        name: ivy2-local
+        path: ivy2-local
     - name: Post-download artifacts
       run: |
         mkdir -p ~/.cache/coursier
@@ -78,12 +93,16 @@ jobs:
         if test -d ~/.cache/mill/download; then
           chmod +x ~/.cache/mill/download/*
         fi
+        mkdir -p ~/.ivy2
+        mv ivy2-local ~/.ivy2/local
     - uses: coursier/setup-action@v2
     - name: Install expect
       run: |
         sudo apt-get update
         sudo apt-get install -y expect
         expect -v
+    - name: Setup Mill
+      run: .github/scripts/setup-dev-mill.sh
     - name: Prepare for REPL test
       run: ./mill -i 'repl[final].compile'
     - name: Run REPL test
@@ -118,6 +137,10 @@ jobs:
       with:
         name: mill-cache
         path: mill-cache
+    - uses: actions/download-artifact@v4
+      with:
+        name: ivy2-local
+        path: ivy2-local
     - name: Post-download artifacts
       run: |
         mkdir -p ~/.cache/coursier
@@ -126,7 +149,11 @@ jobs:
         if test -d ~/.cache/mill/download; then
           chmod +x ~/.cache/mill/download/*
         fi
+        mkdir -p ~/.ivy2
+        mv ivy2-local ~/.ivy2/local
     - uses: coursier/setup-action@v2
+    - name: Setup Mill
+      run: .github/scripts/setup-dev-mill.sh
     - name: Test
       run: ./mill -i '__[${{ matrix.BUILD_TYPE }}].${{ matrix.TEST }}'
       env:
