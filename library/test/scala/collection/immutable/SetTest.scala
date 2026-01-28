@@ -1,0 +1,113 @@
+package scala.collection.immutable
+
+// "Disabled string conversions so as not to get confused!"
+import scala.Predef.{any2stringadd => _, *}
+
+import org.junit.Assert.{assertEquals, assertNotSame, assertSame, assertTrue}
+import org.junit.Test
+
+class SetTest {
+  @Test
+  def test_SI8346_toSet_soundness(): Unit = {
+
+    def any[A](set: Set[A]): Set[Any] = {
+      val anyset = set.toSet[Any]
+      assertTrue((anyset + "fish") contains "fish")
+      anyset
+    }
+
+    // Make sure default immutable Set does not rebuild itself on widening with toSet
+    // Need to cover 0, 1, 2, 3, 4 elements as special cases
+    var si = Set.empty[Int]
+    assert(si eq si.toSet[Any])
+    for (i <- 1 to 5) {
+      val s1 = Set(Array.range(1, i+1).toIndexedSeq*)
+      val s2 = si + i
+      val s1a = any(s1)
+      val s2a = any(s2)
+      assertSame(s1, s1a)
+      assertSame(s2, s2a)
+      si = s2
+    }
+
+    // Make sure BitSet correctly rebuilds itself on widening with toSet
+    // Need to cover empty, values 0-63, values 0-127 as special cases
+    val bitsets = Seq(BitSet.empty, BitSet(23), BitSet(23, 99), BitSet(23, 99, 141))
+    bitsets.foreach{ b =>
+      val ba = any(b)
+      assertNotSame(b, ba)
+      assertEquals(b, ba)
+    }
+
+    // Make sure HashSet (and by extension, its implementing class HashTrieSet)
+    // does not rebuild itself on widening by toSet
+    val hashset = HashSet(1, 3, 5, 7)
+    val hashseta = any(hashset)
+    assertSame(hashset, hashseta)
+
+    // Make sure ListSet does not rebuild itself on widening by toSet
+    // (Covers Node also, since it subclasses ListSet)
+    val listset = ListSet(1, 3, 5, 7)
+    val listseta = any(listset)
+    assertSame(listset, listseta)
+
+    // Make sure SortedSets correctly rebuild themselves on widening with toSet
+    // Covers TreeSet and keySet of SortedMap also
+    val sortedsets = Seq(
+      SortedSet.empty[Int], SortedSet(5), SortedSet(1,2,3,5,4),
+      SortedMap(1 -> "cod", 2 -> "herring").keySet
+    )
+    sortedsets.foreach{ set =>
+      val seta = any(set)
+      assertNotSame(set, seta)
+      assertEquals(set, seta)
+    }
+
+    // Make sure ValueSets correctly rebuild themselves on widening with toSet
+    object WeekDay extends Enumeration {
+      type WeekDay = Value
+      val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
+    }
+    val valuesa = any(WeekDay.values)
+    assertNotSame(WeekDay.values, valuesa)
+    assertEquals(WeekDay.values, valuesa)
+
+    // Make sure regular Map keySets do not rebuild themselves on widening with toSet
+    val mapset = Map(1 -> "cod", 2 -> "herring").keySet
+    val mapseta = any(mapset)
+    assertSame(mapset, mapseta) // WIP see Set.from
+  }
+
+  @deprecated("Uses deprecated API", since="2.13")
+  @Test
+  def testRemoveAll(): Unit = {
+    val s0 = Set(1, 2, 3) -- List(1, 2)
+    assertEquals(Set(3), s0)
+
+    val s1 = Set(1, 2, 3) -- List(1, 2, 3)
+    assertEquals(Set(), s1)
+
+    val s2 = Set(1, 2, 3) -- List(1, 2, 2, 3, 4)
+    assertEquals(Set(), s2)
+
+    // deprecated
+    val s3 = collection.Set(1, 2, 3) -- List(2, 3)
+    assertEquals(Set(1), s3)
+
+    // deprecated
+    val s4 = collection.mutable.Set(1, 2, 3) -- List(2, 3)
+    assertEquals(Set(1), s4)
+  }
+
+  @Test def pr10238(): Unit = {
+    assertEquals(BitSet(0), BitSet(0, 128) diff BitSet(128))
+
+    val us = scala.collection.immutable.BitSet(39, 41, 44, 46, 256)
+    val vs = scala.collection.immutable.BitSet(39, 41, 44, 46, 64, 256)
+    val xs = scala.collection.immutable.BitSet.fromBitMask(us.toBitMask.take(3))
+    val ys = scala.collection.immutable.BitSet.fromBitMask(vs.toBitMask.take(3))
+    val diff = ys diff xs
+    val expected = scala.collection.immutable.BitSet(64)
+    assertEquals(diff, expected)
+  }
+}
