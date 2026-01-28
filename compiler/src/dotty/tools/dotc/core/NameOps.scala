@@ -89,7 +89,7 @@ object NameOps {
           // Ends with operator characters
           while i >= 0 && isOperatorPart(name(i)) do i -= 1
           if i == -1 then return true
-          // Optionnally prefixed with alpha-numeric characters followed by `_`
+          // Optionally prefixed with alpha-numeric characters followed by `_`
           if name(i) != '_' then return false
           while i >= 0 && isIdentifierPart(name(i)) do i -= 1
           i == -1
