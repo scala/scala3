@@ -435,6 +435,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkOK(res: TypeComparer.CompareResult,
         added: Capability | CaptureSet,
         target: CaptureSet,
+        targetOwner: Symbol,
         provenance: => String,
         pos: SrcPos)(using Context): Unit =
       res match
@@ -447,7 +448,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           val whyNotes = added match
             case added: Capability => WhyCapability(added) :: Nil
             case added: CaptureSet => added.elems.toList.map(WhyCapability(_))
-          def msg = CannotBeIncluded(added, target, realTarget, otherNotes ++ whyNotes, provenance)
+          def msg = CannotBeIncluded(
+              added, target, realTarget, otherNotes ++ whyNotes, targetOwner, provenance)
           target match
             case target: CaptureSet.Var if realTarget.isProvisionallySolved =>
               report.warning(
@@ -462,18 +464,19 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
-    def checkElem(elem: Capability, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
+    def checkElem(elem: Capability, cs: CaptureSet, pos: SrcPos,
+        owner: Symbol = NoSymbol, provenance: => String = "")(using Context) =
       checkOK(
           TypeComparer.compareResult(elem.singletonCaptureSet.subCaptures(cs)),
-          elem, cs, provenance, pos)
+          elem, cs, owner, provenance, pos)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
-        provenance: => String = "")(using Context) =
+        owner: Symbol = NoSymbol, provenance: => String = "")(using Context) =
       val cs1description = cs1.description
       checkOK(
           TypeComparer.compareResult(cs1.subCaptures(cs2)),
-          cs1, cs2, provenance, pos)
+          cs1, cs2, owner, provenance, pos)
 
     /** If `sym` is a method or a non-static inner class, a capture set variable
      *  representing the captured variables of the environment associated with `sym`.
@@ -626,7 +629,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               then avoidLocalCapability(c, env, lastEnv)
               else avoidLocalReachCapability(c, env)
             isVisible
-          checkSubset(included, env.captured, tree.srcPos, provenance(env))
+          checkSubset(included, env.captured, tree.srcPos, env.owner, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) && !env.isRoot then
             val nextEnv = nextEnvToCharge(env)
@@ -1554,7 +1557,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       // (1) Capture set of a class includes the capture sets of its parents
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
-          i"\nof the references allowed to be captured by $cls")
+          provenance = i"\nof the references allowed to be captured by $cls")
 
 
       val saved = curEnv
@@ -1896,11 +1899,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                     // prefixes at the use site. And this exemption is required since capture sets
                     // of non-local classes are always empty, so we can't add an outer this to them.
                 then
-                  def provenance =
-                    i""" of the enclosing class ${eref.cls}.
-                       |The reference was included since we tried to establish that $arefs <: $erefs"""
-                  checkElem(outerRef, capturedVars(eref.cls), pos, provenance)
-
+                  checkElem(outerRef, capturedVars(eref.cls), pos,
+                    provenance =
+                      i""" of the enclosing class ${eref.cls}.
+                         |The reference was included since we tried to establish that $arefs <: $erefs""")
               erefs ++ outerRefs
             case _ =>
               erefs

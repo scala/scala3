@@ -19,11 +19,11 @@
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 ---------------------------------
 40 |      def head: B = f(xs.head)  // error
    |                    ^
-   |                  reference `f` is not included in the allowed capture set {xs} of the self type of class Mapped
+   |                 Reference `f` is not included in the allowed capture set {xs} of the self type of class Mapped.
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazylists2.scala:41:48 ---------------------------------
 41 |      def tail: LazyList[B]^{this}= xs.tail.map(f) // error
    |                                                ^
-   |                  reference `f` is not included in the allowed capture set {xs} of the self type of class Mapped
+   |                 Reference `f` is not included in the allowed capture set {xs} of the self type of class Mapped.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:51:4 ------------------------------------
 51 |    new Mapped  // error
    |    ^^^^^^^^^^
@@ -36,7 +36,7 @@
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazylists2.scala:60:10 ---------------------------------
 60 |    class Mapped2 extends Mapped:  // error
    |    ^
-   |    references {f, xs} are not all included in the allowed capture set {} of the self type of class Mapped2
+   |    References {f, xs} are not all included in the allowed capture set {} of the self type of class Mapped2.
    |
 61 |      this: Mapped =>
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:62:4 ------------------------------------

@@ -1,13 +1,17 @@
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/constructor-uses.scala:13:12 ---------------------------
 13 |    val u = f.toString // error
    |            ^
-   |            reference `A.this.f` is not included in the allowed capture set {}
-   |            of the enclosing class C in class A
+   |            Reference `A.this.f` is not included in the allowed capture set {}
+   |            of the enclosing class C in class A.
+   |
+   |            External uses should be declared explicitly with a uses clause in class C:
+   |
+   |                uses A.this.f
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/constructor-uses.scala:17:12 ---------------------------
 17 |    val v = g.toString // error
    |            ^
-   |            reference `A.this.g` is not included in the allowed capture set {A.this.f}
-   |            of the enclosing constructor D in class D
+   |            Reference `A.this.g` is not included in the allowed capture set {A.this.f}
+   |            of the enclosing constructor D in class D.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:28:21 -----------------------------
 28 |  val _: () -> a.B = f // error
    |                     ^

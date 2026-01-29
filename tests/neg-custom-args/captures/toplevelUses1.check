@@ -1,49 +1,77 @@
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:20:8 -------------------------------
 20 |      M.c.println()      // error
    |      ^^^
-   |      reference `test.M.c` is not included in the allowed capture set {}
-   |      of the enclosing object N in package test
+   |      Reference `test.M.c` is not included in the allowed capture set {}
+   |      of the enclosing object N in package test.
+   |
+   |      External uses should be declared explicitly with a uses clause in object N:
+   |
+   |          uses test.M.c
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:21:6 -------------------------------
 21 |      Console.println()  // error
    |      ^^^^^^^
-   |      reference `test.Console` is not included in the allowed capture set {}
-   |      of the enclosing object N in package test
+   |      Reference `test.Console` is not included in the allowed capture set {}
+   |      of the enclosing object N in package test.
    |
    |      Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |      External uses should be declared explicitly with a uses clause in object N:
+   |
+   |          uses test.Console
    |
    |      where:    ^ refers to a root capability classified as SharedCapability in the type of value out
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:22:6 -------------------------------
 22 |      Console2.println() // error
    |      ^^^^^^^^
-   |      reference `test.Console2` is not included in the allowed capture set {}
-   |      of the enclosing object N in package test
+   |      Reference `test.Console2` is not included in the allowed capture set {}
+   |      of the enclosing object N in package test.
    |
    |      Note that `test.Console2` is a capability because it uses {test.Console}.
+   |
+   |      External uses should be declared explicitly with a uses clause in object N:
+   |
+   |          uses test.Console2
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:23:4 -------------------------------
 23 |  M.c.println()          // error
    |  ^^^
-   |  reference `test.M.c` is not included in the allowed capture set {}
-   |  of the enclosing object N in package test
+   |  Reference `test.M.c` is not included in the allowed capture set {}
+   |  of the enclosing object N in package test.
+   |
+   |  External uses should be declared explicitly with a uses clause in object N:
+   |
+   |      uses test.M.c
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:24:2 -------------------------------
 24 |  Console.println()      // error
    |  ^^^^^^^
-   |  reference `test.Console` is not included in the allowed capture set {}
-   |  of the enclosing object N in package test
+   |  Reference `test.Console` is not included in the allowed capture set {}
+   |  of the enclosing object N in package test.
    |
    |  Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |  External uses should be declared explicitly with a uses clause in object N:
+   |
+   |      uses test.Console
    |
    |  where:    ^ refers to a root capability classified as SharedCapability in the type of value out
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:27:4 -------------------------------
 27 |  M.c.println()          // error
    |  ^^^
-   |  reference `test.M.c` is not included in the allowed capture set {}
-   |  of the enclosing top-level definitions in package test
+   |  Reference `test.M.c` is not included in the allowed capture set {}
+   |  of the enclosing top-level definitions in package test.
+   |
+   |  External uses should be declared explicitly with a uses clause in the top-level definitions in package test:
+   |
+   |      uses test.M.c
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:28:2 -------------------------------
 28 |  Console.println()      // error
    |  ^^^^^^^
-   |  reference `test.Console` is not included in the allowed capture set {}
-   |  of the enclosing top-level definitions in package test
+   |  Reference `test.Console` is not included in the allowed capture set {}
+   |  of the enclosing top-level definitions in package test.
    |
    |  Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |  External uses should be declared explicitly with a uses clause in the top-level definitions in package test:
+   |
+   |      uses test.Console
    |
    |  where:    ^ refers to a root capability classified as SharedCapability in the type of value out

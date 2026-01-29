@@ -3765,6 +3765,7 @@ final class CannotBeIncluded(
     target: CaptureSet,      // The original set where elements cannot be included
     realTarget: CaptureSet,  // The underlying set of an IncludeFailure
     notes: List[Note],
+    targetOwner: Symbol,
     provenance: => String)(using Context) extends CapturesMessage(CannotBeIncludedID) {
 
   def msg(using Context): String = {
@@ -3775,11 +3776,28 @@ final class CannotBeIncluded(
         val addedDescription =
           if added.description.isEmpty then "" else i" ${added.description}"
         if added.elems.size == 1 then
-          i"reference `${added.elems.nth(0).showAsCapability}`$addedDescription is not"
+          i"Reference `${added.elems.nth(0).showAsCapability}`$addedDescription is not"
         else
-          i"references $added$addedDescription are not all"
+          i"References $added$addedDescription are not all"
 
-    val toAdd: String = notes.map(_.render).mkString
+    def needsUseStr =
+      if target.isAlwaysEmpty && (targetOwner.isClass || targetOwner.isConstructor) then
+        val (uses, loc) =
+          if targetOwner.isClass
+          then ("uses", targetOwner)
+          else ("uses_init", targetOwner.owner)
+
+        val usedStr = added match
+          case added: Capability => i"${added.showAsCapability}"
+          case added: CaptureSet => i"${added.elems.toList.map(_.showAsCapability).mkString(", ")}"
+          i"""
+           |
+           |External uses should be declared explicitly with a $uses clause in $loc:
+           |
+           |    $uses $usedStr"""
+      else ""
+
+    def notesStr: String = notes.map(_.render).mkString
     val provisional = realTarget.isProvisionallySolved
     val kind = if provisional then "previously estimated\n" else "allowed "
 
@@ -3795,7 +3813,7 @@ final class CannotBeIncluded(
       else target
     val provenanceStr: String =
       if shownTarget.description.isEmpty then provenance else ""
-    i"$prefix included in the ${kind}capture set $shownTarget$provenanceStr$toAdd"
+    i"$prefix included in the ${kind}capture set $shownTarget$provenanceStr.$notesStr$needsUseStr"
   }
   def explain(using Context) = ""
 }
