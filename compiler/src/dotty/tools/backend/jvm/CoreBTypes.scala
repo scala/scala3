@@ -40,6 +40,7 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
   def jlClassCastExceptionRef     : ClassBType
   def jlIllegalArgExceptionRef    : ClassBType
   def jliSerializedLambdaRef      : ClassBType
+  def jliMethodHandleRef: ClassBType
 
   def srBoxesRuntimeRef            : ClassBType
   def srBoxedUnitRef               : ClassBType

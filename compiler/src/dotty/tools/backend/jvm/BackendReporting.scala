@@ -74,19 +74,14 @@ object BackendReporting {
   }
 
   sealed trait MissingBytecodeWarning extends OptimizerWarning {
-    override def toString = this match {
-      case ClassNotFound(internalName, definedInJavaSource) =>
-        s"The classfile for $internalName could not be found on the compilation classpath." + {
-          if (definedInJavaSource) "\nThe class is defined in a Java source file that is being compiled (mixed compilation), therefore no bytecode is available."
-          else ""
-        }
+    override def toString: String = this match {
+      case ClassNotFound(internalName) =>
+        s"The classfile for $internalName could not be found on the compilation classpath."
 
       case MethodNotFound(name, descriptor, ownerInternalName, missingClass) =>
         val missingClassWarning = missingClass match {
           case None => ""
-          case Some(c) =>
-            if (c.definedInJavaSource) s"\nNote that class ${c.internalName} is defined in a Java source (mixed compilation), no bytecode is available."
-            else s"\nNote that class ${c.internalName} could not be found on the classpath."
+          case Some(c) => s"\nNote that class ${c.internalName} could not be found on the Scala classpath."
         }
         s"The method $name$descriptor could not be found in the class $ownerInternalName or any of its parents." + missingClassWarning
 
@@ -96,9 +91,8 @@ object BackendReporting {
     }
 
     def emitWarning(settings: CompilerSettings): Boolean = this match {
-      case ClassNotFound(_, javaDefined) =>
-        if (javaDefined) settings.optWarningNoInlineMixed
-        else settings.optWarningNoInlineMissingBytecode
+      case ClassNotFound(_) =>
+        settings.optWarningNoInlineMissingBytecode
 
       case m @ MethodNotFound(_, _, _, missing) =>
         if (m.isArrayMethod) false
@@ -109,7 +103,7 @@ object BackendReporting {
     }
   }
 
-  final case class ClassNotFound(internalName: InternalName, definedInJavaSource: Boolean) extends MissingBytecodeWarning
+  final case class ClassNotFound(internalName: InternalName) extends MissingBytecodeWarning
   final case class MethodNotFound(name: String, descriptor: String, ownerInternalNameOrArrayDescriptor: InternalName, missingClass: Option[ClassNotFound]) extends MissingBytecodeWarning {
     def isArrayMethod = ownerInternalNameOrArrayDescriptor.charAt(0) == '['
   }

@@ -44,9 +44,9 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
         val internalName = classSym.javaBinaryName
         // We first create and add the ClassBType to the hash map before computing its info. This
         // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-        val classBType = classBType(internalName, classSym, true)(createClassInfo)
-        convertedClasses(classSym) = classBType
-        classBType
+        val result = classBType(internalName, classSym, true)((ct, cs) => Right(createClassInfo(ct, cs)))
+        convertedClasses(classSym) = result
+        result
       })
   }
 
@@ -355,7 +355,7 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
   private def jliLambdaMetafactoryRef: ClassBType = _jliLambdaMetafactoryRef.get
   private lazy val _jliLambdaMetafactoryRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory]))
 
-  private def jliMethodHandleRef: ClassBType = _jliMethodHandleRef.get
+  override def jliMethodHandleRef: ClassBType = _jliMethodHandleRef.get
   private lazy val _jliMethodHandleRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.MethodHandleClass))
 
   private def jliMethodHandlesLookupRef: ClassBType = _jliMethodHandlesLookupRef.get

@@ -8,6 +8,7 @@ import dotty.tools.io.AbstractFile
 
 import java.util.{Collection as JCollection, Map as JMap}
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.config.ScalaSettings
@@ -33,6 +34,8 @@ sealed abstract class PostProcessorFrontendAccess {
 
   def getEntryPoints: List[String]
 
+  def findClassFile(name: String): Option[io.AbstractFile]
+
   private val frontendLock: AnyRef = new Object()
 
   inline final def frontendSynch[T](inline x: Context ?=> T)(using Context): T = frontendLock.synchronized(x)
@@ -40,8 +43,6 @@ sealed abstract class PostProcessorFrontendAccess {
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
 
   inline def perRunLazy[T](inline init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
-
-  def javaDefinedClasses: Set[InternalName]
 
   def recordPerRunCache[T <: mutable.Clearable](cache: T): T
 
@@ -227,12 +228,22 @@ object PostProcessorFrontendAccess {
       def log(message: String): Unit = frontendSynch(report.log(message))
     }
 
-    def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
+    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
 
-    def javaDefinedClasses: Set[InternalName] = frontendSynch {
-      currentRun.symSource.keys.iterator.collect {
-        case sym if sym.isJavaDefined => sym.javaBinaryNameString
-      }.toSet
+    /* Create a class path for the backend, based on the given class path.
+     * Used to make classes available to the inliner's bytecode repository.
+     * In particular, if ct.sym is used for compilation, replace it with jrt.
+     */
+    private lazy val optimizerClassPath = ctx.platform.classPath match {
+      case AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
+        JrtClassPath(release = None) match {
+          case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
+          case _ => ctx.platform.classPath
+        }
+      case _ => ctx.platform.classPath
     }
+
+    override def findClassFile(name: String): Option[io.AbstractFile] =
+      optimizerClassPath.findClassFile(name)
   }
 }

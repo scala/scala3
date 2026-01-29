@@ -27,8 +27,8 @@ import dotty.tools.backend.jvm.BackendUtils.*
 
 class CopyProp(postProcessor: PostProcessor) {
 
-  import postProcessor.{backendUtils, callGraph, bTypes}
-  import postProcessor.bTypes.frontendAccess.compilerSettings
+  import postProcessor.{backendUtils, callGraph}
+  import postProcessor.frontendAccess.compilerSettings
   import backendUtils._
 
 
@@ -72,7 +72,7 @@ class CopyProp(postProcessor: PostProcessor) {
       val it = method.instructions.iterator
       while (it.hasNext) it.next() match {
         case vi: VarInsnNode if vi.`var` >= numParams && isLoad(vi) =>
-          val aliases = aliasAnalysis.frameAt(vi).asInstanceOf[AliasingFrame[_]].aliasesOf(vi.`var`)
+          val aliases = aliasAnalysis.frameAt(vi).asInstanceOf[AliasingFrame[?]].aliasesOf(vi.`var`)
           if (aliases.size > 1) {
             val alias = usedOrMinAlias(aliases.iterator, vi.`var`)
             if (alias != -1) {
@@ -403,7 +403,7 @@ class CopyProp(postProcessor: PostProcessor) {
       def runQueue(): Unit = while (queue.nonEmpty) {
         val ProducedValue(prod, size) = queue.dequeue()
 
-        def prodString = s"Producer ${AsmUtils textify prod}@${method.instructions.indexOf(prod)}\n${AsmUtils textify method}"
+        def prodString = s"Producer ${AsmUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${AsmUtils.textify(method)}"
         def popAfterProd(): Unit = toInsertAfter(prod) = getPop(size)
 
         (prod.getOpcode: @switch) match {
@@ -452,7 +452,7 @@ class CopyProp(postProcessor: PostProcessor) {
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
             } else if (isScalaUnbox(methodInsn)) {
               val tp = primitiveAsmTypeToBType(Type.getReturnType(methodInsn.desc))
-              val boxTp = backendUtils.postProcessor.bTypes.coreBTypes.boxedClassOfPrimitive(tp)
+              val boxTp = postProcessor.coreBTypes.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
@@ -576,7 +576,7 @@ class CopyProp(postProcessor: PostProcessor) {
   }
 
   case class ProducedValue(producer: AbstractInsnNode, size: Int) {
-    override def toString = s"<${AsmUtils textify producer}>"
+    override def toString = s"<${AsmUtils.textify(producer)}>"
   }
 
   /**
@@ -748,6 +748,6 @@ class CopyProp(postProcessor: PostProcessor) {
 
 sealed trait RemovePairDependency
 case class RemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: List[RemovePairDependency]) extends RemovePairDependency {
-  override def toString = s"<${AsmUtils textify store},${AsmUtils textify other}> [$depends]"
+  override def toString = s"<${AsmUtils.textify(store)},${AsmUtils.textify(other)}> [$depends]"
 }
 case class LabelNotLive(label: LabelNode) extends RemovePairDependency

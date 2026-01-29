@@ -21,6 +21,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
+import dotty.tools.dotc.util.NoSourcePositions
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.*
 import dotty.tools.backend.jvm.BackendReporting.*
@@ -29,11 +30,9 @@ import BCodeUtils.*
 
 class ClosureOptimizer(val postProcessor: PostProcessor) {
 
-  import postProcessor.{bTypes, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
-  import bTypes._
+  import postProcessor.{frontendAccess, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
   import backendUtils._
   import callGraph._
-  import coreBTypes._
   import frontendAccess.backendReporting
 
   import ClosureOptimizer._
@@ -92,7 +91,8 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
   def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, inliner.MethodInlinerState]): mutable.LinkedHashSet[MethodNode] = {
 
     // sort all closure invocations to rewrite to ensure bytecode stability
-    val toRewrite = mutable.TreeMap.empty[ClosureInstantiation, mutable.ArrayBuffer[(MethodInsnNode, Int)]](closureInitOrdering)
+    given Ordering[ClosureInstantiation] = closureInitOrdering
+    val toRewrite = mutable.TreeMap.empty[ClosureInstantiation, mutable.ArrayBuffer[(MethodInsnNode, Int)]]
     def addRewrite(init: ClosureInstantiation, invocation: MethodInsnNode, stackHeight: Int): Unit = {
       val callsites = toRewrite.getOrElseUpdate(init, mutable.ArrayBuffer.empty[(MethodInsnNode, Int)])
       callsites += ((invocation, stackHeight))
@@ -120,7 +120,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                backendReporting.optimizerWarning(warning.pos, warning.toString, backendReporting.siteString(ownerClass, method.name))
+                backendReporting.warning(warning.pos, warning.toString, backendReporting.siteString(ownerClass, method.name))
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -144,8 +144,8 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
       // toInit is sorted by `closureInitOrdering`, so multiple closure inits within a method are next to each other
       if (closureInit.ownerMethod != previousMethod) {
         previousMethod = closureInit.ownerMethod
-        changedMethods += previousMethod
-        val state = inlinerState.getOrElseUpdate(previousMethod, new inliner.MethodInlinerState)
+        changedMethods += previousMethod.nn
+        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new inliner.MethodInlinerState)
         state.inlineLog.logClosureRewrite(closureInit, invocations, invocations.headOption.flatMap(p => state.outerCallsite(p._1)))
       }
     }
@@ -196,7 +196,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
           isAccessible
         }
 
-        def pos = callGraph.callsites(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoPosition)
+        def pos = callGraph.callsites(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
         val stackSize: Either[RewriteClosureApplyToClosureBodyFailed, Int] = bodyAccessible match {
           case Left(w)      => Left(RewriteClosureAccessCheckFailed(pos, w))
           case Right(false) => Left(RewriteClosureIllegalAccess(pos, ownerClass.internalName))
@@ -336,10 +336,10 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
    * During bytecode generation this is handled by BCodeBodyBuilder.adapt. See the comment in that
    * method which explains the issue with such phantom values.
    */
-  private def fixLoadedNothingOrNullValue(loadedType: Type, loadInstr: AbstractInsnNode, methodNode: MethodNode, bTypes: BTypes): Unit = {
-    if (loadedType == bTypes.coreBTypes.srNothingRef.toASMType) {
+  private def fixLoadedNothingOrNullValue(loadedType: Type, loadInstr: AbstractInsnNode, methodNode: MethodNode): Unit = {
+    if (loadedType == srNothingRef.toASMType) {
       methodNode.instructions.insert(loadInstr, new InsnNode(ATHROW))
-    } else if (loadedType == bTypes.coreBTypes.srNullRef.toASMType) {
+    } else if (loadedType == srNullRef.toASMType) {
       methodNode.instructions.insert(loadInstr, new InsnNode(ACONST_NULL))
       methodNode.instructions.insert(loadInstr, new InsnNode(POP))
     }
@@ -400,7 +400,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
         ownerMethod.instructions.insertBefore(invocation, op)
       } else {
         // see comment of that method
-        fixLoadedNothingOrNullValue(bodyReturnType, bodyInvocation, ownerMethod, bTypes)
+        fixLoadedNothingOrNullValue(bodyReturnType, bodyInvocation, ownerMethod)
       }
     }
 
@@ -436,7 +436,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
       argInfos = argInfos,
       callsiteStackHeight = invocationStackHeight,
       receiverKnownNotNull = true, // see below (*)
-      callsitePosition = originalCallsite.map(_.callsitePosition).getOrElse(NoPosition),
+      callsitePosition = originalCallsite.map(_.callsitePosition).getOrElse(NoSourcePosition),
       annotatedInline = false,
       annotatedNoInline = false
     )

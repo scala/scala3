@@ -12,6 +12,7 @@
 
 package dotty.tools.backend.jvm
 
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
@@ -33,13 +34,11 @@ import scala.tools.asm.{Attribute, Type}
  */
 class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) extends PerRunInit {
 
-  import frontendAccess.{backendClassPath, backendReporting, recordPerRunCache}
-
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: concurrent.Map[InternalName, (ClassNode, String)] = recordPerRunCache(concurrent.TrieMap.empty)
+  val compilingClasses: concurrent.Map[InternalName, (ClassNode, String)] = frontendAccess.recordPerRunCache(concurrent.TrieMap.empty)
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -55,13 +54,7 @@ class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUti
    * underlying data structure is synchronized.
    */
   private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassNode]] =
-    recordPerRunCache(FifoCache[InternalName, Either[ClassNotFound, ClassNode]](maxCacheSize, threadsafe = true))
-
-  /**
-   * Contains the internal names of all classes that are defined in Java source files of the current
-   * compilation run (mixed compilation). Used for more detailed error reporting.
-   */
-  private lazy val javaDefinedClasses = frontendAccess.perRunLazy(this)(frontendAccess.javaDefinedClasses)
+    frontendAccess.recordPerRunCache(FifoCache[InternalName, Either[ClassNotFound, ClassNode]](maxCacheSize, threadsafe = true))
 
   def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
     case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = (classNode, path)
@@ -291,10 +284,9 @@ class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUti
     }
   }
 
-
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassNode] = {
     val fullName = internalName.replace('/', '.')
-    backendClassPath.findClassFile(fullName).flatMap { classFile =>
+    frontendAccess.findClassFile(fullName).flatMap { classFile =>
       val classNode = new ClassNode1
       val classReader = new asm.ClassReader(classFile.toByteArray)
 
@@ -316,12 +308,12 @@ class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUti
         Some(classNode)
       } catch {
         case ex: Exception =>
-          backendReporting.warning(NoPosition, s"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
+          frontendAccess.backendReporting.warning(em"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
           None
       }
     } match {
       case Some(node) => Right(node)
-      case None       => Left(ClassNotFound(internalName, javaDefinedClasses.get(internalName)))
+      case None       => Left(ClassNotFound(internalName))
     }
   }
 }

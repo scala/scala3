@@ -12,21 +12,19 @@ import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
 
 /**
- * Implements late stages of the backend that don't depend on a Global instance, i.e.,
+ * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypes) {
-  import ts.classBTypeFromInternalName
-  import frontendAccess.{backendReporting, compilerSettings}
 
-  val backendUtils        = new BackendUtils(this)
-  val byteCodeRepository  = new ByteCodeRepository(this)
+  val backendUtils        = new BackendUtils(frontendAccess, ts)
+  val byteCodeRepository  = new ByteCodeRepository(frontendAccess, backendUtils, ts)
+  val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, frontendAccess.compilerSettings.optInlinerEnabled)
   val localOpt            = new LocalOpt(this)
   val inliner             = new Inliner(this)
   val inlinerHeuristics   = new InlinerHeuristics(this)
   val closureOptimizer    = new ClosureOptimizer(this)
   val callGraph           = new CallGraph(this)
-  val bTypesFromClassfile = new BTypesFromClassfile(this)
   val classfileWriters    = new ClassfileWriters(frontendAccess)
   val classfileWriter     = classfileWriters.ClassfileWriter()
 
@@ -34,7 +32,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: Cor
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !compilerSettings.outputOnlyTasty then {
+  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !frontendAccess.compilerSettings.outputOnlyTasty then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -45,11 +43,11 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: Cor
         serializeClass(classNode)
       catch
         case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
-          backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
+          frontendAccess.backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Throwable =>
-          if compilerSettings.debug then ex.printStackTrace()
-          backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          if frontendAccess.compilerSettings.debug then ex.printStackTrace()
+          frontendAccess.backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
     if bytes != null then
@@ -81,10 +79,10 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: Cor
           else s" (defined in ${pos2.source.file.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
-          backendReporting.error(
+          frontendAccess.backendReporting.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
         else
-          backendReporting.warning(
+          frontendAccess.backendReporting.warning(
             em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
                 |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
     }
@@ -131,8 +129,8 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: Cor
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
-      val a = classBTypeFromInternalName(inameA)
-      val b = classBTypeFromInternalName(inameB)
+      val a = ts.classBTypeFromInternalName(inameA)
+      val b = ts.classBTypeFromInternalName(inameB)
       val lub = a.jvmWiseLUB(b).get
       val lubName = lub.internalName
       assert(lubName != "scala/Any")

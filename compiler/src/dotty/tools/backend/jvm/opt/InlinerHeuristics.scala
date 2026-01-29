@@ -29,11 +29,10 @@ import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
 
   import postProcessor._
-  import bTypes._
   import callGraph._
   import postProcessor.frontendAccess.*
 
-  lazy val inlineSourceMatcher: LazyVar[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
+  lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
 
   final case class InlineRequest(callsite: Callsite, reason: InlineReason) {
     // non-null if `-Yopt-log-inline` is active, it explains why the callsite was selected for inlining
@@ -275,7 +274,7 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
 
           if (callsite.isNoInlineAnnotated) None
           else {
-            val reason = shouldInlineAnnotated orElse shouldInlineHO orElse shouldInlineRefParam orElse shouldInlineArrayOp orElse shouldInlineForwarder
+            val reason = shouldInlineAnnotated.orElse(shouldInlineHO).orElse(shouldInlineRefParam).orElse(shouldInlineArrayOp).orElse(shouldInlineForwarder)
             reason.flatMap(r => requestIfCanInline(callsite, r))
           }
       }

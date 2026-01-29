@@ -23,7 +23,7 @@ import PostProcessorFrontendAccess.Lazy
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
  * instance.
  */
-class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)/*(using Context)*/ {
+class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's

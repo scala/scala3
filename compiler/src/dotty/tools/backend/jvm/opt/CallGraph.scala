@@ -27,11 +27,12 @@ import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValu
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.dotc.util.SrcPos
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{LazyWithoutLock => FLazy} // TODO this one should probably be not inside PPFA...
 
 class CallGraph(val postProcessor: PostProcessor) {
 
   import postProcessor.*
-  import bTypesFromClassfile.*
+  //import bTypesFromClassfile.*
   import postProcessor.frontendAccess.recordPerRunCache
 
   /**
@@ -201,7 +202,7 @@ class CallGraph(val postProcessor: PostProcessor) {
             argInfos = argInfos,
             callsiteStackHeight = typeAnalyzer.frameAt(call).getStackSize,
             receiverKnownNotNull = receiverNotNull,
-            callsitePosition = callsitePositions.getOrElse(call, NoPosition),
+            callsitePosition = callsitePositions.getOrElse(call, NoSourcePosition),
             annotatedInline = inlineAnnotatedCallsites(call),
             annotatedNoInline = noInlineAnnotatedCallsites(call)
           )
@@ -275,22 +276,6 @@ class CallGraph(val postProcessor: PostProcessor) {
       }
     }
     res
-  }
-
-  final class FLazy[@specialized(Int) T](_init: => T) {
-    private var init: (() => T) | Null = () => _init
-    private var v: T = uninitialized
-    def get: T = {
-      if (init != null) {
-        v = init()
-        init = null
-      }
-      v
-    }
-  }
-
-  object FLazy {
-    def apply[T](init: => T): FLazy[T] = new FLazy(init)
   }
 
   /**
@@ -384,7 +369,7 @@ class CallGraph(val postProcessor: PostProcessor) {
    */
   final case class Callsite(callsiteInstruction: MethodInsnNode, callsiteMethod: MethodNode, callsiteClass: ClassBType,
                             callee: Either[OptimizerWarning, Callee], argInfos: IntMap[ArgInfo],
-                            callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: Position,
+                            callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: SourcePosition,
                             annotatedInline: Boolean, annotatedNoInline: Boolean) {
     // an annotation at the callsite takes precedence over an annotation at the definition site
     def isInlineAnnotated: Boolean = annotatedInline || (callee.get.annotatedInline && !annotatedNoInline)

@@ -32,7 +32,6 @@ import BCodeUtils.*
 class Inliner(postProcessor: PostProcessor) {
 
   import postProcessor.*
-  import bTypes.*
   import bTypesFromClassfile.*
   import backendUtils.*
   import callGraph.*
@@ -144,7 +143,7 @@ class Inliner(postProcessor: PostProcessor) {
       if (roots == null) {
         compilerSettings.optLogInline match {
           case Some("_") => _active = true
-          case Some(prefix) => _active = s"${callsiteClass.internalName}.${callsiteMethod.name}" startsWith prefix
+          case Some(prefix) => _active = s"${callsiteClass.internalName}.${callsiteMethod.name}".startsWith(prefix)
           case _ => _active = false
         }
         if (_active) {
@@ -292,7 +291,7 @@ class Inliner(postProcessor: PostProcessor) {
       }
       if (logs.nonEmpty) {
         // Deterministic inline log
-        val sortedLogs = logs.sorted(Ordering.by[(MethodNode, InlineLog), (String, String)](p => (p._1.name, p._1.desc)))
+        val sortedLogs = logs.sorted(using Ordering.by[(MethodNode, InlineLog), (String, String)](p => (p._1.name, p._1.desc)))
         sortedLogs.foreach(_._2.print())
       }
 
@@ -457,7 +456,7 @@ class Inliner(postProcessor: PostProcessor) {
             }
           case _ =>
         }
-        val newRequests = selectRequestsForMethodSize(method, rs.toList.sorted(inlineRequestOrdering), mutable.Map.empty)
+        val newRequests = selectRequestsForMethodSize(method, rs.toList.sorted(using inlineRequestOrdering), mutable.Map.empty)
 
         state.illegalAccessInstructions.find(insn => newRequests.forall(_.callsite.callsiteInstruction != insn)) match {
           case None =>
@@ -498,13 +497,13 @@ class Inliner(postProcessor: PostProcessor) {
     override def compare(x: Callsite, y: Callsite): Int = {
       if (x eq y) return 0
 
-      val cls = x.callsiteClass.internalName compareTo y.callsiteClass.internalName
+      val cls = x.callsiteClass.internalName.compareTo(y.callsiteClass.internalName)
       if (cls != 0) return cls
 
-      val name = x.callsiteMethod.name compareTo y.callsiteMethod.name
+      val name = x.callsiteMethod.name.compareTo(y.callsiteMethod.name)
       if (name != 0) return name
 
-      val desc = x.callsiteMethod.desc compareTo y.callsiteMethod.desc
+      val desc = x.callsiteMethod.desc.compareTo(y.callsiteMethod.desc)
       if (desc != 0) return desc
 
       def pos(c: Callsite) = c.callsiteMethod.instructions.indexOf(c.callsiteInstruction)
@@ -512,7 +511,8 @@ class Inliner(postProcessor: PostProcessor) {
     }
   }
 
-  val inlineRequestOrdering = Ordering.by[InlineRequest, Callsite](_.callsite)(callsiteOrdering)
+  private val inlineRequestOrdering =
+    Ordering.by[InlineRequest, Callsite](_.callsite)(using callsiteOrdering)
 
   /**
    * Returns the callsites that can be inlined, grouped by method. Ensures that the returned inline
@@ -522,10 +522,10 @@ class Inliner(postProcessor: PostProcessor) {
    * Once these leaves are inlined, the successive elements will be leaves, etc.
    */
   private def collectAndOrderInlineRequests: mutable.Queue[(MethodNode, List[InlineRequest])] = {
-    val requestsByMethod = selectCallsitesForInlining withDefaultValue Set.empty
+    val requestsByMethod = selectCallsitesForInlining.withDefaultValue(Set.empty)
 
     val elided = mutable.Set.empty[InlineRequest]
-    def nonElidedRequests(methodNode: MethodNode): Set[InlineRequest] = requestsByMethod(methodNode) diff elided
+    def nonElidedRequests(methodNode: MethodNode): Set[InlineRequest] = requestsByMethod(methodNode).diff(elided)
 
     /*
      * Break cycles in the inline request graph by removing callsites.
@@ -879,7 +879,7 @@ class Inliner(postProcessor: PostProcessor) {
       val inlinedReturn = instructionMap(originalReturn)
       val returnReplacement = new InsnList
 
-      def drop(slot: Int) = returnReplacement add getPop(frame.peekStack(slot).getSize)
+      def drop(slot: Int) = returnReplacement.add(getPop(frame.peekStack(slot).getSize))
 
       if (stackHeight == (if (hasReturnValue) 1 else 0)) {
         // In most cases, the xRETURN we found should be at an empty stack height,
@@ -893,7 +893,7 @@ class Inliner(postProcessor: PostProcessor) {
 
         // for non-void methods, store the stack top into the return local variable
         if (hasReturnValue) {
-          returnReplacement add returnValueStore(originalReturn)
+          returnReplacement.add(returnValueStore(originalReturn))
           stackHeight -= 1
           if (originalReturn.getOpcode() == ARETURN)
             needNullOutReturnValue = true
@@ -904,10 +904,10 @@ class Inliner(postProcessor: PostProcessor) {
 
         // load the return value back on the stack
         if (hasReturnValue)
-          returnReplacement add new VarInsnNode(returnType.getOpcode(ILOAD), returnValueIndex)
+          returnReplacement.add(new VarInsnNode(returnType.getOpcode(ILOAD), returnValueIndex))
       }
 
-      returnReplacement add new JumpInsnNode(GOTO, postCallLabel)
+      returnReplacement.add(new JumpInsnNode(GOTO, postCallLabel))
       clonedInstructions.insert(inlinedReturn, returnReplacement)
       clonedInstructions.remove(inlinedReturn)
     }

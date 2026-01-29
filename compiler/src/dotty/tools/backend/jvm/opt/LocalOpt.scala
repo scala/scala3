@@ -152,6 +152,7 @@ import BCodeUtils.*
 class LocalOpt(pp: PostProcessor) {
 
   import LocalOptImpls.*
+  import pp.frontendAccess.compilerSettings
 
   val boxUnbox = new BoxUnbox(pp)
   val copyProp = new CopyProp(pp)
@@ -692,16 +693,16 @@ class LocalOpt(pp: PostProcessor) {
     // precondition: !isSubType(aDescOrIntN, bDescOrIntN)
     def isUnrelated(aDescOrIntN: String, bDescOrIntN: String): Boolean = {
       @tailrec
-      def impl(aTp: pp.bTypes.BType, bTp: pp.bTypes.BType): Boolean = {
+      def impl(aTp: BType, bTp: BType): Boolean = {
         ((aTp, bTp): @unchecked) match {
-          case (aa: pp.bTypes.ArrayBType, ba: pp.bTypes.ArrayBType) =>
+          case (aa: ArrayBType, ba: ArrayBType) =>
             impl(aa.elementType, ba.elementType)
-          case (act: pp.bTypes.ClassBType, bct: pp.bTypes.ClassBType) =>
+          case (act: ClassBType, bct: ClassBType) =>
             val noItf = act.isInterface.flatMap(aIf => bct.isInterface.map(bIf => !aIf && !bIf)).getOrElse(false)
             noItf && !bct.conformsTo(act).getOrElse(true)
-          case (_: pp.bTypes.PrimitiveBType, _: pp.bTypes.RefBType) | (_: pp.bTypes.RefBType, _: pp.bTypes.PrimitiveBType) =>
+          case (_: PrimitiveBType, _: RefBType) | (_: RefBType, _: PrimitiveBType) =>
             true
-          case (_: pp.bTypes.PrimitiveBType, _: pp.bTypes.PrimitiveBType) =>
+          case (_: PrimitiveBType, _: PrimitiveBType) =>
             // note that this case happens for array element types. [S does not conform to [I.
             aTp != bTp
           case _ =>
@@ -1007,7 +1008,7 @@ object LocalOptImpls {
       if (_jumpTargets == null) {
         _jumpTargets = jumpInsns.keysIterator.map(_.label).toSet
       }
-      _jumpTargets
+      _jumpTargets.nn
     }
 
     def removeJumpFromMap(jump: JumpInsnNode): Unit = {
@@ -1098,7 +1099,7 @@ object LocalOptImpls {
         // don't skip over jump targets, see doc comment
         nextExecutableInstruction(jump, alsoKeep = jumpTargets) match {
           case Some(Goto(goto)) =>
-            if (nextExecutableInstruction(goto, alsoKeep = Set(jump.label)) contains jump.label) {
+            if (nextExecutableInstruction(goto, alsoKeep = Set(jump.label)).contains(jump.label)) {
               val newJump = new JumpInsnNode(negateJumpOpcode(jump.getOpcode), goto.label)
               method.instructions.set(jump, newJump)
               removeJumpFromMap(jump)
