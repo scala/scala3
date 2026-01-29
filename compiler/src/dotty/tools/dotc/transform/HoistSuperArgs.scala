@@ -13,8 +13,6 @@ import collection.mutable
 import ast.Trees.*
 import core.NameKinds.SuperArgName
 
-import core.Decorators.*
-
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"
   val description: String = "hoist complex arguments of supercalls to enclosing scope"
@@ -59,14 +57,51 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
   class Hoister(cls: Symbol)(using Context) {
     val superArgDefs: mutable.ListBuffer[DefDef] = new mutable.ListBuffer
 
+    /** Check if symbol is a parameterless method owned by the constructor.
+     *
+     *  LiftToDefs lifts by-name arguments in super calls into parameterless methods:
+     *  {{{
+     *    class Foo(x: => Int)
+     *    object Bar extends Foo(Bar.value)
+     *
+     *    // After LiftToDefs
+     *    object Bar extends Foo(Bar$superArg$1) {
+     *      def Bar$superArg$1: Int = Bar.value
+     *    }
+     *  }}}
+     *
+     *  We need to inline these methods because otherwise HoistSuperArgs would
+     *  generate code like:
+     *  {{{
+     *    object Bar extends Foo(Bar$superArg$2(this.Bar$superArg$1)) {
+     *      def Bar$superArg$1: Int = Bar.value
+     *      static def Bar$superArg$2(x: => Int): Int = x
+     *    }
+     *  }}}
+     *  To pass `Bar$superArg$1` as parameter to the static method, the compiler
+     *  generates `this.Bar$superArg$1`, which accesses `this` before the super
+     *  initialization completes, which causes VerifyError on JVM.
+     *
+     *  By inlining, we get:
+     *  {{{
+     *    object Bar extends Foo(Bar$superArg$2()) {
+     *      static def Bar$superArg$2(): Int = Bar.value
+     *    }
+     *  }}}
+     *  which is safe.
+     */
+    private def isParameterlessMethod(sym: Symbol, constr: Symbol): Boolean =
+      sym.owner == constr && sym.is(Method) && sym.info.isInstanceOf[ExprType]
+
     /** If argument is complex, hoist it out into its own method and refer to the
      *  method instead.
-     *  @param   arg    The argument that might be hoisted
-     *  @param   cdef   The definition of the constructor from which the call is made
-     *  @param   lifted Argument definitions that were lifted out in a call prefix
+     *  @param   arg               The argument that might be hoisted
+     *  @param   cdef              The definition of the constructor from which the call is made
+     *  @param   lifted            Argument definitions that were lifted out in a call prefix
+     *  @param   inlinableMethods  Map from lifted by-name method symbols to their bodies, for inlining
      *  @return  The argument after possible hoisting
      */
-    private def hoistSuperArg(arg: Tree, cdef: DefDef, lifted: List[Symbol]): Tree = {
+    private def hoistSuperArg(arg: Tree, cdef: DefDef, lifted: List[Symbol], inlinableMethods: Map[Symbol, Tree] = Map.empty): Tree = {
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
@@ -151,6 +186,8 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
                 }
               },
               treeMap = {
+                case tree: Ident if inlinableMethods.contains(tree.symbol) =>
+                  inlinableMethods(tree.symbol) // Inline references to lifted by-name methods
                 case tree: RefTree if needsRewire(tree.tpe) =>
                   cpy.Ident(tree)(tree.name).withType(tree.tpe)
                 case tree =>
@@ -181,26 +218,42 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     }
 
     /** Hoist complex arguments in super call out of the class. */
-    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree = superCall match
+    def hoistSuperArgsFromCall(
+        superCall: Tree,
+        cdef: DefDef,
+        lifted: mutable.ListBuffer[Symbol],
+        inlinableMethods: mutable.Map[Symbol, Tree] = mutable.Map.empty
+    ): Tree = superCall match
       case Block(defs, expr) if !expr.symbol.owner.is(Scala2x) =>
         // MO: The guard avoids the crash for #16351.
         // It would be good to dig deeper, but I won't have the time myself to do it.
-        cpy.Block(superCall)(
-          stats = defs.mapconserve {
-            case vdef: ValDef =>
-              try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList))
-              finally lifted += vdef.symbol
-            case ddef: DefDef =>
-              try cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef, lifted.toList))
+        val processedStats = defs.mapconserve {
+          case vdef: ValDef =>
+            try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList, inlinableMethods.toMap))
+            finally lifted += vdef.symbol
+          case ddef: DefDef =>
+            if isParameterlessMethod(ddef.symbol, cdef.symbol) then
+              // Store body for inlining, don't add to lifted buffer
+              inlinableMethods(ddef.symbol) = ddef.rhs
+              ddef  // Keep DefDef temporarily, will be filtered out below
+            else
+              try cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef, lifted.toList, inlinableMethods.toMap))
               finally lifted += ddef.symbol
-            case stat =>
-              stat
-          },
-          expr = hoistSuperArgsFromCall(expr, cdef, lifted))
+          case stat =>
+            stat
+        }
+        // Filter out DefDefs that were inlined
+        val filteredStats = processedStats.filterNot {
+          case ddef: DefDef => inlinableMethods.contains(ddef.symbol)
+          case _ => false
+        }
+        cpy.Block(superCall)(
+          stats = filteredStats,
+          expr = hoistSuperArgsFromCall(expr, cdef, lifted, inlinableMethods))
       case Apply(fn, args) =>
         cpy.Apply(superCall)(
-          hoistSuperArgsFromCall(fn, cdef, lifted),
-          args.mapconserve(hoistSuperArg(_, cdef, lifted.toList)))
+          hoistSuperArgsFromCall(fn, cdef, lifted, inlinableMethods),
+          args.mapconserve(hoistSuperArg(_, cdef, lifted.toList, inlinableMethods.toMap)))
       case _ =>
         superCall
 
