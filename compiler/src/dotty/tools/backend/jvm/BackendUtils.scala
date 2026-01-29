@@ -8,6 +8,7 @@ import asm.tree.ClassNode
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
+import dotty.tools.dotc.core.Contexts.Context
 
 import scala.language.unsafeNulls
 import dotty.tools.backend.jvm.analysis.{InstructionStackEffect, ProdConsAnalyzer}
@@ -19,10 +20,10 @@ import java.util.concurrent.ConcurrentHashMap
 import PostProcessorFrontendAccess.Lazy
 
 /**
- * This component hosts tools and utilities used in the backend that require access to a `BTypes`
+ * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
  * instance.
  */
-class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(using Context) {
+class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)/*(using Context)*/ {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -205,6 +206,26 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
    * into a different class).
    */
   def indyLambdaBodyMethods(hostClass: InternalName): mutable.SortedSet[Handle] = {
+    object handleOrdering extends Ordering[Handle] {
+      override def compare(x: Handle, y: Handle): Int = {
+        if (x eq y) return 0
+
+        val t = Ordering.Int.compare(x.getTag, y.getTag)
+        if (t != 0) return t
+
+        val i = Ordering.Boolean.compare(x.isInterface, y.isInterface)
+        if (x.isInterface != y.isInterface) return i
+
+        val o = x.getOwner.compareTo(y.getOwner)
+        if (o != 0) return o
+
+        val n = x.getName.compareTo(y.getName)
+        if (n != 0) return n
+
+        x.getDesc.compareTo(y.getDesc)
+      }
+    }
+
     given Ordering[Handle] = handleOrdering
     val res = mutable.TreeSet.empty[Handle]
     onIndyLambdaImplMethodIfPresent(hostClass)(methods => res.addAll(methods.valuesIterator.flatMap(_.valuesIterator)))
@@ -302,13 +323,13 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
   def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean = {
-    insn.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors.get((insn.owner, insn.desc))
+    insn.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc))
   }
 
   def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
     insn.getOpcode == Opcodes.NEW && {
       val ti = insn.asInstanceOf[TypeInsnNode]
-      classesOfSideEffectFreeConstructors.get.contains(ti.desc)
+      classesOfSideEffectFreeConstructors.contains(ti.desc)
     }
   }
 
@@ -320,7 +341,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   }
 
   // unused objects created by these constructors are eliminated by pushPop
-  private lazy val sideEffectFreeConstructors: Lazy[Set[(String, String)]] = ppa.perRunLazy(this) {
+  private lazy val sideEffectFreeConstructors: Set[(String, String)] =
     val ownerDesc = (p: (InternalName, MethodNameAndType)) => (p._1, p._2.methodType.descriptor)
     ts.primitiveBoxConstructors.map(ownerDesc).toSet ++
       ts.srRefConstructors.map(ownerDesc) ++
@@ -329,7 +350,6 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
       (ts.StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
       (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
       (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
-  }
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
     if (!ppa.compilerSettings.optAllowSkipCoreModuleInit) Set.empty
@@ -343,7 +363,8 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
       "scala/collection/StringOps$",
     ) ++ BackendUtils.primitiveTypes.keysIterator
 
-  private lazy val classesOfSideEffectFreeConstructors: Lazy[Set[String]] = ppa.perRunLazy(this)(sideEffectFreeConstructors.get.map(_._1))
+  private lazy val classesOfSideEffectFreeConstructors: Set[String] =
+    sideEffectFreeConstructors.map(_._1)
 
 }
 

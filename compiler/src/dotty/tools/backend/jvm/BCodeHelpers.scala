@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.NameKinds.ExpandedName
 import dotty.tools.dotc.core.Signature
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure
@@ -35,7 +35,8 @@ import dotty.tools.dotc.transform.Mixin
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+import tpd.*
+import DottyBackendInterface.{*, given}
 
 /*
  *  Encapsulates functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -45,21 +46,17 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  *
  */
 trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeIdiomatic {
-  // for some reason singleton types aren't allowed in constructor calls. will need several casts in code to enforce
-  //import global.*
-  import tpd.*
-  import DottyBackendInterface.*
 
-  def ScalaATTRName: String = "Scala"
-  def ScalaSignatureATTRName: String = "ScalaSig"
+  private def ScalaATTRName: String = "Scala"
+  private def ScalaSignatureATTRName: String = "ScalaSig"
 
-  @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = requiredClass("java.lang.annotation.Retention")
-  @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  @threadUnsafe private lazy val AnnotationRetentionAttr: ClassSymbol = requiredClass("java.lang.annotation.Retention")
+  @threadUnsafe private lazy val AnnotationRetentionSourceAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  @threadUnsafe private lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  @threadUnsafe private lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
 
   final def traitSuperAccessorName(sym: Symbol): String = {
-    val nameString = sym.javaSimpleName.toString
+    val nameString = sym.javaSimpleName
     if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
     else nameString + "$"
   }
@@ -95,7 +92,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
 
     import dotty.tools.dotc.core.unpickleScala2.{ PickleFormat, PickleBuffer }
 
-    val versionPickle = {
+    private val versionPickle = {
       val vp = new PickleBuffer(new Array[Byte](16), -1, 0)
       assert(vp.writeIndex == 0, vp)
       vp.writeNat(PickleFormat.MajorVersion)
@@ -121,7 +118,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
 
   trait BCInnerClassGen {
 
-    def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
+    private def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
 
     final val emitSource = debugLevel >= 1
     final val emitLines  = debugLevel >= 2
@@ -226,7 +223,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
     /*
      * must-single-thread
      */
-    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol]) =
+    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol]): Unit =
       for param <- params do
         var access = asm.Opcodes.ACC_FINAL
         if param.is(Artifact) then access |= asm.Opcodes.ACC_SYNTHETIC
@@ -251,8 +248,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
         retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
     }
 
-    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])
-        (innerClasesStore: BCInnerClassGen) = {
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])(innerClasesStore: BCInnerClassGen): Unit = {
       for ((name, value) <- assocs)
         emitArgument(av, name.mangledString, value.asInstanceOf[Tree])(innerClasesStore)
       av.visitEnd()
@@ -300,7 +296,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
           toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme.apply =>
           val arrAnnotV: AnnotationVisitor = av.visitArray(name)
 
-          var actualArgs = if (fun.tpe.isImplicitMethod) {
+          val actualArgs = if (fun.tpe.isImplicitMethod) {
             // generic array method, need to get implicit argument out of the way
             fun.asInstanceOf[Apply].args
           } else args
@@ -368,7 +364,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
           fun.tpe.widen match {
             case MethodType(names) =>
               names.zip(args).filter {
-                case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
+                case (_, t: tpd.Ident) if t.tpe.normalizedPrefix eq NoPrefix => false
                 case _ => true
               }
           }
@@ -489,9 +485,8 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
       report.debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = moduleClass.companionClass
-      lazy val conflictingNames: Set[Name] = {
-        (linkedClass.info.allMembers.collect { case d if d.name.isTermName => d.name }).toSet
-      }
+      lazy val conflictingNames: Set[Name] =
+        linkedClass.info.allMembers.collect { case d if d.name.isTermName => d.name }.toSet
       report.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
       for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
@@ -582,7 +577,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
   class JMirrorBuilder extends JCommonBuilder {
 
     private var cunit: CompilationUnit = uninitialized
-    def getCurrentCUnit(): CompilationUnit = cunit;
+    def getCurrentCUnit(): CompilationUnit = cunit
 
     /* Generate a mirror class for a top-level module. A mirror class is a class
      *  containing only static methods that forward to the corresponding method
@@ -621,7 +616,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
       addForwarders(mirrorClass, mirrorName, moduleClass)
       mirrorClass.visitEnd()
 
-      moduleClass.name // this side-effect is necessary, really.
+      moduleClass.name // this side effect is necessary, really.
 
       mirrorClass
     }
@@ -663,7 +658,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
         null  // no initial value
       ).visitEnd()
 
-      val moduleName = (thisName + "$")
+      val moduleName = thisName + "$"
 
       // GETSTATIC `moduleName`.MODULE$ : `moduleName`;
       clinit.visitFieldInsn(
@@ -736,7 +731,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols
         }
       case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
 
-      /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
+      /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
         * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
         * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
         */
@@ -859,7 +854,7 @@ object BCodeHelpers {
     def isSpecial: Boolean = this == Special
     def isSuper  : Boolean = this == Super
 
-    def hasInstance = this != Static
+    def hasInstance: Boolean = this != Static
   }
 
   object InvokeStyle {

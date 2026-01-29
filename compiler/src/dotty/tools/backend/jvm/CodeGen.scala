@@ -34,9 +34,11 @@ import dotty.tools.dotc.util
 import dotty.tools.dotc.util.NoSourcePosition
 import DottyBackendInterface.symExtensions
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols) { self =>
+class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols)(using Context) {
+  private class Impl(using Context) extends BCodeHelpers(backendUtils, ts), BCodeSkelBuilder(ts), BCodeBodyBuilder(primitives, ts), BCodeSyncAndTry(ts)
+  private val impl = new Impl()
 
-  private lazy val mirrorCodeGen = Impl.JMirrorBuilder()
+  private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
   private def genBCode(using Context) = Phases.genBCodePhase.asInstanceOf[GenBCode]
   private def postProcessor(using Context) = genBCode.postProcessor
@@ -88,7 +90,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
 
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
-      import Impl.createJAttribute
       for (binary <- unit.pickled.get(claszSymbol.asClass)) {
         generatedTasty += GeneratedTasty(store, binary)
         val tasty =
@@ -103,14 +104,14 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
           buffer.writeUncompressedLong(hi)
           buffer.bytes
 
-        val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
+        val dataAttr = impl.createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
         store.visitAttribute(dataAttr)
       }
 
     def genClassDefs(tree: Tree): Unit =
       tree match {
         case EmptyTree => ()
-        case PackageDef(_, stats) => stats foreach genClassDefs
+        case PackageDef(_, stats) => stats.foreach(genClassDefs)
         case ValDef(_, _, _) => () // module val not emitted
         case td: TypeDef => frontendAccess.frontendSynch(genClassDef(td))
       }
@@ -154,7 +155,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
     }
 
   private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode = {
-    val b = new Impl.SyncAndTryBuilder(unit) {}
+    val b = new impl.SyncAndTryBuilder(unit)
     b.genPlainClass(cd)
     b.cnode
   }
@@ -163,6 +164,4 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
     mirrorCodeGen.genMirrorClass(classSym, unit)
   }
 
-
-  object Impl extends BCodeHelpers(backendUtils, ts), BCodeSkelBuilder(ts), BCodeBodyBuilder(primitives, ts), BCodeSyncAndTry(ts)
 }

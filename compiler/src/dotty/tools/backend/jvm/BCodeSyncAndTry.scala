@@ -22,7 +22,7 @@ trait BCodeSyncAndTry(val ts: CoreBTypesFromSymbols)(using ctx: Context) extends
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */
-  abstract class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
+  class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
       case Apply(TypeApply(fun, _), args) =>
