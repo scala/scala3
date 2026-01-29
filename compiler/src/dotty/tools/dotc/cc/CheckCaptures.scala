@@ -719,32 +719,33 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - marking as free the identifier with any selections or .rd
      *     modifiers implied by the expected type
      */
-    override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
+    override def recheckIdent(tree: Ident, pt: Type)(using Context): Type = {
       val sym = tree.symbol
-      if sym.is(Method) then
+      if sym.isOneOf(MethodOrLazy) then
         // If ident refers to a parameterless method or lazy val, charge its cv to the environment.
         // Lazy vals are like parameterless methods: accessing them may trigger initialization
         // that uses captured references.
         includeCallCaptures(sym, sym.info, tree)
-      else {
-        if sym.is(Lazy) then
-          includeCallCaptures(sym, sym.info, tree)
-        else if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
-          // When we have `var x: A^{c} = ...` where `x` is a local variable then
-          // when dereferencing `x` we also need to charge `c`.
-          // For fields it's not a problem since `c` would already have been
-          // charged for the prefix `p` in `p.x`.
-          markFree(sym.info.captureSet, tree)
 
-        if !sym.is(Module) then
-          sym.maybeOwner.thisType match
-            case ref: ThisType
-            if ref.isTracked && sym.isTerm =>
-              markPathFree(ref, PathSelectionProto(sym, pt, tree), tree)
-            case _ =>
-              if sym.exists then markPathFree(sym.termRef, pt, tree)
-      }
+      if sym.exists && !sym.is(Method) && !sym.is(Package) then
+        // Mark symbol as used, either as a path if it is a field of some tracked object
+        // or by itself.
+        sym.maybeOwner.thisType match
+          case ref: ThisType
+          if ref.isTracked && sym.isTerm =>
+            markPathFree(ref, PathSelectionProto(sym, pt, tree), tree)
+          case _ =>
+            markPathFree(sym.termRef, pt, tree)
+
+      if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
+        // When we have `var x: A^{c} = ...` where `x` is a local variable then
+        // when dereferencing `x` we also need to charge `c`.
+        // For fields it's not a problem since `c` would already have been
+        // charged for the prefix `p` in `p.x`.
+        markFree(sym.info.captureSet, tree)
+
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
+    }
 
     override def recheckThis(tree: This, pt: Type)(using Context): Type =
       markPathFree(tree.tpe.asInstanceOf[ThisType], pt, tree)
@@ -2221,24 +2222,25 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case root: ClassSymbol <- roots do
           inContext(ctx.fresh.setOwner(root)):
             checkSelfAgainstParents(root, root.baseClasses)
-            val selfType = root.asClass.classInfo.selfType
-            interpolate(selfType, root, startingVariance = -1)
-            selfType match
-              case CapturingType(_, refs: CaptureSet.Var)
-              if !root.isEffectivelySealed
-                  && !refs.isUniversal
-                  && !root.matchesExplicitRefsInBaseClass(refs)
-              =>
-                // Forbid inferred self types unless they are already implied by an explicit
-                // self type in a parent.
-                report.error(
-                  em"""$root needs an explicitly declared self type since its
-                      |inferred self type $selfType
-                      |is not visible in other compilation units that define subclasses.""",
-                  root.srcPos)
-              case _ =>
-            parentTrees -= root
-            capt.println(i"checked $root with $selfType")
+            if !root.is(Module) then
+              val selfType = root.asClass.classInfo.selfType
+              interpolate(selfType, root, startingVariance = -1)
+              selfType match
+                case CapturingType(_, refs: CaptureSet.Var)
+                if !root.isEffectivelySealed
+                    && !refs.isUniversal
+                    && !root.matchesExplicitRefsInBaseClass(refs)
+                =>
+                  // Forbid inferred self types unless they are already implied by an explicit
+                  // self type in a parent.
+                  report.error(
+                    em"""$root needs an explicitly declared self type since its
+                        |inferred self type $selfType
+                        |is not visible in other compilation units that define subclasses.""",
+                    root.srcPos)
+                case _ =>
+              capt.println(i"checked $root with $selfType")
+          parentTrees -= root
     end checkSelfTypes
 
     /** Check ill-formed capture sets in a type parameter. We used to be able to
