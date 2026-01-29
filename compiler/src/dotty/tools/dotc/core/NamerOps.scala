@@ -5,6 +5,8 @@ package core
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
 import ContextOps.enter
+import config.Feature
+import reporting.AlreadyDefined
 import TypeApplications.EtaExpansion
 import collection.mutable
 import config.Printers.typr
@@ -358,10 +360,14 @@ object NamerOps:
    */
   def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
     val name = param.name.toTermName
-    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
-    val dummy = newSymbol(param.owner, name, flags, param.typeRef)
-    typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
-    ctx.enter(dummy)
+    val preExisting = ctx.effectiveScope.lookup(name)
+    if preExisting.exists then
+      report.error(AlreadyDefined(name, param.owner, preExisting, addingCaptureSet = true), param.srcPos)
+    else
+      val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
+      val dummy = newSymbol(param.owner, name, flags, param.typeRef)
+      typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
+      ctx.enter(dummy)
 
   /** if `sym` is a term parameter or parameter accessor, map all occurrences of
    *  `into[T]` in its type to `T @$into`.

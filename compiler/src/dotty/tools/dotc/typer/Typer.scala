@@ -2675,8 +2675,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val ref1 = typedExpr(tree.ref, SingletonTypeProto)
         if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.isDummyCaptureParam then
           // When a dummy term capture variable is found, it is replaced with
-          // the corresponding type references (stored in the underling types).
-          return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)
+          // the corresponding type references (stored in the underlying types).
+          ref1.tpe.widen match
+            case tref: TypeRef =>
+              return Ident(tref).withSpan(tree.span)
+            case _ =>
+              // Fall through to normal path if widened type is not a TypeRef
+              // (can happen with naming conflicts #25025)
         checkStable(ref1.tpe, tree.srcPos, "singleton type")
         assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
 
