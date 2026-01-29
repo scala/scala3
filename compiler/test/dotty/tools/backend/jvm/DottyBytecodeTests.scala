@@ -2050,6 +2050,26 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertEquals(s"withoutCase should have 1 CHECKCAST", 1, withoutCaseCasts)
     }
   }
+
+  @Test def i24997_placeholder = {
+    // Regression test for https://github.com/scala/scala3/pull/25085
+    // Ensure that placeholder syntax `_ + _` works correctly when tupled.
+    // The previous fix accidentally removed the binding for the used synthetic parameters.
+    val source =
+      """|class Test:
+        |  def use(f: ((Int, Int)) => Int): Int = f((1, 2))
+        |
+        |  def test: Int =
+        |    use { _ + _ }
+        |""".stripMargin
+    checkBCode(source) { dir =>
+      // The main verification is that it compiles.
+      // We can also check that `test` method exists.
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      assert(clsNode.methods.asScala.exists(_.name == "test"))
+    }
+  }
 }
 
 object invocationReceiversTestCode {
