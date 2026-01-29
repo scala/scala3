@@ -2,11 +2,11 @@ package dotty.tools.pc
 
 import java.nio.file.Paths
 
-import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.ExtractMethodUtils
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 import scala.meta as m
 
 import dotty.tools.dotc.ast.Trees.*
@@ -64,13 +64,11 @@ final class ExtractMethodProvider(
         params match
           case p :: Nil => prettyPrintReturnType(p)
           case _ => s"(${params.map(prettyPrintReturnType).mkString(", ")})"
-
       if tpe.paramInfoss.isEmpty
       then prettyPrintReturnType(tpe)
       else
         val params = tpe.paramInfoss.map(printParams).mkString(" => ")
         s"$params => ${prettyPrintReturnType(tpe)}"
-    end prettyPrint
 
     def extractFromBlock(t: tpd.Tree): List[tpd.Tree] =
       t match
@@ -114,7 +112,7 @@ final class ExtractMethodProvider(
 
       (
         methodParams.sortBy(_.decodedName),
-        typeParams.toList.sortBy(_.decodedName),
+        typeParams.toList.sortBy(_.decodedName)
       )
     end localRefs
     val optEnclosing =
@@ -141,8 +139,8 @@ final class ExtractMethodProvider(
         val (allMethodParams, typeParams) =
           localRefs(extracted, stat.sourcePos, extractedPos)
         val (methodParams, implicitParams) = allMethodParams.partition(!_.isOneOf(Flags.GivenOrImplicit))
-          def toParamText(params: List[Symbol]) =
-            params.map(sym => s"${sym.decodedName}: ${prettyPrint(sym.info)}")
+        def toParamText(params: List[Symbol]) =
+          params.map(sym => s"${sym.decodedName}: ${prettyPrint(sym.info)}")
             .mkString(", ")
         val methodParamsText = toParamText(methodParams)
         val implicitParamsText = if implicitParams.nonEmpty then s"(given ${toParamText(implicitParams)})" else ""

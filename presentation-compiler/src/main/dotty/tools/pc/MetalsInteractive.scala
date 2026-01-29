@@ -3,15 +3,22 @@ package pc
 
 import scala.annotation.tailrec
 
-import dotc.*
-import ast.*, tpd.*
 import dotty.tools.dotc.core.Constants.*
-import core.*, Contexts.*, Flags.*, Names.*, Symbols.*, Types.*
 import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
+
+import dotc.*
+import ast.*
+import tpd.*
+import core.*
+import Contexts.*
+import Flags.*
+import Names.*
+import Symbols.*
+import Types.*
 import interactive.*
 import util.*
 import util.SourcePosition
-import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object MetalsInteractive:
   type NamedTupleArg = String
@@ -36,18 +43,17 @@ object MetalsInteractive:
     case _ :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx)
 
-  /**
-   * Check if the given `sourcePos` is on the name of enclosing tree.
-   * ```
-   * // For example, if the postion is on `foo`, returns true
-   * def foo(x: Int) = { ... }
+  /** Check if the given `sourcePos` is on the name of enclosing tree.
+   *  ```
+   *  // For example, if the postion is on `foo`, returns true
+   *  def foo(x: Int) = { ... }
    *      ^
    *
-   * // On the other hand, it points to non-name position, return false.
-   * def foo(x: Int) = { ... }
+   *  // On the other hand, it points to non-name position, return false.
+   *  def foo(x: Int) = { ... }
    *  ^
-   * ```
-   * @param path - path to the position given by `Interactive.pathTo`
+   *  ```
+   *  @param path - path to the position given by `Interactive.pathTo`
    */
   def isOnName(
       path: List[Tree],
@@ -69,14 +75,11 @@ object MetalsInteractive:
       case _: Import => true
       case app: (Apply | TypeApply) => contains(app.fun)
       case _ => false
-    end contains
-
     val enclosing = path
       .dropWhile(t => !t.symbol.exists && !t.isInstanceOf[NamedArg])
       .headOption
       .getOrElse(EmptyTree)
     contains(enclosing)
-  end isOnName
 
   private lazy val isForName: Set[Name] = Set[Name](
     StdNames.nme.map,
@@ -104,9 +107,8 @@ object MetalsInteractive:
     enclosingSymbolsWithExpressionType(path, pos, indexed, skipCheckOnName)
       .map(_._1.sourceSymbol)
 
-  /**
-   * Returns the list of tuple enclosing symbol and
-   * the symbol's expression type if possible.
+  /** Returns the list of tuple enclosing symbol and the symbol's expression
+   *  type if possible.
    */
   @tailrec
   def enclosingSymbolsWithExpressionType(
@@ -213,7 +215,7 @@ object MetalsInteractive:
 
       // Handle select on named tuples
       case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
-        if fun.symbol.exists && fun.symbol.name == nme.apply &&
+          if fun.symbol.exists && fun.symbol.name == nme.apply &&
             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
           t.tpe.dealias match
@@ -226,13 +228,13 @@ object MetalsInteractive:
         List((ddef.symbol, tpe, Some(name)))
 
       case head :: (sel @ Select(_, name)) :: _
-        if head.sourcePos.encloses(sel.sourcePos) && (name == StdNames.nme.apply || name == StdNames.nme.unapply) =>
-          val optObjectSymbol = List(head.symbol).filter(sym => !(sym.is(Synthetic) && sym.is(Module)))
-          val classSymbol = head.symbol.companionClass
-          val optApplySymbol = List(sel.symbol).filter(sym => !sym.is(Synthetic))
-          val symbols = optObjectSymbol ++ (classSymbol :: optApplySymbol)
-          symbols.collect:
-            case sym if sym.exists => (sym, sym.info, None)
+          if head.sourcePos.encloses(sel.sourcePos) && (name == StdNames.nme.apply || name == StdNames.nme.unapply) =>
+        val optObjectSymbol = List(head.symbol).filter(sym => !(sym.is(Synthetic) && sym.is(Module)))
+        val classSymbol = head.symbol.companionClass
+        val optApplySymbol = List(sel.symbol).filter(sym => !sym.is(Synthetic))
+        val symbols = optObjectSymbol ++ (classSymbol :: optApplySymbol)
+        symbols.collect:
+          case sym if sym.exists => (sym, sym.info, None)
 
       case path @ head :: tail =>
         if head.symbol.is(Exported) then
@@ -282,7 +284,6 @@ object MetalsInteractive:
       indexed: IndexedContext
   ): List[Symbol] =
     import indexed.ctx
-
     tree match
       case select: Select =>
         select.qualifier.typeOpt
@@ -291,7 +292,6 @@ object MetalsInteractive:
           .filter(_ != NoSymbol)
       case ident: Ident => indexed.findSymbol(ident.name).toList.flatten
       case _ => Nil
-  end recoverError
 
   object ApplySelect:
     def unapply(tree: Tree): Option[Select] = Option(tree).collect {
@@ -299,7 +299,6 @@ object MetalsInteractive:
       case Apply(select: Select, _) => select
       case Apply(TypeApply(select: Select, _), _) => select
     }
-  end ApplySelect
 
   object TreeApply:
     def unapply(tree: Tree): Option[(Tree, List[Tree])] =

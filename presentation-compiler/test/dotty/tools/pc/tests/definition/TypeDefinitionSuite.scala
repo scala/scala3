@@ -1,15 +1,15 @@
 package dotty.tools.pc.tests.definition
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.pc.OffsetParams
 import scala.language.unsafeNulls
+import scala.meta.pc.OffsetParams
 
 import dotty.tools.pc.base.BasePcDefinitionSuite
 import dotty.tools.pc.utils.MockEntries
 
 import org.eclipse.lsp4j.Location
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class TypeDefinitionSuite extends BasePcDefinitionSuite:
 

@@ -66,6 +66,6 @@ trait RangeReplace:
         .toString,
       (posStart, prefix.length) :: (
         posEnd,
-        suffix.length,
-      ) :: alreadyAddedMarkings,
+        suffix.length
+      ) :: alreadyAddedMarkings
     )

@@ -20,9 +20,7 @@ import org.eclipse.lsp4j as l
 object AutoImports:
 
   object AutoImport:
-    def renameConfigMap(config: PresentationCompilerConfig)(using
-        Context
-    ): Map[Symbol, String] =
+    def renameConfigMap(config: PresentationCompilerConfig)(using Context): Map[Symbol, String] =
       config.symbolPrefixes().nn.asScala.flatMap { (from, to) =>
         val pkg = SemanticdbSymbols.inverseSemanticdbSymbol(from)
         val rename = to.stripSuffix(".").stripSuffix("#")
@@ -30,7 +28,6 @@ object AutoImports:
           .filter(_ != NoSymbol)
           .map((_, rename))
       }.toMap
-  end AutoImport
 
   sealed trait SymbolIdent:
     def value: String
@@ -77,14 +74,14 @@ object AutoImports:
     def simple(sym: Symbol)(using Context): SymbolImport =
       SymbolImport(sym, SymbolIdent.direct(sym.nameBackticked), None)
 
-  /**
-   * Returns AutoImportsGenerator
+  /** Returns AutoImportsGenerator
    *
-   * @param pos A source position where the autoImport is invoked
-   * @param text Source text of the file
-   * @param tree A typed tree of the file
-   * @param indexedContext A context of the position where the autoImport is invoked
-   * @param config A presentation compiler config, this is used for renames
+   *  @param pos A source position where the autoImport is invoked
+   *  @param text Source text of the file
+   *  @param tree A typed tree of the file
+   *  @param indexedContext A context of the position where the autoImport is
+   *    invoked
+   *  @param config A presentation compiler config, this is used for renames
    */
   def generator(
       pos: SourcePosition,
@@ -130,14 +127,15 @@ object AutoImports:
     def nameOnly(edit: l.TextEdit): AutoImportEdits =
       AutoImportEdits(Some(edit), None)
 
-  /**
-   * AutoImportsGenerator generates TextEdits of auto-imports
-   * for the given symbols.
+  /** AutoImportsGenerator generates TextEdits of auto-imports for the given
+   *  symbols.
    *
-   * @param pos A source position where the autoImport is invoked
-   * @param importPosition A position to insert new imports
-   * @param indexedContext A context of the position where the autoImport is invoked
-   * @param renames A function that returns the name of the given symbol which is renamed on import statement.
+   *  @param pos A source position where the autoImport is invoked
+   *  @param importPosition A position to insert new imports
+   *  @param indexedContext A context of the position where the autoImport is
+   *    invoked
+   *  @param renames A function that returns the name of the given symbol which
+   *    is renamed on import statement.
    */
   class AutoImportsGenerator(
       val pos: SourcePosition,
@@ -151,8 +149,7 @@ object AutoImports:
     def forSymbol(symbol: Symbol): Option[List[l.TextEdit]] =
       editsForSymbol(symbol).map(_.edits)
 
-    /**
-     * @param symbol A missing symbol to auto-import
+    /** @param symbol A missing symbol to auto-import
      */
     def editsForSymbol(symbol: Symbol): Option[AutoImportEdits] =
       val symbolImport = inferSymbolImport(symbol)
@@ -160,13 +157,11 @@ object AutoImports:
         case SymbolIdent.Direct(_) => None
         case other =>
           Some(new l.TextEdit(pos.toLsp, other.value))
-
       val importEdit =
         symbolImport.importSel.flatMap(sel => renderImports(List(sel)))
       if nameEdit.isDefined || importEdit.isDefined then
         Some(AutoImportEdits(nameEdit, importEdit))
       else None
-    end editsForSymbol
 
     def inferSymbolImport(symbol: Symbol): SymbolImport =
       indexedContext.lookupSym(symbol) match
@@ -186,7 +181,7 @@ object AutoImports:
                   ownerImport.ident,
                   symbol.nameBackticked(false)
                 ),
-                ownerImport.importSel,
+                ownerImport.importSel
               )
             else
               renames(symbol) match
@@ -194,7 +189,7 @@ object AutoImports:
                 case None =>
                   (
                     SymbolIdent.direct(symbol.nameBackticked),
-                    Some(ImportSel.Direct(symbol)),
+                    Some(ImportSel.Direct(symbol))
                   )
           end val
 
@@ -225,9 +220,10 @@ object AutoImports:
                 ),
                 importSel
               )
+
             case None =>
               val reverse = symbol.ownersIterator.toList.reverse
-              val fullName = reverse.drop(1).foldLeft(SymbolIdent.direct(reverse.head.nameBackticked)){
+              val fullName = reverse.drop(1).foldLeft(SymbolIdent.direct(reverse.head.nameBackticked)) {
                 case (acc, sym) => SymbolIdent.Select(acc, sym.nameBackticked(false))
               }
               SymbolImport(
@@ -277,12 +273,13 @@ object AutoImports:
         s"_root_.${sym.fullNameBackticked(false)}"
       else
         sym.ownersIterator.zipWithIndex.foldLeft((List.empty[String], false)) { case ((acc, isDone), (sym, idx)) =>
-          if(isDone || sym.isEmptyPackage || sym.isRoot) (acc, true)
-          else indexedContext.rename(sym) match
-            // we can't import first part
-            case Some(renamed) if idx != 0 => (renamed :: acc, true)
-            case _ if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
-            case _ => (acc, false)
+          if isDone || sym.isEmptyPackage || sym.isRoot then (acc, true)
+          else
+            indexedContext.rename(sym) match
+              // we can't import first part
+              case Some(renamed) if idx != 0 => (renamed :: acc, true)
+              case _ if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
+              case _ => (acc, false)
         }._1.mkString(".")
   end AutoImportsGenerator
 
@@ -325,7 +322,6 @@ object AutoImports:
             case _ => None
           }.headOption
         case _ => None
-
 
     def skipUsingDirectivesOffset(firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)): Int =
       val firstObjectLine = pos.source.offsetToLine(firstObjectPos)
@@ -395,8 +391,8 @@ object AutoImports:
 
     val scriptPos =
       if path.isAmmoniteGeneratedFile ||
-         path.isScalaCLIGeneratedFile ||
-         path.isWorksheet
+        path.isScalaCLIGeneratedFile ||
+        path.isWorksheet
       then forScript(path)
       else None
 

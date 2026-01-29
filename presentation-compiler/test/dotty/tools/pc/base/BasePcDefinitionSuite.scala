@@ -2,12 +2,12 @@ package dotty.tools.pc.base
 
 import java.nio.file.Paths
 
+import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
-import scala.language.unsafeNulls
 
-import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
 import dotty.tools.pc.utils.TextEdits
 
@@ -34,7 +34,7 @@ abstract class BasePcDefinitionSuite extends BasePCSuite:
       CompilerOffsetParams(uri, cleanedCode, offset)
     )
     val edits = locs.flatMap { location =>
-      if (location.getUri() == uri.toString) {
+      if location.getUri() == uri.toString then
         List(
           new TextEdit(
             new l.Range(
@@ -51,11 +51,10 @@ abstract class BasePcDefinitionSuite extends BasePCSuite:
             ">>"
           )
         )
-      } else {
+      else
         val filename = location.getUri()
         val comment = s"/*$filename*/"
         List(new TextEdit(offsetRange, comment))
-      }
     }
     val obtained = TextEdits.applyEdits(cleanedCode, edits)
     val expected = original.removePos

@@ -49,17 +49,15 @@ sealed trait CompletionValue:
   def description(printer: ShortenedTypePrinter)(using Context): String = ""
   def insertMode: Option[InsertTextMode] = None
   def completionData(buildTargetIdentifier: String)(
-    using Context
+      using Context
   ): CompletionItemData = CompletionItemData("<no-symbol>", buildTargetIdentifier, kind = completionItemDataKind)
   def command: Option[String] = None
 
-  /**
-   * Label with potentially attached description.
+  /** Label with potentially attached description.
    */
   def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
     label
   def lspTags(using Context): List[CompletionItemTag] = Nil
-end CompletionValue
 
 object CompletionValue:
 
@@ -133,25 +131,27 @@ object CompletionValue:
   ) extends Symbolic:
     override def completionItemDataKind: Integer = CompletionSource.CompilerKind.ordinal
 
-  /**
-    *  We need to access original completion in sorting phase.
-    *  This class is only a wrapper to hold both new completion and original completion.
-    *
-    *  All methods are proxied to @param extraMethod
-    *
-    *  FIXME Refactor this file to different architercture. At least to somethhing that is easier to modifiy and scale.
-    *  One solution may be a migration to flag based solution.
-    */
+  /** We need to access original completion in sorting phase. This class is only
+   *  a wrapper to hold both new completion and original completion.
+   *
+   *  All methods are proxied to @param extraMethod
+   *
+   *  FIXME Refactor this file to different architercture. At least to
+   *  somethhing that is easier to modifiy and scale. One solution may be a
+   *  migration to flag based solution.
+   */
   case class ExtraMethod(
       owner: Denotation,
-      extraMethod: Symbolic,
+      extraMethod: Symbolic
   ) extends Symbolic:
     override def additionalEdits: List[TextEdit] = extraMethod.additionalEdits
     override def command: Option[String] = extraMethod.command
-    override def completionData(buildTargetIdentifier: String)(using Context): CompletionItemData = extraMethod.completionData((buildTargetIdentifier))
+    override def completionData(buildTargetIdentifier: String)(using Context): CompletionItemData =
+      extraMethod.completionData((buildTargetIdentifier))
     override def completionItemKind(using Context): CompletionItemKind = extraMethod.completionItemKind
     override def description(printer: ShortenedTypePrinter)(using Context): String = extraMethod.description(printer)
-    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String = extraMethod.labelWithDescription(printer)
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      extraMethod.labelWithDescription(printer)
     override def range: Option[Range] = extraMethod.range
     override def denotation: Denotation = extraMethod.denotation
     override def label: String = extraMethod.label
@@ -168,7 +168,7 @@ object CompletionValue:
   case class Scope(
       label: String,
       denotation: Denotation,
-      override val snippetAffix: CompletionAffix,
+      override val snippetAffix: CompletionAffix
   ) extends Symbolic:
     override def completionItemDataKind: Integer = CompletionSource.ScopeKind.ordinal
 
@@ -190,14 +190,13 @@ object CompletionValue:
         s"${labelWithSuffix(printer)} -${description(printer)}"
       else super.labelWithDescription(printer)
 
-  /**
-   * CompletionValue for old implicit classes methods via SymbolSearch
+  /** CompletionValue for old implicit classes methods via SymbolSearch
    */
   case class ImplicitClass(
       label: String,
       denotation: Denotation,
       override val snippetAffix: CompletionAffix,
-      override val importSymbol: Symbol,
+      override val importSymbol: Symbol
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
@@ -205,8 +204,7 @@ object CompletionValue:
     override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${super.description(printer)} (implicit)"
 
-  /**
-   * CompletionValue for extension methods via SymbolSearch
+  /** CompletionValue for extension methods via SymbolSearch
    */
   case class Extension(
       label: String,
@@ -220,13 +218,13 @@ object CompletionValue:
     override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(denotation)} (extension)"
 
-  /**
-   * @param shortenedNames shortened type names by `Printer`. This field should be used for autoImports
-   * @param start Starting position of the completion
-   *              this is needed, because for OverrideCompletion, completionPos
-   *              doesn't capture the "correct" starting position. For example,
-   *              when we type `override def fo@@` (where `@@` we invoke completion)
-   *              `completionPos` is `fo`, instead of `override def fo`.
+  /** @param shortenedNames shortened type names by `Printer`. This field should
+   *    be used for autoImports
+   *  @param start Starting position of the completion this is needed, because
+   *    for OverrideCompletion, completionPos doesn't capture the "correct"
+   *    starting position. For example, when we type `override def fo@@` (where
+   *    `@@` we invoke completion) `completionPos` is `fo`, instead of
+   *    `override def fo`.
    */
   case class Override(
       label: String,
@@ -242,7 +240,6 @@ object CompletionValue:
       CompletionItemKind.Method
     override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
       label
-  end Override
 
   case class NamedArg(
       label: String,
@@ -258,11 +255,10 @@ object CompletionValue:
 
     override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
       label
-  end NamedArg
 
   case class Autofill(
       value: String,
-      override val label: String,
+      override val label: String
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
@@ -315,7 +311,6 @@ object CompletionValue:
       if isExtension then s"${printer.completionSymbol(symbol)} (extension)"
       else super.description(printer)
     override def isExtensionMethod: Boolean = isExtension
-  end Interpolator
 
   case class MatchCompletion(
       label: String,
@@ -345,7 +340,7 @@ object CompletionValue:
       label
 
     override def description(printer: ShortenedTypePrinter)(using Context): String =
-       printer.completionSymbol(denotation)
+      printer.completionSymbol(denotation)
   end CaseKeyword
 
   case class Document(label: String, doc: String, description: String)
@@ -362,17 +357,15 @@ object CompletionValue:
     override def insertMode: Option[InsertTextMode] = Some(InsertTextMode.AsIs)
 
   case class SingletonValue(label: String, info: Type, override val range: Option[Range])
-    extends CompletionValue:
-      override def insertText: Option[String] = Some(label)
-      override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
-        s"$label: ${printer.tpe(info)}"
+      extends CompletionValue:
+    override def insertText: Option[String] = Some(label)
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      s"$label: ${printer.tpe(info)}"
 
-      override def completionItemKind(using Context): CompletionItemKind =
-        CompletionItemKind.Constant
+    override def completionItemKind(using Context): CompletionItemKind =
+      CompletionItemKind.Constant
 
-  def namedArg(label: String, sym: ParamSymbol)(using
-      Context
-  ): CompletionValue =
+  def namedArg(label: String, sym: ParamSymbol)(using Context): CompletionValue =
     NamedArg(label, sym.info.widenTermRefExpr, sym.symbol)
 
   def keyword(label: String, insertText: String): CompletionValue =

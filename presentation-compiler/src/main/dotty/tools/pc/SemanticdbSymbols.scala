@@ -49,16 +49,16 @@ object SemanticdbSymbols:
                   //   however in scalac this method is defined only in `module Files`
                   if typeSym.is(JavaDefined) then
                     typeSym :: owner.info.decl(termName(value)).symbol :: Nil
-                  /**
-                   * Looks like decl doesn't work for:
+                  /** Looks like decl doesn't work for:
+                   *  ```
                    *  package a:
-                   *   implicit class <<A>> (i: Int):
+                   *    implicit class <<A>> (i: Int):
                    *      def inc = i + 1
+                   *  ```
                    */
                   else if typeSym == NoSymbol then
                     owner.info.member(typeName(value)).symbol :: Nil
                   else typeSym :: Nil
-                  end if
                 case Descriptor.Term(value) =>
                   val outSymbol = owner.info.decl(termName(value)).symbol
                   if outSymbol.exists
@@ -82,7 +82,6 @@ object SemanticdbSymbols:
                       .flatMap(tryMember)
                       .toList
                   else Nil
-                  end if
                 case Descriptor.Package(value) =>
                   owner.info.decl(termName(value)).symbol :: Nil
                 case Descriptor.Parameter(value) =>
@@ -102,7 +101,6 @@ object SemanticdbSymbols:
                     .filter(sym => symbolName(sym) == s)
                     .toList
           end match
-        end tryMember
 
         parentSymbol.flatMap(tryMember)
     try
@@ -117,9 +115,10 @@ object SemanticdbSymbols:
     addSymName(b, sym)
     b.toString
 
-  /**
-   *  Taken from https://github.com/scala/scala3/blob/2db43dae1480825227eb30d291b0dd0f0494e0f6/compiler/src/dotty/tools/dotc/semanticdb/ExtractSemanticDB.scala#L293
-   *  In future might be replaced by usage of compiler implementation after merging https://github.com/scala/scala3/pull/12885
+  /** Taken from
+   *  https://github.com/scala/scala3/blob/2db43dae1480825227eb30d291b0dd0f0494e0f6/compiler/src/dotty/tools/dotc/semanticdb/ExtractSemanticDB.scala#L293
+   *  In future might be replaced by usage of compiler implementation after
+   *  merging https://github.com/scala/scala3/pull/12885
    */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 
@@ -139,7 +138,6 @@ object SemanticdbSymbols:
         if sym.owner.isAllOf(JavaModule) then
           decls0 ++ sym.owner.companionClass.info.decls.lookupAll(sym.name)
         else decls0
-      end decls
       // private java constructors do not have a symbol created
       val alts = decls
         .filter(d => d.isOneOf(Method | Mutable) && !d.is(Private))
@@ -153,7 +151,6 @@ object SemanticdbSymbols:
       end find
       val sig = sym.signature
       find(_.signature == sig)
-    end addOverloadIdx
 
     def addDescriptor(sym: Symbol): Unit =
       if sym.is(ModuleClass) then addDescriptor(sym.sourceModule)

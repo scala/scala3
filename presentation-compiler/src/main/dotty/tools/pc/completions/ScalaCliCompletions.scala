@@ -42,6 +42,5 @@ class ScalaCliCompletions(
           Some(editRange)
         )
       )
-  end contribute
 
 end ScalaCliCompletions

@@ -4,8 +4,8 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 import scala.meta.internal.metals.Report
-import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.*
+import scala.meta.pc.reports.ReportContext
 import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.*
@@ -27,22 +27,23 @@ class CompilerSearchVisitor(
     owner.is(Flags.Implicit) &&
     owner.isStatic && owner.isPublic
 
-  private def isAccessible(sym: Symbol): Boolean = try
-    (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
-  catch
-    case err: AssertionError =>
-      logger.log(Level.WARNING, err.getMessage())
-      false
-    case NonFatal(e) =>
-      reports.incognito.create(
-        () => Report(
-          "is_public",
-          s"""Symbol: $sym""".stripMargin,
-          e
+  private def isAccessible(sym: Symbol): Boolean =
+    try
+      (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
+    catch
+      case err: AssertionError =>
+        logger.log(Level.WARNING, err.getMessage())
+        false
+      case NonFatal(e) =>
+        reports.incognito.create(() =>
+          Report(
+            "is_public",
+            s"""Symbol: $sym""".stripMargin,
+            e
+          )
         )
-      )
-      logger.log(Level.SEVERE, e.getMessage(), e)
-      false
+        logger.log(Level.SEVERE, e.getMessage(), e)
+        false
 
   private def toSymbols(
       pkg: String,
@@ -92,11 +93,12 @@ class CompilerSearchVisitor(
       range: org.eclipse.lsp4j.Range
   ): Int =
     val gsym = SemanticdbSymbols.inverseSemanticdbSymbol(symbol).headOption
-    val matching = for
-      sym0 <- gsym.toList
-      sym <- if sym0.companion.is(Flags.Synthetic) then List(sym0, sym0.companion) else List(sym0)
-      if isAccessible(sym)
-    yield visitSymbol(sym)
+    val matching =
+      for
+        sym0 <- gsym.toList
+        sym  <- if sym0.companion.is(Flags.Synthetic) then List(sym0, sym0.companion) else List(sym0)
+        if isAccessible(sym)
+      yield visitSymbol(sym)
     matching.size
 
   def shouldVisitPackage(pkg: String): Boolean =

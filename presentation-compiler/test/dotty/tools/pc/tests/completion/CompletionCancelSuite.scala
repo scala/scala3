@@ -2,21 +2,14 @@ package dotty.tools.pc.tests.completion
 
 import java.lang
 import java.net.URI
+import java.util.concurrent.{CancellationException, CompletableFuture, CompletionStage}
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{
-  CancellationException,
-  CompletableFuture,
-  CompletionStage
-}
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import scala.meta.internal.pc.{
-  InterruptException,
-  PresentationCompilerConfigImpl
-}
+import scala.meta.internal.pc.{InterruptException, PresentationCompilerConfigImpl}
 import scala.meta.pc.{CancelToken, PresentationCompilerConfig}
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
@@ -25,22 +18,23 @@ import org.junit.Test
 class CompletionCancelSuite extends BaseCompletionSuite:
 
   override def config: PresentationCompilerConfigImpl =
-    if isDebug then super.config else super.config.copy(
-      // to make "break-compilation" test faster when run outside a debugger
-      timeoutDelay = 5
-    )
+    if isDebug then super.config
+    else
+      super.config.copy(
+        // to make "break-compilation" test faster when run outside a debugger
+        timeoutDelay = 5
+      )
 
-  /**
-   * A cancel token that cancels asynchronously on first `checkCancelled` call.
+  /** A cancel token that cancels asynchronously on first `checkCancelled` call.
    */
   class AlwaysCancelToken extends CancelToken:
     val cancel = new CompletableFuture[lang.Boolean]()
     var isCancelled = new AtomicBoolean(false)
     override def onCancel(): CompletionStage[lang.Boolean] = cancel
     override def checkCanceled(): Unit =
-      if (isCancelled.compareAndSet(false, true)) {
+      if isCancelled.compareAndSet(false, true) then
         cancel.complete(true)
-      } else
+      else
         Thread.sleep(10)
 
   def checkCancelled(
@@ -95,8 +89,7 @@ class CompletionCancelSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  /**
-   * A cancel token to simulate infinite compilation
+  /** A cancel token to simulate infinite compilation
    */
   object FreezeCancelToken extends CancelToken:
     val cancel = new CompletableFuture[lang.Boolean]()
@@ -105,7 +98,7 @@ class CompletionCancelSuite extends BaseCompletionSuite:
     override def checkCanceled(): Unit =
       var hello = true
       var i = 0
-      while (hello) i += 1
+      while hello do i += 1
       hello = false
 
   @Test def `break-compilation` =

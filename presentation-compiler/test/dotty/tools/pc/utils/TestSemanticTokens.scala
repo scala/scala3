@@ -3,10 +3,10 @@ package dotty.tools.pc.utils
 import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
+import scala.language.unsafeNulls
 import scala.meta.internal.pc.SemanticTokens
 import scala.meta.internal.pc.SemanticTokens.*
 import scala.meta.pc.Node
-import scala.language.unsafeNulls
 
 import org.eclipse.lsp4j as l
 
@@ -21,22 +21,19 @@ object TestSemanticTokens:
     val buffer = ListBuffer.empty[String]
 
     // TokenType
-    if (typeInd != -1) {
+    if typeInd != -1 then
       buffer.++=(List(TokenTypes(typeInd)))
-    }
 
     // TokenModifier
     // wkList = (e.g.) modInd=32 -> 100000 -> "000001"
     val wkList = modInd.toBinaryString.toCharArray().toList.reverse
-    for (i: Int <- 0 to wkList.size - 1) {
-      if (wkList(i).toString == "1") {
+    for i: Int <- 0 to wkList.size - 1 do
+      if wkList(i).toString == "1" then
         buffer.++=(
           List(
             TokenModifiers(i)
           )
         )
-      }
-    }
 
     // return
     buffer.toList.mkString(",")
@@ -62,7 +59,7 @@ object TestSemanticTokens:
                 .start() > head.start())
             )
             .isEmpty
-          if (isValid) {
+          if isValid then
             val candidates = head :: rest.takeWhile(nxt =>
               nxt.start() == head.start() && isIdentifier(
                 nxt.start(),
@@ -80,7 +77,7 @@ object TestSemanticTokens:
             wkStr ++= decorationString(node.tokenType, node.tokenModifier)
             wkStr ++= "*/"
             iter(rest, node.end())
-          } else
+          else
             iter(rest, curr)
         case _ :: rest => iter(rest, curr)
         case immutable.Nil => curr
@@ -89,8 +86,7 @@ object TestSemanticTokens:
     wkStr.mkString
   def semanticString(fileContent: String, obtainedTokens: List[Int]): String =
 
-    /**
-     * construct string from token type and mods to decorate codes.
+    /** construct string from token type and mods to decorate codes.
      */
 
     val allTokens = obtainedTokens
@@ -107,7 +103,7 @@ object TestSemanticTokens:
           (
             new l.Position(deltaLine, deltaStartChar),
             length,
-            decorationString(tokenType, tokenModifier),
+            decorationString(tokenType, tokenModifier)
           )
         case _ =>
           throw new RuntimeException("Expected output dividable by 5")
@@ -121,14 +117,13 @@ object TestSemanticTokens:
     ): Unit =
       positions match
         case (head, _, _) :: next =>
-          if (head.getLine() != 0)
+          if head.getLine() != 0 then
             head.setLine(last.getLine() + head.getLine())
-          else {
+          else
             head.setLine(last.getLine())
             head.setCharacter(
               last.getCharacter() + head.getCharacter()
             )
-          }
           toAbsolutePositions(next, head)
         case immutable.Nil =>
     toAbsolutePositions(allTokens, new l.Position(0, 0))

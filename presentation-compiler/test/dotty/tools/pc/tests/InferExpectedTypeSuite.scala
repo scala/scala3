@@ -1,15 +1,17 @@
 package dotty.tools.pc.tests
 
-import scala.language.unsafeNulls
-import dotty.tools.pc.base.BasePCSuite
-import scala.meta.internal.metals.CompilerOffsetParams
 import java.nio.file.Paths
+
+import scala.language.unsafeNulls
+import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.metals.EmptyCancelToken
-import dotty.tools.pc.ScalaPresentationCompiler
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 
-import org.junit.Test
+import dotty.tools.pc.ScalaPresentationCompiler
+import dotty.tools.pc.base.BasePCSuite
+
 import org.junit.Ignore
+import org.junit.Test
 
 class InferExpectedTypeSuite extends BasePCSuite:
   def check(
@@ -25,10 +27,9 @@ class InferExpectedTypeSuite extends BasePCSuite:
       offset,
       EmptyCancelToken
     )
-    presentationCompiler.asInstanceOf[ScalaPresentationCompiler].inferExpectedType(offsetParams).get().asScala match {
+    presentationCompiler.asInstanceOf[ScalaPresentationCompiler].inferExpectedType(offsetParams).get().asScala match
       case Some(value) => assertNoDiff(expectedType, value)
       case None => fail("Empty result.")
-    }
 
   @Test def basic =
     check(

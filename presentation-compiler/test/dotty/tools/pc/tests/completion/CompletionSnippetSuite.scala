@@ -2,8 +2,8 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class CompletionSnippetSuite extends BaseCompletionSuite:
 
@@ -80,7 +80,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
   // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Ignore("Fuzzy should be provided by dotty")
   @Test def `type-empty` =
-    if (scala.util.Properties.isJavaAtLeast("9")) {
+    if scala.util.Properties.isJavaAtLeast("9") then
       checkSnippet(
         """
           |object Main {
@@ -91,7 +91,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         """|MyType
            |""".stripMargin
       )
-    } else {
+    else
       checkSnippet(
         """
           |object Main {
@@ -104,13 +104,12 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
            |MTOMFeature
            |""".stripMargin
       )
-    }
 
     // Dotty does not currently support fuzzy completions. Please take a look at
     // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Ignore("Fuzzy should be provided by dotty")
   @Test def `type-new-empty` =
-    if (scala.util.Properties.isJavaAtLeast("9")) {
+    if scala.util.Properties.isJavaAtLeast("9") then
       checkSnippet(
         """
           |object Main {
@@ -122,7 +121,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         """|MyType
            |""".stripMargin
       )
-    } else {
+    else
       checkSnippet(
         """
           |object Main {
@@ -136,7 +135,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
            |MTOMFeature
            |""".stripMargin
       )
-    }
 
   @Test def `type` =
     checkSnippet(
@@ -405,7 +403,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |WithFilter - (p: Char => Boolean, s: String): WithFilter
          |WithFilter - [A](l: Stream[A] @uncheckedVariance, p: A => Boolean): WithFilter[A]
          |""".stripMargin,
-      includeDetail = true,
+      includeDetail = true
     )
 
   @Test def `no-apply2` =
@@ -419,7 +417,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|TestObject -  example
          |""".stripMargin,
-      includeDetail = true,
+      includeDetail = true
     )
 
   @Test def `dont-enter-empty-paramlist` =
@@ -439,7 +437,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |ListMapBuilder - [K, V]: ListMapBuilder[K, V]
          |ConcurrentSkipListMap -  java.util.concurrent
          |""".stripMargin,
-      includeDetail = true,
+      includeDetail = true
     )
 
   // https://github.com/scalameta/metals/issues/4004
@@ -488,7 +486,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|AAA a
          |ArrowAssoc scala.Predef
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `brackets-already-present-edit` =
@@ -505,6 +503,5 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |  val l: AAA[Int] = ???
          |}
          |""".stripMargin,
-      assertSingleItem = false,
+      assertSingleItem = false
     )
-

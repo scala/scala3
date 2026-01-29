@@ -2,9 +2,9 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
-import org.junit.runners.MethodSorters
 import org.junit.{FixMethodOrder, Test}
 import org.junit.Ignore
+import org.junit.runners.MethodSorters
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class CompletionInterpolatorSuite extends BaseCompletionSuite:
@@ -631,7 +631,6 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
       filter = _.contains("java.nio.file")
     )
 
-
   @Test def `auto-imports-prefix-with-interpolator` =
     checkEdit(
       """|
@@ -698,7 +697,6 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
       filterText = "aaa.plus"
     )
 
-
   @Test def `extension3` =
     checkEdit(
       """|trait Cursor
@@ -745,7 +743,7 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |object Main {
          |  val a = s"${ListBuffer($0)}""
          |}""".stripMargin,
-      assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `dont-show-when-writing-before-dollar` =

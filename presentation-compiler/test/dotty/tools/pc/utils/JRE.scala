@@ -9,5 +9,3 @@ object JRE:
       case Some(version) if version.startsWith("1.8") => 8
       case Some(version) => version.toInt // it is better to crash during tests than to run incorrect suite
       case None => 8
-
-
