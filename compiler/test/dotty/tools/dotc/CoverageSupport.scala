@@ -59,21 +59,27 @@ trait CoverageSupport { this: ParallelTesting =>
   def withCoverage(test: CompilationTest): CompilationTest = {
     if (Properties.testsInstrumentCoverage) {
       val ignoreList = scoverageIgnoreExcludelisted.toSet
-      
+
       // Filter out test sources whose filenames or directory names match the excludelist
       val filteredTargets = test.targets.filter { target =>
         val sourceFiles = target.sourceFiles
-        // Check individual file names
-        val fileMatches = sourceFiles.exists { file =>
-          ignoreList.contains(file.getName)
+
+        def matchesIgnoreList(file: java.io.File): Boolean = {
+          // Match by:
+          // - file name (e.g. i10848a.scala)
+          // - parent directory name (e.g. i18589 for tests/pos-special/i18589/test_1.scala)
+          // This makes `compileDir(".../iNNNNN")` skippable even when the directory contains
+          // a single `test_1.scala` file (in that case, the target title becomes the file path).
+          val nameMatch = ignoreList.contains(file.getName)
+          val parentMatch = Option(file.getParentFile).exists(p => ignoreList.contains(p.getName))
+          nameMatch || parentMatch
         }
-        // Check directory name from test title (for directory tests)
-        val titleMatches = {
-          val title = target.title
-          // Extract the last component (directory name or filename) from the path
-          val lastComponent = new java.io.File(title).getName
-          ignoreList.contains(lastComponent)
-        }
+
+        val fileMatches = sourceFiles.exists(matchesIgnoreList)
+
+        // Also check the basename of the test title (covers SeparateCompilationSource directory targets)
+        val titleMatches = ignoreList.contains(new java.io.File(target.title).getName)
+
         val shouldInclude = !fileMatches && !titleMatches
         if (!shouldInclude) {
           // Log skipped test for visibility
@@ -82,7 +88,7 @@ trait CoverageSupport { this: ParallelTesting =>
         }
         shouldInclude
       }
-      
+
       val modifiedTargets = filteredTargets.map { target =>
         val coverageDir = Files.createTempDirectory("coverage")
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
