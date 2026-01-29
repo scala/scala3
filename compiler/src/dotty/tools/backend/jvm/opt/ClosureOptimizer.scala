@@ -21,6 +21,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.*
@@ -28,14 +29,17 @@ import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
-class ClosureOptimizer(val postProcessor: PostProcessor) {
+class ClosureOptimizer(backendUtils: BackendUtils, backendReporting: BackendReporting,
+                       byteCodeRepository: ByteCodeRepository, callGraph: CallGraph,
+                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile,
+                       inliner: Inliner, localOpt: LocalOpt) {
 
-  import postProcessor.{frontendAccess, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
+  /*import postProcessor.{frontendAccess, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
   import backendUtils._
   import callGraph._
-  import frontendAccess.backendReporting
+  import frontendAccess.backendReporting*/
 
-  import ClosureOptimizer._
+  import ClosureOptimizer.*
 
   private object closureInitOrdering extends Ordering[ClosureInstantiation] {
     override def compare(x: ClosureInstantiation, y: ClosureInstantiation): Int = {
@@ -88,7 +92,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
    *                instantiations.
    * @return The changed methods. The order of the resulting sequence is deterministic.
    */
-  def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, inliner.MethodInlinerState]): mutable.LinkedHashSet[MethodNode] = {
+  def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState]): mutable.LinkedHashSet[MethodNode] = {
 
     // sort all closure invocations to rewrite to ensure bytecode stability
     given Ordering[ClosureInstantiation] = closureInitOrdering
@@ -100,27 +104,27 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(closureInstantiations.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if AsmAnalyzer.sizeOKForBasicValue(method)) closureInstantiations.get(method) match {
+    for (method <- methodsToRewrite if AsmAnalyzer.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get(method) match {
       case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
         localOpt.minimalRemoveUnreachableCode(method, ownerClass)
 
-        if (AsmAnalyzer.sizeOKForSourceValue(method)) closureInstantiations.get(method) match {
+        if (AsmAnalyzer.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                backendReporting.warning(warning.pos, warning.toString, backendReporting.siteString(ownerClass, method.name))
+                backendReporting.optimizerWarning(em"$warning", backendReporting.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -145,7 +149,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
       if (closureInit.ownerMethod != previousMethod) {
         previousMethod = closureInit.ownerMethod
         changedMethods += previousMethod.nn
-        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new inliner.MethodInlinerState)
+        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState)
         state.inlineLog.logClosureRewrite(closureInit, invocations, invocations.headOption.flatMap(p => state.outerCallsite(p._1)))
       }
     }
@@ -191,7 +195,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
         // method as the allocation) should have access too.
         val bodyAccessible: Either[OptimizerWarning, Boolean] = for {
           (bodyMethodNode, declClass) <- byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc): Either[OptimizerWarning, (MethodNode, InternalName)]
-          isAccessible                <- inliner.memberIsAccessible(bodyMethodNode.access, classBTypeFromParsedClassfile(declClass), classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner), ownerClass)
+          isAccessible                <- inliner.memberIsAccessible(bodyMethodNode.access, bTypesFromClassfile.classBTypeFromParsedClassfile(declClass), bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner), ownerClass)
         } yield {
           isAccessible
         }
@@ -249,7 +253,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
         specTp == nonSpecTp || {
           val specDesc = specTp.getDescriptor
           val nonSpecDesc = nonSpecTp.getDescriptor
-          specDesc.length == 1 && primitives.contains(specDesc) && nonSpecDesc == ObjectRef.descriptor
+          specDesc.length == 1 && primitives.contains(specDesc) && nonSpecDesc == ts.ObjectRef.descriptor
         }
       }
 
@@ -303,10 +307,10 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
       for (i <- invokeArgTypes.indices) {
         if (invokeArgTypes(i) == implMethodArgTypes(i)) {
           res(i) = None
-        } else if (isPrimitiveType(implMethodArgTypes(i)) && invokeArgTypes(i).getDescriptor == ObjectRef.descriptor) {
-          res(i) = Some(getScalaUnbox(implMethodArgTypes(i)))
-        } else if (isPrimitiveType(invokeArgTypes(i)) && implMethodArgTypes(i).getDescriptor == ObjectRef.descriptor) {
-          res(i) = Some(getScalaBox(invokeArgTypes(i)))
+        } else if (isPrimitiveType(implMethodArgTypes(i)) && invokeArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
+          res(i) = Some(backendUtils.getScalaUnbox(implMethodArgTypes(i)))
+        } else if (isPrimitiveType(invokeArgTypes(i)) && implMethodArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
+          res(i) = Some(backendUtils.getScalaBox(invokeArgTypes(i)))
         } else {
           assert(!isPrimitiveType(invokeArgTypes(i)), invokeArgTypes(i))
           assert(!isPrimitiveType(implMethodArgTypes(i)), implMethodArgTypes(i))
@@ -337,9 +341,9 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
    * method which explains the issue with such phantom values.
    */
   private def fixLoadedNothingOrNullValue(loadedType: Type, loadInstr: AbstractInsnNode, methodNode: MethodNode): Unit = {
-    if (loadedType == srNothingRef.toASMType) {
+    if (loadedType == ts.srNothingRef.toASMType) {
       methodNode.instructions.insert(loadInstr, new InsnNode(ATHROW))
-    } else if (loadedType == srNullRef.toASMType) {
+    } else if (loadedType == ts.srNullRef.toASMType) {
       methodNode.instructions.insert(loadInstr, new InsnNode(ACONST_NULL))
       methodNode.instructions.insert(loadInstr, new InsnNode(POP))
     }
@@ -388,15 +392,15 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
     if (!isNew) {
       val bodyReturnType = Type.getReturnType(lambdaBodyHandle.getDesc)
       val invocationReturnType = Type.getReturnType(invocation.desc)
-      if (isPrimitiveType(invocationReturnType) && bodyReturnType.getDescriptor == ObjectRef.descriptor) {
+      if (isPrimitiveType(invocationReturnType) && bodyReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
           if (invocationReturnType.getSort == Type.VOID) getPop(1)
-          else getScalaUnbox(invocationReturnType)
+          else backendUtils.getScalaUnbox(invocationReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
-      } else if (isPrimitiveType(bodyReturnType) && invocationReturnType.getDescriptor == ObjectRef.descriptor) {
+      } else if (isPrimitiveType(bodyReturnType) && invocationReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
-          if (bodyReturnType.getSort == Type.VOID) getBoxedUnit
-          else getScalaBox(bodyReturnType)
+          if (bodyReturnType.getSort == Type.VOID) backendUtils.getBoxedUnit
+          else backendUtils.getScalaBox(bodyReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else {
         // see comment of that method
@@ -414,7 +418,7 @@ class ClosureOptimizer(val postProcessor: PostProcessor) {
     val sourceFilePath = byteCodeRepository.compilingClasses.get(lambdaBodyHandle.getOwner).map(_._2)
     val callee = bodyMethod.map({
       case (bodyMethodNode, bodyMethodDeclClass) =>
-        val bodyDeclClassType = classBTypeFromParsedClassfile(bodyMethodDeclClass)
+        val bodyDeclClassType = bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass)
         Callee(
           callee = bodyMethodNode,
           calleeDeclarationClass = bodyDeclClassType,

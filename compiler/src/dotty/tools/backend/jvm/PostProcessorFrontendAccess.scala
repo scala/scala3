@@ -134,42 +134,6 @@ object PostProcessorFrontendAccess {
 
   }
 
-  sealed trait BackendReporting {
-    def error(message: Context ?=> Message, position: SourcePosition): Unit
-    def warning(message: Context ?=> Message, position: SourcePosition): Unit
-    def log(message: String): Unit
-
-    def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
-    def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
-  }
-
-  final class BufferingBackendReporting(using Context) extends BackendReporting {
-    // We optimize access to the buffered reports for the common case - that there are no warning/errors to report
-    // We could use a listBuffer etc. - but that would be extra allocation in the common case
-    // Note - all access is externally synchronized, as this allow the reports to be generated in on thread and
-    // consumed in another
-    private var bufferedReports = List.empty[Report]
-    enum Report(val relay: BackendReporting => Unit):
-      case Error(message: Message, position: SourcePosition) extends Report(_.error(message, position))
-      case Warning(message: Message, position: SourcePosition) extends Report(_.warning(message, position))
-      case Log(message: String) extends Report(_.log(message))
-
-    def error(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
-      bufferedReports ::= Report.Error(message, position)
-
-    def warning(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
-      bufferedReports ::= Report.Warning(message, position)
-
-    def log(message: String): Unit = synchronized:
-      bufferedReports ::= Report.Log(message)
-
-    def relayReports(toReporting: BackendReporting): Unit = synchronized:
-      if bufferedReports.nonEmpty then
-        bufferedReports.reverse.foreach(_.relay(toReporting))
-        bufferedReports = Nil
-  }
-
-
   class Impl(entryPoints: mutable.HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
@@ -222,11 +186,7 @@ object PostProcessorFrontendAccess {
        else local
      }
 
-    override object directBackendReporting extends BackendReporting {
-      def error(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.error(message, position))
-      def warning(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.warning(message, position))
-      def log(message: String): Unit = frontendSynch(report.log(message))
-    }
+    override def directBackendReporting = DirectBackendReporting(this)
 
     override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
 

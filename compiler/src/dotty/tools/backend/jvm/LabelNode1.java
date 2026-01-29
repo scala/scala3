@@ -16,7 +16,7 @@ import scala.tools.asm.Label;
 import scala.tools.asm.tree.ClassNode;
 import scala.tools.asm.tree.LabelNode;
 
-// TODO delete this entire set of classes, it's unused -- nobody writes to or reads from `flags` and ClassNode1/MethodNode1 exist only to propagate this
+// TODO do we really need this? looks like we just have "reachable", and ClassNode1/MethodNode1 exist only to propagate this
 
 /**
  * A subclass of {@link LabelNode} to add user-definable flags.

@@ -25,12 +25,7 @@ import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
-class CopyProp(postProcessor: PostProcessor) {
-
-  import postProcessor.{backendUtils, callGraph}
-  import postProcessor.frontendAccess.compilerSettings
-  import backendUtils._
-
+class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, optAllowSkipClassLoading: Boolean) {
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -180,7 +175,7 @@ class CopyProp(postProcessor: PostProcessor) {
       }
 
       def isTrailing(insn: AbstractInsnNode) =
-        import scala.tools.asm.tree.AbstractInsnNode._
+        import AbstractInsnNode.*
         insn.getType match {
           case METHOD_INSN | INVOKE_DYNAMIC_INSN | JUMP_INSN | TABLESWITCH_INSN | LOOKUPSWITCH_INSN => false
           case _ => true
@@ -241,9 +236,8 @@ class CopyProp(postProcessor: PostProcessor) {
       }
 
       if (toInline.nonEmpty) {
-        import postProcessor._
         val methodCallsites = callGraph.callsites(method)
-        var css = toInline.flatMap(methodCallsites.get).toList.sorted(inliner.callsiteOrdering)
+        var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
         while (css.nonEmpty) {
           val cs = css.head
           css = css.tail
@@ -363,7 +357,7 @@ class CopyProp(postProcessor: PostProcessor) {
 
             case INVOKESPECIAL =>
               val mi = insn.asInstanceOf[MethodInsnNode]
-              if (isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
+              if (backendUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
 
             case _ =>
           }
@@ -396,7 +390,7 @@ class CopyProp(postProcessor: PostProcessor) {
       def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
         toRemove += indy
         callGraph.removeClosureInstantiation(indy, method)
-        removeIndyLambdaImplMethod(owner, method, indy)
+        backendUtils.removeIndyLambdaImplMethod(owner, method, indy)
         handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
       }
 
@@ -440,24 +434,24 @@ class CopyProp(postProcessor: PostProcessor) {
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (isBoxedUnit(prod) || BackendUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isModuleLoad(prod, backendUtils.modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
             val methodInsn = prod.asInstanceOf[MethodInsnNode]
-            if (isSideEffectFreeCall(methodInsn)) {
+            if (backendUtils.isSideEffectFreeCall(methodInsn)) {
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
-            } else if (isScalaUnbox(methodInsn)) {
-              val tp = primitiveAsmTypeToBType(Type.getReturnType(methodInsn.desc))
-              val boxTp = postProcessor.coreBTypes.boxedClassOfPrimitive(tp)
+            } else if (backendUtils.isScalaUnbox(methodInsn)) {
+              val tp = backendUtils.primitiveAsmTypeToBType(Type.getReturnType(methodInsn.desc))
+              val boxTp = ts.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               castAdded = true
-            } else if (isJavaUnbox(methodInsn)) {
+            } else if (backendUtils.isJavaUnbox(methodInsn)) {
               val nullCheck = mutable.ListBuffer.empty[AbstractInsnNode]
               val nonNullLabel = newLabelNode
               nullCheck += new JumpInsnNode(IFNONNULL, nonNullLabel)
@@ -479,7 +473,7 @@ class CopyProp(postProcessor: PostProcessor) {
             }
 
           case NEW =>
-            if (isNewForSideEffectFreeConstructor(prod)) toRemove += prod
+            if (backendUtils.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
             else popAfterProd()
 
           case LDC =>
@@ -488,7 +482,7 @@ class CopyProp(postProcessor: PostProcessor) {
               toRemove += prod
 
             case _ =>
-              if (compilerSettings.optAllowSkipClassLoading) toRemove += prod
+              if (optAllowSkipClassLoading) toRemove += prod
               else popAfterProd()
           }
 

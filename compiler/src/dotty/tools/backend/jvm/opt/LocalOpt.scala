@@ -24,6 +24,7 @@ import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
+import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing
@@ -149,13 +150,12 @@ import BCodeUtils.*
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(pp: PostProcessor) {
+class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, compilerSettings: CompilerSettings) {
 
   import LocalOptImpls.*
-  import pp.frontendAccess.compilerSettings
 
-  val boxUnbox = new BoxUnbox(pp.backendUtils, pp.callGraph, pp.ts)
-  val copyProp = new CopyProp(pp)
+  val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
+  val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, compilerSettings.optAllowSkipClassLoading)
 
   /**
    * Remove unreachable code from a method.
@@ -303,7 +303,7 @@ class LocalOpt(pp: PostProcessor) {
 
       // STALE STORES
       val runStaleStores = compilerSettings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
-      val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
+      val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("staleStores")
 
       // REDUNDANT CASTS
@@ -639,7 +639,7 @@ class LocalOpt(pp: PostProcessor) {
                 case invocation: MethodInsnNode => callGraph.removeCallsite(invocation, method)
               case indy: InvokeDynamicInsnNode =>
                 callGraph.removeClosureInstantiation(indy, method)
-                removeIndyLambdaImplMethod(ownerClassName, method, indy)
+                backendUtils.removeIndyLambdaImplMethod(ownerClassName, method, indy)
                 case _ =>
               }
             }
@@ -650,6 +650,26 @@ class LocalOpt(pp: PostProcessor) {
     }
 
     dce()
+  }
+
+  // Check for an Array.getLength(x) call where x is statically known to be of array type
+  private def isArrayGetLengthOnStaticallyKnownArray(mi: MethodInsnNode, typeAnalyzer: NonLubbingTypeFlowAnalyzer): Boolean = {
+    BackendUtils.isArrayGetLength(mi) && {
+      val f = typeAnalyzer.frameAt(mi)
+      f.getValue(f.stackTop).getType.getSort == Type.ARRAY
+    }
+  }
+
+  private def getClassOnStaticallyKnownPrimitiveArray(mi: MethodInsnNode, typeAnalyzer: NonLubbingTypeFlowAnalyzer): Type | Null = {
+    if (mi.name == "getClass" && mi.owner == "java/lang/Object" && mi.desc == "()Ljava/lang/Class;") {
+      val f = typeAnalyzer.frameAt(mi)
+      val tp = f.getValue(f.stackTop).getType
+      if (tp.getSort == Type.ARRAY) {
+        if (tp.getElementType.getSort != Type.OBJECT)
+          return tp
+      }
+    }
+    null
   }
 
   /**
@@ -686,8 +706,8 @@ class LocalOpt(pp: PostProcessor) {
           a.length - 2 == b.length && a(0) == 'L' && a.last == ';' && a.regionMatches(1, b, 0, b.length) ||
           b.length - 2 == a.length && b(0) == 'L' && b.last == ';' && b.regionMatches(1, a, 0, a.length)
       }
-      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ObjectRef.internalName) ||
-        bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN).conformsTo(bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)).getOrElse(false)
+      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ts.ObjectRef.internalName) ||
+        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN).conformsTo(bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)).getOrElse(false)
     }
 
     // precondition: !isSubType(aDescOrIntN, bDescOrIntN)
@@ -710,8 +730,8 @@ class LocalOpt(pp: PostProcessor) {
         }
       }
       impl(
-        bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN),
-        bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN))
+        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN),
+        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN))
     }
 
     lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
@@ -751,12 +771,12 @@ class LocalOpt(pp: PostProcessor) {
 
       case mi: MethodInsnNode =>
         // Rewrite some known method invocations
-        if (BackendUtils.isArrayGetLengthOnStaticallyKnownArray(mi, typeAnalyzer)) {
+        if (isArrayGetLengthOnStaticallyKnownArray(mi, typeAnalyzer)) {
           // Array.getLength(x) where x is known to be an array
           toReplace(mi) = List(new InsnNode(ARRAYLENGTH))
         } else {
           // x.getClass where x is statically known to be a primitive array
-          val getClassTp = BackendUtils.getClassOnStaticallyKnownPrimitiveArray(mi, typeAnalyzer)
+          val getClassTp = getClassOnStaticallyKnownPrimitiveArray(mi, typeAnalyzer)
           if (getClassTp != null) {
             toReplace(mi) = List(getPop(1), new LdcInsnNode(getClassTp))
           }

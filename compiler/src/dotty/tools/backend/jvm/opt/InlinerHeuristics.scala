@@ -26,58 +26,9 @@ import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, OptimizerWarnin
 import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 
-class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
+class InlinerHeuristics() extends PerRunInit {
 
-  import postProcessor._
-  import callGraph._
-  import postProcessor.frontendAccess.*
-
-  lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
-
-  final case class InlineRequest(callsite: Callsite, reason: InlineReason) {
-    // non-null if `-Yopt-log-inline` is active, it explains why the callsite was selected for inlining
-    def logText: String | Null =
-      if (compilerSettings.optLogInline.isEmpty) null
-      else if (compilerSettings.optInlineHeuristics == "everything") "-Yopt-inline-heuristics:everything is enabled"
-      else {
-        val callee = callsite.callee.get
-        reason match {
-          case AnnotatedInline =>
-            val what = if (callee.annotatedInline) "callee" else "callsite"
-            s"the $what is annotated `@inline`"
-          case HigherOrderWithLiteral | HigherOrderWithForwardedParam =>
-            val paramNames = Option(callee.callee.parameters).map(_.asScala.map(_.name).toVector)
-            def param(i: Int) = {
-              def syn = s"<param $i>"
-              paramNames.fold(syn)(v => v.applyOrElse(i, (_: Int) => syn))
-            }
-            def samInfo(i: Int, sam: String, arg: String) = s"the argument for parameter (${param(i)}: $sam) is a $arg"
-            val argInfos = for ((i, sam) <- callee.samParamTypes; info <- callsite.argInfos.get(i).iterator) yield {
-              val argKind = info match {
-                case FunctionLiteral => "function literal"
-                case ForwardedParam(_) => "parameter of the callsite method"
-                case StaticallyKnownArray => "" // should not happen, just included to avoid potential crash
-              }
-              samInfo(i, sam.internalName.split('/').last, argKind)
-            }
-            s"the callee is a higher-order method, ${argInfos.mkString(", ")}"
-          case SyntheticForwarder =>
-            "the callee is a synthetic forwarder method"
-          case TrivialMethod =>
-            "the callee is a small trivial method"
-          case FactoryMethod =>
-            "the callee is a factory method"
-          case BoxingForwarder =>
-            "the callee is a forwarder method with boxing adaptation"
-          case GenericForwarder =>
-            "the callee is a forwarder or alias method"
-          case RefParam =>
-            "the callee has a Ref type parameter"
-          case KnownArrayOp =>
-            "ScalaRuntime.array_apply and array_update are inlined if the array has a statically known type"
-        }
-      }
-  }
+  private lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
 
   def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
     inlineSourceMatcher.get.allowFromSources && sourceFilePath.isDefined ||
@@ -172,8 +123,9 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
   def inlineRequest(callsite: Callsite): Option[Either[OptimizerWarning, InlineRequest]] = {
     def requestIfCanInline(callsite: Callsite, reason: InlineReason): Option[Either[OptimizerWarning, InlineRequest]] = {
       val callee = callsite.callee.get
-      if (!callee.safeToInline) {
-        if (callsite.isInlineAnnotated && callee.canInlineFromSource) {
+      val canInlineFromSource0 = canInlineFromSource(callee.sourceFilePath, callee.calleeDeclarationClass.internalName)
+      if (!(callee.sStaticallyResolved && canInlineFromSource0 && !callee.isAbstract && !callee.isSpecialMethod)) {
+        if (callsite.isInlineAnnotated && canInlineFromSource0) {
           // By default, we only emit inliner warnings for methods annotated @inline. However, we don't
           // want to be unnecessarily noisy with `-opt-warnings:_`: for example, the inliner heuristic
           // would attempt to inline `Function1.apply$sp$II`, as it's higher-order (the receiver is
@@ -184,7 +136,7 @@ class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
             callee.callee.name,
             callee.callee.desc,
             callsite.isInlineAnnotated)))
-        } else None
+        } else s
       } else inliner.earlyCanInlineCheck(callsite) match {
         case Some(w) =>
           Some(Left(w))
@@ -389,4 +341,53 @@ object InlinerHeuristics {
       result
     }
   }
+}
+
+final case class InlineRequest(callsite: Callsite, reason: InlineReason) {
+  // non-null if `-Yopt-log-inline` is active, it explains why the callsite was selected for inlining
+  def logText: String | Null =
+    if (compilerSettings.optLogInline.isEmpty) null
+    else if (compilerSettings.optInlineHeuristics == "everything") "-Yopt-inline-heuristics:everything is enabled"
+    else {
+      val callee = callsite.callee.get
+      reason match {
+        case AnnotatedInline =>
+          val what = if (callee.annotatedInline) "callee" else "callsite"
+          s"the $what is annotated `@inline`"
+        case HigherOrderWithLiteral | HigherOrderWithForwardedParam =>
+          val paramNames = Option(callee.callee.parameters).map(_.asScala.map(_.name).toVector)
+
+          def param(i: Int) = {
+            def syn = s"<param $i>"
+
+            paramNames.fold(syn)(v => v.applyOrElse(i, (_: Int) => syn))
+          }
+
+          def samInfo(i: Int, sam: String, arg: String) = s"the argument for parameter (${param(i)}: $sam) is a $arg"
+
+          val argInfos = for ((i, sam) <- callee.samParamTypes; info <- callsite.argInfos.get(i).iterator) yield {
+            val argKind = info match {
+              case FunctionLiteral => "function literal"
+              case ForwardedParam(_) => "parameter of the callsite method"
+              case StaticallyKnownArray => "" // should not happen, just included to avoid potential crash
+            }
+            samInfo(i, sam.internalName.split('/').last, argKind)
+          }
+          s"the callee is a higher-order method, ${argInfos.mkString(", ")}"
+        case SyntheticForwarder =>
+          "the callee is a synthetic forwarder method"
+        case TrivialMethod =>
+          "the callee is a small trivial method"
+        case FactoryMethod =>
+          "the callee is a factory method"
+        case BoxingForwarder =>
+          "the callee is a forwarder method with boxing adaptation"
+        case GenericForwarder =>
+          "the callee is a forwarder or alias method"
+        case RefParam =>
+          "the callee has a Ref type parameter"
+        case KnownArrayOp =>
+          "ScalaRuntime.array_apply and array_update are inlined if the array has a statically known type"
+      }
+    }
 }

@@ -306,6 +306,9 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
     })
   }
 
+  def getBoxedUnit: FieldInsnNode =
+    new FieldInsnNode(Opcodes.GETSTATIC, ts.srBoxedUnitRef.internalName, "UNIT", ts.srBoxedUnitRef.descriptor)
+
   def isBoxedUnit(insn: AbstractInsnNode): Boolean = {
     insn.getOpcode == Opcodes.GETSTATIC && {
       val fi = insn.asInstanceOf[FieldInsnNode]
@@ -428,6 +431,14 @@ object BackendUtils {
   def isDceDone(method: MethodNode): Boolean = (method.access & ACC_DCE_DONE) != 0
   def setDceDone(method: MethodNode): Unit = method.access |= ACC_DCE_DONE
   def clearDceDone(method: MethodNode): Unit = method.access &= ~ACC_DCE_DONE
+
+  private val LABEL_REACHABLE_STATUS = 0x1000000
+  private def isLabelFlagSet(l: LabelNode1, f: Int): Boolean = (l.flags & f) != 0
+  private def setLabelFlag(l: LabelNode1, f: Int): Unit = l.flags |= f
+  private def clearLabelFlag(l: LabelNode1, f: Int): Unit = l.flags &= ~f
+  def isLabelReachable(label: LabelNode) = isLabelFlagSet(label.asInstanceOf[LabelNode1], LABEL_REACHABLE_STATUS)
+  def setLabelReachable(label: LabelNode) = setLabelFlag(label.asInstanceOf[LabelNode1], LABEL_REACHABLE_STATUS)
+  def clearLabelReachable(label: LabelNode) = clearLabelFlag(label.asInstanceOf[LabelNode1], LABEL_REACHABLE_STATUS)
 
   // ==============================================================================================
 
@@ -603,7 +614,7 @@ object BackendUtils {
 
   // ==============================================================================================
 
-  private def isArrayGetLength(mi: MethodInsnNode): Boolean = mi.owner == "java/lang/reflect/Array" && mi.name == "getLength" && mi.desc == "(Ljava/lang/Object;)I"
+  def isArrayGetLength(mi: MethodInsnNode): Boolean = mi.owner == "java/lang/reflect/Array" && mi.name == "getLength" && mi.desc == "(Ljava/lang/Object;)I"
 
   // If argument i of the method is null-checked, the bit `i+1` of the result is 1
   def argumentsNullCheckedByCallee(mi: MethodInsnNode): Long = {

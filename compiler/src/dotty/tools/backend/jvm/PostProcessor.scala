@@ -19,7 +19,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: Cor
 
   val backendUtils        = new BackendUtils(frontendAccess, ts)
   val byteCodeRepository  = new ByteCodeRepository(frontendAccess, backendUtils, ts)
-  val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, frontendAccess.compilerSettings.optInlinerEnabled)
+  val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, ts, frontendAccess.compilerSettings.optInlinerEnabled)
   val localOpt            = new LocalOpt(this)
   val inliner             = new Inliner(this)
   val inlinerHeuristics   = new InlinerHeuristics(this)

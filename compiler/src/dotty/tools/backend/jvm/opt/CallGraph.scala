@@ -26,14 +26,10 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{LazyWithoutLock => FLazy} // TODO this one should probably be not inside PPFA...
 
-class CallGraph(val postProcessor: PostProcessor) {
-
-  import postProcessor.*
-  //import bTypesFromClassfile.*
-  import postProcessor.frontendAccess.recordPerRunCache
+class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository: ByteCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -55,7 +51,7 @@ class CallGraph(val postProcessor: PostProcessor) {
    * The call graph is less problematic because only methods being called are kept alive, not entire
    * classes. But we should keep an eye on this.
    */
-  val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = recordPerRunCache(concurrent.TrieMap.empty withDefaultValue Map.empty)
+  val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = frontendAccess.recordPerRunCache(concurrent.TrieMap.empty withDefaultValue Map.empty)
 
   /**
    * Closure instantiations in the program being compiled.
@@ -64,14 +60,14 @@ class CallGraph(val postProcessor: PostProcessor) {
    * optimizer: finding callsites to re-write requires running a producers-consumers analysis on
    * the method. Here the closure instantiations are already grouped by method.
    */
-   //currently single threaded access only
-  val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = recordPerRunCache(concurrent.TrieMap.empty withDefaultValue Map.empty)
+  //currently single threaded access only
+  val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = frontendAccess.recordPerRunCache(concurrent.TrieMap.empty withDefaultValue Map.empty)
 
   /**
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: concurrent.Map[MethodInsnNode, SrcPos] = recordPerRunCache(TrieMap.empty)
+  val callsitePositions: concurrent.Map[MethodInsnNode, SrcPos] = frontendAccess.recordPerRunCache(TrieMap.empty)
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.
@@ -79,13 +75,13 @@ class CallGraph(val postProcessor: PostProcessor) {
    * when building the CallGraph, every Callsite object has an annotated(No)Inline field.
    */
   //currently single threaded access only
-  val inlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = recordPerRunCache(mutable.Set.empty)
+  private val inlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = frontendAccess.recordPerRunCache(mutable.Set.empty)
   //currently single threaded access only
-  val noInlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = recordPerRunCache(mutable.Set.empty)
+  private val noInlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = frontendAccess.recordPerRunCache(mutable.Set.empty)
 
   // Contains `INVOKESPECIAL` instructions that were cloned by the inliner and need to be resolved
   // statically by the call graph. See Inliner.maybeInlinedLater.
-  val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = recordPerRunCache(mutable.Set.empty)
+  val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = frontendAccess.recordPerRunCache(mutable.Set.empty)
 
   def isStaticCallsite(call: MethodInsnNode): Boolean = {
     val opc = call.getOpcode
@@ -116,7 +112,7 @@ class CallGraph(val postProcessor: PostProcessor) {
   }
 
   def addClass(classNode: ClassNode): Unit = {
-    val classType = classBTypeFromClassNode(classNode)
+    val classType = bTypesFromClassfile.classBTypeFromClassNode(classNode)
     classNode.methods.asScala.foreach(addMethod(_, classType))
   }
 
@@ -142,16 +138,17 @@ class CallGraph(val postProcessor: PostProcessor) {
           def isSuperCall: Boolean =
             call.getOpcode == Opcodes.INVOKESPECIAL &&
               call.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME && {
-                val owner = call.owner
-                definingClass.internalName != owner && {
-                  var nextSuper = definingClass.info.get.superClass
-                  while (nextSuper.nonEmpty) {
-                    if (nextSuper.get.internalName == owner) return true
-                    nextSuper = nextSuper.get.info.get.superClass
-                  }
-                  false
+              val owner = call.owner
+              definingClass.internalName != owner && {
+                var nextSuper = definingClass.info.get.superClass
+                while (nextSuper.nonEmpty) {
+                  if (nextSuper.get.internalName == owner) return true
+                  nextSuper = nextSuper.get.info.get.superClass
                 }
+                false
               }
+            }
+
           val paramTps = FLazy(Type.getArgumentTypes(call.desc))
           // This is the type where method lookup starts (implemented in byteCodeRepository.methodNode)
           val preciseOwner =
@@ -171,7 +168,7 @@ class CallGraph(val postProcessor: PostProcessor) {
               (method, declarationClass) <- byteCodeRepository.methodNode(preciseOwner, call.name, call.desc): Either[OptimizerWarning, (MethodNode, InternalName)]
               (declarationClassNode, calleeSourceFilePath) <- byteCodeRepository.classNodeAndSourceFilePath(declarationClass): Either[OptimizerWarning, (ClassNode, Option[String])]
             } yield {
-              val declarationClassBType = classBTypeFromClassNode(declarationClassNode)
+              val declarationClassBType = bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode)
               val info = analyzeCallsite(method, declarationClassBType, call, paramTps, calleeSourceFilePath, definingClass)
               import info._
               Callee(
@@ -224,7 +221,7 @@ class CallGraph(val postProcessor: PostProcessor) {
     }
   }
 
-  def computeArgInfos(callee: Either[OptimizerWarning, Callee], callsiteInsn: MethodInsnNode, paramTps: FLazy[Array[Type]], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
+  private def computeArgInfos(callee: Either[OptimizerWarning, Callee], callsiteInsn: MethodInsnNode, paramTps: FLazy[Array[Type]], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
     if (callee.isLeft) IntMap.empty
     else {
       val numArgs = FLazy(paramTps.get.length + (if (callsiteInsn.getOpcode == Opcodes.INVOKESTATIC) 0 else 1))
@@ -232,8 +229,8 @@ class CallGraph(val postProcessor: PostProcessor) {
     }
   }
 
-  def computeCapturedArgInfos(lmf: LambdaMetaFactoryCall, indyParamTypes: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
-    val capturedTypes = indyParamTypes.map(t => bTypeForDescriptorFromClassfile(t.getDescriptor))
+  private def computeCapturedArgInfos(lmf: LambdaMetaFactoryCall, indyParamTypes: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
+    val capturedTypes = indyParamTypes.map(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
     val capturedSams = samTypes(capturedTypes)
     argInfosForSams(capturedSams, lmf.indy, FLazy(indyParamTypes.length), typeAnalyzer)
   }
@@ -258,7 +255,7 @@ class CallGraph(val postProcessor: PostProcessor) {
 
   def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): IntMap[ClassBType] = {
     val paramTypes = {
-      val params = paramTps.map(t => bTypeForDescriptorFromClassfile(t.getDescriptor))
+      val params = paramTps.map(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
       val isStatic = BCodeUtils.isStaticMethod(methodNode)
       if (isStatic) params else receiverType +: params
     }
@@ -282,13 +279,13 @@ class CallGraph(val postProcessor: PostProcessor) {
    * Just a named tuple used as return type of `analyzeCallsite`.
    */
   private case class CallsiteInfo(
-    isStaticallyResolved: Boolean = false,
-    sourceFilePath: Option[String] = None,
-    annotatedInline: Boolean = false,
-    annotatedNoInline: Boolean = false,
-    samParamTypes: IntMap[ClassBType] = IntMap.empty,
-    warning: Option[CalleeInfoWarning],
-  )
+                                   isStaticallyResolved: Boolean = false,
+                                   sourceFilePath: Option[String] = None,
+                                   annotatedInline: Boolean = false,
+                                   annotatedNoInline: Boolean = false,
+                                   samParamTypes: IntMap[ClassBType] = IntMap.empty,
+                                   warning: Option[CalleeInfoWarning],
+                                 )
 
   /**
    * Analyze a callsite and gather meta-data that can be used for inlining decisions.
@@ -302,7 +299,7 @@ class CallGraph(val postProcessor: PostProcessor) {
       // callee, we only check there for the methodInlineInfo, we should find it there.
       calleeDeclarationClassBType.info.orThrow.inlineInfo.methodInfos.get(methodSignature) match {
         case Some(methodInlineInfo) =>
-          val receiverType = classBTypeFromParsedClassfile(call.owner)
+          val receiverType = bTypesFromClassfile.classBTypeFromParsedClassfile(call.owner)
           // (1) Special case for trait super accessors. trait T { def f = 1 } generates a static
           // method t$ which calls `invokespecial T.f`. Even if `f` is not final, this call will
           // always resolve to `T.f`. This is a (very) special case. Otherwise, `invokespecial`
@@ -336,11 +333,11 @@ class CallGraph(val postProcessor: PostProcessor) {
 
           CallsiteInfo(
             isStaticallyResolved = isStaticallyResolved,
-            sourceFilePath       = calleeSourceFilePath,
-            annotatedInline      = methodInlineInfo.annotatedInline,
-            annotatedNoInline    = methodInlineInfo.annotatedNoInline,
-            samParamTypes        = samParamTypes(calleeMethodNode, paramTps.get, receiverType),
-            warning              = warning)
+            sourceFilePath = calleeSourceFilePath,
+            annotatedInline = methodInlineInfo.annotatedInline,
+            annotatedNoInline = methodInlineInfo.annotatedNoInline,
+            samParamTypes = samParamTypes(calleeMethodNode, paramTps.get, receiverType),
+            warning = warning)
 
         case None =>
           val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc, calleeDeclarationClassBType.info.orThrow.inlineInfo.warning)
@@ -352,8 +349,8 @@ class CallGraph(val postProcessor: PostProcessor) {
         CallsiteInfo(warning = Some(warning))
     }
   }
-
-    /**
+}
+  /**
    * A callsite in the call graph.
    *
    * @param callsiteInstruction The invocation instruction
@@ -382,54 +379,50 @@ class CallGraph(val postProcessor: PostProcessor) {
         s" in ${callsiteClass.internalName}.${callsiteMethod.name}${callsiteMethod.desc}"
   }
 
-  /**
-   * Information about invocation arguments, obtained through data flow analysis of the callsite method.
-   */
-  sealed trait ArgInfo
-  case object FunctionLiteral extends ArgInfo
-  final case class ForwardedParam(index: Int) extends ArgInfo
-  case object StaticallyKnownArray extends ArgInfo
-  //  final case class ArgTypeInfo(argType: BType, isPrecise: Boolean, knownNotNull: Boolean) extends ArgInfo
-  // can be extended, e.g., with constant types
+/**
+ * Information about invocation arguments, obtained through data flow analysis of the callsite method.
+ */
+sealed trait ArgInfo
+case object FunctionLiteral extends ArgInfo
+final case class ForwardedParam(index: Int) extends ArgInfo
+case object StaticallyKnownArray extends ArgInfo
+//  final case class ArgTypeInfo(argType: BType, isPrecise: Boolean, knownNotNull: Boolean) extends ArgInfo
+// can be extended, e.g., with constant types
 
-  /**
-   * A callee in the call graph.
-   *
-   * @param callee                 The callee, as it appears in the invocation instruction. For
-   *                               virtual calls, an override of the callee might be invoked. Also,
-   *                               the callee can be abstract.
-   * @param calleeDeclarationClass The class in which the callee is declared
-   * @param isStaticallyResolved   True if the callee cannot be overridden
-   * @param annotatedInline        True if the callee is annotated @inline
-   * @param annotatedNoInline      True if the callee is annotated @noinline
-   * @param samParamTypes          A map from parameter positions to SAM parameter types
-   * @param calleeInfoWarning      An inliner warning if some information was not available while
-   *                               gathering the information about this callee.
-   */
-  final case class Callee(callee: MethodNode, calleeDeclarationClass: ClassBType,
-                          isStaticallyResolved: Boolean, sourceFilePath: Option[String],
-                          annotatedInline: Boolean, annotatedNoInline: Boolean,
-                          samParamTypes: IntMap[ClassBType],
-                          calleeInfoWarning: Option[CalleeInfoWarning]) {
-    override def toString = s"Callee($calleeDeclarationClass.${callee.name})"
+/**
+ * A callee in the call graph.
+ *
+ * @param callee                 The callee, as it appears in the invocation instruction. For
+ *                               virtual calls, an override of the callee might be invoked. Also,
+ *                               the callee can be abstract.
+ * @param calleeDeclarationClass The class in which the callee is declared
+ * @param isStaticallyResolved   True if the callee cannot be overridden
+ * @param annotatedInline        True if the callee is annotated @inline
+ * @param annotatedNoInline      True if the callee is annotated @noinline
+ * @param samParamTypes          A map from parameter positions to SAM parameter types
+ * @param calleeInfoWarning      An inliner warning if some information was not available while
+ *                               gathering the information about this callee.
+ */
+final case class Callee(callee: MethodNode, calleeDeclarationClass: ClassBType,
+                        isStaticallyResolved: Boolean, sourceFilePath: Option[String],
+                        annotatedInline: Boolean, annotatedNoInline: Boolean,
+                        samParamTypes: IntMap[ClassBType],
+                        calleeInfoWarning: Option[CalleeInfoWarning]) {
+  override def toString = s"Callee($calleeDeclarationClass.${callee.name})"
 
-    def canInlineFromSource: Boolean = inlinerHeuristics.canInlineFromSource(sourceFilePath, calleeDeclarationClass.internalName)
-    def isAbstract: Boolean = isAbstractMethod(callee)
-    def isSpecialMethod: Boolean = isConstructor(callee) || isNativeMethod(callee) || hasCallerSensitiveAnnotation(callee)
+  def isAbstract: Boolean = isAbstractMethod(callee)
+  def isSpecialMethod: Boolean = isConstructor(callee) || isNativeMethod(callee) || hasCallerSensitiveAnnotation(callee)
+}
 
-    def safeToInline: Boolean = isStaticallyResolved && canInlineFromSource && !isAbstract && !isSpecialMethod
-  }
-
-  /**
-   * Metadata about a closure instantiation, stored in the call graph
-   *
-   * @param lambdaMetaFactoryCall the InvokeDynamic instruction
-   * @param ownerMethod           the method where the closure is allocated
-   * @param ownerClass            the class containing the above method
-   * @param capturedArgInfos      information about captured arguments. Used for updating the call
-   *                              graph when re-writing a closure invocation to the body method.
-   */
-  final case class ClosureInstantiation(lambdaMetaFactoryCall: LambdaMetaFactoryCall, ownerMethod: MethodNode, ownerClass: ClassBType, capturedArgInfos: IntMap[ArgInfo]) {
-    override def toString = s"ClosureInstantiation($lambdaMetaFactoryCall, ${ownerMethod.name + ownerMethod.desc}, $ownerClass)"
-  }
+/**
+ * Metadata about a closure instantiation, stored in the call graph
+ *
+ * @param lambdaMetaFactoryCall the InvokeDynamic instruction
+ * @param ownerMethod           the method where the closure is allocated
+ * @param ownerClass            the class containing the above method
+ * @param capturedArgInfos      information about captured arguments. Used for updating the call
+ *                              graph when re-writing a closure invocation to the body method.
+ */
+final case class ClosureInstantiation(lambdaMetaFactoryCall: LambdaMetaFactoryCall, ownerMethod: MethodNode, ownerClass: ClassBType, capturedArgInfos: IntMap[ArgInfo]) {
+  override def toString = s"ClosureInstantiation($lambdaMetaFactoryCall, ${ownerMethod.name + ownerMethod.desc}, $ownerClass)"
 }

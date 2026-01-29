@@ -73,7 +73,7 @@ class GenBCode extends Phase { self =>
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
       val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(backendUtils, dottyPrimitives, frontendAccess, bTypes)
+      _codeGen = new CodeGen(backendUtils, dottyPrimitives, frontendAccess, postProcessor.callGraph, bTypes)
     _codeGen.nn
   }
 
@@ -104,7 +104,7 @@ class GenBCode extends Phase { self =>
           async <- ctx.run.nn.asyncTasty
           bufferedReporter <- async.sync()
         do
-          bufferedReporter.relayReports(frontendAccess.backendReporting)
+          frontendAccess.backendReporting.relayReports(bufferedReporter)
       catch
         case ex: Exception =>
           report.error(s"exception from future: $ex, (${Option(ex.getCause())})")

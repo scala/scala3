@@ -29,212 +29,8 @@ import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(postProcessor: PostProcessor) {
-
-  import postProcessor.*
-  import bTypesFromClassfile.*
-  import backendUtils.*
-  import callGraph.*
-  import frontendAccess.{backendReporting, compilerSettings}
-  import inlinerHeuristics.*
-
-  // A callsite that was inlined and the IllegalAccessInstructions warning that was delayed.
-  // The inliner speculatively inlines a callsite even if the method then has instructions that would
-  // cause an IllegalAccessError in the target class. If all of those instructions are eliminated
-  // (by inlining) in a later round, everything is fine. Otherwise the method is reverted.
-  final case class InlinedCallsite(eliminatedCallsite: Callsite, warning: Option[IllegalAccessInstructions]) {
-    // If this InlinedCallsite has a warning about a given instruction, return a copy where the warning
-    // only contains that instruction.
-    def filterForWarning(insn: AbstractInsnNode): Option[InlinedCallsite] = warning match {
-      case Some(w) if w.instructions.contains(insn) => Some(this.copy(warning = Some(w.copy(instructions = List(insn)))))
-      case _ => None
-    }
-  }
-
-  // The state accumulated across inlining rounds for a single MethodNode
-  final class MethodInlinerState {
-    // Instructions that were copied into a method and would cause an IllegalAccess. They need to
-    // be inlined in a later round, otherwise the method is rolled back to its original state.
-    val illegalAccessInstructions = mutable.Set.empty[AbstractInsnNode]
-
-    // A map from invocation instructions that were copied (inlined) into this method to the
-    // inlined callsite from which they originate.
-    // Note: entries are not removed from this map, even if an inlined callsite gets inlined in a
-    // later round. This allows re-constructing the inline chain.
-    val inlinedCalls = mutable.Map.empty[AbstractInsnNode, InlinedCallsite]
-
-    var undoLog: UndoLog = NoUndoLogging
-
-    var inlineLog = new InlineLog
-
-    override def clone(): MethodInlinerState = {
-      val r = new MethodInlinerState
-      r.illegalAccessInstructions ++= illegalAccessInstructions
-      r.inlinedCalls ++= inlinedCalls
-      // The clone references the same InlineLog, so no logs are discarded when rolling back
-      r.inlineLog = inlineLog
-      // Skip undoLog: clone() is only called when undoLog == NoUndoLogging
-      r
-    }
-
-    def outerCallsite(call: AbstractInsnNode): Option[Callsite] = inlinedCalls.get(call).map(_.eliminatedCallsite)
-
-    // The chain of inlined callsites that that lead to some (call) instruction. Don't include
-    // synthetic forwarders if skipForwarders is true (don't show those in inliner warnings, as they
-    // don't show up in the source code).
-    // Also used to detect inlining cycles.
-    def inlineChain(call: AbstractInsnNode, skipForwarders: Boolean): List[Callsite] = {
-      @tailrec def impl(insn: AbstractInsnNode, res: List[Callsite]): List[Callsite] = inlinedCalls.get(insn) match {
-        case Some(inlinedCallsite) =>
-          val cs = inlinedCallsite.eliminatedCallsite
-          val res1 = if (skipForwarders && backendUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.get.callee, cs.callee.get.calleeDeclarationClass)) res else cs :: res
-          impl(cs.callsiteInstruction, res1)
-        case _ =>
-          res
-      }
-      impl(call, Nil)
-    }
-
-    // In a chain of inlined calls which lead to some (call) instruction, return the root `InlinedCallsite`
-    // which has a delayed warning . When inlining `call` fails, warn about the root instruction instead of
-    // the downstream inline request that tried to eliminate an illegalAccess instruction.
-    // This method skips over forwarders. For example in `trait T { def m = ... }; class A extends T`
-    // the inline chain is `A.m (mixin forwarder) - T.m$ (static accessor) - T.m`. The method returns
-    // `T.m` (even if the root callsite is `A.m`.
-    // If the chain has only forwarders, `returnForwarderIfNoOther` determines whether to return `None`
-    // or the last inlined forwarder.
-    def rootInlinedCallsiteWithWarning(call: AbstractInsnNode, returnForwarderIfNoOther: Boolean): Option[InlinedCallsite] = {
-      def isForwarder(callsite: Callsite) = backendUtils.isTraitSuperAccessorOrMixinForwarder(callsite.callee.get.callee, callsite.callee.get.calleeDeclarationClass)
-      def result(res: Option[InlinedCallsite]) = res match {
-        case Some(r) if returnForwarderIfNoOther || !isForwarder(r.eliminatedCallsite) => res
-        case _ => None
-      }
-      @tailrec def impl(insn: AbstractInsnNode, res: Option[InlinedCallsite]): Option[InlinedCallsite] = inlinedCalls.get(insn) match {
-        case Some(inlinedCallsite) =>
-          val w = inlinedCallsite.filterForWarning(insn)
-          if (w.isEmpty) result(res)
-          else {
-            val cs = inlinedCallsite.eliminatedCallsite
-            // The returned InlinedCallsite can be a forwarder if that forwarder was the initial callsite in the method
-            val nextRes = if (isForwarder(cs) && res.nonEmpty && !isForwarder(res.get.eliminatedCallsite)) res else w
-            impl(cs.callsiteInstruction, nextRes)
-          }
-
-        case _ => result(res)
-      }
-      impl(call, None)
-    }
-  }
-
-  final class InlineLog {
-    import InlineLog._
-
-    private var _active = false
-
-    var roots: mutable.ArrayBuffer[InlineLogResult] = null
-    var downstream: mutable.HashMap[Callsite, mutable.ArrayBuffer[InlineLogResult]] = null
-    var callsiteInfo: String = null
-
-    // A bit of a hack.. We check the -Yopt-log-inline flag when logging the first inline request.
-    // Because the InlineLog is part of the MethodInlinerState, subsequent requests will all be
-    // for the same callsite class / method. At the point where the MethodInlinerState is created
-    // we don't have access to the enclosing class.
-    private def active(callsiteClass: ClassBType, callsiteMethod: MethodNode): Boolean = {
-      if (roots == null) {
-        compilerSettings.optLogInline match {
-          case Some("_") => _active = true
-          case Some(prefix) => _active = s"${callsiteClass.internalName}.${callsiteMethod.name}".startsWith(prefix)
-          case _ => _active = false
-        }
-        if (_active) {
-          roots = mutable.ArrayBuffer.empty[InlineLogResult]
-          downstream = mutable.HashMap.empty[Callsite, mutable.ArrayBuffer[InlineLogResult]]
-          callsiteInfo = s"Inlining into ${callsiteClass.internalName}.${callsiteMethod.name}"
-        }
-      }
-      _active
-    }
-
-    private def active(callsite: Callsite): Boolean = active(callsite.callsiteClass, callsite.callsiteMethod)
-
-    private def bufferForOuter(outer: Option[Callsite]) = outer match {
-      case Some(o) => downstream.getOrElse(o, roots)
-      case _ => roots
-    }
-
-    def logSuccess(request: InlineRequest, sizeBefore: Int, sizeAfter: Int, outer: Option[Callsite]) = if (active(request.callsite)) {
-      bufferForOuter(outer) += InlineLogSuccess(request, sizeBefore, sizeAfter)
-      downstream(request.callsite) = mutable.ArrayBuffer.empty
-    }
-
-    def logClosureRewrite(closureInit: ClosureInstantiation, invocations: mutable.ArrayBuffer[(MethodInsnNode, Int)], outer: Option[Callsite]) = if (active(closureInit.ownerClass, closureInit.ownerMethod)) {
-      bufferForOuter(outer) += InlineLogRewrite(closureInit, invocations.map(_._1).toList)
-    }
-
-    def logFail(request: InlineRequest, warning: CannotInlineWarning, outer: Option[Callsite]) = if (active(request.callsite)) {
-      bufferForOuter(outer) += InlineLogFail(request, warning)
-    }
-
-    def logRollback(callsite: Callsite, reason: String, outer: Option[Callsite]) = if (active(callsite)) {
-      bufferForOuter(outer) += InlineLogRollback(reason)
-    }
-
-    def nonEmpty = roots != null
-
-    def print(): Unit = if (roots != null) {
-      def printChildren(indent: Int, callsite: Callsite): Unit = downstream.get(callsite) match {
-        case Some(logs) => logs.foreach(l => printLog(indent, l))
-        case _ =>
-      }
-      def printLog(indent: Int, log: InlineLogResult): Unit = {
-        println(log.entryString(indent))
-        log match {
-          case s: InlineLogSuccess => printChildren(indent + 1, s.request.callsite)
-          case _ =>
-        }
-      }
-      roots.size match {
-        case 0 =>
-        case 1 =>
-          Console.print(callsiteInfo)
-          Console.print(": ")
-          printLog(0, roots(0))
-        case _ =>
-          println(callsiteInfo)
-          for (log <- roots) printLog(1, log)
-      }
-    }
-  }
-
-  object InlineLog {
-    sealed trait InlineLogResult {
-      def entryString(indent: Int): String = {
-        def calleeString(r: InlineRequest) = {
-          val callee = r.callsite.callee.get
-          callee.calleeDeclarationClass.internalName + "." + callee.callee.name
-        }
-        val indentString = " " * indent
-        this match {
-          case InlineLogSuccess(r, sizeBefore, sizeAfter) =>
-            s"${indentString}inlined ${calleeString(r)} (${r.logText}). Before: $sizeBefore ins, after: $sizeAfter ins."
-
-          case InlineLogRewrite(closureInit, invocations) =>
-            s"${indentString}rewrote invocations of closure allocated in ${closureInit.ownerClass.internalName}.${closureInit.ownerMethod.name} with body ${closureInit.lambdaMetaFactoryCall.implMethod.getName}: ${invocations.map(AsmUtils.textify).mkString(", ")}"
-
-          case InlineLogFail(r, w) =>
-            s"${indentString}failed ${calleeString(r)} (${r.logText}). ${w.toString.replace('\n', ' ')}"
-
-          case InlineLogRollback(reason) =>
-            s"${indentString}rolled back: $reason."
-        }
-      }
-    }
-    final case class InlineLogSuccess(request: InlineRequest, sizeBefore: Int, sizeAfter: Int) extends InlineLogResult
-    final case class InlineLogRewrite(closureInit: ClosureInstantiation, invocations: List[MethodInsnNode]) extends InlineLogResult
-    final case class InlineLogFail(request: InlineRequest, warning: CannotInlineWarning) extends InlineLogResult
-    final case class InlineLogRollback(reason: String) extends InlineLogResult
-  }
-
+class Inliner() {
+  
   // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
   // inlined in a later inlining round.
   // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
@@ -281,7 +77,7 @@ class Inliner(postProcessor: PostProcessor) {
       if (runClosureOptimizer) {
         val specificMethodsForClosureRewriting = if (round == 0) None else Some(changedByInliner)
         // TODO: remove cast by moving `MethodInlinerState` and other classes from inliner to a separate PostProcessor component
-        changedByClosureOptimizer = closureOptimizer.rewriteClosureApplyInvocations(specificMethodsForClosureRewriting, inlinerState.asInstanceOf[mutable.Map[MethodNode, postProcessor.closureOptimizer.postProcessor.inliner.MethodInlinerState]])
+        changedByClosureOptimizer = closureOptimizer.rewriteClosureApplyInvocations(specificMethodsForClosureRewriting, inlinerState.asInstanceOf[mutable.Map[MethodNode, inliner.MethodInlinerState]])
       }
 
       var logs = List.empty[(MethodNode, InlineLog)]
@@ -487,30 +283,7 @@ class Inliner(postProcessor: PostProcessor) {
 
     overallChangedMethods
   }
-
-  /**
-   * Ordering for inline requests. Required to make the inliner deterministic:
-   *   - Always remove the same request when breaking inlining cycles
-   *   - Perform inlinings in a consistent order
-   */
-  object callsiteOrdering extends Ordering[Callsite] {
-    override def compare(x: Callsite, y: Callsite): Int = {
-      if (x eq y) return 0
-
-      val cls = x.callsiteClass.internalName.compareTo(y.callsiteClass.internalName)
-      if (cls != 0) return cls
-
-      val name = x.callsiteMethod.name.compareTo(y.callsiteMethod.name)
-      if (name != 0) return name
-
-      val desc = x.callsiteMethod.desc.compareTo(y.callsiteMethod.desc)
-      if (desc != 0) return desc
-
-      def pos(c: Callsite) = c.callsiteMethod.instructions.indexOf(c.callsiteInstruction)
-      pos(x) - pos(y)
-    }
-  }
-
+  
   private val inlineRequestOrdering =
     Ordering.by[InlineRequest, Callsite](_.callsite)(using callsiteOrdering)
 
@@ -616,62 +389,6 @@ class Inliner(postProcessor: PostProcessor) {
     result
   }
 
-  class UndoLog(active: Boolean = true) {
-    import java.util.{ArrayList => JArrayList}
-
-    private var actions = List.empty[() => Unit]
-
-    def apply(a: => Unit): Unit = if (active) actions = (() => a) :: actions
-    def rollback(): Unit = if (active) actions.foreach(_.apply())
-
-    def saveMethodState(ownerClass: ClassBType, methodNode: MethodNode): Unit = if (active) {
-      val currentInstructions = methodNode.instructions.toArray
-      val currentLocalVariables = new JArrayList(methodNode.localVariables)
-      val currentTryCatchBlocks = new JArrayList(methodNode.tryCatchBlocks)
-      val currentMaxLocals = methodNode.maxLocals
-      val currentMaxStack = methodNode.maxStack
-
-      val currentIndyLambdaBodyMethods = indyLambdaBodyMethods(ownerClass.internalName, methodNode)
-
-      // Instead of saving / restoring the CallGraph's callsites / closureInstantiations, we call
-      // callGraph.refresh on rollback. The call graph might not be up to date at the point where
-      // we save the method state, because it might be in the middle of inlining some callsites of
-      // that method. The call graph is only updated at the end (in the inliner loop).
-      // We don't save / restore the CallGraph's
-      //   - callsitePositions
-      //   - inlineAnnotatedCallsites
-      //   - noInlineAnnotatedCallsites
-      //   - staticallyResolvedInvokespecial
-      // These contain instructions, and we never remove from them. So when rolling back a method's
-      // instruction list, the old instructions are still in there.
-
-      apply {
-        // `methodNode.instructions.clear()` doesn't work: it keeps the `prev` / `next` / `index` of
-        // instruction nodes. `instructions.removeAll(true)` would work, but is not public.
-        methodNode.instructions.iterator.asScala.toList.foreach(methodNode.instructions.remove)
-        for (i <- currentInstructions) methodNode.instructions.add(i)
-
-        methodNode.localVariables.clear()
-        methodNode.localVariables.addAll(currentLocalVariables)
-
-        methodNode.tryCatchBlocks.clear()
-        methodNode.tryCatchBlocks.addAll(currentTryCatchBlocks)
-
-        methodNode.maxLocals = currentMaxLocals
-        methodNode.maxStack = currentMaxStack
-
-        BackendUtils.clearDceDone(methodNode)
-        callGraph.refresh(methodNode, ownerClass)
-
-        onIndyLambdaImplMethodIfPresent(ownerClass.internalName)(_.subtractOne(methodNode))
-        if (currentIndyLambdaBodyMethods.nonEmpty)
-          onIndyLambdaImplMethod(ownerClass.internalName)(ms => ms(methodNode) = mutable.Map.empty ++= currentIndyLambdaBodyMethods)
-      }
-    }
-  }
-
-  val NoUndoLogging = new UndoLog(active = false)
-
   /**
    * Copy and adapt the instructions of a method to a callsite.
    *
@@ -683,7 +400,6 @@ class Inliner(postProcessor: PostProcessor) {
    *         instruction in the callsite method.
    */
   def inlineCallsite(callsite: Callsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
-    import callsite._
     val Right(callsiteCallee) = callsite.callee: @unchecked
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
@@ -1336,4 +1052,295 @@ class Inliner(postProcessor: PostProcessor) {
     }
     Right(illegalAccess.toList)
   }
+}
+
+class UndoLog(active: Boolean = true) {
+
+  import java.util.{ArrayList => JArrayList}
+
+  private var actions = List.empty[() => Unit]
+
+  def apply(a: => Unit): Unit = if (active) actions = (() => a) :: actions
+
+  def rollback(): Unit = if (active) actions.foreach(_.apply())
+
+  def saveMethodState(ownerClass: ClassBType, methodNode: MethodNode): Unit = if (active) {
+    val currentInstructions = methodNode.instructions.toArray
+    val currentLocalVariables = new JArrayList(methodNode.localVariables)
+    val currentTryCatchBlocks = new JArrayList(methodNode.tryCatchBlocks)
+    val currentMaxLocals = methodNode.maxLocals
+    val currentMaxStack = methodNode.maxStack
+
+    val currentIndyLambdaBodyMethods = backendUtils.indyLambdaBodyMethods(ownerClass.internalName, methodNode)
+
+    // Instead of saving / restoring the CallGraph's callsites / closureInstantiations, we call
+    // callGraph.refresh on rollback. The call graph might not be up to date at the point where
+    // we save the method state, because it might be in the middle of inlining some callsites of
+    // that method. The call graph is only updated at the end (in the inliner loop).
+    // We don't save / restore the CallGraph's
+    //   - callsitePositions
+    //   - inlineAnnotatedCallsites
+    //   - noInlineAnnotatedCallsites
+    //   - staticallyResolvedInvokespecial
+    // These contain instructions, and we never remove from them. So when rolling back a method's
+    // instruction list, the old instructions are still in there.
+
+    apply {
+      // `methodNode.instructions.clear()` doesn't work: it keeps the `prev` / `next` / `index` of
+      // instruction nodes. `instructions.removeAll(true)` would work, but is not public.
+      methodNode.instructions.iterator.asScala.toList.foreach(methodNode.instructions.remove)
+      for (i <- currentInstructions) methodNode.instructions.add(i)
+
+      methodNode.localVariables.clear()
+      methodNode.localVariables.addAll(currentLocalVariables)
+
+      methodNode.tryCatchBlocks.clear()
+      methodNode.tryCatchBlocks.addAll(currentTryCatchBlocks)
+
+      methodNode.maxLocals = currentMaxLocals
+      methodNode.maxStack = currentMaxStack
+
+      BackendUtils.clearDceDone(methodNode)
+      callGraph.refresh(methodNode, ownerClass)
+
+      backendUtils.onIndyLambdaImplMethodIfPresent(ownerClass.internalName)(_.subtractOne(methodNode))
+      if (currentIndyLambdaBodyMethods.nonEmpty)
+        backendUtils.onIndyLambdaImplMethod(ownerClass.internalName)(ms => ms(methodNode) = mutable.Map.empty ++= currentIndyLambdaBodyMethods)
+    }
+  }
+}
+
+val NoUndoLogging = new UndoLog(active = false)
+
+/**
+ * Ordering for inline requests. Required to make the inliner deterministic:
+ *   - Always remove the same request when breaking inlining cycles
+ *   - Perform inlinings in a consistent order
+ */
+object callsiteOrdering extends Ordering[Callsite] {
+  override def compare(x: Callsite, y: Callsite): Int = {
+    if (x eq y) return 0
+
+    val cls = x.callsiteClass.internalName.compareTo(y.callsiteClass.internalName)
+    if (cls != 0) return cls
+
+    val name = x.callsiteMethod.name.compareTo(y.callsiteMethod.name)
+    if (name != 0) return name
+
+    val desc = x.callsiteMethod.desc.compareTo(y.callsiteMethod.desc)
+    if (desc != 0) return desc
+
+    def pos(c: Callsite) = c.callsiteMethod.instructions.indexOf(c.callsiteInstruction)
+
+    pos(x) - pos(y)
+  }
+}
+
+// A callsite that was inlined and the IllegalAccessInstructions warning that was delayed.
+// The inliner speculatively inlines a callsite even if the method then has instructions that would
+// cause an IllegalAccessError in the target class. If all of those instructions are eliminated
+// (by inlining) in a later round, everything is fine. Otherwise the method is reverted.
+final case class InlinedCallsite(eliminatedCallsite: Callsite, warning: Option[IllegalAccessInstructions]) {
+  // If this InlinedCallsite has a warning about a given instruction, return a copy where the warning
+  // only contains that instruction.
+  def filterForWarning(insn: AbstractInsnNode): Option[InlinedCallsite] = warning match {
+    case Some(w) if w.instructions.contains(insn) => Some(this.copy(warning = Some(w.copy(instructions = List(insn)))))
+    case _ => None
+  }
+}
+
+// The state accumulated across inlining rounds for a single MethodNode
+final class MethodInlinerState {
+  // Instructions that were copied into a method and would cause an IllegalAccess. They need to
+  // be inlined in a later round, otherwise the method is rolled back to its original state.
+  val illegalAccessInstructions = mutable.Set.empty[AbstractInsnNode]
+
+  // A map from invocation instructions that were copied (inlined) into this method to the
+  // inlined callsite from which they originate.
+  // Note: entries are not removed from this map, even if an inlined callsite gets inlined in a
+  // later round. This allows re-constructing the inline chain.
+  val inlinedCalls = mutable.Map.empty[AbstractInsnNode, InlinedCallsite]
+
+  var undoLog: UndoLog = NoUndoLogging
+
+  var inlineLog = new InlineLog
+
+  override def clone(): MethodInlinerState = {
+    val r = new MethodInlinerState
+    r.illegalAccessInstructions ++= illegalAccessInstructions
+    r.inlinedCalls ++= inlinedCalls
+    // The clone references the same InlineLog, so no logs are discarded when rolling back
+    r.inlineLog = inlineLog
+    // Skip undoLog: clone() is only called when undoLog == NoUndoLogging
+    r
+  }
+
+  def outerCallsite(call: AbstractInsnNode): Option[Callsite] = inlinedCalls.get(call).map(_.eliminatedCallsite)
+
+  // The chain of inlined callsites that that lead to some (call) instruction. Don't include
+  // synthetic forwarders if skipForwarders is true (don't show those in inliner warnings, as they
+  // don't show up in the source code).
+  // Also used to detect inlining cycles.
+  def inlineChain(call: AbstractInsnNode, skipForwarders: Boolean): List[Callsite] = {
+    @tailrec def impl(insn: AbstractInsnNode, res: List[Callsite]): List[Callsite] = inlinedCalls.get(insn) match {
+      case Some(inlinedCallsite) =>
+        val cs = inlinedCallsite.eliminatedCallsite
+        val res1 = if (skipForwarders && backendUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.get.callee, cs.callee.get.calleeDeclarationClass)) res else cs :: res
+        impl(cs.callsiteInstruction, res1)
+      case _ =>
+        res
+    }
+
+    impl(call, Nil)
+  }
+
+  // In a chain of inlined calls which lead to some (call) instruction, return the root `InlinedCallsite`
+  // which has a delayed warning . When inlining `call` fails, warn about the root instruction instead of
+  // the downstream inline request that tried to eliminate an illegalAccess instruction.
+  // This method skips over forwarders. For example in `trait T { def m = ... }; class A extends T`
+  // the inline chain is `A.m (mixin forwarder) - T.m$ (static accessor) - T.m`. The method returns
+  // `T.m` (even if the root callsite is `A.m`.
+  // If the chain has only forwarders, `returnForwarderIfNoOther` determines whether to return `None`
+  // or the last inlined forwarder.
+  def rootInlinedCallsiteWithWarning(call: AbstractInsnNode, returnForwarderIfNoOther: Boolean): Option[InlinedCallsite] = {
+    def isForwarder(callsite: Callsite) = backendUtils.isTraitSuperAccessorOrMixinForwarder(callsite.callee.get.callee, callsite.callee.get.calleeDeclarationClass)
+
+    def result(res: Option[InlinedCallsite]) = res match {
+      case Some(r) if returnForwarderIfNoOther || !isForwarder(r.eliminatedCallsite) => res
+      case _ => None
+    }
+
+    @tailrec def impl(insn: AbstractInsnNode, res: Option[InlinedCallsite]): Option[InlinedCallsite] = inlinedCalls.get(insn) match {
+      case Some(inlinedCallsite) =>
+        val w = inlinedCallsite.filterForWarning(insn)
+        if (w.isEmpty) result(res)
+        else {
+          val cs = inlinedCallsite.eliminatedCallsite
+          // The returned InlinedCallsite can be a forwarder if that forwarder was the initial callsite in the method
+          val nextRes = if (isForwarder(cs) && res.nonEmpty && !isForwarder(res.get.eliminatedCallsite)) res else w
+          impl(cs.callsiteInstruction, nextRes)
+        }
+
+      case _ => result(res)
+    }
+
+    impl(call, None)
+  }
+}
+
+final class InlineLog {
+
+  import InlineLog.*
+
+  private var _active = false
+
+  var roots: mutable.ArrayBuffer[InlineLogResult] = null
+  var downstream: mutable.HashMap[Callsite, mutable.ArrayBuffer[InlineLogResult]] = null
+  var callsiteInfo: String = null
+
+  // A bit of a hack.. We check the -Yopt-log-inline flag when logging the first inline request.
+  // Because the InlineLog is part of the MethodInlinerState, subsequent requests will all be
+  // for the same callsite class / method. At the point where the MethodInlinerState is created
+  // we don't have access to the enclosing class.
+  private def active(callsiteClass: ClassBType, callsiteMethod: MethodNode): Boolean = {
+    if (roots == null) {
+      compilerSettings.optLogInline match {
+        case Some("_") => _active = true
+        case Some(prefix) => _active = s"${callsiteClass.internalName}.${callsiteMethod.name}".startsWith(prefix)
+        case _ => _active = false
+      }
+      if (_active) {
+        roots = mutable.ArrayBuffer.empty[InlineLogResult]
+        downstream = mutable.HashMap.empty[Callsite, mutable.ArrayBuffer[InlineLogResult]]
+        callsiteInfo = s"Inlining into ${callsiteClass.internalName}.${callsiteMethod.name}"
+      }
+    }
+    _active
+  }
+
+  private def active(callsite: Callsite): Boolean = active(callsite.callsiteClass, callsite.callsiteMethod)
+
+  private def bufferForOuter(outer: Option[Callsite]) = outer match {
+    case Some(o) => downstream.getOrElse(o, roots)
+    case _ => roots
+  }
+
+  def logSuccess(request: InlineRequest, sizeBefore: Int, sizeAfter: Int, outer: Option[Callsite]) = if (active(request.callsite)) {
+    bufferForOuter(outer) += InlineLogSuccess(request, sizeBefore, sizeAfter)
+    downstream(request.callsite) = mutable.ArrayBuffer.empty
+  }
+
+  def logClosureRewrite(closureInit: ClosureInstantiation, invocations: mutable.ArrayBuffer[(MethodInsnNode, Int)], outer: Option[Callsite]) = if (active(closureInit.ownerClass, closureInit.ownerMethod)) {
+    bufferForOuter(outer) += InlineLogRewrite(closureInit, invocations.map(_._1).toList)
+  }
+
+  def logFail(request: InlineRequest, warning: CannotInlineWarning, outer: Option[Callsite]) = if (active(request.callsite)) {
+    bufferForOuter(outer) += InlineLogFail(request, warning)
+  }
+
+  def logRollback(callsite: Callsite, reason: String, outer: Option[Callsite]) = if (active(callsite)) {
+    bufferForOuter(outer) += InlineLogRollback(reason)
+  }
+
+  def nonEmpty = roots != null
+
+  def print(): Unit = if (roots != null) {
+    def printChildren(indent: Int, callsite: Callsite): Unit = downstream.get(callsite) match {
+      case Some(logs) => logs.foreach(l => printLog(indent, l))
+      case _ =>
+    }
+
+    def printLog(indent: Int, log: InlineLogResult): Unit = {
+      println(log.entryString(indent))
+      log match {
+        case s: InlineLogSuccess => printChildren(indent + 1, s.request.callsite)
+        case _ =>
+      }
+    }
+
+    roots.size match {
+      case 0 =>
+      case 1 =>
+        Console.print(callsiteInfo)
+        Console.print(": ")
+        printLog(0, roots(0))
+      case _ =>
+        println(callsiteInfo)
+        for (log <- roots) printLog(1, log)
+    }
+  }
+}
+
+object InlineLog {
+  sealed trait InlineLogResult {
+    def entryString(indent: Int): String = {
+      def calleeString(r: InlineRequest) = {
+        val callee = r.callsite.callee.get
+        callee.calleeDeclarationClass.internalName + "." + callee.callee.name
+      }
+
+      val indentString = " " * indent
+      this match {
+        case InlineLogSuccess(r, sizeBefore, sizeAfter) =>
+          s"${indentString}inlined ${calleeString(r)} (${r.logText}). Before: $sizeBefore ins, after: $sizeAfter ins."
+
+        case InlineLogRewrite(closureInit, invocations) =>
+          s"${indentString}rewrote invocations of closure allocated in ${closureInit.ownerClass.internalName}.${closureInit.ownerMethod.name} with body ${closureInit.lambdaMetaFactoryCall.implMethod.getName}: ${invocations.map(AsmUtils.textify).mkString(", ")}"
+
+        case InlineLogFail(r, w) =>
+          s"${indentString}failed ${calleeString(r)} (${r.logText}). ${w.toString.replace('\n', ' ')}"
+
+        case InlineLogRollback(reason) =>
+          s"${indentString}rolled back: $reason."
+      }
+    }
+  }
+
+  final case class InlineLogSuccess(request: InlineRequest, sizeBefore: Int, sizeAfter: Int) extends InlineLogResult
+
+  final case class InlineLogRewrite(closureInit: ClosureInstantiation, invocations: List[MethodInsnNode]) extends InlineLogResult
+
+  final case class InlineLogFail(request: InlineRequest, warning: CannotInlineWarning) extends InlineLogResult
+
+  final case class InlineLogRollback(reason: String) extends InlineLogResult
 }

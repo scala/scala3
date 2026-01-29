@@ -26,6 +26,9 @@ import Names.Name
 
 // TODO: Remove this altogether. There's no use pretending we don't depend on a context, we call way too many context-taking functions elsewhere already.
 
+// TODO: look at what non-jvm things are using this: `grep --include=\*.scala -Fr '.jvm' compiler | grep -Fv '/jvm`'`
+//       the answer right now is "too many", aka >0
+
 object DottyBackendInterface {
 
   private def erasureString(clazz: Class[?]): String = {

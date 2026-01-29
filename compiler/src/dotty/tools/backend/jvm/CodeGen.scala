@@ -31,11 +31,15 @@ import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
-import dotty.tools.dotc.util.NoSourcePosition
+import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import DottyBackendInterface.symExtensions
+import opt.CallGraph
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols)(using Context) {
-  private class Impl(using Context) extends BCodeHelpers(backendUtils, ts), BCodeSkelBuilder(ts), BCodeBodyBuilder(primitives, ts), BCodeSyncAndTry(ts)
+class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypesFromSymbols)(using Context) {
+  private class Impl(using Context) extends BCodeHelpers(backendUtils, ts), BCodeSkelBuilder(ts), BCodeBodyBuilder(primitives, ts), BCodeSyncAndTry(ts) {
+    def recordCallsitePosition(m: MethodInsnNode, pos: SrcPos): Unit =
+      callGraph.callsitePositions(m) = pos
+  }
   private val impl = new Impl()
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
