@@ -59,7 +59,7 @@
    |  Reference `test.M.c` is not included in the allowed capture set {}
    |  of the enclosing top-level definitions in package test.
    |
-   |  External uses should be declared explicitly with a uses clause in the top-level definitions in package test:
+   |  The top-level definitions should be wrapped in an object with a uses clause:
    |
    |      uses test.M.c
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:28:2 -------------------------------
@@ -70,7 +70,7 @@
    |
    |  Note that `test.Console` is a capability because it contains a field out: test.Stream^.
    |
-   |  External uses should be declared explicitly with a uses clause in the top-level definitions in package test:
+   |  The top-level definitions should be wrapped in an object with a uses clause:
    |
    |      uses test.Console
    |

@@ -3786,15 +3786,22 @@ final class CannotBeIncluded(
           if targetOwner.isClass
           then ("uses", targetOwner)
           else ("uses_init", targetOwner.owner)
-
         val usedStr = added match
           case added: Capability => i"${added.showAsCapability}"
           case added: CaptureSet => i"${added.elems.toList.map(_.showAsCapability).mkString(", ")}"
+
+        if targetOwner.isPackageObject then
           i"""
-           |
-           |External uses should be declared explicitly with a $uses clause in $loc:
-           |
-           |    $uses $usedStr"""
+            |
+            |The top-level definitions should be wrapped in an object with a $uses clause:
+            |
+            |    $uses $usedStr"""
+        else
+          i"""
+            |
+            |External uses should be declared explicitly with a $uses clause in $loc:
+            |
+            |    $uses $usedStr"""
       else ""
 
     def notesStr: String = notes.map(_.render).mkString
