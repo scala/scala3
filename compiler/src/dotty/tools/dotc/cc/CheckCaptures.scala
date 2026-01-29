@@ -721,27 +721,28 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       val sym = tree.symbol
-      if sym.isOneOf(MethodOrLazy) then
+      if sym.is(Method) then
         // If ident refers to a parameterless method or lazy val, charge its cv to the environment.
         // Lazy vals are like parameterless methods: accessing them may trigger initialization
         // that uses captured references.
         includeCallCaptures(sym, sym.info, tree)
       else {
-        if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
+        if sym.is(Lazy) then
+          includeCallCaptures(sym, sym.info, tree)
+        else if sym.isMutableVar && sym.owner.isTerm && pt != LhsProto then
           // When we have `var x: A^{c} = ...` where `x` is a local variable then
           // when dereferencing `x` we also need to charge `c`.
           // For fields it's not a problem since `c` would already have been
           // charged for the prefix `p` in `p.x`.
           markFree(sym.info.captureSet, tree)
-        //else if sym.is(Lazy) then
-        //  includeCallCaptures(sym, sym.info, tree)
 
-        sym.maybeOwner.thisType match
-          case ref: ThisType
-          if ref.isTracked && sym.isTerm && !sym.is(Package) =>
-            markPathFree(ref, PathSelectionProto(sym, pt, tree), tree)
-          case _ =>
-            if sym.exists then markPathFree(sym.termRef, pt, tree)
+        if !sym.is(Module) then
+          sym.maybeOwner.thisType match
+            case ref: ThisType
+            if ref.isTracked && sym.isTerm =>
+              markPathFree(ref, PathSelectionProto(sym, pt, tree), tree)
+            case _ =>
+              if sym.exists then markPathFree(sym.termRef, pt, tree)
       }
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
