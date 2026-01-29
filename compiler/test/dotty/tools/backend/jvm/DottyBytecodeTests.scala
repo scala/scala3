@@ -2014,17 +2014,17 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   // Automatic untupling should not introduce extra CHECKCAST instructions for unused tuple elements
   @Test def i24997 = {
     val source =
-      """class Wrapper[A](value: A):
+      """|class Wrapper[A](value: A):
         |  def use[B](f: A => B): B = f(value)
         |
         |class Test:
         |  def withCase: Int =
-        |    val w = Wrapper((42, "Answer"))
-        |    w.use { case (number, _) => number }
+        |    val w = Wrapper(("42", "Answer"))
+        |    w.use { case (s, _) => s.length }
         |
         |  def withoutCase: Int =
-        |    val w = Wrapper((42, "Answer"))
-        |    w.use { (number, _) => number }
+        |    val w = Wrapper(("42", "Answer"))
+        |    w.use { (s, _) => s.length }
         |""".stripMargin
 
     checkBCode(source) { dir =>
@@ -2046,7 +2046,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       // Both methods should have the same number of CHECKCAST instructions
       // (specifically, they should NOT have extra ones for unused wildcard elements)
-      assertEquals(s"withCase should have 0 CHECKCASTs", 0, withCaseCasts)
+      assertEquals(s"withCase should have 1 CHECKCAST", 1, withCaseCasts)
       assertEquals(s"withoutCase should have 1 CHECKCAST", 1, withoutCaseCasts)
     }
   }

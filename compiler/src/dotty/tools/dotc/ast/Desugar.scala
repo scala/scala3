@@ -1975,7 +1975,7 @@ object desugar {
       else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
       params.zipWithIndex.collect {
-        case (param, idx) if param.name != nme.WILDCARD =>
+        case (param, idx) if param.name != nme.WILDCARD && !param.name.is(WildcardParamName) =>
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
