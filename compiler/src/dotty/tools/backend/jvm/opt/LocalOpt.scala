@@ -154,7 +154,7 @@ class LocalOpt(pp: PostProcessor) {
   import LocalOptImpls.*
   import pp.frontendAccess.compilerSettings
 
-  val boxUnbox = new BoxUnbox(pp)
+  val boxUnbox = new BoxUnbox(pp.backendUtils, pp.callGraph, pp.ts)
   val copyProp = new CopyProp(pp)
 
   /**

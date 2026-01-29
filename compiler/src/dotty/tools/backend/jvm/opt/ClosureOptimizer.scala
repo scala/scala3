@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
-import dotty.tools.dotc.util.NoSourcePositions
+import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.*
 import dotty.tools.backend.jvm.BackendReporting.*
