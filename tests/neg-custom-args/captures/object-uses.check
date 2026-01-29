@@ -1,4 +1,4 @@
--- Error: tests/neg-custom-args/captures/object-uses.scala:12:22 -------------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/object-uses.scala:12:22 --------------------------------
 12 |      Console.println(g.toString) // error
    |                      ^
    |                      reference `A.this.g` is not included in the allowed capture set {A.this.f}

@@ -25,7 +25,7 @@ import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure, Va
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
-import reporting.{trace, Message, OverrideError}
+import reporting.*
 import reporting.Message.Note
 import Annotations.Annotation
 import Capabilities.*
@@ -408,57 +408,44 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** If `res` is not CompareResult.OK, report an error */
     def checkOK(res: TypeComparer.CompareResult,
-        prefix: => String,
         added: Capability | CaptureSet,
         target: CaptureSet,
-        pos: SrcPos,
-        provenance: => String = "")(using Context): Unit =
+        provenance: => String,
+        pos: SrcPos)(using Context): Unit =
       res match
         case TypeComparer.CompareResult.Fail(notes) =>
           val (includeFailures, otherNotes) = notes.partition(_.isInstanceOf[IncludeFailure])
           val realTarget = includeFailures match
-            case (fail: IncludeFailure) :: _ if !fail.cs.isInstanceOf[CaptureSet.EmptyOfBoxed] =>
-              fail.cs
-            case _ =>
-              target
-          def msg(provisional: Boolean) =
-            def toAdd: String = otherNotes.map(_.render).mkString
-            def provenanceStr: String =
-              if realTarget.description.isEmpty then provenance else ""
-            def kind = if provisional then "previously estimated\n" else "allowed "
-            em"$prefix included in the ${kind}capture set $realTarget$provenanceStr$toAdd"
+            case (fail: IncludeFailure) :: _
+            if !fail.cs.isInstanceOf[CaptureSet.EmptyOfBoxed] => fail.cs
+            case _ => target
+          def msg = CannotBeIncluded(added, target, realTarget, otherNotes, provenance)
           target match
-            case target: CaptureSet.Var
-            if realTarget.isProvisionallySolved =>
+            case target: CaptureSet.Var if realTarget.isProvisionallySolved =>
               report.warning(
-                msg(provisional = true)
-                  .prepend(i"Another capture checking run needs to be scheduled because\n"),
+                msg.prepend(i"Another capture checking run needs to be scheduled because\n"),
                 pos)
               needAnotherRun = true
               added match
                 case added: Capability => target.elems += added
                 case added: CaptureSet => target.elems ++= added.elems
             case _ =>
-              report.error(msg(provisional = false), pos)
+              report.error(msg, pos)
         case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: Capability, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
           TypeComparer.compareResult(elem.singletonCaptureSet.subCaptures(cs)),
-          i"$elem cannot be referenced here; it is not",
-          elem, cs, pos, provenance)
+          elem, cs, provenance, pos)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
-        provenance: => String = "", cs1description: String = "")(using Context) =
+        provenance: => String = "")(using Context) =
+      val cs1description = cs1.description
       checkOK(
           TypeComparer.compareResult(cs1.subCaptures(cs2)),
-          if cs1.elems.size == 1 then
-            i"reference `${cs1.elems.nth(0).showAsCapability}`$cs1description is not"
-          else
-            i"references $cs1$cs1description are not all",
-          cs1, cs2, pos, provenance)
+          cs1, cs2, provenance, pos)
 
     /** If `sym` is a method or a non-static inner class, a capture set variable
      *  representing the captured variables of the environment associated with `sym`.
@@ -1335,6 +1322,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         curEnv = savedEnv
 
         if runInConstructor && savedEnv.owner.isClass then
+          // External capabilities in field types are counted as capabilities of the class
+          // This is different from captureSetImpliedByFields since the latter produces
+          // LocalCaps from inside the class.
           markFree(declaredCaptures, tree, addUseInfo = false)
     end recheckValDef
 
@@ -1560,7 +1550,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             .orElse(tree)     // ... or empty.
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
-            selfTypeTree.srcPos, cs1description = " captured by this self type")
+            selfTypeTree.srcPos)
 
         // (5) Check AppliedType parents
         for case tpt: TypeTree <- impl.parents do
