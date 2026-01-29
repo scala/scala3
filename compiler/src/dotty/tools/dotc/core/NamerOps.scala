@@ -361,7 +361,7 @@ object NamerOps:
   def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
     val name = param.name.toTermName
     val preExisting = ctx.effectiveScope.lookup(name)
-    if Feature.ccEnabled && preExisting.exists then
+    if preExisting.exists then
       report.error(AlreadyDefined(name, param.owner, preExisting, addingCaptureSet = true), param.srcPos)
     else
       val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
