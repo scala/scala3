@@ -101,11 +101,11 @@ object PostProcessorFrontendAccess {
     def backendMaxWorkerQueue: Option[Int]
     def outputOnlyTasty: Boolean
 
-    def optAddToBytecodeRepository: Boolean
-    def optBuildCallGraph: Boolean
-    def optUseAnalyzerCache: Boolean
+    // TODO inline these two
+    def optAddToBytecodeRepository: Boolean = optBuildCallGraph || optInlinerEnabled || optClosureInvocations
+    def optBuildCallGraph: Boolean = optInlinerEnabled || optClosureInvocations
 
-    def optNone: Boolean
+    def optUseAnalyzerCache: Boolean
 
     def optUnreachableCode: Boolean
     def optNullnessTracking: Boolean
@@ -167,6 +167,29 @@ object PostProcessorFrontendAccess {
 
       @annotation.nowarn("cat=deprecation")
       override val outputOnlyTasty: Boolean = s.YoutputOnlyTasty.value
+
+      override def optUseAnalyzerCache: Boolean =  s.opt.valueSetByUser.nonEmpty && (optBuildCallGraph || s.opt.value.size > 1)
+      override def optUnreachableCode: Boolean = s.optUnreachableCode
+      override def optNullnessTracking: Boolean = s.optNullnessTracking
+      override def optBoxUnbox: Boolean = s.optBoxUnbox
+      override def optCopyPropagation: Boolean = s.optCopyPropagation
+      override def optRedundantCasts: Boolean = s.optRedundantCasts
+      override def optSimplifyJumps: Boolean = s.optSimplifyJumps
+      override def optCompactLocals: Boolean = s.optCompactLocals
+      override def optClosureInvocations: Boolean = s.optClosureInvocations
+      override def optAllowSkipCoreModuleInit: Boolean = s.optAllowSkipCoreModuleInit
+      override def optAssumeModulesNonNull: Boolean = s.optAssumeModulesNonNull
+      override def optAllowSkipClassLoading: Boolean = s.optAllowSkipClassLoading
+      override def optInlinerEnabled: Boolean = s.optInline.value.nonEmpty
+      override def optInlineFrom: List[String] = s.optInline.value
+      override def optInlineHeuristics: String = s.optInlineHeuristics.value
+      override def optWarningNoInlineMixed: Boolean = s.optWarningNoInlineMixed
+      override def optWarningNoInlineMissingBytecode: Boolean = s.optWarningNoInlineMissingBytecode
+      override def optWarningNoInlineMissingScalaInlineInfoAttr: Boolean = s.optWarningNoInlineMissingScalaInlineInfoAttr
+      override def optWarningEmitAtInlineFailed: Boolean = s.optWarningEmitAtInlineFailed
+      override def optWarningEmitAnyInlineFailed: Boolean = s.optWarningEmitAnyInlineFailed
+      override def optLogInline: Option[String] = s.YoptLogInline.valueSetByUser
+      override def optTrace: Option[String] = s.YoptTrace.valueSetByUser
      }
 
      private lazy val localReporter = new ThreadLocal[BackendReporting]

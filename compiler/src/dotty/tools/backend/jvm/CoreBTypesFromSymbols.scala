@@ -325,6 +325,9 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
   override def StringRef: ClassBType = _StringRef.get
   private lazy val _StringRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.StringClass))
 
+  override def PredefRef: ClassBType = _PredefRef.get
+  private lazy val _PredefRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.ScalaPredefModuleClass))
+
   override def jlClassRef: ClassBType = _jlClassRef.get
   private lazy val _jlClassRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.Class[?]]))
 
