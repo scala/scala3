@@ -761,10 +761,6 @@ class Definitions {
     @tu lazy val MethodHandlesLookup_FindVarHandle: Symbol = MethodHandlesLookupClass.requiredMethod("findVarHandle")
   @tu lazy val VarHandleClass: ClassSymbol           = requiredClass("java.lang.invoke.VarHandle")
 
-  @tu lazy val JavaCharSequenceClass: ClassSymbol        = requiredClass("java.lang.CharSequence")
-  @tu lazy val JavaStringBufferClass: ClassSymbol        = requiredClass("java.lang.StringBuffer")
-  @tu lazy val JavaStringBuilderClass: ClassSymbol        = requiredClass("java.lang.StringBuilder")
-
   @tu lazy val StringBuilderClass: ClassSymbol = requiredClass("scala.collection.mutable.StringBuilder")
   @tu lazy val MatchErrorClass   : ClassSymbol = requiredClass("scala.MatchError")
   @tu lazy val ConversionClass   : ClassSymbol = requiredClass("scala.Conversion").typeRef.symbol.asClass

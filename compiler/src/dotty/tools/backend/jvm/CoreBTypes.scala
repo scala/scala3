@@ -31,9 +31,6 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
   def ObjectRef                   : ClassBType
   def StringRef                   : ClassBType
   def PredefRef                   : ClassBType
-  def jlStringBuilderRef          : ClassBType
-  def jlStringBufferRef           : ClassBType
-  def jlCharSequenceRef           : ClassBType
   def jlClassRef                  : ClassBType
   def jlThrowableRef              : ClassBType
   def jlCloneableRef              : ClassBType

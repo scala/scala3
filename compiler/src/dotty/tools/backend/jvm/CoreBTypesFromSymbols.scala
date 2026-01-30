@@ -338,15 +338,6 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
   override def jlCloneableRef: ClassBType = _jlCloneableRef.get
   private lazy val _jlCloneableRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaCloneableClass))
 
-  override def jlCharSequenceRef: ClassBType = _jlCharSequenceRef.get
-  private lazy val _jlCharSequenceRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaCharSequenceClass))
-
-  override def jlStringBufferRef: ClassBType = _jlStringBufferRef.get
-  private lazy val _jlStringBufferRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaStringBufferClass))
-
-  override def jlStringBuilderRef: ClassBType = _jlStringBuilderRef.get
-  private lazy val _jlStringBuilderRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaStringBuilderClass))
-
   override def jiSerializableRef: ClassBType = _jiSerializableRef.get
   private lazy val _jiSerializableRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass[java.io.Serializable]))
 
