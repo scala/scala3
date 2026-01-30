@@ -193,8 +193,8 @@ final class PcInlineValueProvider(
     // locally bound and won't be affected by external shadowing
     def isLocalToRhs(symbol: Symbol): Boolean =
       symbol.sourcePos.exists && rhs.sourcePos.exists &&
-      symbol.sourcePos.start >= rhs.sourcePos.start &&
-      symbol.sourcePos.end <= rhs.sourcePos.end
+        symbol.sourcePos.start >= rhs.sourcePos.start &&
+        symbol.sourcePos.end <= rhs.sourcePos.end
 
     def collectNames(
         symbols: Set[Symbol],
