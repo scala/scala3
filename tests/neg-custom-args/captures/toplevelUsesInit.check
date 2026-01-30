@@ -31,8 +31,8 @@
    |  External uses should be declared explicitly with a uses_init clause in object N:
    |
    |      uses_init test.Console2
--- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:27:10 ---------------------------
-27 |val _ = M.c.println()          // error
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:28:10 ---------------------------
+28 |val _ = M.c.println()          // error
    |        ^^^
    |        Reference `test.M.c` is not included in the allowed capture set {}
    |        of the enclosing constructor toplevelUsesInit$package in package test.
@@ -40,8 +40,8 @@
    |        The top-level definitions should be wrapped in an object with a uses_init clause:
    |
    |            uses_init test.M.c
--- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:28:8 ----------------------------
-28 |val _ = Console.println()      // error
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:29:8 ----------------------------
+29 |val _ = Console.println()      // error
    |        ^^^^^^^
    |        Reference `test.Console` is not included in the allowed capture set {}
    |        of the enclosing constructor toplevelUsesInit$package in package test.
@@ -53,3 +53,30 @@
    |            uses_init test.Console
    |
    |        where:    ^ refers to a root capability classified as SharedCapability in the type of value out
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:32:16 ---------------------------
+32 |  val x = () => N2.ping()      // error
+   |                ^^
+   |                References {test.Console, test.M.c} are not all included in the allowed capture set {}
+   |                of the enclosing top-level definitions in package test.
+   |
+   |                Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |                The top-level definitions should be wrapped in an object with a uses clause:
+   |
+   |                    uses test.Console, test.M.c
+   |
+   |                where:    ^ refers to a root capability classified as SharedCapability in the type of value out
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:34:22 -----------------------------
+34 |  val _: () -> Unit = x        // error
+   |                      ^
+   |Found:    (x : () ->{test.Console, test.M.c} Unit)
+   |Required: () -> Unit
+   |
+   |Note that capability `any` is not included in capture set {}.
+   |
+   |Note that capability `test.Console` is not included in capture set {}.
+   |Note that object Console is a capability because it contains fields value out
+   |
+   |where:    any is a root capability classified as SharedCapability in the type of object Console with contributing field val out
+   |
+   | longer explanation available when compiling with `-explain`

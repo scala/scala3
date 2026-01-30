@@ -23,6 +23,12 @@ object N2 uses_init Console, Console2, M.c:
   M.c.println()
   Console.println()
   Console2.println()
+  def ping(): Unit = ()
 
 val _ = M.c.println()          // error
 val _ = Console.println()      // error
+
+def test =
+  val x = () => N2.ping()      // error
+  val _: () -> {Console, M.c} Unit = x
+  val _: () -> Unit = x        // error
