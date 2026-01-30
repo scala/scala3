@@ -90,8 +90,7 @@ sealed trait BType {
    * promotions (e.g. BYTE to INT). Its operation can be visualized more easily in terms of the
    * Java bytecode type hierarchy.
    */
-  @tailrec
-  final def conformsTo(other: BType): Boolean = {
+  final def conformsTo(other: BType): Either[NoClassBTypeInfo, Boolean] = tryEither(Right({
     assert(isRef || isPrimitive, s"conformsTo cannot handle $this")
     assert(other.isRef || other.isPrimitive, s"conformsTo cannot handle $other")
 
@@ -99,41 +98,35 @@ sealed trait BType {
       case ArrayBType(component) =>
         if (other.isObjectType || other.isJlCloneableType || other.isJiSerializableType) true
         else other match {
-          case ArrayBType(otherComponent) => component.conformsTo(otherComponent)
+          case ArrayBType(otherComponent) =>
+            // Array[Short]().isInstanceOf[Array[Int]] is false
+            // but Array[String]().isInstanceOf[Array[Object]] is true
+            if (component.isPrimitive || otherComponent.isPrimitive) component == otherComponent
+            else component.conformsTo(otherComponent).orThrow
           case _ => false
         }
 
       case classType: ClassBType =>
-        if (isBoxed) {
-          if (other.isBoxed) this == other
-          else if (other.isObjectType) true
-          else other match {
-            case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType).get // e.g., java/lang/Double conforms to java/lang/Number
-            case _ => false
-          }
-        } else if (isNullType) {
-          if (other.isNothingType) false
-          else if (other.isPrimitive) false
-          else true // Null conforms to all classes (except Nothing) and arrays.
-        } else if (isNothingType) {
-          true
-        } else other match {
-          case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType).get
-          // case ArrayBType(_) => this.isNullType   // documentation only, because `if isNullType` above covers this case
-          case _ =>
-            // isNothingType ||                      // documentation only, because `if isNothingType` above covers this case
-            false
-        }
+        // Quick test for Object to make a common case fast
+        other.isObjectType || (other match {
+          case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType).orThrow
+          case _ => false
+        })
 
-      case UNIT =>
-        other == UNIT
-      case BOOL | BYTE | SHORT | CHAR =>
-        this == other || other == INT || other == LONG // TODO Actually, BOOL does NOT conform to LONG. Even with adapt().
       case _ =>
-        assert(isPrimitive && other.isPrimitive, s"Expected primitive types $this - $other")
-        this == other
+        // there are no bool/byte/short/char primitives at runtime, they are represented as ints.
+        // instructions like i2s are used to truncate, the result is again an int. conformsTo
+        // returns true for conversions that don't need a truncating instruction. see also emitT2T.
+        // note that for primitive arrays, Array[Short]().isInstanceOf[Array[Int]] is false.
+        this == other || ((this, other) match {
+          case (BOOL, BYTE | SHORT | INT) => true
+          case (BYTE, SHORT | INT) => true
+          case (SHORT, INT) => true
+          case (CHAR, INT) => true
+          case _ => false
+        })
     }
-  }
+  }))
 
   /**
    * Compute the upper bound of two types.

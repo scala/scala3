@@ -124,7 +124,7 @@ class ClosureOptimizer(backendUtils: BackendUtils, backendReporting: BackendRepo
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                backendReporting.optimizerWarning(em"$warning", backendReporting.siteString(ownerClass, method.name), warning.pos)
+                backendReporting.optimizerWarning(em"${warning.toString}", backendReporting.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)

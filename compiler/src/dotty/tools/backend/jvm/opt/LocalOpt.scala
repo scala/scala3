@@ -150,12 +150,12 @@ import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, compilerSettings: CompilerSettings) {
+class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
 
   import LocalOptImpls.*
 
   val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
-  val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, compilerSettings.optAllowSkipClassLoading)
+  val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, ppa.compilerSettings.optAllowSkipClassLoading)
 
   /**
    * Remove unreachable code from a method.
@@ -201,7 +201,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    * @return      `true` if unreachable code was eliminated in some method, `false` otherwise.
    */
   def methodOptimizations(clazz: ClassNode): Boolean = {
-    !compilerSettings.optNone && clazz.methods.asScala.foldLeft(false) {
+    !ppa.compilerSettings.optNone && clazz.methods.asScala.foldLeft(false) {
       case (changed, method) => methodOptimizations(method, clazz.name) || changed
     }
   }
@@ -241,7 +241,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     // for local variables in dead blocks. Maybe that's a bug in the ASM framework.
 
     var currentTrace: String | Null = null
-    val doTrace = compilerSettings.optTrace match {
+    val doTrace = ppa.compilerSettings.optTrace match {
       case Some(v: String) =>
         val prefix = if (v == "_") "" else v
         s"$ownerClassName.${method.name}".startsWith(prefix)
@@ -278,47 +278,47 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       traceIfChanged("beforeMethodOpt")
 
       // NULLNESS OPTIMIZATIONS
-      val runNullness = compilerSettings.optNullnessTracking && requestNullness
+      val runNullness = ppa.compilerSettings.optNullnessTracking && requestNullness
       val nullnessOptChanged = runNullness && nullnessOptimizations(method, ownerClassName)
       traceIfChanged("nullness")
 
       // UNREACHABLE CODE
       // Both AliasingAnalyzer (used in copyProp) and ProdConsAnalyzer (used in eliminateStaleStores,
       // boxUnboxElimination) require not having unreachable instructions (null frames).
-      val runDCE = (compilerSettings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
-        compilerSettings.optBoxUnbox ||
-        compilerSettings.optCopyPropagation
+      val runDCE = (ppa.compilerSettings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
+        ppa.compilerSettings.optBoxUnbox ||
+        ppa.compilerSettings.optCopyPropagation
       val codeRemoved = if (runDCE) removeUnreachableCodeImpl(method, ownerClassName) else false
       traceIfChanged("dce")
 
       // BOX-UNBOX
-      val runBoxUnbox = compilerSettings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
-      val boxUnboxChanged = runBoxUnbox && boxUnboxElimination(method, ownerClassName)
+      val runBoxUnbox = ppa.compilerSettings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
+      val boxUnboxChanged = runBoxUnbox && boxUnbox.boxUnboxElimination(method, ownerClassName)
       traceIfChanged("boxUnbox")
 
       // COPY PROPAGATION
-      val runCopyProp = compilerSettings.optCopyPropagation && (requestCopyProp || boxUnboxChanged)
-      val copyPropChanged = runCopyProp && copyPropagation(method, ownerClassName)
+      val runCopyProp = ppa.compilerSettings.optCopyPropagation && (requestCopyProp || boxUnboxChanged)
+      val copyPropChanged = runCopyProp && copyProp.copyPropagation(method, ownerClassName)
       traceIfChanged("copyProp")
 
       // STALE STORES
-      val runStaleStores = compilerSettings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
+      val runStaleStores = ppa.compilerSettings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
       val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("staleStores")
 
       // REDUNDANT CASTS
-      val runRedundantCasts = compilerSettings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
+      val runRedundantCasts = ppa.compilerSettings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
       val (typeInsnChanged, intrinsicRewrittenByCasts) = if (!runRedundantCasts) (false, false) else eliminateRedundantCastsAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("redundantCasts")
 
       // PUSH-POP
-      val runPushPop = compilerSettings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
-      val (pushPopRemoved, pushPopCastAdded, pushPopNullCheckAdded) = if (!runPushPop) (false, false, false) else eliminatePushPop(method, ownerClassName)
+      val runPushPop = ppa.compilerSettings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
+      val (pushPopRemoved, pushPopCastAdded, pushPopNullCheckAdded) = if (!runPushPop) (false, false, false) else copyProp.eliminatePushPop(method, ownerClassName)
       traceIfChanged("pushPop")
 
       // STORE-LOAD PAIRS
-      val runStoreLoad = compilerSettings.optCopyPropagation && (requestStoreLoad || boxUnboxChanged || copyPropChanged || pushPopRemoved)
-      val storeLoadRemoved = runStoreLoad && eliminateStoreLoad(method)
+      val runStoreLoad = ppa.compilerSettings.optCopyPropagation && (requestStoreLoad || boxUnboxChanged || copyPropChanged || pushPopRemoved)
+      val storeLoadRemoved = runStoreLoad && copyProp.eliminateStoreLoad(method)
       traceIfChanged("storeLoadPairs")
 
       // STALE HANDLERS
@@ -327,7 +327,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
       // SIMPLIFY JUMPS
       // almost all of the above optimizations enable simplifying more jumps, so we just run it in every iteration
-      val runSimplifyJumps = compilerSettings.optSimplifyJumps
+      val runSimplifyJumps = ppa.compilerSettings.optSimplifyJumps
       val jumpsChanged = runSimplifyJumps && simplifyJumps(method)
       traceIfChanged("simplifyJumps")
 
@@ -377,11 +377,11 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       requestPushPop = true,
       requestStoreLoad = true)
 
-    if (compilerSettings.optUnreachableCode) BackendUtils.setDceDone(method)
+    if (ppa.compilerSettings.optUnreachableCode) BackendUtils.setDceDone(method)
 
     // (*) Removing stale local variable descriptors is required for correctness, see comment in `methodOptimizations`
     val localsRemoved =
-      if (compilerSettings.optCompactLocals) compactLocalVariables(method) // also removes unused
+      if (ppa.compilerSettings.optCompactLocals) compactLocalVariables(method) // also removes unused
       else if (requireEliminateUnusedLocals) removeUnusedLocalVariableNodes(method)() // (*)
       else false
     traceIfChanged("localVariables")
@@ -389,7 +389,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     // The asm.MethodWriter writes redundant line numbers 1:1 to the classfile, so we filter them out
     // Note that this traversal also cleans up `LABEL_REACHABLE_STATUS` flags that were added to Label's
     // `stats` fields during `removeUnreachableCodeImpl` (both are guarded by `optUnreachableCode`).
-    val lineNumbersRemoved = if (compilerSettings.optUnreachableCode) removeEmptyLineNumbers(method) else false
+    val lineNumbersRemoved = if (ppa.compilerSettings.optUnreachableCode) removeEmptyLineNumbers(method) else false
     traceIfChanged("lineNumbers")
 
     // assert that local variable annotations are empty (we don't emit them) - otherwise we'd have
@@ -417,7 +417,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     AsmAnalyzer.sizeOKForNullness(method) && {
-      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, compilerSettings.optAssumeModulesNonNull)
+      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, ppa.compilerSettings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
       // frames of unreachable instructions are `null`.
@@ -475,7 +475,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
           }
 
         case mi: MethodInsnNode =>
-          if (isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
+          if (backendUtils.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
             toReplace(mi) = List(
               getPop(1),
               loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
@@ -707,7 +707,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
           b.length - 2 == a.length && b(0) == 'L' && b.last == ';' && b.regionMatches(1, a, 0, a.length)
       }
       sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ts.ObjectRef.internalName) ||
-        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN).conformsTo(bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)).getOrElse(false)
+        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN).conformsTo(bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)).getOrElse(false)
     }
 
     // precondition: !isSubType(aDescOrIntN, bDescOrIntN)
@@ -735,7 +735,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     }
 
     lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
-    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, backendUtils.isNonNullMethodInvocation, compilerSettings.optAssumeModulesNonNull)
+    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, backendUtils.isNonNullMethodInvocation, ppa.compilerSettings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
     val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]

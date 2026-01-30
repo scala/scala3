@@ -26,7 +26,7 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
+import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{LazyWithoutLock => FLazy} // TODO this one should probably be not inside PPFA...
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository: ByteCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
@@ -67,7 +67,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: concurrent.Map[MethodInsnNode, SrcPos] = frontendAccess.recordPerRunCache(TrieMap.empty)
+  val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = frontendAccess.recordPerRunCache(TrieMap.empty)
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.

@@ -343,6 +343,11 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
       BackendUtils.isClassTagApply(mi)
   }
 
+  // methods that are known to return a non-null result
+  def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
+    isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || BackendUtils.isClassTagApply(mi)
+  }
+
   // unused objects created by these constructors are eliminated by pushPop
   private lazy val sideEffectFreeConstructors: Set[(String, String)] =
     val ownerDesc = (p: (InternalName, MethodNameAndType)) => (p._1, p._2.methodType.descriptor)
