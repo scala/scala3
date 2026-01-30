@@ -3,11 +3,12 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
 import dotty.tools.dotc.transform.Erasure
 
-import scala.tools.asm.{Handle, Opcodes}
+import scala.tools.asm.{Handle, Opcodes, Type}
 import dotty.tools.dotc.core.StdNames
 import BTypes.*
 import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
+import dotty.tools.dotc.core.Names.*
 import BCodeAsmCommon.*
 import dotty.tools.dotc.core.Flags.{JavaDefined, ModuleClass, PackageClass, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase}
@@ -287,7 +288,7 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
    */
   override def boxResultType: Map[Symbol, ClassBType] = _boxResultType.get
   private lazy val _boxResultType: Lazy[Map[Symbol, ClassBType]] = ppa.perRunLazy{
-    val boxMethods = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
+    val boxMethods = defn.ScalaValueClasses().map{x =>
       (x, Erasure.Boxing.boxMethod(x.asClass))
     }.toMap
     for ((valueClassSym, boxMethodSym) <- boxMethods)
@@ -336,6 +337,15 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
 
   override def jlCloneableRef: ClassBType = _jlCloneableRef.get
   private lazy val _jlCloneableRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaCloneableClass))
+
+  override def jlCharSequenceRef: ClassBType = _jlCharSequenceRef.get
+  private lazy val _jlCharSequenceRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaCharSequenceClass))
+
+  override def jlStringBufferRef: ClassBType = _jlStringBufferRef.get
+  private lazy val _jlStringBufferRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaStringBufferClass))
+
+  override def jlStringBuilderRef: ClassBType = _jlStringBuilderRef.get
+  private lazy val _jlStringBuilderRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.JavaStringBuilderClass))
 
   override def jiSerializableRef: ClassBType = _jiSerializableRef.get
   private lazy val _jiSerializableRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass[java.io.Serializable]))
@@ -458,5 +468,26 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
         (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
         (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) *
     )
+  }
+
+  // java/lang/Boolean -> MethodNameAndType(valueOf,(Z)Ljava/lang/Boolean;)
+  def javaBoxMethods: Map[InternalName, MethodNameAndType] = _javaBoxMethods.get
+  private lazy val _javaBoxMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
+      val boxed = defn.boxedClass(primitive)
+      val unboxed = primitiveTypeMap(primitive)
+      val method = MethodNameAndType("valueOf", MethodBType(List(unboxed), boxedClassOfPrimitive(unboxed)))
+      (classBTypeFromSymbol(boxed).internalName, method)
+    }))
+  }
+
+  // java/lang/Boolean -> MethodNameAndType(booleanValue,()Z)
+  def javaUnboxMethods: Map[InternalName, MethodNameAndType] = _javaUnboxMethods.get
+  private lazy val _javaUnboxMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
+      val boxed = defn.boxedClass(primitive)
+      val name = primitive.name.toString.toLowerCase + "Value"
+      (classBTypeFromSymbol(boxed).internalName, MethodNameAndType(name, MethodBType(Nil, primitiveTypeMap(primitive))))
+    }))
   }
 }

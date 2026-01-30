@@ -761,6 +761,10 @@ class Definitions {
     @tu lazy val MethodHandlesLookup_FindVarHandle: Symbol = MethodHandlesLookupClass.requiredMethod("findVarHandle")
   @tu lazy val VarHandleClass: ClassSymbol           = requiredClass("java.lang.invoke.VarHandle")
 
+  @tu lazy val JavaCharSequenceClass: ClassSymbol        = requiredClass("java.lang.CharSequence")
+  @tu lazy val JavaStringBufferClass: ClassSymbol        = requiredClass("java.lang.StringBuffer")
+  @tu lazy val JavaStringBuilderClass: ClassSymbol        = requiredClass("java.lang.StringBuilder")
+
   @tu lazy val StringBuilderClass: ClassSymbol = requiredClass("scala.collection.mutable.StringBuilder")
   @tu lazy val MatchErrorClass   : ClassSymbol = requiredClass("scala.MatchError")
   @tu lazy val ConversionClass   : ClassSymbol = requiredClass("scala.Conversion").typeRef.symbol.asClass
@@ -2034,9 +2038,11 @@ class Definitions {
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
+  @tu private lazy val ScalaValueTypesNoUnit: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
+  val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
     Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
