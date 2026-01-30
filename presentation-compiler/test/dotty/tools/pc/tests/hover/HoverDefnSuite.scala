@@ -338,3 +338,12 @@ class HoverDefnSuite extends BaseHoverSuite:
       """|def build(b: Builder[Unit]): Int
            |""".stripMargin.hover
     )
+
+  @Test def `backticked` =
+    check(
+      """|object A {
+         |  <<val `foo @@ bar` = 123>>
+         |}
+         |""".stripMargin,
+      "val `foo  bar`: Int".hover
+    )
