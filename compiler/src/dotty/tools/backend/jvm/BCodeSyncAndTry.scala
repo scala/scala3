@@ -18,7 +18,7 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSyncAndTry(val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeBodyBuilder {
+trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */

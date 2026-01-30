@@ -225,6 +225,14 @@ sealed trait BType {
 
 sealed trait PrimitiveBType extends BType {
 
+  override def isObjectType: Boolean = false
+  override def isJlCloneableType: Boolean = false
+  override def isJiSerializableType: Boolean = false
+  override def isNullType: Boolean = false
+  override def isNothingType: Boolean = false
+  override def isBoxed: Boolean = false
+
+
   /**
    * The upper bound of two primitive types. The `other` type has to be either a primitive
    * type or Nothing.
@@ -302,6 +310,15 @@ case object LONG   extends PrimitiveBType
 case object DOUBLE extends PrimitiveBType
 
 sealed trait RefBType extends BType {
+
+  override def isObjectType: Boolean = false
+  override def isJlCloneableType: Boolean = false
+  override def isJiSerializableType: Boolean = false
+  override def isNullType: Boolean = false
+  override def isNothingType: Boolean = false
+  override def isBoxed: Boolean = false
+
+
   /**
    * The class or array type of this reference type. Used for ANEWARRAY, MULTIANEWARRAY,
    * INSTANCEOF and CHECKCAST instructions. Also used for emitting invokevirtual calls to
@@ -879,6 +896,14 @@ object ClassBType {
 }
 
 case class ArrayBType(componentType: BType) extends RefBType {
+
+  override def isObjectType: Boolean = false
+  override def isJlCloneableType: Boolean = false
+  override def isJiSerializableType: Boolean = false
+  override def isNullType: Boolean = false
+  override def isNothingType: Boolean = false
+  override def isBoxed: Boolean = false
+
   def dimension: Int = componentType match {
     case a: ArrayBType => 1 + a.dimension
     case _ => 1
@@ -890,7 +915,16 @@ case class ArrayBType(componentType: BType) extends RefBType {
   }
 }
 
-case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType
+case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType {
+
+  override def isObjectType: Boolean = false
+  override def isJlCloneableType: Boolean = false
+  override def isJiSerializableType: Boolean = false
+  override def isNullType: Boolean = false
+  override def isNothingType: Boolean = false
+  override def isBoxed: Boolean = false
+
+}
 
 // TODO CLEANUP unclear why these need to be in a companion object
 

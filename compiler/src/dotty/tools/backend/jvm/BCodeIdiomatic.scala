@@ -10,7 +10,6 @@ import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.util.SrcPos
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -21,7 +20,7 @@ import dotty.tools.dotc.util.SrcPos
  */
 trait BCodeIdiomatic {
 
-  def recordCallsitePosition(m: MethodInsnNode, pos: SrcPos): Unit
+  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"

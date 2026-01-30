@@ -5,6 +5,7 @@ package jvm
 import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
 import BackendReporting.NoClassBTypeInfo
+import dotty.tools.dotc.core.Symbols.Symbol
 
 import scala.tools.asm.Handle
 
