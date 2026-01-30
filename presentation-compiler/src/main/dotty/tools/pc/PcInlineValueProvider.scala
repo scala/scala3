@@ -44,7 +44,12 @@ final class PcInlineValueProvider(
   private def referenceTextEdit(
       definition: Definition
   )(ref: Reference): l.TextEdit =
-    if definition.requiresBrackets && ref.requiresBrackets then
+    if definition.requiresCurlyBraces && ref.requiresCurlyBraces then
+      new l.TextEdit(
+        ref.range,
+        s"""{${ref.rhs}}"""
+      )
+    else if definition.requiresBrackets && ref.requiresBrackets then
       new l.TextEdit(
         ref.range,
         s"""(${ref.rhs})"""
@@ -119,6 +124,7 @@ final class PcInlineValueProvider(
         defPos.toLsp,
         RangeOffset(defPos.start, defPos.end),
         definitionRequiresBrackets(definition.tree.rhs)(using newctx),
+        definitionNeedsCurlyBraces(definition.tree.rhs),
         deleteDefinition
       )
 
@@ -159,6 +165,11 @@ final class PcInlineValueProvider(
       .getOrElse(false)
 
   end definitionRequiresBrackets
+
+  private def definitionNeedsCurlyBraces(tree: Tree): Boolean =
+    tree match
+      case _: Ident => false
+      case _ => true
 
   private def referenceRequiresBrackets(tree: Tree)(using Context): Boolean =
     NavigateAST.untypedPath(tree.span) match
@@ -285,7 +296,8 @@ final class PcInlineValueProvider(
             ),
             occurrence.parent
               .map(p => referenceRequiresBrackets(p)(using newctx))
-              .getOrElse(false)
+              .getOrElse(false),
+            occurrence.pos.start > 0 && text(occurrence.pos.start - 1) == '$'
           )
         )
       else Left(Errors.variablesAreShadowed(conflictingSymbols.mkString(", ")))
@@ -312,6 +324,7 @@ case class Definition(
     range: l.Range,
     rangeOffsets: RangeOffset,
     requiresBrackets: Boolean,
+    requiresCurlyBraces: Boolean,
     shouldBeRemoved: Boolean
 )
 
@@ -319,5 +332,6 @@ case class Reference(
     range: l.Range,
     rhs: String,
     parentOffsets: Option[RangeOffset],
-    requiresBrackets: Boolean
+    requiresBrackets: Boolean,
+    requiresCurlyBraces: Boolean
 )
