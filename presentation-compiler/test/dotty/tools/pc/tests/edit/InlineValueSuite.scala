@@ -497,6 +497,21 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |""".stripMargin
     )
 
+  @Test def `lambda-param-no-shadow` =
+    checkEdit(
+      """|object Main {
+         |  def test(x: Int) = {
+         |    val pq = List(1, 2, 3).map(x => x + 1)
+         |    <<pq>>.sum
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def test(x: Int) = {
+         |    List(1, 2, 3).map(x => x + 1).sum
+         |  }
+         |}""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String,
