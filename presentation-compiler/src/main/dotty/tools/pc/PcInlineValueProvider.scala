@@ -187,15 +187,24 @@ final class PcInlineValueProvider(
     text.slice(adjustedStart, adjustedEnd).mkString
 
   private def symbolsUsedInDefn(rhs: Tree, indexedContext: IndexedContext): Set[Symbol] =
+    // Check if the symbol is defined within the RHS expression itself
+    // (e.g., lambda parameters, local vals in blocks)
+    // Such symbols should not be checked for shadowing since they are
+    // locally bound and won't be affected by external shadowing
+    def isLocalToRhs(symbol: Symbol): Boolean =
+      symbol.sourcePos.exists && rhs.sourcePos.exists &&
+        symbol.sourcePos.start >= rhs.sourcePos.start &&
+        symbol.sourcePos.end <= rhs.sourcePos.end
+
     def collectNames(
         symbols: Set[Symbol],
         tree: Tree
     ): Set[Symbol] =
       tree match
         case id: Ident
-            if !id.symbol.is(Synthetic) && !id.symbol.is(Implicit) =>
+            if !id.symbol.is(Synthetic) && !id.symbol.is(Implicit) && !isLocalToRhs(id.symbol) =>
           symbols + tree.symbol
-        case sel: Select =>
+        case sel: Select if !isLocalToRhs(sel.symbol) =>
           indexedContext.lookupSym(sel.symbol) match
             case IndexedContext.Result.InScope => symbols + sel.symbol
             case _ => symbols
