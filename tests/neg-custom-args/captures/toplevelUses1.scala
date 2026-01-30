@@ -20,6 +20,11 @@ object N:
       M.c.println()      // error
       Console.println()  // error
       Console2.println() // error
+  val g =
+    M.c.println()        // error
+    Console.println()    // error
+    Console2.println()   // error
+    22
   M.c.println()          // error
   Console.println()      // error
 

@@ -1658,9 +1658,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if curEnv.owner.isClass then
         val constr = curEnv.owner.primaryConstructor
         if constr.exists then
-          val constrSet = capturedVars(constr)
-          if capturedVars(constr) ne CaptureSet.empty then
-            curEnv = Env(constr, EnvKind.Regular, constrSet, curEnv)
+          curEnv = Env(constr, EnvKind.Regular, capturedVars(constr), curEnv)
 
     override def recheckStat(stat: Tree)(using Context): Unit =
       val saved = curEnv

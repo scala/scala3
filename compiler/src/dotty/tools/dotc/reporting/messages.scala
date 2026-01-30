@@ -3790,7 +3790,7 @@ final class CannotBeIncluded(
           case added: Capability => i"${added.showAsCapability}"
           case added: CaptureSet => i"${added.elems.toList.map(_.showAsCapability).mkString(", ")}"
 
-        if targetOwner.isPackageObject then
+        if loc.isPackageObject then
           i"""
             |
             |The top-level definitions should be wrapped in an object with a $uses clause:
