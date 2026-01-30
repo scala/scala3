@@ -3775,3 +3775,24 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+final class TypeParameterShadowsType(shadow: Symbol, parent: Symbol, shadowed: Symbol)(using Context)
+    extends NamingMsg(TypeParameterShadowsTypeID):
+  override protected def msg(using Context): String =
+    if shadowed.exists then
+      i"Type parameter ${shadow.name} for $parent shadows the type defined by ${shadowed.showLocated}"
+    else
+      i"Type parameter ${shadow.name} for $parent shadows an explicitly renamed type : ${shadow.name}"
+  override protected def explain(using Context): String =
+    i"""A type parameter shadows another type that is already in scope.
+       |This can lead to confusion and potential errors.
+       |Consider renaming the type parameter to avoid the shadowing."""
+
+final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
+    extends NamingMsg(PrivateShadowsTypeID):
+  override protected def msg(using Context): String =
+    i"${shadow.showLocated} shadows field ${shadowed.name} inherited from ${shadowed.owner}"
+  override protected def explain(using Context): String =
+    i"""A private field shadows an inherited field with the same name.
+       |This can lead to confusion as the inherited field becomes inaccessible.
+       |Consider renaming the private field to avoid the shadowing."""
