@@ -14,8 +14,7 @@ package scala
 
 import scala.language.`2.13`
 
-/** A module defining utility methods for higher-order functional programming.
- */
+/** A module defining utility methods for higher-order functional programming. */
 object Function {
   /** Given a sequence of functions `f,,1,,`, ..., `f,,n,,`, return the
    *  function `f,,1,, andThen ... andThen f,,n,,`.
@@ -29,7 +28,7 @@ object Function {
 
   /** Turns a function `A => Option[B]` into a `PartialFunction[A, B]`.
    *
-   *  '''Important note''': this transformation implies the original function
+   *  **Important note**: this transformation implies the original function
    *  may be called 2 or more times on each logical invocation, because the
    *  only way to supply an implementation of `isDefinedAt` is to call the
    *  function and examine the return value.
@@ -49,20 +48,17 @@ object Function {
     (x1, x2) => f(x1)(x2)
   }
 
-  /** Uncurrying for functions of arity 3.
-   */
+  /** Uncurrying for functions of arity 3. */
   def uncurried[T1, T2, T3, R](f: T1 => T2 => T3 => R): (T1, T2, T3) => R = {
     (x1, x2, x3) => f(x1)(x2)(x3)
   }
 
-  /** Uncurrying for functions of arity 4.
-   */
+  /** Uncurrying for functions of arity 4. */
   def uncurried[T1, T2, T3, T4, R](f: T1 => T2 => T3 => T4 => R): (T1, T2, T3, T4) => R = {
     (x1, x2, x3, x4) => f(x1)(x2)(x3)(x4)
   }
 
-  /** Uncurrying for functions of arity 5.
-   */
+  /** Uncurrying for functions of arity 5. */
   def uncurried[T1, T2, T3, T4, T5, R](f: T1 => T2 => T3 => T4 => T5 => R): (T1, T2, T3, T4, T5) => R  =  {
     (x1, x2, x3, x4, x5) => f(x1)(x2)(x3)(x4)(x5)
   }

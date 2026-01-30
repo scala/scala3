@@ -27,7 +27,7 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
  *  which are not yet adequately represented in manifests.
  *
  *  Example usages:
- *  {{{
+ *  ```
  *    def arr[T] = new Array[T](0)                          // does not compile
  *    def arr[T](implicit m: Manifest[T]) = new Array[T](0) // compiles
  *    def arr[T: Manifest] = new Array[T](0)                // shorthand for the preceding
@@ -42,7 +42,7 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
  *      methods[T] find (_.getName == name) map (_.getGenericReturnType)
  *
  *    retType[Map[_, _]]("values")  // Some(scala.collection.Iterable<B>)
- *  }}}
+ *  ```
  */
 @scala.annotation.implicitNotFound(msg = "No Manifest available for ${T}.")
 // TODO undeprecated until Scala reflection becomes non-experimental
@@ -104,23 +104,24 @@ object Manifest {
     ManifestFactory.singleType[T](value)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a top-level or static class.
-    * @note This no-prefix, no-arguments case is separate because we
-    *       it's called from ScalaRunTime.boxArray itself. If we
-    *       pass varargs as arrays into this, we get an infinitely recursive call
-    *       to boxArray. (Besides, having a separate case is more efficient)
-    */
+   *  a top-level or static class.
+   *  @note This no-prefix, no-arguments case is separate because we
+   *       it's called from ScalaRunTime.boxArray itself. If we
+   *       pass varargs as arrays into this, we get an infinitely recursive call
+   *       to boxArray. (Besides, having a separate case is more efficient)
+   */
   def classType[T](clazz: Predef.Class[_]): Manifest[T] =
     ManifestFactory.classType[T](clazz)
 
   /** Manifest for the class type `clazz`, where `clazz` is
-    * a top-level or static class and args are its type arguments. */
+   *  a top-level or static class and args are its type arguments. 
+   */
   def classType[T](clazz: Predef.Class[T], arg1: Manifest[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.classType[T](clazz, arg1, args: _*)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a class with non-package prefix type `prefix` and type arguments `args`.
-    */
+   *  a class with non-package prefix type `prefix` and type arguments `args`.
+   */
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.classType[T](prefix, clazz, args: _*)
 
@@ -128,8 +129,9 @@ object Manifest {
     ManifestFactory.arrayType[T](arg)
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
-    * strictly necessary as it could be obtained by reflection. It was
-    * added so that erasure can be calculated without reflection. */
+   *  strictly necessary as it could be obtained by reflection. It was
+   *  added so that erasure can be calculated without reflection. 
+   */
   def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.abstractType[T](prefix, name, upperBound, args: _*)
 
@@ -379,23 +381,24 @@ object ManifestFactory {
     new SingletonTypeManifest[T](value)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a top-level or static class.
-    * @note This no-prefix, no-arguments case is separate because we
-    *       it's called from ScalaRunTime.boxArray itself. If we
-    *       pass varargs as arrays into this, we get an infinitely recursive call
-    *       to boxArray. (Besides, having a separate case is more efficient)
-    */
+   *  a top-level or static class.
+   *  @note This no-prefix, no-arguments case is separate because we
+   *       it's called from ScalaRunTime.boxArray itself. If we
+   *       pass varargs as arrays into this, we get an infinitely recursive call
+   *       to boxArray. (Besides, having a separate case is more efficient)
+   */
   def classType[T](clazz: Predef.Class[_]): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, Nil)
 
   /** Manifest for the class type `clazz`, where `clazz` is
-    * a top-level or static class and args are its type arguments. */
+   *  a top-level or static class and args are its type arguments. 
+   */
   def classType[T](clazz: Predef.Class[T], arg1: Manifest[_], args: Manifest[_]*): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, arg1 :: args.toList)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a class with non-package prefix type `prefix` and type arguments `args`.
-    */
+   *  a class with non-package prefix type `prefix` and type arguments `args`.
+   */
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
 
@@ -407,7 +410,8 @@ object ManifestFactory {
   }
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a top-level or static class. */
+   *  a top-level or static class. 
+   */
   @SerialVersionUID(1L)
   private class ClassTypeManifest[T](prefix: Option[Manifest[_]],
                                      runtimeClass1: Predef.Class[_],
@@ -430,8 +434,9 @@ object ManifestFactory {
   }
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
-    * strictly necessary as it could be obtained by reflection. It was
-    * added so that erasure can be calculated without reflection. */
+   *  strictly necessary as it could be obtained by reflection. It was
+   *  added so that erasure can be calculated without reflection. 
+   */
   def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new AbstractTypeManifest[T](prefix, name, upperBound, args)
 
@@ -444,8 +449,7 @@ object ManifestFactory {
         (if (upperBound eq Nothing) "" else " <: "+upperBound)
   }
 
-  /** Manifest for the unknown type `_ >: L <: U` in an existential.
-    */
+  /** Manifest for the unknown type `_ >: L <: U` in an existential. */
   def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
     new WildcardManifest[T](lowerBound, upperBound)
 

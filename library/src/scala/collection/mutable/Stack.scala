@@ -52,20 +52,19 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "Stack"
 
-  /**
-    * Adds elements to the top of this stack
-    *
-    * @param elem
-    * @return
-    */
+  /** Adds elements to the top of this stack
+   *
+   *  @param elem
+   *  @return
+   */
   def push(elem: A): this.type = prepend(elem)
 
   /** Pushes two or more elements onto the stack. The last element
-    *  of the sequence will be on top of the new stack.
-    *
-    *  @param   elems      the element sequence.
-    *  @return the stack with the new elements on top.
-    */
+   *  of the sequence will be on top of the new stack.
+   *
+   *  @param   elems      the element sequence.
+   *  @return the stack with the new elements on top.
+   */
   def push(elem1: A, elem2: A, elems: A*): this.type = {
     val k = elems.knownSize
     ensureSize(length + (if(k >= 0) k + 2 else 3))
@@ -73,46 +72,43 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   }
 
   /** Pushes all elements in the given iterable object onto the stack. The
-    *  last element in the iterable object will be on top of the new stack.
-    *
-    *  @param elems the iterable object.
-    *  @return the stack with the new elements on top.
-    */
+   *  last element in the iterable object will be on top of the new stack.
+   *
+   *  @param elems the iterable object.
+   *  @return the stack with the new elements on top.
+   */
   def pushAll(elems: scala.collection.IterableOnce[A]^): this.type =
     prependAll(elems match {
       case it: scala.collection.Seq[A] => it.view.reverse
       case it => IndexedSeq.from(it).view.reverse
     })
 
-  /**
-    * Removes the top element from this stack and returns it
-    *
-    * @return
-    * @throws NoSuchElementException when stack is empty
-    */
+  /** Removes the top element from this stack and returns it
+   *
+   *  @return
+   *  @throws NoSuchElementException when stack is empty
+   */
   def pop(): A = removeHead()
 
-  /**
-    * Pop all elements from this stack and return it
-    *
-    * @return The removed elements
-    */
+  /** Pop all elements from this stack and return it
+   *
+   *  @return The removed elements
+   */
   def popAll(): scala.collection.Seq[A] = removeAll()
 
-  /**
-    * Returns and removes all elements from the top of this stack which satisfy the given predicate.
-    *
-    *  @param f   the predicate used for choosing elements
-    *  @return The removed elements
-    */
+  /** Returns and removes all elements from the top of this stack which satisfy the given predicate.
+   *
+   *  @param f   the predicate used for choosing elements
+   *  @return The removed elements
+   */
   def popWhile(f: A => Boolean): scala.collection.Seq[A] = removeHeadWhile(f)
 
   /** Returns the top element of the stack. This method will not remove
    *  the element from the stack. An error is signaled if there is no
    *  element on the stack.
    *
-   *  @throws NoSuchElementException if the stack is empty
    *  @return the top element
+   *  @throws NoSuchElementException if the stack is empty
    */
   @`inline` final def top: A = head
 
@@ -127,11 +123,10 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 
 }
 
-/**
-  * $factoryInfo
-  * @define coll stack
-  * @define Coll `Stack`
-  */
+/** $factoryInfo
+ *  @define coll stack
+ *  @define Coll `Stack`
+ */
 @SerialVersionUID(3L)
 object Stack extends StrictOptimizedSeqFactory[Stack] {
 

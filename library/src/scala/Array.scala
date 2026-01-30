@@ -27,11 +27,11 @@ import scala.runtime.ScalaRunTime.{array_apply, array_update}
 
 /** Utility methods for operating on arrays.
  *  For example:
- *  {{{
+ *  ```
  *  val a = Array(1, 2)
  *  val b = Array.ofDim[Int](2)
  *  val c = Array.concat(a, b)
- *  }}}
+ *  ```
  *  where the array objects `a`, `b` and `c` have respectively the values
  *  `Array(1, 2)`, `Array(0, 0)` and `Array(1, 2, 0, 0)`.
  */
@@ -54,20 +54,18 @@ object Array {
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
-  /**
-   * Returns a new [[scala.collection.mutable.ArrayBuilder]].
-   */
+  /** Returns a new [[scala.collection.mutable.ArrayBuilder]]. */
   def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](using t)
 
   /** Builds an array from the iterable collection.
    *
-   *  {{{
+   *  ```
    *  scala> val a = Array.from(Seq(1, 5))
    *  val a: Array[Int] = Array(1, 5)
    *
    *  scala> val b = Array.from(Range(1, 5))
    *  val b: Array[Int] = Array(1, 2, 3, 4)
-   *  }}}
+   *  ```
    *
    *  @param  it the iterable collection
    *  @return    an array consisting of elements of the iterable collection
@@ -118,14 +116,14 @@ object Array {
   }
 
   /** Copies one array to another, truncating or padding with default values (if
-    * necessary) so the copy has the specified length.
-    *
-    * Equivalent to Java's
-    *   `java.util.Arrays.copyOf(original, newLength)`,
-    * except that this works for primitive and object arrays in a single method.
-    *
-    * @see `java.util.Arrays#copyOf`
-    */
+   *  necessary) so the copy has the specified length.
+   *
+   *  Equivalent to Java's
+   *   `java.util.Arrays.copyOf(original, newLength)`,
+   *  except that this works for primitive and object arrays in a single method.
+   *
+   *  @see `java.util.Arrays#copyOf`
+   */
   def copyOf[A](original: Array[A], newLength: Int): Array[A] = ((original: @unchecked) match {
     case original: Array[BoxedUnit]  => newUnitArray(newLength).asInstanceOf[Array[A]]
     case original: Array[AnyRef]     => java.util.Arrays.copyOf(original, newLength)
@@ -140,18 +138,18 @@ object Array {
   }).asInstanceOf[Array[A]]
 
   /** Copies one array to another, truncating or padding with default values (if
-    * necessary) so the copy has the specified length. The new array can have
-    * a different type than the original one as long as the values are
-    * assignment-compatible. When copying between primitive and object arrays,
-    * boxing and unboxing are supported.
-    *
-    * Equivalent to Java's
-    *   `java.util.Arrays.copyOf(original, newLength, newType)`,
-    * except that this works for all combinations of primitive and object arrays
-    * in a single method.
-    *
-    * @see `java.util.Arrays#copyOf`
-    */
+   *  necessary) so the copy has the specified length. The new array can have
+   *  a different type than the original one as long as the values are
+   *  assignment-compatible. When copying between primitive and object arrays,
+   *  boxing and unboxing are supported.
+   *
+   *  Equivalent to Java's
+   *   `java.util.Arrays.copyOf(original, newLength, newType)`,
+   *  except that this works for all combinations of primitive and object arrays
+   *  in a single method.
+   *
+   *  @see `java.util.Arrays#copyOf`
+   */
   def copyAs[A](original: Array[?], newLength: Int)(implicit ct: ClassTag[A]): Array[A] = {
     val runtimeClass = ct.runtimeClass
     if (runtimeClass == Void.TYPE) newUnitArray(newLength).asInstanceOf[Array[A]]
@@ -359,10 +357,10 @@ object Array {
    *  of times.
    *
    *  Note that this means that `elem` is computed a total of n times:
-   *  {{{
-   * scala> Array.fill(3){ math.random }
-   * res3: Array[Double] = Array(0.365461167592537, 1.550395944913685E-4, 0.7907242137333306)
-   *  }}}
+   *  ```
+   *  scala> Array.fill(3){ math.random }
+   *  res3: Array[Double] = Array(0.365461167592537, 1.550395944913685E-4, 0.7907242137333306)
+   *  ```
    *
    *  @param   n  the number of elements desired
    *  @param   elem the element computation
@@ -499,7 +497,7 @@ object Array {
   /** Returns an array containing a sequence of increasing integers in a range.
    *
    *  @param start  the start value of the array
-   *  @param end    the end value of the array, exclusive (in other words, this is the first value '''not''' returned)
+   *  @param end    the end value of the array, exclusive (in other words, this is the first value **not** returned)
    *  @return  the array with values in range `start, start + 1, ..., end - 1`
    *  up to, but excluding, `end`.
    */
@@ -508,7 +506,7 @@ object Array {
   /** Returns an array containing equally spaced values in some integer interval.
    *
    *  @param start the start value of the array
-   *  @param end   the end value of the array, exclusive (in other words, this is the first value '''not''' returned)
+   *  @param end   the end value of the array, exclusive (in other words, this is the first value **not** returned)
    *  @param step  the increment value of the array (may not be zero)
    *  @return      the array with values in `start, start + step, ...` up to, but excluding `end`
    */
@@ -594,12 +592,12 @@ object Array {
 /** Arrays are mutable, indexed collections of values. `Array[T]` is Scala's representation
  *  for Java's `T[]`.
  *
- *  {{{
+ *  ```
  *  val numbers = Array(1, 2, 3, 4)
  *  val first = numbers(0) // read the first element
  *  numbers(3) = 100 // replace the 4th array element with 100
  *  val biggerNumbers = numbers.map(_ * 2) // multiply all numbers by two
- *  }}}
+ *  ```
  *
  *  Arrays make use of two common pieces of Scala syntactic sugar, shown on lines 2 and 3 of the above
  *  example code.
@@ -616,20 +614,20 @@ object Array {
  *  The conversion to `ArrayOps` takes priority over the conversion to `ArraySeq`. For instance,
  *  consider the following code:
  *
- *  {{{
+ *  ```
  *  val arr = Array(1, 2, 3)
  *  val arrReversed = arr.reverse
  *  val seqReversed : collection.Seq[Int] = arr.reverse
- *  }}}
+ *  ```
  *
  *  Value `arrReversed` will be of type `Array[Int]`, with an implicit conversion to `ArrayOps` occurring
  *  to perform the `reverse` operation. The value of `seqReversed`, on the other hand, will be computed
  *  by converting to `ArraySeq` first and invoking the variant of `reverse` that returns another
  *  `ArraySeq`.
  *
- *  @see [[https://www.scala-lang.org/files/archive/spec/2.13/ Scala Language Specification]], for in-depth information on the transformations the Scala compiler makes on Arrays (Sections 6.6 and 6.15 respectively.)
- *  @see [[https://docs.scala-lang.org/sips/scala-2-8-arrays.html "Scala 2.8 Arrays"]] the Scala Improvement Document detailing arrays since Scala 2.8.
- *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/arrays.html "The Scala 2.8 Collections' API"]] section on `Array` by Martin Odersky for more information.
+ *  @see [Scala Language Specification](https://www.scala-lang.org/files/archive/spec/2.13/), for in-depth information on the transformations the Scala compiler makes on Arrays (Sections 6.6 and 6.15 respectively.)
+ *  @see ["Scala 2.8 Arrays"](https://docs.scala-lang.org/sips/scala-2-8-arrays.html) the Scala Improvement Document detailing arrays since Scala 2.8.
+ *  @see ["The Scala 2.8 Collections' API"](https://docs.scala-lang.org/overviews/collections-2.13/arrays.html) section on `Array` by Martin Odersky for more information.
  *  @hideImplicitConversion scala.Predef.booleanArrayOps
  *  @hideImplicitConversion scala.Predef.byteArrayOps
  *  @hideImplicitConversion scala.Predef.charArrayOps

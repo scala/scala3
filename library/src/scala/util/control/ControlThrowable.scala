@@ -20,7 +20,7 @@ import scala.language.`2.13`
  *
  *  As a convenience, `NonFatal` does not match `ControlThrowable`.
  *
- *  {{{
+ *  ```
  *  import scala.util.control.{Breaks, NonFatal}, Breaks.{break, breakable}
  *
  *  breakable {
@@ -33,7 +33,7 @@ import scala.language.`2.13`
  *      }
  *    }
  *  }
- *  }}}
+ *  ```
  *
  *  Suppression is disabled, because flow control should not suppress
  *  an exceptional condition. Stack traces are also disabled, allowing

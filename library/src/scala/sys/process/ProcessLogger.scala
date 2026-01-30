@@ -18,39 +18,37 @@ import scala.language.`2.13`
 import java.io._
 
 /** Encapsulates the output and error streams of a running process. This is used
-  * by [[scala.sys.process.ProcessBuilder]] when starting a process, as an
-  * alternative to [[scala.sys.process.ProcessIO]], which can be more difficult
-  * to use. Note that a `ProcessLogger` will be used to create a `ProcessIO`
-  * anyway. The object `BasicIO` has some functions to do that.
-  *
-  * Here is an example that counts the number of lines in the normal and error
-  * output of a process:
-  * {{{
-  * import scala.sys.process._
-  *
-  * var normalLines = 0
-  * var errorLines = 0
-  * val countLogger = ProcessLogger(line => normalLines += 1,
-  *                                 line => errorLines += 1)
-  * "find /etc" ! countLogger
-  * }}}
-  *
-  *  @see [[scala.sys.process.ProcessBuilder]]
-  */
+ *  by [[scala.sys.process.ProcessBuilder]] when starting a process, as an
+ *  alternative to [[scala.sys.process.ProcessIO]], which can be more difficult
+ *  to use. Note that a `ProcessLogger` will be used to create a `ProcessIO`
+ *  anyway. The object `BasicIO` has some functions to do that.
+ *
+ *  Here is an example that counts the number of lines in the normal and error
+ *  output of a process:
+ *  ```
+ *  import scala.sys.process._
+ *
+ *  var normalLines = 0
+ *  var errorLines = 0
+ *  val countLogger = ProcessLogger(line => normalLines += 1,
+ *                                 line => errorLines += 1)
+ *  "find /etc" ! countLogger
+ *  ```
+ *
+ *  @see [[scala.sys.process.ProcessBuilder]]
+ */
 trait ProcessLogger {
-  /** Will be called with each line read from the process output stream.
-   */
+  /** Will be called with each line read from the process output stream. */
   def out(s: => String): Unit
 
-  /** Will be called with each line read from the process error stream.
-   */
+  /** Will be called with each line read from the process error stream. */
   def err(s: => String): Unit
 
   /** If a process is begun with one of these `ProcessBuilder` methods:
-   *  {{{
+   *  ```
    *    def !(log: ProcessLogger): Int
    *    def !<(log: ProcessLogger): Int
-   *  }}}
+   *  ```
    *  The run will be wrapped in a call to buffer.  This gives the logger
    *  an opportunity to set up and tear down buffering.  At present the
    *  library implementations of `ProcessLogger` simply execute the body

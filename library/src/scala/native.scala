@@ -16,9 +16,9 @@ import scala.language.`2.13`
 
 /** Marker for native methods.
   *
-  * {{{
+  * ```
   * @native def f(x: Int, y: List[Long]): String = ...
-  * }}}
+  * ```
   *
   * A `@native` method is compiled to the platform's native method,
   * while discarding the method's body (if any). The body will be type checked if present.

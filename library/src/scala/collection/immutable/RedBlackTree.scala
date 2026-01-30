@@ -70,7 +70,8 @@ private[collection] object RedBlackTree {
       } else tree.black
     }
     /** Creates a new balanced tree where `newLeft` replaces `tree.left`.
-     * tree and newLeft are never null */
+     *  tree and newLeft are never null 
+     */
     protected final def mutableBalanceLeft[A1, B, B1 >: B](tree: Tree[A1, B], newLeft: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
       //            tree              |                   newLeft
@@ -113,7 +114,8 @@ private[collection] object RedBlackTree {
       }
     }
     /** Creates a new balanced tree where `newRight` replaces `tree.right`.
-     * tree and newRight are never null */
+     *  tree and newRight are never null 
+     */
     protected final def mutableBalanceRight[A1, B, B1 >: B](tree: Tree[A1, B], newRight: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
       //            tree                |                             newRight
@@ -244,9 +246,7 @@ private[collection] object RedBlackTree {
     blacken(_init(tree))
   }
 
-  /**
-    * Returns the smallest node with a key larger than or equal to `x`. Returns `null` if there is no such node.
-    */
+  /** Returns the smallest node with a key larger than or equal to `x`. Returns `null` if there is no such node. */
   def minAfter[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
     if (cmp == 0) tree
@@ -256,9 +256,7 @@ private[collection] object RedBlackTree {
     } else minAfter(tree.right, x)
   }
 
-  /**
-    * Returns the largest node with a key smaller than `x`. Returns `null` if there is no such node.
-    */
+  /** Returns the largest node with a key smaller than `x`. Returns `null` if there is no such node. */
   def maxBefore[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
     if (cmp <= 0) maxBefore(tree.left, x)
@@ -786,7 +784,7 @@ private[collection] object RedBlackTree {
   @`inline` private[RedBlackTree] def mutableBlackTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null) = new Tree[A,B](key, value.asInstanceOf[AnyRef], left, right, initialBlackCount)
 
   /** Creates a new immutable red tree.
-   * left and right may be null.
+   *  left and right may be null.
    */
   private[immutable] def RedTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null): Tree[A, B] = {
     //assertNotMutable(left)
@@ -855,12 +853,11 @@ private[collection] object RedBlackTree {
     private var index = 0
     protected var lookahead: Tree[A, B] | Null = if (start.isDefined) startFrom(start.get) else findLeftMostOrPopOnEmpty(root)
 
-    /**
-      * Finds the leftmost subtree whose key is equal to the given key, or if no such thing,
-      * the leftmost subtree with the key that would be "next" after it according
-      * to the ordering. Along the way build up the iterator's path stack so that "next"
-      * functionality works.
-      */
+    /** Finds the leftmost subtree whose key is equal to the given key, or if no such thing,
+     *  the leftmost subtree with the key that would be "next" after it according
+     *  to the ordering. Along the way build up the iterator's path stack so that "next"
+     *  functionality works.
+     */
     private def startFrom(key: A) : Tree[A,B] | Null = if (root eq null) null else {
       @tailrec def find(tree: Tree[A, B] | Null): Tree[A, B] | Null =
         if (tree eq null) popNext()

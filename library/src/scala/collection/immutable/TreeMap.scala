@@ -25,54 +25,54 @@ import scala.collection.mutable.ReusableBuilder
 import scala.runtime.AbstractFunction2
 
 /** An immutable SortedMap whose values are stored in a red-black tree.
-  *
-  * This class is optimal when range queries will be performed,
-  * or when traversal in order of an ordering is desired.
-  * If you only need key lookups, and don't care in which order key-values
-  * are traversed in, consider using * [[scala.collection.immutable.HashMap]],
-  * which will generally have better performance. If you need insertion order,
-  * consider a * [[scala.collection.immutable.SeqMap]], which does not need to
-  * have an ordering supplied.
-  *
-  *  @example {{{
-  *  import scala.collection.immutable.TreeMap
-  *
-  *  // Make a TreeMap via the companion object factory
-  *  val weekdays = TreeMap(
-  *    2 -> "Monday",
-  *    3 -> "Tuesday",
-  *    4 -> "Wednesday",
-  *    5 -> "Thursday",
-  *    6 -> "Friday"
-  *  )
-  *  // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday)
-  *
-  *  val days = weekdays ++ List(1 -> "Sunday", 7 -> "Saturday")
-  *  // TreeMap(1 -> Sunday, 2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday, 7 -> Saturday)
-  *
-  *  val day3 = days.get(3) // Some("Tuesday")
-  *
-  *  val rangeOfDays = days.range(2, 5) // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday)
-  *
-  *  val daysUntil2 = days.rangeUntil(2) // TreeMap(1 -> Sunday)
-  *  val daysTo2 = days.rangeTo(2) // TreeMap(1 -> Sunday, 2 -> Monday)
-  *  val daysAfter5 = days.rangeFrom(5) //  TreeMap(5 -> Thursday, 6 -> Friday, 7 -> Saturday)
-  *  }}}
-  *
-  *  @tparam K         the type of the keys contained in this tree map.
-  *  @tparam V         the type of the values associated with the keys.
-  *  @param ordering   the implicit ordering used to compare objects of type `A`.
-  *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#red-black-trees "Scala's Collection Library overview"]]
-  *  section on `Red-Black Trees` for more information.
-  *
-  *  @define Coll immutable.TreeMap
-  *  @define coll immutable tree map
-  *  @define orderDependent
-  *  @define orderDependentFold
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *
+ *  This class is optimal when range queries will be performed,
+ *  or when traversal in order of an ordering is desired.
+ *  If you only need key lookups, and don't care in which order key-values
+ *  are traversed in, consider using * [[scala.collection.immutable.HashMap]],
+ *  which will generally have better performance. If you need insertion order,
+ *  consider a * [[scala.collection.immutable.SeqMap]], which does not need to
+ *  have an ordering supplied.
+ *
+ *  @example ```
+ *  import scala.collection.immutable.TreeMap
+ *
+ *  // Make a TreeMap via the companion object factory
+ *  val weekdays = TreeMap(
+ *    2 -> "Monday",
+ *    3 -> "Tuesday",
+ *    4 -> "Wednesday",
+ *    5 -> "Thursday",
+ *    6 -> "Friday"
+ *  )
+ *  // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday)
+ *
+ *  val days = weekdays ++ List(1 -> "Sunday", 7 -> "Saturday")
+ *  // TreeMap(1 -> Sunday, 2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday, 7 -> Saturday)
+ *
+ *  val day3 = days.get(3) // Some("Tuesday")
+ *
+ *  val rangeOfDays = days.range(2, 5) // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday)
+ *
+ *  val daysUntil2 = days.rangeUntil(2) // TreeMap(1 -> Sunday)
+ *  val daysTo2 = days.rangeTo(2) // TreeMap(1 -> Sunday, 2 -> Monday)
+ *  val daysAfter5 = days.rangeFrom(5) //  TreeMap(5 -> Thursday, 6 -> Friday, 7 -> Saturday)
+ *  ```
+ *
+ *  @tparam K         the type of the keys contained in this tree map.
+ *  @tparam V         the type of the values associated with the keys.
+ *  @param ordering   the implicit ordering used to compare objects of type `A`.
+ *
+ *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#red-black-trees "Scala's Collection Library overview"]]
+ *  section on `Red-Black Trees` for more information.
+ *
+ *  @define Coll immutable.TreeMap
+ *  @define coll immutable tree map
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(implicit val ordering: Ordering[K])
   extends AbstractMap[K, V]
     with SortedMap[K, V]
@@ -304,9 +304,9 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
 }
 
 /** $factoryInfo
-  *  @define Coll immutable.TreeMap
-  *  @define coll immutable tree map
-  */
+ *  @define Coll immutable.TreeMap
+ *  @define coll immutable tree map
+ */
 @SerialVersionUID(3L)
 object TreeMap extends SortedMapFactory[TreeMap] {
 

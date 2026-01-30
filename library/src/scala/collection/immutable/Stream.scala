@@ -35,14 +35,14 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   def tail: Stream[A]
 
   /** Forces evaluation of the whole `Stream` and returns it.
-    *
-    * @note Often we use `Stream`s to represent an infinite set or series.  If
-    * that's the case for your particular `Stream` then this function will never
-    * return and will probably crash the VM with an `OutOfMemory` exception.
-    * This function will not hang on a finite cycle, however.
-    *
-    *  @return The fully realized `Stream`.
-    */
+   *
+   *  @note Often we use `Stream`s to represent an infinite set or series.  If
+   *  that's the case for your particular `Stream` then this function will never
+   *  return and will probably crash the VM with an `OutOfMemory` exception.
+   *  This function will not hang on a finite cycle, however.
+   *
+   *  @return The fully realized `Stream`.
+   */
   def force: this.type
 
   override def iterableFactory: SeqFactory[Stream] = Stream
@@ -50,16 +50,16 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   override protected def className: String = "Stream"
 
   /** Applies the given function `f` to each element of this linear sequence
-    * (while respecting the order of the elements).
-    *
-    *  @param f The treatment to apply to each element.
-    *  @note  Overridden here as final to trigger tail-call optimization, which
-    *  replaces 'this' with 'tail' at each iteration. This is absolutely
-    *  necessary for allowing the GC to collect the underlying Stream as elements
-    *  are consumed.
-    *  @note  This function will force the realization of the entire Stream
-    *  unless the `f` throws an exception.
-    */
+   *  (while respecting the order of the elements).
+   *
+   *  @param f The treatment to apply to each element.
+   *  @note  Overridden here as final to trigger tail-call optimization, which
+   *  replaces 'this' with 'tail' at each iteration. This is absolutely
+   *  necessary for allowing the GC to collect the underlying Stream as elements
+   *  are consumed.
+   *  @note  This function will force the realization of the entire Stream
+   *  unless the `f` throws an exception.
+   */
   @tailrec
   override final def foreach[U](f: A => U): Unit = {
     if (!this.isEmpty) {
@@ -82,13 +82,13 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   }
 
   /** Stream specialization of foldLeft which allows GC to collect along the
-    * way.
-    *
-    * @tparam B The type of value being accumulated.
-    * @param z The initial value seeded into the function `op`.
-    * @param op The operation to perform on successive elements of the `Stream`.
-    * @return The accumulated value from successive applications of `op`.
-    */
+   *  way.
+   *
+   *  @tparam B The type of value being accumulated.
+   *  @param z The initial value seeded into the function `op`.
+   *  @param op The operation to perform on successive elements of the `Stream`.
+   *  @return The accumulated value from successive applications of `op`.
+   */
   @tailrec
   override final def foldLeft[B](z: B)(op: (B, A) => B): B = {
     if (this.isEmpty) z
@@ -96,9 +96,9 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   }
 
   /** The stream resulting from the concatenation of this stream with the argument stream.
-    *  @param rest   The collection that gets appended to this stream
-    *  @return       The stream containing elements of this stream and the iterable object.
-    */
+   *  @param rest   The collection that gets appended to this stream
+   *  @return       The stream containing elements of this stream and the iterable object.
+   */
   @deprecated("The `append` operation has been renamed `lazyAppendedAll`", "2.13.0")
   @inline final def append[B >: A](rest: => IterableOnce[B]): Stream[B] = lazyAppendedAll(rest)
 
@@ -110,16 +110,16 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   @inline def print(): Unit = Console.print(this.force.mkString(", "))
 
   /** Prints elements of this stream one by one, separated by `sep`.
-    *  @param sep   The separator string printed between consecutive elements.
-    */
+   *  @param sep   The separator string printed between consecutive elements.
+   */
   @deprecated(message = "Use print(stream.force.mkString(sep)) instead", since = "2.13.0")
   @inline def print(sep: String): Unit = Console.print(this.force.mkString(sep))
 
   /** The stream resulting from the concatenation of this stream with the argument stream.
-    *
-    * @param suffix The collection that gets appended to this stream
-    * @return The stream containing elements of this stream and the iterable object.
-    */
+   *
+   *  @param suffix The collection that gets appended to this stream
+   *  @return The stream containing elements of this stream and the iterable object.
+   */
   def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]): Stream[B] =
     if (isEmpty) iterableFactory.from(suffix) else Stream.cons[B](head, tail.lazyAppendedAll(suffix))
 
@@ -128,12 +128,12 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     else Stream.cons(z, tail.scanLeft(op(z, head))(op))
 
   /** Stream specialization of reduceLeft which allows GC to collect
-    *  along the way.
-    *
-    * @tparam B The type of value being accumulated.
-    * @param f The operation to perform on successive elements of the `Stream`.
-    * @return The accumulated value from successive applications of `f`.
-    */
+   *  along the way.
+   *
+   *  @tparam B The type of value being accumulated.
+   *  @param f The operation to perform on successive elements of the `Stream`.
+   *  @return The accumulated value from successive applications of `f`.
+   */
   override final def reduceLeft[B >: A](f: (B, A) => B): B = {
     if (this.isEmpty) throw new UnsupportedOperationException("empty.reduceLeft")
     else {
@@ -224,19 +224,19 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   protected def tailDefined: Boolean
 
   /** Appends all elements of this $coll to a string builder using start, end, and separator strings.
-    *  The written text begins with the string `start` and ends with the string `end`.
-    *  Inside, the string representations (w.r.t. the method `toString`)
-    *  of all elements of this $coll are separated by the string `sep`.
-    *
-    * Undefined elements are represented with `"_"`, an undefined tail is represented with `"&lt;not computed&gt;"`,
-    * and cycles are represented with `"&lt;cycle&gt;"`.
-    *
-    *  @param sb    the string builder to which elements are appended.
-    *  @param start the starting string.
-    *  @param sep   the separator string.
-    *  @param end   the ending string.
-    *  @return      the string builder `b` to which elements were appended.
-    */
+   *  The written text begins with the string `start` and ends with the string `end`.
+   *  Inside, the string representations (w.r.t. the method `toString`)
+   *  of all elements of this $coll are separated by the string `sep`.
+   *
+   *  Undefined elements are represented with `"_"`, an undefined tail is represented with `"&lt;not computed&gt;"`,
+   *  and cycles are represented with `"&lt;cycle&gt;"`.
+   *
+   *  @param sb    the string builder to which elements are appended.
+   *  @param start the starting string.
+   *  @param sep   the separator string.
+   *  @param end   the ending string.
+   *  @return      the string builder `b` to which elements were appended.
+   */
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type = {
     force
     addStringNoForce(sb.underlying, start, sep, end)
@@ -315,20 +315,19 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     b
   }
 
-  /**
-    * @return a string representation of this collection. Undefined elements are
-    *         represented with `"_"`, an undefined tail is represented with `"&lt;not computed&gt;"`,
-    *         and cycles are represented with `"&lt;cycle&gt;"`
-    *
-    *         Examples:
-    *
-    *           - `"Stream(_, &lt;not computed&gt;)"`, a non-empty stream, whose head has not been
-    *             evaluated ;
-    *           - `"Stream(_, 1, _, &lt;not computed&gt;)"`, a stream with at least three elements,
-    *             the second one has been evaluated ;
-    *           - `"Stream(1, 2, 3, &lt;cycle&gt;)"`, an infinite stream that contains
-    *             a cycle at the fourth element.
-    */
+  /** Returns a string representation of this collection. Undefined elements are
+   *         represented with `"_"`, an undefined tail is represented with `"&lt;not computed&gt;"`,
+   *         and cycles are represented with `"&lt;cycle&gt;"`
+   *
+   *         Examples:
+   *
+   *           - `"Stream(_, &lt;not computed&gt;)"`, a non-empty stream, whose head has not been
+   *             evaluated ;
+   *           - `"Stream(_, 1, _, &lt;not computed&gt;)"`, a stream with at least three elements,
+   *             the second one has been evaluated ;
+   *           - `"Stream(1, 2, 3, &lt;cycle&gt;)"`, an infinite stream that contains
+   *             a cycle at the fourth element.
+   */
   override def toString() = addStringNoForce(new JStringBuilder(className), "(", ", ", ")").toString
 
   @deprecated("Check .knownSize instead of .hasDefiniteSize for more actionable information (see scaladoc for details)", "2.13.0")
@@ -360,13 +359,12 @@ object Stream extends SeqFactory[Stream] {
   /* !!! #11997 This `object cons` must be defined lexically *before* `class Cons` below.
    * Otherwise it prevents Scala.js from building on Windows.
    */
-  /** An alternative way of building and matching Streams using Stream.cons(hd, tl).
-    */
+  /** An alternative way of building and matching Streams using Stream.cons(hd, tl). */
   object cons {
     /** A stream consisting of a given first element and remaining elements.
-      *  @param hd   The first element of the result stream
-      *  @param tl   The remaining elements of the result stream
-      */
+     *  @param hd   The first element of the result stream
+     *  @param tl   The remaining elements of the result stream
+     */
     def apply[A](hd: A, tl: => Stream[A]): Stream[A] = new Cons(hd, tl)
 
     /** Maps a stream to its head and tail. */
@@ -379,14 +377,14 @@ object Stream extends SeqFactory[Stream] {
     override def head: Nothing = throw new NoSuchElementException("head of empty stream")
     override def tail: Stream[Nothing] = throw new UnsupportedOperationException("tail of empty stream")
     /** Forces evaluation of the whole `Stream` and returns it.
-      *
-      * @note Often we use `Stream`s to represent an infinite set or series.  If
-      * that's the case for your particular `Stream` then this function will never
-      * return and will probably crash the VM with an `OutOfMemory` exception.
-      * This function will not hang on a finite cycle, however.
-      *
-      *  @return The fully realized `Stream`.
-      */
+     *
+     *  @note Often we use `Stream`s to represent an infinite set or series.  If
+     *  that's the case for your particular `Stream` then this function will never
+     *  return and will probably crash the VM with an `OutOfMemory` exception.
+     *  This function will not hang on a finite cycle, however.
+     *
+     *  @return The fully realized `Stream`.
+     */
     def force: this.type = this
     override def knownSize: Int = 0
     protected def tailDefined: Boolean = false
@@ -410,14 +408,14 @@ object Stream extends SeqFactory[Stream] {
     }
 
     /** Forces evaluation of the whole `Stream` and returns it.
-      *
-      * @note Often we use `Stream`s to represent an infinite set or series.  If
-      * that's the case for your particular `Stream` then this function will never
-      * return and will probably crash the VM with an `OutOfMemory` exception.
-      * This function will not hang on a finite cycle, however.
-      *
-      *  @return The fully realized `Stream`.
-      */
+     *
+     *  @note Often we use `Stream`s to represent an infinite set or series.  If
+     *  that's the case for your particular `Stream` then this function will never
+     *  return and will probably crash the VM with an `OutOfMemory` exception.
+     *  This function will not hang on a finite cycle, however.
+     *
+     *  @return The fully realized `Stream`.
+     */
     def force: this.type = {
       // Use standard 2x 1x iterator trick for cycle detection ("those" is slow one)
       var these, those: Stream[A] = this
@@ -439,12 +437,12 @@ object Stream extends SeqFactory[Stream] {
 
   final class Deferrer[A] private[Stream] (private val l: () => Stream[A]) extends AnyVal {
     /** Constructs a `Stream` consisting of a given first element followed by elements
-      *  from another `Stream`.
-      */
+     *  from another `Stream`.
+     */
     def #:: [B >: A](elem: B): Stream[B] = new Cons(elem, l())
     /** Constructs a `Stream` consisting of the concatenation of the given `Stream` and
-      *  another `Stream`.
-      */
+     *  another `Stream`.
+     */
     def #:::[B >: A](prefix: Stream[B]): Stream[B] = prefix lazyAppendedAll l()
   }
 
@@ -459,11 +457,11 @@ object Stream extends SeqFactory[Stream] {
   }
 
   /**
-    * @return A `Stream[A]` that gets its elements from the given `Iterator`.
-    *
-    * @param it Source iterator
-    * @tparam A type of elements
-    */
+   *  @tparam A type of elements
+   *
+   *  @param it Source iterator
+   *  @return A `Stream[A]` that gets its elements from the given `Iterator`.
+   */
   // Note that the resulting `Stream` will be effectively iterable more than once because
   // `Stream` memoizes its elements
   def fromIterator[A](it: Iterator[A]): Stream[A] =
@@ -488,41 +486,38 @@ object Stream extends SeqFactory[Stream] {
   }
 
   /** An infinite Stream that repeatedly applies a given function to a start value.
-    *
-    *  @param start the start value of the Stream
-    *  @param f     the function that's repeatedly applied
-    *  @return      the Stream returning the infinite sequence of values `start, f(start), f(f(start)), ...`
-    */
+   *
+   *  @param start the start value of the Stream
+   *  @param f     the function that's repeatedly applied
+   *  @return      the Stream returning the infinite sequence of values `start, f(start), f(f(start)), ...`
+   */
   def iterate[A](start: A)(f: A => A): Stream[A] = {
     cons(start, iterate(f(start))(f))
   }
 
-  /**
-    * Creates an infinite Stream starting at `start` and incrementing by
-    * step `step`.
-    *
-    * @param start the start value of the Stream
-    * @param step the increment value of the Stream
-    * @return the Stream starting at value `start`.
-    */
+  /** Creates an infinite Stream starting at `start` and incrementing by
+   *  step `step`.
+   *
+   *  @param start the start value of the Stream
+   *  @param step the increment value of the Stream
+   *  @return the Stream starting at value `start`.
+   */
   def from(start: Int, step: Int): Stream[Int] =
     cons(start, from(start + step, step))
 
-  /**
-    * Creates an infinite Stream starting at `start` and incrementing by `1`.
-    *
-    * @param start the start value of the Stream
-    * @return the Stream starting at value `start`.
-    */
+  /** Creates an infinite Stream starting at `start` and incrementing by `1`.
+   *
+   *  @param start the start value of the Stream
+   *  @return the Stream starting at value `start`.
+   */
   def from(start: Int): Stream[Int] = from(start, 1)
 
-  /**
-    * Creates an infinite Stream containing the given element expression (which
-    * is computed for each occurrence).
-    *
-    * @param elem the element composing the resulting Stream
-    * @return the Stream containing an infinite number of elem
-    */
+  /** Creates an infinite Stream containing the given element expression (which
+   *  is computed for each occurrence).
+   *
+   *  @param elem the element composing the resulting Stream
+   *  @return the Stream containing an infinite number of elem
+   */
   def continually[A](elem: => A): Stream[A] = cons(elem, continually(elem))
 
 
@@ -535,10 +530,10 @@ object Stream extends SeqFactory[Stream] {
   }
 
   /** This serialization proxy is used for Streams which start with a sequence of evaluated cons cells.
-    * The forced sequence is serialized in a compact, sequential format, followed by the unevaluated tail, which uses
-    * standard Java serialization to store the complete structure of unevaluated thunks. This allows the serialization
-    * of long evaluated streams without exhausting the stack through recursive serialization of cons cells.
-    */
+   *  The forced sequence is serialized in a compact, sequential format, followed by the unevaluated tail, which uses
+   *  standard Java serialization to store the complete structure of unevaluated thunks. This allows the serialization
+   *  of long evaluated streams without exhausting the stack through recursive serialization of cons cells.
+   */
   @SerialVersionUID(3L)
   class SerializationProxy[A](@transient protected var coll: Stream[A]) extends Serializable {
 
