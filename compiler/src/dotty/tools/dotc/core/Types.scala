@@ -43,6 +43,9 @@ import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
 import transform.Recheck.currentRechecker
+import scala.collection.immutable.HashMap
+import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.reporting.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -52,6 +55,8 @@ object Types extends TypeUtils {
   @sharable private var nextId = 0
 
   implicit def eqType: CanEqual[Type, Type] = CanEqual.derived
+
+  val Reduction = new Property.Key[HashMap[Type, List[List[Type]]]]
 
   /** Main class representing types.
    *
@@ -1628,9 +1633,58 @@ object Types extends TypeUtils {
      *  then the result after applying all toplevel normalizations, otherwise NoType.
      */
     def tryNormalize(using Context): Type = underlyingNormalizable match
-      case mt: MatchType => mt.reduced.normalized
+      case mt: MatchType =>
+        this match
+          case self: AppliedType => guardedReduce(self, mt)
+          case _ => mt.reduced.normalized
       case tp: AppliedType => tp.tryCompiletimeConstantFold
       case _ => NoType
+
+    def guardedReduce(self: AppliedType, mt: MatchType)(using Context): Type =
+      val history = ctx.property(Reduction).getOrElse(Map.empty)
+      val stack = history.getOrElse(self.tycon, Nil)
+      checkMTDivergence(self, stack)
+      val newHistory = history.updated(self.tycon, self.args :: stack)
+      val result =
+        given Context = ctx.fresh.setProperty(Reduction, newHistory)
+        mt.reduced.normalized
+      result
+
+    def checkMTDivergence(self: AppliedType, stack: List[List[Type]])(using Context): Unit =
+      val errorArgs = self.args.filter(_.isError)
+      if errorArgs.nonEmpty then
+        val err = MatchTypeReductionWithErrorArgs(self.tycon, self.args, errorArgs, self.args :: stack)
+        throw MatchTypeDivergence(err)
+      val curCS = self.args.map(_.coveringSet).foldLeft(Set.empty[Symbol])(_ union _)
+      val curArgsSize = self.args.map(_.structuralTypeSize)
+      report.log(i"${self.tycon}${self.args}: stack: $stack (length ${stack.length})")
+      @tailrec def loop(remaining: List[List[Type]]): Unit = remaining match
+        case Nil => ()
+        case prevArgs :: rest =>
+          val prevArgsSize = prevArgs.map(_.structuralTypeSize)
+          val prevCS = prevArgs.map(_.coveringSet).foldLeft(Set.empty[Symbol])(_ union _)
+          val existsLT = curArgsSize.lazyZip(prevArgsSize).exists(_ > _)
+          val sizeDominated = existsLT && curArgsSize.lazyZip(prevArgsSize).forall(_ >= _)
+          val hasProgressingOp = self.args.lazyZip(prevArgs).exists(
+            (_, _) match
+              case (AppliedType(tc1, _), AppliedType(tc2, _)) =>
+                defn.isCompiletimeAppliedType(tc1.typeSymbol) &&
+                defn.isCompiletimeAppliedType(tc2.typeSymbol) &&
+                tc1.typeSymbol == tc2.typeSymbol
+              case (ConstantType(_) , ConstantType(_)) => true
+              case _ => false
+          )
+          report.log(i"${self.tycon}${self.args}: args=${self.args} prevArgs=${prevArgs} argsSize=${curArgsSize} " +
+            i"prevArgsSize=${prevArgsSize} CS=${curCS.toString} prevCS=${prevCS.toString}")
+          if curCS == prevCS && sizeDominated && !hasProgressingOp then
+            val cs = curCS.map(_.name).toList.sorted
+            val err = IncreasingMatchReduction(self.tycon, prevArgs, prevArgsSize, self.args, curArgsSize, cs, self.args :: stack)
+            throw MatchTypeDivergence(err)
+          else if self.args.corresponds(prevArgs)(_ eq _) then
+            val err = CyclicMatchTypeReduction(self.tycon, self.args, curArgsSize, self.args :: stack)
+            throw MatchTypeDivergence(err)
+          else loop(rest)
+      if stack.length >= 10 then loop(stack) else ()
 
     /** Perform successive strippings, and beta-reductions of applied types until
      *  a match type or applied compiletime.ops is reached, if any, otherwise NoType.
@@ -2097,6 +2151,9 @@ object Types extends TypeUtils {
     /** The number of applications and refinements in this type, after all aliases are expanded */
     def typeSize(using Context): Int =
       (new TypeSizeAccumulator).apply(0, this)
+
+    def structuralTypeSize(using Context): Int =
+      (new StructuralTypeSizeAccumulator).apply(0, this)
 
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
@@ -7111,6 +7168,12 @@ object Types extends TypeUtils {
         case _ => foldOver(x, tp)
       }
     }
+  }
+
+  class StructuralTypeSizeAccumulator(using Context) extends TypeSizeAccumulator {
+    override def apply(n: Int, tp: Type): Int =
+      if tp.isMatchAlias then foldOver(n + 1, tp)
+      else super.apply(n, tp)
   }
 
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {

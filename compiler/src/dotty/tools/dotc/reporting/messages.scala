@@ -3347,6 +3347,49 @@ class MatchTypeLegacyPattern(errorText: String)(using Context) extends TypeMsg(M
   def msg(using Context) = errorText
   def explain(using Context) = ""
 
+class IncreasingMatchReduction(tpcon: Type, prevArgs: List[Type], prevSize: List[Int], curArgs: List[Type], curSize: List[Int], cs: List[Name], stack: List[List[Type]])(using Context)
+  extends TypeMsg(IncreasingMatchReductionID):
+  def msg(using Context) =
+    i"""Match type reduction failed due to potentially infinite recursion in the reduction steps."""
+  def explain(using Context) =
+    val trace: String = stack.reverse.map(a => i"${tpcon}${a}").mkString(" -> ")
+    i"""The reduction step for $tpcon resulted in divergent arguments:
+       |  Previous Arguments:  $prevArgs (complexities: $prevSize)
+       |  Current  Arguments:  $curArgs (complexities: $curSize)
+       |  Covering Set: $cs
+       |
+       |The covering set is equal for both and the complexities are increasing (domination criteria).
+       |More precisely, all current arguments have complexity greater than or equal to the previous arguments,
+       |and at least one current argument has strictly greater complexity than the previous argument.
+       |
+       |Trace: $trace"""
+
+class CyclicMatchTypeReduction(tpcon: Type, args: List[Type], argsSize: List[Int], stack: List[List[Type]])(using Context)
+  extends TypeMsg(CyclicMatchTypeReductionID):
+  def msg(using Context) =
+    i"""Match type reduction failed due to a cycle in the reduction steps."""
+  def explain(using Context) =
+    val trace: String = stack.reverse.map(a => i"${tpcon}${a}").mkString(" -> ")
+    i"""The reduction step for $tpcon resulted in previously seen arguments:
+       |  Arguments:  $args (size: $argsSize)
+       |
+       |Trace: $trace"""
+
+class MatchTypeReductionWithErrorArgs(tpcon: Type, args: List[Type], errorArgs: List[Type], stack: List[List[Type]])(using Context)
+  extends TypeMsg(MatchTypeReductionWithErrorArgsID):
+  def msg(using Context) =
+    i"""Match type reduction failed due to error in arguments."
+       |
+       |Arguments:  $args
+       |"""
+  def explain(using Context) =
+    val trace: String = stack.reverse.map(a => i"${tpcon}${a}").mkString(" -> ")
+    i"""The reduction step for $tpcon could not be performed because the arguments
+       | $errorArgs reduced to error types.
+       |Please fix the errors in the arguments before reducing the match type.
+       |
+       |Trace: $trace"""
+
 class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
   extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
     def msg(using Context) =
