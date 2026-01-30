@@ -30,7 +30,7 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSkelBuilder(val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeHelpers {
+trait BCodeSkelBuilder/*(val ts: CoreBTypesFromSymbols)*/(using ctx: Context) extends BCodeHelpers {
 
   lazy val NativeAttr: Symbol = requiredClass[scala.native]
 

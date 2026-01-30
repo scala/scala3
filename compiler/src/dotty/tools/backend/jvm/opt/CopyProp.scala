@@ -25,7 +25,7 @@ import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
 
-class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, optAllowSkipClassLoading: Boolean) {
+class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreBTypes, optAllowSkipClassLoading: Boolean) {
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -93,7 +93,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    *
    * Finally there's an interesting special case that complements the inliner heuristics. After
    * the rewrite above, if the `new Array[X]` is used in a `ScalaRuntime.array_apply/update` call,
-   * inline that method. These methods have a big pattern match for all primitive array types, and
+   * we should inline that method. These methods have a big pattern match for all primitive array types, and
    * we only inline them if we statically know the array type. In this case, all the non-matching
    * branches are later eliminated by `eliminateRedundantCastsAndRewriteSomeIntrinsics`.
    *
@@ -102,10 +102,10 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    * we replace such stores by `POP; ACONST_NULL; ASTORE x` - except if the store precedes an
    * `xRETURN`, in which case it can be removed.
    *
-   * Returns (staleStoreRemoved, intrinsicRewritten, callInlined).
+   * Returns (staleStoreRemoved, intrinsicRewritten).
    */
-  def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean, Boolean) = {
-    if (!AsmAnalyzer.sizeOKForSourceValue(method)) (false, false, false) else {
+  def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = {
+    if (!AsmAnalyzer.sizeOKForSourceValue(method)) (false, false) else {
       lazy val prodCons = new ProdConsAnalyzer(method, owner)
       def hasNoCons(varIns: AbstractInsnNode, slot: Int) = prodCons.consumersOfValueAt(varIns.getNext, slot).isEmpty
 
@@ -120,8 +120,6 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
 
       val returns = mutable.Set.empty[AbstractInsnNode]
-
-      val toInline = mutable.Set.empty[MethodInsnNode]
 
       // `true` for variables that are known to be live and hold non-primitives
       val liveRefVars = new Array[Boolean](BackendUtils.maxLocals(method))
@@ -166,7 +164,6 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             if (receiverProds.size == 1) {
               toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
               toReplace(mi) = List(new TypeInsnNode(ANEWARRAY, newArrayCls))
-              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if BackendUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
             }
           }
 
@@ -198,7 +195,6 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
       var staleStoreRemoved = toNullOut.nonEmpty
       var intrinsicRewritten = false
-      val callInlined = toInline.nonEmpty
 
       for ((i, nis) <- toReplace) {
         i.getType match {
@@ -235,17 +231,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
         }
       }
 
-      if (toInline.nonEmpty) {
-        val methodCallsites = callGraph.callsites(method)
-        var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
-        while (css.nonEmpty) {
-          val cs = css.head
-          css = css.tail
-          inliner.inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
-        }
-      }
-
-      (staleStoreRemoved, intrinsicRewritten, callInlined)
+      (staleStoreRemoved, intrinsicRewritten)
     }
   }
 

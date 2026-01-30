@@ -221,6 +221,47 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
     }
   }
 
+
+  /**
+   * Clone the instructions in `methodNode` into a new [[InsnList]], mapping labels according to
+   * the `labelMap`.
+   *
+   * For invocation instructions, set the callGraph.callsitePositions to the `callsitePos`.
+   *
+   * Returns
+   *   - the new instruction list
+   *   - a map from old to new instructions
+   *   - a bit set containing local variable indices that are stored into
+   */
+  def cloneInstructions(methodNode: MethodNode, labelMap: Map[LabelNode, LabelNode], callsitePos: SourcePosition, keepLineNumbers: Boolean): (InsnList, Map[AbstractInsnNode, AbstractInsnNode], mutable.BitSet) = {
+    val javaLabelMap = labelMap.asJava
+    val result = new InsnList
+    var map = Map.empty[AbstractInsnNode, AbstractInsnNode]
+    val writtenLocals = mutable.BitSet.empty
+    for (ins <- methodNode.instructions.iterator.asScala) {
+      if (keepLineNumbers || ins.getType != AbstractInsnNode.LINE) {
+        val cloned = ins.clone(javaLabelMap)
+        if (ins.getType == AbstractInsnNode.METHOD_INSN) {
+          val mi = ins.asInstanceOf[MethodInsnNode]
+          val clonedMi = cloned.asInstanceOf[MethodInsnNode]
+          callsitePositions(clonedMi) = callsitePos
+          if (inlineAnnotatedCallsites(mi))
+            inlineAnnotatedCallsites += clonedMi
+          if (noInlineAnnotatedCallsites(mi))
+            noInlineAnnotatedCallsites += clonedMi
+          if (staticallyResolvedInvokespecial(mi))
+            staticallyResolvedInvokespecial += clonedMi
+        } else if (BCodeUtils.isStore(ins)) {
+          val vi = ins.asInstanceOf[VarInsnNode]
+          writtenLocals += vi.`var`
+        }
+        result.add(cloned)
+        map += ((ins, cloned))
+      }
+    }
+    (result, map, writtenLocals)
+  }
+
   private def computeArgInfos(callee: Either[OptimizerWarning, Callee], callsiteInsn: MethodInsnNode, paramTps: FLazy[Array[Type]], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
     if (callee.isLeft) IntMap.empty
     else {

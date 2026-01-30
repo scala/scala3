@@ -14,6 +14,7 @@ import dotty.tools.backend.jvm.BackendReporting.*
 
 import scala.annotation.tailrec
 import scala.tools.asm.Opcodes
+import scala.tools.asm.Opcodes.{ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC}
 
 
 /**
@@ -692,6 +693,19 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
     case Invalid(noInfo: NoClassBTypeInfo) => Left(noInfo)
   }
 
+  /**
+   * The prefix of the internal name until the last '/', or the empty string.
+   */
+  def packageInternalName: String = {
+    val name = internalName
+    name.lastIndexOf('/') match {
+      case -1 => ""
+      case i => name.substring(0, i)
+    }
+  }
+
+  def isPublic: Either[NoClassBTypeInfo, Boolean] = info.map(i => (i.flags & asm.Opcodes.ACC_PUBLIC) != 0)
+
   def isNestedClass: Either[NoClassBTypeInfo, Boolean] = info.map(_.nestedInfo.get.isDefined)
 
   def enclosingNestedClassesChain: Either[NoClassBTypeInfo, List[ClassBType]] = {
@@ -887,6 +901,93 @@ object BTypes {
    * But that would create overhead in a Collection[InternalName].
    */
   type InternalName = String
+
+
+  /**
+   * Check if a type is accessible to some class, as defined in JVMS 5.4.4.
+   * (A1) C is public
+   * (A2) C and D are members of the same run-time package
+   */
+  @tailrec
+  final def classIsAccessible(accessed: BType, from: ClassBType): Either[OptimizerWarning, Boolean] = (accessed: @unchecked) match {
+    // TODO: A2 requires "same run-time package", which seems to be package + classloader (JVMS 5.3.). is the below ok?
+    case c: ClassBType => c.isPublic.map(_ || c.packageInternalName == from.packageInternalName)
+    case a: ArrayBType => classIsAccessible(a.elementType, from)
+    case _: PrimitiveBType => Right(true)
+  }
+
+  /**
+   * Check if a member reference is accessible from the `destinationClass`, as defined in the
+   * JVMS 5.4.4. Note that the class name in a field / method reference is not necessarily the
+   * class in which the member is declared:
+   *
+   * class A { def f = 0 }; class B extends A { f }
+   *
+   * The INVOKEVIRTUAL instruction uses a method reference "B.f ()I". Therefore this method has
+   * two parameters:
+   *
+   * @param memberDeclClass The class in which the member is declared (A)
+   * @param memberRefClass  The class used in the member reference (B)
+   *
+   *                        (B0) JVMS 5.4.3.2 / 5.4.3.3: when resolving a member of class C in D, the class C is resolved
+   *                        first. According to 5.4.3.1, this requires C to be accessible in D.
+   *
+   *                        JVMS 5.4.4 summary: A field or method R is accessible to a class D (destinationClass) iff
+   *                        (B1) R is public
+   *                        (B2) R is protected, declared in C (memberDeclClass) and D is a subclass of C.
+   *                        If R is not static, R must contain a symbolic reference to a class T (memberRefClass),
+   *                        such that T is either a subclass of D, a superclass of D, or D itself.
+   *                        Also (P) needs to be satisfied.
+   *                        (B3) R is either protected or has default access and declared by a class in the same
+   *                        run-time package as D.
+   *                        If R is protected, also (P) needs to be satisfied.
+   *                        (B4) R is private and is declared in D.
+   *
+   *                        (P) When accessing a protected instance member, the target object on the stack (the receiver)
+   *                        has to be a subtype of D (destinationClass). This is enforced by classfile verification
+   *                        (https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.10.1.8).
+   *
+   *                        TODO: we cannot currently implement (P) because we don't have the necessary information
+   *                        available. Once we have a type propagation analysis implemented, we can extract the receiver
+   *                        type from there (https://github.com/scala-opt/scala/issues/13).
+   */
+  def memberIsAccessible(memberFlags: Int, memberDeclClass: ClassBType, memberRefClass: ClassBType, from: ClassBType): Either[OptimizerWarning, Boolean] = {
+    // TODO: B3 requires "same run-time package", which seems to be package + classloader (JVMS 5.3.). is the below ok?
+    def samePackageAsDestination = memberDeclClass.packageInternalName == from.packageInternalName
+
+    def targetObjectConformsToDestinationClass = false // needs type propagation analysis, see above
+
+    def memberIsAccessibleImpl = {
+      val key = (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE) & memberFlags
+      key match {
+        case ACC_PUBLIC => // B1
+          Right(true)
+
+        case ACC_PROTECTED => // B2
+          val isStatic = (ACC_STATIC & memberFlags) != 0
+          tryEither {
+            val condB2 = from.isSubtypeOf(memberDeclClass).orThrow && {
+              isStatic || memberRefClass.isSubtypeOf(from).orThrow || from.isSubtypeOf(memberRefClass).orThrow
+            }
+            Right(
+              (condB2 || samePackageAsDestination /* B3 (protected) */) &&
+                (isStatic || targetObjectConformsToDestinationClass) // (P)
+            )
+          }
+
+        case 0 => // B3 (default access)
+          Right(samePackageAsDestination)
+
+        case ACC_PRIVATE => // B4
+          Right(memberDeclClass == from)
+      }
+    }
+
+    classIsAccessible(memberDeclClass, from) match { // B0
+      case Right(true) => memberIsAccessibleImpl
+      case r => r
+    }
+  }
 
   /**
    * Metadata about a ClassBType, used by the inliner.

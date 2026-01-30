@@ -37,7 +37,7 @@ import DottyBackendInterface.symExtensions
 import opt.CallGraph
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypesFromSymbols)(using Context) {
-  private class Impl(using Context) extends BCodeHelpers(backendUtils, ts), BCodeSkelBuilder(ts), BCodeBodyBuilder(primitives, ts), BCodeSyncAndTry(ts) {
+  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry(ts) {
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit =
       callGraph.callsitePositions(m) = pos match {
         case p: Positioned => p.sourcePos

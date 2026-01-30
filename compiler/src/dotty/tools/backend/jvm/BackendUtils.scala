@@ -13,12 +13,15 @@ import dotty.tools.dotc.core.Contexts.Context
 
 import scala.language.unsafeNulls
 import dotty.tools.backend.jvm.analysis.{InstructionStackEffect, ProdConsAnalyzer}
+
 import scala.tools.asm.Opcodes
 import dotty.tools.backend.jvm.BTypes.InternalName
 import BCodeUtils.FrameExtensions
+
 import scala.annotation.switch
 import java.util.concurrent.ConcurrentHashMap
 import PostProcessorFrontendAccess.Lazy
+import dotty.tools.dotc.util.SourcePosition
 
 /**
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
@@ -315,21 +318,6 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
       val fi = insn.asInstanceOf[FieldInsnNode]
       fi.owner == ts.srBoxedUnitRef.internalName && fi.name == "UNIT" && fi.desc == ts.srBoxedUnitRef.descriptor
     }
-  }
-
-  def isTraitSuperAccessor(method: MethodNode, owner: ClassBType): Boolean = {
-    owner.isInterface.get &&
-      BCodeUtils.isSyntheticMethod(method) &&
-      method.name.endsWith("$") &&
-      BCodeUtils.isStaticMethod(method) &&
-      BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESPECIAL && mi.name + "$" == method.name).nonEmpty
-  }
-
-  def isMixinForwarder(method: MethodNode, owner: ClassBType): Boolean = {
-    !owner.isInterface.get &&
-      // isSyntheticMethod(method) && // mixin forwarders are not synthetic it seems
-      !BCodeUtils.isStaticMethod(method) &&
-      BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESTATIC && mi.name == method.name + "$").nonEmpty
   }
 
   def isRefCreate(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefCreateMethods)
@@ -843,5 +831,27 @@ object BackendUtils {
         primitiveManifestApplies.get(mi.name).contains(mi.desc)
     }
   }
+
+  // ==============================================================================================
+
+  def isTraitSuperAccessor(method: MethodNode, owner: ClassBType): Boolean = {
+    owner.isInterface.get &&
+      BCodeUtils.isSyntheticMethod(method) &&
+      method.name.endsWith("$") &&
+      BCodeUtils.isStaticMethod(method) &&
+      BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESPECIAL && mi.name + "$" == method.name).nonEmpty
+  }
+
+  def isMixinForwarder(method: MethodNode, owner: ClassBType): Boolean = {
+    !owner.isInterface.get &&
+      // isSyntheticMethod(method) && // mixin forwarders are not synthetic it seems
+      !BCodeUtils.isStaticMethod(method) &&
+      BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESTATIC && mi.name == method.name + "$").nonEmpty
+  }
+
+  def isTraitSuperAccessorOrMixinForwarder(method: MethodNode, owner: ClassBType): Boolean = {
+    isTraitSuperAccessor(method, owner) || isMixinForwarder(method, owner)
+  }
+
 
 }

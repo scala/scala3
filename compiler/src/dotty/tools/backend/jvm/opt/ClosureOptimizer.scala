@@ -29,15 +29,10 @@ import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
-class ClosureOptimizer(backendUtils: BackendUtils, backendReporting: BackendReporting,
+class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
                        byteCodeRepository: ByteCodeRepository, callGraph: CallGraph,
                        ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile,
-                       inliner: Inliner, localOpt: LocalOpt) {
-
-  /*import postProcessor.{frontendAccess, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
-  import backendUtils._
-  import callGraph._
-  import frontendAccess.backendReporting*/
+                       localOpt: LocalOpt) {
 
   import ClosureOptimizer.*
 
@@ -124,7 +119,7 @@ class ClosureOptimizer(backendUtils: BackendUtils, backendReporting: BackendRepo
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                backendReporting.optimizerWarning(em"${warning.toString}", backendReporting.siteString(ownerClass, method.name), warning.pos)
+                ppa.backendReporting.optimizerWarning(em"${warning.toString}", ppa.backendReporting.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -149,7 +144,7 @@ class ClosureOptimizer(backendUtils: BackendUtils, backendReporting: BackendRepo
       if (closureInit.ownerMethod != previousMethod) {
         previousMethod = closureInit.ownerMethod
         changedMethods += previousMethod.nn
-        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState)
+        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(ppa.compilerSettings.optLogInline))
         state.inlineLog.logClosureRewrite(closureInit, invocations, invocations.headOption.flatMap(p => state.outerCallsite(p._1)))
       }
     }
@@ -195,7 +190,7 @@ class ClosureOptimizer(backendUtils: BackendUtils, backendReporting: BackendRepo
         // method as the allocation) should have access too.
         val bodyAccessible: Either[OptimizerWarning, Boolean] = for {
           (bodyMethodNode, declClass) <- byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc): Either[OptimizerWarning, (MethodNode, InternalName)]
-          isAccessible                <- inliner.memberIsAccessible(bodyMethodNode.access, bTypesFromClassfile.classBTypeFromParsedClassfile(declClass), bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner), ownerClass)
+          isAccessible                <- BTypes.memberIsAccessible(bodyMethodNode.access, bTypesFromClassfile.classBTypeFromParsedClassfile(declClass), bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner), ownerClass)
         } yield {
           isAccessible
         }

@@ -150,12 +150,12 @@ import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
+class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, callGraph: CallGraph, ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
 
   import LocalOptImpls.*
 
   val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
-  val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, ppa.compilerSettings.optAllowSkipClassLoading)
+  val copyProp = new CopyProp(backendUtils, callGraph, ts, ppa.compilerSettings.optAllowSkipClassLoading)
 
   /**
    * Remove unreachable code from a method.
@@ -303,11 +303,11 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
 
       // STALE STORES
       val runStaleStores = ppa.compilerSettings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
-      val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
+      val (storesRemoved, intrinsicRewrittenByStaleStores) = if (!runStaleStores) (false, false) else copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("staleStores")
 
       // REDUNDANT CASTS
-      val runRedundantCasts = ppa.compilerSettings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
+      val runRedundantCasts = ppa.compilerSettings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores)
       val (typeInsnChanged, intrinsicRewrittenByCasts) = if (!runRedundantCasts) (false, false) else eliminateRedundantCastsAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("redundantCasts")
 
@@ -332,7 +332,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
       traceIfChanged("simplifyJumps")
 
       // See doc comment in the beginning of this file (optimizations marked UPSTREAM)
-      val runNullnessAgain = boxUnboxChanged || callInlinedByStaleStores || pushPopNullCheckAdded
+      val runNullnessAgain = boxUnboxChanged || pushPopNullCheckAdded
       val runDCEAgain = removeHandlersResult.liveHandlerRemoved || jumpsChanged
       val runBoxUnboxAgain = boxUnboxChanged || typeInsnChanged || pushPopRemoved || removeHandlersResult.liveHandlerRemoved
       val runCopyPropAgain = typeInsnChanged
@@ -361,7 +361,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
         storeLoadRemoved ||
         removeHandlersResult.handlerRemoved
 
-      val codeChanged = nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged || storesRemoved || intrinsicRewrittenByStaleStores || callInlinedByStaleStores || typeInsnChanged || intrinsicRewrittenByCasts || pushPopRemoved || storeLoadRemoved || removeHandlersResult.handlerRemoved || jumpsChanged
+      val codeChanged = nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged || storesRemoved || intrinsicRewrittenByStaleStores || typeInsnChanged || intrinsicRewrittenByCasts || pushPopRemoved || storeLoadRemoved || removeHandlersResult.handlerRemoved || jumpsChanged
       (codeChanged, requireEliminateUnusedLocals)
     }
 

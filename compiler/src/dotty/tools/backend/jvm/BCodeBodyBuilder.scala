@@ -37,7 +37,7 @@ import DottyBackendInterface.symExtensions
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: DottyPrimitives, val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: DottyPrimitives/*, val ts: CoreBTypesFromSymbols*/)(using ctx: Context) extends BCodeSkelBuilder {
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.

@@ -185,7 +185,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
       BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0 ||
-        backendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass) // seems mixin forwarders are not synthetic...
+        BackendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass) // seems mixin forwarders are not synthetic...
 
     if (isGeneratedForwarder) None
     else {
@@ -227,7 +227,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             // we *do* inline trait super accessors if selected by a different heuristic. in this case, the `invokespecial` is then
             // inlined in turn (chosen by the same heuristic), or the code is rolled back. but we don't inline them just because
             // they are forwarders.
-            val isTraitSuperAccessor = backendUtils.isTraitSuperAccessor(callee.callee, callee.calleeDeclarationClass)
+            val isTraitSuperAccessor = BackendUtils.isTraitSuperAccessor(callee.callee, callee.calleeDeclarationClass)
             if (isTraitSuperAccessor) {
               // inline static trait super accessors if the corresponding trait method is a forwarder or trivial (scala-dev#618)
               {
@@ -247,7 +247,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
               val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
               if (forwarderKind < 0)
                 null
-              else if (BCodeUtils.isSyntheticMethod(callee.callee) || backendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+              else if (BCodeUtils.isSyntheticMethod(callee.callee) || BackendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
                 SyntheticForwarder
               else forwarderKind match {
                 case 1 => TrivialMethod

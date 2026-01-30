@@ -15,18 +15,19 @@ import dotty.tools.backend.jvm.opt.*
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypes) {
+class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val ts: CoreBTypes)(using Context) {
 
-  val backendUtils        = new BackendUtils(frontendAccess, ts)
-  val byteCodeRepository  = new ByteCodeRepository(frontendAccess, backendUtils, ts)
-  val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, ts, frontendAccess.compilerSettings.optInlinerEnabled)
-  val localOpt            = new LocalOpt(this)
-  val inliner             = new Inliner(this)
-  val inlinerHeuristics   = new InlinerHeuristics(this)
-  val closureOptimizer    = new ClosureOptimizer(this)
-  val callGraph           = new CallGraph(this)
-  val classfileWriters    = new ClassfileWriters(frontendAccess)
-  val classfileWriter     = classfileWriters.ClassfileWriter()
+  private val backendUtils        = new BackendUtils(frontendAccess, ts)
+  private val byteCodeRepository  = new ByteCodeRepository(frontendAccess, backendUtils, ts)
+  private val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, ts, frontendAccess.compilerSettings.optInlinerEnabled)
+  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile)
+  private val inlinerHeuristics   = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
+  private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, ts, bTypesFromClassfile)
+  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile, localOpt)
+  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, localOpt)
+  val classfileWriters            = new ClassfileWriters(frontendAccess)
+  val classfileWriter             = classfileWriters.ClassfileWriter()
 
 
   private type ClassnamePosition = (String, SourcePosition)

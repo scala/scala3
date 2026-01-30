@@ -45,7 +45,7 @@ import DottyBackendInterface.{*, given}
  *  @version 1.0
  *
  */
-trait BCodeHelpers(val backendUtils: BackendUtils, val ts: CoreBTypesFromSymbols)(using ctx: Context) extends BCodeIdiomatic {
+trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends BCodeIdiomatic {
 
   private def ScalaATTRName: String = "Scala"
   private def ScalaSignatureATTRName: String = "ScalaSig"
