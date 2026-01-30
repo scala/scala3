@@ -2,10 +2,11 @@ package dotty.tools
 package backend.jvm
 
 import scala.tools.asm
-import scala.tools.asm.Handle
+import scala.tools.asm.{Handle, Type}
 import scala.tools.asm.tree.*
 import asm.tree.ClassNode
 import scala.collection.mutable
+import scala.collection.BitSet
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts.Context
@@ -316,6 +317,21 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
     }
   }
 
+  def isTraitSuperAccessor(method: MethodNode, owner: ClassBType): Boolean = {
+    owner.isInterface.get &&
+      BCodeUtils.isSyntheticMethod(method) &&
+      method.name.endsWith("$") &&
+      BCodeUtils.isStaticMethod(method) &&
+      BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESPECIAL && mi.name + "$" == method.name).nonEmpty
+  }
+
+  def isMixinForwarder(method: MethodNode, owner: ClassBType): Boolean = {
+    !owner.isInterface.get &&
+      // isSyntheticMethod(method) && // mixin forwarders are not synthetic it seems
+      !BCodeUtils.isStaticMethod(method) &&
+      BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESTATIC && mi.name == method.name + "$").nonEmpty
+  }
+
   def isRefCreate(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefCreateMethods)
   def isRefZero(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefZeroMethods)
 
@@ -374,6 +390,74 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
 
+  private val nonForwarderInstructionTypes: BitSet = {
+    import AbstractInsnNode._
+    BitSet(FIELD_INSN, INVOKE_DYNAMIC_INSN, JUMP_INSN, IINC_INSN, TABLESWITCH_INSN, LOOKUPSWITCH_INSN)
+  }
+
+  /**
+   * Identify forwarders, aliases, anonfun\$adapted methods, bridges, trivial methods (x + y), etc
+   * Returns
+   * -1 : no match
+   * 1 : trivial (no method calls), but not field getters
+   * 2 : factory
+   * 3 : forwarder with boxing adaptation
+   * 4 : generic forwarder / alias
+   *
+   * TODO: should delay some checks to `canInline` (during inlining)
+   * problem is: here we don't have access to the callee / accessed field, so we can't check accessibility
+   *   - INVOKESPECIAL is not the only way to call private methods, INVOKESTATIC is also possible
+   *   - the body of the callee can change between here (we're in inliner heuristics) and the point
+   *     when we actually inline it (code may have been inlined into the callee)
+   *   - methods accessing a public field could be inlined. on the other hand, methods accessing a private
+   *     static field should not be inlined.
+   */
+  def looksLikeForwarderOrFactoryOrTrivial(method: MethodNode, owner: InternalName, allowPrivateCalls: Boolean): Int = {
+    val paramTypes = Type.getArgumentTypes(method.desc)
+    val numPrimitives = paramTypes.count(_.getSort < Type.ARRAY) + (if (Type.getReturnType(method.desc).getSort < Type.ARRAY) 1 else 0)
+
+    val maxSize =
+      3 + // forwardee call, return
+        paramTypes.length + // param load
+        numPrimitives * 2 + // box / unbox call, for example Predef.int2Integer
+        paramTypes.length + 2 // some slack: +1 for each parameter, receiver, return value. allow things like casts.
+
+    if (method.instructions.iterator.asScala.count(_.getOpcode > 0) > maxSize) return -1
+
+    var numBoxConv = 0
+    var numCallsOrNew = 0
+    var callMi: MethodInsnNode = null
+    val it = method.instructions.iterator
+    while (it.hasNext && numCallsOrNew < 2) {
+      val i = it.next()
+      val t = i.getType
+      if (t == AbstractInsnNode.METHOD_INSN) {
+        val mi = i.asInstanceOf[MethodInsnNode]
+        if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME) {
+          numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
+        } else {
+          if (isScalaBox(mi) || isScalaUnbox(mi) || isPredefAutoBox(mi) || isPredefAutoUnbox(mi) || isJavaBox(mi) || isJavaUnbox(mi))
+            numBoxConv += 1
+          else {
+            numCallsOrNew += 1
+            callMi = mi
+          }
+        }
+      } else if (nonForwarderInstructionTypes(t)) {
+        if (i.getOpcode == Opcodes.GETSTATIC) {
+          if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner)
+            numCallsOrNew = 2 // stop here: not forwarder or trivial
+        } else {
+          numCallsOrNew = 2 // stop here: not forwarder or trivial
+        }
+      }
+    }
+    if (numCallsOrNew > 1 || numBoxConv > paramTypes.length + 1) -1
+    else if (numCallsOrNew == 0) if (numBoxConv == 0) 1 else 3
+    else if (callMi.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME) 2
+    else if (numBoxConv > 0) 3
+    else 4
+  }
 }
 
 object BackendUtils {

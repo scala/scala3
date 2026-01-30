@@ -30,7 +30,7 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
 class Inliner() {
-  
+
   // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
   // inlined in a later inlining round.
   // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
@@ -209,14 +209,14 @@ class Inliner() {
                     backendReporting.optimizerWarning(
                       inlinedCallsite.eliminatedCallsite.callsitePosition,
                       rw.toString + inlineChainSuffix(r.callsite, state.inlineChain(inlinedCallsite.eliminatedCallsite.callsiteInstruction, skipForwarders = true)),
-                      backendUtils.optimizerWarningSiteString(inlinedCallsite.eliminatedCallsite))
+                      backendUtils.siteString(inlinedCallsite.eliminatedCallsite.callsiteClass.internalName, inlinedCallsite.eliminatedCallsite.callsiteMethod.name))
                   }
                 case _ =>
                   if (w.emitWarning(compilerSettings))
                     backendReporting.optimizerWarning(
                       r.callsite.callsitePosition,
                       w.toString + inlineChainSuffix(r.callsite, state.inlineChain(r.callsite.callsiteInstruction, skipForwarders = true)),
-                      backendUtils.optimizerWarningSiteString(r.callsite))
+                      backendUtils.siteString(r.callsite.callsiteClass.internalName, r.callsite.callsiteMethod.name))
               }
           }
         }
@@ -270,7 +270,7 @@ class Inliner() {
                   backendReporting.optimizerWarning(
                     callsite.callsitePosition,
                     w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true)),
-                    backendUtils.optimizerWarningSiteString(callsite))
+                    backendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name))
               case _ =>
                 // TODO: replace by dev warning after testing
                 assert(false, "should not happen")
@@ -283,7 +283,7 @@ class Inliner() {
 
     overallChangedMethods
   }
-  
+
   private val inlineRequestOrdering =
     Ordering.by[InlineRequest, Callsite](_.callsite)(using callsiteOrdering)
 
@@ -700,35 +700,6 @@ class Inliner() {
     BackendUtils.clearDceDone(callsiteMethod)
 
     instructionMap
-  }
-
-  /**
-   * Check whether an inlining can be performed. This method performs tests that don't change even
-   * if the body of the callee is changed by the inliner / optimizer, so it can be used early
-   * (when looking at the call graph and collecting inline requests for the program).
-   *
-   * The tests that inspect the callee's instructions are implemented in method `canInlineBody`,
-   * which is queried when performing an inline.
-   *
-   * @return `Some(message)` if inlining cannot be performed, `None` otherwise
-   */
-  def earlyCanInlineCheck(callsite: Callsite): Option[CannotInlineWarning] = {
-    import callsite.{callsiteClass, callsiteMethod}
-    val Right(callsiteCallee) = callsite.callee: @unchecked
-    import callsiteCallee.{callee, calleeDeclarationClass}
-
-    if (isSynchronizedMethod(callee)) {
-      // Could be done by locking on the receiver, wrapping the inlined code in a try and unlocking
-      // in finally. But it's probably not worth the effort, scala never emits synchronized methods.
-      Some(SynchronizedMethod(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
-    } else if (isStrictfpMethod(callsiteMethod) != isStrictfpMethod(callee)) {
-      Some(StrictfpMismatch(
-        calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated,
-        callsiteClass.internalName, callsiteMethod.name, callsiteMethod.desc))
-    } else if (callee.instructions.size == 0) {
-      Some(NoBytecode(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
-    } else
-      None
   }
 
   /**

@@ -15,20 +15,23 @@ package backend.jvm
 package opt
 
 import java.util.regex.Pattern
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.MethodNode
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, OptimizerWarning}
+import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, CannotInlineWarning, NoBytecode, OptimizerWarning, StrictfpMismatch, SynchronizedMethod}
 import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
+import PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
 
-class InlinerHeuristics() extends PerRunInit {
+class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, byteCodeRepository: ByteCodeRepository, callGraph: CallGraph, ts: CoreBTypes)(using Context) {
 
-  private lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
+  private lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = ppa.perRunLazy(new InlineSourceMatcher(ppa.compilerSettings.optInlineFrom))
 
   def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
     inlineSourceMatcher.get.allowFromSources && sourceFilePath.isDefined ||
@@ -57,18 +60,20 @@ class InlinerHeuristics() extends PerRunInit {
             case Some(Right(req)) => requests += req
 
             case Some(Left(w)) =>
-              if (w.emitWarning(compilerSettings)) {
-                backendReporting.optimizerWarning(callsite.callsitePosition, w.toString, backendUtils.optimizerWarningSiteString(callsite))
+              if (w.emitWarning(ppa.compilerSettings)) {
+                ppa.backendReporting.optimizerWarning(em"${w.toString}", ppa.backendReporting.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
               }
 
             case None =>
-              if (callsiteWarning.isDefined && callsiteWarning.get.emitWarning(compilerSettings))
-                backendReporting.optimizerWarning(pos, s"there was a problem determining if method ${callee.name} can be inlined: \n"+ callsiteWarning.get, backendUtils.optimizerWarningSiteString(callsite))
+              if (callsiteWarning.isDefined && callsiteWarning.get.emitWarning(ppa.compilerSettings)) {
+                ppa.backendReporting.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", ppa.backendReporting.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+              }
           }
 
         case callsite @ Callsite(ins, _, _, Left(warning), _, _, _, pos, _, _) =>
-          if (warning.emitWarning(compilerSettings))
-            backendReporting.optimizerWarning(pos, s"failed to determine if ${ins.name} should be inlined:\n$warning", backendUtils.optimizerWarningSiteString(callsite))
+          if (warning.emitWarning(ppa.compilerSettings)) {
+            ppa.backendReporting.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", ppa.backendReporting.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+          }
       }
       (methodNode, requests)
     }).filterNot(_._2.isEmpty).toMap
@@ -110,6 +115,35 @@ class InlinerHeuristics() extends PerRunInit {
   }
 
   /**
+   * Check whether an inlining can be performed. This method performs tests that don't change even
+   * if the body of the callee is changed by the inliner / optimizer, so it can be used early
+   * (when looking at the call graph and collecting inline requests for the program).
+   *
+   * The tests that inspect the callee's instructions are implemented in method `canInlineBody`,
+   * which is queried when performing an inline.
+   *
+   * @return `Some(message)` if inlining cannot be performed, `None` otherwise
+   */
+  private def earlyCanInlineCheck(callsite: Callsite): Option[CannotInlineWarning] = {
+    import callsite.{callsiteClass, callsiteMethod}
+    val Right(callsiteCallee) = callsite.callee: @unchecked
+    import callsiteCallee.{callee, calleeDeclarationClass}
+
+    if (isSynchronizedMethod(callee)) {
+      // Could be done by locking on the receiver, wrapping the inlined code in a try and unlocking
+      // in finally. But it's probably not worth the effort, scala never emits synchronized methods.
+      Some(SynchronizedMethod(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
+    } else if (isStrictfpMethod(callsiteMethod) != isStrictfpMethod(callee)) {
+      Some(StrictfpMismatch(
+        calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated,
+        callsiteClass.internalName, callsiteMethod.name, callsiteMethod.desc))
+    } else if (callee.instructions.size == 0) {
+      Some(NoBytecode(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
+    } else
+      None
+  }
+
+  /**
    * Returns the inline request for a callsite if the callsite should be inlined according to the
    * current heuristics (`-Yopt-inline-heuristics`).
    *
@@ -124,7 +158,7 @@ class InlinerHeuristics() extends PerRunInit {
     def requestIfCanInline(callsite: Callsite, reason: InlineReason): Option[Either[OptimizerWarning, InlineRequest]] = {
       val callee = callsite.callee.get
       val canInlineFromSource0 = canInlineFromSource(callee.sourceFilePath, callee.calleeDeclarationClass.internalName)
-      if (!(callee.sStaticallyResolved && canInlineFromSource0 && !callee.isAbstract && !callee.isSpecialMethod)) {
+      if (!(callee.isStaticallyResolved && canInlineFromSource0 && !callee.isAbstract && !callee.isSpecialMethod)) {
         if (callsite.isInlineAnnotated && canInlineFromSource0) {
           // By default, we only emit inliner warnings for methods annotated @inline. However, we don't
           // want to be unnecessarily noisy with `-opt-warnings:_`: for example, the inliner heuristic
@@ -136,12 +170,12 @@ class InlinerHeuristics() extends PerRunInit {
             callee.callee.name,
             callee.callee.desc,
             callsite.isInlineAnnotated)))
-        } else s
-      } else inliner.earlyCanInlineCheck(callsite) match {
+        } else None
+      } else earlyCanInlineCheck(callsite) match {
         case Some(w) =>
           Some(Left(w))
         case None =>
-          Some(Right(InlineRequest(callsite, reason)))
+          Some(Right(InlineRequest(callsite, reason, ppa.compilerSettings.optLogInline.isEmpty, ppa.compilerSettings.optInlineHeuristics == "everything")))
       }
     }
 
@@ -156,7 +190,7 @@ class InlinerHeuristics() extends PerRunInit {
     if (isGeneratedForwarder) None
     else {
       val callee = callsite.callee.get
-      compilerSettings.optInlineHeuristics match {
+      ppa.compilerSettings.optInlineHeuristics match {
         case "everything" =>
           requestIfCanInline(callsite, AnnotatedInline)
 
@@ -180,7 +214,7 @@ class InlinerHeuristics() extends PerRunInit {
           }
 
           def shouldInlineRefParam =
-            if (Type.getArgumentTypes(callee.callee.desc).exists(tp => coreBTypes.srRefCreateMethods.contains(tp.getInternalName))) Some(RefParam)
+            if (Type.getArgumentTypes(callee.callee.desc).exists(tp => ts.srRefCreateMethods.contains(tp.getInternalName))) Some(RefParam)
             else None
 
           def shouldInlineArrayOp =
@@ -343,11 +377,11 @@ object InlinerHeuristics {
   }
 }
 
-final case class InlineRequest(callsite: Callsite, reason: InlineReason) {
+final case class InlineRequest(callsite: Callsite, reason: InlineReason, logAnyInline: Boolean, inlineEverything: Boolean) {
   // non-null if `-Yopt-log-inline` is active, it explains why the callsite was selected for inlining
   def logText: String | Null =
-    if (compilerSettings.optLogInline.isEmpty) null
-    else if (compilerSettings.optInlineHeuristics == "everything") "-Yopt-inline-heuristics:everything is enabled"
+    if (logAnyInline) null
+    else if (inlineEverything) "-Yopt-inline-heuristics:everything is enabled"
     else {
       val callee = callsite.callee.get
       reason match {

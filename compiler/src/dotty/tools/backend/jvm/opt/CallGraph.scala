@@ -350,7 +350,8 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
     }
   }
 }
-  /**
+
+/**
    * A callsite in the call graph.
    *
    * @param callsiteInstruction The invocation instruction
@@ -364,10 +365,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
    * @param callsiteStackHeight The stack height at the callsite, required by the inliner
    * @param callsitePosition    The source position of the callsite, used for inliner warnings.
    */
-  final case class Callsite(callsiteInstruction: MethodInsnNode, callsiteMethod: MethodNode, callsiteClass: ClassBType,
-                            callee: Either[OptimizerWarning, Callee], argInfos: IntMap[ArgInfo],
-                            callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: SourcePosition,
-                            annotatedInline: Boolean, annotatedNoInline: Boolean) {
+final case class Callsite(callsiteInstruction: MethodInsnNode, callsiteMethod: MethodNode, callsiteClass: ClassBType,
+                          callee: Either[OptimizerWarning, Callee], argInfos: IntMap[ArgInfo],
+                          callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: SourcePosition,
+                          annotatedInline: Boolean, annotatedNoInline: Boolean) {
     // an annotation at the callsite takes precedence over an annotation at the definition site
     def isInlineAnnotated: Boolean = annotatedInline || (callee.get.annotatedInline && !annotatedNoInline)
     def isNoInlineAnnotated: Boolean = annotatedNoInline || (callee.get.annotatedNoInline && !annotatedInline)

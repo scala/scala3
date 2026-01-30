@@ -32,7 +32,7 @@ import scala.tools.asm.{Attribute, Type}
  * The ByteCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) extends PerRunInit {
+class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) {
 
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
