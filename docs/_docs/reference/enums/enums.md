@@ -117,6 +117,19 @@ The fields referenced by `Mercury` are not visible, and the fields referenced by
 be referenced directly (using `import Planet.*`). You must use an indirect reference,
 such as demonstrated with `Earth`.
 
+Note that it is not possible to write a companion object for an enum case,
+either in the enum class template or the enum class companion object.
+
+```scala
+enum Planet(mass: Double, radius: Double):
+  case Earth extends Planet(5.976e+24, 6.37814e6)
+  object Earth:
+    // a near-Earth object, but not a companion and not an enum value
+    assert(this ne Planet.Earth)
+    def report = assert(Planet.this.Earth eq Planet.Earth, s"I thought $this was Earth!")
+end Planet
+```
+
 Enum cases accept only access modifiers.
 Enum classes accept only access modifiers and `into` or `infix`.
 
