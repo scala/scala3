@@ -4,7 +4,7 @@
    |             Found:    (b : B^{any})
    |             Required: B
    |
-   |             Note that capability `any` is not included in capture set {}.
+   |             Note that capability `any` cannot flow into capture set {}.
    |
    |             where:    any is a root capability in the type of value b with contributing field val b
    |
@@ -15,7 +15,7 @@
    |             Found:    (c : C^{any})
    |             Required: C
    |
-   |             Note that capability `any` is not included in capture set {}.
+   |             Note that capability `any` cannot flow into capture set {}.
    |
    |             where:    any is a root capability in the type of value c with contributing field val b
    |
@@ -26,7 +26,7 @@
    |             Found:    (d : D^{any})
    |             Required: D
    |
-   |             Note that capability `any` is not included in capture set {}.
+   |             Note that capability `any` cannot flow into capture set {}.
    |
    |             where:    any is a root capability in the type of value d with contributing field val b
    |
@@ -37,7 +37,7 @@
    |Found:    (e : E^{any})
    |Required: E
    |
-   |Note that capability `any` is not included in capture set {}.
+   |Note that capability `any` cannot flow into capture set {}.
    |
    |where:    any is a root capability classified as SharedCapability in the type of value e with contributing field val e
    |
@@ -48,7 +48,7 @@
    |             Found:    (f : F^{any})
    |             Required: F
    |
-   |             Note that capability `any` is not included in capture set {}.
+   |             Note that capability `any` cannot flow into capture set {}.
    |
    |             where:    any is a root capability in the type of value f with contributing fields value b, value e
    |

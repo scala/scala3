@@ -4,6 +4,6 @@
   |    Found:    Source[T^'s1]^{src1, src2}
   |    Required: Source[T]
   |
-  |    Note that capability `src1` is not included in capture set {}.
+  |    Note that capability `src1` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`

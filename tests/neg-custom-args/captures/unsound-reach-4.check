@@ -11,7 +11,7 @@
    |                             Found:    Bar^'s1
    |                             Required: Foo[File^{any}]
    |
-   |                             Note that capability `any²` is not included in capture set {any}
+   |                             Note that capability `any²` cannot flow into capture set {any}
    |                             because any² in class Bar is not visible from any in value backdoor.
    |
    |                             where:    any  is a root capability in the type of value backdoor

@@ -4,6 +4,6 @@
   |         Found:    Inv[IO^{f?}]
   |         Required: Inv[IO^'s1]^'s2
   |
-  |         Note that capability `f` is not included in capture set {f?}.
+  |         Note that capability `f` cannot flow into capture set {f?}.
   |
   | longer explanation available when compiling with `-explain`
