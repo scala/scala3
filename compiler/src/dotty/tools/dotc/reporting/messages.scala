@@ -748,7 +748,12 @@ extends Message(ProperDefinitionNotFoundID) {
 
 class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
 extends SyntaxMsg(ByNameParameterNotSupportedID) {
-  def msg(using Context) = i"By-name parameter type ${tpe} not allowed here."
+  def msg(using Context) =
+    val tpeStr = tpe match
+      case untpd.ByNameTypeTree(untpd.CapturesAndResult(_, tpe1)) =>
+        i"=> $tpe1" // suppress CapturesAndResult encoding under cc
+      case _ => i"$tpe"
+    i"By-name parameter type $tpeStr not allowed here."
 
   def explain(using Context) =
     i"""|By-name parameters act like functions that are only evaluated when referenced,
