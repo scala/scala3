@@ -2011,11 +2011,10 @@ object Build {
             .add(SourceLinks(List(
               s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"
             )))
+            .add(GenerateAPI(false))
         }
 
-        val generateDocs = generateDocumentation(languageReferenceConfig).map{ _ =>
-          sbt.io.IO.delete(file(outputDir) / "api") // Remove API docs generated along the reference docs
-        }
+        val generateDocs = generateDocumentation(languageReferenceConfig)
 
         val expectedLinksRegeneration = Def.task {
           if (shouldRegenerateExpectedLinks) {

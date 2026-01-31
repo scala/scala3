@@ -48,6 +48,7 @@ object Scaladoc:
     quickLinks: List[QuickLink] = List.empty,
     dynamicSideMenu: Boolean = false,
     suppressCC: Boolean = false, // suppress rendering anything related to experimental capture checking
+    generateApi: Boolean = true, // generate API documentation
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -233,6 +234,7 @@ object Scaladoc:
         quickLinksParsed,
         dynamicSideMenu.get,
         suppressCC.get,
+        generateApi.get,
       )
       (Some(docArgs), newContext)
     }
