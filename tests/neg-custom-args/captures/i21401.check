@@ -4,7 +4,7 @@
    |Found:    IO^{x}
    |Required: IO^{any}
    |
-   |Note that capability `x` is not included in capture set {any}
+   |Note that capability `x` cannot flow into capture set {any}
    |because (x : IO^) in an enclosing function is not visible from any in value a.
    |
    |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
@@ -24,7 +24,7 @@
    |                                        Found:    Boxed[IO^{x*}]
    |                                        Required: Boxed[IO^{any}]
    |
-   |                                        Note that capability `x*` is not included in capture set {any}
+   |                                        Note that capability `x*` cannot flow into capture set {any}
    |                                        because x* in an enclosing function is not visible from any in value x².
    |
    |                                        where:    any is a root capability created in value x²

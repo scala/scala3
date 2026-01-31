@@ -5,7 +5,7 @@
    |      Found:    Result.Ok[Future[T^'s1]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
    |
-   |      Note that capability `fr` is not included in capture set {}.
+   |      Note that capability `fr` cannot flow into capture set {}.
    |
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
@@ -38,7 +38,7 @@
    |          Found:    Future[T^'s9]^{fr, lbl}
    |          Required: Future[T]
    |
-   |          Note that capability `fr` is not included in capture set {}.
+   |          Note that capability `fr` cannot flow into capture set {}.
    |
 75 |            fr.await.ok
    |

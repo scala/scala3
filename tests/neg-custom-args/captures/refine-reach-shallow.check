@@ -4,7 +4,7 @@
   |Found:    (x : IO^)
   |Required: IO^{any}
   |
-  |Note that capability `x` is not included in capture set {any}
+  |Note that capability `x` cannot flow into capture set {any}
   |because (x : IO^) in an enclosing function is not visible from any in value f.
   |
   |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
@@ -17,7 +17,7 @@
    |                                      Found:    (f : [R] => (x$1: IO^{any} ->{any} R) -> R)
    |                                      Required: [R] => (x$1: IO^{f*} ->{any} R) -> R
    |
-   |                                      Note that capability `any` is not included in capture set {f*}.
+   |                                      Note that capability `any` cannot flow into capture set {f*}.
    |
    |                                      where:    any is the root capability caps.any
    |
@@ -28,7 +28,7 @@
    |                                      Found:    (f : [R] => (x$1: IO^{any} -> R) -> R)
    |                                      Required: [R] => (x$1: IO^{f*} -> R) -> R
    |
-   |                                      Note that capability `any` is not included in capture set {f*}.
+   |                                      Note that capability `any` cannot flow into capture set {f*}.
    |
    |                                      where:    any is the root capability caps.any
    |
@@ -39,7 +39,7 @@
    |             Found:    (f : [R] => (x$1: IO^ -> R) -> IO^{fresh})
    |             Required: [R] => (x$1: IO^ -> R) -> IO^{f*}
    |
-   |             Note that capability `fresh` is not included in capture set {f*}.
+   |             Note that capability `fresh` cannot flow into capture set {f*}.
    |
    |             where:    ^     refers to the root capability caps.any
    |                       fresh is a root capability associated with the result type of (x$1: IO^ -> R): IO^{fresh}
@@ -51,7 +51,7 @@
    |        Found:    (f : [R] => (x$1: IO^{any} -> R) -> IO^{fresh})
    |        Required: [R] => (x$1: IO^{f*} -> R) -> IO^
    |
-   |        Note that capability `any` is not included in capture set {f*}.
+   |        Note that capability `any` cannot flow into capture set {f*}.
    |
    |        where:    ^     refers to a root capability in the type of value h
    |                  any   is the root capability caps.any

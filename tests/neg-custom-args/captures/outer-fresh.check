@@ -4,7 +4,7 @@
    |Found:    (s: String) -> (t: String) -> A^{outer_fresh}
    |Required: (s: String) -> (t: String) -> A
    |
-   |Note that capability `fresh` is not included in capture set {}.
+   |Note that capability `fresh` cannot flow into capture set {}.
    |
    |where:    fresh and outer_fresh refer to a root capability associated with the result type of (s: String): (t: String) -> A^{outer_fresh}
    |
@@ -15,7 +15,7 @@
    |Found:    (Test.y : (s: String) -> (t: String) -> A^{outer_fresh})
    |Required: (s: String) -> (t: String) -> A
    |
-   |Note that capability `fresh` is not included in capture set {}.
+   |Note that capability `fresh` cannot flow into capture set {}.
    |
    |where:    fresh and outer_fresh refer to a root capability associated with the result type of (s: String): (t: String) -> A^{outer_fresh}
    |
@@ -26,7 +26,7 @@
    |Found:    () -> (t: String) -> A^{outer_fresh}
    |Required: () -> (t: String) -> A
    |
-   |Note that capability `fresh` is not included in capture set {}.
+   |Note that capability `fresh` cannot flow into capture set {}.
    |
    |where:    fresh and outer_fresh refer to a root capability associated with the result type of (): (t: String) -> A^{outer_fresh}
    |
@@ -37,7 +37,7 @@
    |Found:    (Test.z2 : () -> (t: String) -> A^{outer_fresh})
    |Required: () -> (t: String) -> A
    |
-   |Note that capability `fresh` is not included in capture set {}.
+   |Note that capability `fresh` cannot flow into capture set {}.
    |
    |where:    fresh and outer_fresh refer to a root capability associated with the result type of (): (t: String) -> A^{outer_fresh}
    |

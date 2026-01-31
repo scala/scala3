@@ -4,6 +4,6 @@
    |          Found:    (x$1: (A ->{ps*} A, A ->{ps*} A)) ->{ps*} A^'s1 ->{ps*} A^'s2
    |          Required: ((A ->{ps*} A, A ->{ps*} A)) -> A^'s3 ->'s4 A^'s5
    |
-   |          Note that capability `ps*` is not included in capture set {}.
+   |          Note that capability `ps*` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

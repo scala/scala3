@@ -19,7 +19,7 @@
    |    Found:    (x$0: Capp^'s3) ->'s4 () ->{x$0} Unit
    |    Required: (c: Capp^) -> () ->{any} Unit
    |
-   |    Note that capability `x$0` is not included in capture set {any}
+   |    Note that capability `x$0` cannot flow into capture set {any}
    |    because (x$0 : Capp^'s3) is not visible from any in value test2.
    |
    |    where:    ^   refers to the root capability caps.any
@@ -35,7 +35,7 @@
    |    Found:    (x$0: Capp^'s5) ->'s6 () ->{x$0} Unit
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
    |
-   |    Note that capability `x$0` is not included in capture set {net}.
+   |    Note that capability `x$0` cannot flow into capture set {net}.
    |
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
@@ -47,7 +47,7 @@
    |          Found:    () ->{io} Unit
    |          Required: () -> Unit
    |
-   |          Note that capability `io` is not included in capture set {}.
+   |          Note that capability `io` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:10 -------------------------------
@@ -56,6 +56,6 @@
    |          Found:    () ->{io} Unit
    |          Required: () -> Unit
    |
-   |          Note that capability `io` is not included in capture set {}.
+   |          Note that capability `io` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

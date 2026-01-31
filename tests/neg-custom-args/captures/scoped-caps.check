@@ -4,7 +4,7 @@
   |                    Found:    (f : (x: A^) -> B^{fresh})
   |                    Required: A^ -> B^{any}
   |
-  |                    Note that capability `fresh` is not included in capture set {any}
+  |                    Note that capability `fresh` cannot flow into capture set {any}
   |                    because fresh is not visible from any in value g.
   |
   |                    where:    ^     refers to the root capability caps.any
@@ -18,7 +18,7 @@
    |Found:    A^ -> B^{g*}
    |Required: (x: A^) -> B^{fresh}
    |
-   |Note that capability `g*` is not included in capture set {fresh}
+   |Note that capability `g*` cannot flow into capture set {fresh}
    |because `fresh`, which is existentially bound in B^{fresh²}, cannot subsume `g*` since that capability is not a SharedCapability.
    |
    |where:    ^      refers to the root capability caps.any
@@ -32,7 +32,7 @@
    |                    Found:    (f : (x: A^) -> B^{fresh})
    |                    Required: A^ -> B^{any}
    |
-   |                    Note that capability `fresh` is not included in capture set {any}
+   |                    Note that capability `fresh` cannot flow into capture set {any}
    |                    because fresh is not visible from any in value _$3.
    |
    |                    where:    ^     refers to the root capability caps.any
@@ -46,7 +46,7 @@
    |Found:    S^ -> B^{h*}
    |Required: (x: S^) -> B^{fresh}
    |
-   |Note that capability `h*` is not included in capture set {fresh}
+   |Note that capability `h*` cannot flow into capture set {fresh}
    |because `fresh`, which is existentially bound in B^{fresh²}, cannot subsume `h*` since that capability is not a SharedCapability.
    |
    |where:    ^      refers to the root capability caps.any
@@ -60,7 +60,7 @@
    |Found:    B^{any}
    |Required: B^{any²}
    |
-   |Note that capability `any` is not included in capture set {any²}
+   |Note that capability `any` cannot flow into capture set {any²}
    |because any in an enclosing function is not visible from any² in value _$13.
    |
    |where:    any  is a root capability created in anonymous function of type (x: S): B^ when instantiating method apply's type (x: S^): B^{fresh}
@@ -73,7 +73,7 @@
    |                   Found:    (j : (x: S) -> B^{fresh})
    |                   Required: S^ -> B^{any}
    |
-   |                   Note that capability `fresh` is not included in capture set {any}
+   |                   Note that capability `fresh` cannot flow into capture set {any}
    |                   because fresh is not visible from any in value _$15.
    |
    |                   where:    ^     refers to the root capability caps.any
@@ -87,7 +87,7 @@
    |Found:    B^{any}
    |Required: B^{any²}
    |
-   |Note that capability `any` is not included in capture set {any²}
+   |Note that capability `any` cannot flow into capture set {any²}
    |because any in an enclosing function is not visible from any² in value _$16.
    |
    |where:    any  is a root capability created in anonymous function of type (x: S): B^ when instantiating method apply's type (x: S^): B^{fresh}

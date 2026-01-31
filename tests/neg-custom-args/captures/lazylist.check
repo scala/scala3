@@ -4,7 +4,7 @@
    |             Found:    lazylists.LazyList[T]^{LazyCons.this.xs}
    |             Required: lazylists.LazyList[T]
    |
-   |             Note that capability `LazyCons.this.xs` is not included in capture set {}.
+   |             Note that capability `LazyCons.this.xs` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:35:29 -------------------------------------
@@ -13,7 +13,7 @@
    |                   Found:    lazylists.LazyCons[Int]{val xs: () ->{cap1} lazylists.LazyList[Int]^{ref1*}}^{ref1}
    |                   Required: lazylists.LazyList[Int]
    |
-   |                   Note that capability `ref1` is not included in capture set {}.
+   |                   Note that capability `ref1` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:37:36 -------------------------------------
@@ -22,7 +22,7 @@
    |                                    Found:    (ref2 : lazylists.LazyList[Int]^{cap2, ref1})
    |                                    Required: lazylists.LazyList[Int]^{ref1}
    |
-   |                                    Note that capability `cap2` is not included in capture set {ref1}.
+   |                                    Note that capability `cap2` cannot flow into capture set {ref1}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:39:36 -------------------------------------
@@ -31,16 +31,16 @@
    |                                    Found:    (ref3 : lazylists.LazyList[Int]^{cap2, ref1})
    |                                    Required: lazylists.LazyList[Int]^{cap2}
    |
-   |                                    Note that capability `ref1` is not included in capture set {cap2}.
+   |                                    Note that capability `ref1` cannot flow into capture set {cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:41:42 -------------------------------------
 41 |  val ref4c: LazyList[Int]^{cap1, ref3} = ref4 // error
    |                                          ^^^^
-   |                                        Found:    (ref4 : lazylists.LazyList[Int]^{cap3, ref2, ref1})
-   |                                        Required: lazylists.LazyList[Int]^{cap1, ref3}
+   |                                          Found:    (ref4 : lazylists.LazyList[Int]^{cap3, ref2, ref1})
+   |                                          Required: lazylists.LazyList[Int]^{cap1, ref3}
    |
-   |                                        Note that capability `cap3` is not included in capture set {cap1, ref3}.
+   |                                          Note that capability `cap3` cannot flow into capture set {cap1, ref3}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------

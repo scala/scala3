@@ -4,7 +4,7 @@
    |        Found:    (x : IO)
    |        Required: IO^{any}
    |
-   |        Note that capability `x` is not included in capture set {any}
+   |        Note that capability `x` cannot flow into capture set {any}
    |        because (x : IO) in method f1 is not visible from any in variable v.
    |
    |        where:    any is a root capability classified as SharedCapability in the type of variable v
@@ -16,7 +16,7 @@
    |        Found:    () ->{x} Unit
    |        Required: () ->{any} Unit
    |
-   |        Note that capability `x` is not included in capture set {any}
+   |        Note that capability `x` cannot flow into capture set {any}
    |        because (x : IO) in method f1 is not visible from any in variable w.
    |
    |        where:    any is a root capability in the type of variable w
@@ -138,7 +138,7 @@
    |                       Found:    (x : IO)
    |                       Required: IO^{any}
    |
-   |                       Note that capability `x` is not included in capture set {any}
+   |                       Note that capability `x` cannot flow into capture set {any}
    |                       because (x : IO) in an enclosing function is not visible from any in value f2.
    |
    |                       where:    any is a root capability classified as SharedCapability in the type of value f2
@@ -150,7 +150,7 @@
    |                     Found:    (f3 : (x$0: IO) ->{} IO^{x$0})
    |                     Required: IO^ => IO^{any}
    |
-   |                     Note that capability `x$0` is not included in capture set {any}
+   |                     Note that capability `x$0` cannot flow into capture set {any}
    |                     because (x$0 : IO) is not visible from any in value f4.
    |
    |                     where:    =>  refers to a root capability in the type of value f4

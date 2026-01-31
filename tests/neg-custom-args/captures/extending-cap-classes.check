@@ -4,7 +4,7 @@
    |               Found:    (y2 : C2)
    |               Required: C1
    |
-   |               Note that capability `any` is not included in capture set {}.
+   |               Note that capability `any` cannot flow into capture set {}.
    |
    |               where:    any is a root capability classified as SharedCapability in the type of value y2
    |
