@@ -2384,7 +2384,11 @@ object desugar {
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
-      case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
+      case f: FunctionWithMods if f.hasErasedParams =>
+        makeFunctionWithValDefs(f, pt)
+      case CapturesAndResult(_, parent) =>
+        assert(ctx.reporter.errorsReported)
+        parent
     }
     desugared.withSpan(tree.span)
   }
