@@ -5366,7 +5366,7 @@ Text => empty
 Language => Scala
 Symbols => 50 entries
 Occurrences => 78 entries
-Diagnostics => 6 entries
+Diagnostics => 5 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -5507,7 +5507,6 @@ Diagnostics:
 [9:42..9:43): [warning] unused explicit parameter
 [21:11..21:12): [warning] unused explicit parameter
 [24:24..24:27): [warning] unused pattern variable
-[25:27..25:28): [warning] unused pattern variable
 
 Synthetics:
 [23:6..23:10):List => *.unapplySeq[Nothing]
