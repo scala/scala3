@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import scala.annotation.meta.exportable
 
 /**
  * Annotation for specifying the exceptions thrown by a method.
@@ -25,6 +26,7 @@ import scala.language.`2.13`
  * }
  * }}}
  */
+@exportable
 final class throws[T <: Throwable](cause: String = "") extends scala.annotation.StaticAnnotation {
   def this(clazz: Class[T]) = this("")
 }
