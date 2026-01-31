@@ -1,3 +1,4 @@
+// test: -jvm 17
 class Arne[@specialized(Long) T](x: T) {
   val regularVal = x
   lazy val lazyVal = x
