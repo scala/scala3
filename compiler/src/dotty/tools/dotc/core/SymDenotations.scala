@@ -1048,6 +1048,17 @@ object SymDenotations {
       is(Inline, butNot = Deferred)
       && allOverriddenSymbols.exists(!_.is(Inline))
 
+    /** Does this method or field need to be retained at runtime, according to @elidable?
+     *  True by default, to mean yes it can be elided aka erased.
+     */
+    def isElidable(using Context): Boolean =
+      symbol.getAnnotation(defn.ElidableAnnot) match
+      case Some(elide) =>
+        elide.argumentConstant(0) match
+        case Some(Constant(0)) => false
+        case _ => true
+      case _ => true
+
     /** Does this method need to be retained at runtime */
     def isRetainedInlineMethod(using Context): Boolean =
       is(Method, butNot = Accessor) && isRetainedInline
