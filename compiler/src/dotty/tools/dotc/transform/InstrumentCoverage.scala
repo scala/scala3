@@ -6,6 +6,7 @@ import java.nio.file.{Files, Path}
 
 import ast.tpd.*
 import collection.mutable
+import core.Comments.Comment
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
@@ -42,6 +43,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
   private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
   private var coverageExcludeFilePatterns: List[Pattern] = Nil
+  private val coverageLocalExclusions: mutable.Map[String, List[Span]] = mutable.Map.empty
 
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
     val outputPath = ctx.settings.coverageOutputDir.value
@@ -73,6 +75,30 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     // Initialize coverage object
     ctx.base.coverage = Coverage()
     ctx.base.coverage.nn.setNextStatementId(previousCoverage.nextStatementId())
+
+    // Process each unit to extract local coverage exclusions from comments
+    units.foreach { unit =>
+      val excludedSpans = mutable.ListBuffer[Span]()
+      var currentStartingComment: Option[Comment] = None
+
+      unit.comments.foreach {
+        case comment if InstrumentCoverage.scoverageLocalOff.matches(comment.raw) && currentStartingComment.isEmpty =>
+          currentStartingComment = Some(comment)
+        case comment if InstrumentCoverage.scoverageLocalOn.matches(comment.raw) =>
+          currentStartingComment.foreach { start =>
+            currentStartingComment = None
+            excludedSpans += start.span.withEnd(comment.span.end)
+          }
+        case _ =>
+      }
+
+      currentStartingComment.headOption.foreach { start =>
+        excludedSpans += start.span.withEnd(unit.source.length - 1)
+      }
+
+      if excludedSpans.nonEmpty then
+        coverageLocalExclusions(unit.source.file.path) = excludedSpans.toList
+    }
 
     // Run the transformation on all units
     val result = super.runOn(units)
@@ -108,6 +134,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
       _.matcher(normalizedPath).matches
     )
+
+  private def isTreeExcluded(tree: Tree)(using Context): Boolean =
+    val sourceFile = ctx.source.file.path
+    coverageLocalExclusions.get(sourceFile).exists: excludedSpans =>
+      excludedSpans.exists(_.contains(tree.span))
 
   override protected def newTransformer(using Context) =
     CoverageTransformer(ctx.settings.coverageOutputDir.value)
@@ -209,7 +240,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return instrumentation result, with the preparation statement, coverage call and tree separated
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
-      if canInstrumentApply(tree) then
+      if !isTreeExcluded(tree) && canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
 
@@ -236,7 +267,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
       val sym = tree.symbol
-      if canInstrumentParameterless(sym) then
+      if !isTreeExcluded(tree) && canInstrumentParameterless(sym) then
         // call to a local parameterless method f
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
         InstrumentedParts.singleExpr(coverageCall, tree)
@@ -244,14 +275,18 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         InstrumentedParts.notCovered(tree)
 
     private def tryInstrument(tree: Literal)(using Context): InstrumentedParts =
-      val coverageCall = createInvokeCall(tree, tree.sourcePos)
-      InstrumentedParts.singleExpr(coverageCall, tree)
+      if !isTreeExcluded(tree) then
+        val coverageCall = createInvokeCall(tree, tree.sourcePos)
+        InstrumentedParts.singleExpr(coverageCall, tree)
+      else
+        InstrumentedParts.notCovered(tree)
+
 
     private def tryInstrument(tree: Select)(using Context): InstrumentedParts =
       val sym = tree.symbol
       val qual = transform(tree.qualifier).ensureConforms(tree.qualifier.tpe)
       val transformed = cpy.Select(tree)(qual, tree.name)
-      if canInstrumentParameterless(sym) then
+      if !isTreeExcluded(tree) && canInstrumentParameterless(sym) then
         // call to a parameterless method
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
         InstrumentedParts.singleExpr(coverageCall, transformed)
@@ -276,6 +311,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // - If t.isEmpty then `transform(t) == t` always hold,
         //   so we can avoid calling transform in that case.
         tree
+      else if isTreeExcluded(tree) then
+        // Tree is in an excluded region, transform but don't instrument
+        transform(tree)
       else
         val transformed = transform(tree)
         val coverageCall = createInvokeCall(tree, tree.sourcePos, branch = true)
@@ -487,6 +525,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * and the call is inserted at another place.
      */
     private def instrumentBody(parent: DefDef, body: Tree)(using Context): Tree =
+      // Don't instrument if the method is in an excluded region
+      if isTreeExcluded(parent) then
+        return body
+
       /* recurse on closures, so that we insert the call at the leaf:
 
          def g: (a: Ta) ?=> (b: Tb) = {
@@ -516,6 +558,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      *  the rhs Block, otherwise `HoistSuperArgs` will not be happy (see #17042).
      */
     private def instrumentSecondaryCtor(ctorDef: DefDef)(using Context): Tree =
+      // Don't instrument if the constructor is in an excluded region
+      if isTreeExcluded(ctorDef) then
+        return ctorDef.rhs
+
       // compute position like in instrumentBody
       val namePos = ctorDef.namePos
       val pos = namePos.withSpan(namePos.span.withStart(ctorDef.span.start))
@@ -638,6 +684,8 @@ object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
   val ExcludeMethodFlags: FlagSet = Artifact | Erased
+  val scoverageLocalOn: Regex = """^\s*//\s*\$COVERAGE-ON\$""".r
+  val scoverageLocalOff: Regex = """^\s*//\s*\$COVERAGE-OFF\$""".r
 
   /**
    * An instrumented Tree, in 3 parts.
