@@ -1,4 +1,5 @@
 // scalajs: --skip
+// test: -jvm 17
 
 /** A demonstrator for a new algorithm to handle lazy vals. The idea is that
  *  we use the field slot itself for all synchronization; there are no separate bitmaps
