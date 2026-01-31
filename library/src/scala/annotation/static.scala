@@ -12,4 +12,5 @@ import scala.annotation.meta.*
 @beanSetter
 @param
 @setter
+@documented
 final class static extends StaticAnnotation

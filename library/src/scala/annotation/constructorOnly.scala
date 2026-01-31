@@ -22,4 +22,6 @@ import scala.annotation.meta.*
  *  class fields. But it is checked that the field is eliminated before code
  *  is generated.
  */
-@param @field class constructorOnly extends scala.annotation.StaticAnnotation
+@param @field
+@documented
+class constructorOnly extends scala.annotation.StaticAnnotation

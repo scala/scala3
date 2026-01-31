@@ -6,4 +6,5 @@ import language.experimental.captureChecking
  *  When this annotation is used, the initialization of the lazy val will use a
  *  faster mechanism which is not thread-safe.
  */
+@documented
 final class threadUnsafe extends StaticAnnotation
