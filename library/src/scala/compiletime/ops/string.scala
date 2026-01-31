@@ -15,6 +15,50 @@ object string:
    */
   infix type +[X <: String, Y <: String] <: String
 
+  /** Lexicographic comparison of two `String` singleton types.
+   *  ```scala
+   *  //{
+   *  import compiletime.ops.string.*
+   *  //}
+   *  val hello: "hello " < "world" = true
+   *  ```
+   *  @syntax markdown
+   */
+  infix type <[S1 <: String, S2 <: String] <: Boolean
+
+  /** Lexicographic comparison of two `String` singleton types.
+   *  ```scala
+   *  //{
+   *  import compiletime.ops.string.*
+   *  //}
+   *  val hello: "hello " > "world" = false
+   *  ```
+   *  @syntax markdown
+   */
+  infix type >[S1 <: String, S2 <: String] <: Boolean
+
+  /** Lexicographic comparison of two `String` singleton types.
+   *  ```scala
+   *  //{
+   *  import compiletime.ops.string.*
+   *  //}
+   *  val hello: "hello " >= "world" = false
+   *  ```
+   *  @syntax markdown
+   */
+  infix type >=[S1 <: String, S2 <: String] <: Boolean
+
+  /** Lexicographic comparison of two `String` singleton types.
+   *  ```scala
+   *  //{
+   *  import compiletime.ops.string.*
+   *  //}
+   *  val hello: "hello " <= "world" = true
+   *  ```
+   *  @syntax markdown
+   */
+  infix type <=[S1 <: String, S2 <: String] <: Boolean
+
   /** Length of a `String` singleton type.
    *  ```scala
    *  //{
