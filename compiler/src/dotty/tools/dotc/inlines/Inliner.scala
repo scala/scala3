@@ -183,6 +183,27 @@ object Inliner:
 
   end OpaqueProxy
 
+  /** A more powerful version of [[constToLiteral]] that also can "see through"
+   *  [[Block]], [[Inlined]] and [[Typed]] trees that are elidable (see
+   *  [[isElideableExpr]]).
+   */
+  def inlinedConstToLiteral(rootTree: Tree)(using Context): Tree =
+    def rec(tree: Tree): Tree =
+      inline def recChild(subTree: Tree): Tree =
+        val res = rec(subTree)
+        if res eq subTree then tree else res
+
+      tree match
+        case Typed(expr, _) => recChild(expr)
+        case Inlined(_, _, expr) => recChild(expr)
+        case Block(_, expr) => recChild(expr)
+        case _ => constToLiteral(tree)
+
+    if isElideableExpr(rootTree) then
+      rec(rootTree)
+    else
+      constToLiteral(rootTree)
+
   private[inlines] def newSym(name: Name, flags: FlagSet, info: Type, span: Span)(using Context): Symbol =
     newSymbol(ctx.owner, name, flags, info, coord = span)
 end Inliner
@@ -897,7 +918,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         //if the projection leads to a typed tree then we stop reduction
         resNoReduce
       else
-        val res = constToLiteral(reducedProjection)
+        val res = inlinedConstToLiteral(reducedProjection)
         if resNoReduce ne res then
           typed(res, pt) // redo typecheck if reduction changed something
         else if res.symbol.isInlineMethod then
@@ -928,7 +949,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       val vdef1 =
         if sym.is(Inline) then
-          val rhs = typed(vdef.rhs)
+          val rhs = inlinedConstToLiteral(typed(vdef.rhs))
           sym.info = rhs.tpe
           untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(rhs.tpe), untpd.TypedSplice(rhs))
         else vdef
@@ -936,11 +957,11 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
-      specializeEq(inlineIfNeeded(constToLiteral(BetaReduce(super.typedApply(tree, pt))), pt, locked))
+      specializeEq(inlineIfNeeded(inlinedConstToLiteral(BetaReduce(super.typedApply(tree, pt))), pt, locked))
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
-      val tree1 = inlineIfNeeded(constToLiteral(BetaReduce(super.typedTypeApply(tree, pt))), pt, locked)
+      val tree1 = inlineIfNeeded(inlinedConstToLiteral(BetaReduce(super.typedTypeApply(tree, pt))), pt, locked)
       if tree1.symbol == defn.QuotedTypeModule_of then
         ctx.compilationUnit.needsStaging = true
       tree1
@@ -1021,8 +1042,8 @@ class Inliner(val call: tpd.Tree)(using Context):
                   case _ => rhs0
                 }
                 val rhs2 = rhs1 match {
-                  case Typed(expr, tpt) if rhs1.span.isSynthetic => constToLiteral(expr)
-                  case _ => constToLiteral(rhs1)
+                  case Typed(expr, tpt) if rhs1.span.isSynthetic => inlinedConstToLiteral(expr)
+                  case _ => inlinedConstToLiteral(rhs1)
                 }
                 val (usedBindings, rhs3) = dropUnusedDefs(caseBindings, rhs2)
                 val rhs = seq(usedBindings, rhs3)
@@ -1056,7 +1077,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
         errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
-      else if Inlines.needsInlining(tree) then Inlines.inlineCall(simplify(tree, pt, locked))
+      else if Inlines.needsInlining(tree) then inlinedConstToLiteral(Inlines.inlineCall(simplify(tree, pt, locked)))
       else tree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
