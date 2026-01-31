@@ -132,8 +132,7 @@ object Scaladoc:
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
 
     argumentFilesOrNone.fold((None, newContext)) { argumentFiles =>
-      val inFiles = argumentFiles.map(File(_)).filter(_.getName != "___fake___.scala")
-      val (existing, nonExisting) = inFiles.partition(_.exists)
+      val (existing, nonExisting) = argumentFiles.map(File(_)).partition(_.exists)
 
       if nonExisting.nonEmpty then report.warning(
         s"scaladoc will ignore following non-existent paths: ${nonExisting.mkString(", ")}"
