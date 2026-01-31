@@ -1474,10 +1474,19 @@ trait Implicits:
                 case _ => fail
             end healAmbiguous
 
+            inline def unrecoverableDivergentImplicit(failure: SearchFailureType): Boolean = {
+              failure match
+                case failure: DivergingImplicit =>
+                  (pt frozen_=:= failure.expectedType) && remaining.forall(compareAlternatives(_, cand) == 0)
+                case _ => false
+            }
+
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
+                else if (unrecoverableDivergentImplicit(fail.reason))
+                  found.recoverWith(_ => (fail :: rfailures).reverse.maxBy(_.tree.treeSize))
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
