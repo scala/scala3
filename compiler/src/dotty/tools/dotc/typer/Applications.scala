@@ -2080,13 +2080,15 @@ trait Applications extends Compatibility {
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
-          || {
+          || (
+            !alt1.symbol.is(ExtensionMethod) || alt2.symbol.is(ExtensionMethod)
+          ) && (
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
               && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
-          }
+          )
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
             // Fully define the PolyType parameters so that the infos of the
