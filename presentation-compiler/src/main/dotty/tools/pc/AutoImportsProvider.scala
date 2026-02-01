@@ -75,7 +75,7 @@ final class AutoImportsProvider(
     if isExtension then
       search.searchMethods(name, buildTargetIdentifier, visitor)
     else search.search(name, buildTargetIdentifier, visitor)
-    val results = symbols.result.filter(isExactMatch(_, name))
+    val results = symbols.result().filter(isExactMatch(_, name))
 
     if results.nonEmpty then
       val correctedPos =
