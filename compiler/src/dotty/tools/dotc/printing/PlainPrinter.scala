@@ -493,7 +493,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case pre: SingletonType => toTextRef(pre) ~ "."
         case pre => toText(pre) ~ "."
       def core: Text =
-        if ccVerbose then s"<any$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
+        if ccVerbose then
+          s"<any$idStr created in ${c.ccOwnerStr}"
+          ~ c.origin.explanation
+          ~ " hiding " ~ toTextCaptureSet(c.hiddenSet)
+          ~ classified
+          ~ ">"
         else "any"
       prefixTxt ~ core
     case tp: TypeProxy =>

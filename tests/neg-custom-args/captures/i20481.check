@@ -6,7 +6,7 @@
   |
   |             Note that capability `any` is not included in capture set {}.
   |
-  |             where:    any is a root capability in the type of class A
+  |             where:    any is a root capability in the type of class A with contributing field val f
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i20481.scala:8:14 ----------------------------------------

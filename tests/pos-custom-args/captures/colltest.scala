@@ -19,7 +19,7 @@ object CollectionStrawMan5 {
 
   case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
 
-    class Partitioned(expected: Boolean) extends View[A]:
+    class Partitioned(expected: Boolean) extends View[A] uses Partition.this:
       this: Partitioned^{Partition.this} =>
       def iterator: Iterator[A]^{this} =
         underlying.iterator.filter((x: A) => p(x) == expected)

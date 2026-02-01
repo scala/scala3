@@ -2,11 +2,11 @@
 3 |  self: Err^ => // error
   |        ^^^^
   |        Err is a pure type, it makes no sense to add a capture set to it
--- Error: tests/neg-custom-args/captures/exception-definitions.scala:7:8 -----------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/exception-definitions.scala:7:8 ------------------------
 7 |    val x = c  // error
   |    ^^^^^^^^^
-  |    reference `c` is not included in the allowed capture set {} of the self type of class Err2
--- Error: tests/neg-custom-args/captures/exception-definitions.scala:8:13 ----------------------------------------------
+  |    Reference `c` of value x is not included in the allowed capture set {} of the self type of class Err2.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/exception-definitions.scala:8:13 -----------------------
 8 |  class Err3(c: Object^) extends Exception // error
   |             ^
-  |             reference `Err3.this.c` is not included in the allowed capture set {} of the self type of class Err3
+  |             Reference `Err3.this.c` is not included in the allowed capture set {} of the self type of class Err3.
