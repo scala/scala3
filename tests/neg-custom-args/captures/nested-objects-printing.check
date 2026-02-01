@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/nested-objects-printing.scala:4:19 -----------------------
+4 |      val x: Int = B.this // error, was "found: (B: A.B.type)", should be "found: (B: B.type)"
+  |                   ^^^^^^
+  |                   Found:    (B : B.type)
+  |                   Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
