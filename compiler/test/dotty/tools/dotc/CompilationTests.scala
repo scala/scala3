@@ -50,10 +50,6 @@ class CompilationTests {
       if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
       else Nil
     )
-
-    if scala.util.Properties.isJavaAtLeast("16") then
-      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Wsafe-init"))
-
     aggregateTests(tests*).checkCompile()
   }
 
