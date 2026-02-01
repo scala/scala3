@@ -13,7 +13,7 @@ is written as the top type `any` can mean different capabilities, depending on s
 
 ## Different Kinds of `any`
 
-We will discuss three distinct kinds of `any` in this chapter:
+We will discuss four distinct kinds of root capabilities in this chapter:
 
 **Local `any`s**: Every class, method body, and block has its own local `any`. It abstracts over the
 capabilities used inside that scope, representing them by a single name to the outside world. Local
@@ -23,14 +23,21 @@ capabilities used inside that scope, representing them by a single name to the o
 gets its own `any` scoped to that parameter. At call sites, parameter `any`s are instantiated to the
 actual capabilities passed in.
 
-**Result `fresh`s**: When `fresh` appears in a function result type (e.g., `def foo(x: T): U^`), it
-becomes an existentially-bound capability that describes what the caller receives.
+**Result `any`s**: When `any` appears in a function result type (e.g., `A^ -> B^`, i.e.,
+`A^{any} -> B^{any}`), it refers to the local `any` of the enclosing scope. Two calls to such a
+function produce results with the same capture-set bound.
+
+**Result `fresh`s**: Instead of `any`, one can write `fresh` in a function result type
+(e.g., `A^ -> B^{fresh}`). This indicates that each call to the function yields a result capturing
+a fresh, distinct capability, hence the name. Unlike a result `any`, a result `fresh` is isolated:
+it cannot be merged with capabilities from the enclosing scope.
 
 So, when writing `T^` (shorthand for `T^{any}`), `any` is a way of saying "captures something"
-without naming what it is precisely, and depending of the context occurrence of such `any`s, the
-capture checker imposes restrictions on which capabilities are allowed to flow into them by means of
-subcapturing. We will further expand on this idea (and other kinds of `any`s) later when discussing
-[separation checking](separation-checking.md).
+without naming what it is precisely, and depending on the context, the capture checker imposes
+restrictions on which capabilities are allowed to flow into them by means of subcapturing. Writing
+`T^{fresh}` instead says "captures something new and isolated"; see the comparison
+[below](#any-vs-fresh-in-function-type-results) for the practical difference. We will further expand
+on these ideas later when discussing [separation checking](separation-checking.md).
 
 Another analogy for the different `any`s is that they are some form of implicitly named existential
 or abstract self-capture set attached to elements of the program structure, e.g., scopes,
@@ -108,7 +115,7 @@ cannot appear in a type outside its defining scope. In such cases, the capture s
 the smallest visible super capture set:
 
 ```scala
-def test(fs: FileSystem^/*{any₁*/}): Logger^/*{any₂}*/ =
+def test(fs: FileSystem^/*{any₁}*/): Logger^/*{any₂}*/ =
   val localLogger = Logger(fs)
   localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
 ```
@@ -257,8 +264,38 @@ determines the binding structure automatically from where `fresh` appears in the
     bound by a quantifier scoping over the result type.
   - If a function parameter type contains covariant occurrences of `any`, we replace these
     occurrences with a new existential variable scoping over the parameter type.
-  - Occurrences of `any` in result types are not translated to existential variables. They refer to
-    the local `any` in the scope of the definition in which they appear.
+  - Occurrences of `any` in function result types are not translated to existential variables.
+    They refer to the local `any` of the enclosing scope. This includes bare `T^` in function type
+    results, which is shorthand for `T^{any}`.
+
+#### `any` vs `fresh` in Function Type Results
+
+The rules above establish a key practical distinction when writing function types. Consider:
+
+```scala
+import caps.fresh
+class A
+class B
+
+def test(): Unit =
+  val f: (x: A^) -> B^{fresh} = ???   // B^{fresh}: existentially bound
+  val g: A^ -> B^             = ???   // B^{any}: enclosing scope's local any
+
+  val _: A^ -> B^        = f   // error: fresh is not in {any}
+  val _: A^ -> B^{fresh} = f   // ok
+  val _: (x: A^) -> B^{fresh} = g   // error: g* is not in {fresh}
+  val _: A^ -> B^        = g   // ok
+```
+
+With `B^{any}` in the result, the returned value's captures are tied to the enclosing scope's local
+`any`. Two calls to `g` produce values with the same capture-set bound. The checker treats them
+identically. With `B^{fresh}`, each call to `f` yields a value with a distinct existential
+capability, so the checker can prove that results from different calls do not alias.
+
+The two types are not interchangeable: a result `fresh` cannot flow into a local `any` (since the
+existential is not visible from the enclosing scope), and a local `any` cannot flow into a result
+`fresh` (since `fresh` can only subsume other existentials or
+[shared capabilities](classifiers.md)).
 
 #### Outer-Bound `fresh`
 
