@@ -34,9 +34,13 @@ object MacroAnnotations:
   end extension
 
   extension (sym: Symbol)
+    /** Get the annotation of this symbol that implements `scala.annation.MacroAnnotation` */
+    def getMacroAnnotation(using Context): Option[Annotation] =
+      sym.getAnnotation(defn.MacroAnnotationClass)
+
     /** Is this symbol annotated with an annotation that implements `scala.annation.MacroAnnotation` */
     def hasMacroAnnotation(using Context): Boolean =
-      sym.getAnnotation(defn.MacroAnnotationClass).isDefined
+      getMacroAnnotation.isDefined
   end extension
 
   /** Expands every macro annotation that is on this tree.

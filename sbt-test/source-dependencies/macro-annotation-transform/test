@@ -1,0 +1,5 @@
+> compile
+$ must-mirror output/actual.txt output/expected1.txt
+$ copy-file changes/Annotation.scala Annotation.scala
+> compile
+$ must-mirror output/actual.txt output/expected2.txt

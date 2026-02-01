@@ -124,6 +124,8 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
               traverse(t.constr)
               t.parents.foreach(traverse)
               t.body.foreach(traverse)
+            case t if t.symbol.hasMacroAnnotation =>
+              collector.traverse(t)
             case _ =>
               traverseChildren(tree)
         catch
