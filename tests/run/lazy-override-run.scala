@@ -1,3 +1,4 @@
+// test: -jvm 17
 class A {
   lazy val x: Int = { print("/*A.x*/"); 2 }
   lazy val y: Int = { print("/*A.y*/"); 2 }

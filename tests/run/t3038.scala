@@ -1,3 +1,4 @@
+// test: -jvm 17
 class A {
   private lazy val a1 = "a1"
   object B
