@@ -14,6 +14,9 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.jdk.Accumulator$AccumulatorFactoryShape$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.relaxedColonSyntax"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$relaxedColonSyntax$"),
+          // scala/scala3#24841
       ),
     )
 
