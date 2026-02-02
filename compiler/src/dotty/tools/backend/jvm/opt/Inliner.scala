@@ -30,19 +30,6 @@ import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-// TODO
-// where mi is new TypeInsnNode(ANEWARRAY, BackendUtils.classTagNewArrayArg(mi, prodCons))
-/*toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({ case i if BackendUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode] })
-if (toInline.nonEmpty) {
-  val methodCallsites = callGraph.callsites(method)
-  var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
-  while (css.nonEmpty) {
-    val cs = css.head
-    css = css.tail
-    inliner.inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
-  }
-}*/
-
 class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
               callGraph: CallGraph, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: ByteCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer, localOpt: LocalOpt) {
