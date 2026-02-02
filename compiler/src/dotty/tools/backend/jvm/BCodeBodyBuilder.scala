@@ -457,9 +457,15 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           val sym = tree.symbol
           val tk = symInfoTK(sym)
           generatedType = tk
-          if (!sym.is(Package)) {
-            if (sym.is(Module)) genLoadModule(sym)
-            else locals.load(sym)
+
+          DesugaredSelect.cached(t) match {
+            case None =>
+              if (!sym.is(Package)) {
+                if (sym.is(Module)) genLoadModule(sym)
+                else locals.load(sym)
+              }
+            case Some(t) =>
+              genLoad(t, generatedType)
           }
 
         case Literal(value) =>
