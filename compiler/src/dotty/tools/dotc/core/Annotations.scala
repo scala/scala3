@@ -153,7 +153,7 @@ object Annotations {
     override def arguments(using Context): List[Tree] =
       argumentTypes.map(TypeTree(_))
 
-    override def argumentTypes(using Context): List[Type] = tpe.argTypes
+    override def argumentTypes(using Context): List[Type] = tpe.argInfos
 
     def argumentType(i: Int)(using Context): Type =
       val args = argumentTypes
