@@ -49,18 +49,26 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
     private object DesugaredSelect {
       private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
+      def cached(i: Ident): Option[tpd.Select] = {
+        var found = desugared.get(i.tpe)
+        if (found == null) {
+          tpd.desugarIdent(i) match {
+            case sel: tpd.Select =>
+              desugared.put(i.tpe, sel)
+              found = sel
+            case _ =>
+          }
+        }
+        Option(found)
+      }
+
       def unapply(s: tpd.Tree): Option[(Tree, Name)] = {
         s match {
           case t: tpd.Select => Some((t.qualifier, t.name))
           case t: Ident =>
             val found: tpd.Tree = desugared.get(t.tpe)
             if (found == null) {
-              tpd.desugarIdent(t) match
-                case sel: tpd.Select =>
-                  desugared.put(t.tpe, sel)
-                  Some((sel.qualifier, sel.name))
-                case _ =>
-                  None
+              cached(t).map(c => (c.qualifier, c.name))
             }
             else None
 
@@ -388,7 +396,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
             // load receiver of non-static implementation of lambda
 
             // darkdimius: I haven't found in spec `this` reference should go
-            // but I was able to derrive it by reading
+            // but I was able to derive it by reading
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
             val DesugaredSelect(prefix, _) = fun: @unchecked
@@ -1206,8 +1214,12 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
       tree match {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
-          assert(t.symbol.owner == this.claszSymbol)
-          UNIT
+          DesugaredSelect.cached(t) match {
+            case Some(sel) => genLoadQualifier(sel)
+            case None =>
+              assert(t.symbol.owner == this.claszSymbol)
+              UNIT
+          }
         case _                    => abort(s"Unknown qualifier $tree")
       }
     }
