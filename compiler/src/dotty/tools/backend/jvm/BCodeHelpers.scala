@@ -709,7 +709,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       */
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || compilingArray, sym)
+      assert(sym != defn.ArrayClass || compilingArray, s"$sym found in '${ctx.compilationUnit.source.file.name}'")
       ts.primitiveTypeMap.getOrElse(sym, storage.getClassBType(sym))
     }
 
@@ -844,7 +844,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
   }
 
   private def compilingArray(using Context) =
-    ctx.compilationUnit.source.file.path.endsWith("/Array.scala")
+    ctx.compilationUnit.source.file.name == "Array.scala"
 }
 
 object BCodeHelpers {
