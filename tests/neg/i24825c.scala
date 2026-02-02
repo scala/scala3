@@ -2,7 +2,7 @@ sealed trait A:
   type Blah <: reflect.Enum
 
 case object B extends A:
-  override class Blah extends reflect.Enum:
+  override class Blah extends reflect.Enum: // error
     // Members declared in scala.reflect.Enum
     def ordinal: Int = ???
 

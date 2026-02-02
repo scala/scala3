@@ -1,3 +1,4 @@
+override trait T // error
 override class X // error
 
 package object p:
@@ -9,4 +10,4 @@ package p:
 
 package p.q:
   object `package` extends p.Qlike:
-    override class Z
+    override class Z // error
