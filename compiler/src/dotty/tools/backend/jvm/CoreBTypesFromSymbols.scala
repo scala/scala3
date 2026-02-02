@@ -1,19 +1,20 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
+import dotty.tools.dotc.core.Symbols.{requiredClass as _, *}
 import dotty.tools.dotc.transform.Erasure
 
 import scala.tools.asm.{Handle, Opcodes, Type}
-import dotty.tools.dotc.core.StdNames
+import dotty.tools.dotc.core.{StdNames, Symbols}
 import BTypes.*
 import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.*
 import BCodeAsmCommon.*
 import dotty.tools.dotc.core.Flags.{JavaDefined, ModuleClass, PackageClass, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase}
 import BackendReporting.NoClassBTypeInfoClassSymbolInfoFailedSI9111
-import DottyBackendInterface.{given, *}
+import DottyBackendInterface.{*, given}
 import PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
 
 import scala.annotation.threadUnsafe
@@ -320,6 +321,9 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
   override def srNullRef: ClassBType = _srNullRef.get
   private lazy val _srNullRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass("scala.runtime.Null$")))
 
+  override def srBoxedUnitRef: ClassBType = _srBoxedUnitRef.get
+  private lazy val _srBoxedUnitRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(requiredClass("scala.runtime.BoxedUnit")))
+
   override def ObjectRef: ClassBType = _ObjectRef.get
   private lazy val _ObjectRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.ObjectClass))
 
@@ -480,5 +484,128 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
       val name = primitive.name.toString.toLowerCase + "Value"
       (classBTypeFromSymbol(boxed).internalName, MethodNameAndType(name, MethodBType(Nil, primitiveTypeMap(primitive))))
     }))
+  }
+
+  private def predefBoxingMethods(isBox: Boolean, getName: (String, String) => String): Map[String, MethodBType] =
+    Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
+      val unboxed = primitiveTypeMap(primitive)
+      val boxed = boxedClassOfPrimitive(unboxed)
+      val name = getName(primitive.name.toString, defn.boxedClass(primitive).name.toString)
+      (name, MethodBType(List(if isBox then unboxed else boxed), if isBox then boxed else unboxed))
+    }))
+
+  // boolean2Boolean -> (Z)Ljava/lang/Boolean;
+  def predefAutoBoxMethods: Map[String, MethodBType] = _predefAutoBoxMethods.get
+  private lazy val _predefAutoBoxMethods: Lazy[Map[String, MethodBType]] = ppa.perRunLazy(predefBoxingMethods(true, (primitive, boxed) => primitive.toLowerCase + "2" + boxed))
+
+  // Boolean2boolean -> (Ljava/lang/Boolean;)Z
+  def predefAutoUnboxMethods: Map[String, MethodBType] = _predefAutoUnboxMethods.get
+  private lazy val _predefAutoUnboxMethods: Lazy[Map[String, MethodBType]] = ppa.perRunLazy(predefBoxingMethods(false, (primitive, boxed) => boxed + "2" + primitive.toLowerCase))
+
+  // scala/runtime/BooleanRef -> MethodNameAndType(create,(Z)Lscala/runtime/BooleanRef;)
+  def srRefCreateMethods: Map[InternalName, MethodNameAndType] = _srRefCreateMethods.get
+  private lazy val _srRefCreateMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
+      val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
+      val unboxed = if primitive == defn.ObjectClass then ObjectRef else primitiveTypeMap(primitive)
+      val refClass = Symbols.requiredClass("scala.runtime." + boxed.name.toString + ".Ref")
+      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + boxed.name.toString + ".Ref")
+      List(
+        (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), classBTypeFromSymbol(refClass)))),
+        (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), classBTypeFromSymbol(volatileRefClass))))
+      )
+    }))
+  }
+
+  // scala/runtime/BooleanRef -> MethodNameAndType(zero,()Lscala/runtime/BooleanRef;)
+  def srRefZeroMethods: Map[InternalName, MethodNameAndType] = _srRefZeroMethods.get
+  private lazy val _srRefZeroMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
+      val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
+      val refClass = Symbols.requiredClass("scala.runtime." + boxed.name.toString + ".Ref")
+      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + boxed.name.toString + ".Ref")
+      List(
+        (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), classBTypeFromSymbol(refClass)))),
+        (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), classBTypeFromSymbol(volatileRefClass))))
+      )
+    }))
+  }
+
+  // java/lang/Boolean -> MethodNameAndType(<init>,(Z)V)
+  def primitiveBoxConstructors: Map[InternalName, MethodNameAndType] = _primitiveBoxConstructors.get
+  private lazy val _primitiveBoxConstructors: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
+      val boxed = defn.boxedClass(primitive)
+      val unboxed = primitiveTypeMap(primitive)
+      (classBTypeFromSymbol(boxed).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT)))
+    }))
+  }
+
+  // Z -> MethodNameAndType(boxToBoolean,(Z)Ljava/lang/Boolean;)
+  def srBoxesRuntimeBoxToMethods: Map[BType, MethodNameAndType] = _srBoxesRuntimeBoxToMethods.get
+  private lazy val _srBoxesRuntimeBoxToMethods: Lazy[Map[BType, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
+      val bType = primitiveTypeMap(primitive)
+      val boxed = boxedClassOfPrimitive(bType)
+      val name = "boxTo" + defn.boxedClass(primitive).name.toString
+      (bType, MethodNameAndType(name, MethodBType(List(bType), boxed)))
+    }))
+  }
+
+  // Z -> MethodNameAndType(unboxToBoolean,(Ljava/lang/Object;)Z)
+  def srBoxesRuntimeUnboxToMethods: Map[BType, MethodNameAndType] = _srBoxesRuntimeUnboxToMethods.get
+  private lazy val _srBoxesRuntimeUnboxToMethods: Lazy[Map[BType, MethodNameAndType]] = ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
+      val bType = primitiveTypeMap(primitive)
+      val name = "unboxTo" + primitive.name.toString
+      (bType, MethodNameAndType(name, MethodBType(List(ObjectRef), bType)))
+    }))
+  }
+
+  // scala/runtime/BooleanRef -> MethodNameAndType(<init>,(Z)V)
+  def srRefConstructors: Map[InternalName, MethodNameAndType] = _srRefConstructors.get
+  private lazy val _srRefConstructors: Lazy[Map[InternalName, MethodNameAndType]] =  ppa.perRunLazy {
+    Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
+      val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
+      val unboxed = if primitive == defn.ObjectClass then ObjectRef else primitiveTypeMap(primitive)
+      val refClass = Symbols.requiredClass("scala.runtime." + boxed.name.toString + ".Ref")
+      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + boxed.name.toString + ".Ref")
+      List(
+        (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(unboxed), UNIT))),
+        (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(unboxed), UNIT)))
+      )
+    }))
+  }
+
+  private lazy val _primitiveToTypeDesc: Lazy[Map[Symbol, String]] = ppa.perRunLazy: // only those needed right below
+    Map(
+      defn.BooleanClass -> "Z",
+      defn.CharClass    -> "C",
+      defn.IntClass     -> "I",
+      defn.LongClass    -> "J",
+      defn.DoubleClass  -> "D"
+    )
+
+  // scala/Tuple3 -> MethodNameAndType(<init>,(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V)
+  // scala/Tuple2$mcZC$sp -> MethodNameAndType(<init>,(ZC)V)
+  // ... this was easy in scala2, but now we don't specialize them so we have to know each name
+  // tuple1 is specialized for D, I, J
+  // tuple2 is specialized for C, D, I, J, Z in each parameter
+  def tupleClassConstructors: Map[InternalName, MethodNameAndType] = _tupleClassConstructors.get
+  private lazy val _tupleClassConstructors: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
+    val spec1 = List(defn.DoubleClass, defn.IntClass, defn.LongClass)
+    val spec2 = List(defn.CharClass, defn.DoubleClass, defn.IntClass, defn.LongClass, defn.BooleanClass)
+    Map.from(
+      Iterator.concat(
+        (1 to 22).map { n =>
+          ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List.fill(n)(ObjectRef), UNIT)))
+        },
+        spec1.map { sp1 =>
+          ("scala/Tuple1$mc" + _primitiveToTypeDesc.get(sp1) + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primitiveTypeMap(sp1)), UNIT)))
+        },
+        for sp2a <- spec2; sp2b <- spec2 yield
+          ("scala/Tuple2$mc" + _primitiveToTypeDesc.get(sp2a) + _primitiveToTypeDesc.get(sp2b) + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primitiveTypeMap(sp2a), primitiveTypeMap(sp2b)), UNIT)))
+      )
+    )
   }
 }
