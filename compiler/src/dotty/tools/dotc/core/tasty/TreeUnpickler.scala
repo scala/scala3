@@ -1661,7 +1661,7 @@ class TreeUnpickler(reader: TastyReader,
               val tycon = readTpt()
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
-              val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
+              val ownType = ctx.typeAssigner.processAppliedType(tycon.tpe.safeAppliedTo(args.tpes))
               tree.withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTree())
