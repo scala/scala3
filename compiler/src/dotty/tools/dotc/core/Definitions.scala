@@ -620,9 +620,11 @@ class Definitions {
     @tu lazy val Int_/  : Symbol = IntClass.requiredMethod(nme.DIV, List(IntType))
     @tu lazy val Int_*  : Symbol = IntClass.requiredMethod(nme.MUL, List(IntType))
     @tu lazy val Int_== : Symbol = IntClass.requiredMethod(nme.EQ, List(IntType))
+    @tu lazy val Int_!= : Symbol = IntClass.requiredMethod(nme.NE, List(IntType))
     @tu lazy val Int_>= : Symbol = IntClass.requiredMethod(nme.GE, List(IntType))
     @tu lazy val Int_<= : Symbol = IntClass.requiredMethod(nme.LE, List(IntType))
     @tu lazy val Int_>  : Symbol = IntClass.requiredMethod(nme.GT, List(IntType))
+    @tu lazy val Int_<  : Symbol = IntClass.requiredMethod(nme.LT, List(IntType))
   @tu lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass(using Context): ClassSymbol = LongType.symbol.asClass
     @tu lazy val Long_+ : Symbol = LongClass.requiredMethod(nme.PLUS, List(LongType))
@@ -665,6 +667,7 @@ class Definitions {
   @tu lazy val StringClass: ClassSymbol = requiredClass("java.lang.String")
   def StringType: Type = StringClass.typeRef
   @tu lazy val StringModule: Symbol = StringClass.linkedClass
+    @tu lazy val String_== : TermSymbol = enterMethod(StringClass, nme.EQ, methOfAnyRef(BooleanType), Final)
     @tu lazy val String_+ : TermSymbol = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     @tu lazy val String_valueOf_Object: Symbol = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
       case List(pt) => pt.isAny || pt.stripNull().isAnyRef
@@ -1059,6 +1062,7 @@ class Definitions {
   @tu lazy val DeprecatedAnnot: ClassSymbol = requiredClass("scala.deprecated")
   @tu lazy val DeprecatedOverridingAnnot: ClassSymbol = requiredClass("scala.deprecatedOverriding")
   @tu lazy val DeprecatedInheritanceAnnot: ClassSymbol = requiredClass("scala.deprecatedInheritance")
+  @tu lazy val QualifiedAnnot: ClassSymbol = requiredClass("scala.annotation.qualified")
   @tu lazy val ImplicitAmbiguousAnnot: ClassSymbol = requiredClass("scala.annotation.implicitAmbiguous")
   @tu lazy val ImplicitNotFoundAnnot: ClassSymbol = requiredClass("scala.annotation.implicitNotFound")
   @tu lazy val InferredDepFunAnnot: ClassSymbol = requiredClass("scala.caps.internal.inferredDepFun")

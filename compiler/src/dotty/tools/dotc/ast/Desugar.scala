@@ -8,7 +8,7 @@ import Symbols.*, StdNames.*, Trees.*, ContextOps.*
 import Decorators.*
 import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import typer.{Namer, Checking}
+import typer.{Namer, Checking, ErrorReporting}
 import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
@@ -214,9 +214,14 @@ object desugar {
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val valName = normalizeName(vdef, tpt).asTermName
+    val tpt1 =
+      if Feature.qualifiedTypesEnabled then
+        desugarQualifiedTypes(tpt, valName)
+      else
+        tpt
     var mods1 = vdef.mods
 
-    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(mods1)
+    val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = tpt1).withMods(mods1)
 
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
@@ -232,6 +237,14 @@ object desugar {
       Thicket(vdef1, setter)
     else vdef1
   end valDef
+
+  def caseDef(cdef: CaseDef)(using Context): CaseDef =
+    if Feature.qualifiedTypesEnabled then
+      val CaseDef(pat, guard, body) = cdef
+      val pat1 = DesugarQualifiedTypesInPatternMap().transform(pat)
+      cpy.CaseDef(cdef)(pat1, guard, body)
+    else
+      cdef
 
   def mapParamss(paramss: List[ParamClause])
                 (mapTypeParam: TypeDef => TypeDef)
@@ -752,7 +765,11 @@ object desugar {
         report.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toMethParam(_, KeepAnnotations.All, keepDefault = true))
+      else
+        originalVparamss.nestedMap: param =>
+          val methParam = toMethParam(param, KeepAnnotations.All, keepDefault = true)
+          valDef(methParam).asInstanceOf[ValDef] // desugar early to handle qualified types
+
     val derivedTparams =
       constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
         derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
@@ -2382,6 +2399,8 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
+      case QualifiedTypeTree(parent, paramName, qualifier) =>
+        qualifiedType(parent, paramName.getOrElse(nme.WILDCARD), qualifier, tree.span)
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
@@ -2560,4 +2579,51 @@ object desugar {
     collect(tree)
     buf.toList
   }
+
+  /** Desugar subtrees that are `QualifiedTypeTree`s using `outerParamName` as
+   *  the qualified parameter name.
+   */
+  private def desugarQualifiedTypes(tpt: Tree, outerParamName: TermName)(using Context): Tree =
+    def transform(tree: Tree): Tree =
+      tree match
+        case QualifiedTypeTree(parent, None, qualifier) =>
+          qualifiedType(transform(parent), outerParamName, qualifier, tree.span)
+        case QualifiedTypeTree(parent, paramName, qualifier) =>
+          cpy.QualifiedTypeTree(tree)(transform(parent), paramName, qualifier)
+        case TypeApply(fn, args) =>
+          cpy.TypeApply(tree)(transform(fn), args)
+        case AppliedTypeTree(fn, args) =>
+          cpy.AppliedTypeTree(tree)(transform(fn), args)
+        case InfixOp(left, op, right) =>
+          cpy.InfixOp(tree)(transform(left), op, transform(right))
+        case Parens(arg) =>
+          cpy.Parens(tree)(transform(arg))
+        case _ =>
+          tree
+
+    if Feature.qualifiedTypesEnabled then
+      trace(i"desugar qualified types in pattern: $tpt", Printers.qualifiedTypes):
+        transform(tpt)
+    else
+      tpt
+
+  private class DesugarQualifiedTypesInPatternMap extends UntypedTreeMap:
+    override def transform(tree: Tree)(using Context): Tree =
+      tree match
+        case Typed(ident @ Ident(name: TermName), tpt) =>
+          cpy.Typed(tree)(ident, desugarQualifiedTypes(tpt, name))
+        case _ =>
+          super.transform(tree)
+
+  /** Returns the annotated type used to represent the qualified type with the
+   *  given components:
+   *  `parent @qualified[parent]((paramName: parent) => qualifier)`.
+   */
+  def qualifiedType(parent: Tree, paramName: TermName, qualifier: Tree, span: Span)(using Context): Tree =
+    val param = makeParameter(paramName, parent, EmptyModifiers) // paramName: parent
+    val predicate = WildcardFunction(List(param), qualifier) // (paramName: parent) => qualifier
+    val qualifiedAnnot = scalaAnnotationDot(nme.qualified)
+    val annot = Apply(TypeApply(qualifiedAnnot, List(parent)), predicate).withSpan(span) // @qualified[parent](predicate)
+    Annotated(parent, annot).withSpan(span) // parent @qualified[parent](predicate)
+
 }

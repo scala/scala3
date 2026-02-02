@@ -175,4 +175,14 @@ object BetaReduce:
       Some(expansion1)
     else None
   end reduceApplication
+
+  def reduceApplication(ddef: DefDef, argss: List[List[Tree]])(using Context): Option[Tree] =
+    val bindings = new ListBuffer[DefTree]()
+    reduceApplication(ddef, argss, bindings) match
+      case Some(expansion1) =>
+        val bindings1 = bindings.result()
+        Some(seq(bindings1, expansion1))
+      case None =>
+        None
+
 end BetaReduce

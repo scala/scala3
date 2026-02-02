@@ -1,0 +1,320 @@
+call id
+-1 is instance of Pos: false
+call id
+-1 is instance of {v: Int with v == 2}: false
+call id
+-1 is instance of NonEmptyString: false
+call id
+-1 is instance of PoliteString: false
+call id
+-1 is instance of Pos & Int: false
+call id
+-1 is instance of Pos | Int: true
+call id
+-1 is instance of Pos & String: false
+call id
+-1 is instance of Pos | String: false
+call id
+-1 is instance of {v: Int with v == 2} & Int: false
+call id
+-1 is instance of {v: Int with v == 2} | Int: true
+call id
+-1 is instance of {v: Int with v == 2} & String: false
+call id
+-1 is instance of {v: Int with v == 2} | String: false
+call id
+-1 is instance of NonEmptyString & String: false
+call id
+-1 is instance of NonEmptyString | String: false
+call id
+-1 is instance of NonEmptyString & Int: false
+call id
+-1 is instance of NonEmptyString | Int: true
+call id
+-1 is instance of PoliteString & Int: false
+call id
+-1 is instance of PoliteString | Int: true
+call id
+-1 is instance of PoliteString & String: false
+call id
+-1 is instance of PoliteString | String: false
+call id
+1 is instance of Pos: true
+call id
+1 is instance of {v: Int with v == 2}: false
+call id
+1 is instance of NonEmptyString: false
+call id
+1 is instance of PoliteString: false
+call id
+1 is instance of Pos & Int: true
+call id
+1 is instance of Pos | Int: true
+call id
+1 is instance of Pos & String: false
+call id
+1 is instance of Pos | String: true
+call id
+1 is instance of {v: Int with v == 2} & Int: false
+call id
+1 is instance of {v: Int with v == 2} | Int: true
+call id
+1 is instance of {v: Int with v == 2} & String: false
+call id
+1 is instance of {v: Int with v == 2} | String: false
+call id
+1 is instance of NonEmptyString & String: false
+call id
+1 is instance of NonEmptyString | String: false
+call id
+1 is instance of NonEmptyString & Int: false
+call id
+1 is instance of NonEmptyString | Int: true
+call id
+1 is instance of PoliteString & Int: false
+call id
+1 is instance of PoliteString | Int: true
+call id
+1 is instance of PoliteString & String: false
+call id
+1 is instance of PoliteString | String: false
+call id
+2 is instance of Pos: true
+call id
+2 is instance of {v: Int with v == 2}: true
+call id
+2 is instance of NonEmptyString: false
+call id
+2 is instance of PoliteString: false
+call id
+2 is instance of Pos & Int: true
+call id
+2 is instance of Pos | Int: true
+call id
+2 is instance of Pos & String: false
+call id
+2 is instance of Pos | String: true
+call id
+2 is instance of {v: Int with v == 2} & Int: true
+call id
+2 is instance of {v: Int with v == 2} | Int: true
+call id
+2 is instance of {v: Int with v == 2} & String: false
+call id
+2 is instance of {v: Int with v == 2} | String: true
+call id
+2 is instance of NonEmptyString & String: false
+call id
+2 is instance of NonEmptyString | String: false
+call id
+2 is instance of NonEmptyString & Int: false
+call id
+2 is instance of NonEmptyString | Int: true
+call id
+2 is instance of PoliteString & Int: false
+call id
+2 is instance of PoliteString | Int: true
+call id
+2 is instance of PoliteString & String: false
+call id
+2 is instance of PoliteString | String: false
+call id
+"" is instance of Pos: false
+call id
+"" is instance of {v: Int with v == 2}: false
+call id
+"" is instance of NonEmptyString: false
+call id
+"" is instance of PoliteString: false
+call id
+"" is instance of Pos & Int: false
+call id
+"" is instance of Pos | Int: false
+call id
+"" is instance of Pos & String: false
+call id
+"" is instance of Pos | String: true
+call id
+"" is instance of {v: Int with v == 2} & Int: false
+call id
+"" is instance of {v: Int with v == 2} | Int: false
+call id
+"" is instance of {v: Int with v == 2} & String: false
+call id
+"" is instance of {v: Int with v == 2} | String: true
+call id
+"" is instance of NonEmptyString & String: false
+call id
+"" is instance of NonEmptyString | String: true
+call id
+"" is instance of NonEmptyString & Int: false
+call id
+"" is instance of NonEmptyString | Int: false
+call id
+"" is instance of PoliteString & Int: false
+call id
+"" is instance of PoliteString | Int: false
+call id
+"" is instance of PoliteString & String: false
+call id
+"" is instance of PoliteString | String: true
+call id
+"Do it please" is instance of Pos: false
+call id
+"Do it please" is instance of {v: Int with v == 2}: false
+call id
+"Do it please" is instance of NonEmptyString: true
+call id
+"Do it please" is instance of PoliteString: true
+call id
+"Do it please" is instance of Pos & Int: false
+call id
+"Do it please" is instance of Pos | Int: false
+call id
+"Do it please" is instance of Pos & String: false
+call id
+"Do it please" is instance of Pos | String: true
+call id
+"Do it please" is instance of {v: Int with v == 2} & Int: false
+call id
+"Do it please" is instance of {v: Int with v == 2} | Int: false
+call id
+"Do it please" is instance of {v: Int with v == 2} & String: false
+call id
+"Do it please" is instance of {v: Int with v == 2} | String: true
+call id
+"Do it please" is instance of NonEmptyString & String: true
+call id
+"Do it please" is instance of NonEmptyString | String: true
+call id
+"Do it please" is instance of NonEmptyString & Int: false
+call id
+"Do it please" is instance of NonEmptyString | Int: true
+call id
+"Do it please" is instance of PoliteString & Int: false
+call id
+"Do it please" is instance of PoliteString | Int: true
+call id
+"Do it please" is instance of PoliteString & String: true
+call id
+"Do it please" is instance of PoliteString | String: true
+call id
+"do it already" is instance of Pos: false
+call id
+"do it already" is instance of {v: Int with v == 2}: false
+call id
+"do it already" is instance of NonEmptyString: true
+call id
+"do it already" is instance of PoliteString: false
+call id
+"do it already" is instance of Pos & Int: false
+call id
+"do it already" is instance of Pos | Int: false
+call id
+"do it already" is instance of Pos & String: false
+call id
+"do it already" is instance of Pos | String: true
+call id
+"do it already" is instance of {v: Int with v == 2} & Int: false
+call id
+"do it already" is instance of {v: Int with v == 2} | Int: false
+call id
+"do it already" is instance of {v: Int with v == 2} & String: false
+call id
+"do it already" is instance of {v: Int with v == 2} | String: true
+call id
+"do it already" is instance of NonEmptyString & String: true
+call id
+"do it already" is instance of NonEmptyString | String: true
+call id
+"do it already" is instance of NonEmptyString & Int: false
+call id
+"do it already" is instance of NonEmptyString | Int: true
+call id
+"do it already" is instance of PoliteString & Int: false
+call id
+"do it already" is instance of PoliteString | Int: false
+call id
+"do it already" is instance of PoliteString & String: false
+call id
+"do it already" is instance of PoliteString | String: true
+call id
+false is instance of Pos: false
+call id
+false is instance of {v: Int with v == 2}: false
+call id
+false is instance of NonEmptyString: false
+call id
+false is instance of PoliteString: false
+call id
+false is instance of Pos & Int: false
+call id
+false is instance of Pos | Int: false
+call id
+false is instance of Pos & String: false
+call id
+false is instance of Pos | String: false
+call id
+false is instance of {v: Int with v == 2} & Int: false
+call id
+false is instance of {v: Int with v == 2} | Int: false
+call id
+false is instance of {v: Int with v == 2} & String: false
+call id
+false is instance of {v: Int with v == 2} | String: false
+call id
+false is instance of NonEmptyString & String: false
+call id
+false is instance of NonEmptyString | String: false
+call id
+false is instance of NonEmptyString & Int: false
+call id
+false is instance of NonEmptyString | Int: false
+call id
+false is instance of PoliteString & Int: false
+call id
+false is instance of PoliteString | Int: false
+call id
+false is instance of PoliteString & String: false
+call id
+false is instance of PoliteString | String: false
+call id
+null is instance of Pos: false
+call id
+null is instance of {v: Int with v == 2}: false
+call id
+null is instance of NonEmptyString: false
+call id
+null is instance of PoliteString: false
+call id
+null is instance of Pos & Int: false
+call id
+null is instance of Pos | Int: false
+call id
+null is instance of Pos & String: false
+call id
+null is instance of Pos | String: false
+call id
+null is instance of {v: Int with v == 2} & Int: false
+call id
+null is instance of {v: Int with v == 2} | Int: false
+call id
+null is instance of {v: Int with v == 2} & String: false
+call id
+null is instance of {v: Int with v == 2} | String: false
+call id
+null is instance of NonEmptyString & String: false
+call id
+null is instance of NonEmptyString | String: false
+call id
+null is instance of NonEmptyString & Int: false
+call id
+null is instance of NonEmptyString | Int: false
+call id
+null is instance of PoliteString & Int: false
+call id
+null is instance of PoliteString | Int: false
+call id
+null is instance of PoliteString & String: false
+call id
+null is instance of PoliteString | String: false

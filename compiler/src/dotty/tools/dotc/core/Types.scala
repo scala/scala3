@@ -43,7 +43,7 @@ import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
 import transform.Recheck.currentRechecker
-
+import qualified_types.{QualifiedType, QualifiedAnnotation}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
@@ -58,7 +58,7 @@ object Types extends TypeUtils {
    *  The principal subclasses and sub-objects are as follows:
    *
    *  ```none
-   *  Type -+- ProxyType --+- NamedType ----+--- TypeRef
+   *  Type -+- TypeProxy --+- NamedType ----+--- TypeRef
    *        |              |                 \
    *        |              +- SingletonType-+-+- TermRef
    *        |              |                |
@@ -193,9 +193,10 @@ object Types extends TypeUtils {
 
     /** Is this type a (possibly refined, applied, aliased or annotated) type reference
      *  to the given type symbol?
-     *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
+     *  @param sym  The symbol to compare to. It must be a class symbol or abstract type.
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
+     *  @param skipRefined  If true, skip refinements, annotated types and applied types.
      */
     def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = this match {
       case this1: TypeRef =>
@@ -213,7 +214,7 @@ object Types extends TypeUtils {
         else this1.underlying.isRef(sym, skipRefined)
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
-      case this1: AnnotatedType =>
+      case this1: AnnotatedType if (!this1.isRefining || skipRefined) =>
         this1.parent.isRef(sym, skipRefined)
       case _ => false
     }
@@ -1616,6 +1617,7 @@ object Types extends TypeUtils {
         def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
           tp match {
             case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+            case QualifiedType(_, _) => tp
             case _ => mapOver(tp)
           }
       }
@@ -2155,7 +2157,7 @@ object Types extends TypeUtils {
     /** Is `this` isomorphic to `that`, assuming pairs of matching binders `bs`?
      *  It is assumed that `this.ne(that)`.
      */
-    protected def iso(that: Any, bs: BinderPairs): Boolean = this.equals(that)
+    def iso(that: Any, bs: BinderPairs): Boolean = this.equals(that)
 
     /** Equality used for hash-consing; uses `eq` on all recursive invocations,
      *  except where a BindingType is involved. The latter demand a deep isomorphism check.
@@ -3587,7 +3589,7 @@ object Types extends TypeUtils {
       case _ => false
     }
 
-    override protected def iso(that: Any, bs: BinderPairs) = that match
+    override def iso(that: Any, bs: BinderPairs) = that match
       case that: AndType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
       case _ => false
   }
@@ -3741,7 +3743,7 @@ object Types extends TypeUtils {
       case _ => false
     }
 
-    override protected def iso(that: Any, bs: BinderPairs) = that match
+    override def iso(that: Any, bs: BinderPairs) = that match
       case that: OrType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs) && isSoft == that.isSoft
       case _ => false
   }
@@ -5008,6 +5010,7 @@ object Types extends TypeUtils {
 
     private var myRepr: Name | Null = null
     def repr(using Context): Name = {
+      //if (myRepr == null) myRepr = s"?$id".toString.toTermName
       if (myRepr == null) myRepr = SkolemName.fresh()
       myRepr.nn
     }
@@ -5073,7 +5076,7 @@ object Types extends TypeUtils {
      *  anymore, or NoType if the variable can still be further constrained or a provisional
      *  instance type in the constraint can be retracted.
      */
-    private[core] def permanentInst = inst
+    def permanentInst = inst
     private[core] def setPermanentInst(tp: Type): Unit =
       inst = tp
       if tp.exists && owningState != null then
@@ -6315,6 +6318,8 @@ object Types extends TypeUtils {
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedCapturingType(tp: Type, parent: Type, refs: CaptureSet): Type =
       tp.derivedCapturingType(parent, refs)
+    protected def derivedENodeParamRef(tp: qualified_types.ENodeParamRef, index: Int, underlying: Type): Type =
+      tp.derivedENodeParamRef(index, underlying)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
       tp.derivedWildcardType(bounds)
     protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
@@ -6540,6 +6545,9 @@ object Types extends TypeUtils {
 
         case tp: JavaArrayType =>
           derivedJavaArrayType(tp, this(tp.elemType))
+
+        case tp: qualified_types.ENodeParamRef =>
+          derivedENodeParamRef(tp, tp.index, this(tp.underlying))
 
         case _ =>
           tp
@@ -6937,7 +6945,10 @@ object Types extends TypeUtils {
 
     def apply(x: T, tp: Type): T
 
-    protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
+    protected def applyToAnnot(x: T, annot: Annotation): T =
+      annot match
+        case annot: QualifiedAnnotation => annot.foldOverTypes(x, this)
+        case _ => x // don't go into other annotations
 
     /** A prefix is never contravariant. Even if say `p.A` is used in a contravariant
      *  context, we cannot assume contravariance for `p` because `p`'s lower
