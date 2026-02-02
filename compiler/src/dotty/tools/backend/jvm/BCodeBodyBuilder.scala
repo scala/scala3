@@ -65,13 +65,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
       def unapply(s: tpd.Tree): Option[(Tree, Name)] = {
         s match {
           case t: tpd.Select => Some((t.qualifier, t.name))
-          case t: Ident =>
-            val found: tpd.Tree = desugared.get(t.tpe)
-            if (found == null) {
-              cached(t).map(c => (c.qualifier, c.name))
-            }
-            else None
-
+          case t: Ident => cached(t).map(c => (c.qualifier, c.name))
           case _ => None
         }
       }
