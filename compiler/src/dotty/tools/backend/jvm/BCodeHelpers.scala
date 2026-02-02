@@ -844,7 +844,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
   }
 
   private def compilingArray(using Context) =
-    ctx.compilationUnit.source.file.name == "Array.scala"
+    ctx.compilationUnit.source.file.path.endsWith("/Array.scala")
 }
 
 object BCodeHelpers {
