@@ -33,8 +33,18 @@ class SymbolInformationProvider(using Context):
       case sym :: _ =>
         val classSym = if sym.isClass then sym else sym.moduleClass
         val parents =
-          if classSym.isClass
-          then classSym.asClass.parentSyms.map(SemanticdbSymbols.symbolName)
+          if classSym.isClass then
+            val classInfo = classSym.asClass
+            val parentSymbols = classInfo.parentSyms
+
+            val selfTypeParents =
+              val givenSelf = classInfo.givenSelfType
+              if givenSelf.isValueType then
+                givenSelf.classSymbols.filter(_ != classSym)
+              else
+                Nil
+
+            (selfTypeParents ++ parentSymbols).distinct.map(SemanticdbSymbols.symbolName)
           else Nil
         val allParents =
           val visited = mutable.Set[Symbol]()
@@ -47,6 +57,12 @@ class SymbolInformationProvider(using Context):
                   collect(parent)
                 case _ =>
               }
+              val givenSelf = sym.asClass.givenSelfType
+              if givenSelf.isValueType then
+                givenSelf.classSymbols.foreach { selfParent =>
+                  if !visited(selfParent) && selfParent != sym then
+                    collect(selfParent)
+                }
           collect(classSym)
           visited.toList.map(SemanticdbSymbols.symbolName)
         val dealisedSymbol =
