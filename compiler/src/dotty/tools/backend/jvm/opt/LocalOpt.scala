@@ -154,8 +154,8 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
 
   import LocalOptImpls.*
 
-  val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
-  val copyProp = new CopyProp(backendUtils, callGraph, ts, ppa.compilerSettings.optAllowSkipClassLoading)
+  private val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
+  private val copyProp = new CopyProp(backendUtils, callGraph, ts, ppa.compilerSettings.optAllowSkipClassLoading)
 
   /**
    * Remove unreachable code from a method.

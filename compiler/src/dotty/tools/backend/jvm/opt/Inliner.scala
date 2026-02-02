@@ -40,7 +40,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
   // super accessors that we emit in traits. The inlined calls are marked in the call graph as
   // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
   // the call graph will always return the corresponding method in the trait.
-  def maybeInlinedLater(callsite: Callsite, insns: List[AbstractInsnNode]): Boolean = {
+  private def maybeInlinedLater(callsite: Callsite, insns: List[AbstractInsnNode]): Boolean = {
     insns.forall({
       case mi: MethodInsnNode =>
         (mi.getOpcode != INVOKESPECIAL) || {
@@ -101,7 +101,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
    * @param methods The methods to check for callsites to inline. If not defined, check all methods.
    * @return The set of changed methods, in no deterministic order.
    */
-  def runInliner(methods: Option[mutable.LinkedHashSet[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], failed: mutable.Set[MethodInsnNode]): Iterable[MethodNode] = {
+  private def runInliner(methods: Option[mutable.LinkedHashSet[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], failed: mutable.Set[MethodInsnNode]): Iterable[MethodNode] = {
     // Inline requests are grouped by method for performance: we only update the call graph (which
     // runs analyzers) once all callsites are inlined.
     val requests: mutable.Queue[(MethodNode, List[InlineRequest])] =
@@ -403,7 +403,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
    * @return A map associating instruction nodes of the callee with the corresponding cloned
    *         instruction in the callsite method.
    */
-  def inlineCallsite(callsite: Callsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
+  private def inlineCallsite(callsite: Callsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
     val Right(callsiteCallee) = callsite.callee: @unchecked
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
@@ -791,7 +791,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
    *   - `Left((insn, warning))` if validity of some instruction could not be checked because an
    *     error occurred
    */
-  def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), List[AbstractInsnNode]] = {
+  private def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), List[AbstractInsnNode]] = {
     /*
      * Check if `instruction` can be transplanted to `destinationClass`.
      *

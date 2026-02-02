@@ -110,7 +110,7 @@ class GenBCode extends Phase { self =>
           report.error(s"exception from future: $ex, (${Option(ex.getCause())})")
       result
     finally
-      // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized
+      // frontendAccess and postProcessor are created lazily, clean them up only if they were initialized
       if _frontendAccess ne null then
         frontendAccess.compilerSettings.outputDirectory match {
           case jar: JarArchive =>

@@ -459,7 +459,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
                 else locals.load(sym)
               }
             case Some(t) =>
-              genLoad(t, generatedType)
+              genLoad(t, generatedType) // TODO is this reachable?
           }
 
         case Literal(value) =>
