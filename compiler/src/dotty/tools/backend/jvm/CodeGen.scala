@@ -41,9 +41,9 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
     val ts: CoreBTypesFromSymbols = CodeGen.this.ts
 
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit =
-      callGraph.callsitePositions(m) = pos match {
+      callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos
-        case _ => NoSourcePosition
+        case null => NoSourcePosition
       }
   }
   private val impl = new Impl()

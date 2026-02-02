@@ -48,13 +48,13 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // classpath. In order to get only the callsites being compiled, we start at the map of
     // compilingClasses in the byteCodeRepository.
     val compilingMethods = for {
-      (classNode, _) <- byteCodeRepository.compilingClasses.valuesIterator
+      (classNode, _) <- byteCodeRepository.compilingClasses.get.valuesIterator
       methodNode     <- classNode.methods.iterator.asScala
     } yield methodNode
 
     compilingMethods.map(methodNode => {
       var requests = Set.empty[InlineRequest]
-      callGraph.callsites(methodNode).valuesIterator foreach {
+      callGraph.callsites.get(methodNode).valuesIterator foreach {
         case callsite @ Callsite(_, _, _, Right(Callee(callee, _, _, _, _, _, _, callsiteWarning)), _, _, _, pos, _, _) =>
           inlineRequest(callsite) match {
             case Some(Right(req)) => requests += req
@@ -231,7 +231,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             if (isTraitSuperAccessor) {
               // inline static trait super accessors if the corresponding trait method is a forwarder or trivial (scala-dev#618)
               {
-                val css = callGraph.callsites(callee.callee)
+                val css = callGraph.callsites.get(callee.callee)
                 if (css.sizeIs == 1) css.head._2 else null
               } match {
                 case null => null

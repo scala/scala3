@@ -13,11 +13,13 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.{FifoCache, InlineInfoAttributePrototype}
+import PostProcessorFrontendAccess.Lazy
 
 import scala.annotation.nowarn
 import scala.collection.{concurrent, mutable}
@@ -32,13 +34,13 @@ import scala.tools.asm.{Attribute, Type}
  * The ByteCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) {
+class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes)(using Context) {
 
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: concurrent.Map[InternalName, (ClassNode, String)] = frontendAccess.recordPerRunCache(concurrent.TrieMap.empty)
+  val compilingClasses: Lazy[concurrent.Map[InternalName, (ClassNode, String)]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty)
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -53,16 +55,16 @@ class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUti
    * Note - although this is typed a mutable.Map, individual simple get and put operations are threadsafe as the
    * underlying data structure is synchronized.
    */
-  private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassNode]] =
-    frontendAccess.recordPerRunCache(FifoCache[InternalName, Either[ClassNotFound, ClassNode]](maxCacheSize, threadsafe = true))
+  private val parsedClasses: Lazy[mutable.Map[InternalName, Either[ClassNotFound, ClassNode]]] =
+    frontendAccess.perRunLazy(FifoCache[InternalName, Either[ClassNotFound, ClassNode]](maxCacheSize, threadsafe = true))
 
   def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
-    case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = (classNode, path)
-    case _                                 => parsedClasses(classNode.name) = Right(classNode)
+    case Some(path) if path != "<no file>" => compilingClasses.get(classNode.name) = (classNode, path)
+    case _                                 => parsedClasses.get(classNode.name) = Right(classNode)
   }
 
   private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassNode] = {
-    parsedClasses.getOrElseUpdate(internalName, parseClass(internalName))
+    parsedClasses.get.getOrElseUpdate(internalName, parseClass(internalName))
   }
 
   /**
@@ -70,7 +72,7 @@ class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUti
    * the class node is not yet available, it is parsed from the classfile on the compile classpath.
    */
   def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassNode, Option[String])] = {
-    compilingClasses.get(internalName) match {
+    compilingClasses.get.get(internalName) match {
       case Some((c, p)) => Right((c, Some(p)))
       case _            => parsedClassNode(internalName).map((_, None))
     }
@@ -81,7 +83,7 @@ class ByteCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUti
    * the classfile on the compile classpath.
    */
   def classNode(internalName: InternalName): Either[ClassNotFound, ClassNode] = {
-    compilingClasses.get(internalName) match {
+    compilingClasses.get.get(internalName) match {
       case Some((c, _)) => Right(c)
       case None         => parsedClassNode(internalName)
     }

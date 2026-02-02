@@ -99,20 +99,20 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.get.keysIterator.toList)
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if AsmAnalyzer.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get(method) match {
+    for (method <- methodsToRewrite if AsmAnalyzer.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get.get(method) match {
       case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
         localOpt.minimalRemoveUnreachableCode(method, ownerClass)
 
-        if (AsmAnalyzer.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
+        if (AsmAnalyzer.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get.get(method) match {
           case Some(closureInits) =>
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
@@ -195,7 +195,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
           isAccessible
         }
 
-        def pos = callGraph.callsites(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
+        def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
         val stackSize: Either[RewriteClosureApplyToClosureBodyFailed, Int] = bodyAccessible match {
           case Left(w)      => Left(RewriteClosureAccessCheckFailed(pos, w))
           case Right(false) => Left(RewriteClosureIllegalAccess(pos, ownerClass.internalName))
@@ -410,7 +410,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // the method node is needed for building the call graph entry
     val bodyMethod = byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc)
-    val sourceFilePath = byteCodeRepository.compilingClasses.get(lambdaBodyHandle.getOwner).map(_._2)
+    val sourceFilePath = byteCodeRepository.compilingClasses.get.get(lambdaBodyHandle.getOwner).map(_._2)
     val callee = bodyMethod.map({
       case (bodyMethodNode, bodyMethodDeclClass) =>
         val bodyDeclClassType = bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass)

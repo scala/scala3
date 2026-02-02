@@ -20,6 +20,7 @@ import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
@@ -27,9 +28,9 @@ import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValu
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{LazyWithoutLock => FLazy} // TODO this one should probably be not inside PPFA...
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{Lazy, LazyWithoutLock => FLazy} // TODO LazyWithoutLock should probably be not inside PPFA...
 
-class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository: ByteCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
+class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository: ByteCodeRepository, bTypesFromClassfile: BTypesFromClassfile)(using Context) {
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -51,7 +52,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
    * The call graph is less problematic because only methods being called are kept alive, not entire
    * classes. But we should keep an eye on this.
    */
-  val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = frontendAccess.recordPerRunCache(concurrent.TrieMap.empty withDefaultValue Map.empty)
+  val callsites: Lazy[mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty withDefaultValue Map.empty)
 
   /**
    * Closure instantiations in the program being compiled.
@@ -61,13 +62,13 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
    * the method. Here the closure instantiations are already grouped by method.
    */
   //currently single threaded access only
-  val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = frontendAccess.recordPerRunCache(concurrent.TrieMap.empty withDefaultValue Map.empty)
+  val closureInstantiations: Lazy[mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty withDefaultValue Map.empty)
 
   /**
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = frontendAccess.recordPerRunCache(TrieMap.empty)
+  val callsitePositions: Lazy[concurrent.Map[MethodInsnNode, SourcePosition]] = frontendAccess.perRunLazy(TrieMap.empty)
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.
@@ -75,39 +76,39 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
    * when building the CallGraph, every Callsite object has an annotated(No)Inline field.
    */
   //currently single threaded access only
-  private val inlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = frontendAccess.recordPerRunCache(mutable.Set.empty)
+  private val inlineAnnotatedCallsites: Lazy[mutable.Set[MethodInsnNode]] = frontendAccess.perRunLazy(mutable.Set.empty)
   //currently single threaded access only
-  private val noInlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = frontendAccess.recordPerRunCache(mutable.Set.empty)
+  private val noInlineAnnotatedCallsites: Lazy[mutable.Set[MethodInsnNode]] = frontendAccess.perRunLazy(mutable.Set.empty)
 
   // Contains `INVOKESPECIAL` instructions that were cloned by the inliner and need to be resolved
   // statically by the call graph. See Inliner.maybeInlinedLater.
-  val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = frontendAccess.recordPerRunCache(mutable.Set.empty)
+  val staticallyResolvedInvokespecial: Lazy[mutable.Set[MethodInsnNode]] = frontendAccess.perRunLazy(mutable.Set.empty)
 
   def isStaticCallsite(call: MethodInsnNode): Boolean = {
     val opc = call.getOpcode
-    opc == Opcodes.INVOKESTATIC || opc == Opcodes.INVOKESPECIAL && staticallyResolvedInvokespecial(call)
+    opc == Opcodes.INVOKESTATIC || opc == Opcodes.INVOKESPECIAL && staticallyResolvedInvokespecial.get(call)
   }
 
   def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
-    val methodCallsites = callsites(methodNode)
+    val methodCallsites = callsites.get(methodNode)
     val newCallsites = methodCallsites - invocation
-    if (newCallsites.isEmpty) callsites.subtractOne(methodNode)
-    else callsites(methodNode) = newCallsites
+    if (newCallsites.isEmpty) callsites.get.subtractOne(methodNode)
+    else callsites.get(methodNode) = newCallsites
     methodCallsites.get(invocation)
   }
 
   def addCallsite(callsite: Callsite): Unit = {
-    val methodCallsites = callsites(callsite.callsiteMethod)
-    callsites(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
+    val methodCallsites = callsites.get(callsite.callsiteMethod)
+    callsites.get(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
   }
 
-  def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod) contains callsite.callsiteInstruction
+  def containsCallsite(callsite: Callsite): Boolean = callsites.get(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 
   def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
-    val methodClosureInits = closureInstantiations(methodNode)
+    val methodClosureInits = closureInstantiations.get(methodNode)
     val newClosureInits = methodClosureInits - indy
-    if (newClosureInits.isEmpty) closureInstantiations.subtractOne(methodNode)
-    else closureInstantiations(methodNode) = newClosureInits
+    if (newClosureInits.isEmpty) closureInstantiations.get.subtractOne(methodNode)
+    else closureInstantiations.get(methodNode) = newClosureInits
     methodClosureInits.get(indy)
   }
 
@@ -117,8 +118,8 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
   }
 
   def refresh(methodNode: MethodNode, definingClass: ClassBType): Unit = {
-    callsites.subtractOne(methodNode)
-    closureInstantiations.subtractOne(methodNode)
+    callsites.get.subtractOne(methodNode)
+    closureInstantiations.get.subtractOne(methodNode)
     // callsitePositions, inlineAnnotatedCallsites, noInlineAnnotatedCallsites, staticallyResolvedInvokespecial
     // are left unchanged. They contain individual instructions, the state for those remains valid in case
     // the inliner performs a rollback.
@@ -199,9 +200,9 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
             argInfos = argInfos,
             callsiteStackHeight = typeAnalyzer.frameAt(call).getStackSize,
             receiverKnownNotNull = receiverNotNull,
-            callsitePosition = callsitePositions.getOrElse(call, NoSourcePosition),
-            annotatedInline = inlineAnnotatedCallsites(call),
-            annotatedNoInline = noInlineAnnotatedCallsites(call)
+            callsitePosition = callsitePositions.get.getOrElse(call, NoSourcePosition),
+            annotatedInline = inlineAnnotatedCallsites.get(call),
+            annotatedNoInline = noInlineAnnotatedCallsites.get(call)
           )
 
         case LambdaMetaFactoryCall(indy, samMethodType, implMethod, instantiatedMethodType, indyParamTypes) if typeAnalyzer.frameAt(indy) != null =>
@@ -216,8 +217,8 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
         case _ =>
       }
 
-      callsites(methodNode) = methodCallsites
-      closureInstantiations(methodNode) = methodClosureInstantiations
+      callsites.get(methodNode) = methodCallsites
+      closureInstantiations.get(methodNode) = methodClosureInstantiations
     }
   }
 
@@ -244,13 +245,13 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess, byteCodeRepository:
         if (ins.getType == AbstractInsnNode.METHOD_INSN) {
           val mi = ins.asInstanceOf[MethodInsnNode]
           val clonedMi = cloned.asInstanceOf[MethodInsnNode]
-          callsitePositions(clonedMi) = callsitePos
-          if (inlineAnnotatedCallsites(mi))
-            inlineAnnotatedCallsites += clonedMi
-          if (noInlineAnnotatedCallsites(mi))
-            noInlineAnnotatedCallsites += clonedMi
-          if (staticallyResolvedInvokespecial(mi))
-            staticallyResolvedInvokespecial += clonedMi
+          callsitePositions.get(clonedMi) = callsitePos
+          if (inlineAnnotatedCallsites.get(mi))
+            inlineAnnotatedCallsites.get += clonedMi
+          if (noInlineAnnotatedCallsites.get(mi))
+            noInlineAnnotatedCallsites.get += clonedMi
+          if (staticallyResolvedInvokespecial.get(mi))
+            staticallyResolvedInvokespecial.get += clonedMi
         } else if (BCodeUtils.isStore(ins)) {
           val vi = ins.asInstanceOf[VarInsnNode]
           writtenLocals += vi.`var`

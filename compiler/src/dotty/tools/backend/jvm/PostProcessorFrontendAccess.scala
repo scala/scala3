@@ -6,13 +6,11 @@ import dotty.tools.dotc.util.*
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.io.AbstractFile
 
-import java.util.{Collection as JCollection, Map as JMap}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.config.ScalaSettings
-import BTypes.InternalName
 
 import scala.collection.mutable
 import scala.compiletime.uninitialized
@@ -42,13 +40,7 @@ sealed abstract class PostProcessorFrontendAccess {
 
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
 
-  inline def perRunLazy[T](inline init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
-
-  def recordPerRunCache[T <: mutable.Clearable](cache: T): T
-
-  def recordPerRunJavaMapCache[T <: JMap[?, ?]](cache: T): T
-
-  def recordPerRunJavaCache[T <: JCollection[?]](cache: T): T
+  def perRunLazy[T](init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
 }
 
 object PostProcessorFrontendAccess {
@@ -137,8 +129,6 @@ object PostProcessorFrontendAccess {
   class Impl(entryPoints: mutable.HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
-
-    def recordPerRunCache[T <: mutable.Clearable](cache: T): T = cache // TODO FIX ME: This doesn't cache anything
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])

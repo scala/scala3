@@ -27,7 +27,7 @@ import dotty.tools.dotc.util.SourcePosition
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
  * instance.
  */
-class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
+class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(using Context) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -36,8 +36,8 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
    * inlining: when inlining an indyLambda instruction into a class, we need to make sure the class
    * has the method.
    */
-  private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
-    ppa.recordPerRunJavaMapCache(new ConcurrentHashMap)
+  private val indyLambdaImplMethods: Lazy[ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]] =
+    ppa.perRunLazy(new ConcurrentHashMap)
 
   lazy val classfileVersion: Int = BackendUtils.classfileVersionMap(ppa.compilerSettings.target.toInt)
 
@@ -186,13 +186,13 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
   }
 
   def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
-    indyLambdaImplMethods.get(hostClass) match {
+    indyLambdaImplMethods.get.get(hostClass) match {
       case null => None
       case methods => Some(methods.synchronized(action(methods)))
     }
 
   def onIndyLambdaImplMethod[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): T = {
-    val methods = indyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
+    val methods = indyLambdaImplMethods.get.computeIfAbsent(hostClass, _ => mutable.Map.empty)
     methods.synchronized(action(methods))
   }
 

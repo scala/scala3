@@ -47,6 +47,7 @@ sealed trait BackendReporting {
   def relay(r: Report)(using ctx: Context): Unit = r match {
     case Report.Error(m, pos) => error(m(ctx), pos)
     case Report.Warning(m, pos) => warning(m(ctx), pos)
+    case Report.OptimizerWarning(m, s, pos) => warning(m(ctx), pos) // TODO use the site
     case Report.Log(m) => log(m)
   }
 

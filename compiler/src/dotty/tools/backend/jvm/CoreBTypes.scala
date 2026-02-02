@@ -6,6 +6,8 @@ import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
 import BackendReporting.NoClassBTypeInfo
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 import scala.tools.asm.Handle
 
@@ -14,7 +16,7 @@ case class MethodNameAndType(name: String, methodType: MethodBType)
 // TODO rename to something more meaningful like "CompilationTypes" -- what it really is is anything involving symbols/classes/per-compilation stuff
 //      (as opposed to primitive types which are shared across compilations)
 
-abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAccess) {
+abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAccess)(using ctx: Context) {
   def primitiveTypeMap: Map[Symbol, PrimitiveBType]
 
   def boxedClasses: Set[ClassBType]
@@ -70,15 +72,15 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
 
   // Concurrent maps because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
-  private val classBTypeCache: ConcurrentHashMap[InternalName, ClassBType] =
-    frontendAccess.recordPerRunJavaMapCache(new ConcurrentHashMap[InternalName, ClassBType])
+  private val classBTypeCache: Lazy[ConcurrentHashMap[InternalName, ClassBType]] =
+    frontendAccess.perRunLazy(new ConcurrentHashMap[InternalName, ClassBType])
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
   def classBType[T](internalName: InternalName, t: T, fromSymbol: Boolean)(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType =
-    ClassBType(internalName, t, fromSymbol, this, classBTypeCache)(init)
+    ClassBType(internalName, t, fromSymbol, this, classBTypeCache.get)(init)
 
   /** Obtain a previously constructed ClassBType for a given internal name. */
   def classBTypeFromInternalName(internalName: InternalName): ClassBType =
-    classBTypeCache.get(internalName)
+    classBTypeCache.get.get(internalName)
 
 }

@@ -64,7 +64,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
           // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
           def hasMethod(c: ClassNode): Boolean = {
             val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
-            if (r) callGraph.staticallyResolvedInvokespecial += mi
+            if (r) callGraph.staticallyResolvedInvokespecial.get += mi
             r
           }
 
@@ -258,7 +258,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
-        callGraph.callsites(method).valuesIterator foreach {
+        callGraph.callsites.get(method).valuesIterator foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
           case cs: Callsite if !failed(cs.callsiteInstruction) && cs.callee.isRight && !isLoop(cs.callsiteInstruction, cs.callee.get) =>
             heuristics.inlineRequest(cs) match {
@@ -436,7 +436,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
     // New labels for the cloned instructions
     val labelsMap = cloneLabels(callee)
     val sameSourceFile = sourceFilePath match {
-      case Some(calleeSource) => byteCodeRepository.compilingClasses.get(callsite.callsiteClass.internalName) match {
+      case Some(calleeSource) => byteCodeRepository.compilingClasses.get.get(callsite.callsiteClass.internalName) match {
         case Some((_, `calleeSource`)) => true
         case _ => false
       }
