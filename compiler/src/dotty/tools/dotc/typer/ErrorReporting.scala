@@ -185,9 +185,11 @@ object ErrorReporting {
         // use normalized types if that also shows an error, and both sides stripped
         // the same number of context functions. Use original types otherwise.
 
-      def missingElse = tree match
+      def missingPart = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           Note("\nMaybe you are missing an else part for the conditional?") :: Nil
+        case Literal(Constant(())) if tree.span.isSynthetic && tree.hasAttachment(desugar.UnitResultAfterDef) =>
+          Note("\nMaybe you are missing an expression after a block with definitions?") :: Nil
         case _ =>
           Nil
 
@@ -201,7 +203,7 @@ object ErrorReporting {
           Note(i"\n\nThe error occurred for a synthesized $synthText") :: Nil
         else Nil
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ missingElse ++ badTreeNote))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ missingPart ++ badTreeNote))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */

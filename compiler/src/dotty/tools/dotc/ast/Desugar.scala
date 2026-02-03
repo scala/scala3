@@ -70,6 +70,8 @@ object desugar {
 
   val WasTypedInfix: Property.Key[Unit] = Property.StickyKey()
 
+  val UnitResultAfterDef: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1703,8 +1705,15 @@ object desugar {
    */
   def block(tree: Block)(using Context): Block = tree.expr match {
     case EmptyTree =>
-      cpy.Block(tree)(tree.stats,
-        syntheticUnitLiteral.withSpan(if (tree.stats.isEmpty) tree.span else tree.span.endPos))
+      val expr =
+        if tree.stats.isEmpty then
+          syntheticUnitLiteral.withSpan(tree.span)
+        else
+          val res = syntheticUnitLiteral.withSpan(tree.span.endPos)
+          if tree.stats.last.isInstanceOf[DefTree] then
+            res.pushAttachment(UnitResultAfterDef, ())
+          res
+      cpy.Block(tree)(tree.stats, expr)
     case _ =>
       tree
   }

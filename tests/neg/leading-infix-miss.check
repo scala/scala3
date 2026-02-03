@@ -11,5 +11,6 @@
   |        ^
   |        Found:    Unit
   |        Required: Boolean
+  |        Maybe you are missing an expression after a block with definitions?
   |
   | longer explanation available when compiling with `-explain`

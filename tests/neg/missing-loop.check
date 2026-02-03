@@ -1,0 +1,8 @@
+-- [E007] Type Mismatch Error: tests/neg/missing-loop.scala:8:63 -------------------------------------------------------
+8 |    if i == 0 then xs else loop(i - 1, (dice.next() % n) :: xs) // error
+  |                                                               ^
+  |                                               Found:    Unit
+  |                                               Required: List[Int]
+  |                                               Maybe you are missing an expression after a block with definitions?
+  |
+  | longer explanation available when compiling with `-explain`
