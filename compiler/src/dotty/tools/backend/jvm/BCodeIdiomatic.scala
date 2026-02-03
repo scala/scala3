@@ -419,26 +419,45 @@ trait BCodeIdiomatic {
         return
       }
 
-      // sort `keys` by increasing key, keeping `branches` in sync. TODO FIXME use quicksort
-      var i = 1
-      while (i < keys.length) {
-        var j = 1
-        while (j <= keys.length - i) {
-          if (keys(j) < keys(j - 1)) {
-            val tmp     = keys(j)
-            keys(j)     = keys(j - 1)
-            keys(j - 1) = tmp
-            val tmpL        = branches(j)
-            branches(j)     = branches(j - 1)
-            branches(j - 1) = tmpL
+      // sort `keys` by increasing key, keeping `branches` in sync using quicksort
+      def swap(i: Int, j: Int): Unit = {
+        val tmpKey = keys(i)
+        keys(i) = keys(j)
+        keys(j) = tmpKey
+        val tmpBranch = branches(i)
+        branches(i) = branches(j)
+        branches(j) = tmpBranch
+      }
+
+      def partition(lo: Int, hi: Int): Int = {
+        val pivot = keys(hi)
+        var i = lo
+        var j = lo
+        while (j < hi) {
+          if (keys(j) < pivot) {
+            swap(i, j)
+            i += 1
           }
           j += 1
         }
-        i += 1
+        swap(i, hi)
+        i
+      }
+
+      def quicksort(lo: Int, hi: Int): Unit = {
+        if (lo < hi) {
+          val p = partition(lo, hi)
+          quicksort(lo, p - 1)
+          quicksort(p + 1, hi)
+        }
+      }
+
+      if (keys.length > 1) {
+        quicksort(0, keys.length - 1)
       }
 
       // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
-      i = 1
+      var i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
           abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
