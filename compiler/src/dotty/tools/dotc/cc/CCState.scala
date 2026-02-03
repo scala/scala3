@@ -163,6 +163,12 @@ object CCState:
   /** Should uses not be recorded in markFree? */
   def discardUses(using Context): Boolean = ccState.discardUses
 
+  /** Perform `op` unless operation has been tried on `c` before.
+   *  This is needed to prevent infinite recursions in methods like
+   *  tryInclude and accountsFor. The relation from capability to capability
+   *  in its underling set can have cycles, for instance when capability objects
+   *  are mutually dependent. We need to avoid going through such cycles more than once.
+   */
   inline def ifNotTried(c: Capability)(inline op: Boolean)(using Context): Boolean =
     val ccs = ccState
     val tried = ccs.triedCapabilities

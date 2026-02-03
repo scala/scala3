@@ -202,7 +202,7 @@ sealed abstract class CaptureSet extends Showable:
   protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
     if newElems.size == 0 then true
     else if newElems.size == 1 then tryInclude(newElems.nth(0), origin)
-    else TypeComparer.jointOp(newElems.forall(tryInclude(_, origin)))
+    else TypeComparer.atomicOp(newElems.forall(tryInclude(_, origin)))
 
   protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
     if mutability == Writer then toReader() else true
@@ -1214,7 +1214,7 @@ object CaptureSet:
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
       else
-        TypeComparer.jointOp:
+        TypeComparer.atomicOp:
           val res = super.tryInclude(elem, origin)
           // If this is the union of a constant and a variable,
           // propagate `elem` to the variable part to avoid slack
@@ -1257,7 +1257,7 @@ object CaptureSet:
         else true
       !inIntersection
       || accountsFor(elem)
-      || TypeComparer.jointOp:
+      || TypeComparer.atomicOp:
             addNewElem(elem)
             && ((origin eq cs1) || cs1.tryInclude(elem, this))
             && ((origin eq cs2) || cs2.tryInclude(elem, this))

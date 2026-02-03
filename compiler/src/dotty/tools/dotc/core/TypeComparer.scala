@@ -1649,10 +1649,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       i += 1
     undoLog.takeInPlace(prevSize)
 
-  /** Treat `op` as a joint compare operation. If one part fails, undo
+  /** Treat `op` as an atomic compare operation. If one part fails, undo
    *  all previously inclusions of elements in capsets.
    */
-  def jointOp(op: => Boolean): Boolean =
+  def atomicOp(op: => Boolean): Boolean =
     val savedLogSize = undoLog.size
     if op then true
     else
@@ -3592,8 +3592,8 @@ object TypeComparer {
   def compareResult(op: => Boolean)(using Context): CompareResult =
     comparing(_.compareResult(op))
 
-  def jointOp(op: => Boolean)(using Context): Boolean =
-    comparing(_.jointOp(op))
+  def atomicOp(op: => Boolean)(using Context): Boolean =
+    comparing(_.atomicOp(op))
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
     currentComparer.isolated(op, x => x)
