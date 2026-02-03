@@ -104,16 +104,16 @@ object Types extends TypeUtils {
 //    if uniqId == 19555 then trace.dumpStack()
 
     /** A cache indicating whether the type was still provisional, last time we checked */
-    @sharable private var mightBeProvisional = true
+    @sharable private[core] var mightBeProvisional = true
 
     /** Is this type still provisional? This is the case if the type contains, or depends on,
      *  uninstantiated type variables or type symbols that have the Provisional flag set.
      *  This is an antimonotonic property - once a type is not provisional, it stays so forever.
      *
-     *  FIXME: The semantics of this flag are broken by the existence of `TypeVar#resetInst`,
-     *         a non-provisional type could go back to being provisional after
-     *         a call to `resetInst`. This means all caches that rely on `isProvisional`
-     *         can likely end up returning stale results.
+     *  Note: `TypeVar#resetInst` can reset an instantiated type variable back to uninstantiated,
+     *  which would make containing types provisional again. To handle this correctly, `resetInst`
+     *  resets `mightBeProvisional = true` on the TypeVar, ensuring subsequent `isProvisional`
+     *  checks will re-evaluate correctly.
      */
     def isProvisional(using Context): Boolean = mightBeProvisional && testProvisional
 
@@ -5043,9 +5043,9 @@ object Types extends TypeUtils {
    *  is different from the variable's creation state (meaning unrolls are possible)
    *  in the current typer state.
    *
-   *  FIXME: the "once" in the statement above is not true anymore now that `resetInst`
-   *         exists, this is problematic for caching (see `Type#isProvisional`),
-   *         we should try getting rid of this method.
+   *  Note: The "once" above is not strictly true since `resetInst` can reset the instantiation.
+   *  However, `resetInst` also resets `mightBeProvisional = true`, so caches that rely on
+   *  `isProvisional` will correctly re-evaluate after a reset.
    *
    *  @param  origin           the parameter that's tracked by the type variable.
    *  @param  creatorState     the typer state in which the variable was created.
@@ -5085,6 +5085,7 @@ object Types extends TypeUtils {
     private[core] def resetInst(ts: TyperState): Unit =
       assert(inst.exists)
       inst = NoType
+      mightBeProvisional = true // Invalidate cache: this TypeVar is provisional again
       owningState = new WeakReference(ts)
 
     /** The state owning the variable. This is at first `creatorState`, but it can
