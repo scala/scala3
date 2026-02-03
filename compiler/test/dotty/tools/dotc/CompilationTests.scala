@@ -16,9 +16,11 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
+import TestSources.scoverageIgnoreExcludelisted
 import reporting.TestReporter
 import vulpix._
 import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.coverage.Serializer
 
 class CompilationTests {
   import ParallelTesting._
@@ -54,7 +56,12 @@ class CompilationTests {
     if scala.util.Properties.isJavaAtLeast("16") then
       tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Wsafe-init"))
 
-    aggregateTests(tests*).checkCompile()
+    val compilationTest = withCoverage(aggregateTests(tests*))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new PosTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Pos")
+    } else {
+      compilationTest.checkCompile()
+    }
   }
 
   @Test def rewrites: Unit = {
@@ -173,20 +180,30 @@ class CompilationTests {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
-    aggregateTests(
+    val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
-    ).checkRuns()
+    ))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
   }
 
   // Generic java signatures tests ---------------------------------------------
 
   @Test def genericJavaSignatures: Unit = {
     implicit val testGroup: TestGroup = TestGroup("genericJavaSignatures")
-    compileFilesInDir("tests/generic-java-signatures", defaultOptions).checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/generic-java-signatures", defaultOptions))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
   }
 
   // Pickling Tests ------------------------------------------------------------
@@ -255,8 +272,13 @@ class CompilationTests {
 
   @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
-    compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
-  }.checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
+  }
 
   // initialization tests for global objects
   @Test def checkInitGlobal: Unit = {
@@ -394,7 +416,7 @@ class CompilationTests {
   }
 }
 
-object CompilationTests extends ParallelTesting {
+object CompilationTests extends ParallelTesting with CoverageSupport {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 45.seconds
@@ -410,4 +432,5 @@ object CompilationTests extends ParallelTesting {
     super.cleanup()
     summaryReport.echoSummary()
   }
+
 }
