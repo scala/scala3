@@ -333,7 +333,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         try toText(tp.ref)
         catch case ex: Throwable => "..."
       case sel: cc.PathSelectionProto =>
-        "?.{ " ~ toText(sel.select.symbol) ~ "}"
+        "?.{ " ~ toText(sel.selector) ~ "}"
       case AnySelectionProto =>
         "a type that can be selected or applied"
       case tp: SelectionProto =>

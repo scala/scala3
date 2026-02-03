@@ -219,7 +219,7 @@ object Capabilities:
 
     def descr(using Context) =
       val originStr = origin match
-        case Origin.InDecl(sym) if sym.exists =>
+        case Origin.InDecl(sym, _) if sym.exists =>
           origin.explanation
         case _ =>
           i" created in ${hiddenSet.owner.sanitizedDescription}${origin.explanation}"
@@ -233,7 +233,7 @@ object Capabilities:
     def apply(owner: Symbol, prefix: Type, origin: Origin)(using Context): LocalCap =
       new LocalCap(prefix)(owner, origin, null)
     def apply(owner: Symbol, origin: Origin)(using Context): LocalCap =
-      apply(owner, owner.skipWeakOwner.thisType, origin)
+      apply(owner, owner.skipStrictValDef.thisType, origin)
     def apply(origin: Origin)(using Context): LocalCap =
       apply(ctx.owner, origin)
 
@@ -700,6 +700,9 @@ object Capabilities:
         isEmpty || ref1.isKnownEmpty
       case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
+      case _: RootCapability => false
+      case _: ObjectCapability if ccState.isSepCheck =>
+        captureSetOfInfo.dropEmpties().elems.isEmpty
       case _ => false
 
     def invalidateCaches() =
@@ -817,7 +820,7 @@ object Capabilities:
               case NoPrefix => true
               case pre: ThisType => x.ccOwner.isContainedIn(pre.cls)
               case pre =>
-                capt.println(i"LocalCap not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipWeakOwner.thisType}")
+                capt.println(i"LocalCap not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipStrictValDef.thisType}")
                 false
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
@@ -906,7 +909,7 @@ object Capabilities:
         case x: LocalCap => y match
           case y: LocalCap =>
             x.origin match
-              case Origin.InDecl(sym) =>
+              case Origin.InDecl(sym, _) =>
                 def occursInPrefix(pre: Type): Boolean = pre match
                   case pre @ TermRef(pre1, _) =>
                     pre.symbol == sym
@@ -991,14 +994,14 @@ object Capabilities:
    *  error diagnostics
    */
   enum Origin derives CanEqual:
-    case InDecl(sym: Symbol)
+    case InDecl(sym: Symbol, fields: List[Symbol] = Nil)
     case TypeArg(tp: Type)
     case UnsafeAssumePure
     case Formal(pref: ParamRef, app: tpd.Apply)
     case ResultInstance(methType: Type, meth: Symbol)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
-    case NewInstance(tp: Type)
+    case NewInstance(tp: Type, fields: List[Symbol])
     case LambdaExpected(respt: Type)
     case LambdaActual(restp: Type)
     case OverriddenType(member: Symbol)
@@ -1006,10 +1009,21 @@ object Capabilities:
     case Parameter(param: Symbol)
     case Unknown
 
+    def contributingFields: List[Symbol] = this match
+      case InDecl(sym, fields) => fields
+      case NewInstance(tp, fields) => fields
+      case _ => Nil
+
+    private def contributingStr(using Context): String =
+      contributingFields match
+        case Nil => ""
+        case field :: Nil => s" with contributing field $field"
+        case fields => s" with contributing fields ${fields.map(_.show).mkString(", ")}"
+
     def explanation(using Context): String = this match
-      case InDecl(sym: Symbol) =>
-        if sym.is(Method) then i" in the result type of $sym"
-        else if sym.exists then i" in the type of $sym"
+      case InDecl(sym, fields) =>
+        if sym.is(Method) then i" in the result type of $sym$contributingStr"
+        else if sym.exists then i" in the type of $sym$contributingStr"
         else ""
       case TypeArg(tp: Type) =>
         i" of type argument $tp"
@@ -1027,8 +1041,8 @@ object Capabilities:
         i" when instantiating argument of unapply with type $info"
       case LocalInstance(restpe) =>
         i" when instantiating expected result type $restpe of function literal"
-      case NewInstance(tp) =>
-        i" when constructing instance $tp"
+      case NewInstance(tp, fields) =>
+        i" when constructing instance $tp$contributingStr"
       case LambdaExpected(respt) =>
         i" when instantiating expected result type $respt of lambda"
       case LambdaActual(restp: Type) =>

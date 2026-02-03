@@ -4,7 +4,7 @@ import caps.unsafe.untrackedCaptures
 class Test extends Stateful:
   var ctxStack: Array[FreshCtx^] = new Array(10)
 
-  class FreshCtx(level: Int) extends Stateful:
+  class FreshCtx(level: Int) extends Stateful:// uses Test.this: !!! uncomment --> error
     this: FreshCtx^ =>
     def detached: Boolean =
       val c: FreshCtx^{any.rd} = ctxStack(level)

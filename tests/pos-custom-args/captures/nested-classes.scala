@@ -8,7 +8,7 @@ class Pkg(using io: IO):
     this: Foo^{Pkg.this} =>
     def m(foo: Blah^{io}) = ???
 class Pkg2(using io: IO):
-  class Foo:
+  class Foo uses Pkg2.this.io:
     def m(foo: Blah^{io}): Any = io; ???
 
 def main(using io: IO) =
