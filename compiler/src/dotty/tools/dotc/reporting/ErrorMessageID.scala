@@ -236,6 +236,9 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case DefaultShadowsGivenID // errorNumber: 220
   case RecurseWithDefaultID // errorNumber: 221
   case EncodedPackageNameID // errorNumber: 222
+  case IncreasingMatchReductionID // errorNumber: 223
+  case CyclicMatchTypeReductionID // errorNumber: 224
+  case MatchTypeReductionWithErrorArgsID // errorNumber: 225
 
   def errorNumber = ordinal - 1
 
