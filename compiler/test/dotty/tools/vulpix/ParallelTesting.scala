@@ -230,7 +230,8 @@ trait ParallelTesting extends RunnerOrchestration:
       Array(dir.getPath)
   }
 
-  protected def shouldSkipTestSource(testSource: TestSource): Boolean = false
+  protected def shouldSkipTestSource(testSource: TestSource): Boolean =
+    testSource.sourceFiles.length == 0
 
   protected def shouldReRun(testSource: TestSource): Boolean =
     failedTests.forall(rerun => testSource match {
