@@ -15,7 +15,8 @@ class BaseInlayHintsSuite extends BasePCSuite:
       base: String,
       expected: String,
       kind: Option[Int] = None,
-      hintsInPatternMatch: Boolean = false
+      hintsInPatternMatch: Boolean = false,
+      closingLabels: Boolean = false
   ): Unit =
     def pkgWrap(text: String) =
       if text.contains("package") then text
@@ -38,7 +39,7 @@ class BaseInlayHintsSuite extends BasePCSuite:
       implicitConversions = true,
       namedParameters = true,
       hintsInPatternMatch = hintsInPatternMatch,
-      closingLabels = false
+      closingLabels = closingLabels
     )
 
     val inlayHints = presentationCompiler

@@ -69,7 +69,10 @@ class PcInlayHintsProvider(
       tree: Tree,
       parent: Option[Tree]
   ): InlayHints =
-    // XRay hints are not mutually exclusive with other hints, so they must be matched separately
+    /*
+      XRay hints and closing labels are not mutually exclusive with other hints,
+      so they must be matched separately
+     */
     val firstPassHints = (tree, parent) match
       case XRayModeHint(tpe, pos) =>
         inlayHints.addToBlock(
@@ -79,10 +82,20 @@ class PcInlayHintsProvider(
         )
       case _ => inlayHints
 
+    val withClosingLabels = tree match
+      case ClosingLabel(name, pos) =>
+        firstPassHints.add(
+          adjustPos(pos).endPos.toLsp,
+          List(LabelPart(name)),
+          InlayHintKind.Parameter,
+          InlayHintOrigin.ClosingLabel
+        )
+      case _ => firstPassHints
+
     tree match
       case ImplicitConversion(symbol, range) =>
         val adjusted = adjustPos(range)
-        firstPassHints
+        withClosingLabels
           .add(
             adjusted.startPos.toLsp,
             labelPart(symbol, symbol.decodedName) :: LabelPart("(") :: Nil,
@@ -96,7 +109,7 @@ class PcInlayHintsProvider(
             InlayHintOrigin.ImplicitConversion
           )
       case ImplicitParameters(trees, pos) =>
-        firstPassHints.add(
+        withClosingLabels.add(
           adjustPos(pos).toLsp,
           ImplicitParameters.partsFromImplicitArgs(trees).map((label, maybeSymbol) =>
             maybeSymbol match
@@ -107,7 +120,7 @@ class PcInlayHintsProvider(
           InlayHintOrigin.ImplicitParameters
         )
       case ValueOf(label, pos) =>
-        firstPassHints.add(
+        withClosingLabels.add(
           adjustPos(pos).toLsp,
           LabelPart("(") :: LabelPart(label) :: List(LabelPart(")")),
           InlayHintKind.Parameter,
@@ -116,7 +129,7 @@ class PcInlayHintsProvider(
       case TypeParameters(tpes, pos, sel)
           if !syntheticTupleApply(sel) =>
         val label = tpes.map(toLabelParts(_, pos)).separated("[", ", ", "]")
-        firstPassHints.add(
+        withClosingLabels.add(
           adjustPos(pos).endPos.toLsp,
           label,
           InlayHintKind.Type,
@@ -125,7 +138,7 @@ class PcInlayHintsProvider(
       case InferredType(tpe, pos, defTree)
           if !isErrorTpe(tpe) =>
         val adjustedPos = adjustPos(pos).endPos
-        firstPassHints
+        withClosingLabels
           .add(
             adjustedPos.toLsp,
             LabelPart(": ") :: toLabelParts(tpe, pos),
@@ -150,7 +163,7 @@ class PcInlayHintsProvider(
         def adjustBlockParamPos(pos: SourcePosition): SourcePosition =
           pos.withStart(pos.start + 1)
 
-        args.foldLeft(firstPassHints) {
+        args.foldLeft(withClosingLabels) {
           case (ih, (name, pos0, isByName)) =>
             val pos = adjustPos(pos0)
             val isBlock = isBlockParam(pos)
@@ -171,7 +184,7 @@ class PcInlayHintsProvider(
               )
             else ih
         }
-      case _ => firstPassHints
+      case _ => withClosingLabels
 
   private def toLabelParts(
       tpe: Type,
@@ -561,3 +574,29 @@ object XRayModeHint:
     else false
 
 end XRayModeHint
+
+object ClosingLabel:
+  def unapply(tree: Tree)(
+      using params: InlayHintsParams,
+      ctx: Context
+  ): Option[(String, SourcePosition)] =
+    if params.closingLabels() then
+      tree match
+        case tree: DefDef if !isIgnored(tree.symbol) && endsWithBrace(tree) =>
+          Some((tree.symbol.decodedName, tree.sourcePos))
+        case tree: TypeDef if tree.isClassDef && endsWithBrace(tree) =>
+          Some((tree.symbol.decodedName, tree.sourcePos))
+        case _ => None
+    else None
+
+  private def isIgnored(sym: Symbol)(using Context): Boolean =
+    sym.is(Flags.Synthetic) || sym.isConstructor || samePosAsOwner(sym)
+
+  private def samePosAsOwner(sym: Symbol)(using Context): Boolean =
+    val owner = sym.owner
+    sym.span == owner.span
+
+  private def endsWithBrace(tree: Tree)(using Context): Boolean =
+    val pos = tree.sourcePos
+    pos.exists && !pos.span.isZeroExtent && pos.source(pos.end - 1) == '}'
+end ClosingLabel
