@@ -389,9 +389,7 @@ object Predef extends LowPriorityImplicits {
   // implicit classes -----------------------------------------------------
 
   /** @group implicit-classes-any */
-  @deprecated("Use `->` extension method instead.", since = "3.10.0")
   implicit final class ArrowAssoc[A](private val self: A) extends AnyVal {
-    @deprecated("Use `->` extension method instead.", since = "3.10.0")
     @inline def -> [B](y: B): (A, B) = (self, y)
     @deprecated("Use `->` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", "2.13.0")
     def →[B](y: B): (A, B) = ->(y)
@@ -610,11 +608,6 @@ object Predef extends LowPriorityImplicits {
      * }}}
      */
     inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
-
-  // extension method sugar ---------------------------------------------
-  extension[A] (self: A)
-    transparent inline def -> [B](y: B): (A, B) = (self, y)
-
 
 }
 
