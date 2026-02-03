@@ -9,9 +9,9 @@
   |                      Found:    (Test33.inc1 : () ->{Test33} Unit)
   |                      Required: () -> Unit
   |
-  |                      Note that capability `any` is not included in capture set {}.
+  |                      Note that capability `any` cannot flow into capture set {}.
   |
-  |                      Note that capability `Test33` is not included in capture set {}.
+  |                      Note that capability `Test33` cannot flow into capture set {}.
   |                      Note that object Test33 is a capability because it uses capabilities {any}
   |
   |                      where:    any is a root capability classified as Unscoped in the type of object Test33
@@ -23,9 +23,9 @@
    |                      Found:    (Test33.inc2 : () ->{Test33} Unit)
    |                      Required: () -> Unit
    |
-   |                      Note that capability `any` is not included in capture set {}.
+   |                      Note that capability `any` cannot flow into capture set {}.
    |
-   |                      Note that capability `Test33` is not included in capture set {}.
+   |                      Note that capability `Test33` cannot flow into capture set {}.
    |                      Note that object Test33 is a capability because it uses capabilities {any}
    |
    |                      where:    any is a root capability classified as Unscoped in the type of object Test33
@@ -37,6 +37,6 @@
    |                      Found:    (inc : () ->{ctr} Unit)
    |                      Required: () -> Unit
    |
-   |                      Note that capability `ctr` is not included in capture set {}.
+   |                      Note that capability `ctr` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

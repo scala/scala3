@@ -32,7 +32,7 @@
    |Found:    () ->{canThrow$1} Double
    |Required: () ->{any} Double
    |
-   |Note that capability `canThrow$1` is not included in capture set {any}
+   |Note that capability `canThrow$1` cannot flow into capture set {any}
    |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from any in method escaped.
    |
    |where:    any is a root capability in the result type of method escaped

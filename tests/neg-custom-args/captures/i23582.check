@@ -4,7 +4,7 @@
    |Found:    (x: Int, y: Int) ->{write, read} Int
    |Required: (Int, Int) ->{any.only[Read]} Int
    |
-   |Note that capability `write` is not included in capture set {any.only[Read]}.
+   |Note that capability `write` cannot flow into capture set {any.only[Read]}.
    |
    |where:    any is a root capability created in method test when checking argument to parameter op of method parReduce
    |

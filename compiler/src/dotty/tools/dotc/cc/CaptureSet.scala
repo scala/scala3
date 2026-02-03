@@ -1438,7 +1438,7 @@ object CaptureSet:
           else if !elem.tryClassifyAs(cs.classifier) then
             trailing:
               i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
-                |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
+                |cannot flow into capture set $cs of ${cs.classifier.name} elements"""
           else if cs.isBadRoot(elem) then
             elem match
               case elem: LocalCap =>
@@ -1447,10 +1447,10 @@ object CaptureSet:
                       |It leaks into outer capture set $cs$ownerStr"""
               case _ =>
                 trailing:
-                  i"universal capability `${elem.showAsCapability}` cannot be included in capture set $cs"
+                  i"universal capability `${elem.showAsCapability}` cannot flow into capture set $cs"
           else
             trailing:
-              i"capability `${elem.showAsCapability}` cannot be included in capture set $cs"
+              i"capability `${elem.showAsCapability}` cannot flow into capture set $cs"
         case cs: EmptyOfBoxed =>
           trailing:
             val (boxed, unboxed) =
@@ -1469,7 +1469,7 @@ object CaptureSet:
             if reasons.isEmpty then ""
             else reasons.mkString("\nbecause ", "\nand ", "")
           trailing:
-            i"capability `${elem.showAsCapability}` is not included in capture set $cs$why"
+            i"capability `${elem.showAsCapability}` cannot flow into capture set $cs$why"
 
       def moduleExplanation(sym: Symbol, ref: CoreCapability): String =
         val allElems = sym.info.captureSet.elems.toList
@@ -1502,8 +1502,8 @@ object CaptureSet:
           i"($elem at wrong level for $cs in ${cs.owner.showLocated})"
         else
           if ctx.settings.YccDebug.value
-          then i"$elem cannot be included in $trace"
-          else i"$elem cannot be included in $cs"
+          then i"$elem cannot flow into $trace"
+          else i"$elem cannot flow into in $cs"
   end IncludeFailure
 
   /** Failure indicating that a read-only capture set of a stateful type cannot be

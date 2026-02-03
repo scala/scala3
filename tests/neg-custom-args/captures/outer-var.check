@@ -4,7 +4,7 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p, q²} Unit
    |
-   |        Note that capability `q` is not included in capture set {p, q²}.
+   |        Note that capability `q` cannot flow into capture set {p, q²}.
    |
    |        where:    => refers to a root capability in the type of parameter q
    |                  q  is a parameter in method inner
@@ -17,7 +17,7 @@
    |         Found:    () ->{any} Unit
    |         Required: () ->{p, q} Unit
    |
-   |         Note that capability `any` is not included in capture set {p, q}.
+   |         Note that capability `any` cannot flow into capture set {p, q}.
    |
    |         where:    any is a root capability created in method inner
    |
@@ -28,7 +28,7 @@
    |         Found:    () ->{any} Unit
    |         Required: () ->{p} Unit
    |
-   |         Note that capability `any` cannot be included in capture set {p} of variable y.
+   |         Note that capability `any` cannot flow into capture set {p} of variable y.
    |
    |         where:    any is a root capability created in method inner
    |
@@ -39,7 +39,7 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p} Unit
    |
-   |        Note that capability `q` cannot be included in capture set {p} of variable y.
+   |        Note that capability `q` cannot flow into capture set {p} of variable y.
    |
    |        where:    => refers to a root capability in the type of parameter q
    |

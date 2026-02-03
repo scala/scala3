@@ -4,7 +4,7 @@
   |             Found:    (io : IO^)
   |             Required: IO^{any}
   |
-  |             Note that capability `io` is not included in capture set {any}
+  |             Note that capability `io` cannot flow into capture set {any}
   |             because (io : IO^) in method setIO is not visible from any in variable myIO.
   |
   |             where:    ^   refers to a root capability in the type of parameter io
@@ -17,7 +17,7 @@
    |             Found:    (io2 : IO^)
    |             Required: IO^{any}
    |
-   |             Note that capability `io2` is not included in capture set {any}
+   |             Note that capability `io2` cannot flow into capture set {any}
    |             because (io2 : IO^) in an enclosing function is not visible from any in variable myIO.
    |
    |             where:    ^   refers to a root capability in the type of parameter io2
@@ -30,7 +30,7 @@
    |Found:    (io3 : IO^)
    |Required: IO^{any}
    |
-   |Note that capability `io3` is not included in capture set {any}
+   |Note that capability `io3` cannot flow into capture set {any}
    |because (io3 : IO^) in an enclosing function is not visible from any in variable myIO.
    |
    |where:    ^   refers to a root capability created in anonymous function of type (io3²: IO^²): Unit of parameter parameter io3 of method $anonfun

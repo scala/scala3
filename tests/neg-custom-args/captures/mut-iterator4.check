@@ -9,7 +9,7 @@
    |Found:    Iterator[U^'s1]^{it.rd, f, it, any}
    |Required: Iterator[U]^{it, f}
    |
-   |Note that capability `any` is not included in capture set {it, f}.
+   |Note that capability `any` cannot flow into capture set {it, f}.
    |
    |where:    any is a root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{any².rd}) {...}
    |

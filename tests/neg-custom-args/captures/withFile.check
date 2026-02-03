@@ -30,7 +30,7 @@
    |Found:    () ->{f} Unit
    |Required: () ->{any} Unit
    |
-   |Note that capability `f` is not included in capture set {any}
+   |Note that capability `f` cannot flow into capture set {any}
    |because (f : Test2.File^) in an enclosing function is not visible from any in value later3.
    |
    |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): () => Unit of parameter parameter f of method $anonfun
@@ -43,7 +43,7 @@
    |Found:    Test2.Box[Test2.File^{f}]^'s7
    |Required: Test2.Box[Test2.File^{any}]
    |
-   |Note that capability `f` is not included in capture set {any}
+   |Note that capability `f` cannot flow into capture set {any}
    |because (f : Test2.File^) in an enclosing function is not visible from any in value later4.
    |
    |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): Test2.Box[Test2.File^²] of parameter parameter f of method $anonfun

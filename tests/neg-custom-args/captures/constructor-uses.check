@@ -18,7 +18,7 @@
    |                     Found:    (f : () ->{a.f²} a.B^{})
    |                     Required: () -> a.B
    |
-   |                     Note that capability `f` is not included in capture set {}.
+   |                     Note that capability `f` cannot flow into capture set {}.
    |
    |                     where:    f  is a value in method test
    |                               f² is a value in class A
@@ -30,6 +30,6 @@
    |                   Found:    (g : () ->{c} C^{})
    |                   Required: () -> C
    |
-   |                   Note that capability `g` is not included in capture set {}.
+   |                   Note that capability `g` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

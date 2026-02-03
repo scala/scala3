@@ -72,9 +72,9 @@
    |Found:    (x : () ->{test.Console, test.M.c} Unit)
    |Required: () -> Unit
    |
-   |Note that capability `any` is not included in capture set {}.
+   |Note that capability `any` cannot flow into capture set {}.
    |
-   |Note that capability `test.Console` is not included in capture set {}.
+   |Note that capability `test.Console` cannot flow into capture set {}.
    |Note that object Console is a capability because it contains fields value out
    |
    |where:    any is a root capability classified as SharedCapability in the type of object Console with contributing field val out

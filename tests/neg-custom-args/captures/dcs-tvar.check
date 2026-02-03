@@ -4,7 +4,7 @@
   |  Found:    () ->{any} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability `any` is not included in capture set {}.
+  |  Note that capability `any` cannot flow into capture set {}.
   |
   |  where:    any is a root capability in the type of type T
   |
@@ -15,7 +15,7 @@
   |  Found:    () ->{any} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability `any` is not included in capture set {}.
+  |  Note that capability `any` cannot flow into capture set {}.
   |
   |  where:    any is a root capability in the type of type U
   |

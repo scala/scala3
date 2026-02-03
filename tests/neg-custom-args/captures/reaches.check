@@ -4,7 +4,7 @@
    |           Found:    List[() ->{f} Unit]
    |           Required: List[() ->{C} Unit]
    |
-   |           Note that capability `f` is not included in capture set {C}.
+   |           Note that capability `f` cannot flow into capture set {C}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:34:7 ---------------------------------------
@@ -13,7 +13,7 @@
    |       Found:    List[() ->{f} Unit]
    |       Required: List[() ->{C} Unit]^{}
    |
-   |       Note that capability `f` cannot be included in capture set {C} of value cur.
+   |       Note that capability `f` cannot flow into capture set {C} of value cur.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:54:27 --------------------------------------
@@ -22,7 +22,7 @@
    |                           Found:    Id[() ->{any} Unit, () -> Unit]^'s1
    |                           Required: Id[() ->{any²} Unit, () => Unit]
    |
-   |                           Note that capability `any²` is not included in capture set {any}
+   |                           Note that capability `any²` cannot flow into capture set {any}
    |                           because any² is not visible from any in value id.
    |
    |                           where:    =>   refers to a root capability in the type of value id
@@ -36,7 +36,7 @@
    |Found:    (x : File^)
    |Required: File^{any}
    |
-   |Note that capability `x` is not included in capture set {any}
+   |Note that capability `x` cannot flow into capture set {any}
    |because (x : File^) in an enclosing function is not visible from any in value id.
    |
    |where:    ^   refers to a root capability created in anonymous function of type (x²: File^²): File^² of parameter parameter x of method $anonfun
@@ -49,7 +49,7 @@
    |Found:    File^{any}
    |Required: File^{id*}
    |
-   |Note that capability `any` is not included in capture set {id*}.
+   |Note that capability `any` cannot flow into capture set {id*}.
    |
    |where:    any is a root capability created in value f1 when instantiating method apply's type (x: File^): File^{fresh}
    |

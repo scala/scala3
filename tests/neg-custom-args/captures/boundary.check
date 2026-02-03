@@ -29,7 +29,7 @@
   |Found:    (local : scala.util.boundary.Label[Object^])
   |Required: scala.util.boundary.Label[scala.util.boundary.Label[Unit]^²]^{any}
   |
-  |Note that capability `any²` is not included in capture set {any}.
+  |Note that capability `any²` cannot flow into capture set {any}.
   |
   |where:    ^    refers to the root capability caps.any
   |          ^²   refers to a root capability classified as Control in the type of value local²
@@ -44,7 +44,7 @@
    |  Found:    scala.util.boundary.Break[AnyRef^{any}] @unchecked
    |  Required: scala.util.boundary.Break[Object^{any²}] @unchecked
    |
-   |  Note that capability `any²` is not included in capture set {any}.
+   |  Note that capability `any²` cannot flow into capture set {any}.
    |
    |  The error occurred for a synthesized tree:  _
    |
