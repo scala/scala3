@@ -2044,15 +2044,6 @@ class Definitions {
     Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
   )
 
-  @tu private lazy val _allRefClasses: Set[Symbol] = {
-    val baseNames = ScalaValueTypesNoUnit `union` Set(ObjectType)
-    val fullNames = baseNames.flatMap { base =>
-      List(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
-    }
-    fullNames.map(name => requiredClass(name)).toSet
-  }
-  def allRefClasses(using Context): Set[Symbol] = _allRefClasses
-
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
   private val typeTags = mutable.Map[TypeName, Name]().withDefaultValue(nme.specializedTypeNames.Object)
 
