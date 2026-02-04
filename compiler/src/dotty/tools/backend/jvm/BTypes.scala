@@ -696,7 +696,8 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
 
   def isInterface: Either[NoClassBTypeInfo, Boolean] = info.map(i => (i.flags & asm.Opcodes.ACC_INTERFACE) != 0)
 
-  private def superClassesTransitive: Either[NoClassBTypeInfo, List[ClassBType]] = try {
+  /** The super class chain of this type, starting with Object, ending with `this`. */
+  def superClassesChain: Either[NoClassBTypeInfo, List[ClassBType]] = try {
     var res = List(this)
     var sc = info.orThrow.superClass
     while (sc.nonEmpty) {
@@ -790,7 +791,7 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
           if (this.isSubtypeOf(other).orThrow) other else ts.ObjectRef
 
         case _ =>
-          firstCommonSuffix(superClassesTransitive.orThrow, other.superClassesTransitive.orThrow)
+          firstCommonSuffix(superClassesChain.orThrow, other.superClassesChain.orThrow)
       }
 
       assert(isNotNullOrNothing(res), s"jvmWiseLUB computed: $res")
@@ -799,18 +800,14 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
   }
 
   private def firstCommonSuffix(as: List[ClassBType], bs: List[ClassBType]): ClassBType = {
-    var chainA = as
-    var chainB = bs
-    var fcs: ClassBType = null
-    while {
-      if      (chainB contains chainA.head) fcs = chainA.head
-      else if (chainA contains chainB.head) fcs = chainB.head
-      else {
-        chainA = chainA.tail
-        chainB = chainB.tail
-      }
-      fcs == null
-    } do ()
+    var chainA = as.tail
+    var chainB = bs.tail
+    var fcs = ts.ObjectRef
+    while (chainA.nonEmpty && chainB.nonEmpty && chainA.head == chainB.head) {
+      fcs = chainA.head
+      chainA = chainA.tail
+      chainB = chainB.tail
+    }
     fcs
   }
 
