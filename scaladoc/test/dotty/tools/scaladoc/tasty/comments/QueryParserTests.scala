@@ -48,6 +48,61 @@ class QueryParserTests {
     testSuccess("#foo\\(ignoredOverloadDefinition*", StrictMemberId("foo(ignoredOverloadDefinition*"))
     testSuccess("#bar\\[ignoredOverloadDefinition*", StrictMemberId("bar[ignoredOverloadDefinition*"))
 
+    // Test overloaded method signature parsing
+    testSuccess("processBuffer[A](b:scala.collection.mutable.Buffer[A])*", Id("processBuffer[A](b:scala.collection.mutable.Buffer[A])*"))
+    testSuccess("processMap[K,V](m:scala.collection.mutable.Map[K,V])*", Id("processMap[K,V](m:scala.collection.mutable.Map[K,V])*"))
+    testSuccess("processSet[A](s:scala.collection.mutable.Set[A])*", Id("processSet[A](s:scala.collection.mutable.Set[A])*"))
+    testSuccess("processSeq[A](s:scala.collection.mutable.Seq[A])*", Id("processSeq[A](s:scala.collection.mutable.Seq[A])*"))
+    testSuccess("processIterator[A](it:scala.collection.Iterator[A])*", Id("processIterator[A](it:scala.collection.Iterator[A])*"))
+    testSuccess("processIterable[A](it:scala.collection.mutable.Iterable[A])*", Id("processIterable[A](it:scala.collection.mutable.Iterable[A])*"))
+    testSuccess("processList[A](l:scala.collection.immutable.List[A])*", Id("processList[A](l:scala.collection.immutable.List[A])*"))
+    testSuccess("processProperties(p:java.util.Properties)*", Id("processProperties(p:java.util.Properties)*"))
+
+    // Test qualified identifiers with overloaded method signatures
+    testSuccess("tests.overloadedMethods.OverloadedMethods.processBuffer[A](b:scala.collection.mutable.Buffer[A])*",
+      l2q("tests".dot, "overloadedMethods".dot, "OverloadedMethods".dot)("processBuffer[A](b:scala.collection.mutable.Buffer[A])*"))
+    testSuccess("tests.overloadedMethods.OverloadedMethods.processMap[K,V](m:scala.collection.mutable.Map[K,V])*",
+      l2q("tests".dot, "overloadedMethods".dot, "OverloadedMethods".dot)("processMap[K,V](m:scala.collection.mutable.Map[K,V])*"))
+    testSuccess("tests.overloadedMethods.OverloadedMethods.processSet[A](s:scala.collection.mutable.Set[A])*",
+      l2q("tests".dot, "overloadedMethods".dot, "OverloadedMethods".dot)("processSet[A](s:scala.collection.mutable.Set[A])*"))
+
+    // Test method with multiple parameter types in signature
+    testSuccess("transform[K,V](m:scala.collection.mutable.Map[K,V])*", Id("transform[K,V](m:scala.collection.mutable.Map[K,V])*"))
+    testSuccess("transform[A](b:scala.collection.mutable.Buffer[A])*", Id("transform[A](b:scala.collection.mutable.Buffer[A])*"))
+    testSuccess("transform(x:Int)*", Id("transform(x:Int)*"))
+
+    // Test edge cases for overload signatures
+    // Nested generics
+    testSuccess("foo[A](x:Map[String,List[A]])*", Id("foo[A](x:Map[String,List[A]])*"))
+    testSuccess("f[A,B](x:Either[Option[A],List[B]])*", Id("f[A,B](x:Either[Option[A],List[B]])*"))
+
+    // Multiple parameters
+    testSuccess("bar(a:Int,b:String)*", Id("bar(a:Int,b:String)*"))
+    testSuccess("baz(a:Int,b:String,c:Boolean)*", Id("baz(a:Int,b:String,c:Boolean)*"))
+    testSuccess("merge(a:Buffer[_],b:Set[_])*", Id("merge(a:Buffer[_],b:Set[_])*"))
+
+    // Empty parameters (no-arg methods)
+    testSuccess("noArgs()*", Id("noArgs()*"))
+    testSuccess("action()*", Id("action()*"))
+    testSuccess("pkg.Class.action()*", l2q("pkg".dot, "Class".dot)("action()*"))
+
+    // No type parameters
+    testSuccess("simpleMethod(x:Int)*", Id("simpleMethod(x:Int)*"))
+    testSuccess("twoParams(a:String,b:Boolean)*", Id("twoParams(a:String,b:Boolean)*"))
+
+    // Deeply nested types
+    testSuccess("complex[A](x:Map[String,Map[Int,List[A]]])*", Id("complex[A](x:Map[String,Map[Int,List[A]]])*"))
+
+    // Custom/user-defined types
+    testSuccess("process(x:tests.CustomType)*", Id("process(x:tests.CustomType)*"))
+    testSuccess("handle(x:com.example.MyClass)*", Id("handle(x:com.example.MyClass)*"))
+
+    // Qualified identifiers with complex signatures
+    testSuccess("pkg.Class.method[A](x:Map[String,List[A]])*",
+      l2q("pkg".dot, "Class".dot)("method[A](x:Map[String,List[A]])*"))
+    testSuccess("a.b.c.method(a:Int,b:String)*",
+      l2q("a".dot, "b".dot, "c".dot)("method(a:Int,b:String)*"))
+
     testFailAt("#", 1)
     testFailAt("#`", 2)
     testFailAt("``", 2)

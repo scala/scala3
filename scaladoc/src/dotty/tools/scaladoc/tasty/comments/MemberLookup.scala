@@ -180,11 +180,31 @@ trait MemberLookup {
         val sel = MemberLookup.Selector.fromString(q)
         val res = sel.kind match {
           case MemberLookup.SelectorKind.NoForce =>
-            val lookedUp = localLookup(sel, owner).toSeq
+            // Extract just the method name from the signature (removing type params and param list)
+            val methodName = extractMethodName(sel.ident)
+            val nameSel = MemberLookup.Selector(methodName, sel.kind)
+            val lookedUp = localLookup(nameSel, owner).toSeq
             // note: those flag lookups are necessary b/c for objects we return their classes
-            lookedUp.find(s => s.isType && !s.flags.is(Flags.Module)).orElse(
-              lookedUp.find(s => s.isTerm || s.flags.is(Flags.Module))
-            )
+            val typeMatch = lookedUp.find(s => s.isType && !s.flags.is(Flags.Module))
+            if typeMatch.isDefined then typeMatch
+            else {
+              val termMatches =
+                lookedUp.filter(s => s.isTerm || s.flags.is(Flags.Module))
+              if termMatches.size <= 1 then termMatches.headOption
+              else {
+                // Multiple overloads found, try to match based on signature in query
+                parseSignatureParams(sel.ident) match {
+                  case Some(queryParamTypes) =>
+                    // Signature was provided, try to find matching overload
+                    termMatches.find { sym =>
+                      matchesParameterTypes(sym, queryParamTypes)
+                    }.orElse(termMatches.headOption)
+                  case None =>
+                    // No signature provided, fall back to first match
+                    termMatches.headOption
+                }
+              }
+            }
           case _ =>
             localLookup(sel, owner).nextOption()
         }
@@ -219,6 +239,110 @@ trait MemberLookup {
           .orElse(tp.flatMap(downwardLookup(qs, _)))
           .orElse(tm.flatMap(downwardLookup(qs, _)))
         }
+    }
+  }
+
+  /** Parse parameter types from a method signature.
+   *  Input: "[A](b:scala.collection.mutable.Buffer[A],c:Int)"
+   *  Output: Some(List("scala.collection.mutable.Buffer", "Int"))
+   *
+   *  Returns:
+   *  - None if no parameter list is present (e.g., "method" or "method[A]")
+   *  - Some(Nil) if parameter list is empty (e.g., "method()")
+   *  - Some(List(...)) if parameters are present
+   */
+  private def parseSignatureParams(signature: String): Option[List[String]] = {
+    // Normalize the signature by removing backslashes (they're used in scaladoc to escape dots)
+    val normalizedSignature = signature.replace("\\.", ".")
+
+    // Find the parameter list (after any type params)
+    val parenStart = normalizedSignature.indexOf('(')
+    if parenStart == -1 then return None
+
+    val parenEnd = normalizedSignature.lastIndexOf(')')
+    if parenEnd == -1 || parenEnd <= parenStart then return None
+
+    val paramList = normalizedSignature.substring(parenStart + 1, parenEnd)
+    if paramList.isEmpty then return Some(Nil)
+
+    // Split by comma, respecting nested brackets
+    val params = scala.collection.mutable.ListBuffer[String]()
+    var depth = 0
+    var start = 0
+    for i <- 0 until paramList.length do
+      val c = paramList.charAt(i)
+      if c == '[' then depth += 1
+      else if c == ']' then depth -= 1
+      else if c == ',' && depth == 0 then
+        params += paramList.substring(start, i).trim
+        start = i + 1
+    params += paramList.substring(start).trim
+
+    // Extract type from each "name:Type" pair, stripping type arguments
+    Some(params.toList.flatMap { param =>
+      val colonIdx = param.indexOf(':')
+      if colonIdx == -1 then None
+      else
+        val typePart = param.substring(colonIdx + 1).trim
+        // Remove type arguments to get the base type
+        val bracketIdx = typePart.indexOf('[')
+        val baseType = if bracketIdx == -1 then typePart else typePart.substring(0, bracketIdx)
+        Some(baseType)
+    })
+  }
+
+  /** Extract simple type name from a possibly qualified type.
+   *  "scala.collection.mutable.Buffer[A]" -> "Buffer"
+   *  "Int" -> "Int"
+   */
+  private def extractSimpleTypeName(qualifiedType: String): String = {
+    // Remove type arguments first
+    val withoutTypeArgs = qualifiedType.indexOf('[') match {
+      case -1 => qualifiedType
+      case i => qualifiedType.substring(0, i)
+    }
+    // Get last segment after '.'
+    withoutTypeArgs.split('.').last
+  }
+
+  /** Extract just the method name from a signature, removing type parameters and parameter lists.
+   *  For example, from "asJava[A](b:scala.collection.mutable.Buffer[A])*" extracts "asJava".
+   */
+  private def extractMethodName(signature: String): String = {
+    // Find the first occurrence of [ or (, and return everything before it
+    val bracketIndex = signature.indexOf('[')
+    val parenIndex = signature.indexOf('(')
+    if bracketIndex == -1 && parenIndex == -1 then signature
+    else {
+      val firstSpecial = if bracketIndex == -1 then parenIndex else if parenIndex == -1 then bracketIndex else math.min(bracketIndex, parenIndex)
+      signature.substring(0, firstSpecial)
+    }
+  }
+
+  /** Check if a method's parameter types match the expected parameter types from the query.
+   *  This compares the simple type names of all parameters in order, which could, theoretically,
+   * have edge cases with same-named types in different packages
+   */
+  private def matchesParameterTypes(using Quotes)(sym: reflect.Symbol, queryParamTypes: List[String]): Boolean = {
+    import reflect._
+
+    def getMethodParamTypes(tpe: TypeRepr): Option[List[String]] = tpe match {
+      case MethodType(_, paramTypes, _) =>
+        Some(paramTypes.map(pt => extractSimpleTypeName(pt.show)))
+      case PolyType(_, _, resType) =>
+        getMethodParamTypes(resType)
+      case _ => None
+    }
+
+    try {
+      getMethodParamTypes(sym.info) match {
+        case Some(actualTypes) =>
+          val querySimpleTypes = queryParamTypes.map(extractSimpleTypeName)
+          actualTypes == querySimpleTypes
+        case None => false
+      }
+    } catch {
+      case _: Exception => false
     }
   }
 }
