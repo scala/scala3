@@ -226,7 +226,7 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
         }
       }
 
-      Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass, innerClassSym.isPrivate))
+      Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))
     }
   }
 

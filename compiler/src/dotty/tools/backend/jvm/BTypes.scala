@@ -596,8 +596,7 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
 case class NestedInfo(enclosingClass: ClassBType,
                       outerName: Option[String],
                       innerName: Option[String],
-                      isStaticNestedClass: Boolean,
-                      enteringTyperPrivate: Boolean)
+                      isStaticNestedClass: Boolean)
 
 /**
  * This class holds the data for an entry in the InnerClass table. See the InnerClass summary
@@ -733,16 +732,16 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
   }
 
   def innerClassAttributeEntry: Either[NoClassBTypeInfo, Option[InnerClassEntry]] = info.map(i => i.nestedInfo.get map {
-    case NestedInfo(_, outerName, innerName, isStaticNestedClass, enteringTyperPrivate) =>
+    case NestedInfo(_, outerName, innerName, isStaticNestedClass) =>
       // the static flag in the InnerClass table has a special meaning, see InnerClass comment
-      def adjustStatic(flags: Int): Int = ( flags & ~Opcodes.ACC_STATIC |
+      def adjustStatic(flags: Int): Int = (flags & ~Opcodes.ACC_STATIC |
         (if (isStaticNestedClass) Opcodes.ACC_STATIC else 0)
         ) & BCodeHelpers.INNER_CLASSES_FLAGS
       InnerClassEntry(
         internalName,
         outerName.orNull,
         innerName.orNull,
-        flags = adjustStatic(if (enteringTyperPrivate) (i.flags & ~Opcodes.ACC_PUBLIC) | Opcodes.ACC_PRIVATE else i.flags)
+        flags = adjustStatic(i.flags)
       )
   })
 
