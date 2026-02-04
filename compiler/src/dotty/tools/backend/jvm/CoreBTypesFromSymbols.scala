@@ -577,15 +577,6 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
     }))
   }
 
-  private lazy val _primitiveToTypeDesc: Lazy[Map[Symbol, String]] = ppa.perRunLazy: // only those needed right below
-    Map(
-      defn.BooleanClass -> "Z",
-      defn.CharClass    -> "C",
-      defn.IntClass     -> "I",
-      defn.LongClass    -> "J",
-      defn.DoubleClass  -> "D"
-    )
-
   // scala/Tuple3 -> MethodNameAndType(<init>,(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V)
   // scala/Tuple2$mcZC$sp -> MethodNameAndType(<init>,(ZC)V)
   // ... this was easy in scala2, but now we don't specialize them so we have to know each name
@@ -601,10 +592,14 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
           ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List.fill(n)(ObjectRef), UNIT)))
         },
         spec1.map { sp1 =>
-          ("scala/Tuple1$mc" + _primitiveToTypeDesc.get(sp1) + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primitiveTypeMap(sp1)), UNIT)))
+          val prim = primitiveTypeMap(sp1)
+          ("scala/Tuple1$mc" + prim.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(), UNIT)))
         },
-        for sp2a <- spec2; sp2b <- spec2 yield
-          ("scala/Tuple2$mc" + _primitiveToTypeDesc.get(sp2a) + _primitiveToTypeDesc.get(sp2b) + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primitiveTypeMap(sp2a), primitiveTypeMap(sp2b)), UNIT)))
+        for sp2a <- spec2; sp2b <- spec2 yield {
+          val primA = primitiveTypeMap(sp2a)
+          val primB = primitiveTypeMap(sp2b)
+          ("scala/Tuple2$mc" + primA.descriptor + primB.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primA, primB), UNIT)))
+        }
       )
     )
   }
