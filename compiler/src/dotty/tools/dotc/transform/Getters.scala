@@ -2,15 +2,17 @@ package dotty.tools.dotc
 package transform
 
 import core.*
+import reporting.*
 import DenotTransformers.SymTransformer
 import Contexts.*
+import Decorators.*
 import SymDenotations.SymDenotation
 import Types.*
 import Symbols.*
 import MegaPhase.*
 import Flags.*
-
 import NameOps.*
+import util.chaining.*
 
 
 /** Performs the following rewritings for fields of a class:
@@ -92,30 +94,50 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic | PhantomSymbol | Erased
 
-  val newSetters = util.HashSet[Symbol]()
+  private val newSetters = util.HashSet[Symbol]()
 
-  def ensureSetter(sym: TermSymbol)(using Context) =
-    if !sym.setter.exists then
-      newSetters += sym.copy(
+  private def ensureSetter(sym: TermSymbol)(using Context): Symbol =
+    sym.setter match
+    case setter if setter.exists || newSetters.contains(setter) =>
+      setter
+    case _ =>
+      sym.copy(
         name = sym.name.setterName,
         info = MethodType(sym.info.widenExpr :: Nil, defn.UnitType)
-      ).enteredAfter(thisPhase)
+      )
+      .enteredAfter(thisPhase)
+      .tap: setter =>
+        newSetters += setter
+        if sym.is(Private) then
+          sym.owner.info.decls.toList.find: other =>
+            other != setter && other.name == setter.name && other.info =:= setter.info
+          .match
+          case Some(other) =>
+            report.error(DoubleDefinition(setter, other, sym.owner), sym.srcPos)
+          case _ =>
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol
     if !sym.is(Method) then return tree
     val getterDef = DefDef(sym.asTerm, tree.rhs).withSpan(tree.span).withAttachmentsFrom(tree)
     if !sym.is(Mutable) then return getterDef
-    ensureSetter(sym.asTerm)
-    if !newSetters.contains(sym.setter) then return getterDef
-    val setterDef = DefDef(sym.setter.asTerm, unitLiteral)
-    Thicket(getterDef, setterDef)
+    ensureSetter(sym.asTerm) match
+    case setter if newSetters.contains(setter) =>
+      val setterDef = DefDef(setter.asTerm, unitLiteral)
+      Thicket(getterDef, setterDef)
+    case _ =>
+      getterDef
 
   override def transformAssign(tree: Assign)(using Context): Tree =
     val lsym = tree.lhs.symbol.asTerm
     if lsym.is(Method) then
-      ensureSetter(lsym)
-      tree.lhs.becomes(tree.rhs).withSpan(tree.span)
+      ensureSetter(lsym) match
+      case setter if setter.exists => // setter == tree.lhs.symbol.setter or not
+        tree.lhs
+        .setterAppliedTo(setter, tree.rhs)
+        .withSpan(tree.span)
+      case _ =>
+        tree
     else tree
 }
 
