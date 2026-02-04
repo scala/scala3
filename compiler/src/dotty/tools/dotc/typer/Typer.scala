@@ -4457,8 +4457,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           errorTree(tree, em"Missing arguments for $methodStr")
       case _ =>
-        tryInsertApplyOrImplicit(tree, pt, locked):
-          errorTree(tree, MethodDoesNotTakeParameters(tree))
+        if isAcceptedSpuriousApply(tree, pt.args) then tree
+        else
+          tryInsertApplyOrImplicit(tree, pt, locked):
+            errorTree(tree, MethodDoesNotTakeParameters(tree))
     }
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
