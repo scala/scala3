@@ -108,11 +108,14 @@ object Build {
       val currentDate =
         formatter.format(java.time.ZonedDateTime.now(java.time.ZoneId.of("UTC")))
       s"${baseVersion}-bin-${currentDate}-${VersionUtil.gitHash}-NIGHTLY"
+    } else if (isBenchmark) {
+      s"${baseVersion}-bin-${VersionUtil.gitHash}-BENCH"
     }
     else s"${baseVersion}-bin-SNAPSHOT"
   }
   def isRelease = sys.env.get("RELEASEBUILD").contains("yes")
   def isNightly = sys.env.get("NIGHTLYBUILD").contains("yes")
+  def isBenchmark = sys.env.get("BENCHMARKBUILD").contains("yes")
 
   /** Version calculate for `nonbootstrapped` projects */
   val dottyNonBootstrappedVersion = {
