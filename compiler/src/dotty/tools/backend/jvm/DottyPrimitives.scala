@@ -50,7 +50,8 @@ class DottyPrimitives(ictx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: Apply, tpe: Type)(using Context): Int = {
+  def getPrimitive(app: Apply, tpe: Type): Int = {
+    given Context = ictx
     val fun = app.fun.symbol
     val defn = ctx.definitions
     val code = app.fun match {

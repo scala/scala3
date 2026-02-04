@@ -1,46 +1,70 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
-import scala.collection.mutable.{Clearable, HashSet}
-import dotty.tools.dotc.util.*
-import dotty.tools.dotc.reporting.Message
+import scala.collection.mutable.HashSet
 import dotty.tools.io.AbstractFile
-import java.util.{Collection => JCollection, Map => JMap}
-import dotty.tools.dotc.core.Contexts.Context
+
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.config.ScalaSettings
+
+import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 /**
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackendInterface) {
+sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
 
   def withThreadLocalReporter[T](reporter: BackendReporting)(fn: => T): T
+
   def backendReporting: BackendReporting
+
   def directBackendReporting: BackendReporting
 
   def getEntryPoints: List[String]
 
   private val frontendLock: AnyRef = new Object()
-  inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
+
+  inline final def frontendSynch[T](inline x: Context ?=> T)(using Context): T = frontendLock.synchronized(x)
+
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
-  inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
+
+  def perRunLazy[T](init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
 }
 
 object PostProcessorFrontendAccess {
-  /* A container for value with lazy initialization synchronized on compiler frontend
-   * Used for sharing variables requiring a Context for initialization, between different threads
-   * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
-   */
-  class Lazy[T](init: Context ?=> T)(using frontendAccess: PostProcessorFrontendAccess) {
+  abstract class Lazy[T] {
+    def get: T
+  }
+
+  /** Does not synchronize on the frontend. (But still synchronizes on itself, so terrible name) */
+  class LazyWithoutLock[T](init: => T) extends Lazy[T] {
     @volatile private var isInit: Boolean = false
     private var v: T = uninitialized
 
-    def get: T =
+    override def get: T =
+      if isInit then v
+      else this.synchronized {
+        if !isInit then v = init
+        isInit = true
+        v
+      }
+  }
+
+  /** A container for value with lazy initialization synchronized on compiler frontend
+   * Used for sharing variables requiring a Context for initialization, between different threads
+   * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
+   */
+  private class SynchronizedLazy[T](frontendAccess: PostProcessorFrontendAccess, init: Context ?=> T)(using Context) extends Lazy[T] {
+    @volatile private var isInit: Boolean = false
+    private var v: T = uninitialized
+
+    override def get: T =
       if isInit then v
       else frontendAccess.frontendSynch {
         if !isInit then v = init
@@ -64,52 +88,17 @@ object PostProcessorFrontendAccess {
     def outputOnlyTasty: Boolean
   }
 
-  sealed trait BackendReporting {
-    def error(message: Context ?=> Message, position: SourcePosition): Unit
-    def warning(message: Context ?=> Message, position: SourcePosition): Unit
-    def log(message: String): Unit
-
-    def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
-    def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
-  }
-
-  final class BufferingBackendReporting(using Context) extends BackendReporting {
-    // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
-    // We could use a listBuffer etc - but that would be extra allocation in the common case
-    // Note - all access is externally synchronized, as this allow the reports to be generated in on thread and
-    // consumed in another
-    private var bufferedReports = List.empty[Report]
-    enum Report(val relay: BackendReporting => Unit):
-      case Error(message: Message, position: SourcePosition) extends Report(_.error(message, position))
-      case Warning(message: Message, position: SourcePosition) extends Report(_.warning(message, position))
-      case Log(message: String) extends Report(_.log(message))
-
-    def error(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
-      bufferedReports ::= Report.Error(message, position)
-
-    def warning(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
-      bufferedReports ::= Report.Warning(message, position)
-
-    def log(message: String): Unit = synchronized:
-      bufferedReports ::= Report.Log(message)
-
-    def relayReports(toReporting: BackendReporting): Unit = synchronized:
-      if bufferedReports.nonEmpty then
-        bufferedReports.reverse.foreach(_.relay(toReporting))
-        bufferedReports = Nil
-  }
-
-
-  class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess(int) {
+  class Impl(entryPoints: mutable.HashSet[String])(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
-    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
+    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)(using ctx)
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
          def valueSetByUser: Option[T] = Option(s.value).filter(_ != s.default)
-      inline def s = ctx.settings
 
-      override val target =
+      inline def s: ScalaSettings = ctx.settings
+
+      override val target: String =
         val releaseValue = Option(s.javaOutputVersion.value).filter(_.nonEmpty)
         val targetValue = Option(s.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
         (releaseValue, targetValue) match
@@ -149,12 +138,8 @@ object PostProcessorFrontendAccess {
        else local
      }
 
-    override object directBackendReporting extends BackendReporting {
-      def error(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.error(message, position))
-      def warning(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.warning(message, position))
-      def log(message: String): Unit = frontendSynch(report.log(message))
-    }
+    override def directBackendReporting: BackendReporting = DirectBackendReporting(this)(using ctx)
 
-    def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
+    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)(using ctx)
   }
 }
