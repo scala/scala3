@@ -452,15 +452,9 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           val tk = symInfoTK(sym)
           generatedType = tk
 
-          DesugaredSelect.cached(t) match {
-            case None =>
-              if (!sym.is(Package)) {
-                if (sym.is(Module)) genLoadModule(sym)
-                else locals.load(sym)
-              }
-            case Some(t) =>
-              //genLoad(t, generatedType) // TODO is this reachable?
-              throw new AssertionError("I'm pretty sure this path is dead")
+          if (!sym.is(Package)) {
+            if (sym.is(Module)) genLoadModule(sym)
+            else locals.load(sym)
           }
 
         case Literal(value) =>
@@ -536,7 +530,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           val thrownType = expectedType
           // `throw null` is valid although scala.Null (as defined in src/library-aux) isn't a subtype of Throwable.
           // Similarly for scala.Nothing (again, as defined in src/library-aux).
-          assert(thrownType.isNullType || thrownType.isNothingType || (thrownType.asClassBType.isSubtypeOf(ts.jlThrowableRef) match { case Left(_) => true; case Right(b) => b }))
+          assert(thrownType.isNullType || thrownType.isNothingType || thrownType.asClassBType.isSubtypeOf(ts.jlThrowableRef).getOrElse(false))
           emit(asm.Opcodes.ATHROW)
     end genAdaptAndSendToDest
 

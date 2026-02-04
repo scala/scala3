@@ -13,9 +13,6 @@ import scala.tools.asm.Handle
 
 case class MethodNameAndType(name: String, methodType: MethodBType)
 
-// TODO rename to something more meaningful like "CompilationTypes" -- what it really is is anything involving symbols/classes/per-compilation stuff
-//      (as opposed to primitive types which are shared across compilations)
-
 abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAccess)(using ctx: Context) {
   def primitiveTypeMap: Map[Symbol, PrimitiveBType]
 

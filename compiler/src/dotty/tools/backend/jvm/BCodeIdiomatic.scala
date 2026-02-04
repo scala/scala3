@@ -8,6 +8,8 @@ import scala.tools.asm
 import scala.annotation.switch
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.report
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -16,7 +18,7 @@ import scala.tools.asm.tree.MethodInsnNode
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic {
+trait BCodeIdiomatic(using Context) {
 
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
@@ -113,11 +115,11 @@ trait BCodeIdiomatic {
             jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
             jmethod.visitInsn(Opcodes.LXOR)
           } else {
-            throw new AssertionError(s"Impossible to negate an $kind")
+            abort(s"Impossible to negate an $kind")
           }
 
         case _ =>
-          throw new AssertionError(s"Unknown arithmetic primitive $op")
+          abort(s"Unknown arithmetic primitive $op")
       }
 
     } // end of method genPrimitiveArithmetic()
@@ -435,7 +437,7 @@ trait BCodeIdiomatic {
       i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
-          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+          abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
         }
         i += 1
       }
@@ -552,6 +554,11 @@ trait BCodeIdiomatic {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
+    }
+
+    def abort(msg: String): Nothing = {
+      report.error(msg)
+      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN

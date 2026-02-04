@@ -5,13 +5,10 @@ package jvm
 import scala.language.unsafeNulls
 import java.util.concurrent.ConcurrentHashMap
 import scala.tools.asm
-import scala.collection.SortedMap
-import scala.collection.immutable.ArraySeq
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 
-import scala.annotation.tailrec
 import scala.tools.asm.Opcodes
 import scala.tools.asm.Opcodes.{ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC}
 

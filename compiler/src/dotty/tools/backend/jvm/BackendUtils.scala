@@ -176,18 +176,6 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
 }
 
 object BackendUtils {
-
-  private lazy val primitiveTypes: Map[String, asm.Type] = Map(
-    ("Unit", asm.Type.VOID_TYPE),
-    ("Boolean", asm.Type.BOOLEAN_TYPE),
-    ("Char", asm.Type.CHAR_TYPE),
-    ("Byte", asm.Type.BYTE_TYPE),
-    ("Short", asm.Type.SHORT_TYPE),
-    ("Int", asm.Type.INT_TYPE),
-    ("Float", asm.Type.FLOAT_TYPE),
-    ("Long", asm.Type.LONG_TYPE),
-    ("Double", asm.Type.DOUBLE_TYPE))
-
   lazy val classfileVersionMap: Map[Int, Int] = Map(
     17 -> asm.Opcodes.V17,
     18 -> asm.Opcodes.V18,
@@ -200,48 +188,4 @@ object BackendUtils {
     25 -> asm.Opcodes.V25,
     26 -> asm.Opcodes.V26,
   )
-
-  /**
-   * A pseudo-flag, added MethodNodes whose maxLocals / maxStack are computed. This allows invoking
-   * `computeMaxLocalsMaxStack` whenever running an analyzer but performing the actual computation
-   * only when necessary.
-   *
-   * The largest JVM flag (as of JDK 8) is ACC_MANDATED (0x8000), however the asm framework uses
-   * the same trick and defines some pseudo flags
-   *   - ACC_DEPRECATED = 0x20000
-   *   - ACC_SYNTHETIC_ATTRIBUTE = 0x40000
-   *   - ACC_CONSTRUCTOR = 0x80000
-   *
-   * I haven't seen the value picked here in use anywhere. We make sure to remove the flag when
-   * it's no longer needed.
-   */
-
-  private val ACC_MAXS_COMPUTED = 0x1000000
-  def isMaxsComputed(method: MethodNode): Boolean = (method.access & ACC_MAXS_COMPUTED) != 0
-  def setMaxsComputed(method: MethodNode): Unit = method.access |= ACC_MAXS_COMPUTED
-  def clearMaxsComputed(method: MethodNode): Unit = method.access &= ~ACC_MAXS_COMPUTED
-
-  /**
-   * A pseudo-flag indicating if a MethodNode's unreachable code has been eliminated.
-   *
-   * The ASM Analyzer class does not compute any frame information for unreachable instructions.
-   * Transformations that use an analyzer (including inlining) therefore require unreachable code
-   * to be eliminated.
-   *
-   * This flag allows running dead code elimination whenever an analyzer is used. If the method
-   * is already optimized, DCE can return early.
-   */
-  private val ACC_DCE_DONE = 0x2000000
-  def isDceDone(method: MethodNode): Boolean = (method.access & ACC_DCE_DONE) != 0
-  def setDceDone(method: MethodNode): Unit = method.access |= ACC_DCE_DONE
-  def clearDceDone(method: MethodNode): Unit = method.access &= ~ACC_DCE_DONE
-
-  private val LABEL_REACHABLE_STATUS = 0x1000000
-  private def isLabelFlagSet(l: LabelNode1, f: Int): Boolean = (l.flags & f) != 0
-  private def setLabelFlag(l: LabelNode1, f: Int): Unit = l.flags |= f
-  private def clearLabelFlag(l: LabelNode1, f: Int): Unit = l.flags &= ~f
-  def isLabelReachable(label: LabelNode) = isLabelFlagSet(label.asInstanceOf[LabelNode1], LABEL_REACHABLE_STATUS)
-  def setLabelReachable(label: LabelNode) = setLabelFlag(label.asInstanceOf[LabelNode1], LABEL_REACHABLE_STATUS)
-  def clearLabelReachable(label: LabelNode) = clearLabelFlag(label.asInstanceOf[LabelNode1], LABEL_REACHABLE_STATUS)
-  
 }

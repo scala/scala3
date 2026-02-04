@@ -4,10 +4,8 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.*
 
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.report
@@ -20,26 +18,17 @@ import Phases.*
 import Symbols.*
 import StdNames.nme
 
-import java.io.DataOutputStream
-import java.nio.channels.ClosedByInterruptException
-
 import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
-import scala.tools.asm
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
-import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
 import DottyBackendInterface.symExtensions
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols)(using Context) {
-  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
-    val ts: CoreBTypesFromSymbols = CodeGen.this.ts
-  }
-  private val impl = new Impl()
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
@@ -167,4 +156,8 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
     mirrorCodeGen.genMirrorClass(classSym, unit)
   }
 
+  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+    val ts: CoreBTypesFromSymbols = CodeGen.this.ts
+  }
+  private val impl = new Impl()
 }

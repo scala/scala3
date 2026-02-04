@@ -143,6 +143,11 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       assert(sym != defn.ArrayClass || compilingArray, sym)
     }
 
+    private def assertClassNotArrayNotPrimitive(sym: Symbol): Unit = {
+      assertClassNotArray(sym)
+      assert(!ts.primitiveTypeMap.contains(sym) || compilingPrimitive, sym)
+    }
+
     /**
      * The ClassBType for a class symbol.
      *
@@ -157,6 +162,8 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      * ClassBType.
      */
     final def getClassBType(sym: Symbol): ClassBType = {
+      assertClassNotArrayNotPrimitive(sym)
+
       if (sym == defn.NothingClass) ts.srNothingRef
       else if (sym == defn.NullClass) ts.srNullRef
       else ts.classBTypeFromSymbol(sym)
@@ -709,7 +716,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       */
     def primitiveOrClassToBType(sym: Symbol): BType = {
       assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || compilingArray, s"$sym found in '${ctx.compilationUnit.source.file.name}'")
+      assert(sym != defn.ArrayClass || compilingArray, sym)
       ts.primitiveTypeMap.getOrElse(sym, storage.getClassBType(sym))
     }
 
@@ -845,6 +852,21 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
 
   private def compilingArray(using Context) =
     ctx.compilationUnit.source.file.name == "Array.scala"
+
+  private val primitiveCompilationUnits = Set(
+    "Unit.scala",
+    "Boolean.scala",
+    "Char.scala",
+    "Byte.scala",
+    "Short.scala",
+    "Int.scala",
+    "Float.scala",
+    "Long.scala",
+    "Double.scala"
+  )
+
+  private def compilingPrimitive(using Context) =
+    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
 }
 
 object BCodeHelpers {

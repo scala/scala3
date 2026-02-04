@@ -91,7 +91,7 @@ object BCodeAsmCommon {
   def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String)(using ctx: Context): Option[EnclosingMethodEntry] = {
     if (isAnonymousOrLocalClass(classSym)) {
       val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
-      //report.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
+      report.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
         methodOpt.map(_.javaSimpleName).orNull,
