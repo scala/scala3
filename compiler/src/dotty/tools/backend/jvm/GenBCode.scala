@@ -33,25 +33,21 @@ class GenBCode extends Phase { self =>
   private val entryPoints = new mutable.HashSet[String]()
   def registerEntryPoint(s: String): Unit = entryPoints += s
 
-  def context(using ctx: Context): FreshContext = {
-      // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
-      ctx match
-        case fc: FreshContext => fc
-        case ctx => ctx.fresh
-  }
-
-
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
-      _frontendAccess = PostProcessorFrontendAccess.Impl(entryPoints)(using context)
+      // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
+      val context = ctx match
+        case fc: FreshContext => fc
+        case ctx => ctx.fresh
+      _frontendAccess = PostProcessorFrontendAccess.Impl(entryPoints)(context)
     _frontendAccess.nn
   }
 
   private var _bTypes: CoreBTypesFromSymbols | Null = null
   def bTypes(using Context): CoreBTypesFromSymbols = {
     if _bTypes eq null then
-      _bTypes = CoreBTypesFromSymbols(frontendAccess, superCallsMap)(using context)
+      _bTypes = CoreBTypesFromSymbols(frontendAccess, superCallsMap)(using ctx)
     _bTypes.nn
   }
 
@@ -86,7 +82,8 @@ class GenBCode extends Phase { self =>
 
   override def run(using Context): Unit =
     frontendAccess.frontendSynchWithoutContext {
-      context
+      frontendAccess
+      .ctx
       .setCompilationUnit(ctx.compilationUnit)
     }
     codeGen.genUnit(ctx.compilationUnit)

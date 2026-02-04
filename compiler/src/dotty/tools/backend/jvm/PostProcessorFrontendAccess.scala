@@ -1,15 +1,11 @@
 package dotty.tools
 package backend.jvm
 
-import scala.collection.mutable.{Clearable, HashSet}
-import dotty.tools.dotc.util.*
-import dotty.tools.dotc.reporting.Message
+import scala.collection.mutable.HashSet
 import dotty.tools.io.AbstractFile
 
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.classpath.*
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.config.ScalaSettings
 
 import scala.collection.mutable
@@ -19,7 +15,7 @@ import scala.compiletime.uninitialized
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess {
+sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
@@ -92,9 +88,9 @@ object PostProcessorFrontendAccess {
     def outputOnlyTasty: Boolean
   }
 
-  class Impl(entryPoints: mutable.HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess {
+  class Impl(entryPoints: mutable.HashSet[String])(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
-    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
+    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)(using ctx)
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
@@ -142,8 +138,8 @@ object PostProcessorFrontendAccess {
        else local
      }
 
-    override def directBackendReporting = DirectBackendReporting(this)
+    override def directBackendReporting: BackendReporting = DirectBackendReporting(this)(using ctx)
 
-    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
+    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)(using ctx)
   }
 }
