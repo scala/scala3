@@ -11,15 +11,15 @@
    |Separation failure: Illegal access to (a1 : A1{val b: B^{b²}}^{any, b²}), which was passed as a consume parameter to constructor of class A2
    |on line 18 and therefore is no longer available.
    |
-   |where:    any is a root capability in the type of value a1
+   |where:    any is a root capability in the type of value a1 with contributing field val bb
    |          b   is a value in class A1
    |          b²  is a value in method Test
 -- Error: tests/neg-custom-args/captures/consume-in-constructor.scala:27:10 --------------------------------------------
 27 |  println(b) // error, b is hidden in the type of a1
    |          ^
-   |          Separation failure: Illegal access to {b} which is hidden by the previous definition
-   |          of value a1 with type A1^.
-   |          This type hides capabilities  {any, b}
+   |Separation failure: Illegal access to {b} which is hidden by the previous definition
+   |of value a1 with type A1^.
+   |This type hides capabilities  {any, b}
    |
-   |          where:    ^   refers to a root capability in the type of value a1
-   |                    any is a root capability created in value a1 when constructing instance A1
+   |where:    ^   refers to a root capability in the type of value a1
+   |          any is a root capability created in value a1 when constructing instance A1 with contributing field val bb

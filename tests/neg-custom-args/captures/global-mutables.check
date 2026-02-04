@@ -1,0 +1,42 @@
+-- Error: tests/neg-custom-args/captures/global-mutables.scala:6:18 ----------------------------------------------------
+6 |  def badIncr() = ctr1 += 1  // error, not an update method
+  |                  ^^^^^^^^^
+  |                  Cannot assign to field ctr1 of Test33
+  |                  since the access is in method badIncr, which is not an update method.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/global-mutables.scala:9:22 -------------------------------
+9 |  val _: () -> Unit = inc1   // error
+  |                      ^^^^
+  |                      Found:    (Test33.inc1 : () ->{Test33} Unit)
+  |                      Required: () -> Unit
+  |
+  |                      Note that capability `any` cannot flow into capture set {}.
+  |
+  |                      Note that capability `Test33` cannot flow into capture set {}.
+  |                      Note that object Test33 is a capability because it uses capabilities {any}
+  |
+  |                      where:    any is a root capability classified as Unscoped in the type of object Test33
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/global-mutables.scala:11:22 ------------------------------
+11 |  val _: () -> Unit = inc2   // error
+   |                      ^^^^
+   |                      Found:    (Test33.inc2 : () ->{Test33} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `any` cannot flow into capture set {}.
+   |
+   |                      Note that capability `Test33` cannot flow into capture set {}.
+   |                      Note that object Test33 is a capability because it uses capabilities {any}
+   |
+   |                      where:    any is a root capability classified as Unscoped in the type of object Test33
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/global-mutables.scala:16:22 ------------------------------
+16 |  val _: () -> Unit = inc  // error
+   |                      ^^^
+   |                      Found:    (inc : () ->{ctr} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `ctr` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

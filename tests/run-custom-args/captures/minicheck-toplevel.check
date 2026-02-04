@@ -1,0 +1,6 @@
+OK IntType()
+ERROR: Type error
+  found   : StringType()
+  expected: IntType()
+  for     : Ref(s)
+ERROR: cyclic reference involving x

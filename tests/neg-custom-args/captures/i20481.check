@@ -4,9 +4,9 @@
   |             Found:    (A.this : A^{any})
   |             Required: A
   |
-  |             Note that capability `any` is not included in capture set {}.
+  |             Note that capability `any` cannot flow into capture set {}.
   |
-  |             where:    any is a root capability in the type of class A
+  |             where:    any is a root capability in the type of class A with contributing field val f
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i20481.scala:8:14 ----------------------------------------
@@ -15,7 +15,7 @@
   |              Found:    (a : A^{any})
   |              Required: A
   |
-  |              Note that capability `any` is not included in capture set {}.
+  |              Note that capability `any` cannot flow into capture set {}.
   |
   |              where:    any is a root capability in the type of parameter a
   |
@@ -26,7 +26,7 @@
    |              Found:    (a.f : A^{a.any})
    |              Required: A
    |
-   |              Note that capability `a.any` is not included in capture set {}.
+   |              Note that capability `a.any` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i20481.scala:11:23 ---------------------------------------
@@ -35,7 +35,7 @@
    |                       Found:    () ->{a} Unit
    |                       Required: () -> Unit
    |
-   |                       Note that capability `a` is not included in capture set {}.
+   |                       Note that capability `a` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i20481.scala:13:23 ---------------------------------------
@@ -44,6 +44,6 @@
    |                       Found:    () ->{a.f} Unit
    |                       Required: () -> Unit
    |
-   |                       Note that capability `a.f` is not included in capture set {}.
+   |                       Note that capability `a.f` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

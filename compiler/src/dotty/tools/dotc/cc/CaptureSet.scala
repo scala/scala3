@@ -198,9 +198,11 @@ sealed abstract class CaptureSet extends Showable:
   protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
     accountsFor(elem) || addNewElem(elem)
 
-  /** Try to include all element in `refs` to this capture set. */
+  /** Try to include all elements in `refs` to this capture set. */
   protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
-    newElems.forall(tryInclude(_, origin))
+    if newElems.size == 0 then true
+    else if newElems.size == 1 then tryInclude(newElems.nth(0), origin)
+    else TypeComparer.atomicOp(newElems.forall(tryInclude(_, origin)))
 
   protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
     if mutability == Writer then toReader() else true
@@ -218,7 +220,7 @@ sealed abstract class CaptureSet extends Showable:
         && vs.isOpen
         && {
           val underlying = elem.captureSetOfInfo
-          val res = tryInclude(underlying.elems, this)
+          val res = ifNotTried(elem)(tryInclude(underlying.elems, this))
           if res then underlying.addDependent(this)
           res
         }
@@ -263,7 +265,7 @@ sealed abstract class CaptureSet extends Showable:
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
             // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
             // and might therefore insert an element that is too unspecific.
-          && x.captureSetOfInfo.subCaptures(this, VarState.Separate)
+          && ifNotTried(x)(x.captureSetOfInfo.subCaptures(this, VarState.Separate))
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -285,10 +287,9 @@ sealed abstract class CaptureSet extends Showable:
         TypeComparer.noNotes:
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
-        && {
+        && ifNotTried(x):
           val xelems = x.captureSetOfInfo.elems
-          !xelems.isEmpty && xelems.forall(mightAccountFor)
-        }
+          !xelems.isEmpty && xelems.forall(mightAccountFor(_))
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
@@ -593,6 +594,7 @@ object CaptureSet:
     cs
 
   class EmptyOfBoxed(val tp1: Type, val tp2: Type) extends Const(emptyRefs):
+    override def description = "{} of boxed mismatch"
     override def toString = "{} of boxed mismatch"
 
   /** The universal capture set `{caps.any}` */
@@ -617,7 +619,7 @@ object CaptureSet:
     if elems.isEmpty then empty else Const(elems)
 
   /** The subclass of constant capture sets with given elements `elems` */
-  class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
+  class Const private[CaptureSet] (val elems: Refs, descr: String = "") extends CaptureSet:
     def isConst(using Context) = true
     def isAlwaysEmpty(using Context) = elems.isEmpty
     def isProvisionallySolved(using Context) = false
@@ -655,6 +657,8 @@ object CaptureSet:
         myMut = if maybeExclusive then Writer else Reader
         isComplete = true
       myMut
+
+    def description = descr
 
     override def toString = elems.toString
   end Const
@@ -782,11 +786,11 @@ object CaptureSet:
     private var emptiesDropped = false
 
     def dropEmpties()(using Context): this.type =
+      assert(ccState.isSepCheck)
       if !emptiesDropped then
         emptiesDropped = true
         for elem <- elems do
-          if elem.isKnownEmpty then
-            elems -= empty
+          if elem.isKnownEmpty then elems -= elem
       this
 
     /** A list of handlers to be invoked when a new element is added to this set */
@@ -983,6 +987,7 @@ object CaptureSet:
       markSolved(provisional = false)
       ignored = true
 
+    // See Config.checkSkippedMaps
     var skippedMaps: Set[TypeMap] = Set.empty
 
     def withDescription(description: String): this.type =
@@ -1058,7 +1063,7 @@ object CaptureSet:
             case _ => isSubsumed
         if !isSubsumed then
           if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
-            val fc = LocalCap(owner, Origin.InDecl(owner))
+            val fc = LocalCap(owner, Origin.InDecl(owner, elem.origin.contributingFields))
             assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
             hideIn(fc)
             super.includeElem(fc)
@@ -1209,15 +1214,20 @@ object CaptureSet:
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
       else
-        val res = super.tryInclude(elem, origin)
-        // If this is the union of a constant and a variable,
-        // propagate `elem` to the variable part to avoid slack
-        // between the operands and the union.
-        if res && (origin ne cs1) && (origin ne cs2) then
-          if cs1.isConst then cs2.tryInclude(elem, origin)
-          else if cs2.isConst then cs1.tryInclude(elem, origin)
+        TypeComparer.atomicOp:
+          val res = super.tryInclude(elem, origin)
+          // If this is the union of a constant and a variable,
+          // propagate `elem` to the variable part to avoid slack
+          // between the operands and the union.
+          if res && (origin ne cs1) && (origin ne cs2) then
+            try
+              if cs1.isConst then cs2.tryInclude(elem, origin)
+              else if cs2.isConst then cs1.tryInclude(elem, origin)
+              else res
+            catch case ex: AssertionError =>
+              println(i"err while tryinclude $elem in $cs1 | $cs2, ${cs1.isConst}, ${cs2.isConst}")
+              throw ex
           else res
-        else res
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1247,9 +1257,10 @@ object CaptureSet:
         else true
       !inIntersection
       || accountsFor(elem)
-      || addNewElem(elem)
-        && ((origin eq cs1) || cs1.tryInclude(elem, this))
-        && ((origin eq cs2) || cs2.tryInclude(elem, this))
+      || TypeComparer.atomicOp:
+            addNewElem(elem)
+            && ((origin eq cs1) || cs1.tryInclude(elem, this))
+            && ((origin eq cs2) || cs2.tryInclude(elem, this))
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1388,12 +1399,18 @@ object CaptureSet:
      *      when comparing types with different box status
      */
     override def covers(other: Note)(using Context) = other match
-      case other @ IncludeFailure(cs1, elem1, _) =>
-        val strictlySubsumes =
-          cs.elems == cs1.elems
-          && (elem1.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
-              || cs1.isInstanceOf[EmptyOfBoxed] && !cs.isInstanceOf[EmptyOfBoxed])
-        !strictlySubsumes
+      case other @ IncludeFailure(cs2, elem2, _) =>
+        def isStaticOwner(elem: Capability) = elem.core match
+          case elem: TermRef => elem.symbol.moduleClass.isStaticOwner
+          case elem: ThisType => elem.cls.isStaticOwner
+          case _ => false
+        val strictlySubsumes2 =
+          cs.elems == cs2.elems
+          && (elem2.singletonCaptureSet.mightSubcapture(elem.singletonCaptureSet)
+              || cs2.isInstanceOf[EmptyOfBoxed] && !cs.isInstanceOf[EmptyOfBoxed]
+              || isStaticOwner(elem) && !isStaticOwner(elem2)
+            )
+        !strictlySubsumes2
       case _ => false
 
     def trailing(msg: String)(using Context): String =
@@ -1407,52 +1424,75 @@ object CaptureSet:
          |
          |"""
 
-    def render(using Context): String = cs match
-      case cs: Var =>
-        def ownerStr =
-          if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
-        if !cs.levelOK(elem) then
-          val outlivesStr = elem match
-            case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
-            case _ => " outlives its scope: "
-          leading:
-            i"""Capability `${elem.showAsCapability}`${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
-        else if !elem.tryClassifyAs(cs.classifier) then
+    def render(using Context): String = {
+      val msg = cs match
+        case cs: Var =>
+          def ownerStr =
+            if !cs.description.isEmpty then "" else cs.owner.qualString("which is owned by")
+          if !cs.levelOK(elem) then
+            val outlivesStr = elem match
+              case ref: TermRef => i"${ref.symbol.maybeOwner.qualString("defined in")} outlives its scope:\n"
+              case _ => " outlives its scope: "
+            leading:
+              i"""Capability `${elem.showAsCapability}`${outlivesStr}it leaks into outer capture set $cs$ownerStr"""
+          else if !elem.tryClassifyAs(cs.classifier) then
+            trailing:
+              i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
+                |cannot flow into capture set $cs of ${cs.classifier.name} elements"""
+          else if cs.isBadRoot(elem) then
+            elem match
+              case elem: LocalCap =>
+                leading:
+                  i"""Local capability `${elem.showAsCapability}` created in ${elem.ccOwner} outlives its scope:
+                      |It leaks into outer capture set $cs$ownerStr"""
+              case _ =>
+                trailing:
+                  i"universal capability `${elem.showAsCapability}` cannot flow into capture set $cs"
+          else
+            trailing:
+              i"capability `${elem.showAsCapability}` cannot flow into capture set $cs"
+        case cs: EmptyOfBoxed =>
           trailing:
-            i"""capability `${elem.showAsCapability}` is not classified as ${cs.classifier}, therefore it
-              |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
-        else if cs.isBadRoot(elem) then
-          elem match
-            case elem: LocalCap =>
-              leading:
-                i"""Local capability `${elem.showAsCapability}` created in ${elem.ccOwner} outlives its scope:
-                    |It leaks into outer capture set $cs$ownerStr"""
-            case _ =>
-              trailing:
-                i"universal capability `${elem.showAsCapability}` cannot be included in capture set $cs"
-        else
+            val (boxed, unboxed) =
+              if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+            i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
+        case _ =>
+          def why =
+            val reasons = cs.elems.toList.collect:
+              case c: LocalCap if !c.acceptsLevelOf(elem) =>
+                i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
+              case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+                i"`$c` is classified as ${c.hiddenSet.classifier} but `${elem.showAsCapability}` is not"
+              case c: ResultCap if !c.subsumes(elem) =>
+                val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
+                i"`$c`, which is existentially bound in ${c.originalBinder.resType}, cannot subsume `${elem.showAsCapability}`$toAdd"
+            if reasons.isEmpty then ""
+            else reasons.mkString("\nbecause ", "\nand ", "")
           trailing:
-            i"capability `${elem.showAsCapability}` cannot be included in capture set $cs"
-      case cs: EmptyOfBoxed =>
-        trailing:
-          val (boxed, unboxed) =
-            if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
-          i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
-      case _ =>
-        def why =
-          val reasons = cs.elems.toList.collect:
-            case c: LocalCap if !c.acceptsLevelOf(elem) =>
-              i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
-            case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
-              i"`$c` is classified as ${c.hiddenSet.classifier} but `${elem.showAsCapability}` is not"
-            case c: ResultCap if !c.subsumes(elem) =>
-              val toAdd = if elem.isTerminalCapability then "" else " since that capability is not a SharedCapability"
-              i"`$c`, which is existentially bound in ${c.originalBinder.resType}, cannot subsume `${elem.showAsCapability}`$toAdd"
-          if reasons.isEmpty then ""
-          else reasons.mkString("\nbecause ", "\nand ", "")
+            i"capability `${elem.showAsCapability}` cannot flow into capture set $cs$why"
 
-        trailing:
-          i"capability `${elem.showAsCapability}` is not included in capture set $cs$why"
+      def moduleExplanation(sym: Symbol, ref: CoreCapability): String =
+        val allElems = sym.info.captureSet.elems.toList
+        val (rootElems, otherElems) = allElems.partition(_.isTerminalCapability)
+        val fields =
+          for
+            case rootElem: LocalCap <- rootElems.map(_.core)
+            field <- rootElem.origin.contributingFields
+          yield field
+        val shownElems = if otherElems.nonEmpty then otherElems else allElems
+        val why =
+          if fields.nonEmpty && otherElems.isEmpty
+          then i"contains fields ${fields.map(_.show).mkString(", ")}"
+          else i"uses capabilities ${CaptureSet(shownElems*)}"
+        i"\nNote that $sym is a capability because it $why"
+
+      val elemNote = elem match
+        case elem: TermRef if elem.symbol.is(Module) => moduleExplanation(elem.symbol, elem)
+        case elem: ThisType if elem.cls.is(Module) => moduleExplanation(elem.cls.sourceModule, elem)
+        case elem => ""
+
+      msg ++ elemNote
+    }
 
     override def mentions = cs.elems + elem
 
@@ -1462,8 +1502,8 @@ object CaptureSet:
           i"($elem at wrong level for $cs in ${cs.owner.showLocated})"
         else
           if ctx.settings.YccDebug.value
-          then i"$elem cannot be included in $trace"
-          else i"$elem cannot be included in $cs"
+          then i"$elem cannot flow into $trace"
+          else i"$elem cannot flow into in $cs"
   end IncludeFailure
 
   /** Failure indicating that a read-only capture set of a stateful type cannot be

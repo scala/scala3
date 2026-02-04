@@ -4,7 +4,7 @@
   |                              Found:    cc1.C2{val y1: () ->{cc2*} Unit; val y2: (() => Unit) ->{cc2*} Unit}^{cc2}
   |                              Required: cc1.C2^{cc1, x1, x2}
   |
-  |                              Note that capability `cc2` is not included in capture set {cc1, x1, x2}.
+  |                              Note that capability `cc2` cannot flow into capture set {cc1, x1, x2}.
   |
   |                              where:    => refers to the root capability caps.any
   |

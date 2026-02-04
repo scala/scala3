@@ -13,7 +13,7 @@
    |    failed with:
    |
    |        Found:    (self.base : Collection.this.Self)
-   |        Required: foo.Collection.given_is_Slice_Collection.Self²
+   |        Required: Collection.this.given_is_Slice_Collection.Self²
    |        
    |        where:    Self  is a type in trait Collection
    |                  Self² is a type in object given_is_Slice_Collection which is an alias of Collection.this.Slice
@@ -29,7 +29,7 @@
    |    failed with:
    |
    |        Found:    (self.base : Collection.this.Self)
-   |        Required: foo.Collection.given_is_Slice_Collection.Self²
+   |        Required: Collection.this.given_is_Slice_Collection.Self²
    |        
    |        where:    Self  is a type in trait Collection
    |                  Self² is a type in object given_is_Slice_Collection which is an alias of Collection.this.Slice

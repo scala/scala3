@@ -4,7 +4,7 @@
    |          Found:    IO^{x}
    |          Required: IO^{any}
    |
-   |          Note that capability `x` is not included in capture set {any}
+   |          Note that capability `x` cannot flow into capture set {any}
    |          because (x : IO^) in method outer is not visible from any in value r.
    |
    |          where:    ^   refers to a root capability in the type of parameter x
@@ -17,7 +17,7 @@
    |          Found:    IO^{innerIO}
    |          Required: IO^{any}
    |
-   |          Note that capability `innerIO` is not included in capture set {any}
+   |          Note that capability `innerIO` cannot flow into capture set {any}
    |          because (innerIO : IO^) in an enclosing function is not visible from any in value r.
    |
    |          where:    ^   refers to a root capability in the type of parameter innerIO
@@ -30,7 +30,7 @@
    |Found:    IO^{innerIO}
    |Required: IO^{any}
    |
-   |Note that capability `innerIO` is not included in capture set {any}
+   |Note that capability `innerIO` cannot flow into capture set {any}
    |because (innerIO : IO^) in an enclosing function is not visible from any in value r.
    |
    |where:    ^   refers to a root capability created in anonymous function of type (innerIO²: IO^²): Unit of parameter parameter innerIO of method $anonfun

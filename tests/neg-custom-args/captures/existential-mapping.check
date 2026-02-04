@@ -4,7 +4,7 @@
   |                         Found:    (x: C^) -> C^{x1*}
   |                         Required: (x: C^) -> C
   |
-  |                         Note that capability `x1*` is not included in capture set {}.
+  |                         Note that capability `x1*` cannot flow into capture set {}.
   |
   |                         where:    ^ refers to the root capability caps.any
   |
@@ -15,7 +15,7 @@
    |                    Found:    C^ -> C^{x2*}
    |                    Required: C^ -> C
    |
-   |                    Note that capability `x2*` is not included in capture set {}.
+   |                    Note that capability `x2*` cannot flow into capture set {}.
    |
    |                    where:    ^ refers to the root capability caps.any
    |
@@ -26,7 +26,7 @@
    |                              Found:    A^ -> (x: C^) -> C^{x3*}
    |                              Required: A^ -> (x: C^) -> C
    |
-   |                              Note that capability `x3*` is not included in capture set {}.
+   |                              Note that capability `x3*` cannot flow into capture set {}.
    |
    |                              where:    ^ refers to the root capability caps.any
    |
@@ -37,7 +37,7 @@
    |                         Found:    A^ -> C^ -> C^{x4*}
    |                         Required: A^ -> C^ -> C
    |
-   |                         Note that capability `x4*` is not included in capture set {}.
+   |                         Note that capability `x4*` cannot flow into capture set {}.
    |
    |                         where:    ^ refers to the root capability caps.any
    |
@@ -48,7 +48,7 @@
    |                              Found:    A^ -> (x: C^) -> C^{x5*}
    |                              Required: A^ -> (x: C^) -> C
    |
-   |                              Note that capability `x5*` is not included in capture set {}.
+   |                              Note that capability `x5*` cannot flow into capture set {}.
    |
    |                              where:    ^ refers to the root capability caps.any
    |
@@ -59,7 +59,7 @@
    |                              Found:    A^ -> (x: C^) ->{x6*} C^{x6*}
    |                              Required: A^ -> (x: C^) => C
    |
-   |                              Note that capability `x6*` is not included in capture set {}.
+   |                              Note that capability `x6*` cannot flow into capture set {}.
    |
    |                              where:    => refers to a root capability in the type of value _$6
    |                                        ^  refers to the root capability caps.any
@@ -71,7 +71,7 @@
    |                         Found:    (x: C^) ->{y1} C^{y1*}
    |                         Required: (x: C^) => C
    |
-   |                         Note that capability `y1*` is not included in capture set {}.
+   |                         Note that capability `y1*` cannot flow into capture set {}.
    |
    |                         where:    => refers to a root capability in the type of value _$7
    |                                   ^  refers to the root capability caps.any
@@ -83,7 +83,7 @@
    |                    Found:    C^ ->{y2} C^{y2*}
    |                    Required: C^ => C
    |
-   |                    Note that capability `y2*` is not included in capture set {}.
+   |                    Note that capability `y2*` cannot flow into capture set {}.
    |
    |                    where:    => refers to a root capability in the type of value _$8
    |                              ^  refers to the root capability caps.any
@@ -95,7 +95,7 @@
    |                              Found:    A^ ->{y3} (x: C^) ->{y3*} C^{y3*}
    |                              Required: A^ => (x: C^) =>² C
    |
-   |                              Note that capability `y3*` is not included in capture set {}.
+   |                              Note that capability `y3*` cannot flow into capture set {}.
    |
    |                              where:    =>  refers to a root capability in the type of value _$9
    |                                        =>² refers to a root capability in the type of value _$9
@@ -108,7 +108,7 @@
    |                         Found:    A^ ->{y4} C^ ->{y4*} C^{y4*}
    |                         Required: A^ => C^ =>² C
    |
-   |                         Note that capability `y4*` is not included in capture set {}.
+   |                         Note that capability `y4*` cannot flow into capture set {}.
    |
    |                         where:    =>  refers to a root capability in the type of value _$10
    |                                   =>² refers to a root capability in the type of value _$10
@@ -121,7 +121,7 @@
    |                              Found:    A^ ->{y5} (x: C^) -> C^{y5*}
    |                              Required: A^ => (x: C^) -> C
    |
-   |                              Note that capability `y5*` is not included in capture set {}.
+   |                              Note that capability `y5*` cannot flow into capture set {}.
    |
    |                              where:    => refers to a root capability in the type of value _$11
    |                                        ^  refers to the root capability caps.any
@@ -133,7 +133,7 @@
    |                              Found:    A^ ->{y6} (x: C^) ->{y6*} C^{y6*}
    |                              Required: A^ => (x: C^) =>² C
    |
-   |                              Note that capability `y6*` is not included in capture set {}.
+   |                              Note that capability `y6*` cannot flow into capture set {}.
    |
    |                              where:    =>  refers to a root capability in the type of value _$12
    |                                        =>² refers to a root capability in the type of value _$12

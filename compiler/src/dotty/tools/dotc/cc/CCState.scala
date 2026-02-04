@@ -9,6 +9,8 @@ import reporting.Message
 import Contexts.Context
 import Types.MethodType
 import Symbols.Symbol
+import util.SimpleIdentitySet
+import Capabilities.Capability
 
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
@@ -40,6 +42,10 @@ class CCState:
     val saved = mapVars
     myMapVars = false
     try op finally myMapVars = saved
+
+  // Recursion brake for tryInclude and accountsFor
+
+  private var triedCapabilities: SimpleIdentitySet[Capability] = SimpleIdentitySet.empty
 
   // ------ Iteration count of capture checking run
 
@@ -156,5 +162,19 @@ object CCState:
 
   /** Should uses not be recorded in markFree? */
   def discardUses(using Context): Boolean = ccState.discardUses
+
+  /** Perform `op` unless operation has been tried on `c` before.
+   *  This is needed to prevent infinite recursions in methods like
+   *  tryInclude and accountsFor. The relation from capability to capability
+   *  in its underling set can have cycles, for instance when capability objects
+   *  are mutually dependent. We need to avoid going through such cycles more than once.
+   */
+  inline def ifNotTried(c: Capability)(inline op: Boolean)(using Context): Boolean =
+    val ccs = ccState
+    val tried = ccs.triedCapabilities
+    !tried.contains(c) && {
+      ccs.triedCapabilities = tried + c
+      try op finally ccs.triedCapabilities = tried
+    }
 
 end CCState

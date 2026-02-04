@@ -186,7 +186,7 @@ trait MemberLookup {
               lookedUp.find(s => s.isTerm || s.flags.is(Flags.Module))
             )
           case _ =>
-            localLookup(sel, owner).nextOption
+            localLookup(sel, owner).nextOption()
         }
         res match {
           case None => None

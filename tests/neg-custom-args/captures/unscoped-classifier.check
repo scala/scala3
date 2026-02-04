@@ -1,13 +1,13 @@
--- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:5:8 -------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/unscoped-classifier.scala:5:8 --------------------------
 5 |class A(a: Async) extends caps.Unscoped // error but msg could be better
   |        ^
-  |        reference `A.this.a` is not included in the allowed capture set {any} of the self type of class A
+  |        Reference `A.this.a` is not included in the allowed capture set {any} of the self type of class A.
   |
   |        where:    any is a root capability classified as Unscoped in the type of class A
--- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:10:8 ------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/unscoped-classifier.scala:10:8 -------------------------
 10 |class C(f: () => Unit) extends caps.Unscoped // error but msg could be better
    |        ^
-   |        reference `C.this.f` is not included in the allowed capture set {any} of the self type of class C
+   |        Reference `C.this.f` is not included in the allowed capture set {any} of the self type of class C.
    |
    |        where:    any is a root capability classified as Unscoped in the type of class C
 -- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:17:15 -----------------------------------------------

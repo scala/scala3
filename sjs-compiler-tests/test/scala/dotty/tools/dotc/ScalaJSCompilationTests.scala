@@ -54,6 +54,7 @@ object ScalaJSCompilationTests extends ParallelTesting {
 
   override protected def shouldSkipTestSource(testSource: TestSource): Boolean =
     testSource.allToolArgs.get(ToolName.ScalaJS).exists(_.contains("--skip"))
+    || super.shouldSkipTestSource(testSource)
 
   override protected def testPlatform: TestPlatform = TestPlatform.ScalaJS
 

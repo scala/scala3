@@ -4,7 +4,7 @@
    |               Found:    (x : Ref^{any})
    |               Required: Ref
    |
-   |               Note that capability `any` is not included in capture set {}.
+   |               Note that capability `any` cannot flow into capture set {}.
    |
    |               where:    any is a root capability in the type of value x
    |
@@ -15,7 +15,7 @@
    |               Found:    (y : Ref^{any})
    |               Required: Ref
    |
-   |               Note that capability `any` is not included in capture set {}.
+   |               Note that capability `any` cannot flow into capture set {}.
    |
    |               where:    any is a root capability in the type of value y
    |
@@ -26,6 +26,6 @@
    |               Found:    (z : Ref^{bar.newRef})
    |               Required: Ref
    |
-   |               Note that capability `bar.newRef` is not included in capture set {}.
+   |               Note that capability `bar.newRef` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

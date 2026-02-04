@@ -1010,13 +1010,16 @@ object SymDenotations {
         setFlag(if result then HasDefaultParams else NoDefaultParams)
         result
 
+    /** Symbol is a non-lazy value definition */
+    def isStrictValDef(using Context): Boolean =
+      isTerm && !isOneOf(MethodOrLazy) && !isLocalDummy
+
     /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
      *   - package objects
      *   - non-lazy valdefs
      */
     def isWeakOwner(using Context): Boolean =
-      isPackageObject ||
-      isTerm && !isOneOf(MethodOrLazy) && !isLocalDummy
+      isPackageObject || isStrictValDef
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
@@ -1085,10 +1088,10 @@ object SymDenotations {
      */
     def matchNullaryLoosely(using Context): Boolean = {
       def test(sym: Symbol) =
-        sym.is(JavaDefined) ||
-        sym.owner == defn.AnyClass ||
-        sym == defn.Object_clone ||
-        sym.owner.is(Scala2x)
+           sym.is(JavaDefined)
+        || sym.owner == defn.AnyClass
+        || sym == defn.Object_clone
+        || sym.owner.is(Scala2x)
       this.exists && (test(symbol) || allOverriddenSymbols.exists(test))
     }
 
@@ -1107,28 +1110,24 @@ object SymDenotations {
     /** If this a module, return the corresponding class, if this is a module, return itself,
      *  otherwise NoSymbol
      */
-    final def moduleClass(using Context): Symbol = {
-      def notFound = {
+    final def moduleClass(using Context): Symbol =
+      def notFound =
         if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
         NoSymbol
-      }
-      if (this.is(ModuleVal))
-        myInfo match {
-          case info: TypeRef           => info.symbol
-          case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
-          case info: LazyType          => info.moduleClass
-          case t: MethodType           =>
-            t.resultType match {
+      if this.is(ModuleVal) then
+        myInfo.stripAnnots match
+          case info: TypeRef            => info.symbol
+          case ExprType(info: TypeRef)  => info.symbol // needed after uncurry, when module terms might be accessor defs
+          case info: LazyType           => info.moduleClass
+          case t: MethodType            =>
+            t.resultType match
               case info: TypeRef => info.symbol
               case _ => notFound
-            }
           case _ => notFound
-        }
-      else if (this.is(ModuleClass))
+      else if this.is(ModuleClass) then
         symbol
       else
         NoSymbol
-    }
 
     /** If this a module class, return the corresponding module, if this is a module, return itself,
      *  otherwise NoSymbol
@@ -1182,12 +1181,16 @@ object SymDenotations {
       }
     }
 
-    /** If this is a weak owner, its owner, otherwise the denoting symbol. */
+    /** The closest enclosing symbol that is not a weak owner */
     final def skipWeakOwner(using Context): Symbol =
-      if (isWeakOwner) owner.skipWeakOwner else symbol
+      if isWeakOwner then owner.skipWeakOwner else symbol
 
-    /** The owner, skipping package objects and non-lazy valdefs. */
+    /** The closest properly enclosing symbol that is not a weak owner */
     final def effectiveOwner(using Context): Symbol = owner.skipWeakOwner
+
+    /** The closest enclosing symbol that is not a strict value definition */
+    final def skipStrictValDef(using Context): Symbol =
+      if isStrictValDef then owner.skipStrictValDef else symbol
 
     /** The class containing this denotation.
      *  If this denotation is already a class, return itself

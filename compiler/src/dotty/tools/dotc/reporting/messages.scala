@@ -30,7 +30,7 @@ import ast.untpd
 import ast.tpd
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
-import cc.CaptureSet.IdentityCaptRefMap
+import cc.CaptureSet
 import cc.Capabilities.Capability
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
@@ -113,6 +113,9 @@ abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Mess
 
 abstract class StagingMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   override final def kind = MessageKind.Staging
+
+abstract class CapturesMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  override final def kind = MessageKind.CaptureChecking
 
 abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
 extends SyntaxMsg(errNo) {
@@ -320,7 +323,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap, IdentityCaptRefMap:
+    object reported extends TypeMap, CaptureSet.IdentityCaptRefMap:
       var notes: String = ""
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
@@ -748,7 +751,12 @@ extends Message(ProperDefinitionNotFoundID) {
 
 class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
 extends SyntaxMsg(ByNameParameterNotSupportedID) {
-  def msg(using Context) = i"By-name parameter type ${tpe} not allowed here."
+  def msg(using Context) =
+    val tpeStr = tpe match
+      case untpd.ByNameTypeTree(untpd.CapturesAndResult(_, tpe1)) =>
+        i"=> $tpe1" // suppress CapturesAndResult encoding under cc
+      case _ => i"$tpe"
+    i"By-name parameter type $tpeStr not allowed here."
 
   def explain(using Context) =
     i"""|By-name parameters act like functions that are only evaluated when referenced,
@@ -3775,3 +3783,68 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+final class CannotBeIncluded(
+    added: Capability | CaptureSet,
+    target: CaptureSet,      // The original set where elements cannot be included
+    realTarget: CaptureSet,  // The underlying set of an IncludeFailure
+    notes: List[Note],
+    targetOwner: Symbol,
+    provenance: => String)(using Context) extends CapturesMessage(CannotBeIncludedID) {
+
+  def msg(using Context): String = {
+    val prefix = added match
+      case added: Capability =>
+        i"`${added.showAsCapability}` cannot be referenced here; it is not"
+      case added: CaptureSet =>
+        val addedDescription =
+          if added.description.isEmpty then "" else i" ${added.description}"
+        if added.elems.size == 1 then
+          i"Reference `${added.elems.nth(0).showAsCapability}`$addedDescription is not"
+        else
+          i"References $added$addedDescription are not all"
+
+    def needsUseStr =
+      if target.isAlwaysEmpty && (targetOwner.isClass || targetOwner.isConstructor) then
+        val (uses, loc) =
+          if targetOwner.isClass
+          then ("uses", targetOwner)
+          else ("uses_init", targetOwner.owner)
+        val usedStr = added match
+          case added: Capability => i"${added.showAsCapability}"
+          case added: CaptureSet => i"${added.elems.toList.map(_.showAsCapability).mkString(", ")}"
+
+        if loc.isPackageObject then
+          i"""
+            |
+            |The top-level definitions should be wrapped in an object with a $uses clause:
+            |
+            |    $uses $usedStr"""
+        else
+          i"""
+            |
+            |External uses should be declared explicitly with a $uses clause in $loc:
+            |
+            |    $uses $usedStr"""
+      else ""
+
+    def notesStr: String = notes.map(_.render).mkString
+    val provisional = realTarget.isProvisionallySolved
+    val kind = if provisional then "previously estimated\n" else "allowed "
+
+    // Show target instead of real target if that is more informative; i.e.
+    // real target has no description, but target has a description or a provenance
+    // for target exists. Always show realTarget under provisional, so we see
+    // which was the root cause for a recompile.
+    val shownTarget =
+      if provisional
+        || realTarget.description.nonEmpty
+        || target.description.isEmpty && provenance.isEmpty
+      then realTarget
+      else target
+    val provenanceStr: String =
+      if shownTarget.description.isEmpty then provenance else ""
+    i"$prefix included in the ${kind}capture set $shownTarget$provenanceStr.$notesStr$needsUseStr"
+  }
+  def explain(using Context) = ""
+}

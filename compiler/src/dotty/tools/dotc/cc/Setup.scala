@@ -325,8 +325,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       def innerApply(tp: Type) =
         val tp1 = tp match
-          case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
-            // Drop explicit retains annotations
+          case AnnotatedType(parent, annot)
+          if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
+            // Drop explicit retains and @inferred annotations
             apply(parent)
           case tp: TypeLambda =>
             // Don't recurse into parameter bounds, just cleanup any stray retains annotations
@@ -479,9 +480,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 report.error(em"Illegal capture reference: ${ex.getMessage}", tptToCheck.srcPos)
               parent1
           case t @ AnnotatedType(parent, ann) =>
-            if ann.symbol == defn.UncheckedCapturesAnnot
-            then makeUnchecked(this(parent))
-            else t.derivedAnnotatedType(this(parent), ann)
+            if ann.symbol == defn.UncheckedCapturesAnnot then
+              makeUnchecked(this(parent))
+            else if ann.symbol == defn.InferredAnnot then
+              transformInferredType(parent)
+            else
+              t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
           case t: MethodType if variance > 0 && t.marksExistentialScope =>

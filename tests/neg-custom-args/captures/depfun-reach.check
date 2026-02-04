@@ -4,7 +4,7 @@
    |    Found:    (op : (xs: List[(X, () ->{io} Unit)]) ->{any} List[() ->{xs*} Unit])
    |    Required: (xs: List[(X, () ->{io} Unit)]) ->{any²} List[() -> Unit]
    |
-   |    Note that capability `any` is not included in capture set {any²}.
+   |    Note that capability `any` cannot flow into capture set {any²}.
    |
    |    where:    any  is a root capability in the type of parameter op
    |              any² is a root capability in the result type of method foo
@@ -16,7 +16,7 @@
    |                                        Found:    (a : (xs: List[() ->{io} Unit]) ->{any} List[() ->{xs*} Unit])
    |                                        Required: (xs: List[() ->{io} Unit]) ->{any²} List[() -> Unit]
    |
-   |                                        Note that capability `any` is not included in capture set {any²}.
+   |                                        Note that capability `any` cannot flow into capture set {any²}.
    |
    |                                        where:    any  is a root capability in the type of value a
    |                                                  any² is a root capability in the type of value b

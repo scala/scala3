@@ -1755,4 +1755,57 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin
     )
+
+  @Test def `closing-labels-1` =
+    check(
+      """|object Main{
+         |  def bestNumber: Int = {
+         |    234
+         |  }
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  def bestNumber: Int = {
+         |    234
+         |  }/*bestNumber*/
+         |}/*Main*/
+         |""".stripMargin,
+      closingLabels = true
+    )
+
+  @Test def `closing-labels-weird-formatting` =
+    check(
+      """|object Main{
+         |  def bestNumber: Int = {
+         |    def greatNumber: Long = {
+         |      3
+         |    }234}
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  def bestNumber: Int = {
+         |    def greatNumber: Long = {
+         |      3
+         |    }/*greatNumber*/234}/*bestNumber*/
+         |}/*Main*/
+         |""".stripMargin,
+      closingLabels = true
+    )
+
+  @Test def `closing-labels-inferred-type` =
+    check(
+      """|object Main{
+         |  def bestNumber = {
+         |    234
+         |  }
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  def bestNumber/*: Int<<scala/Int#>>*/ = {
+         |    234
+         |  }/*bestNumber*/
+         |}/*Main*/
+         |""".stripMargin,
+      closingLabels = true
+    )
 }

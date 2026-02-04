@@ -4,7 +4,7 @@
    |                      Found:    (x : A -> (x²: A) -> B^{fresh})
    |                      Required: A -> A -> B^{any}
    |
-   |                      Note that capability `fresh` is not included in capture set {any}
+   |                      Note that capability `fresh` cannot flow into capture set {any}
    |                      because fresh is not visible from any in value y.
    |
    |                      where:    any   is a root capability in the type of value y
@@ -19,7 +19,7 @@
    |                             Found:    A -> A -> B^{y*}
    |                             Required: A -> (x: A) -> B^
    |
-   |                             Note that capability `y*` is not included in capture set {any}.
+   |                             Note that capability `y*` cannot flow into capture set {any}.
    |
    |                             where:    ^   refers to a root capability in the type of value z
    |                                       any is the root capability caps.any
@@ -31,7 +31,7 @@
    |                   Found:    (x : (x²: A) -> B^{fresh})
    |                   Required: A -> B^{any}
    |
-   |                   Note that capability `fresh` is not included in capture set {any}
+   |                   Note that capability `fresh` cannot flow into capture set {any}
    |                   because fresh is not visible from any in value y.
    |
    |                   where:    any   is a root capability in the type of value y
@@ -46,7 +46,7 @@
    |                        Found:    A -> B^{y*}
    |                        Required: (x: A) -> B^
    |
-   |                        Note that capability `y*` is not included in capture set {any}.
+   |                        Note that capability `y*` cannot flow into capture set {any}.
    |
    |                        where:    ^   refers to a root capability in the type of value z
    |                                  any is the root capability caps.any

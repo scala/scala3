@@ -331,7 +331,7 @@ object Applications {
    *  parameter list, or EmptyTree if none was found.
    *  @param fn       the tree referring to the function part of this call
    *  @param n        the index of the parameter in the parameter list of the call
-   *  @param testOnly true iff we just to find out whether a getter exists
+   *  @param testOnly true iff we just want to find out whether a getter exists
    */
   def findDefaultGetter(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree =
     def reifyPrefix(pre: Type): Tree = pre match
@@ -412,20 +412,21 @@ object Applications {
   /** Splice new method reference `meth` into existing application `app` */
   private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match {
     case Apply(fn, args) =>
-      // Constructors always have one leading non-implicit parameter list.
-      // Empty list is inserted for constructors where the first parameter list is implicit.
-      //
-      // Therefore, we need to ignore the first empty argument list.
-      // This is needed for the test tests/neg/i12344.scala
-      //
-      // see NamerOps.normalizeIfConstructor
+      // Constructors written with a leading implicit parameter list are normalized
+      // to have one leading non-implicit parameter list. See NamerOps.normalizeIfConstructor.
+      // However, a default getter for the implicit parameter will not reflect the augmented signature.
+      // If leading empty args is detected for this case, but the default arg getter isNullaryMethod,
+      // then the empty args are supplied as usual: $lessinit$greater$default$1()
       //
       if args == Nil
          && !fn.isInstanceOf[Apply]
          && app.tpe.isImplicitMethod
          && fn.symbol.isConstructor
-      then meth
-      else spliceMeth(meth, fn).appliedToArgs(args)
+         && !meth.tpe.widen.isNullaryMethod
+      then
+        meth
+      else
+        spliceMeth(meth, fn).appliedToArgs(args)
     case TypeApply(fn, targs) =>
       // Note: It is important that the type arguments `targs` are passed in new trees
       // instead of being spliced in literally. Otherwise, a type argument to a default
@@ -2080,13 +2081,15 @@ trait Applications extends Compatibility {
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
-          || {
+          || (
+            !alt1.symbol.is(ExtensionMethod) || alt2.symbol.is(ExtensionMethod)
+          ) && (
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
               && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
-          }
+          )
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
             // Fully define the PolyType parameters so that the infos of the
