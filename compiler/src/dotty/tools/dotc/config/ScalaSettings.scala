@@ -28,7 +28,7 @@ enum ScalaSettingCategories(val prefixLetter: String) extends SettingCategory:
 
 object ScalaSettings extends ScalaSettings
 
-// Kept as seperate type to avoid breaking backward compatibility
+// Kept as separate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
   val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
     allSettings.groupBy(_.category)
@@ -43,7 +43,7 @@ abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
   val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_.name -> s)).toMap
 
 
-trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
+trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>
 
   /* Path related settings */
@@ -315,6 +315,108 @@ private sealed trait WarningSettings:
     def wrongArrow(using Context): Boolean = allOr(WwrongArrow)
     def inferUnion(using Context): Boolean = allOr(WinferUnion)
     def safeInit(using Context): Boolean = allOr(WsafeInit)
+
+/** -opt "Optimizer" settings */
+private sealed trait OptimizerSettings:
+  self: SettingGroup =>
+
+  val opt = MultiChoiceHelpSetting(
+    RootSetting,
+    name = "opt",
+    helpArg = "optimization",
+    descr = "Enable optimizations: `-opt:all`, `-opt:unreachable-code`; `-opt:help` for details.",
+    choices = List(
+      ChoiceWithHelp("all", ""),
+      ChoiceWithHelp("unreachable-code", "Eliminate unreachable code, exception handlers guarding no instructions, redundant metadata (debug information, line numbers)."),
+      ChoiceWithHelp("simplify-jumps", "Simplify branching instructions, eliminate unnecessary ones."),
+      ChoiceWithHelp("compact-locals", "Eliminate empty slots in the sequence of local variables."),
+      ChoiceWithHelp("copy-propagation", "Eliminate redundant local variables and unused values (including closures). Enables unreachable-code."),
+      ChoiceWithHelp("redundant-casts", "Eliminate redundant casts using a type propagation analysis."),
+      ChoiceWithHelp("box-unbox", "Eliminate box-unbox pairs within the same method (also tuples, xRefs, value class instances). Enables unreachable-code."),
+      ChoiceWithHelp("nullness-tracking", "Track nullness / non-nullness of local variables and apply optimizations."),
+      ChoiceWithHelp("closure-invocations", "Rewrite closure invocations to the implementation method."),
+      ChoiceWithHelp("allow-skip-core-module-init", "Allow eliminating unused module loads for core modules of the standard library (e.g., Predef, ClassTag)."),
+      ChoiceWithHelp("assume-modules-non-null", "Assume loading a module never results in null (happens if the module is accessed in its super constructor)."),
+      ChoiceWithHelp("allow-skip-class-loading", "Allow optimizations that can skip or delay class loading.")
+    ),
+    default = Nil
+  )
+  private def optEnabled(s: String)(using Context): Boolean = opt.value.contains("all") || opt.value.contains(s)
+  def optUnreachableCode(using Context): Boolean = optEnabled("unreachable-code")
+  def optSimplifyJumps(using Context): Boolean = optEnabled("simplify-jumps")
+  def optCompactLocals(using Context): Boolean = optEnabled("compact-locals")
+  def optCopyPropagation(using Context): Boolean = optEnabled("copy-propagation")
+  def optRedundantCasts(using Context): Boolean = optEnabled("redundant-casts")
+  def optBoxUnbox(using Context): Boolean = optEnabled("box-unbox")
+  def optNullnessTracking(using Context): Boolean = optEnabled("nullness-tracking")
+  def optClosureInvocations(using Context): Boolean = optEnabled("closure-invocations")
+  def optAllowSkipCoreModuleInit(using Context): Boolean = optEnabled("allow-skip-core-module-init")
+  def optAssumeModulesNonNull(using Context): Boolean = optEnabled("assume-modules-non-null")
+  def optAllowSkipClassLoading(using Context): Boolean = optEnabled("allow-skip-class-loading")
+  
+  val inlineHelp =
+    """
+      |Inlining requires a list of patterns defining where code can be inlined from: `-opt:inline:p1,p2`.
+      |
+      |  *              Matches classes in the empty package
+      |  **             All classes
+      |  a.C            Class a.C
+      |  a.*            Classes in package a
+      |  a.**           Classes in a and in sub-packages of a
+      |  **.Util        Classes named Util in any package (including the empty package)
+      |  a.**.*Util*    Classes in a and sub-packages with Util in their name (including a.Util)
+      |  a.C$D          The nested class D defined in class a.C
+      |  scala.Predef$  The scala.Predef object
+      |  <sources>      Classes defined in source files compiled in the current compilation, either
+      |                 passed explicitly to the compiler or picked up from the `-sourcepath`
+      |
+      |`-opt:inline:p` may be specified multiple times to extend the list of patterns.
+      |A leading `!` means exclude anything that matches the pattern. The last matching pattern wins.
+      |For example, `a.**,!a.b.**` includes classes in `a` and sub-packages, but not in `a.b` and sub-packages.
+      |
+      |When patterns are supplied on a command line, it is usually necessary to quote special shell characters
+      |such as `*`, `<`, `>`, and `$`: `'-opt:inline:p.*,!p.C$D' '-opt:inline:<sources>'`.
+      |Quoting may not be needed in a build file.""".stripMargin
+  val optInline: Setting[List[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
+
+  val optInlineHeuristics = ChoiceSetting(
+    RootSetting,
+    name = "opt-inline-heuristics",
+    helpArg = "strategy",
+    descr = "Set the heuristics for inlining decisions.",
+    choices = List("at-inline-annotated", "everything", "default"),
+    default = "default")
+
+  val optWarnings = MultiChoiceHelpSetting(
+    WarningSetting,
+    name = "Wopt",
+    helpArg = "warning",
+    descr = "Enable optimizer warnings, `help` for details.",
+    choices = List(
+      ChoiceWithHelp("all", ""),
+      ChoiceWithHelp("at-inline-failed-summary", "One-line summary if there were @inline method calls that could not be inlined."),
+      ChoiceWithHelp("at-inline-failed", "A detailed warning for each @inline method call that could not be inlined."),
+      ChoiceWithHelp("any-inline-failed", "A detailed warning for every callsite that was chosen for inlining by the heuristics, but could not be inlined."),
+      ChoiceWithHelp("no-inline-mixed", "In mixed compilation, warn at callsites methods defined in java sources (the inlining decision cannot be made without bytecode)."),
+      ChoiceWithHelp("no-inline-missing-bytecode", "Warn if an inlining decision cannot be made because a the bytecode of a class or member cannot be found on the compilation classpath."),
+      ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have a ScalaInlineInfo attribute.")
+    ),
+    default = Nil
+  )
+  private def optWarningsEnabled(s: String)(using Context): Boolean = optWarnings.value.contains("all") || optWarnings.value.contains(s)
+  def optWarningsSummaryOnly(using Context): Boolean = optWarningsEnabled("at-inline-failed-summary")
+  def optWarningEmitAtInlineFailed(using Context): Boolean =
+    optWarningsEnabled("at-inline-failed-summary") ||
+      optWarningsEnabled("at-inline-failed") ||
+      optWarningsEnabled("any-inline-failed")
+  def optWarningEmitAnyInlineFailed(using Context): Boolean = optWarningsEnabled("any-inline-failed")
+  def optWarningNoInlineMixed(using Context): Boolean = optWarningsEnabled("no-inline-mixed")
+  def optWarningNoInlineMissingBytecode(using Context): Boolean = optWarningsEnabled("no-inline-missing-bytecode")
+  def optWarningNoInlineMissingScalaInlineInfoAttr(using Context): Boolean = optWarningsEnabled("no-inline-missing-attribute")
+
+  val YoptLogInline: Setting[String] = StringSetting(ForkSetting, "Yopt-log-inline", "package/Class.method", "Print a summary of inliner activity; `_` to print all, prefix match to select.", "")
+  val YoptTrace = StringSetting(ForkSetting, "Yopt-trace", "package/Class.method", "Trace the optimizer progress for methods; `_` to print all, prefix match to select.", "")
+
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:

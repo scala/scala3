@@ -8,7 +8,6 @@ import scala.tools.asm
 import scala.annotation.switch
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
-import dotty.tools.dotc.report
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -18,13 +17,6 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeIdiomatic {
-  val int: DottyBackendInterface
-  val bTypes: BTypesFromSymbols[int.type]
-
-  import int.{_, given}
-  import bTypes.*
-  import coreBTypes.*
-
 
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
@@ -60,7 +52,7 @@ trait BCodeIdiomatic {
     val a = new Array[String](len)
     var i = len - 1
     var rest = xs
-    while (!rest.isEmpty) {
+    while (rest.nonEmpty) {
       a(i) = rest.head
       rest = rest.tail
       i -= 1
@@ -77,7 +69,7 @@ trait BCodeIdiomatic {
     val a = new Array[Int](len)
     var i = len - 1
     var rest = xs
-    while (!rest.isEmpty) {
+    while (rest.nonEmpty) {
       a(i) = rest.head
       rest = rest.tail
       i -= 1
@@ -121,11 +113,11 @@ trait BCodeIdiomatic {
             jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
             jmethod.visitInsn(Opcodes.LXOR)
           } else {
-            abort(s"Impossible to negate an $kind")
+            throw new AssertionError(s"Impossible to negate an $kind")
           }
 
         case _ =>
-          abort(s"Unknown arithmetic primitive $op")
+          throw new AssertionError(s"Unknown arithmetic primitive $op")
       }
 
     } // end of method genPrimitiveArithmetic()
@@ -196,12 +188,13 @@ trait BCodeIdiomatic {
     final def genIndyStringConcat(
       recipe: String,
       argTypes: Seq[asm.Type],
-      constants: Seq[String]
+      constants: Seq[String],
+      ts: CoreBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes*),
-        coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
+        asm.Type.getMethodDescriptor(ts.StringRef.toASMType, argTypes*),
+        ts.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants)*
       )
     }
@@ -214,33 +207,31 @@ trait BCodeIdiomatic {
      *
      * can-multi-thread
      */
-    final def emitT2T(from: BType, to: BType): Unit = {
-
+    final def emitT2T(from: BType, to: BType): Unit =
       assert(
         from.isNonVoidPrimitiveType && to.isNonVoidPrimitiveType,
         s"Cannot emit primitive conversion from $from to $to"
       )
 
-          def pickOne(opcs: Array[Int]): Unit = { // TODO index on to.sort
-            val chosen = (to: @unchecked) match {
-              case BYTE   => opcs(0)
-              case SHORT  => opcs(1)
-              case CHAR   => opcs(2)
-              case INT    => opcs(3)
-              case LONG   => opcs(4)
-              case FLOAT  => opcs(5)
-              case DOUBLE => opcs(6)
-            }
-            if (chosen != -1) { emit(chosen) }
-          }
+      def pickOne(opcs: Array[Int]): Unit = { // TODO index on to.sort
+        val chosen = (to: @unchecked) match {
+          case BYTE   => opcs(0)
+          case SHORT  => opcs(1)
+          case CHAR   => opcs(2)
+          case INT    => opcs(3)
+          case LONG   => opcs(4)
+          case FLOAT  => opcs(5)
+          case DOUBLE => opcs(6)
+        }
+        if (chosen != -1) { emit(chosen) }
+      }
 
       if (from == to) { return }
       // the only conversion involving BOOL that is allowed is (BOOL -> BOOL)
       assert(from != BOOL && to != BOOL, s"inconvertible types : $from -> $to")
 
-      // We're done with BOOL already
+      // we're done with BOOL already
       from match {
-
         // using `asm.Type.SHORT` instead of `BType.SHORT` because otherwise "warning: could not emit switch for @switch annotated match"
 
         case BYTE  => pickOne(JCodeMethodN.fromByteT2T)
@@ -271,8 +262,10 @@ trait BCodeIdiomatic {
             case LONG    => emit(D2L)
             case _       => emit(D2I); emitT2T(INT, to)
           }
+
+        case _ => throw new IllegalArgumentException("Unsupported from type for T2T: " + from)
       }
-    } // end of emitT2T()
+    end emitT2T
 
     // can-multi-thread
     final def boolconst(b: Boolean): Unit = { iconst(if (b) 1 else 0) }
@@ -338,6 +331,7 @@ trait BCodeIdiomatic {
               case LONG   => Opcodes.T_LONG
               case FLOAT  => Opcodes.T_FLOAT
               case DOUBLE => Opcodes.T_DOUBLE
+              case _ => throw new IllegalArgumentException("Invalid array element type: " + elem)
             }
           }
           jmethod.visitIntInsn(Opcodes.NEWARRAY, rand)
@@ -391,7 +385,7 @@ trait BCodeIdiomatic {
     // can-multi-thread
     final def emitIF_ACMP(cond: TestOp, label: asm.Label): Unit = {
       assert((cond == EQ) || (cond == NE), cond)
-      val opc = (if (cond == EQ) Opcodes.IF_ACMPEQ else Opcodes.IF_ACMPNE)
+      val opc = if (cond == EQ) Opcodes.IF_ACMPEQ else Opcodes.IF_ACMPNE
       jmethod.visitJumpInsn(opc, label)
     }
     // can-multi-thread
@@ -405,7 +399,7 @@ trait BCodeIdiomatic {
       else            { emitTypeBased(JCodeMethodN.returnOpcodes, tk)      }
     }
 
-    /* Emits one of tableswitch or lookoupswitch.
+    /* Emits one of tableswitch or lookupswitch.
      *
      * can-multi-thread
      */
@@ -441,7 +435,7 @@ trait BCodeIdiomatic {
       i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
-          abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
         }
         i += 1
       }
@@ -453,19 +447,19 @@ trait BCodeIdiomatic {
         /* Calculate in long to guard against overflow. TODO what overflow? */
         val keyRangeD: Double = (keyMax.asInstanceOf[Long] - keyMin + 1).asInstanceOf[Double]
         val klenD:     Double = keys.length
-        val kdensity:  Double = (klenD / keyRangeD)
+        val kdensity:  Double = klenD / keyRangeD
 
         kdensity >= minDensity
       }
 
       if (isDenseEnough) {
         // use a table in which holes are filled with defaultBranch.
-        val keyRange    = (keyMax - keyMin + 1)
+        val keyRange    = keyMax - keyMin + 1
         val newBranches = new Array[asm.Label](keyRange)
         var oldPos = 0
         var i = 0
         while (i < keyRange) {
-          val key = keyMin + i;
+          val key = keyMin + i
           if (keys(oldPos) == key) {
             newBranches(i) = branches(oldPos)
             oldPos += 1
@@ -558,11 +552,6 @@ trait BCodeIdiomatic {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
-    }
-
-    def abort(msg: String): Nothing = {
-      report.error(msg)
-      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN

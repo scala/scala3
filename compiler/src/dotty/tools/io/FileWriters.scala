@@ -34,17 +34,11 @@ import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.report
 
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.BackendReporting
 import scala.annotation.constructorOnly
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.ConcurrentModificationException
 
-/** !!!Copied from `dotty.tools.backend.jvm.ClassfileWriters` but no `PostProcessorFrontendAccess` needed.
- * this should probably be changed to wrap that class instead.
- *
- * Until then, any changes to this file should be copied to `dotty.tools.backend.jvm.ClassfileWriters` as well.
- */
 object FileWriters {
   type InternalName = String
   type NullableFile =  AbstractFile | Null
@@ -85,6 +79,12 @@ object FileWriters {
 
     def log(message: String): Unit = report.echo(message)
 
+  enum Report:
+    case Error(message: Context => Message, position: SourcePosition)
+    case Warning(message: Context => Message, position: SourcePosition)
+    case OptimizerWarning(message: Context => Message, site: String, position: SourcePosition)
+    case Log(message: String)
+
   final class BufferingReporter extends DelayedReporter {
     // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
     // We could use a listBuffer etc - but that would be extra allocation in the common case
@@ -93,10 +93,6 @@ object FileWriters {
     private val _bufferedReports = AtomicReference(List.empty[Report])
     private val _hasErrors = AtomicBoolean(false)
 
-    enum Report(val relay: Context ?=> BackendReporting => Unit):
-      case Error(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.error(message(ctx), position))
-      case Warning(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.warning(message(ctx), position))
-      case Log(message: String) extends Report(_.log(message))
 
     /** Atomically record that an error occurred */
     private def recordError(): Unit =
@@ -106,8 +102,8 @@ object FileWriters {
     private def recordReport(report: Report): Unit =
       _bufferedReports.getAndUpdate(report :: _)
 
-    /** atomically extract and clear the buffered reports, must only be called at a synchonization point. */
-    private def resetReports(): List[Report] =
+    /** atomically extract and clear the buffered reports, must only be called at a synchronization point. */
+    def resetReports(): List[Report] =
       val curr = _bufferedReports.get()
       if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Nil) then
         throw ConcurrentModificationException("concurrent modification of buffered reports")
@@ -125,12 +121,6 @@ object FileWriters {
 
     def log(message: String): Unit =
       recordReport(Report.Log(message))
-
-    /** Should only be called from main compiler thread. */
-    def relayReports(toReporting: BackendReporting)(using Context): Unit =
-      val reports = resetReports()
-      if reports.nonEmpty then
-        reports.reverse.foreach(_.relay(toReporting))
   }
 
   trait ReadOnlySettings:
