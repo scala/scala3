@@ -109,7 +109,7 @@ object Build {
         formatter.format(java.time.ZonedDateTime.now(java.time.ZoneId.of("UTC")))
       s"${baseVersion}-bin-${currentDate}-${VersionUtil.gitHash}-NIGHTLY"
     } else if (isBenchmark) {
-      s"${baseVersion}-bin-${VersionUtil.gitHash}-BENCH"
+      s"${baseVersion}-bin-${VersionUtil.gitHashFull}-BENCH"
     }
     else s"${baseVersion}-bin-SNAPSHOT"
   }

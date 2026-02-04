@@ -31,6 +31,9 @@ object VersionUtil {
     new JGit(repo)
   }
 
+  /** Full SHA hash of the current commit */
+  def gitHashFull: String = git.headCommitSha
+
   /** Seven letters of the SHA hash is considered enough to uniquely identify a
    *  commit, albeit extremely large projects - such as the Linux kernel - need
    *  more letters to stay unique
