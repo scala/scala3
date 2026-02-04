@@ -628,6 +628,11 @@ object Implicits:
     def msg(using Context): Message =
       em"${errors.map(_.msg).mkString("\n")}"
   }
+
+  class LateMismatchedImplicit(ref: TermRef,
+                               expectedType: Type,
+                               argument: Tree,
+                               val errors: List[Diagnostic.Error]) extends MismatchedImplicit(ref, expectedType, argument)
 end Implicits
 
 import Implicits.*
@@ -1240,10 +1245,12 @@ trait Implicits:
           case tpe =>
             // Special case for `$conforms` and `<:<.refl`. Showing them to the users brings
             // no value, so we instead report a `NoMatchingImplicitsFailure`
-            if (adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl)
+            if adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl then
               NoMatchingImplicitsFailure
             else if Splicer.inMacroExpansion && tpe <:< pt then
               SearchFailure(adapted.withType(new MacroErrorsFailure(ctx.reporter.allErrors.reverse, pt, argument)))
+            else if ctx.isAfterTyper then
+              SearchFailure(adapted.withType(LateMismatchedImplicit(ref, pt, argument, ctx.reporter.allErrors.reverse)))
             else
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
@@ -1304,11 +1311,10 @@ trait Implicits:
         val typingCtx =
           searchContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
         val alreadyStoppedInlining = ctx.base.stopInlining
-        val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
-        result match
-          case res: SearchSuccess =>
-            ctx.searchHistory.defineBynameImplicit(wideProto, res)
-          case _ =>
+        typedImplicit(cand, pt, argument, span)(using typingCtx) match
+          case result: SearchSuccess =>
+            ctx.searchHistory.defineBynameImplicit(wideProto, result)
+          case result =>
             if !alreadyStoppedInlining && ctx.base.stopInlining then
               // a call overflowed as part of the expansion when typing the implicit
               ctx.base.stopInlining = false
