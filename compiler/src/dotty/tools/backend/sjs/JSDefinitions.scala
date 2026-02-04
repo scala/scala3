@@ -266,6 +266,19 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val Selectable_reflectiveSelectableFromLangReflectiveCallsR = SelectableModule.requiredMethodRef("reflectiveSelectableFromLangReflectiveCalls")
     def Selectable_reflectiveSelectableFromLangReflectiveCalls(using Context) = Selectable_reflectiveSelectableFromLangReflectiveCallsR.symbol
 
+  private var allRefClassesCache: Set[Symbol] = uninitialized
+  def allRefClasses(using Context): Set[Symbol] = {
+    if (allRefClassesCache == null) {
+      val baseNames = List("Object", "Boolean", "Character", "Byte", "Short",
+          "Int", "Long", "Float", "Double")
+      val fullNames = baseNames.flatMap { base =>
+        List(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
+      }
+      allRefClassesCache = fullNames.map(name => requiredClass(name)).toSet
+    }
+    allRefClassesCache
+  }
+
   /** Definitions related to scala.Enumeration. */
   object scalaEnumeration {
     val nmeValue = termName("Value")
