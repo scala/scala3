@@ -326,15 +326,23 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  class C(x: T) extends AnyVal
      *  ```
      *
-     *  gets the `hashCode` method:
-     *
+     *  gets the `hashCode` method. If the value is primitive:
      *  ```
      *  def hashCode: Int = x.hashCode()
+     *  ```
+     *  otherwise, the null-safe variant:
+     *  ```
+     *  def hashCode: Int = java.util.Objects.hashCode(x)
      *  ```
      */
     def valueHashCodeBody(using Context): Tree = {
       assert(accessors.nonEmpty)
-      ref(accessors.head).select(nme.hashCode_).ensureApplied
+      val accessor = accessors.head
+      val tp = accessor.info.finalResultType
+      if (tp.classSymbol.isPrimitiveValueClass)
+        ref(accessor).select(nme.hashCode_).ensureApplied
+      else
+        ref(defn.Objects_hashCode).appliedTo(ref(accessor))
     }
 
     /**
