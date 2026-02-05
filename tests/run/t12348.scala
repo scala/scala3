@@ -1,4 +1,3 @@
-// test: -jvm 11+
 // scalajs: --skip
 import java.lang.invoke._
 import scala.runtime.IntRef
