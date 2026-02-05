@@ -28,16 +28,15 @@ trait Seq[+A] extends Iterable[A]
 }
 
 /**
-  * @define coll immutable sequence
-  * @define Coll `immutable.Seq`
-  */
+ *  @define coll immutable sequence
+ *  @define Coll `immutable.Seq`
+ */
 transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collection.SeqOps[A, CC, C] with caps.Pure
 
-/**
-  * $factoryInfo
-  * @define coll immutable sequence
-  * @define Coll `immutable.Seq`
-  */
+/** $factoryInfo
+ *  @define coll immutable sequence
+ *  @define Coll `immutable.Seq`
+ */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](List) {
   override def from[E](it: IterableOnce[E]^): Seq[E] = it match {
@@ -93,10 +92,10 @@ trait IndexedSeq[+A] extends Seq[A]
   }
 
   /** a hint to the runtime when scanning values
-    * [[apply]] is preferred for scan with a max index less than this value
-    * [[iterator]] is preferred for scans above this range
-    * @return a hint about when to use [[apply]] or [[iterator]]
-    */
+   *  [[apply]] is preferred for scan with a max index less than this value
+   *  [[iterator]] is preferred for scans above this range
+   *  @return a hint about when to use [[apply]] or [[iterator]]
+   */
   protected def applyPreferredMaxLength: Int = IndexedSeqDefaults.defaultApplyPreferredMaxLength
 
   override def iterableFactory: SeqFactory[IndexedSeq] = IndexedSeq

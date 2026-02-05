@@ -286,10 +286,9 @@ final class IntAccumulator
     ans
   }
 
-  /**
-   * Copies the elements in this `IntAccumulator` to a specified collection.
-   * Note that the target collection is not specialized.
-   * Usage example: `acc.to(Vector)`
+  /** Copies the elements in this `IntAccumulator` to a specified collection.
+   *  Note that the target collection is not specialized.
+   *  Usage example: `acc.to(Vector)`
    */
   override def to[C1](factory: Factory[Int, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

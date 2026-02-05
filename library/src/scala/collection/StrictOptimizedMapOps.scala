@@ -15,14 +15,13 @@ package scala.collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/**
-  * Trait that overrides map operations to take advantage of strict builders.
-  *
-  * @tparam K  Type of keys
-  * @tparam V  Type of values
-  * @tparam CC Collection type constructor
-  * @tparam C  Collection type
-  */
+/** Trait that overrides map operations to take advantage of strict builders.
+ *
+ *  @tparam K  Type of keys
+ *  @tparam V  Type of values
+ *  @tparam CC Collection type constructor
+ *  @tparam C  Collection type
+ */
 transparent trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   extends MapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {

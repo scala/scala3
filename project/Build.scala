@@ -2942,14 +2942,8 @@ object ScaladocConfigs {
       .add(ExternalMappings(List(javaExternalMapping)))
       .add(DocRootContent((stdlib / "src" / "rootdoc.txt").toString))
       .add(CommentSyntax(List(
-        // Only the files below use markdown syntax (Scala 3 specific sources)
-        s"$stdlib/src/scala/NamedTuple.scala=markdown",
-        s"$stdlib/src/scala/Tuple.scala=markdown",
-        s"$stdlib/src/scala/compiletime=markdown",
-        s"$stdlib/src/scala/quoted=markdown",
-        s"$stdlib/src/scala/util/boundary.scala=markdown",
-        // Scala 2 sources use wiki syntax, we keep it as the default
-        "wiki"
+        // Markdown syntax is used by default for all sources
+        "markdown"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))

@@ -22,9 +22,9 @@ import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
 
 /**
-  *  @define Coll `OpenHashMap`
-  *  @define coll open hash map
-  */
+ *  @define Coll `OpenHashMap`
+ *  @define coll open hash map
+ */
 @deprecated("Use HashMap or one of the specialized versions (LongMap, AnyRefMap) instead of OpenHashMap", "2.13.0")
 @SerialVersionUID(3L)
 object OpenHashMap extends MapFactory[OpenHashMap] {
@@ -36,12 +36,12 @@ object OpenHashMap extends MapFactory[OpenHashMap] {
     new GrowableBuilder[(K, V), OpenHashMap[K, V]](empty)
 
   /** A hash table entry.
-    *
-    * The entry is occupied if and only if its `value` is a `Some`;
-    * deleted if and only if its `value` is `None`.
-    * If its `key` is not the default value of type `Key`, the entry is occupied.
-    * If the entry is occupied, `hash` contains the hash value of `key`.
-    */
+   *
+   *  The entry is occupied if and only if its `value` is a `Some`;
+   *  deleted if and only if its `value` is `None`.
+   *  If its `key` is not the default value of type `Key`, the entry is occupied.
+   *  If the entry is occupied, `hash` contains the hash value of `key`.
+   */
   final private class OpenEntry[Key, Value](var key: Key,
                                             var hash: Int,
                                             var value: Option[Value])
@@ -50,20 +50,20 @@ object OpenHashMap extends MapFactory[OpenHashMap] {
 }
 
 /** A mutable hash map based on an open addressing method. The precise scheme is
-  *  undefined, but it should make a reasonable effort to ensure that an insert
-  *  with consecutive hash codes is not unnecessarily penalised. In particular,
-  *  mappings of consecutive integer keys should work without significant
-  *  performance loss.
-  *
-  *  @tparam Key          type of the keys in this map.
-  *  @tparam Value        type of the values in this map.
-  *  @param initialSize   the initial size of the internal hash table.
-  *
-  *  @define Coll `OpenHashMap`
-  *  @define coll open hash map
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *  undefined, but it should make a reasonable effort to ensure that an insert
+ *  with consecutive hash codes is not unnecessarily penalised. In particular,
+ *  mappings of consecutive integer keys should work without significant
+ *  performance loss.
+ *
+ *  @tparam Key          type of the keys in this map.
+ *  @tparam Value        type of the values in this map.
+ *  @param initialSize   the initial size of the internal hash table.
+ *
+ *  @define Coll `OpenHashMap`
+ *  @define coll open hash map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @deprecated("Use HashMap or one of the specialized versions (LongMap, AnyRefMap) instead of OpenHashMap", "2.13.0")
 class OpenHashMap[Key, Value](initialSize : Int)
   extends AbstractMap[Key, Value]
@@ -75,8 +75,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
   import OpenHashMap.OpenEntry
   private type Entry = OpenEntry[Key, Value]
 
-  /** A default constructor creates a hashmap with initial size `8`.
-    */
+  /** A default constructor creates a hashmap with initial size `8`. */
   def this() = this(8)
 
   override def mapFactory: MapFactory[OpenHashMap] = OpenHashMap
@@ -86,10 +85,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
   private var mask = actualInitialSize - 1
 
   /** The hash table.
-    *
-    * The table's entries are initialized to `null`, indication of an empty slot.
-    * A slot is either deleted or occupied if and only if the entry is non-`null`.
-    */
+   *
+   *  The table's entries are initialized to `null`, indication of an empty slot.
+   *  A slot is either deleted or occupied if and only if the entry is non-`null`.
+   */
   private var table = new Array[Entry](actualInitialSize)
 
   private var _size = 0
@@ -110,8 +109,8 @@ class OpenHashMap[Key, Value](initialSize : Int)
   }
 
   /** Increases the size of the table.
-    * Copies only the occupied slots, effectively eliminating the deleted slots.
-    */
+   *  Copies only the occupied slots, effectively eliminating the deleted slots.
+   */
   private def growTable() = {
     val oldSize = mask + 1
     val newSize = 4 * oldSize
@@ -125,10 +124,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
   }
 
   /** Returns the index of the first slot in the hash table (in probe order)
-    * that is, in order of preference, either occupied by the given key, deleted, or empty.
-    *
-    * @param hash hash value for `key`
-    */
+   *  that is, in order of preference, either occupied by the given key, deleted, or empty.
+   *
+   *  @param hash hash value for `key`
+   */
   private def findIndex(key: Key, hash: Int): Int = {
     var index = hash & mask
     var j = 0
@@ -226,10 +225,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
   }
 
   /** An iterator over the elements of this map. Use of this iterator follows
-    *  the same contract for concurrent modification as the foreach method.
-    *
-    *  @return   the iterator
-    */
+   *  the same contract for concurrent modification as the foreach method.
+   *
+   *  @return   the iterator
+   */
   def iterator: Iterator[(Key, Value)] = new OpenHashMapIterator[(Key, Value)] {
     override protected def nextResult(node: Entry): (Key, Value) = (node.key, node.value.get)
   }
@@ -268,15 +267,15 @@ class OpenHashMap[Key, Value](initialSize : Int)
   }
 
   /** Loops over the key, value mappings of this map.
-    *
-    *  The behaviour of modifying the map during an iteration is as follows:
-    *  - Deleting a mapping is always permitted.
-    *  - Changing the value of mapping which is already present is permitted.
-    *  - Anything else is not permitted. It will usually, but not always, throw an exception.
-    *
-    *  @tparam U  The return type of the specified function `f`, return result of which is ignored.
-    *  @param f   The function to apply to each key, value mapping.
-    */
+   *
+   *  The behaviour of modifying the map during an iteration is as follows:
+   *  - Deleting a mapping is always permitted.
+   *  - Changing the value of mapping which is already present is permitted.
+   *  - Anything else is not permitted. It will usually, but not always, throw an exception.
+   *
+   *  @tparam U  The return type of the specified function `f`, return result of which is ignored.
+   *  @param f   The function to apply to each key, value mapping.
+   */
   override def foreach[U](f : ((Key, Value)) => U): Unit = {
     val startModCount = modCount
     foreachUndeletedEntry(entry => {

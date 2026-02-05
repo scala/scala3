@@ -30,9 +30,9 @@ trait SortedSet[A]
 }
 
 /**
-  * @define coll immutable sorted set
-  * @define Coll `immutable.SortedSet`
-  */
+ *  @define coll immutable sorted set
+ *  @define Coll `immutable.SortedSet`
+ */
 transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
   extends SetOps[A, Set, C]
      with collection.SortedSetOps[A, CC, C] {
@@ -46,11 +46,10 @@ transparent trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: S
     with StrictOptimizedSetOps[A, Set, C] {
 }
 
-/**
-  * $factoryInfo
-  * @define coll immutable sorted set
-  * @define Coll `immutable.SortedSet`
-  */
+/** $factoryInfo
+ *  @define coll immutable sorted set
+ *  @define Coll `immutable.SortedSet`
+ */
 @SerialVersionUID(3L)
 object SortedSet extends SortedIterableFactory.Delegate[SortedSet](TreeSet) {
   override def from[E: Ordering](it: IterableOnce[E]^): SortedSet[E] = (it: @unchecked) match {

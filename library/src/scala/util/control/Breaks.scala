@@ -42,7 +42,7 @@ import scala.language.`2.13`
  *  convenience value `Breaks`.
  *
  *  Example usage:
- *  {{{
+ *  ```
  *  val mybreaks = new Breaks
  *  import mybreaks.{break, breakable}
  *
@@ -52,20 +52,20 @@ import scala.language.`2.13`
  *      f(x)
  *    }
  *  }
- *  }}}
+ *  ```
  *  Calls to `break` from one instance of `Breaks` will never
  *  resume at the `breakable` of some other instance.
  *
  *  Any intervening exception handlers should use `NonFatal`,
  *  or use `Try` for evaluation:
- *  {{{
+ *  ```
  *  val mybreaks = new Breaks
  *  import mybreaks.{break, breakable}
  *
  *  breakable {
  *    for (x <- xs) Try { if (quit) break else f(x) }.foreach(println)
  *  }
- *  }}}
+ *  ```
  */
 class Breaks {
 
@@ -85,13 +85,13 @@ class Breaks {
   /** Try a computation that produces a value, supplying a default
    *  to be used if the computation terminates with a `break`.
    *
-   * {{{
-   * tryBreakable {
+   *  ```
+   *  tryBreakable {
    *   (1 to 3).map(i => if (math.random < .5) break else i * 2)
-   * } catchBreak {
+   *  } catchBreak {
    *   Vector.empty
-   * }
-   * }}}
+   *  }
+   *  ```
    */
   def tryBreakable[T](op: => T): TryBlock[T] =
     new TryBlock[T] {
@@ -111,7 +111,7 @@ class Breaks {
 /** An object that can be used for the break control abstraction.
  *
  *  Example usage:
- *  {{{
+ *  ```
  *  import Breaks.{break, breakable}
  *
  *  breakable {
@@ -119,7 +119,7 @@ class Breaks {
  *      if (...) break
  *    }
  *  }
- *  }}}
+ *  ```
  */
 object Breaks extends Breaks
 

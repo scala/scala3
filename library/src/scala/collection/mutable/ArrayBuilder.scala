@@ -79,8 +79,7 @@ sealed abstract class ArrayBuilder[T]
   }
 }
 
-/** A companion object for array builders.
- */
+/** A companion object for array builders. */
 object ArrayBuilder {
 
   /** Creates a new arraybuilder of type `T`.

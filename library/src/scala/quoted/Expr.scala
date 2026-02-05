@@ -270,7 +270,7 @@ object Expr {
 
   /** Finds a given instance of type `T` in the current scope.
    *  Returns `Some` containing the expression of the implicit or
-   * `None` if implicit resolution failed.
+   *  `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
    */
@@ -285,7 +285,7 @@ object Expr {
   /** Finds a given instance of type `T` in the current scope,
    *  while excluding certain symbols from the initial implicit search.
    *  Returns `Some` containing the expression of the implicit or
-   * `None` if implicit resolution failed.
+   *  `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
    *  @param ignored Symbols ignored during the initial implicit search

@@ -9,8 +9,7 @@ import language.experimental.captureChecking
  */
 object Varargs {
 
-  /**
-   *  Lifts this sequence of expressions into an expression of a sequence
+  /** Lifts this sequence of expressions into an expression of a sequence
    *
    *  Transforms a sequence of expression
    *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
