@@ -16,6 +16,7 @@ import util.*
 import scala.annotation.internal.sharable
 import scala.annotation.tailrec
 import scala.collection.mutable
+import quoted.QuotePatterns
 
 import SpaceEngine.*
 
@@ -307,8 +308,19 @@ object SpaceEngine {
    *  @param  pt The scrutinee body type
    */
   def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
-    if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
-    else pat.body match
+    if pat.body.isType then
+      pat.bindings match
+        case Nil => pt =:= pat.tpe // constant type: '[T]
+        case binding +: Nil => // generic type variable: '[t]
+          def isTypeRefWithWildcardBounds(tree: Tree) =
+            val info = tree.symbol.info
+            info match
+              case TypeBounds(_, hi) => hi.isAny
+              case _ => false
+          isTypeRefWithWildcardBounds(binding) && isTypeRefWithWildcardBounds(pat.body)
+
+        case _ => false
+    else pat.body match // expr: '{$x: T}
       case _: SplicePattern | Typed(_: SplicePattern, _) => pat.bindings.isEmpty && pt <:< pat.tpe
       case _ => false
   }
@@ -357,7 +369,7 @@ object SpaceEngine {
     case SeqLiteral(pats, _) =>
       projectSeq(pats)
 
-    case UnApply(fun, _, pats) =>
+    case unapp @ UnApply(fun, _, pats) =>
       val fun1 = funPart(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
@@ -376,7 +388,24 @@ object SpaceEngine {
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+        def unapplyProd() = Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+
+        // Custom logic for '[...] and '{...} quoted patterns.
+        // Since their irrefutability has to be checked against a set Type,
+        // it's more practical to convert them here into `Typ(...)` (pointing
+        // to that Type) instead of `Prod(...)`.
+        if fun.symbol == defn.QuoteMatching_ExprMatch_unapply
+            || fun.symbol == defn.QuoteMatching_TypeMatch_unapply
+        then
+          val quotePattern = QuotePatterns.decode(unapp)
+          if (isIrrefutableQuotePattern(quotePattern, quotePattern.tpe)) then
+            if quotePattern.body.isType then
+              if(quotePattern.bindings.isEmpty) Typ(quotePattern.tpe, decomposed = false)
+              else Typ(defn.QuotedTypeClass.typeRef.appliedTo(WildcardType), decomposed = false)
+            else
+              Typ(quotePattern.tpe, decomposed = false)
+          else unapplyProd()
+        else unapplyProd()
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
@@ -852,6 +881,8 @@ object SpaceEngine {
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
                                                          // requires an unknown number of changes to make work
+      sel.tpe.widen.isRef(defn.QuotedExprClass) ||
+      sel.tpe.widen.isRef(defn.QuotedTypeClass) ||
       tpw.isInstanceOf[OrType] ||
       (tpw.isInstanceOf[AndType] && {
         val and = tpw.asInstanceOf[AndType]
