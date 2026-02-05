@@ -8,7 +8,7 @@
    |Found:    Logger^{any.rd}
    |Required: Logger^{}
    |
-   |Note that capability `any.rd` is not included in capture set {}.
+   |Note that capability `any.rd` cannot flow into capture set {}.
    |
    |where:    any is a root capability classified as SharedCapability created in value t when constructing instance Logger
    |

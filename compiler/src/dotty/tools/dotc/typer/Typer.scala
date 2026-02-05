@@ -3822,7 +3822,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(using ctx.fresh.setNewScope)
+          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(using ctx.fresh.setNewScope.setTree(tree))
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.PolyFunction => typedPolyFunction(tree, pt)
@@ -4674,44 +4674,55 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     /** A synthetic apply should be eta-expanded if it is the apply of an implicit function
-      *  class, and the expected type is a function type. This rule is needed so we can pass
-      *  an implicit function to a regular function type. So the following is OK
-      *
-      *     val f: implicit A => B  =  ???
-      *     val g: A => B = f
-      *
-      *  and the last line expands to
-      *
-      *     val g: A => B  =  (x$0: A) => f.apply(x$0)
-      *
-      *  One could be tempted not to eta expand the rhs, but that would violate the invariant
-      *  that expressions of implicit function types are always implicit closures, which is
-      *  exploited by ShortcutImplicits.
-      *
-      *  On the other hand, the following would give an error if there is no implicit
-      *  instance of A available.
-      *
-      *     val x: AnyRef = f
-      *
-      *  That's intentional, we want to fail here, otherwise some unsuccessful implicit searches
-      *  would go undetected.
-      *
-      *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
-      */
+     *  class, and the expected type is a function type. This rule is needed so we can pass
+     *  an implicit function to a regular function type. So the following is OK
+     *
+     *     val f: implicit A => B  =  ???
+     *     val g: A => B = f
+     *
+     *  and the last line expands to
+     *
+     *     val g: A => B  =  (x$0: A) => f.apply(x$0)
+     *
+     *  One could be tempted not to eta expand the rhs, but that would violate the invariant
+     *  that expressions of implicit function types are always implicit closures, which is
+     *  exploited by ShortcutImplicits.
+     *
+     *  On the other hand, the following would give an error if there is no implicit
+     *  instance of A available.
+     *
+     *     val x: AnyRef = f
+     *
+     *  That's intentional, we want to fail here, otherwise some unsuccessful implicit searches
+     *  would go undetected.
+     *
+     *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
+     */
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
         lazy val msg = MissingEmptyArgumentList(sym.show, tree)
-
-        sym.isConstructor
-        || sym.matchNullaryLoosely
-        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
-          && {
-            msg.actions
-              .headOption
-              .foreach(Rewrites.applyAction)
-            true
+        def applyAction(): Unit =
+          msg.actions
+            .headOption
+            .foreach(Rewrites.applyAction)
+        def warnScala2(): Unit =
+          if {
+            var isScala2 = sym.owner.is(Scala2x)
+            val isJavaEtc =
+              sym.allOverriddenSymbols.exists: m =>
+                if m.owner.is(Scala2x) then
+                  isScala2 = true
+                m.is(JavaDefined) || m == defn.Object_clone || m.owner == defn.AnyClass
+            isScala2 && !isJavaEtc
           }
+          then
+            report.warning(msg, tree.srcPos)
+            applyAction()
+        sym.isConstructor
+        || sym.matchNullaryLoosely.tap(if _ then warnScala2())
+        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`).tap(if _ then applyAction())
+      end isAutoApplied
 
       /** If this is a selection prototype of the form `.apply(...): R`, return the nested
        *  function prototype `(...)R`. Otherwise `pt`.

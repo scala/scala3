@@ -1609,14 +1609,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       && tp1.derivesFrom(defn.Caps_CapSet)
       && tp2.derivesFrom(defn.Caps_CapSet)
 
-    def rollBack(prevSize: Int): Unit =
-      var i = prevSize
-      while i < undoLog.size do
-        undoLog(i)()
-        i += 1
-      undoLog.takeInPlace(prevSize)
-      assert(undoLog.size == prevSize)
-
     // begin recur
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
@@ -1648,6 +1640,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         successCount = savedSuccessCount
         throw ex
   }
+
+  /** Undo all actions in undoLog following prevSize */
+  def rollBack(prevSize: Int): Unit =
+    var i = prevSize
+    while i < undoLog.size do
+      undoLog(i)()
+      i += 1
+    undoLog.takeInPlace(prevSize)
+
+  /** Treat `op` as an atomic compare operation. If one part fails, undo
+   *  all previously inclusions of elements in capsets.
+   */
+  def atomicOp(op: => Boolean): Boolean =
+    val savedLogSize = undoLog.size
+    if op then true
+    else
+      rollBack(savedLogSize)
+      false
 
   /** Run `op` in a recursion level (indicated by `recCount`) increased by one.
    *  This affects when monitoring starts and how error notes are propagated.
@@ -3581,6 +3591,9 @@ object TypeComparer {
 
   def compareResult(op: => Boolean)(using Context): CompareResult =
     comparing(_.compareResult(op))
+
+  def atomicOp(op: => Boolean)(using Context): Boolean =
+    comparing(_.atomicOp(op))
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
     currentComparer.isolated(op, x => x)

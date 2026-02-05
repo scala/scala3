@@ -78,7 +78,7 @@
    |                            Note that {any} is an exclusive capture set of the stateful type Ref2[Int]^{any},
    |                            it cannot subsume a read-only capture set of the stateful type (ref2 : Ref2[Int]).
    |
-   |                            Note that capability `any².rd` is not included in capture set {any}.
+   |                            Note that capability `any².rd` cannot flow into capture set {any}.
    |
    |                            where:    any  is a root capability classified as Unscoped in the type of value r5
    |                                      any² is a root capability classified as Unscoped in the type of value ref2

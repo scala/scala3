@@ -95,6 +95,75 @@ class InfoSuite extends BasePCSuite {
     assertMemberDefsAnnotations("a/D#", "scala.annotation.nowarn")
     assertMemberDefsAnnotations("a/D#bbb().", "")
 
+  @Test def `self-type` =
+    withSource(
+      """|package a
+         |trait A { def aa: Unit }
+         |trait B {
+         | this : A =>
+         |  override def aa: Unit = ()
+         |}
+         |""".stripMargin
+    )
+    val info = getInfo("a/B#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|a/A#
+         |java/lang/Object#
+         |""".stripMargin
+    )
+
+  @Test def `self-type-1` =
+    withSource(
+      """|package a
+         |trait A {
+         |  def aa(i: Int): String = ""
+         |  def aa: Unit
+         |}
+         |trait B {
+         | this : A =>
+         |  override def aa: Unit = ()
+         |}
+         |""".stripMargin
+    )
+    val info = getInfo("a/B#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|a/A#
+         |java/lang/Object#
+         |""".stripMargin
+    )
+
+  @Test def `self-type-with` =
+    withSource(
+      """|package a
+         |trait C
+         |trait A { def aa: Unit }
+         |trait B {
+         | this : A with C =>
+         |  override def aa: Unit = ()
+         |}
+         |""".stripMargin
+    )
+    val info = getInfo("a/B#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|a/A#
+         |a/C#
+         |java/lang/Object#
+         |""".stripMargin
+    )
+
+  @Test def `self-type-in-lib` =
+    val info = getInfo("scala/collection/generic/DefaultSerializable#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|scala/collection/Iterable#
+         |java/lang/Object#
+         |java/io/Serializable#
+         |""".stripMargin
+    )
+
   // hacky way to add a source file to the presentation compiler sources
   private def withSource(code: String) =
     val filename = "Hover.scala"

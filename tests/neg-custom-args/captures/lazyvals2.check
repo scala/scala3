@@ -4,6 +4,6 @@
    |                               Found:    () ->{console, io} String
    |                               Required: () ->{io} String
    |
-   |                               Note that capability `console` is not included in capture set {io}.
+   |                               Note that capability `console` cannot flow into capture set {io}.
    |
    | longer explanation available when compiling with `-explain`

@@ -169,6 +169,8 @@ object internal:
   @getter @param
   final class consume extends annotation.StaticAnnotation
 
+  final class inferred extends annotation.StaticAnnotation
+
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.

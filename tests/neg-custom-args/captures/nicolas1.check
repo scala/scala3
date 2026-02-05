@@ -4,7 +4,7 @@
    |  Found:    (contextual$1: Rand^) ?->{head, tail*} A
    |  Required: (Rand^) ?->{head} A
    |
-   |  Note that capability `tail*` is not included in capture set {head}.
+   |  Note that capability `tail*` cannot flow into capture set {head}.
    |
    |  where:    ^ refers to the root capability caps.any
    |

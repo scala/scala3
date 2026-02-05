@@ -4,7 +4,7 @@
    |Found:    (l1 : boundary.Label[boundary.Label[Int]^]^{any})
    |Required: boundary.Label[boundary.Label[Int]^{l2}]
    |
-   |Note that capability `any` is not included in capture set {}.
+   |Note that capability `any` cannot flow into capture set {}.
    |
    |where:    ^   refers to a root capability created in method test
    |          any is a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^²]^²): boundary.Label[Int]^² of parameter parameter l1 of method $anonfun

@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.SCALA_APP_ID }}
           private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}
@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v7
-      - uses: VirtusLab/scala-cli-setup@v1.11.0
+      - uses: VirtusLab/scala-cli-setup@v1.12.1
       - run: scala-cli ./project/scripts/addToBackportingProject.scala -- ${{ github.sha }}
         env:
           GRAPHQL_API_TOKEN: ${{ steps.app-token.outputs.token }}

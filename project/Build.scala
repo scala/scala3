@@ -108,11 +108,14 @@ object Build {
       val currentDate =
         formatter.format(java.time.ZonedDateTime.now(java.time.ZoneId.of("UTC")))
       s"${baseVersion}-bin-${currentDate}-${VersionUtil.gitHash}-NIGHTLY"
+    } else if (isBenchmark) {
+      s"${baseVersion}-bin-${VersionUtil.gitHashFull}-BENCH"
     }
     else s"${baseVersion}-bin-SNAPSHOT"
   }
   def isRelease = sys.env.get("RELEASEBUILD").contains("yes")
   def isNightly = sys.env.get("NIGHTLYBUILD").contains("yes")
+  def isBenchmark = sys.env.get("BENCHMARKBUILD").contains("yes")
 
   /** Version calculate for `nonbootstrapped` projects */
   val dottyNonBootstrappedVersion = {
@@ -2012,11 +2015,10 @@ object Build {
             .add(SourceLinks(List(
               s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"
             )))
+            .add(GenerateAPI(false))
         }
 
-        val generateDocs = generateDocumentation(languageReferenceConfig).map{ _ =>
-          sbt.io.IO.delete(file(outputDir) / "api") // Remove API docs generated along the reference docs
-        }
+        val generateDocs = generateDocumentation(languageReferenceConfig)
 
         val expectedLinksRegeneration = Def.task {
           if (shouldRegenerateExpectedLinks) {

@@ -16,9 +16,9 @@ class A {
       Console.println(f.toString)
       Console.println(g.toString) // error
 
-  class C: // error
+  class C:
     def show =
-      Console.println(f.toString)
+      Console.println(f.toString) // error
 }
 
 def test =

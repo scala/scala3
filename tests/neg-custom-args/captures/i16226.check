@@ -4,7 +4,7 @@
    |Found:    LazyRef[B]^{f1, ref1}
    |Required: LazyRef[B]^{any}
    |
-   |Note that capability `f1` is not included in capture set {any}
+   |Note that capability `f1` cannot flow into capture set {any}
    |because (f1 : A => B) in an enclosing function is not visible from any in method mapc.
    |
    |where:    =>  refers to a root capability created in anonymous function of type (ref1²: LazyRef[A]^{io}, f1²: A => B): LazyRef[B]^ of parameter parameter f1 of method $anonfun
@@ -17,7 +17,7 @@
    |Found:    LazyRef[B]^{f1, ref1}
    |Required: LazyRef[B]^{any}
    |
-   |Note that capability `f1` is not included in capture set {any}
+   |Note that capability `f1` cannot flow into capture set {any}
    |because (f1 : A => B) in an enclosing function is not visible from any in method mapd.
    |
    |where:    =>  refers to a root capability created in anonymous function of type (ref1²: LazyRef[A]^{io}, f1²: A => B): LazyRef[B]^ of parameter parameter f1 of method $anonfun
