@@ -1145,8 +1145,11 @@ trait Applications extends Compatibility {
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // Indices of original typed arguments that are lifted by liftArgs
-              val impureArgIndices = typedArgBuf.zipWithIndex.collect {
-                case (arg, idx) if !lifter.noLift(arg) => idx
+              val impureArgIndices = {
+                val paramInfos = methType.paramInfoss.flatten
+                typedArgBuf.lazyZip(paramInfos).zipWithIndex.collect {
+                  case ((arg, tp), idx) if lifter.wouldLift(arg, tp) => idx
+                }
               }
               def position(arg: Trees.Tree[T]) = {
                 val i = args.indexOf(arg)
