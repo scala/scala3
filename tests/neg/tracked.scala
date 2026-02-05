@@ -5,7 +5,7 @@ class C2(tracked var x: Int) // error
 
 object A:
   def foo(tracked a: Int) = // error
-    tracked val b: Int = 2 // error
+    tracked val b: Int = 2
 
 object B:
   tracked object Foo // error
