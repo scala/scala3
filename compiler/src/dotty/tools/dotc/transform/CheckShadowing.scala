@@ -98,6 +98,10 @@ class CheckShadowing extends MiniPhase:
       shadowingDataApply(sd => sd.computeTypeParamShadowsFor(tree.symbol)(using ctx))
     tree
 
+  override def transformBind(tree: tpd.Bind)(using Context): tpd.Tree =
+    shadowingDataApply(sd => sd.checkPatternVariableShadow(tree))
+    tree
+
   private def isValidTypeParamOwner(owner: Symbol)(using Context): Boolean =
     !owner.isConstructor && !owner.is(Synthetic) && !owner.is(Exported)
 
@@ -110,6 +114,8 @@ class CheckShadowing extends MiniPhase:
           report.warning(s"Type parameter ${shadow.name} for $parent shadows the type defined by ${shadowed.showLocated}", pos)
         else
           report.warning(s"Type parameter ${shadow.name} for $parent shadows an explicitly renamed type : ${shadow.name}", pos)
+      case PatternShadowWarning(pos, shadow, shadowed) =>
+        report.warning(s"pattern variable ${shadow.name} shadows ${shadowed.showLocated}", pos)
     }
 
   private def nestedTypeTraverser(parent: Symbol) = new TreeTraverser:
@@ -159,6 +165,7 @@ object CheckShadowing:
     private val typeParamShadowWarnings = MutSet[TypeParamShadowWarning]()
 
     private val privateShadowWarnings = MutSet[PrivateShadowWarning]()
+    private val patternShadowWarnings = MutSet[PatternShadowWarning]()
 
     def inNewScope()(using Context) =
       explicitsImports.push(MutSet())
@@ -239,6 +246,27 @@ object CheckShadowing:
       else
         None
 
+    def checkPatternVariableShadow(tree: tpd.Bind)(using Context): Unit =
+      if ctx.settings.WshadowHas.patternVariableShadow && tree.name.isTermName then
+        val sym = tree.symbol
+        lookForShadowedPatternVar(sym).foreach(shadowed =>
+          // skip if we are shadowing a method, which is generally allowed (e.g. x @ Something())
+          if shadowed.exists && shadowed.isTerm && !shadowed.is(Method) then
+             patternShadowWarnings += PatternShadowWarning(tree.srcPos, sym, shadowed)
+        )
+
+    private def lookForShadowedPatternVar(sym: Symbol)(using Context): Option[Symbol] =
+      // Traverse outer contexts to find a term with the same name
+      def loop(ctx: Context): Option[Symbol] =
+        if !ctx.outer.isImportContext && ctx.outer.scope != null then
+          val s = ctx.outer.scope.lookup(sym.name)
+          if s.exists then Some(s)
+          else if ctx.outer == ctx then None
+          else loop(ctx.outer)
+        else if ctx.outer == ctx then None
+        else loop(ctx.outer)
+      loop(ctx)
+
     /** Get the shadowing analysis's result */
     def getShadowingResult(using Context): ShadowResult =
       val privateWarnings: List[ShadowWarning] =
@@ -251,7 +279,7 @@ object CheckShadowing:
           typeParamShadowWarnings.toList
         else
           Nil
-      ShadowResult(privateWarnings ++ typeParamWarnings)
+      ShadowResult(privateWarnings ++ typeParamWarnings ++ patternShadowWarnings)
 
     extension (sym: Symbol)
       /** Looks after any type import symbol in the given import that matches this symbol */
@@ -280,6 +308,12 @@ object CheckShadowing:
         override val shadow: Symbol,
         val shadowParent: Symbol,
         override val shadowed: Symbol,
+      ) extends ShadowWarning(pos, shadow, shadowed)
+
+      case class PatternShadowWarning(
+        override val pos: SrcPos,
+        override val shadow: Symbol,
+        override val shadowed: Symbol
       ) extends ShadowWarning(pos, shadow, shadowed)
 
       /** A container for the results of the shadow elements analysis */

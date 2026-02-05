@@ -2898,19 +2898,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
   end typedTypeBoundsTree
 
-  /** Look up a name in enclosing scopes to check for pattern variable shadowing.
-   *  This traverses outer contexts looking for a term symbol with the given name.
-   */
-  private def lookupInOuterScopes(name: Name)(using Context): Symbol =
-    def loop(ctx: Context): Symbol =
-      if !ctx.outer.isImportContext && ctx.outer.scope != null then
-        val sym = ctx.outer.scope.lookup(name)
-        if sym.exists then sym
-        else if ctx.outer == ctx then NoSymbol
-        else loop(ctx.outer)
-      else if ctx.outer == ctx then NoSymbol
-      else loop(ctx.outer)
-    loop(ctx)
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
@@ -2981,11 +2968,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
             report.error(IllegalVariableInPatternAlternative(sym.name), tree.srcPos)
-          // Check for pattern variable shadowing
-          if ctx.settings.WshadowHas.patternVariableShadow && name.isTermName then
-            val shadowedSym = lookupInOuterScopes(name)
-            if shadowedSym.exists && shadowedSym.isTerm && !shadowedSym.is(Method) then
-              report.warning(em"pattern variable ${sym.name} shadows ${shadowedSym.showLocated}", tree.srcPos)
           assignType(cpy.Bind(tree)(name, body1), sym)
         }
     }
