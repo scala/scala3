@@ -194,7 +194,8 @@ object NameOps {
      *  and it's not the case that only one is a field name.
      */
     def matchesTargetName(other: Name) =
-         name.isEmpty
+         name == other
+      || name.isEmpty
       || other.isEmpty
       ||    name.isTermName == other.isTermName
          && name.is(NameKinds.FieldName) == other.is(NameKinds.FieldName)
