@@ -10,15 +10,15 @@
 33 |      case Some(Some(outer)) => outer  // warn: shadows outer val
    |                     ^^^^^
    |                     pattern variable outer shadows value outer in method test5
--- Warning: tests/warn/i10749.scala:40:17 -----------------------------------------------------------------------------
-40 |      case (Some(a), Some(b)) => a + b  // warn // warn
+-- Warning: tests/warn/i10749.scala:41:17 -----------------------------------------------------------------------------
+41 |      case (Some(a),
    |                 ^
    |                 pattern variable a shadows value a in method test6
--- Warning: tests/warn/i10749.scala:40:27 -----------------------------------------------------------------------------
-40 |      case (Some(a), Some(b)) => a + b  // warn // warn
-   |                           ^
-   |                           pattern variable b shadows value b in method test6
--- Warning: tests/warn/i10749.scala:47:11 -----------------------------------------------------------------------------
-47 |      Some(x) <- List(Some(1), None)  // warn: shadows x
+-- Warning: tests/warn/i10749.scala:42:17 -----------------------------------------------------------------------------
+42 |            Some(b)) => a + b  // warn // warn
+   |                 ^
+   |                 pattern variable b shadows value b in method test6
+-- Warning: tests/warn/i10749.scala:48:11 -----------------------------------------------------------------------------
+48 |      Some(x) <- List(Some(1), None)  // warn: shadows x
    |           ^
    |           pattern variable x shadows value x in method test7

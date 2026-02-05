@@ -38,7 +38,8 @@ object Test:
     val a = 1
     val b = 2
     (Some(1), Some(2)) match
-      case (Some(a), Some(b)) => a + b  // warn // warn
+      case (Some(a),
+            Some(b)) => a + b  // warn // warn
       case _ => 0
 
   // Test 7: Pattern in for-comprehension
