@@ -1,0 +1,2 @@
+> compile
+$ must-mirror src/main/scala/hello/Hello.inc Hello.inc
