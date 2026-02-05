@@ -4355,11 +4355,11 @@ object Parsers {
     // Syntax rules disallow these soft infix modifiers on `case`s.
     @tu private lazy val allowedForEnum = AccessFlags | Enum | Infix | Into
 
-    private def checkEnumModifiers(mods: Modifiers, allowed: FlagSet, caseStr: String): Modifiers =
+    private def checkEnumModifiers(mods: Modifiers, caseStr: String): Modifiers =
       val flags = mods.flags
       var flags1 = flags
       for mod <- mods.mods do
-        if !mod.flags.isOneOf(allowed) then
+        if !mod.flags.isOneOf(allowedForEnum) then
           syntaxError(em"This modifier is not allowed on an enum$caseStr", mod.span)
           flags1 = flags1 &~ mod.flags
       if flags1 != flags then mods.withFlags(flags1) else mods
@@ -4367,7 +4367,7 @@ object Parsers {
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      val mods1 = checkEnumModifiers(mods, allowedForEnum, "")
+      val mods1 = checkEnumModifiers(mods, "")
       val modulName = ident()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)
@@ -4378,7 +4378,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = checkEnumModifiers(mods, allowedForEnum, " case") | EnumCase
+      val mods1 = checkEnumModifiers(mods, " case") | EnumCase
       accept(CASE)
 
       atSpan(start, nameStart) {
