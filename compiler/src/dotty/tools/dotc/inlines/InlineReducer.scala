@@ -175,13 +175,19 @@ class InlineReducer(inliner: Inliner)(using Context):
 
     val unusable: util.EqHashSet[Symbol] = util.EqHashSet()
 
+    // Check if a symbol is truly erased (not just a macro which happens to have the Erased flag).
+    // Macros like StringContext.s are marked Erased but are not truly erased values.
+    // See issue #24588.
+    def isTrulyErased(sym: Symbol): Boolean =
+      sym.isErased && !sym.is(Macro)
+
     /** Adjust internaly generated value definitions;
      *   - If the RHS refers to an erased symbol, mark the val as erased
      *   - If the RHS refers to an unusable symbol, mark the val as unusable
      */
     def adjustErased(sym: TermSymbol, rhs: Tree): Unit =
       rhs.foreachSubTree:
-        case id: Ident if id.symbol.isErased =>
+        case id: Ident if isTrulyErased(id.symbol) =>
           sym.setFlag(Erased)
           if unusable.contains(id.symbol) then unusable += sym
         case _ =>
@@ -366,7 +372,7 @@ class InlineReducer(inliner: Inliner)(using Context):
     // to unusable symbols.
     // Note that compiletime.erasedValue is treated as erased but not pure, so scrutinees
     // containing references to it becomes unusable.
-    if scrutinee.existsSubTree(_.symbol.isErased) then
+    if scrutinee.existsSubTree(t => isTrulyErased(t.symbol)) then
       scrutineeSym.setFlag(Erased)
       if !tpd.isPureExpr(scrutinee) then unusable += scrutineeSym
 
