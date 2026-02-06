@@ -355,7 +355,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
       """|object A{
          |  val list = 1 match {
          |    case 2 => "Two!"
-         |    case otherDigit: Int => "Not two!"
+         |    case otherDigit: 1 => "Not two!"
          |  }
          |}""".stripMargin
     )
