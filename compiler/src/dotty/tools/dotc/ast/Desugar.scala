@@ -1982,12 +1982,23 @@ object desugar {
       flags =
         if params.nonEmpty && params.head.mods.is(Given) then SyntheticTermParam | Given
         else SyntheticTermParam)
+
+    def paramIsUsed(name: Name, body: Tree): Boolean =
+      val acc = new UntypedTreeAccumulator[Boolean]:
+        def apply(x: Boolean, t: Tree)(using Context) =
+          if x then true
+          else t match
+            case Ident(id) => id == name
+            case _ => foldOver(x, t)
+      acc(false, body)
+
     def selector(n: Int) =
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
-      params.zipWithIndex.map {
-        case (param, idx) =>
+      params.zipWithIndex.collect {
+        case (param, idx) if param.name != nme.WILDCARD &&
+          (!param.name.is(WildcardParamName) || paramIsUsed(param.name, body)) =>
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
