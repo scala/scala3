@@ -88,7 +88,7 @@ all enclosing scopes. This process is called _charging_ the capability to the en
 
 ```scala
 def outer(fs: FileSystem^): Unit =
-  def inner(): () ->{fs} Unit =
+  def inner: () ->{fs} Unit =
     () => fs.read()  // fs is used here
   inner()
 ```
