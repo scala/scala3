@@ -1838,7 +1838,7 @@ trait Applications extends Compatibility {
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             fullyDefinedType(unapplyArgType, "pattern selector", tree.srcPos)
             if selType.isBottomType then unapplyArgType
-            else selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
+            else selType0.dropAnnot(defn.UncheckedAnnot) // Preserve named tuple information for dependent unapply results.
           else
             if !ctx.mode.is(Mode.InTypeTest) then
               checkMatchable(selType, tree.srcPos, pattern = true)
