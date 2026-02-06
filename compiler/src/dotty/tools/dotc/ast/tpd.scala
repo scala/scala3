@@ -515,8 +515,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ref(NamedType(simplifyThisTypePrefix(sym.owner.thisType), sym.name, sym.denot))
 
   private def followOuterLinks(t: Tree)(using Context) = t match {
-    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+    case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStatic) =>
       // after erasure outer paths should be respected
+      // Use isStatic instead of isStaticOwner because a package-level class/trait
+      // (which is static but not a static owner) doesn't need an outer accessor
       ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.classSymbol)
     case t =>
       t
