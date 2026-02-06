@@ -1,4 +1,4 @@
-//> using options -Werror
+//> using options -Werror -explain
 
 class A
 class B
