@@ -145,7 +145,9 @@ class ElimByName extends MiniPhase, InfoTransformer:
             if isByNameRef(qual) && (isPureExpr(qual) || qual.symbol.isAllOf(InlineParam)) =>
               qual
             case _ =>
-              if isByNameRef(arg) || arg.symbol.name.is(SuperArgName) then arg
+              val isByNameRefResult = isByNameRef(arg)
+              val isSuperArgName = arg.symbol.name.is(SuperArgName)
+              if isByNameRefResult || isSuperArgName then arg
               else byNameClosure(arg, formalResult)
         case _ =>
           arg
