@@ -151,6 +151,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
+    // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
+    val superCallTargets = mutable.LinkedHashSet[ClassBType]()
+
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
@@ -179,8 +182,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       thisName          = internalName(claszSymbol)
 
       cnode = new ClassNode1()
-
-      initJClass(cnode)
 
       val cd = if (isCZStaticModule) {
         // Move statements from the primary constructor following the superclass constructor call to
@@ -291,11 +292,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       addClassFields()
       gen(cd.rhs)
+      // This needs to wait until now since it uses `superCallTargets` which is populating while emitting the class body
+      initJClass(cnode)
 
       if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
         AsmUtils.traceClass(cnode)
 
-      cnode.innerClasses
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
     } // end of method genPlainClass()
@@ -307,7 +309,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val ps = claszSymbol.info.parents
       val superClass: String = if (ps.isEmpty) ObjectRef.internalName else internalName(ps.head.typeSymbol)
-      val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces.map(_.internalName)
+
+      // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
+      // At this point `superCallTargets` won't be modified any more so let's reuse it (since using `++` would operate on lists and may lead to duplicates)
+      superCallTargets.addAll(classBTypeFromSymbol(claszSymbol).info.interfaces)
+      val interfaces = superCallTargets
+
+      val interfaceNames0 = interfaces.iterator.map(_.internalName).toList
       /* To avoid deadlocks when combining objects, lambdas and multi-threading,
        * lambdas in objects are compiled to instance methods of the module class
        * instead of static methods (see tests/run/deadlock.scala and

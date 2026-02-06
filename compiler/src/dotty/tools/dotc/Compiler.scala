@@ -7,7 +7,7 @@ import typer.{TyperPhase, RefChecks}
 import parsing.Parser
 import Phases.Phase
 import transform.*
-import backend.jvm.{CollectSuperCalls, GenBCode}
+import backend.jvm.GenBCode
 import localopt.{StringInterpolatorOpt, DropForMap}
 import semanticdb.ExtractSemanticDB.{ExtractSemanticInfo, AppendDiagnostics as AppendSemanticDiagnostics}
 
@@ -145,7 +145,6 @@ class Compiler {
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
          new CollectEntryPoints,     // Collect all entry points and save them in the context
-         new CollectSuperCalls,      // Find classes that are called with super
          new RepeatableAnnotations) :: // Aggregate repeatable annotations
     Nil
 

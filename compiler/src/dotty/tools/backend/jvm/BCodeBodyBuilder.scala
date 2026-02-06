@@ -1419,10 +1419,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isInterface = isEmittedInterface(receiverClass)
       import InvokeStyle.*
       if (style == Super) {
+        val ownerBType = toTypeKind(method.owner.info)
+        if (method.owner.is(Trait)) {
+          superCallTargets.add(ownerBType.asInstanceOf[ClassBType])
+        }
         if (isInterface && !method.is(JavaDefined)) {
-          val args = new Array[BType](bmType.argumentTypes.length + 1)
-          val ownerBType = toTypeKind(method.owner.info)
-          bmType.argumentTypes.copyToArray(args, 1)
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface)
