@@ -2035,9 +2035,11 @@ class Definitions {
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
+  @tu private lazy val ScalaValueTypesNoUnit: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
+  val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
     Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)

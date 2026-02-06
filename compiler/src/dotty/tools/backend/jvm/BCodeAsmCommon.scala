@@ -2,17 +2,18 @@ package dotty.tools
 package backend
 package jvm
 
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.report
 
+import DottyBackendInterface.symExtensions
+
 /**
- * This trait contains code shared between GenBCode and GenASM that depends on types defined in
+ * Code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).
  */
-final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface.given
-  import DottyBackendInterface.symExtensions
+object BCodeAsmCommon {
 
   /**
    * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a
@@ -20,7 +21,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * It is also used to decide whether the "owner" field in the InnerClass attribute should be
    * null.
    */
-  def isAnonymousOrLocalClass(classSym: Symbol): Boolean = {
+  def isAnonymousOrLocalClass(classSym: Symbol)(using ctx: Context): Boolean = {
     assert(classSym.isClass, s"not a class: $classSym")
     // Here used to be an `assert(!classSym.isDelambdafyFunction)`: delambdafy lambda classes are
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
@@ -54,7 +55,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * The EnclosingMethod attribute needs to be added to non-member classes (see doc in BTypes).
    * This is a source-level property, so we need to use the originalOwner chain to reconstruct it.
    */
-  private def enclosingMethodForEnclosingMethodAttribute(classSym: Symbol): Option[Symbol] = {
+  private def enclosingMethodForEnclosingMethodAttribute(classSym: Symbol)(using ctx: Context): Option[Symbol] = {
     assert(classSym.isClass, classSym)
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (sym.isClass || sym == NoSymbol) None
@@ -68,7 +69,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * The enclosing class for emitting the EnclosingMethod attribute. Since this is a source-level
    * property, this method looks at the originalOwner chain. See doc in BTypes.
    */
-  private def enclosingClassForEnclosingMethodAttribute(classSym: Symbol): Symbol = {
+  private def enclosingClassForEnclosingMethodAttribute(classSym: Symbol)(using ctx: Context): Symbol = {
     assert(classSym.isClass, classSym)
     def enclosingClass(sym: Symbol): Symbol = {
       if (sym.isClass) sym
@@ -84,10 +85,10 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
    * an anonymous or local class). See doc in BTypes.
    *
    * The class is parametrized by two functions to obtain a bytecode class descriptor for a class
-   * symbol, and to obtain a method signature descriptor fro a method symbol. These function depend
+   * symbol, and to obtain a method signature descriptor from a method symbol. These function depend
    * on the implementation of GenASM / GenBCode, so they need to be passed in.
    */
-  def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String): Option[EnclosingMethodEntry] = {
+  def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String)(using ctx: Context): Option[EnclosingMethodEntry] = {
     if (isAnonymousOrLocalClass(classSym)) {
       val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
       report.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
@@ -99,10 +100,8 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
       None
     }
   }
-}
 
-object BCodeAsmCommon{
-  def ubytesToCharArray(bytes: Array[Byte]): Array[Char] = {
+  private def ubytesToCharArray(bytes: Array[Byte]): Array[Char] = {
     val ca = new Array[Char](bytes.length)
     var idx = 0
     while(idx < bytes.length) {
@@ -115,16 +114,16 @@ object BCodeAsmCommon{
     ca
   }
 
-  final def arrEncode(bSeven: Array[Byte]): Array[String] = {
+  def arrEncode(bSeven: Array[Byte]): Array[String] = {
     var strs: List[String]  = Nil
     // chop into slices of at most 65535 bytes, counting 0x00 as taking two bytes (as per JVMS 4.4.7 The CONSTANT_Utf8_info Structure)
     var prevOffset = 0
     var offset     = 0
     var encLength  = 0
     while(offset < bSeven.length) {
-      val deltaEncLength = (if(bSeven(offset) == 0) 2 else 1)
+      val deltaEncLength = if(bSeven(offset) == 0) 2 else 1
       val newEncLength = encLength.toLong + deltaEncLength
-      if(newEncLength >= 65535) {
+      if (newEncLength >= 65535) {
         val ba     = bSeven.slice(prevOffset, offset)
         strs     ::= new java.lang.String(ubytesToCharArray(ba))
         encLength  = 0
@@ -142,7 +141,6 @@ object BCodeAsmCommon{
     assert(strs.size > 1, "encode instead as one String via strEncode()") // TODO too strict?
     strs.reverse.toArray
   }
-
 
   def strEncode(bSeven: Array[Byte]): String = {
     val ca = ubytesToCharArray(bSeven)
