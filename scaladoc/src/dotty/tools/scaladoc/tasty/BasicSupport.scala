@@ -41,29 +41,15 @@ trait BasicSupport:
     def documentation = parseComment(sym.docstring.getOrElse(""), sym.tree)
 
     def getAnnotations(): List[Annotation] =
-      // Custom annotations should be documented only if annotated by @java.lang.annotation.Documented
-      // We allow also some special cases
-      val fqNameAllowlist0 = Set(
-        "scala.specialized",
-        "scala.throws",
-        "scala.transient",
-        "scala.volatile",
-        "scala.annotation.experimental",
-        "scala.annotation.constructorOnly",
-        "scala.annotation.static",
-        "scala.annotation.targetName",
-        "scala.annotation.threadUnsafe",
-        "scala.annotation.varargs",
-      )
-      val fqNameAllowlist =
-        if ccEnabled then
-          fqNameAllowlist0 + CaptureDefs.useAnnotFullName
-        else fqNameAllowlist0
-      val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
-      val annotations = sym.annotations.filter { a =>
-        a.tpe.typeSymbol.hasAnnotation(documentedSymbol) || fqNameAllowlist.contains(a.symbol.fullName)
-      }
-      annotations.map(parseAnnotation).reverse
+      sym.annotations
+        .filter(a => a.tpe.typeSymbol.isDocumented)
+        .map(parseAnnotation)
+        .reverse
+
+    def isDocumented: Boolean =
+      val javaDocumentedSymbol  = reflect.Symbol.requiredClass("java.lang.annotation.Documented")
+      val scalaDocumentedSymbol = reflect.Symbol.requiredClass("scala.annotation.documented")
+      sym.hasAnnotation(scalaDocumentedSymbol) || sym.hasAnnotation(javaDocumentedSymbol)
 
     def isDeprecated(): Option[Annotation] =
       sym.annotations.find { a =>

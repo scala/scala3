@@ -18,4 +18,5 @@ import scala.language.`2.13`
  *  Java varargs-style forwarder method for interop. This annotation can
  *  only be applied to methods with repeated parameters.
  */
+@documented
 final class varargs extends scala.annotation.StaticAnnotation
