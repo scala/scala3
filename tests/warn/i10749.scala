@@ -1,5 +1,4 @@
 //> using options -Wshadow:pattern-variable-shadow
-// Trigger CI verify
 
 object Test:
 
