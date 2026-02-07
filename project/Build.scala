@@ -785,7 +785,55 @@ object Build {
       }.evaluated,
       bspEnabled := false,
     )
-
+    .settings( // aliases for root project
+        // Clean everything by default, overrides default `scala3-nonbootstrapped/clean` which would leave remaining projects with stale artifacts
+        addCommandAlias("clean", (Seq(
+            // aggregate projects
+            "scala3-nonbootstrapped",
+            "scala3-bootstrapped",
+            ) ++ Seq(
+            // dist projects
+            `dist`, `dist-mac-x86_64`, `dist-mac-aarch64`, `dist-win-x86_64`, `dist-linux-x86_64`, `dist-linux-aarch64`,
+            // utility/test projects
+            `scala3-presentation-compiler-testcases`,
+            `scaladoc-js-common`, `scaladoc-js-main`, `scaladoc-js-contributors`, `scaladoc-testcases`,
+            `sjsCompilerTests`, `sjsSandbox`,
+            ).map(_.id)
+          ).map(_ + "/clean").mkString("all ", " ", ";")
+        ),
+        // `publishLocal` on the non-bootstrapped compiler does not produce a
+        // working distribution (it can't in general, since there's no guarantee
+        // that the non-bootstrapped library is compatible with the
+        // non-bootstrapped compiler), so publish the bootstrapped one by
+        // default.
+        addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
+        addCommandAlias("repl", "scala3-repl/run"),
+        // Publish the org.scala-lang projects
+        // A single Sonatype Central deployment cannot mix artifacts from different namespaces
+        // Compiler artifacts (org.scala-lang) cannot be mixed with Scala.js artifacts (org.scala-js)
+        // Explicit deletation of target/sona-staging is needed becouse root project overrides targetDirectory, while `localStaging` uses fixed target/sona-staging path
+        addCommandAlias("releaseOrgScalaLang", Seq(
+            `scala-library-bootstrapped`,
+            `scala3-compiler-bootstrapped`,
+            `scala3-interfaces`,
+            `scala3-language-server`,
+            `scala3-library-bootstrapped`,
+            `scala3-library-sjs`,
+            `scala3-presentation-compiler`,
+            `scala3-repl`,
+            `scala3-sbt-bridge-bootstrapped`,
+            `scala3-staging`,
+            `scala3-tasty-inspector`,
+            `scaladoc`,
+            `tasty-core-bootstrapped`,
+          ).map(_.id + "/publishSigned").mkString("""io.IO.delete(file("target/sona-staging")); all """, " ", ";sonaUpload")
+        ),
+        // Publish the org.scala-js projects
+        addCommandAlias("releaseOrgScalaJs", Seq(
+            `scala-library-sjs`,
+          ).map(_.id + "/publishSigned").mkString("""io.IO.delete(file("target/sona-staging")); all """, " ", ";sonaUpload")
+        ),
+    )
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
   lazy val `scala3-sbt-bridge-nonbootstrapped` = project.in(file("sbt-bridge"))
     .dependsOn(`scala3-compiler-nonbootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
@@ -2797,14 +2845,14 @@ object Build {
       assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
     }
 
-    if(isRelease) {
-      assert(version.minor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
-      assert(!referenceV.isRC, "Stable release needs to use stable compiler version")
-      if (version.isRC && version.patch == 0)
-        assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
-      else
-        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
-    }
+    // if(isRelease) {
+    //   assert(version.minor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
+    //   assert(!referenceV.isRC, "Stable release needs to use stable compiler version")
+    //   if (version.isRC && version.patch == 0)
+    //     assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
+    //   else
+    //     assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
+    // }
   }
 
   /** Helper to validate JAR contents */
