@@ -26,7 +26,7 @@ class ScriptingTests:
   /*
    * Call .scala scripts without -save option, verify no jar created
    */
-  @Test def scriptingDriverTests =
+  @Test def scriptingDriverTests: Unit =
     if Properties.usingScalaLibraryTasty then return
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".scala") do
       showScriptUnderTest(scriptFile)
@@ -49,7 +49,7 @@ class ScriptingTests:
   /*
    * Call .sc scripts without -save option, verify no jar created
    */
-  @Test def scriptingMainTests =
+  @Test def scriptingMainTests: Unit =
     if Properties.usingScalaLibraryTasty then return
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
       showScriptUnderTest(scriptFile)
@@ -68,7 +68,7 @@ class ScriptingTests:
   /*
    * Call .sc scripts with -save option, verify jar is created.
    */
-  @Test def scriptingJarTest =
+  @Test def scriptingJarTest: Unit =
     if Properties.usingScalaLibraryTasty then return
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
       showScriptUnderTest(scriptFile)
@@ -93,7 +93,7 @@ class ScriptingTests:
    * Verify that when ScriptingDriver callback returns true, main is called.
    * Verify that when ScriptingDriver callback returns false, main is not called.
    */
-  @Test def scriptCompileOnlyTests =
+  @Test def scriptCompileOnlyTests: Unit =
     if Properties.usingScalaLibraryTasty then return
     val scriptFile = touchFileScript
     showScriptUnderTest(scriptFile)

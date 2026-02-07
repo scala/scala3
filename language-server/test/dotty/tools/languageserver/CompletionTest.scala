@@ -1488,8 +1488,8 @@ class CompletionTest {
           |  1 match { case foo if fo${m1} => }
           |  1 match { case foo => fo${m2} }
           """
-      .completion(m1, Set(("foo", Field, "Int")))
-      .completion(m2, Set(("foo", Field, "Int")))
+      .completion(m1, Set(("foo", Field, "(1 : Int)")))
+      .completion(m2, Set(("foo", Field, "(1 : Int)")))
   }
 
   @Test def patternGuardCompletionsUnApply: Unit = {

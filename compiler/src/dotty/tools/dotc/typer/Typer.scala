@@ -2185,7 +2185,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val sel1 = typedExpr(tree.selector)
         val rawSelectorTpe = fullyDefinedType(sel1.tpe, "pattern selector", tree.srcPos)
         val selType = rawSelectorTpe match
-          case c: ConstantType if tree.isInline => c
+          case c: ConstantType => c
           case otherTpe => otherTpe.widen
 
         /** Does `tree` has the same shape as the given match type?

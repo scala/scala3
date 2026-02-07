@@ -1,11 +1,12 @@
 //> using options -Wshadow:pattern-variable-shadow
+// Trigger CI verify
 
 object Test:
 
   // Test 1: Pattern shadows local val
   def test1 =
     val x = 1
-    Some(2) match
+    (Some(2): Option[Int]) match
       case Some(x) => x  // warn: pattern variable shadows outer x
       case None => 0
 
@@ -16,20 +17,20 @@ object Test:
   // Test 3: Wildcard is OK
   def test3 =
     val z = 1
-    Some(2) match
+    (Some(2): Option[Int]) match
       case Some(_) => 0  // ok: wildcard doesn't create binding
       case None => z
 
   // Test 4: No shadowing
   def test4 =
-    Some(2) match
+    (Some(2): Option[Int]) match
       case Some(fresh) => fresh  // ok: no shadowing
       case None => 0
 
   // Test 5: Nested match shadows outer pattern variable (not just outer val)
   def test5 =
     val outer = 1
-    Some(Some(2)) match
+    (Some(Some(2)): Option[Option[Int]]) match
       case Some(Some(outer)) => outer  // warn: shadows outer val
       case _ => 0
 
@@ -37,21 +38,21 @@ object Test:
   def test6 =
     val a = 1
     val b = 2
-    (Some(1), Some(2)) match
-      case (Some(a),
-            Some(b)) => a + b  // warn // warn
+    ((Some(1): Option[Int]), (Some(2): Option[Int])) match
+      case (Some(a),  // warn
+            Some(b)) => a + b  // warn
       case _ => 0
 
   // Test 7: Pattern in for-comprehension
   def test7 =
     val x = 1
     for
-      Some(x) <- List(Some(1), None)  // warn: shadows x
+      Some(x) <- List(Some(1))  // warn: shadows x
     yield x
 
   // Test 8: Stable identifier - should NOT warn (different semantics)
   def test8 =
     val y = 1
-    Some(1) match
+    (Some(1): Option[Int]) match
       case Some(`y`) => 1  // ok: backticks mean stable identifier match, not new binding
       case _ => 0
