@@ -148,11 +148,6 @@ object ArrayBuilder {
       if(elems ne null) java.util.Arrays.fill(elems.asInstanceOf[Array[AnyRef]], null)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofRef[?] => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofRef"
   }
 
@@ -188,11 +183,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofByte => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofByte"
@@ -232,11 +222,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofShort => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofShort"
   }
 
@@ -272,11 +257,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofChar => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofChar"
@@ -316,11 +296,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofInt => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofInt"
   }
 
@@ -356,11 +331,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofLong => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofLong"
@@ -400,11 +370,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofFloat => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofFloat"
   }
 
@@ -440,11 +405,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofDouble => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofDouble"
@@ -485,11 +445,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofBoolean => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofBoolean"
   }
 
@@ -525,11 +480,6 @@ object ArrayBuilder {
       var i = 0
       while (i < size) { ans(i) = (); i += 1 }
       ans
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofUnit => (size == x.size)
-      case _ => false
     }
 
     protected def resize(size: Int): Unit = capacity = size
