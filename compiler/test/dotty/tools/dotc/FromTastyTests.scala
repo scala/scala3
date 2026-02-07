@@ -22,7 +22,7 @@ class FromTastyTests {
     // > scalac -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
+    compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions.and("-experimental"),
       fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyExcludelisted)
     ).checkCompile()
   }
@@ -34,7 +34,7 @@ class FromTastyTests {
     // > scala Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
+    compileTastyInDir(s"tests${JFile.separator}run", defaultOptions.and("-experimental"),
       fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyExcludelisted)
     ).checkRuns()
   }
