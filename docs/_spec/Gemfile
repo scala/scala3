@@ -6,4 +6,4 @@ gem "jekyll", "3.6.3"
 gem "webrick"
 gem "rouge"
 # gem 's3_website'
-gem "redcarpet", "3.6.0"
+gem "redcarpet", "3.6.1"
