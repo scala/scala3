@@ -3838,7 +3838,7 @@ Language => Scala
 Symbols => 62 entries
 Occurrences => 165 entries
 Diagnostics => 4 entries
-Synthetics => 48 entries
+Synthetics => 47 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
@@ -3944,7 +3944,7 @@ Occurrences:
 [19:28..19:33): until -> scala/runtime/RichInt#until().
 [19:38..19:45): println -> scala/Predef.println(+1).
 [19:46..19:47): x -> local0
-[19:48..19:50): -> -> scala/Predef.ArrowAssoc#`->`().
+[19:48..19:50): -> -> scala/Predef.`->`().
 [19:51..19:52): x -> local0
 [20:7..20:8): i <- local2
 [20:14..20:16): to -> scala/runtime/RichInt#to().
@@ -4104,8 +4104,7 @@ Synthetics:
 [17:24..17:38):LazyList.empty => *[Nothing]
 [19:12..19:13):1 => intWrapper(*)
 [19:26..19:27):0 => intWrapper(*)
-[19:46..19:50):x -> => *[Int]
-[19:46..19:47):x => ArrowAssoc[Int](*)
+[19:48..19:50):-> => *[Int]
 [20:12..20:13):1 => intWrapper(*)
 [20:26..20:27):0 => intWrapper(*)
 [20:44..20:50):(i, j) => Tuple2.apply[Int, Int](*)
