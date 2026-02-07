@@ -23,10 +23,7 @@ import scala.language.`2.13`
  *  runtime system. A method with return type `Unit` is analogous to a Java
  *  method which is declared `void`.
  */
-final abstract class Unit private extends AnyVal {
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Unit] = ???
-}
+final abstract class Unit private extends AnyVal
 
 @scala.annotation.compileTimeOnly("`Unit` companion object is not allowed in source; instead, use `()` for the unit value")
 object Unit extends AnyValCompanion {

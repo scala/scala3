@@ -441,8 +441,6 @@ final abstract class Long private extends AnyVal {
   /** Returns the remainder of the division of this value by `x`. */
   def %(x: Double): Double
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Long] = ???
 }
 
 object Long extends AnyValCompanion {
