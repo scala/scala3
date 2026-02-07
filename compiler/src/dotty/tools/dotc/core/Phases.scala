@@ -328,6 +328,8 @@ object Phases {
     }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterInlining(phase: Phase): Boolean =
+      inliningPhase != NoPhase && phase.id > inliningPhase.id
     final def isTyper(phase: Phase): Boolean = phase.id == typerPhase.id
   }
 
@@ -398,6 +400,7 @@ object Phases {
       val doCheckJava = skipIfJava && !isAfterLastJavaPhase
       for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
+        val previousTyperState = unitCtx.typerState.snapshot()
         if ctx.run.enterUnit(unit) then
           try
             if doCheckJava && unit.typedAsJava then
@@ -407,6 +410,7 @@ object Phases {
             buf += unitCtx.compilationUnit
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
+              unitCtx.typerState.resetTo(previousTyperState)
             case ex: Throwable if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex
