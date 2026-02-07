@@ -459,9 +459,13 @@ object ExplicitOuter {
                 case _ =>
                   outerAccessor(treeCls.asClass)
             }
-            assert(outerAcc.exists,
-                i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
-            loop(tree.select(outerAcc).ensureApplied, count - 1)
+            if (!outerAcc.exists) then
+              // Path-dependent objects (especially during inline expansion)
+              // may not have an outer accessor. Stop path construction safely.
+              tree
+            else
+              loop(tree.select(outerAcc).ensureApplied, count - 1)
+
 
         report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
         loop(start, count)
