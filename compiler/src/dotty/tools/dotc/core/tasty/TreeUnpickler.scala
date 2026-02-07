@@ -1293,6 +1293,8 @@ class TreeUnpickler(reader: TastyReader,
         readType() match {
           case path: TypeRef => TypeTree(path)
           case path: TermRef => ref(path)
+          case AndType(_: TermRef, path: TypeRef) => TypeTree(path)
+          case AndType(path: TypeRef, _: TermRef) => TypeTree(path)
           case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
           case path: ErrorType if isBestEffortTasty => TypeTree(path)

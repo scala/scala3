@@ -1,7 +1,3 @@
-//> using options -Yexplicit-nulls
-
-package i25208
-
 import scala.quoted.*
 
 object NonNullFold:
