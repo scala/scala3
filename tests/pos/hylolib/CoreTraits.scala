@@ -14,9 +14,9 @@ trait Value:
     def copy(): Self
 
     /** Returns `true` iff `self` and `other` have an equivalent value. */
-    def eq(other: Self): Boolean
+    infix def eq(other: Self): Boolean
 
-    def neq(other: Self): Boolean = !self.eq(other)
+    def neq(other: Self): Boolean = !(self eq other)
 
     /** Hashes the salient parts of `self` into `hasher`. */
     def hashInto(hasher: Hasher): Hasher
