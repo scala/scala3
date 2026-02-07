@@ -3848,3 +3848,10 @@ final class CannotBeIncluded(
   }
   def explain(using Context) = ""
 }
+
+final class OverrideClass(using Context) extends SyntaxMsg(OverrideClassID):
+  override protected def msg(using Context) =
+    "`override` modifier is deprecated for classes and traits"
+  override protected def explain(using Context) =
+    i"""Instead of overriding a type alias with a class type, use an alias of the class.
+       |For example, instead of `override class C`, use `override type C = CImpl; class CImpl`."""

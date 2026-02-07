@@ -4,7 +4,8 @@ package parsing
 
 import scala.language.unsafeNulls
 
-import scala.annotation.internal.sharable
+import scala.annotation.tailrec
+import scala.annotation.threadUnsafe as tu
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition, NoSourcePosition }
@@ -26,7 +27,6 @@ import Symbols.NoSymbol
 import ScriptParsers.*
 import Decorators.*
 import util.Chars
-import scala.annotation.tailrec
 import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
 import reporting.*
 import config.Feature
@@ -4351,13 +4351,15 @@ object Parsers {
       finalizeDef(ModuleDef(name, templ), mods, start)
     }
 
-    private def checkAccessOnly(mods: Modifiers, caseStr: String): Modifiers =
-      // We allow `infix` and `into` on `enum` definitions.
-      // Syntax rules disallow these soft infix modifiers on `case`s.
+    // We allow `infix` and `into` on `enum` definitions.
+    // Syntax rules disallow these soft infix modifiers on `case`s.
+    @tu private lazy val allowedForEnum = AccessFlags | Enum | Infix | Into
+
+    private def checkEnumModifiers(mods: Modifiers, caseStr: String): Modifiers =
       val flags = mods.flags
       var flags1 = flags
       for mod <- mods.mods do
-        if !mod.flags.isOneOf(AccessFlags | Enum | Infix | Into) then
+        if !mod.flags.isOneOf(allowedForEnum) then
           syntaxError(em"This modifier is not allowed on an enum$caseStr", mod.span)
           flags1 = flags1 &~ mod.flags
       if flags1 != flags then mods.withFlags(flags1) else mods
@@ -4365,7 +4367,7 @@ object Parsers {
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      val mods1 = checkAccessOnly(mods, "")
+      val mods1 = checkEnumModifiers(mods, "")
       val modulName = ident()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)
@@ -4376,7 +4378,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = checkAccessOnly(mods, " case") | EnumCase
+      val mods1 = checkEnumModifiers(mods, " case") | EnumCase
       accept(CASE)
 
       atSpan(start, nameStart) {
