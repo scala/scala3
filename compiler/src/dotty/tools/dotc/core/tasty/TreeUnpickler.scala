@@ -1512,6 +1512,7 @@ class TreeUnpickler(reader: TastyReader,
               else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
+              else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))

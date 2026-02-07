@@ -1199,6 +1199,12 @@ trait Applications extends Compatibility {
     if (ctx.owner.isClassConstructor && untpd.isSelfConstrCall(app)) ctx.thisCallArgContext
     else ctx
 
+  /** Overridden in InlineTyper to accept applications `fun()` of parameterless
+   *  methods `fun` that override some Java-defined method.
+   */
+  def isAcceptedSpuriousApply(fun: Tree, args: List[untpd.Tree])(using Context): Boolean =
+    false
+
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
@@ -1264,11 +1270,14 @@ trait Applications extends Compatibility {
             val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)
-            convertNewGenericArray(
-              widenEnumCase(
-                postProcessByNameArgs(funRef, app).computeNullable(),
-                pt))
+            if isAcceptedSpuriousApply(fun1, tree.args) then
+              fun1
+            else
+              val app = ApplyTo(tree, fun1, funRef, proto, pt)
+              convertNewGenericArray(
+                widenEnumCase(
+                  postProcessByNameArgs(funRef, app).computeNullable(),
+                  pt))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
