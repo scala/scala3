@@ -105,23 +105,12 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
     val superClass = if (superClassSym == NoSymbol) None
                      else Some(classBTypeFromSymbol(superClassSym))
 
-    /**
-     * All interfaces implemented by a class, except for those inherited through the superclass.
-     * Redundant interfaces are removed unless there is a super call to them.
-     */
-    extension (sym: Symbol) def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = sym.directlyInheritedTraits
-      val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
-      val superCalls = superCallsMap.getOrElse(sym, List.empty)
-      val superCallsSet = superCalls.toSet
-      val additional = superCalls.filter(t => !directlyInheritedTraitsSet(t) && t.is(Trait))
-//      if (additional.nonEmpty)
-//        println(s"$fullName: adding supertraits $additional")
-      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCallsSet(t)) ++ additional
-    }
-
-    val interfaces = classSym.superInterfaces.map(classBTypeFromSymbol)
+    // List only directly inherited interfaces.
+    // This is not only a performance optimization (as the JVM needs to handle fewer inheritance declarations),
+    // but also required for correctness in the presence of sealed interfaces (see i23479):
+    // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `A` directly is illegal.
+    val allBaseClasses = classSym.directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
+    val interfaces = classSym.directlyInheritedTraits.filter(!allBaseClasses(_)).map(classBTypeFromSymbol)
 
     val flags = javaFlags(classSym)
 
