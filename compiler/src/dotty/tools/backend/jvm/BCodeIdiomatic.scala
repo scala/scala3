@@ -9,6 +9,7 @@ import scala.annotation.switch
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.report
+import dotty.tools.dotc.ast.Positioned
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -18,14 +19,8 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeIdiomatic {
-  val int: DottyBackendInterface
-  val bTypes: BTypesFromSymbols[int.type]
 
-  import int.{_, given}
-  import bTypes.*
-  import coreBTypes.*
-
-
+  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"
@@ -60,7 +55,7 @@ trait BCodeIdiomatic {
     val a = new Array[String](len)
     var i = len - 1
     var rest = xs
-    while (!rest.isEmpty) {
+    while (rest.nonEmpty) {
       a(i) = rest.head
       rest = rest.tail
       i -= 1
@@ -77,7 +72,7 @@ trait BCodeIdiomatic {
     val a = new Array[Int](len)
     var i = len - 1
     var rest = xs
-    while (!rest.isEmpty) {
+    while (rest.nonEmpty) {
       a(i) = rest.head
       rest = rest.tail
       i -= 1
@@ -121,11 +116,11 @@ trait BCodeIdiomatic {
             jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
             jmethod.visitInsn(Opcodes.LXOR)
           } else {
-            abort(s"Impossible to negate an $kind")
+            throw new AssertionError(s"Impossible to negate an $kind")
           }
 
         case _ =>
-          abort(s"Unknown arithmetic primitive $op")
+          throw new AssertionError(s"Unknown arithmetic primitive $op")
       }
 
     } // end of method genPrimitiveArithmetic()
@@ -196,12 +191,13 @@ trait BCodeIdiomatic {
     final def genIndyStringConcat(
       recipe: String,
       argTypes: Seq[asm.Type],
-      constants: Seq[String]
+      constants: Seq[String],
+      ts: CoreBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes*),
-        coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
+        asm.Type.getMethodDescriptor(ts.StringRef.toASMType, argTypes*),
+        ts.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants)*
       )
     }
@@ -360,25 +356,26 @@ trait BCodeIdiomatic {
     final def rem(tk: BType): Unit = { emitPrimitive(JCodeMethodN.remOpcodes, tk) } // can-multi-thread
 
     // can-multi-thread
-    final def invokespecial(owner: String, name: String, desc: String, itf: Boolean): Unit = {
-      emitInvoke(Opcodes.INVOKESPECIAL, owner, name, desc, itf)
+    final def invokespecial(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null): Unit = {
+      emitInvoke(Opcodes.INVOKESPECIAL, owner, name, desc, itf, pos)
     }
     // can-multi-thread
-    final def invokestatic(owner: String, name: String, desc: String, itf: Boolean): Unit = {
-      emitInvoke(Opcodes.INVOKESTATIC, owner, name, desc, itf)
+    final def invokestatic(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null): Unit = {
+      emitInvoke(Opcodes.INVOKESTATIC, owner, name, desc, itf, pos)
     }
     // can-multi-thread
-    final def invokeinterface(owner: String, name: String, desc: String): Unit = {
-      emitInvoke(Opcodes.INVOKEINTERFACE, owner, name, desc, itf = true)
+    final def invokeinterface(owner: String, name: String, desc: String, pos: Positioned | Null): Unit = {
+      emitInvoke(Opcodes.INVOKEINTERFACE, owner, name, desc, itf = true, pos)
     }
     // can-multi-thread
-    final def invokevirtual(owner: String, name: String, desc: String): Unit = {
-      emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false)
+    final def invokevirtual(owner: String, name: String, desc: String, pos: Positioned | Null): Unit = {
+      emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false, pos)
     }
 
-    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean): Unit = {
+    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null): Unit = {
       val node = new MethodInsnNode(opcode, owner, name, desc, itf)
       jmethod.instructions.add(node)
+      recordCallsitePosition(node, pos)
     }
 
 
@@ -405,7 +402,7 @@ trait BCodeIdiomatic {
       else            { emitTypeBased(JCodeMethodN.returnOpcodes, tk)      }
     }
 
-    /* Emits one of tableswitch or lookoupswitch.
+    /* Emits one of tableswitch or lookupswitch.
      *
      * can-multi-thread
      */
@@ -441,7 +438,7 @@ trait BCodeIdiomatic {
       i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
-          abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
         }
         i += 1
       }
@@ -558,11 +555,6 @@ trait BCodeIdiomatic {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
-    }
-
-    def abort(msg: String): Nothing = {
-      report.error(msg)
-      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN

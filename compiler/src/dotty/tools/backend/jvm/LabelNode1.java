@@ -16,6 +16,9 @@ import scala.tools.asm.Label;
 import scala.tools.asm.tree.ClassNode;
 import scala.tools.asm.tree.LabelNode;
 
+// TODO do we really need this? looks like we just have "reachable", and ClassNode1/MethodNode1 exist only to propagate this
+// --> replace by a Set
+
 /**
  * A subclass of {@link LabelNode} to add user-definable flags.
  */

@@ -2035,13 +2035,24 @@ class Definitions {
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
+  @tu private lazy val ScalaValueTypesNoUnit: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
+  val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
     Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
   )
+
+  @tu private lazy val _allRefClasses: Set[Symbol] = {
+    val baseNames = ScalaValueTypesNoUnit `union` Set(ObjectType)
+    val fullNames = baseNames.flatMap { base =>
+      List(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
+    }
+    fullNames.map(name => requiredClass(name)).toSet
+  }
+  def allRefClasses(using Context): Set[Symbol] = _allRefClasses
 
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
   private val typeTags = mutable.Map[TypeName, Name]().withDefaultValue(nme.specializedTypeNames.Object)
