@@ -645,6 +645,8 @@ object Checking {
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
       val illegal = sym.flags & ClassOnlyFlags
       fail(em"only classes can be ${illegal.flagsString}")
+    if sym.isClass && sym.is(Override) then
+      report.deprecationWarning(OverrideClass(), sym.srcPos)
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then

@@ -22,7 +22,7 @@ sealed trait TreeRenderers extends RenderableCellsCompanion:
     final override val companion = Renderer
 
   object Renderer extends CellRendererCompanion:
-    final override class CellInfo
+    final class CellInfo
     override def labeled[A]() = new DefaultRenderer[A] with LabelRenderer[A] {}
 
   class DefaultRenderer[-A] extends Label with Renderer[A]:

@@ -1,0 +1,12 @@
+-- [E224] Syntax Deprecation Warning: tests/warn/i24825.scala:9:19 -----------------------------------------------------
+9 |    override trait Y // warn
+  |                   ^
+  |                   `override` modifier is deprecated for classes and traits
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E224] Syntax Deprecation Warning: tests/warn/i24825.scala:10:19 ----------------------------------------------------
+10 |    override class Z // warn
+   |                   ^
+   |                   `override` modifier is deprecated for classes and traits
+   |
+   | longer explanation available when compiling with `-explain`
