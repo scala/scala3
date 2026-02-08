@@ -4,6 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.util.{Property, SrcPos}
 import dotty.tools.dotc.core.Names.Name
@@ -13,6 +14,7 @@ import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees.Ident
 import dotty.tools.dotc.core.Names.SimpleName
+import dotty.tools.dotc.core.StdNames.nme
 
 class CheckShadowing extends MiniPhase:
   import CheckShadowing.*
@@ -63,7 +65,19 @@ class CheckShadowing extends MiniPhase:
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     shadowingDataApply(sd =>
       sd.registerPrivateShadows(tree)
+      sd.registerLocal(tree.symbol)
     )
+
+  override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
+    shadowingDataApply(sd =>
+      sd.inNewScope()
+      tree.termParamss.flatten.foreach(p => sd.registerLocal(p.symbol))
+    )
+    ctx
+
+  override def prepareForCaseDef(tree: tpd.CaseDef)(using Context): Context =
+    shadowingDataApply(sd => sd.inNewScope())
+    ctx
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
     val sym = tree.symbol
@@ -98,6 +112,21 @@ class CheckShadowing extends MiniPhase:
       shadowingDataApply(sd => sd.computeTypeParamShadowsFor(tree.symbol)(using ctx))
     tree
 
+  override def transformBind(tree: tpd.Bind)(using Context): tpd.Tree =
+    shadowingDataApply(sd =>
+      sd.checkPatternVariableShadow(tree)
+      sd.registerLocal(tree.symbol)
+    )
+    tree
+
+  override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
+    shadowingDataApply(sd => sd.outOfScope())
+    tree
+
+  override def transformCaseDef(tree: tpd.CaseDef)(using Context): tpd.Tree =
+    shadowingDataApply(sd => sd.outOfScope())
+    tree
+
   private def isValidTypeParamOwner(owner: Symbol)(using Context): Boolean =
     !owner.isConstructor && !owner.is(Synthetic) && !owner.is(Exported)
 
@@ -110,6 +139,8 @@ class CheckShadowing extends MiniPhase:
           report.warning(s"Type parameter ${shadow.name} for $parent shadows the type defined by ${shadowed.showLocated}", pos)
         else
           report.warning(s"Type parameter ${shadow.name} for $parent shadows an explicitly renamed type : ${shadow.name}", pos)
+      case PatternShadowWarning(pos, shadow, shadowed) =>
+        report.warning(em"pattern variable ${shadow.name} shadows ${shadowed.showLocated}", pos)
     }
 
   private def nestedTypeTraverser(parent: Symbol) = new TreeTraverser:
@@ -154,19 +185,27 @@ object CheckShadowing:
     private val rootImports = MutSet[SingleDenotation]()
     private val explicitsImports = MutStack[MutSet[tpd.Import]]()
     private val renamedImports = MutStack[MutMap[SimpleName, Name]]() // original name -> renamed name
+    private var locals: List[MutSet[Symbol]] = Nil
 
     private val typeParamCandidates = MutMap[Symbol, Seq[tpd.TypeDef]]().withDefaultValue(Seq())
     private val typeParamShadowWarnings = MutSet[TypeParamShadowWarning]()
 
     private val privateShadowWarnings = MutSet[PrivateShadowWarning]()
+    private val patternShadowWarnings = MutSet[PatternShadowWarning]()
 
     def inNewScope()(using Context) =
       explicitsImports.push(MutSet())
       renamedImports.push(MutMap())
+      locals = MutSet() :: locals
 
     def outOfScope()(using Context) =
       explicitsImports.pop()
       renamedImports.pop()
+      locals = locals.tail
+
+    def registerLocal(sym: Symbol)(using Context) =
+      if locals.nonEmpty then
+        locals.head += sym
 
     /** Register the Root imports (at once per compilation unit)*/
     def registerRootImports()(using Context) =
@@ -239,6 +278,42 @@ object CheckShadowing:
       else
         None
 
+    def checkPatternVariableShadow(tree: tpd.Bind)(using Context): Unit =
+      if ctx.settings.WshadowHas.patternVariableShadow && tree.name.isTermName then
+        val sym = tree.symbol
+        lookForShadowedPatternVar(sym).foreach(shadowed =>
+          // skip if we are shadowing a method, which is generally allowed (e.g. x @ Something())
+          if shadowed.exists && shadowed.isTerm && !shadowed.is(Method) then
+             patternShadowWarnings += PatternShadowWarning(tree.srcPos, sym, shadowed)
+        )
+
+    private def lookForShadowedPatternVar(sym: Symbol)(using Context): Option[Symbol] =
+      lookForImportedShadowedTerm(sym)
+        .orElse(lookForLocalShadowedTerm(sym))
+        .orElse(lookForUnitShadowedTerm(sym))
+
+    private def lookForLocalShadowedTerm(symbol: Symbol)(using Context): Option[Symbol] =
+      // We check locals.tail because locals.head corresponds to the current scope (e.g. the CaseDef or Block)
+      // where the variable is defined. Shadowing is about outer scopes.
+      if locals.nonEmpty then
+        locals.tail.iterator.flatMap(_.find(s => s.name == symbol.name && s != symbol)).nextOption
+      else None
+
+    private def lookForImportedShadowedTerm(symbol: Symbol)(using Context): Option[Symbol] =
+      explicitsImports.flatMap(_.flatMap(imp => symbol.isAnImportedTerm(imp))).headOption
+
+    private def lookForUnitShadowedTerm(symbol: Symbol)(using Context): Option[Symbol] =
+       def loop(ctx: Context): Option[Symbol] =
+         if ctx.scope != null then
+           val s = ctx.scope.lookup(symbol.name)
+           if s.exists && s != symbol then Some(s)
+           else if ctx.outer != null && ctx.outer != ctx then loop(ctx.outer)
+           else None
+         else if ctx.outer != null && ctx.outer != ctx then loop(ctx.outer)
+         else None
+
+       if ctx.outer != null then loop(ctx.outer) else None
+
     /** Get the shadowing analysis's result */
     def getShadowingResult(using Context): ShadowResult =
       val privateWarnings: List[ShadowWarning] =
@@ -251,7 +326,7 @@ object CheckShadowing:
           typeParamShadowWarnings.toList
         else
           Nil
-      ShadowResult(privateWarnings ++ typeParamWarnings)
+      ShadowResult(privateWarnings ++ typeParamWarnings ++ patternShadowWarnings)
 
     extension (sym: Symbol)
       /** Looks after any type import symbol in the given import that matches this symbol */
@@ -263,6 +338,20 @@ object CheckShadowing:
           .find(is => is.rename.toSimpleName == sym.name.toSimpleName).map(_.symbol)
           .orElse(typeSelections.map(_.symbol).find(sd => sd.name == sym.name))
           .orElse(simpleSelections.map(_.symbol).find(sd => sd.name == sym.name))
+
+      /** Looks after any term import symbol in the given import that matches this symbol */
+      private def isAnImportedTerm(imp: tpd.Import)(using Context): Option[Symbol] =
+        val tpd.Import(qual, sels) = imp
+        val name = sym.name
+        val explicit = sels.find(_.rename == name).map { sel =>
+           qual.tpe.member(sel.name).symbol
+        }
+        explicit.orElse {
+          if sels.exists(_.name == nme.WILDCARD) then
+             val member = qual.tpe.member(name)
+             if member.exists then Some(member.symbol) else None
+          else None
+        }
 
   end ShadowingData
 
@@ -280,6 +369,12 @@ object CheckShadowing:
         override val shadow: Symbol,
         val shadowParent: Symbol,
         override val shadowed: Symbol,
+      ) extends ShadowWarning(pos, shadow, shadowed)
+
+      case class PatternShadowWarning(
+        override val pos: SrcPos,
+        override val shadow: Symbol,
+        override val shadowed: Symbol
       ) extends ShadowWarning(pos, shadow, shadowed)
 
       /** A container for the results of the shadow elements analysis */

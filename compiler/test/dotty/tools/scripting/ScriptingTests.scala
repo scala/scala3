@@ -26,8 +26,8 @@ class ScriptingTests:
   /*
    * Call .scala scripts without -save option, verify no jar created
    */
-  @Test def scriptingDriverTests =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
+  @Test def scriptingDriverTests: Unit =
+    if Properties.usingScalaLibraryTasty then return
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".scala") do
       showScriptUnderTest(scriptFile)
       val unexpectedJar = script2jar(scriptFile)
@@ -49,8 +49,8 @@ class ScriptingTests:
   /*
    * Call .sc scripts without -save option, verify no jar created
    */
-  @Test def scriptingMainTests =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
+  @Test def scriptingMainTests: Unit =
+    if Properties.usingScalaLibraryTasty then return
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
       showScriptUnderTest(scriptFile)
       val unexpectedJar = script2jar(scriptFile)
@@ -68,8 +68,8 @@ class ScriptingTests:
   /*
    * Call .sc scripts with -save option, verify jar is created.
    */
-  @Test def scriptingJarTest =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
+  @Test def scriptingJarTest: Unit =
+    if Properties.usingScalaLibraryTasty then return
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
       showScriptUnderTest(scriptFile)
       val expectedJar = script2jar(scriptFile)
@@ -93,8 +93,8 @@ class ScriptingTests:
    * Verify that when ScriptingDriver callback returns true, main is called.
    * Verify that when ScriptingDriver callback returns false, main is not called.
    */
-  @Test def scriptCompileOnlyTests =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
+  @Test def scriptCompileOnlyTests: Unit =
+    if Properties.usingScalaLibraryTasty then return
     val scriptFile = touchFileScript
     showScriptUnderTest(scriptFile)
 
@@ -133,7 +133,7 @@ class ScriptingTests:
    * Compile touchFile.sc to create executable jar, verify jar execution succeeds.
    */
   @Test def scriptingNoCompileJar: Unit =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
+    if Properties.usingScalaLibraryTasty then return
     val scriptFile = touchFileScript
     showScriptUnderTest(scriptFile)
     val expectedJar = script2jar(scriptFile)

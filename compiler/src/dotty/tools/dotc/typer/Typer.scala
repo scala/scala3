@@ -2898,6 +2898,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
   end typedTypeBoundsTree
 
+
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
       return errorTree(tree, em"expected type of $tree is not fully defined")

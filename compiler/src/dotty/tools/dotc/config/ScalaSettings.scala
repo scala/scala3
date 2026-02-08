@@ -284,6 +284,7 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("all", ""),
       ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
       ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
+      ChoiceWithHelp("pattern-variable-shadow", "Warn when a pattern variable shadows a variable in enclosing scope"),
     ),
     default = Nil
   )
@@ -298,6 +299,8 @@ private sealed trait WarningSettings:
       allOr("private-shadow")
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
+    def patternVariableShadow(using Context) =
+      allOr("pattern-variable-shadow")
   end WshadowHas
 
   val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
