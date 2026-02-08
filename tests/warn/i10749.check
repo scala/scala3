@@ -1,7 +1,7 @@
 -- Warning: tests/warn/i10749.scala:9:16 -------------------------------------------------------------------------------
- 9 |      case Some(x) => x  // warn: pattern variable shadows outer x
-   |                ^
-   |                pattern variable x shadows value x
+9 |      case Some(x) => x  // warn: pattern variable shadows outer x
+  |                ^
+  |                pattern variable x shadows value x
 -- Warning: tests/warn/i10749.scala:14:9 -------------------------------------------------------------------------------
 14 |    case y => y  // warn: pattern variable shadows parameter y
    |         ^
