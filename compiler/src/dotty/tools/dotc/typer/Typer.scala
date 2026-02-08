@@ -3540,8 +3540,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case TypeRef(prefix: SingletonType, _)  =>
           singleton(prefix).withSpan(from.span)
         case _ =>
-          errorTree(from,
-            em"""Illegal import selector: $from
+          val qualType = sel.tpe.widen
+          if qualType.isNamedTupleType then
+            errorTree(
+              from,
+              em"Importing members from named tuples is not supported"
+            )
+          else
+            errorTree(
+              from,
+              em"""Illegal import selector: $from
                 |The selector is not a member of an object or package.""")
     else typd(imp.expr, AnySelectionProto)
 

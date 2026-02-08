@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/import-from-named-tuple.scala:5:11 ------------------------------------------------
+5 |  import p.name // error
+  |           ^^^^
+  |           value name is not a member of (name : String, age : Int)
