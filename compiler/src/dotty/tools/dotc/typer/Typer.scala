@@ -3543,8 +3543,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val qualType = sel.tpe.widen
           if qualType.isNamedTupleType then
             errorTree(
-              from,
-              em"Importing members from named tuples is not supported"
+                from,
+                ImportFromNamedTupleNotSupported(qualType)
             )
           else
             errorTree(

@@ -439,6 +439,22 @@ extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
   def explain(using Context) = ""
 }
 
+class ImportFromNamedTupleNotSupported(site: Type)(using Context)
+extends TypeMsg(ImportFromNamedTupleNotSupportedID) {
+
+  def msg(using Context) =
+    i"Importing members from named tuples is not supported"
+
+  override def explain(using Context) =
+    i"""|Named tuples support selection syntax (e.g. ${hl("p.name")}),
+        |but they do not support importing members.
+        |
+        |Use selection instead of import:
+        |
+        |  val n = p.name
+        |"""
+}
+
 class EarlyDefinitionsNotSupported()(using Context)
 extends SyntaxMsg(EarlyDefinitionsNotSupportedID) {
   def msg(using Context) = "Early definitions are not supported; use trait parameters instead"
