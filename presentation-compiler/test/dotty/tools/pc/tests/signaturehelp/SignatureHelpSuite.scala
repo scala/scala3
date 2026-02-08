@@ -6,6 +6,20 @@ import org.junit.{Ignore, Test}
 
 class SignatureHelpSuite extends BaseSignatureHelpSuite:
 
+  @Test def `parametric-extension` =
+    check(
+      """
+        |object A:
+        |  extension [T](x: T)
+        |    def foo(p: T): T = x
+        |  
+        |  val _ = 1.foo(@@)
+      """.stripMargin,
+      """|foo[Int](x: Int)(p: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
   @Test def `method` =
     check(
       """
