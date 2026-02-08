@@ -6,7 +6,6 @@ import java.io.IOException
 import java.net.{URI, URL, URLClassLoader}
 import java.nio.file.{Files, Path, Paths}
 import java.util.jar.{Attributes, Manifest, JarEntry, JarOutputStream}
-import java.lang.invoke.{MethodHandles, MethodType}
 
 import org.junit.Assert._
 import org.junit.Test
@@ -46,22 +45,11 @@ class ZipArchiveTest {
   }
 
   private val bootClassLoader: ClassLoader = {
-    if (!util.Properties.isJavaAtLeast("9")) null
-    else {
-      try {
-        MethodHandles
-          .lookup()
-          .findStatic(
-            classOf[ClassLoader],
-            "getPlatformClassLoader",
-            MethodType.methodType(classOf[ClassLoader])
-          )
-          .invoke()
-          .asInstanceOf[ClassLoader]
-      } catch {
-        case _: Throwable =>
-          null
-      }
+    try {
+      ClassLoader.getPlatformClassLoader
+    } catch {
+      case _: Throwable =>
+        null
     }
   }
 
