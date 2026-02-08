@@ -23,7 +23,7 @@ trait List[+A]:
   // Works for pure functions AND capturing functions!
   def map[B](f: A => B): List[B]
 ```
-Due to the conventions established in previous sections, `f: A => B` translates to `f: A ->{cap} B`
+Due to the conventions established in previous sections, `f: A => B` translates to `f: A ->{any} B`
 under capture checking which means that the function argument `f` can capture any capability, i.e.,
 `map` will have `f`'s effects, if we think of capabilities as the only means to induce side effects,
 then _capability polymorphism equals effect polymorphism_. By careful choice of notation and the
@@ -63,7 +63,7 @@ listeners.
 #### Under the hood
 
 Capture-set variables without user-provided bounds range over the interval
- `>: {} <: {caps.cap}` which is the full lattice of capture sets. They behave like type parameters
+ `>: {} <: {caps.any}` which is the full lattice of capture sets. They behave like type parameters
  whose domain is "all capture sets", not all types.
 
 Under the hood, a capture-set variable is implemented as a normal type parameter with special bounds:
@@ -166,7 +166,7 @@ annotations using paths such as `{this.X}`.
 Capability members can also have capture-set bounds, restricting which capabilities they may contain:
 ```scala
 trait Reactor:
-  type Cap^ <: {caps.cap}
+  type Cap^ <: {caps.any}
   def onEvent(h: Event ->{this.Cap} Unit): Unit
 ```
 Each implementation of Reactor may refine `Cap^` to a more specific capture set:

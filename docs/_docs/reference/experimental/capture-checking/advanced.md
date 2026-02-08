@@ -52,7 +52,7 @@ of labels for lexically-delimited control operators:
 trait Label extends Capability:
   type Fv^ // the capability set occurring freely in the `block` passed to `boundary` below.
 
-def boundary[T, C^](block: Label{type Fv = {C} } ->{C} T): T = ??? // ensure free caps of label and block match
+def boundary[T, C^](block: Label{type Fv = {C} } ->{C} T): T = ??? // ensure free capabilities of label and block match
 def suspend[U](label: Label)[D^ <: {label.Fv}](handler: () ->{D} U): U = ??? // may only capture the free capabilities of label
 
 def test =
