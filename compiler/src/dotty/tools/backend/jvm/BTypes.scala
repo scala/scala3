@@ -761,7 +761,7 @@ abstract class BTypes { self =>
       asm.Opcodes.ACC_PUBLIC   | asm.Opcodes.ACC_PRIVATE   | asm.Opcodes.ACC_PROTECTED  |
       asm.Opcodes.ACC_STATIC   | asm.Opcodes.ACC_FINAL     | asm.Opcodes.ACC_INTERFACE  |
       asm.Opcodes.ACC_ABSTRACT | asm.Opcodes.ACC_SYNTHETIC | asm.Opcodes.ACC_ANNOTATION |
-      asm.Opcodes.ACC_ENUM
+      asm.Opcodes.ACC_ENUM     | asm.Opcodes.ACC_SUPER
     }
 
     // Primitive classes have no super class. A ClassBType for those is only created when

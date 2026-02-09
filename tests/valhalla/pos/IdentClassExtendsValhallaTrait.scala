@@ -6,3 +6,9 @@ trait ValhallaTrait extends Any:
 
 class IdentClass extends ValhallaTrait:
   def add(x:Int, y:Int): Int = x + y
+
+// class Main:
+//   def main = {
+//     val ic = IdentClass()
+//     println(ic.add(2,3))
+//   }
