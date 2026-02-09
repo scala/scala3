@@ -68,7 +68,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v6
 
-      - uses: coursier/cache-action@v7
+      - uses: coursier/cache-action@v8
       - uses: VirtusLab/scala-cli-setup@v1.12.2
 
       - name: Validate docs sidebars

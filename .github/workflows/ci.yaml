@@ -247,6 +247,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: coursier/cache-action@v7
+      - uses: coursier/cache-action@v8
       - uses: VirtusLab/scala-cli-setup@v1.12.2
       - run: scala-cli format --check
