@@ -14,6 +14,7 @@ import java.util.Optional
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.core.*
 import Contexts.*
+import NameOps.*
 import Phases.*
 import Symbols.*
 import StdNames.nme
@@ -43,12 +44,16 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
   def genUnit(unit: CompilationUnit)(using ctx: Context): Unit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
+    val mainClasses = mutable.ListBuffer.empty[String]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
         val sourceFile = unit.source.file
 
+        // If we're generating a `main` method, keep track of it, so the backend can generate a Main-Class attribute in the JAR if needed
+        if ctx.platform.hasMainMethod(sym) then
+          mainClasses.append(sym.fullName.stripModuleClassSuffix.toString)
 
         val mainClassNode = genClass(cd, unit)
         val mirrorClassNode =
@@ -80,7 +85,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
           if !ex.isInstanceOf[TypeError] then ex.printStackTrace()
           report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
 
-
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       for (binary <- unit.pickled.get(claszSymbol.asClass)) {
         generatedTasty += GeneratedTasty(store, binary)
@@ -110,7 +114,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
 
     genClassDefs(unit.tpdTree)
     generatedClassHandler.process(
-      GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList)
+      GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList, mainClasses.toList)
     )
   }
 

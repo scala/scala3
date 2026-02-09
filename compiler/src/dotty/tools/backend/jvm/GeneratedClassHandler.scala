@@ -78,7 +78,7 @@ private[jvm] object GeneratedClassHandler {
     private val processingUnits = ListBuffer.empty[CompilationUnitInPostProcess]
 
     def process(unit: GeneratedCompilationUnit): Unit = {
-      val unitInPostProcess = new CompilationUnitInPostProcess(unit.classes, unit.tasty, unit.sourceFile)(using unit.ctx)
+      val unitInPostProcess = new CompilationUnitInPostProcess(unit.classes, unit.tasty, unit.sourceFile, unit.mainClasses)(using unit.ctx)
       postProcessUnit(unitInPostProcess)
       processingUnits += unitInPostProcess
     }
@@ -91,9 +91,9 @@ private[jvm] object GeneratedClassHandler {
           // we 'take' classes to reduce the memory pressure
           // as soon as the class is consumed and written, we release its data
           unitInPostProcess.takeClasses().foreach:
-            postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
+            postProcessor.sendToDisk(_, unitInPostProcess.sourceFile, unitInPostProcess.mainClasses)
           unitInPostProcess.takeTasty().foreach:
-            postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
+            postProcessor.sendToDisk(_, unitInPostProcess.sourceFile, unitInPostProcess.mainClasses)
     }
 
     protected def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {
@@ -171,7 +171,7 @@ private[jvm] object GeneratedClassHandler {
  *   - Keeps a reference to the future that runs the post-processor
  *   - Buffers messages reported during post-processing
  */
-final private class CompilationUnitInPostProcess(private var classes: List[GeneratedClass], private var tasty: List[GeneratedTasty], val sourceFile: AbstractFile)(using Context) {
+final private class CompilationUnitInPostProcess(private var classes: List[GeneratedClass], private var tasty: List[GeneratedTasty], val sourceFile: AbstractFile, val mainClasses: List[String])(using Context) {
   def takeClasses(): List[GeneratedClass] = {
     val c = classes
     classes = Nil

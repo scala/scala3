@@ -16,15 +16,15 @@ import scala.tools.asm.tree.ClassNode
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val ts: CoreBTypes)(using Context) {
 
-  private val backendUtils        = new BackendUtils(frontendAccess, ts)
-  val classfileWriters            = new ClassfileWriters(frontendAccess)
-  val classfileWriter             = classfileWriters.ClassfileWriter()
+  private val backendUtils = new BackendUtils(frontendAccess, ts)
+  val classfileWriters = new ClassfileWriters(frontendAccess)
+  private var classfileWriter: classfileWriters.ClassfileWriter | Null = null
 
 
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !frontendAccess.compilerSettings.outputOnlyTasty then {
+  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile, mainClasses: List[String]): Unit = if !frontendAccess.compilerSettings.outputOnlyTasty then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -45,14 +45,14 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
     if bytes != null then
       if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
         AsmUtils.traceClass(bytes)
-      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      val clsFile = getClassfileWriter(mainClasses).writeClass(internalName, bytes, sourceFile)
       clazz.onFileCreated(clsFile)
   }
 
-  def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
+  def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile, mainClasses: List[String]): Unit = {
     val GeneratedTasty(classNode, tastyGenerator) = tasty
     val internalName = classNode.name.nn
-    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
+    getClassfileWriter(mainClasses).writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
   }
 
   private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
@@ -94,10 +94,30 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
     addInnerClasses(classNode, declared, referred)
   }
 
+  private def getClassfileWriter(mainClasses: List[String]): classfileWriters.ClassfileWriter = {
+    if classfileWriter eq null then
+      val jarManifestMainClass: Option[String] = frontendAccess.compilerSettings.mainClass.orElse {
+        mainClasses match {
+          case List(name) => Some(name)
+          case es =>
+            if es.isEmpty then frontendAccess.backendReporting.log("No Main-Class designated or discovered.")
+            else frontendAccess.backendReporting.log(s"No Main-Class due to multiple entry points:\n  ${es.mkString("\n  ")}")
+            None
+        }
+      }
+      classfileWriter = classfileWriters.ClassfileWriter(jarManifestMainClass)
+    classfileWriter.nn
+  }
+
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
     val cw = new ClassWriterWithBTypeLub(backendUtils.extraProc)
     classNode.accept(cw)
     cw.toByteArray.nn
+  }
+
+  def close(): Unit = {
+    if classfileWriter ne null then
+      classfileWriter.nn.close()
   }
 
   // -----------------------------------------------------------------------------------------
@@ -139,5 +159,5 @@ case class GeneratedClass(
   isArtifact: Boolean,
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])(using val ctx: Context)
+case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty], mainClasses: List[String])(using val ctx: Context)
 

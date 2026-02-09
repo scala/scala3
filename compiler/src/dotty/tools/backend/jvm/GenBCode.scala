@@ -23,10 +23,6 @@ class GenBCode extends Phase { self =>
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  private val entryPoints = new mutable.HashSet[String]()
-  def registerEntryPoint(s: String): Unit = entryPoints += s
-
-
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
@@ -34,7 +30,7 @@ class GenBCode extends Phase { self =>
       val context = ctx match
         case fc: FreshContext => fc
         case ctx => ctx.fresh
-      _frontendAccess = PostProcessorFrontendAccess.Impl(entryPoints)(context)
+      _frontendAccess = PostProcessorFrontendAccess.Impl(context)
     _frontendAccess.nn
   }
 
@@ -114,7 +110,7 @@ class GenBCode extends Phase { self =>
           case _ => ()
         }
       if _postProcessor ne null then
-        postProcessor.classfileWriter.close()
+        postProcessor.close()
       generatedClassHandler.close()
   }
 }

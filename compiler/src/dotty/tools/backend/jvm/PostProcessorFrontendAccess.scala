@@ -26,8 +26,6 @@ sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
 
   def directBackendReporting: BackendReporting
 
-  def getEntryPoints: List[String]
-
   private val frontendLock: AnyRef = new Object()
 
   inline final def frontendSynch[T](inline x: Context ?=> T)(using Context): T = frontendLock.synchronized(x)
@@ -87,8 +85,8 @@ object PostProcessorFrontendAccess {
     def backendMaxWorkerQueue: Option[Int]
     def outputOnlyTasty: Boolean
   }
-
-  class Impl(entryPoints: mutable.HashSet[String])(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
+  
+  class Impl(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)(using ctx)
 
@@ -139,7 +137,5 @@ object PostProcessorFrontendAccess {
      }
 
     override def directBackendReporting: BackendReporting = DirectBackendReporting(this)(using ctx)
-
-    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)(using ctx)
   }
 }
