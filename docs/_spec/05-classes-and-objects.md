@@ -359,7 +359,7 @@ A different form of qualification is `protected[this]`.
 A member ´M´ marked with this modifier is called _object-protected_; it can be accessed only from within the object in which it is defined. That is, a selection ´p.M´ is only legal if the prefix is `this` or `´O´.this`, for some class ´O´ enclosing the reference. In addition, the restrictions for unqualified `protected` apply.
 
 ### `override`
-The `override` modifier applies to class member definitions.
+The `override` modifier applies to class member definitions which are not themselves classes.
 It is mandatory for member definitions that override some other concrete member definition in a parent class.
 If an `override` modifier is given, there must be at least one overridden member definition (either concrete or abstract).
 

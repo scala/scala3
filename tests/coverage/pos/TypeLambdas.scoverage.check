@@ -76,6 +76,23 @@ TypeLambdas
 Object
 covtest.TypeLambdas
 test
+367
+377
+17
+apply
+Apply
+false
+0
+false
+("a", "b")
+
+4
+TypeLambdas.scala
+covtest
+TypeLambdas
+Object
+covtest.TypeLambdas
+test
 382
 396
 18
@@ -86,7 +103,7 @@ false
 false
 println(tuple)
 
-4
+5
 TypeLambdas.scala
 covtest
 TypeLambdas

@@ -2,9 +2,9 @@ package dotty.tools.pc.tests.edit
 
 import java.net.URI
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -355,7 +355,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
       """|object A{
          |  val list = 1 match {
          |    case 2 => "Two!"
-         |    case otherDigit: Int => "Not two!"
+         |    case otherDigit: 1 => "Not two!"
          |  }
          |}""".stripMargin
     )
@@ -598,18 +598,17 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
     )
 
   @Test def `backticks-4` =
-  checkEdit(
-    """|case class `Foo-Foo`(i: Int)
+    checkEdit(
+      """|case class `Foo-Foo`(i: Int)
        |object O{
        |  val <<foo>> = `Foo-Foo`(1)
        |}""".stripMargin,
-    """|case class `Foo-Foo`(i: Int)
+      """|case class `Foo-Foo`(i: Int)
        |object O{
        |  val foo: `Foo-Foo` = `Foo-Foo`(1)
        |}
        |""".stripMargin
-  )
-
+    )
 
   @Test def `backticks-5` =
     checkEdit(
@@ -628,7 +627,6 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |}
          |""".stripMargin
     )
-
 
   @Test def `backticks-6` =
     checkEdit(
@@ -657,14 +655,13 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |object O{
          |  val <<foo>> = A.Foo(new A.`x-x`)
          |}""".stripMargin,
-      """|import A.Foo
-         |import A.`x-x`
+      """|import A.`x-x`
          |object A{
          |  class `x-x`
          |  case class Foo[A](i: A)
          |}
          |object O{
-         |  val foo: Foo[`x-x`] = A.Foo(new A.`x-x`)
+         |  val foo: A.Foo[`x-x`] = A.Foo(new A.`x-x`)
          |}
          |""".stripMargin
     )
@@ -968,6 +965,152 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    ! : Int
          |}
          |""".stripMargin
+    )
+
+  @Test def `named-tuples` =
+    checkEdit(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def <<test>> =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test: (path : String, num : Int, line : Int) =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin
+    )
+
+  @Test def `enums` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val <<d>> =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val d: EnumerationValue.Day.Value =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin
+    )
+
+  @Test def `enums2` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val <<b>> =
+         |    if (true) True
+         |    else False
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val b: Value =
+         |    if (true) True
+         |    else False
+         |""".stripMargin
+    )
+
+  @Test def `Adjust type for val` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>:String = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin
+    )
+
+  @Test def `Adjust type for val2` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>:Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin
+    )
+
+  @Test def `Adjust type for val3` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>: Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin
+    )
+
+  @Test def `Adjust type for def` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>:String = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin
+    )
+
+  @Test def `Adjust type for def2` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>:Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin
+    )
+
+  @Test def `Adjust type for def3` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>: Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin
     )
 
   def checkEdit(

@@ -54,18 +54,11 @@
    |                    no pattern match extractor named * was found
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg/t5702-neg-bad-and-wild.scala:13:22 ---------------------------------------------------------------
-13 |      case List(1, _*3:) =>  // error // error
-   |                      ^
-   |                  Type ascriptions after patterns other than:
-   |                    * variable pattern, e.g. `case x: String =>`
-   |                    * number literal pattern, e.g. `case 10.5: Double =>`
-   |                  are no longer supported. Remove the type ascription or move it to a separate variable pattern.
 -- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
 22 |    val K(x @ _*) = k
    |                    ^
-   |        pattern's type Int* does not match the right hand side expression's type Int
+   |     pattern's type Int* does not match the right hand side expression's type Int
    |
-   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |        which may result in a MatchError at runtime.
-   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+   |     If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |     which may result in a MatchError at runtime.
+   |     This patch can be rewritten automatically under -rewrite -source 3.8-migration.

@@ -3,7 +3,6 @@
  */
 package dotty.tools.dotc.classpath
 
-import scala.language.unsafeNulls
 
 import java.io.File
 import java.net.URL
@@ -21,7 +20,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
   val zipFile: File
   def release: Option[String]
 
-  assert(zipFile != null, "Zip file in ZipArchiveFileLookup cannot be null")
+  assert(zipFile ne null, "Zip file in ZipArchiveFileLookup cannot be null")
 
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
   override def asClassPathStrings: Seq[String] = Seq(zipFile.getPath)

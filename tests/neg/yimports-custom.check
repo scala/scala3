@@ -1,4 +1,3 @@
-
 -- [E006] Not Found Error: tests/neg/yimports-custom/C_2.scala:5:16 ----------------------------------------------------
 5 |  def greet() = println("hello, world!") // error
   |                ^^^^^^^

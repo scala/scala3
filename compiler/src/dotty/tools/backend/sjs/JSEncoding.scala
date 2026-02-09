@@ -16,7 +16,7 @@ import StdNames.*
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
 import dotty.tools.sjs.ir
-import dotty.tools.sjs.ir.{Trees => js, Types => jstpe}
+import dotty.tools.sjs.ir.{Trees => js, Types => jstpe, WellKnownNames => jswkn}
 import dotty.tools.sjs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
 import dotty.tools.sjs.ir.OriginalName
 import dotty.tools.sjs.ir.OriginalName.NoOriginalName
@@ -235,7 +235,7 @@ object JSEncoding {
 
   def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent = {
     val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.info))
-    val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
+    val resultTypeRef = jstpe.ClassRef(jswkn.ObjectClass)
     val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
     js.MethodIdent(methodName)
   }
@@ -282,7 +282,7 @@ object JSEncoding {
      * - scala.Null to scala.runtime.Null$.
      */
     if (sym1 == defn.BoxedUnitClass)
-      ir.Names.BoxedUnitClass
+      jswkn.BoxedUnitClass
     else if (sym1 == defn.NothingClass)
       ScalaRuntimeNothingClassName
     else if (sym1 == defn.NullClass)
@@ -326,6 +326,9 @@ object JSEncoding {
 
       case typeRef: jstpe.ArrayTypeRef =>
         jstpe.ArrayType(typeRef, nullable = true)
+
+      case typeRef: jstpe.TransientTypeRef =>
+        throw AssertionError(s"Unexpected transient type ref $typeRef for ${typeRefInternal._2}")
     }
   }
 
@@ -359,7 +362,7 @@ object JSEncoding {
      */
     def nonClassTypeRefToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
       //assert(sym.isType && isCompilingArray, sym)
-      (jstpe.ClassRef(ir.Names.ObjectClass), defn.ObjectClass)
+      (jstpe.ClassRef(jswkn.ObjectClass), defn.ObjectClass)
     }
 
     tp.widenDealias match {

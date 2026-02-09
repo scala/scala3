@@ -1,0 +1,59 @@
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:30:6 -------------------------------------------------------
+30 |    r.set(current * 100)  // error - exclusive access in initializer
+   |    ^^^^^
+   |    Cannot call update method set of TestClass.this.r
+   |    since the access is in lazy value lazyVal2, which is not an update method.
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:36:12 ------------------------------------------------------
+36 |    () => r.set(current); r.get()  // error, even though exclusive access is in closure, not initializer
+   |          ^^^^^
+   |          Cannot call update method set of TestClass.this.r
+   |          since the access is in lazy value lazyVal3, which is not an update method.
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:42:10 ------------------------------------------------------
+42 |        r.set(100)  // error
+   |        ^^^^^
+   |        Cannot call update method set of TestClass.this.r
+   |        since the access is in lazy value lazyVal4, which is not an update method.
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:61:6 -------------------------------------------------------
+61 |    r.set(200)  // error
+   |    ^^^^^
+   |    Cannot call update method set of TestClass.this.r
+   |    since the access is in lazy value lazyVal6, which is not an update method.
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:71:6 -------------------------------------------------------
+71 |    r.set(200)  // error
+   |    ^^^^^
+   |    Cannot call update method set of TestClass.this.r
+   |    since the access is in lazy value lazyVal8, which is not an update method.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals-sep.scala:72:12 ---------------------------------
+72 |    Wrapper(r)  // error
+   |            ^
+   |Found:    Ref^{TestClass.this.r.rd}
+   |Required: Ref^{any}
+   |
+   |Note that {any} is an exclusive capture set of the stateful type Ref^{any},
+   |it cannot subsume a read-only capture set of the stateful type Ref^{TestClass.this.r.rd}.
+   |
+   |where:    any is a root capability classified as Unscoped created in lazy value lazyVal8 when checking argument to parameter ref of constructor Wrapper
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals-sep.scala:77:12 ---------------------------------
+77 |    Wrapper(r) // error
+   |            ^
+   |Found:    Ref^{TestClass.this.r.rd}
+   |Required: Ref^{any}
+   |
+   |Note that {any} is an exclusive capture set of the stateful type Ref^{any},
+   |it cannot subsume a read-only capture set of the stateful type Ref^{TestClass.this.r.rd}.
+   |
+   |where:    any is a root capability classified as Unscoped created in lazy value lazyVal9 when checking argument to parameter ref of constructor Wrapper
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:82:8 -------------------------------------------------------
+82 |      r.set(0)  // error exclusive access in conditional
+   |      ^^^^^
+   |      Cannot call update method set of TestClass.this.r
+   |      since the access is in lazy value lazyVal10, which is not an update method.
+-- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:90:8 -------------------------------------------------------
+90 |      r.set(42)  // error
+   |      ^^^^^
+   |      Cannot call update method set of TestClass.this.r
+   |      since the access is in lazy value lazyVal11, which is not an update method.

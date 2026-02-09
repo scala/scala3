@@ -37,10 +37,9 @@ object TastyUtils:
           .element("pre", "class='container is-dark'")(_.raw(tastyHtml))
       }
       .render
-  end htmlTasty
 
   private def tastyHtmlPageTitle(file: URI) =
-    val filename = Paths.get(file).nn.getFileName().toString
+    val filename = Paths.get(file).getFileName().toString
     s"TASTy for $filename"
 
   private val standaloneHtmlStyles =

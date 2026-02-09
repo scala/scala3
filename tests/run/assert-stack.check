@@ -1,6 +1,6 @@
-scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:8)
+scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:10)
 Test$.main(assert-stack.scala:7)
 
-scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:11)
+scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:13)
 Test$.main(assert-stack.scala:12)
 

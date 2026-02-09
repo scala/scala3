@@ -3,8 +3,6 @@ package dotc
 package core
 package classfile
 
-import scala.language.unsafeNulls
-
 import java.io.{DataInputStream, InputStream}
 import java.nio.{BufferUnderflowException, ByteBuffer}
 

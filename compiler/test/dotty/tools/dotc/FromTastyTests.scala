@@ -44,7 +44,7 @@ object FromTastyTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 30.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

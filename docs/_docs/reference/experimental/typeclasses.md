@@ -25,7 +25,7 @@ in source version `future` if the additional experimental language import `modul
 ```
 
 It is intended to turn features described here into proposals under the Scala improvement process. A first installment is SIP 64, which covers some syntactic changes, names for context bounds, multiple context bounds and deferred givens. This SIP has been accepted for inclusion in the language and will be released in Scala 3.6. The remaining elements
-that concern type classes are described in the following. There is also a separate [page on modularity improvements](../modularity.md) that describes proposed additions not directly related to type classes.
+that concern type classes are described in the following. There is also a separate [page on modularity improvements](modularity.md) that describes proposed additions not directly related to type classes.
 
 ## Generalizing Context Bounds
 

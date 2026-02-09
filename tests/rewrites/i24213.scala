@@ -1,0 +1,5 @@
+def Test =
+  try ()
+  catch {
+    case x: Throwable if x.getMessage contains "error" => ???
+  }

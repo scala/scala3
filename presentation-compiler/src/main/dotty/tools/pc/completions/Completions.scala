@@ -5,16 +5,17 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.collection.mutable
-import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
-import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering, CompletionFuzzy}
+import scala.meta.internal.pc.{CompletionFuzzy, IdentifierComparator, MemberOrdering}
 import scala.meta.pc.*
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -63,18 +64,27 @@ class Completions(
       case _ :: (_: UnApply) :: _ => false
       case _ => true
 
-  private lazy val shouldAddSuffix = shouldAddSnippet &&
-    (path match
-      /* In case of `method@@()` we should not add snippets and the path
-       * will contain apply as the parent of the current tree.
-       */
-      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun => false
-      /* In case of `T@@[]` we should not add snippets.
-       */
-      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
-      case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
+  private lazy val isContinuedApply = path match
+    /* In case of `method@@()` we should not add snippets and the path
+     * will contain apply as the parent of the current tree.
+     */
+    case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun => false
+    /* In case of `T@@[]` we should not add snippets.
+     */
+    case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
+    case sel :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
         if appl.fun == funSel && sel == fun => false
-      case _ => true)
+    case _ => true
+
+  private lazy val isDerivingTemplate = adjustedPath match
+    /* In case of `class X derives TC@@` we shouldn't add `[]`
+     */
+    case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
+      val pos = completionPos.toSourcePosition
+      !templ.derived.exists(_.sourcePos.contains(pos))
+    case _ => true
+
+  private lazy val shouldAddSuffix = shouldAddSnippet && isContinuedApply && isDerivingTemplate
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -102,7 +112,6 @@ class Completions(
     if generalExclude then false
     else if completionMode.is(Mode.Type) then true
     else !isWildcardParam(sym) && (sym.isTerm || sym.is(Package))
-    end if
   end includeSymbol
 
   lazy val fuzzyMatcher: Name => Boolean = name =>
@@ -111,7 +120,14 @@ class Completions(
 
   def enrichedCompilerCompletions(qualType: Type): (List[CompletionValue], SymbolSearch.Result) =
     val compilerCompletions = Completion
-      .rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath, Some(fuzzyMatcher))
+      .rawCompletions(
+        completionPos.originalCursorPosition,
+        completionMode,
+        completionPos.query,
+        path,
+        adjustedPath,
+        Some(fuzzyMatcher)
+      )
 
     compilerCompletions
       .toList
@@ -138,11 +154,10 @@ class Completions(
           case _ =>
             val (compiler, result) = enrichedCompilerCompletions(defn.AnyType)
             (allAdvanced ++ compiler, result)
-        end match
 
     val application = CompletionApplication.fromPath(path)
     val ordering = completionOrdering(application)
-    val sorted = all.sorted(ordering)
+    val sorted = all.sorted(using ordering)
     val values = application.postProcess(sorted)
     (values, result)
   end completions
@@ -176,9 +191,9 @@ class Completions(
 
   private def isAbstractType(symbol: Symbol) =
     (symbol.info.typeSymbol.is(Trait) // trait A{ def doSomething: Int}
-    // object B{ new A@@}
-    // Note: I realised that the value of Flag.Trait is flaky and
-    // leads to the failure of one of the DocSuite tests
+      // object B{ new A@@}
+      // Note: I realised that the value of Flag.Trait is flaky and
+      // leads to the failure of one of the DocSuite tests
       || symbol.info.typeSymbol.isAllOf(
         Flags.JavaInterface // in Java:  interface A {}
           // in Scala 3: object B { new A@@}
@@ -193,12 +208,24 @@ class Completions(
     )
   end isAbstractType
 
-  private def findSuffix(symbol: Symbol): CompletionAffix =
+  private def findSuffix(symbol: Symbol, adjustedPath: List[untpd.Tree]): CompletionAffix =
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
         if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
+      }
+      .chain { suffix =>
+        adjustedPath match
+          case (ident: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            app.symbol.info match
+              case mt @ MethodType(termNames)
+                  if app.symbol.paramSymss.last.exists(_.is(Given)) &&
+                    !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
+                suffix.withNewPrefix(Affix(PrefixKind.Using))
+              case _ => suffix
+          case _ => suffix
+
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then
@@ -218,7 +245,6 @@ class Completions(
               else if suffix.hasSnippet then suffix.withNewSuffix(Affix(SuffixKind.Brace))
               else suffix.withNewSuffixSnippet(Affix(SuffixKind.Brace))
             case _ => suffix
-          end match
         else suffix
       }
       .chain { suffix => // for {} suffix
@@ -244,14 +270,16 @@ class Completions(
         val constructors = sym.info.member(nme.CONSTRUCTOR).allSymbols.map(_.asSingleDenotation)
           .filter(_.symbol.isAccessibleFrom(denot.info))
         constructors -> true
-
       else if shouldAddSnippet && completionMode.is(Mode.Term) && sym.name.isTermName &&
-          !sym.is(Flags.JavaDefined) && (sym.isClass || sym.is(Module) || (sym.isField && denot.info.isInstanceOf[TermRef])) then
+        !sym.is(
+          Flags.JavaDefined
+        ) && (sym.isClass || sym.is(Module) || (sym.isField && denot.info.isInstanceOf[TermRef]))
+      then
 
         val constructors = if sym.isAllOf(ConstructorProxyModule) then
           sym.companionClass.info.member(nme.CONSTRUCTOR).allSymbols
         else
-          val companionApplies  = denot.info.member(nme.apply).allSymbols
+          val companionApplies = denot.info.member(nme.apply).allSymbols
           val classConstructors = if sym.companionClass.exists && !sym.companionClass.isOneOf(AbstractOrTrait) then
             sym.companionClass.info.member(nme.CONSTRUCTOR).allSymbols
           else Nil
@@ -271,7 +299,7 @@ class Completions(
       val existsApply = extraMethodDenots.exists(_.symbol.name == nme.apply)
 
       extraMethodDenots.map { methodDenot =>
-        val suffix = findSuffix(methodDenot.symbol)
+        val suffix = findSuffix(methodDenot.symbol, adjustedPath)
         val affix = if methodDenot.symbol.isConstructor && existsApply then
           adjustedPath match
             case (select @ Select(qual, _)) :: _ =>
@@ -293,16 +321,15 @@ class Completions(
 
     if skipOriginalDenot then extraCompletionValues
     else
-      val suffix = findSuffix(denot.symbol)
+      val suffix = findSuffix(denot.symbol, adjustedPath)
       val name = undoBacktick(label)
       val denotCompletionValue = toCompletionValue(name, denot, suffix)
       denotCompletionValue :: extraCompletionValues
 
   end completionsWithAffix
 
-  /**
-   * @return Tuple of completionValues and flag. If the latter boolean value is true
-   *         Metals should provide advanced completions only.
+  /** @return Tuple of completionValues and flag. If the latter boolean value is
+   *    true Metals should provide advanced completions only.
    */
   private def advancedCompletions(
       path: List[Tree],
@@ -327,7 +354,7 @@ class Completions(
       case _
           if MultilineCommentCompletion.isMultilineCommentCompletion(
             pos,
-            text,
+            text
           ) =>
         val values = MultilineCommentCompletion.contribute(config)
         (values, true)
@@ -347,7 +374,7 @@ class Completions(
             autoImports,
             options.contains("-no-indent")
           ),
-          false,
+          false
         )
 
       case MatchCaseExtractor.TypedCasePatternExtractor(
@@ -367,7 +394,7 @@ class Completions(
             patternOnly = Some(identName),
             hasBind = true
           ),
-          false,
+          false
         )
 
       case MatchCaseExtractor.CasePatternExtractor(
@@ -386,7 +413,7 @@ class Completions(
             autoImports,
             patternOnly = Some(identName)
           ),
-          false,
+          false
         )
 
       case MatchCaseExtractor.CaseExtractor(
@@ -405,11 +432,11 @@ class Completions(
             autoImports,
             includeExhaustive = includeExhaustive
           ),
-          true,
+          true
         )
 
       // unapply pattern
-      case Ident(name) :: (unapp : UnApply) :: _ =>
+      case Ident(name) :: (unapp: UnApply) :: _ =>
         (
           CaseKeywordCompletion.contribute(
             EmptyTree, // no selector
@@ -421,9 +448,9 @@ class Completions(
             autoImports,
             patternOnly = Some(name.decoded)
           ),
-          false,
+          false
         )
-      case Select(_, name) :: (unapp : UnApply) :: _ =>
+      case Select(_, name) :: (unapp: UnApply) :: _ =>
         (
           CaseKeywordCompletion.contribute(
             EmptyTree, // no selector
@@ -435,7 +462,7 @@ class Completions(
             autoImports,
             patternOnly = Some(name.decoded)
           ),
-          false,
+          false
         )
 
       // class FooImpl extends Foo:
@@ -452,7 +479,7 @@ class Completions(
             autoImports,
             fallbackName
           ),
-          exhaustive,
+          exhaustive
         )
 
       // class Fo@@
@@ -492,7 +519,7 @@ class Completions(
             workspace,
             rawFileName
           ),
-          true,
+          true
         )
 
       case (imp @ Import(_, selectors)) :: _
@@ -505,7 +532,7 @@ class Completions(
             completionPos,
             text
           ),
-          true,
+          true
         )
 
       case (tree: (Import | Export)) :: _
@@ -520,7 +547,7 @@ class Completions(
           config.isCompletionSnippetsEnabled()
         )
         (args, false)
-    val singletonCompletions = InterCompletionType.inferType(path).map(
+    val singletonCompletions = InferCompletionType.inferType(path).map(
       SingletonCompletions.contribute(path, _, completionPos)
     ).getOrElse(Nil)
     (singletonCompletions ++ advanced, exclusive)
@@ -569,6 +596,7 @@ class Completions(
         then
           indexedContext.lookupSym(sym) match
             case IndexedContext.Result.InScope => false
+            case IndexedContext.Result.Missing if indexedContext.rename(sym).isDefined => false
             case _ if completionMode.is(Mode.ImportOrExport) =>
               visit(
                 CompletionValue.Workspace(
@@ -584,10 +612,10 @@ class Completions(
                 sym.decodedName,
                 CompletionValue.Workspace(_, _, _, sym)
               ).map(visit).forall(_ == true)
-        else false,
+        else false
       )
       Some(search.search(query, buildTargetIdentifier, visitor).nn)
-    else if completionMode.is(Mode.Member) then
+    else if completionMode.is(Mode.Member) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
         def isExtensionMethod = sym.is(ExtensionMethod) &&
           qualType.widenDealias <:< sym.extensionParam.info.widenDealias
@@ -596,7 +624,7 @@ class Completions(
             owner.info
               .membersBasedOnFlags(
                 Flags.ParamAccessor,
-                Flags.EmptyFlags,
+                Flags.EmptyFlags
               )
               .headOption
               .map(_.info)
@@ -604,12 +632,11 @@ class Completions(
           constructorParam.exists(p =>
             qualType.widenDealias <:< p.widenDealias
           )
-        end isImplicitClass
 
         def isDefaultVariableSetter = sym.is(Flags.Accessor) && sym.is(Flags.Method)
         def isImplicitClassMember =
           isImplicitClass(sym.maybeOwner) && !sym.is(Flags.Synthetic) && sym.isPublic
-          && !sym.isConstructor && !isDefaultVariableSetter
+            && !sym.isConstructor && !isDefaultVariableSetter
 
         if isExtensionMethod then
           completionsWithAffix(
@@ -621,9 +648,9 @@ class Completions(
           completionsWithAffix(
             sym,
             sym.decodedName,
-            CompletionValue.ImplicitClass(_, _, _, sym.maybeOwner),
+            CompletionValue.ImplicitClass(_, _, _, sym.maybeOwner)
           ).map(visit).forall(_ == true)
-        else false,
+        else false
       )
       Some(search.searchMethods(query, buildTargetIdentifier, visitor).nn)
     else Some(SymbolSearch.Result.INCOMPLETE)
@@ -647,7 +674,8 @@ class Completions(
         sym.showFullName + sigString
       else sym.fullName.stripModuleClassSuffix.show
 
-  /** If we try to complete TypeName, we should favor types over terms with same name value and without suffix.
+  /** If we try to complete TypeName, we should favor types over terms with same
+   *  name value and without suffix.
    */
   def deduplicateCompletions(completions: List[CompletionValue]): List[CompletionValue] =
     val (symbolicCompletions, rest) = completions.partition:
@@ -709,15 +737,14 @@ class Completions(
           buf += head
           true
         else false
-      end visit
 
       l.foreach(visit)
 
       if enrich then
         val searchResult =
           enrichWithSymbolSearch(visit, qualType).getOrElse(SymbolSearch.Result.COMPLETE)
-        (deduplicateCompletions(buf.result), searchResult)
-      else (deduplicateCompletions(buf.result), SymbolSearch.Result.COMPLETE)
+        (deduplicateCompletions(buf.result()), searchResult)
+      else (deduplicateCompletions(buf.result()), SymbolSearch.Result.COMPLETE)
     end filterInteresting
   end extension
 
@@ -733,15 +760,25 @@ class Completions(
     defn.Object_notifyAll,
     defn.Object_notify,
     defn.Predef_undefined,
-    defn.ObjectClass.info.member(nme.wait_).symbol,
     // NOTE(olafur) IntelliJ does not complete the root package and without this filter
     // then `_root_` would appear as a completion result in the code `foobar(_<COMPLETE>)`
     defn.RootPackage,
     // NOTE(gabro) valueOf was added as a Predef member in 2.13. We filter it out since is a niche
     // use case and it would appear upon typing 'val'
-    defn.ValueOfClass.info.member(nme.valueOf).symbol,
-    defn.ScalaPredefModule.requiredMethod(nme.valueOf)
-  ).flatMap(_.alternatives.map(_.symbol)).toSet
+    defn.ValueOfClass
+  ) ++ (
+    Set(
+      defn.ObjectClass.info.member(nme.wait_),
+      defn.ScalaPredefModule.info.member(nme.valueOf)
+    ).flatMap(_.alternatives.map(_.symbol)).toSet
+  )
+
+  private lazy val EqualsClass: ClassSymbol = requiredClass("scala.Equals")
+  private lazy val ArrowAssocClass: ClassSymbol = requiredClass("scala.Predef.ArrowAssoc")
+  private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
+  private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
+  private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
@@ -750,16 +787,28 @@ class Completions(
 
   private def computeRelevancePenalty(
       completion: CompletionValue,
-      application: CompletionApplication,
+      application: CompletionApplication
   ): Int =
     import scala.meta.internal.pc.MemberOrdering.*
 
-    def hasGetter(sym: Symbol) = try
-      def isModuleOrClass = sym.is(Module) || sym.isClass
-      // isField returns true for some classes
-      def isJavaClass = sym.is(JavaDefined) && isModuleOrClass
-      (sym.isField && !isJavaClass && !isModuleOrClass) || sym.getter != NoSymbol
-    catch case _ => false
+    def hasGetter(sym: Symbol) =
+      try
+        def isModuleOrClass = sym.is(Module) || sym.isClass
+        // isField returns true for some classes
+        def isJavaClass = sym.is(JavaDefined) && isModuleOrClass
+        (sym.isField && !isJavaClass && !isModuleOrClass) || sym.getter != NoSymbol
+      catch case _ => false
+
+    def isInheritedFromScalaLibrary(sym: Symbol) =
+      sym.owner == defn.AnyClass ||
+        sym.owner == defn.ObjectClass ||
+        sym.owner == defn.ProductClass ||
+        sym.owner == EqualsClass ||
+        sym.owner == ArrowAssocClass ||
+        sym.owner == EnsuringClass ||
+        sym.owner == StringFormatClass ||
+        sym == nnMethod ||
+        sym == runtimeCheckedMethod
 
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
@@ -778,7 +827,7 @@ class Completions(
         case _ =>
 
       // symbols whose owner is a base class are less relevant
-      if sym.owner == defn.AnyClass || sym.owner == defn.ObjectClass
+      if isInheritedFromScalaLibrary(sym)
       then relevance |= IsInheritedBaseMethod
       // symbols not provided via an implicit are more relevant
       if sym.is(Implicit) ||
@@ -790,14 +839,15 @@ class Completions(
       // accessors of case class members are more relevant
       if !sym.is(CaseAccessor) then relevance |= IsNotCaseAccessor
       // public symbols are more relevant
-      if !sym.isPublic then relevance |= IsNotCaseAccessor
+      if !sym.isPublic then relevance |= IsNotPublic
       // synthetic symbols are less relevant (e.g. `copy` on case classes)
       if sym.is(Synthetic) && !sym.isAllOf(EnumCase) then
         relevance |= IsSynthetic
       if sym.isDeprecated then relevance |= IsDeprecated
       if isEvilMethod(sym.name) then relevance |= IsEvilMethod
       if !completionMode.is(Mode.ImportOrExport) &&
-        completionMode.is(Mode.Type) && !sym.isType then relevance |= IsNotTypeInTypePos
+        completionMode.is(Mode.Type) && !sym.isType
+      then relevance |= IsNotTypeInTypePos
       relevance
     end symbolRelevance
 
@@ -868,8 +918,6 @@ class Completions(
         private def substituteTypeVars(symbol: Symbol): Symbol =
           val denot = symbol.asSeenFrom(tpe)
           symbol.withUpdatedTpe(denot.info)
-
-      end new
     end forSelect
 
     def fromPath(path: List[Tree]): CompletionApplication =
@@ -884,7 +932,7 @@ class Completions(
       application: CompletionApplication
   ): Ordering[CompletionValue] =
     new Ordering[CompletionValue]:
-      val queryLower = completionPos.query.toLowerCase()
+      val queryLower: String = completionPos.query.toLowerCase()
       val fuzzyCache = mutable.Map.empty[CompletionValue, Int]
 
       def compareLocalSymbols(s1: Symbol, s2: Symbol): Int =
@@ -898,7 +946,7 @@ class Completions(
       private def workspaceMemberPriority(symbol: Symbol): Int =
         completionItemPriority
           .workspaceMemberPriority(
-            SemanticdbSymbols.symbolName(symbol),
+            SemanticdbSymbols.symbolName(symbol)
           ).nn
 
       def compareFrequency(o1: CompletionValue, o2: CompletionValue): Int =
@@ -912,7 +960,7 @@ class Completions(
       def compareByRelevance(o1: CompletionValue, o2: CompletionValue): Int =
         Integer.compare(
           computeRelevancePenalty(o1, application),
-          computeRelevancePenalty(o2, application),
+          computeRelevancePenalty(o2, application)
         )
 
       def fuzzyScore(o: CompletionValue.Symbolic): Int =
@@ -936,10 +984,9 @@ class Completions(
             case _ => 5
 
         priority(o1) - priority(o2)
-      end prioritizeByClass
-      /**
-       * Some completion values should be shown first such as CaseKeyword and
-       * NamedArg
+
+      /** Some completion values should be shown first such as CaseKeyword and
+       *  NamedArg
        */
       def compareCompletionValue(
           sym1: CompletionValue.Symbolic,
@@ -987,7 +1034,7 @@ class Completions(
             )
           case (
                 sym1: CompletionValue.Symbolic,
-                sym2: CompletionValue.Symbolic,
+                sym2: CompletionValue.Symbolic
               ) =>
             if compareCompletionValue(sym1, sym2) then 0
             else if compareCompletionValue(sym2, sym1) then 1
@@ -1032,10 +1079,6 @@ class Completions(
                             )
                             if byParamCount != 0 then byParamCount
                             else s1.detailString.compareTo(s2.detailString)
-                    end if
-                  end if
-                end if
-              end if
             end if
           case _ =>
             val byClass = prioritizeByClass(o1, o2)

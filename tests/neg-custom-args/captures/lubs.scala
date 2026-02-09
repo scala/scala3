@@ -1,6 +1,6 @@
 import java.sql.Date
 
-class C extends caps.Capability
+class C extends caps.SharedCapability
 class D
 
 def Test(c1: C, c2: C) =

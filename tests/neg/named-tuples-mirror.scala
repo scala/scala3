@@ -1,4 +1,3 @@
-import scala.language.experimental.namedTuples
 import scala.deriving.*
 import scala.compiletime.*
 

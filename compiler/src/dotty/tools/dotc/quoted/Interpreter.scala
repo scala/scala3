@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package quoted
 
-import scala.language.unsafeNulls
-
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
@@ -27,7 +25,7 @@ import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.core.CyclicReference
 
 /** Tree interpreter for metaprogramming constructs */
@@ -129,8 +127,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       case fnType: MethodType =>
         val argTypes = fnType.paramInfos
         assert(argss.head.size == argTypes.size)
-        val nonErasedArgs = argss.head.lazyZip(fnType.erasedParams).collect { case (arg, false) => arg }.toList
-        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.erasedParams).collect { case (arg, false) => arg }.toList
+        val nonErasedArgs = argss.head.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
+        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
         assert(nonErasedArgs.size == nonErasedArgTypes.size)
         interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ::: interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>

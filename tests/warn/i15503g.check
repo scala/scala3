@@ -1,0 +1,28 @@
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:8:17 ---------------------------------------------------------
+8 |  private def f2(a: Int) = default_int // warn
+  |                 ^
+  |                 unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:9:31 ---------------------------------------------------------
+9 |  private def f3(a: Int)(using Int) = a // warn
+  |                               ^
+  |                               unused implicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:10:17 --------------------------------------------------------
+10 |  private def f4(a: Int)(using Int) = default_int // warn // warn
+   |                 ^
+   |                 unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:10:31 --------------------------------------------------------
+10 |  private def f4(a: Int)(using Int) = default_int // warn // warn
+   |                               ^
+   |                               unused implicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:11:17 --------------------------------------------------------
+11 |  private def f6(a: Int)(using Int) = summon[Int] // warn
+   |                 ^
+   |                 unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:23:18 --------------------------------------------------------
+23 |    def isAnIssue(y: A): Boolean = x == x // warn
+   |                  ^
+   |                  unused explicit parameter in extension method isAnIssue
+-- [E198] Unused Symbol Warning: tests/warn/i15503g.scala:29:30 --------------------------------------------------------
+29 |  extension (s: String)(using Show) // warn not used in repeat
+   |                              ^
+   |                              unused implicit parameter in extension method repeat

@@ -117,6 +117,22 @@ The fields referenced by `Mercury` are not visible, and the fields referenced by
 be referenced directly (using `import Planet.*`). You must use an indirect reference,
 such as demonstrated with `Earth`.
 
+Note that it is not possible to write a companion object for an enum case,
+either in the enum class template or the enum class companion object.
+
+```scala
+enum Planet(mass: Double, radius: Double):
+  case Earth extends Planet(5.976e+24, 6.37814e6)
+  object Earth:
+    // a near-Earth object, but not a companion and not an enum value
+    assert(this ne Planet.Earth)
+    def report = assert(Planet.this.Earth eq Planet.Earth, s"I thought $this was Earth!")
+end Planet
+```
+
+Enum cases accept only access modifiers.
+Enum classes accept only access modifiers and `into` or `infix`.
+
 ## Deprecation of Enum Cases
 
 As a library author, you may want to signal that an enum case is no longer intended for use. However you could still want to gracefully handle the removal of a case from your public API, such as special casing deprecated cases.
@@ -168,7 +184,7 @@ enum Color extends Enum[Color]:
   case Red, Green, Blue
 ```
 
-The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.
+The type parameter comes from the Java enum [definition](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Enum.html) and should be the same as the type of the enum.
 There is no need to provide constructor arguments (as defined in the Java API docs) to `java.lang.Enum` when extending it – the compiler will generate them automatically.
 
 After defining `Color` like that, you can use it like you would a Java enum:

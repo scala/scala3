@@ -1,0 +1,20 @@
+-- [E039] Reference Error: tests/neg/i14401c.scala:5:17 ----------------------------------------------------------------
+5 |    def f: Int = g // error
+  |                 ^
+  |                 forward reference to g (defined on line 7) extends over the definition of x (on line 6)
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | g is used before you define it, and the definition of x
+  | appears between that use and the definition of g.
+  |
+  | Forward references are allowed only if there are no value definitions between
+  | the reference and the definition that is referred to.
+  | Specifically, any statement between the reference and the definition
+  | cannot be a variable definition, and if it's a value definition, it must be lazy.
+  |
+  | Define g before it is used,
+  | or move the definition of x so it does not appear between
+  | the declaration of g and its use,
+  | or define x as lazy.
+   ---------------------------------------------------------------------------------------------------------------------

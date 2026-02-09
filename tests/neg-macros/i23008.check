@@ -1,0 +1,13 @@
+-- Error: tests/neg-macros/i23008/Test_2.scala:1:24 --------------------------------------------------------------------
+1 |@main def Test = Macros.buildString // error
+  |                 ^^^^^^^^^^^^^^^^^^
+  |                 Exception occurred while executing macro expansion.
+  |                 java.lang.IllegalArgumentException: requirement failed: value of StringConstant cannot be `null`
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:4
+4 |  inline def buildString = ${buildStringCode}
+  |                           ^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

@@ -154,7 +154,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       }
 
       checkJSNameAnnots(sym)
-      constFoldJSExportTopLevelAndStaticAnnotations(sym)
+      constantFoldJSAnnotations(sym)
 
       markExposedIfRequired(tree.symbol)
 
@@ -651,7 +651,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           val dotIndex = pathName.indexOf('.')
           val globalRef =
             if (dotIndex < 0) pathName
-            else pathName.substring(0, dotIndex).nn
+            else pathName.substring(0, dotIndex)
           checkGlobalRefName(globalRef)
         }
 
@@ -1089,17 +1089,18 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       }
     }
 
-    /** Constant-folds arguments to `@JSExportTopLevel` and `@JSExportStatic`.
+    /** Constant-folds arguments to `@JSName`, `@JSExportTopLevel` and `@JSExportStatic`.
      *
      *  Unlike scalac, dotc does not constant-fold expressions in annotations.
      *  Our back-end needs to have access to the arguments to those two
      *  annotations as literal strings, so we specifically constant-fold them
      *  here.
      */
-    private def constFoldJSExportTopLevelAndStaticAnnotations(sym: Symbol)(using Context): Unit = {
+    private def constantFoldJSAnnotations(sym: Symbol)(using Context): Unit = {
       val annots = sym.annotations
       val newAnnots = annots.mapConserve { annot =>
-        if (annot.symbol == jsdefn.JSExportTopLevelAnnot || annot.symbol == jsdefn.JSExportStaticAnnot) {
+        if (annot.symbol == jsdefn.JSExportTopLevelAnnot || annot.symbol == jsdefn.JSExportStaticAnnot ||
+            annot.symbol == jsdefn.JSNameAnnot) {
           annot.tree match {
             case app @ Apply(fun, args) =>
               val newArgs = args.mapConserve { arg =>
@@ -1109,7 +1110,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
                   case _ =>
                     arg.tpe.widenTermRefExpr.normalized match {
                       case ConstantType(c) => Literal(c).withSpan(arg.span)
-                      case _               => arg // PrepJSExports will emit an error for those cases
+                      case _               => arg
                     }
                 }
               }
@@ -1170,10 +1171,10 @@ object PrepJSInterop {
     @inline def |(that: OwnerKind): OwnerKind =
       new OwnerKind(this.baseKinds | that.baseKinds)
 
-    inline def is(that: OwnerKind): Boolean =
+    inline infix def is(that: OwnerKind): Boolean =
       (this.baseKinds & that.baseKinds) != 0
 
-    inline def isnt(that: OwnerKind): Boolean =
+    inline infix def isnt(that: OwnerKind): Boolean =
       !this.is(that)
   }
 

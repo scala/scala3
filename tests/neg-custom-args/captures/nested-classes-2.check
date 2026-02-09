@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/nested-classes-2.scala:9:36 ------------------------------
+9 |    val cc3: cc1.C2^{cc1, x1, x2} = cc2 // error
+  |                                    ^^^
+  |                              Found:    cc1.C2{val y1: () ->{cc2*} Unit; val y2: (() => Unit) ->{cc2*} Unit}^{cc2}
+  |                              Required: cc1.C2^{cc1, x1, x2}
+  |
+  |                              Note that capability `cc2` cannot flow into capture set {cc1, x1, x2}.
+  |
+  |                              where:    => refers to the root capability caps.any
+  |
+  | longer explanation available when compiling with `-explain`

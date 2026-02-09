@@ -1,0 +1,32 @@
+-- Error: tests/neg-custom-args/captures/fresh-counter.scala:23:6 ------------------------------------------------------
+23 |  par(i, d) // error: separation failure
+   |      ^
+   |Separation failure: argument of type  (i : () ->{c.incr} Unit)
+   |to method par: (p1: () => Unit, p2: () => Unit): Unit
+   |corresponds to capture-polymorphic formal parameter p1 of type  () => Unit
+   |and hides capabilities  {i}.
+   |Some of these overlap with the captures of the second argument with type  (d : () ->{c.decr} Unit).
+   |
+   |  Hidden set of current argument        : {i}
+   |  Hidden footprint of current argument  : {i, c.incr, c.count}
+   |  Capture set of second argument        : {d}
+   |  Footprint set of second argument      : {d, c.decr, c}
+   |  The two sets overlap at               : {c.incr, c.count}
+   |
+   |where:    => refers to a root capability created in method test when checking argument to parameter p1 of method par
+-- Error: tests/neg-custom-args/captures/fresh-counter.scala:33:4 ------------------------------------------------------
+33 |    () => count.put(count.get + 1), // error: separation failure
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Separation failure: argument of type  () ->{count} Unit
+   |to constructor Pair: (a: () => Unit, b: () => Unit): Pair
+   |corresponds to capture-polymorphic formal parameter a of type  () => Unit
+   |and hides capabilities  {count}.
+   |Some of these overlap with the captures of the second argument with type  () ->{count} Unit.
+   |
+   |  Hidden set of current argument        : {count}
+   |  Hidden footprint of current argument  : {count}
+   |  Capture set of second argument        : {count}
+   |  Footprint set of second argument      : {count}
+   |  The two sets overlap at               : {count}
+   |
+   |where:    => refers to a root capability created in method mkCounter when checking argument to parameter a of constructor Pair

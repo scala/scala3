@@ -13,7 +13,7 @@ object Cleaner {
     def cleanLine(line: String): String = {
       // Remove trailing whitespaces
       TrailingWhitespace.replaceAllIn(line, "") match {
-        case CleanCommentLine(ctl) => ctl
+        case CleanCommentLine(ctl: String) => ctl
         case tl => tl
       }
     }

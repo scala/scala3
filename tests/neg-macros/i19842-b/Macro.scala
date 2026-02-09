@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.annotation.{experimental, targetName}
 import scala.quoted.*
 import scala.util.Try
@@ -18,7 +16,7 @@ object Macros {
       name,
       Flags.Implicit,
       Flags.EmptyFlags,
-      List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
+      _ => List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
       _ => Nil,
       Symbol.noSymbol
     )

@@ -186,15 +186,21 @@ object Nullables:
    *  Check `usedOutOfOrder` to see the explaination and example of "out of order".
    *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
-  def isTracked(ref: TermRef)(using Context) =
+  def isTracked(ref: TermRef)(using Context) = // true
+    val sym = ref.symbol
+
+    def isNullStableField: Boolean =
+      ref.prefix.isStable
+      && sym.isField
+      && sym.hasAnnotation(defn.StableNullAnnot)
+
     ref.isStable
-    || { val sym = ref.symbol
-         val unit = ctx.compilationUnit
+    || isNullStableField
+    || { val unit = ctx.compilationUnit
          !ref.usedOutOfOrder
          && sym.span.exists
          && (unit ne NoCompilationUnit) // could be null under -Ytest-pickler
-         && unit.assignmentSpans.contains(sym.span.start)
-      }
+         && unit.assignmentSpans.contains(sym.span.start) }
 
   /** The nullability context to be used after a case that matches pattern `pat`.
    *  If `pat` is `null`, this will assert that the selector `sel` is not null afterwards.
@@ -253,7 +259,7 @@ object Nullables:
       val mutables = infos.foldLeft(Set[TermRef]()):
         (ms, info) => ms.union(
                         if info.asserted == null then Set.empty
-                        else info.asserted.filter(_.symbol.is(Mutable)))
+                        else info.asserted.filter(_.symbol.isMutableVarOrAccessor))
       infos.extendWith(NotNullInfo(Set(), mutables))
 
   end extension
@@ -307,7 +313,7 @@ object Nullables:
             || s.isClass // not in a class
             || recur(s.owner))
 
-      refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
+      refSym.isMutableVarOrAccessor // if it is immutable, we don't need to check the rest conditions
       && refOwner.isTerm
       && recur(ctx.owner)
   end extension
@@ -326,7 +332,7 @@ object Nullables:
       case Apply(fn, args) =>
         val argsInfo = args.map(_.notNullInfo)
         val fnInfo = fn.notNullInfo
-        argsInfo.foldLeft(fnInfo)(_ seq _)
+        argsInfo.foldLeft(fnInfo)(_.seq(_))
       case TypeApply(fn, _) =>
         fn.notNullInfo
       case _ =>
@@ -574,7 +580,7 @@ object Nullables:
             object dropNotNull extends TreeMap:
               var dropped: Boolean = false
               override def transform(t: Tree)(using Context) = t match
-                case AssertNotNull(t0) if t0.symbol.is(Mutable) =>
+                case AssertNotNull(t0) if t0.symbol.isMutableVarOrAccessor =>
                   nullables.println(i"dropping $t")
                   dropped = true
                   transform(t0)

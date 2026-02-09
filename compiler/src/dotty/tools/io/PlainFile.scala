@@ -14,7 +14,7 @@ import java.nio.file.{InvalidPathException, Paths}
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
   override val isDirectory: Boolean = true
-  override def iterator(): Iterator[PlainFile] = givenPath.list.filter(_.exists).map(new PlainFile(_))
+  override def iterator: Iterator[PlainFile] = givenPath.list.filter(_.exists).map(new PlainFile(_))
 }
 
 /** This class implements an abstract file backed by a File.

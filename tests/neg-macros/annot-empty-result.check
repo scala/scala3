@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/annot-empty-result/Test_2.scala:5:2 ---------------------------------------------------------
 5 |  @nilAnnot // error
   |  ^^^^^^^^^

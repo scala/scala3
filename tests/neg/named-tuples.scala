@@ -1,7 +1,6 @@
 import annotation.experimental
-import language.experimental.namedTuples
 
-@experimental object Test:
+object Test:
 
   type Person = (name: String, age: Int)
   val person = (name = "Bob", age = 33): (name: String, age: Int)
@@ -27,7 +26,7 @@ import language.experimental.namedTuples
   val (name = x, agee = y) = person // error
 
   ("Ives", 2) match
-    case (name = n, age = a) => () // error // error
+    case (name = n, age = a) => () // error
 
   val pp = person ++ (1, 2)  // error
   val qq = ("a", true) ++ (1, 2)

@@ -18,6 +18,7 @@ i20317a.scala # recursion limit exceeded
 i11226.scala # missing type
 i974.scala # cyclic reference
 i13864.scala # missing symbol in pickling
+type-params.scala # recursion limit exceeded
 
 # semantic db generation fails in the first compilation
 i15158.scala # cyclic reference - stack overflow

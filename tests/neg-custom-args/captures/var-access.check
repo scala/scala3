@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/var-access.scala:9:21 ------------------------------------
+9 |  val _: () -> Int = f   // error
+  |                     ^
+  |                     Found:    (f : () ->{a.rd} Int)
+  |                     Required: () -> Int
+  |
+  |                     Note that capability `a.rd` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/var-access.scala:12:22 -----------------------------------
+12 |  val _: () -> Unit = g   // error
+   |                      ^
+   |                      Found:    (g : () ->{a} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `a` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

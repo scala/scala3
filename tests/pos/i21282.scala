@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -source:future-migration
+//> using options -Werror -source:future-migration
 
 import scala.quoted.*
 

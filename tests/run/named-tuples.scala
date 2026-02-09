@@ -1,4 +1,3 @@
-import language.experimental.namedTuples
 import NamedTuple.*
 
 type Person = (name: String, age: Int)

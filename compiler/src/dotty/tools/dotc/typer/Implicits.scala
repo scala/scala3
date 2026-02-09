@@ -31,6 +31,7 @@ import Feature.{migrateTo3, sourceVersion}
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.*
+import Message.Note
 import transform.Splicer
 import annotation.tailrec
 
@@ -83,6 +84,9 @@ object Implicits:
 
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
+
+  def strictEqualityPatternMatching(using Context): Boolean =
+    Feature.enabled(Feature.strictEqualityPatternMatching)
 
 
   /** A common base class of contextual implicits and of-type implicits which
@@ -326,7 +330,7 @@ object Implicits:
      */
     private def isOutermost = {
       val finalImplicits = NoContext.implicits
-      (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
+      (this eq finalImplicits) || (outerImplicits eq finalImplicits)
     }
 
     def bindingPrec: BindingPrec =
@@ -401,9 +405,9 @@ object Implicits:
     def exclude(root: Symbol): ContextualImplicits =
       if (this == NoContext.implicits) this
       else {
-        val outerExcluded = outerImplicits.nn exclude root
+        val outerExcluded = outerImplicits.nn.exclude(root)
         if (irefCtx.importInfo.nn.site.termSymbol == root) outerExcluded
-        else if (outerExcluded eqn outerImplicits) this
+        else if (outerExcluded eq outerImplicits) this
         else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
       }
   }
@@ -464,7 +468,7 @@ object Implicits:
     }
   }
 
-  abstract class SearchFailureType extends ErrorType, Addenda {
+  abstract class SearchFailureType extends ErrorType {
     def expectedType: Type
     def argument: Tree
 
@@ -481,6 +485,8 @@ object Implicits:
         if (argument.isEmpty) i"match type ${clarify(expectedType)}"
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
+
+    def notes(using Context): List[Note] = Nil
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
@@ -535,10 +541,12 @@ object Implicits:
   /** A failure value indicating that an implicit search for a conversion was not tried */
   case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
 
-    override def toAdd(using Context) =
-      i"""
-         |Note that implicit conversions were not tried because the result of an implicit conversion
-         |must be more specific than $target""" :: Nil
+    override def notes(using Context) =
+      Note:
+        i"""
+          |Note that implicit conversions were not tried because the result of an implicit conversion
+          |must be more specific than $target"""
+      :: Nil
 
     override def msg(using Context) =
       super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
@@ -558,18 +566,22 @@ object Implicits:
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
       if str1 == str2 then
-        str1 = ctx.printer.toTextRef(alt1.ref).show
-        str2 = ctx.printer.toTextRef(alt2.ref).show
+        str1 = alt1.ref.showRef
+        str2 = alt2.ref.showRef
       em"both $str1 and $str2 $qualify".withoutDisambiguation()
 
-    override def toAdd(using Context) =
+    override def notes(using Context) =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
         Nil
       else
         val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
-        i"""
-           |Note that implicit $what cannot be applied because they are ambiguous;
-           |$explanation""" :: Nil
+        Note:
+          i"""
+             |Note that implicit $what cannot be applied because they are ambiguous;
+             |$explanation"""
+        :: Nil
+
+    def asNested = if nested then this else AmbiguousImplicits(alt1, alt2, expectedType, argument, nested = true)
   end AmbiguousImplicits
 
   class MismatchedImplicit(ref: TermRef,
@@ -830,7 +842,7 @@ trait ImplicitRunInfo:
               WildcardType
             else
               seen += t
-              t.superType match
+              t.underlying match
                 case TypeBounds(lo, hi) =>
                   if lo.isBottomTypeAfterErasure then apply(hi)
                   else AndType.make(apply(lo), apply(hi))
@@ -842,6 +854,10 @@ trait ImplicitRunInfo:
             case t: TypeVar => apply(t.underlying)
             case t: ParamRef => applyToUnderlying(t)
             case t: ConstantType => apply(t.underlying)
+            case t @ AppliedType(tycon, args) if !tycon.typeSymbol.isClass =>
+              // To prevent arguments to be reduced away when re-applying the tycon bounds,
+              // we collect all parts as elements of a tuple. See i21951.scala for a test case.
+              apply(defn.tupleType(tycon :: args))
             case t => mapOver(t)
         end liftToAnchors
         val liftedTp = liftToAnchors(tp)
@@ -1030,8 +1046,9 @@ trait Implicits:
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
+   *   - if strictEqualityPatternMatching is set and the necessary conditions are met
    */
-  def assumedCanEqual(ltp: Type, rtp: Type)(using Context) = {
+  def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
@@ -1054,27 +1071,23 @@ trait Implicits:
 
     ltp.isError
     || rtp.isError
-    || !strictEquality && (ltp <:< lift(rtp) || rtp <:< lift(ltp))
+    || locally:
+      if strictEquality then
+        strictEqualityPatternMatching &&
+          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
+          ltp <:< lift(rtp)
+      else
+        ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
 
-  /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit =
-    if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
+  /** Check that equality tests between types `ltp` and `left.tpe` make sense.
+   * `left` is required to check for the condition for language.strictEqualityPatternMatching.
+   */
+  def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
+    val ltp = left.tpe.widen
+    if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left) then
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
-    }
-
-  object hasSkolem extends TreeAccumulator[Boolean]:
-    def apply(x: Boolean, tree: Tree)(using Context): Boolean =
-      x || {
-        tree match
-          case tree: Ident => tree.symbol.isSkolem
-          case Select(qual, _) => apply(x, qual)
-          case Apply(fn, _) => apply(x, fn)
-          case TypeApply(fn, _) => apply(x, fn)
-          case _: This => false
-          case _ => foldOver(x, tree)
-      }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
@@ -1123,8 +1136,6 @@ trait Implicits:
               result.tstate.commit()
             if result.gstate ne ctx.gadt then
               ctx.gadtState.restore(result.gstate)
-            if hasSkolem(false, result.tree) then
-              report.error(SkolemInInferred(result.tree, pt, argument), ctx.source.atSpan(span))
             implicits.println(i"success: $result")
             implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
             result
@@ -1196,7 +1207,7 @@ trait Implicits:
 
               def tryConversionForSelection(using Context) =
                 val converted = tryConversion
-                if !ctx.reporter.hasErrors && !selProto.isMatchedBy(converted.tpe) then
+                if !ctx.reporter.hasErrors && !selProto.isMatchedBy(converted.tpe, keepConstraint = false) then
                   // this check is needed since adapting relative to a `SelectionProto` can succeed
                   // even if the term is not a subtype of the `SelectionProto`
                   err.typeMismatch(converted, selProto)
@@ -1292,11 +1303,15 @@ trait Implicits:
         val history = ctx.searchHistory.nest(cand, pt)
         val typingCtx =
           searchContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
+        val alreadyStoppedInlining = ctx.base.stopInlining
         val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
         result match
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(wideProto, res)
           case _ =>
+            if !alreadyStoppedInlining && ctx.base.stopInlining then
+              // a call overflowed as part of the expansion when typing the implicit
+              ctx.base.stopInlining = false
             // Since the search failed, the local typerstate will be discarded
             // without being committed, but type variables local to that state
             // might still appear in an error message, so we run `gc()` here to
@@ -1383,30 +1398,31 @@ trait Implicits:
             if alt1.isExtension then
               // Fall back: if both results are extension method applications,
               // compare the extension methods instead of their wrappers.
-              def stripExtension(alt: SearchSuccess) = methPart(stripApply(alt.tree)).tpe
-              (stripExtension(alt1), stripExtension(alt2)) match
-                case (ref1: TermRef, ref2: TermRef) =>
-                  // ref1 and ref2 might refer to type variables owned by
-                  // alt1.tstate and alt2.tstate respectively, to compare the
-                  // alternatives correctly we need a TyperState that includes
-                  // constraints from both sides, see
-                  // tests/*/extension-specificity2.scala for test cases.
-                  val constraintsIn1 = alt1.tstate.constraint ne ctx.typerState.constraint
-                  val constraintsIn2 = alt2.tstate.constraint ne ctx.typerState.constraint
-                  def exploreState(alt: SearchSuccess): TyperState =
-                    alt.tstate.fresh(committable = false)
-                  val comparisonState =
-                    if constraintsIn1 && constraintsIn2 then
-                      exploreState(alt1).mergeConstraintWith(alt2.tstate)
-                    else if constraintsIn1 then
-                      exploreState(alt1)
-                    else if constraintsIn2 then
-                      exploreState(alt2)
-                    else
-                      ctx.typerState
+              def stripExtension(alt: SearchSuccess) =
+                methPart(stripApply(alt.tree)).tpe: @unchecked match { case ref: TermRef => ref }
+              val ref1 = stripExtension(alt1)
+              val ref2 = stripExtension(alt2)
+              // ref1 and ref2 might refer to type variables owned by
+              // alt1.tstate and alt2.tstate respectively, to compare the
+              // alternatives correctly we need a TyperState that includes
+              // constraints from both sides, see
+              // tests/*/extension-specificity2.scala for test cases.
+              val constraintsIn1 = alt1.tstate.constraint ne ctx.typerState.constraint
+              val constraintsIn2 = alt2.tstate.constraint ne ctx.typerState.constraint
+              def exploreState(alt: SearchSuccess): TyperState =
+                alt.tstate.fresh(committable = false)
+              val comparisonState =
+                if constraintsIn1 && constraintsIn2 then
+                  exploreState(alt1).mergeConstraintWith(alt2.tstate)
+                else if constraintsIn1 then
+                  exploreState(alt1)
+                else if constraintsIn2 then
+                  exploreState(alt2)
+                else
+                  ctx.typerState
 
-                  diff = inContext(searchContext().withTyperState(comparisonState)):
-                    compare(ref1, ref2, preferGeneral = true)
+              diff = inContext(searchContext().withTyperState(comparisonState)):
+                compare(ref1, ref2, preferGeneral = true)
             else // alt1 is a conversion, prefer extension alt2 over it
               diff = -1
           if diff < 0 then alt2
@@ -1565,7 +1581,7 @@ trait Implicits:
       /** Check if `ord` respects the contract of `Ordering`.
        *
        *  More precisely, we check that its `compare` method respects the invariants listed
-       *  in https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html#compare-T-T-
+       *  in https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Comparator.html#compare(T,T)
        */
       def validateOrdering(ord: Ordering[Candidate]): Unit =
         for
@@ -1693,7 +1709,10 @@ trait Implicits:
           def candSucceedsGiven(sym: Symbol): Boolean =
             val owner = sym.owner
             if owner == candSym.owner then
-              sym.is(GivenVal) && sym.span.exists && sym.span.start <= candSym.span.start
+              sym.is(GivenVal)
+              && sym.span.exists && sym.span.start <= candSym.span.start
+              && (sym.span.isSourceDerived || !sym.name.startsWith("derived$", 0))
+                // logically a synthetic injected at the end of the body
             else if owner.isClass then false
             else candSucceedsGiven(owner)
 
@@ -1721,7 +1740,7 @@ trait Implicits:
                     "argument"
 
                 def showResult(r: SearchResult) = r match
-                  case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
+                  case r: SearchSuccess => r.ref.showRef
                   case r => r.show
 
                 result match

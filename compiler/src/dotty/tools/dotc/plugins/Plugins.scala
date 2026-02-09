@@ -1,18 +1,14 @@
 package dotty.tools.dotc
 package plugins
 
-import scala.language.unsafeNulls
-
 import core.*
 import Contexts.*
 import Decorators.em
-import config.{ PathResolver, Feature }
+import config.PathResolver
 import dotty.tools.io.*
 import Phases.*
 import config.Printers.plugins.{ println => debug }
 import config.Properties
-
-import scala.compiletime.uninitialized
 
 /** Support for run-time loading of compiler plugins.
  *
@@ -29,8 +25,10 @@ trait Plugins {
    *  filtered from the final list of plugins.
    */
   protected def loadRoughPluginsList(using Context): List[Plugin] = {
-    def asPath(p: String) = ClassPath split p
-    val paths  = ctx.settings.plugin.value filter (_ != "") map (s => asPath(s) map Path.apply)
+    def asPath(p: String) = ClassPath.split(p)
+    val paths  = ctx.settings.plugin.value
+      .filter (_ != "")
+      .map(s => asPath(s).map(Path.apply))
     val dirs   = {
       def injectDefault(s: String) = if (s.isEmpty) PathResolver.Defaults.scalaPluginPath else s
       asPath(ctx.settings.pluginsDir.value) map injectDefault map Path.apply
@@ -40,20 +38,19 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => report.warning(e.getMessage.nn)
-      case e: Exception              => report.inform(e.getMessage.nn)
+      case e: MissingPluginException => report.warning(e.getMessage)
+      case e: Exception              => report.inform(e.getMessage)
     })
 
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] = uninitialized
+  private var _roughPluginsList: List[Plugin] | Null = null
   protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
-      _roughPluginsList
     }
-    else _roughPluginsList
+    _roughPluginsList.nn
 
   /** Load all available plugins. Skips plugins that
    *  either have the same name as another one, or which
@@ -90,22 +87,21 @@ trait Plugins {
       report.error(em"Missing required plugin: $req")
 
     // Verify no non-existent plugin given with -P
-    for {
+    for
       opt <- ctx.settings.pluginOptions.value
-      if !(plugs exists (opt startsWith _.name + ":"))
-    }
-    report.error(em"bad option: -P:$opt")
+      if !plugs.exists(plug => opt.startsWith(plug.name + ":"))
+    do
+      report.error(em"bad option: -P:$opt")
 
     plugs
   }
 
-  private var _plugins: List[Plugin] = uninitialized
+  private var _plugins: List[Plugin] | Null = null
   def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
-      _plugins
     }
-    else _plugins
+    _plugins.nn
 
   /** A description of all the plugins that are loaded */
   def pluginDescriptions(using Context): String =
@@ -119,10 +115,11 @@ trait Plugins {
 
   /** Add plugin phases to phase plan */
   def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
-    def options(plugin: Plugin): List[String] = {
+    def options(plugin: Plugin): List[String] =
       def namec = plugin.name + ":"
-      ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
-    }
+      ctx.settings.pluginOptions.value
+        .filter(_.startsWith(namec))
+        .map(_.stripPrefix(namec))
 
     // schedule plugins according to ordering constraints
     val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.initialize(options(plug)) }

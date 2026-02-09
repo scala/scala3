@@ -76,23 +76,6 @@ test$package
 Object
 <empty>.test$package
 Test
-134
-148
-8
-toString
-Apply
-false
-0
-false
-"foo".toString
-
-4
-inline-def/test.scala
-<empty>
-test$package
-Object
-<empty>.test$package
-Test
 263
 277
 16
@@ -103,24 +86,7 @@ false
 false
 println(a.bar)
 
-5
-inline-def/test.scala
-<empty>
-test$package
-Object
-<empty>.test$package
-Test
-176
-190
-9
-toString
-Apply
-false
-0
-false
-"bar".toString
-
-6
+4
 inline-def/test.scala
 <empty>
 test$package
@@ -137,7 +103,7 @@ false
 false
 println(b.foo)
 
-7
+5
 inline-def/test.scala
 <empty>
 test$package
@@ -154,7 +120,7 @@ false
 false
 b.foo
 
-8
+6
 inline-def/test.scala
 <empty>
 test$package

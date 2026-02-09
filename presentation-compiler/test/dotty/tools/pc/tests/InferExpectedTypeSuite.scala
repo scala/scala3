@@ -1,15 +1,17 @@
 package dotty.tools.pc.tests
 
-import scala.language.unsafeNulls
-import dotty.tools.pc.base.BasePCSuite
-import scala.meta.internal.metals.CompilerOffsetParams
 import java.nio.file.Paths
+
+import scala.language.unsafeNulls
+import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.metals.EmptyCancelToken
-import dotty.tools.pc.ScalaPresentationCompiler
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 
-import org.junit.Test
+import dotty.tools.pc.ScalaPresentationCompiler
+import dotty.tools.pc.base.BasePCSuite
+
 import org.junit.Ignore
+import org.junit.Test
 
 class InferExpectedTypeSuite extends BasePCSuite:
   def check(
@@ -25,10 +27,9 @@ class InferExpectedTypeSuite extends BasePCSuite:
       offset,
       EmptyCancelToken
     )
-    presentationCompiler.asInstanceOf[ScalaPresentationCompiler].inferExpectedType(offsetParams).get().asScala match {
+    presentationCompiler.asInstanceOf[ScalaPresentationCompiler].inferExpectedType(offsetParams).get().asScala match
       case Some(value) => assertNoDiff(expectedType, value)
       case None => fail("Empty result.")
-    }
 
   @Test def basic =
     check(
@@ -42,6 +43,24 @@ class InferExpectedTypeSuite extends BasePCSuite:
     check(
       """|def paint(c: Int) = ???
          |val _ = paint(@@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
+  @Test def `basic-params` =
+    check(
+      """|def paint(c: Int, f: String, d: List[String]) = ???
+         |val _ = paint(1, "aa", @@)
+         |""".stripMargin,
+      """|List[String]
+         |""".stripMargin
+    )
+
+  @Test def `basic-type-param` =
+    check(
+      """|def paint[T](c: T) = ???
+         |val _ = paint[Int](@@)
          |""".stripMargin,
       """|Int
          |""".stripMargin
@@ -75,7 +94,7 @@ class InferExpectedTypeSuite extends BasePCSuite:
     check(
       """|val i: Option[Int] = Option(@@)
          |""".stripMargin,
-      """|Int
+      """|Int | Null
          |""".stripMargin
     )
 
@@ -289,4 +308,106 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |""".stripMargin,
       """|C
          |""".stripMargin // ideally A
+    )
+
+  @Test def `multiple-args-lists` =
+    check(
+      """|def m(i: Int)(s: String) = ???
+         |val x = m(@@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
+  @Test def `multiple-args-lists-2` =
+    check(
+      """|def m(i: Int)(s: String) = ???
+         |val x = m(1)(@@)
+         |""".stripMargin,
+      """|String
+        |""".stripMargin
+    )
+
+  @Test def `extension-methods` =
+    check(
+      """|extension (i: Int) {
+         |  def method(s: String): Unit = ()
+         |}
+         |
+         |def testIt =
+         |  7.method(@@)
+         |""".stripMargin,
+      """|String
+         |""".stripMargin
+    )
+
+  @Test def `implicit-methods` =
+    check(
+      """|object I
+         |implicit class Xtension(i: I.type) {
+         |  def method(s: String): Unit = ()
+         |}
+         |
+         |def testIt =
+         |  I.method(@@)
+         |""".stripMargin,
+      """|String
+         |""".stripMargin
+    )
+
+  @Test def using =
+    check(
+      """|def go(using Ordering[Int])(x: Int, y: Int): Int =
+         |  Ordering[Int].compare(x, y)
+         |
+         |def test =
+         |  go(???, @@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
+  @Test def `apply-dynamic` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method(x: Int): Unit
+         |  } = new reflect.Selectable {
+         |    def method(x: Int): Unit = ()
+         |  }
+         |
+         |  obj.method(@@)
+         |}
+         |""".stripMargin,
+      "Int"
+    )
+
+  @Test def `apply-dynamic-2` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method[T](x: Int, y: T): Unit
+         |  } = new reflect.Selectable {
+         |    def method[T](x: Int, y: T): Unit = ()
+         |  }
+         |
+         |  obj.method[String](1, @@)
+         |}
+         |""".stripMargin,
+      "String"
+    )
+
+  @Test def `apply-dynamic-3` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method[T](a: Int)(x: Int, y: T): Unit
+         |  } = new reflect.Selectable {
+         |    def method[T](a: Int)(x: Int, y: T): Unit = ()
+         |  }
+         |
+         |  obj.method[String](1)(1, @@)
+         |}
+         |""".stripMargin,
+      "String"
     )

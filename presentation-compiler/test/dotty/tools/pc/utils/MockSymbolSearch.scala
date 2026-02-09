@@ -6,15 +6,10 @@ import java.util as ju
 
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
-import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
-import scala.meta.pc.ContentType
-import scala.meta.pc.{
-  ParentSymbols,
-  SymbolDocumentation,
-  SymbolSearch,
-  SymbolSearchVisitor
-}
 import scala.language.unsafeNulls
+import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
+import scala.meta.pc.{ParentSymbols, SymbolDocumentation, SymbolSearch, SymbolSearchVisitor}
+import scala.meta.pc.ContentType
 
 import org.eclipse.lsp4j.Location
 
@@ -66,7 +61,7 @@ class MockSymbolSearch(
   override def documentation(
       symbol: String,
       parents: ParentSymbols
-  ) = documentation(symbol, parents, ContentType.MARKDOWN)
+  ): Optional[SymbolDocumentation] = documentation(symbol, parents, ContentType.MARKDOWN)
 
   override def documentation(
       symbol: String,

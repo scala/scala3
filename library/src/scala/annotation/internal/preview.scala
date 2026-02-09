@@ -1,6 +1,7 @@
 package scala.annotation
 package internal
 
+import language.experimental.captureChecking
 
 /** An annotation that can be used to mark a definition as preview.
  *

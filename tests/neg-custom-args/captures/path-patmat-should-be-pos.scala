@@ -1,6 +1,8 @@
+import caps.any
+
 class It[A]
 
-class Filter[A](val underlying: It[A]^, val p: A => Boolean) extends It[A]
+class Filter[A](val underlying: It[A]^, val p: A ->{any, underlying} Boolean) extends It[A]
 object Filter:
   def apply[A](underlying: It[A]^, p: A => Boolean): Filter[A]^{underlying, p} =
     underlying match

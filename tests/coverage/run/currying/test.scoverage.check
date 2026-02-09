@@ -25,6 +25,23 @@ Test
 Object
 <empty>.Test
 f1
+48
+53
+2
++
+Apply
+false
+0
+false
+a+b+c
+
+1
+currying/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+f1
 15
 21
 2
@@ -35,7 +52,24 @@ false
 false
 def f1
 
-1
+2
+currying/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+$anonfun
+105
+110
+4
++
+Apply
+false
+0
+false
+a+b+c
+
+3
 currying/test.scala
 <empty>
 Test
@@ -52,7 +86,24 @@ false
 false
 def f2
 
-2
+4
+currying/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+$anonfun
+166
+171
+7
++
+Apply
+false
+0
+false
+a+b+c
+
+5
 currying/test.scala
 <empty>
 Test
@@ -69,7 +120,24 @@ false
 false
 def g1
 
-3
+6
+currying/test.scala
+<empty>
+Test
+Object
+<empty>.Test
+g2
+226
+231
+9
++
+Apply
+false
+0
+false
+a+b+c
+
+7
 currying/test.scala
 <empty>
 Test
@@ -86,7 +154,7 @@ false
 false
 def g2
 
-4
+8
 currying/test.scala
 <empty>
 Test
@@ -103,7 +171,7 @@ false
 false
 println(f1(0)(1)(2))
 
-5
+9
 currying/test.scala
 <empty>
 Test
@@ -120,7 +188,7 @@ false
 false
 f1(0)(1)(2)
 
-6
+10
 currying/test.scala
 <empty>
 Test
@@ -137,7 +205,7 @@ false
 false
 println(f2(0)(1)(2))
 
-7
+11
 currying/test.scala
 <empty>
 Test
@@ -154,58 +222,7 @@ false
 false
 f2(0)(1)(2)
 
-8
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-310
-318
-13
-apply
-Apply
-false
-0
-false
-f2(0)(1)
-
-9
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-310
-315
-13
-apply
-Apply
-false
-0
-false
-f2(0)
-
-10
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-310
-312
-13
-f2
-Ident
-false
-0
-false
-f2
-
-11
+12
 currying/test.scala
 <empty>
 Test
@@ -222,7 +239,7 @@ false
 false
 println(g1(using 0)(using 1)(using 2))
 
-12
+13
 currying/test.scala
 <empty>
 Test
@@ -239,7 +256,7 @@ false
 false
 g1(using 0)(using 1)(using 2)
 
-13
+14
 currying/test.scala
 <empty>
 Test
@@ -256,7 +273,7 @@ false
 false
 println(g2(using 0)(using 1)(using 2))
 
-14
+15
 currying/test.scala
 <empty>
 Test
@@ -273,7 +290,7 @@ false
 false
 g2(using 0)(using 1)(using 2)
 
-15
+16
 currying/test.scala
 <empty>
 Test

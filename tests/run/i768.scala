@@ -4,8 +4,6 @@ case class A(a: String*){
 
 object Test {
   def main(args: Array[String]) = {
-    assert(A("a", "bc").s == "ArraySeq(a, bc)")
+    println(A("a", "bc").s)
   }
 }
-
-

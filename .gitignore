@@ -61,8 +61,7 @@ testlogs/
 /.cache-tests
 
 # Put local stuff here
-local/
-compiler/test/debug/Gen.jar
+/local/
 
 /bin/.cp
 
@@ -101,3 +100,6 @@ docs/_spec/.jekyll-metadata
 
 # scaladoc related
 scaladoc/output/
+
+# only used in local development
+.enable_bsp_all_projects

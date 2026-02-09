@@ -1,0 +1,19 @@
+-- Error: tests/neg/i21321.scala:3:42 ----------------------------------------------------------------------------------
+3 |val v1b: scala.ContextFunction0[String] = () ?=> "x" // error
+  |                                          ^^
+  |                                          context function literals require at least one formal parameter
+-- Error: tests/neg/i21321.scala:4:8 -----------------------------------------------------------------------------------
+4 |val v2: () ?=> String = "y" // error // error in parser
+  |        ^^
+  |        context function types require at least one parameter
+-- Error: tests/neg/i21321.scala:2:41 ----------------------------------------------------------------------------------
+2 |val v1: scala.ContextFunction0[String] = "x" // error
+  |                                         ^^^
+  |                                         context function types require at least one parameter
+-- [E007] Type Mismatch Error: tests/neg/i21321.scala:4:24 -------------------------------------------------------------
+4 |val v2: () ?=> String = "y" // error // error in parser
+  |                        ^^^
+  |                        Found:    ("y" : String)
+  |                        Required: () => String
+  |
+  | longer explanation available when compiling with `-explain`

@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import scala.language.unsafeNulls
-
 import io.{JarArchive, AbstractFile, Path, FileExtension}
 import core.Contexts.*
 import core.Decorators.em

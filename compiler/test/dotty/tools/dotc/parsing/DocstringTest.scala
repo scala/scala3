@@ -27,7 +27,7 @@ trait DocstringTest extends DottyTest {
   def checkFrontend(source: String)(docAssert: PartialFunction[Tree[Untyped], Unit]): Unit = {
     checkCompile("typer", source) { (_, ctx) =>
       implicit val c: Context = ctx
-      (docAssert orElse defaultAssertion)(ctx.compilationUnit.untpdTree)
+      (docAssert `orElse` defaultAssertion)(ctx.compilationUnit.untpdTree)
     }
   }
 }

@@ -1,9 +1,9 @@
--- [E007] Type Mismatch Error: tests/neg/i7294.scala:7:15 --------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i7294.scala:7:18 --------------------------------------------------------------
 7 |  case x: T => x.g(10) // error
-  |               ^
-  |               Found:    (x : Nothing)
-  |               Required: ?{ g: ? }
-  |               Note that implicit conversions were not tried because the result of an implicit conversion
-  |               must be more specific than ?{ g: [applied to (10) returning T] }
+  |               ^^^^^^^
+  |               Found:    Any
+  |               Required: T
+  |
+  |               where:    T is a type in given instance f with bounds <: foo.Foo
   |
   | longer explanation available when compiling with `-explain`

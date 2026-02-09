@@ -9,14 +9,14 @@ package <empty> {
       }
     @static private def <clinit>(): Unit =
       {
-        A.OFFSET$_m_0 =
-          scala.runtime.LazyVals.getOffsetStatic(
-            classOf[Object {...}].getDeclaredField("x$lzy1"))
+        A.x$lzy1$lzyHandle =
+          java.lang.invoke.MethodHandles.lookup().findVarHandle(
+            classOf[Object {...}], "x$lzy1", classOf[Object])
         ()
       }
-    @static @static val OFFSET$_m_0: Long =
-      scala.runtime.LazyVals.getOffsetStatic(
-        classOf[Object {...}].getDeclaredField("x$lzy1"))
+    @static private val x$lzy1$lzyHandle: java.lang.invoke.VarHandle =
+      java.lang.invoke.MethodHandles.lookup().findVarHandle(
+        classOf[Object {...}], "x$lzy1", classOf[Object])
     private def writeReplace(): Object =
       new scala.runtime.ModuleSerializationProxy(classOf[A])
     @volatile private lazy var x$lzy1: Object = null
@@ -24,16 +24,16 @@ package <empty> {
       {
         val result: Object = A.x$lzy1
         if result.isInstanceOf[Int] then Int.unbox(result) else
-          if result.eq(scala.runtime.LazyVals.NullValue) then Int.unbox(null)
+          if result eq scala.runtime.LazyVals.NullValue then Int.unbox(null)
              else Int.unbox(A.x$lzyINIT1())
       }
     private def x$lzyINIT1(): Object =
       while <empty> do
         {
           val current: Object = A.x$lzy1
-          if current.eq(null) then
+          if current eq null then
             if
-              scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, null,
+              A.x$lzy1$lzyHandle.compareAndSet(this, null,
                 scala.runtime.LazyVals.Evaluating)
              then
               {
@@ -42,22 +42,21 @@ package <empty> {
                 try
                   {
                     resultNullable = Int.box(2)
-                    if resultNullable.eq(null) then
+                    if resultNullable eq null then
                       result = scala.runtime.LazyVals.NullValue else
                       result = resultNullable
                     ()
                   }
                  finally
                   if
-                    scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0,
+                    A.x$lzy1$lzyHandle.compareAndSet(this,
                       scala.runtime.LazyVals.Evaluating, result).unary_!()
                    then
                     {
                       val lock: scala.runtime.LazyVals.LazyVals$Waiting =
                         A.x$lzy1.asInstanceOf[
                           scala.runtime.LazyVals.LazyVals$Waiting]
-                      scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, lock,
-                        result)
+                      A.x$lzy1$lzyHandle.compareAndSet(this, lock, result)
                       lock.countDown()
                     }
                    else ()
@@ -69,9 +68,9 @@ package <empty> {
               current.isInstanceOf[
                 scala.runtime.LazyVals.LazyVals$LazyValControlState]
              then
-              if current.eq(scala.runtime.LazyVals.Evaluating) then
+              if current eq scala.runtime.LazyVals.Evaluating then
                 {
-                  scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, current,
+                  A.x$lzy1$lzyHandle.compareAndSet(this, current,
                     new scala.runtime.LazyVals.LazyVals$Waiting())
                   ()
                 }

@@ -24,7 +24,7 @@ import collection.mutable
 import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
-import cc.{isRetainsLike, CaptureAnnotation}
+import cc.RetainingAnnotation
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -63,7 +63,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     if (prev.exists)
-      assert(cur.exists || prev.is(ConstructorProxy), i"companion disappeared from $symd")
+      assert(cur.exists || prev.is(PhantomSymbol), i"companion disappeared from $symd")
   }
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
@@ -187,7 +187,7 @@ object TreeChecker {
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
-        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike && !annot.isInstanceOf[CaptureAnnotation] =>
+        case tp @ AnnotatedType(underlying, annot: RetainingAnnotation) =>
           val underlying1 = this(underlying)
           val annot1 = insideRetainingAnnot:
             annot.mapWith(this)
@@ -244,7 +244,7 @@ object TreeChecker {
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+    override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
 
     def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
       var locally = List.empty[Symbol]
@@ -343,7 +343,7 @@ object TreeChecker {
       // case tree: untpd.TypeDef =>
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)
-        args.foreach(assertIdentNotJavaClass _)
+        args.foreach(assertIdentNotJavaClass(_))
       // case tree: untpd.This =>
       // case tree: untpd.Literal =>
       // case tree: untpd.New =>
@@ -354,7 +354,7 @@ object TreeChecker {
       case Assign(_, rhs) =>
         assertIdentNotJavaClass(rhs)
       case Block(stats, expr) =>
-        stats.foreach(assertIdentNotJavaClass _)
+        stats.foreach(assertIdentNotJavaClass(_))
         assertIdentNotJavaClass(expr)
       case If(_, thenp, elsep) =>
         assertIdentNotJavaClass(thenp)
@@ -387,7 +387,7 @@ object TreeChecker {
     }
 
     def isSymWithoutDef(sym: Symbol)(using Context): Boolean =
-      sym.is(ConstructorProxy) || sym.isContextBoundCompanion
+      sym.is(PhantomSymbol) || sym.isContextBoundCompanion
 
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
@@ -412,16 +412,16 @@ object TreeChecker {
             assert(false, s"The type of a non-Super tree must not be a SuperType, but $tree has type $tp")
           case _ =>
 
-    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
-      val tpdTree = super.typed(tree, pt)
-      Typer.assertPositioned(tree)
-      checkSuper(tpdTree)
-      if (ctx.erasedTypes)
-        // Can't be checked in earlier phases since `checkValue` is only run in
-        // Erasure (because running it in Typer would force too much)
-        checkIdentNotJavaClass(tpdTree)
-      tpdTree
-    }
+    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
+      trace(i"checking $tree against $pt"):
+        val tpdTree = super.typed(tree, pt)
+        Typer.assertPositioned(tree)
+        checkSuper(tpdTree)
+        if (ctx.erasedTypes)
+          // Can't be checked in earlier phases since `checkValue` is only run in
+          // Erasure (because running it in Typer would force too much)
+          checkIdentNotJavaClass(tpdTree)
+        tpdTree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
       try
@@ -710,12 +710,6 @@ object TreeChecker {
       super.typedWhileDo(tree)
     }
 
-    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
-      if tree.symbol == defn.StdLibPatchesPackage then
-        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
-      else
-        super.typedPackageDef(tree)
-
     override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
       if ctx.phase <= stagingPhase.prev then
         assert(tree.tags.isEmpty, i"unexpected tags in Quote before staging phase: ${tree.tags}")
@@ -854,30 +848,34 @@ object TreeChecker {
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
 
+      def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
+        val stack =
+          if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
+          else if err.getStackTrace == null then "  no stacktrace"
+          else err.getStackTrace.mkString("  ", "  \n", "")
+        report.error(
+          em"""Malformed tree was found while expanding macro with -Xcheck-macros.
+              |The tree does not conform to the compiler's tree invariants.
+              |
+              |Macro was:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
+              |
+              |The macro returned:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
+              |
+              |Error:
+              |$msg
+              |$stack
+              |""",
+          original
+        )
+
       try treeChecker.typed(expansion)(using checkingCtx)
       catch
         case err: java.lang.AssertionError =>
-          val stack =
-            if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
-            else if err.getStackTrace == null then "  no stacktrace"
-            else err.getStackTrace.nn.mkString("  ", "  \n", "")
-
-          report.error(
-            em"""Malformed tree was found while expanding macro with -Xcheck-macros.
-               |The tree does not conform to the compiler's tree invariants.
-               |
-               |Macro was:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
-               |
-               |The macro returned:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
-               |
-               |Error:
-               |${err.getMessage}
-               |$stack
-               |""",
-            original
-          )
+          reportMalformedMacroTree(err.getMessage(), err)
+        case err: UnhandledError =>
+          reportMalformedMacroTree(err.diagnostic.message, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>

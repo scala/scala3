@@ -70,10 +70,10 @@ package foo.test.i16865:
   trait Bar extends Foo
 
   object Ex extends Bar:
-    def fn(a: Int, b: Int): Int = b + 3 // warn
+    def fn(a: Int, b: Int): Int = b + 3 // no warn (override)
 
   object Ex2 extends Bar:
-    override def fn(a: Int, b: Int): Int = b + 3 // warn
+    override def fn(a: Int, b: Int): Int = b + 3 // no warn (override)
 
 final class alpha(externalName: String) extends StaticAnnotation // no warn annotation arg
 
@@ -92,4 +92,4 @@ object UnwrapTyped:
     error("Compiler bug: `codeOf` was not evaluated by the compiler")
 
 object `default usage`:
-  def f(i: Int)(j: Int = i * 2) = j // warn I guess
+  def f(i: Int)(j: Int = i * 2) = j // ~warn~ I guess (see tests/warn/i23349.scala)

@@ -83,7 +83,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
 
   lazy val snippetChecker = dctx.snippetChecker
 
-  val qctx: repr.qctx.type = if repr == null then null else repr.qctx // TODO why we do need null?
+  val qctx: repr.qctx.type = if repr == null then null.asInstanceOf[repr.qctx.type] else repr.qctx // TODO why we do need null?
   val owner: qctx.reflect.Symbol =
     if repr == null then null.asInstanceOf[qctx.reflect.Symbol] else repr.sym
   private given qctx.type = qctx
@@ -137,8 +137,8 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       val scDataCollector = SnippetCompilerDataCollector[qctx.type](qctx)
       val data = scDataCollector.getSnippetCompilerData(s, s)
       val sourceFile = scDataCollector.getSourceFile(s)
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
-          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
+          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
           val res = snippetChecker.checkSnippet(str, Some(data), arg, lineOffset, sourceFile)
           res.filter(r => !r.isSuccessful).foreach(_.reportMessages()(using compilerContext))
           res

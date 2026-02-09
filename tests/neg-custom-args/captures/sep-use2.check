@@ -1,0 +1,74 @@
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:4:10 -----------------------------------------------------------
+4 |  def cc: Object^ = c  // error
+  |          ^^^^^^^
+  |          Separation failure: method cc's result type Object^ hides non-local parameter c
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:12:8 -----------------------------------------------------------
+12 |    { f(c) } // error
+   |        ^
+   |        Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |        of method cc with result type Object^.
+   |        This type hides capabilities  {c}
+   |
+   |        where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:15:10 ----------------------------------------------------------
+15 |  def cc: Object^ = c // error
+   |          ^^^^^^^
+   |          Separation failure: method cc's result type Object^ hides non-local parameter c
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:17:6 -----------------------------------------------------------
+17 |    { f(cc) } // error
+   |      ^
+   |      Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |      of method cc with result type Object^.
+   |      This type hides capabilities  {c}
+   |
+   |      where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:19:6 -----------------------------------------------------------
+19 |    { f(c) } // error // error
+   |      ^
+   |      Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |      of method cc with result type Object^.
+   |      This type hides capabilities  {c}
+   |
+   |      where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:19:8 -----------------------------------------------------------
+19 |    { f(c) } // error // error
+   |        ^
+   |        Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |        of method cc with result type Object^.
+   |        This type hides capabilities  {c}
+   |
+   |        where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:23:8 -----------------------------------------------------------
+23 |    { f(c) } // error
+   |        ^
+   |Separation failure: argument of type  (c : Object^)
+   |to a function of type Object^ ->{c} Object^{fresh}
+   |corresponds to capture-polymorphic formal parameter x$0 of type  Object^²
+   |and hides capabilities  {c}.
+   |Some of these overlap with the captures of the function prefix.
+   |
+   |  Hidden set of current argument        : {c}
+   |  Hidden footprint of current argument  : {c}
+   |  Capture set of function prefix        : {f*}
+   |  Footprint set of function prefix      : {f*, c}
+   |  The two sets overlap at               : {c}
+   |
+   |where:    ^  refers to a root capability in the type of parameter c
+   |          ^² refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:27:8 -----------------------------------------------------------
+27 |    { f(c) } // error
+   |        ^
+   |Separation failure: argument of type  (c : Object^)
+   |to a function of type Object^ ->{c} Object^{fresh}
+   |corresponds to capture-polymorphic formal parameter x$0 of type  Object^²
+   |and hides capabilities  {c}.
+   |Some of these overlap with the captures of the function prefix.
+   |
+   |  Hidden set of current argument        : {c}
+   |  Hidden footprint of current argument  : {c}
+   |  Capture set of function prefix        : {f*}
+   |  Footprint set of function prefix      : {f*, c}
+   |  The two sets overlap at               : {c}
+   |
+   |where:    ^  refers to a root capability in the type of parameter c
+   |          ^² refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply

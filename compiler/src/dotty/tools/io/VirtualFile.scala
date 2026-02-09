@@ -40,14 +40,33 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
     this.content = content
   }
 
+  /**
+    * Initializes this instance with the specified path
+    * and a name taken from the last path element.
+    *
+    * @param path the path of the virtual file to be created
+    * @param content the initial contents of the virtual file
+    * @return     the created virtual file
+    */
+  def this(path: JPath, content: Array[Byte]) = {
+    this(path.getFileName().toString(), path.toString())
+    this.content = content
+    this.jpath_ = path
+  }
+
   private var content = Array.emptyByteArray
+
+  private var jpath_ : JPath = null
 
   def absolute: AbstractFile = this
 
-  /** Returns null. */
-  def jpath: JPath = null
+  /** Returns path, which might be a non-existing file or null. */
+  def jpath: JPath = jpath_
 
   override def sizeOption: Option[Int] = Some(content.length)
+
+  /** Always returns true, even if jpath is a non-existing file. */
+  override def exists: Boolean = true
 
   def input : InputStream = new ByteArrayInputStream(content)
 

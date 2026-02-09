@@ -49,3 +49,7 @@ object C:
   def useR4: Unit =
     val r4 = R4(1)
     val i: Int = r4.t
+
+  def useR5: Unit =
+    val r5 = R5("hi", 1, 2, 3)
+    val xs: Array[Int] = r5.values

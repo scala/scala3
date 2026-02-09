@@ -1,7 +1,9 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19470.scala:9:12 ----------------------------------------
 9 |    List(foo(f())) // error
   |         ^^^^^^^^
-  |         Found:    Inv[box IO^{f?}]
-  |         Required: box Inv[box IO^?]^?
+  |         Found:    Inv[IO^{f?}]
+  |         Required: Inv[IO^'s1]^'s2
+  |
+  |         Note that capability `f` cannot flow into capture set {f?}.
   |
   | longer explanation available when compiling with `-explain`

@@ -1,21 +1,30 @@
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:8:6 ----------------------------------
-8 |  def foo(x: C): C        // error
+8 |  def foo[C^]: Object^{C}  // error
   |      ^
-  |error overriding method foo in trait A of type (x: C): C;
-  |  method foo of type (x: C): C has a parameter x with different @use status than the corresponding parameter in the overridden definition
+  |error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
+  |  method foo of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
+  |
+  |where:    ^  refers to a root capability in the type of type C²
+  |          ^² refers to a root capability in the type of type C³
   |
   | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:9:6 ----------------------------------
-9 |  def bar(@use x: C): C // error
+9 |  def bar[@reserve C^]: Object^{C} // error
   |      ^
-  |error overriding method bar in trait A of type (x: C): C;
-  |  method bar of type (x: C): C has a parameter x with different @use status than the corresponding parameter in the overridden definition
+  |error overriding method bar in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
+  |  method bar of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
+  |
+  |where:    ^  refers to a root capability in the type of type C²
+  |          ^² refers to a root capability in the type of type C³
   |
   | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:15:15 --------------------------------
-15 |abstract class C extends A[C], B2 // error
+15 |abstract class C extends A, B2 // error
    |               ^
-   |error overriding method foo in trait A of type (x: C): C;
-   |  method foo in trait B2 of type (x: C): C has a parameter x with different @use status than the corresponding parameter in the overridden definition
+   |error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
+   |  method foo in trait B2 of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
+   |
+   |where:    ^  refers to a root capability in the type of type C²
+   |          ^² refers to a root capability in the type of type C³
    |
    | longer explanation available when compiling with `-explain`

@@ -14,15 +14,12 @@ import DenotTransformers.IdentityDenotTransformer
 import Names.*
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
-import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix, NoType}
+import dotty.tools.dotc.core.Types.{NoPrefix, NoType}
 
 import dotty.tools.dotc.printing.Formatting.hl
 
-import scala.collection.mutable
-import scala.util.boundary, boundary.break
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.unreachable
-import dotty.tools.dotc.util.Spans.Span
 
 /**Implementation of SIP-61.
  * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions
@@ -79,7 +76,8 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
               else Some((paramClauseIndex, annotationIndices))
           if indices.nonEmpty then
             // pre-validation should have occurred in posttyper
-            assert(annotated.is(Final, butNot = Deferred) || annotated.isConstructor || annotated.owner.is(ModuleClass) || annotated.name.is(DefaultGetterName),
+            assert(!annotated.isLocal, i"$annotated is local")
+            assert(annotated.isEffectivelyFinal || annotated.name.is(DefaultGetterName),
               i"$annotated is not final&concrete, or a constructor")
           indices
       })

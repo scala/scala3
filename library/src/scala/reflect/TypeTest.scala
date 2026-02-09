@@ -1,5 +1,7 @@
 package scala.reflect
 
+import language.experimental.captureChecking
+
 /** A `TypeTest[S, T]` contains the logic needed to know at runtime if a value of
  *  type `S` is an instance of `T`.
  *
@@ -25,5 +27,5 @@ trait TypeTest[-S, T] extends Serializable:
 
 object TypeTest:
 
-  /** Trivial type test that always succeeds */
+  /** Trivial type test that always succeeds. */
   def identity[T]: TypeTest[T, T] = Some(_)

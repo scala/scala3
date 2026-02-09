@@ -92,7 +92,7 @@ object ContextOps:
           }.find(_.exists).getOrElse(NoDenotation)
 
         if preSym.isClass then
-          directSearch orElse searchCompanionClass orElse searchSuperCompanionObjects
+          directSearch `orElse` searchCompanionClass `orElse` searchSuperCompanionObjects
         else
           directSearch
       }
@@ -135,4 +135,8 @@ object ContextOps:
       if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree).setNewScope
       else ctx
     }
+
+    def isRechecking: Boolean =
+      (ctx.base.recheckPhaseIds & (1L << ctx.phaseId)) != 0
+
 end ContextOps

@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i24246.scala:8:2 ----------------------------------------------
+8 |  x match { // warn
+  |  ^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: ZZ
+  |
+  | longer explanation available when compiling with `-explain`

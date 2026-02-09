@@ -42,6 +42,10 @@ final class JSDefinitions()(using Context) {
     def JSPackage_undefined(using Context) = JSPackage_undefinedR.symbol
     @threadUnsafe lazy val JSPackage_dynamicImportR = ScalaJSJSPackageClass.requiredMethodRef("dynamicImport")
     def JSPackage_dynamicImport(using Context) = JSPackage_dynamicImportR.symbol
+    @threadUnsafe lazy val JSPackage_asyncR = ScalaJSJSPackageClass.requiredMethodRef("async")
+    def JSPackage_async(using Context) = JSPackage_asyncR.symbol
+    @threadUnsafe lazy val JSPackage_awaitR = ScalaJSJSPackageClass.requiredMethodRef("await")
+    def JSPackage_await(using Context) = JSPackage_awaitR.symbol
 
   @threadUnsafe lazy val JSNativeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.native")
   def JSNativeAnnot(using Context) = JSNativeAnnotType.symbol.asClass
@@ -85,6 +89,8 @@ final class JSDefinitions()(using Context) {
   def JSGlobalScopeAnnot(using Context) = JSGlobalScopeAnnotType.symbol.asClass
   @threadUnsafe lazy val JSNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSName")
   def JSNameAnnot(using Context) = JSNameAnnotType.symbol.asClass
+  @threadUnsafe lazy val JSOperatorAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSOperator")
+  def JSOperatorAnnot(using Context) = JSOperatorAnnotType.symbol.asClass
   @threadUnsafe lazy val JSFullNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSFullName")
   def JSFullNameAnnot(using Context) = JSFullNameAnnotType.symbol.asClass
   @threadUnsafe lazy val JSBracketAccessAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSBracketAccess")
@@ -210,8 +216,20 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val Special_unwrapFromThrowableR = SpecialPackageClass.requiredMethodRef("unwrapFromThrowable")
     def Special_unwrapFromThrowable(using Context) = Special_unwrapFromThrowableR.symbol
 
+  @threadUnsafe lazy val WasmJSPIModuleRef = requiredModuleRef("scala.scalajs.js.wasm.JSPI")
+    @threadUnsafe lazy val WasmJSPI_allowOrphanJSAwaitModuleRef = requiredModuleRef("scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait")
+    def WasmJSPI_allowOrphanJSAwaitModuleClassRef(using Context) = WasmJSPIModuleRef.select(WasmJSPI_allowOrphanJSAwaitModuleRef.symbol)
+
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass
+
+  @threadUnsafe lazy val LinkingInfoModuleRef = requiredModuleRef("scala.scalajs.LinkingInfo")
+  def LinkingInfoModule(using Context) = LinkingInfoModuleRef.symbol
+    @threadUnsafe lazy val LinkingInfo_linkTimeIfR = LinkingInfoModule.requiredMethodRef("linkTimeIf")
+    def LinkingInfo_linkTimeIf(using Context) = LinkingInfo_linkTimeIfR.symbol
+
+  @threadUnsafe lazy val LinkTimePropertyAnnotType: TypeRef = requiredClassRef("scala.scalajs.annotation.linkTimeProperty")
+  def LinkTimePropertyAnnot(using Context) = LinkTimePropertyAnnotType.symbol.asClass
 
   @threadUnsafe lazy val ScalaRunTime_isArrayR = defn.ScalaRuntimeModule.requiredMethodRef("isArray", List(???, ???))
   def ScalaRunTime_isArray(using Context): Symbol = ScalaRunTime_isArrayR.symbol
@@ -271,15 +289,15 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val EnumerationClass = requiredClass("scala.Enumeration")
       @threadUnsafe lazy val Enumeration_Value_NoArg = EnumerationClass.requiredValue(nmeValue)
       @threadUnsafe lazy val Enumeration_Value_IntArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType))
-      @threadUnsafe lazy val Enumeration_Value_StringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.StringType))
-      @threadUnsafe lazy val Enumeration_Value_IntStringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType, defn.StringType))
+      @threadUnsafe lazy val Enumeration_Value_StringArg = EnumerationClass.requiredMethod(nmeValue, List(OrNull(defn.StringType)))
+      @threadUnsafe lazy val Enumeration_Value_IntStringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType, OrNull(defn.StringType)))
       @threadUnsafe lazy val Enumeration_nextName = EnumerationClass.requiredMethod(termName("nextName"))
 
     @threadUnsafe lazy val EnumerationValClass = EnumerationClass.requiredClass("Val")
       @threadUnsafe lazy val Enumeration_Val_NoArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Nil)
       @threadUnsafe lazy val Enumeration_Val_IntArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType))
-      @threadUnsafe lazy val Enumeration_Val_StringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.StringType))
-      @threadUnsafe lazy val Enumeration_Val_IntStringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType, defn.StringType))
+      @threadUnsafe lazy val Enumeration_Val_StringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(OrNull(defn.StringType)))
+      @threadUnsafe lazy val Enumeration_Val_IntStringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType, OrNull(defn.StringType)))
 
     def isValueMethod(sym: Symbol)(using Context): Boolean =
       sym.name == nmeValue && sym.owner == EnumerationClass

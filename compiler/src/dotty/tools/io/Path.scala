@@ -5,8 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.RandomAccessFile
 import java.nio.file.*
 import java.net.{URI, URL}
@@ -46,7 +44,7 @@ object Path {
   def fileName(name: String): String = {
     val i = name.lastIndexOf('.')
     if (i < 0) name
-    else name.substring(0, i).nn
+    else name.substring(0, i)
   }
 
   def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
@@ -107,8 +105,8 @@ class Path private[io] (val jpath: JPath) {
    *  Iterator, and all sub-subdirectories are recursively evaluated
    */
   def walkFilter(cond: Path => Boolean): Iterator[Path] =
-    if (isFile) toFile walkFilter cond
-    else if (isDirectory) toDirectory.walkFilter(cond)
+    if isFile then toFile.walkFilter(cond)
+    else if isDirectory then toDirectory.walkFilter(cond)
     else Iterator.empty
 
   /** Equivalent to walkFilter(_ => true).
@@ -135,7 +133,7 @@ class Path private[io] (val jpath: JPath) {
     // We don't call JPath#normalize here because it may result in resolving
     // to a different path than intended, such as when the given path contains
     // a `..` component and the preceding name is a symbolic link.
-    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#normalize--
+    // https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Path.html#normalize()
     //
     // Paths ending with `..` or `.` are handled specially here as
     // JPath#getParent wants to simply strip away that last element.
@@ -161,7 +159,7 @@ class Path private[io] (val jpath: JPath) {
   }
   def parents: List[Directory] = {
     val p = parent
-    if (p isSame this) Nil else p :: p.parents
+    if p.isSame(this) then Nil else p :: p.parents
   }
 
   def ext: FileExtension = Path.fileExtension(name)
@@ -247,12 +245,12 @@ class Path private[io] (val jpath: JPath) {
     if (!exists) false
     else {
       Files.walkFileTree(jpath, new SimpleFileVisitor[JPath]() {
-        override def visitFile(file: JPath, attrs: BasicFileAttributes) = {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes): FileVisitResult = {
           Files.delete(file)
           FileVisitResult.CONTINUE
         }
 
-        override def postVisitDirectory(dir: JPath, exc: IOException) = {
+        override def postVisitDirectory(dir: JPath, exc: IOException): FileVisitResult = {
           Files.delete(dir)
           FileVisitResult.CONTINUE
         }
@@ -264,7 +262,7 @@ class Path private[io] (val jpath: JPath) {
   def truncate(): Boolean =
     isFile && {
       val raf = new RandomAccessFile(jpath.toFile, "rw")
-      raf setLength 0
+      raf.setLength(0)
       raf.close()
       length == 0
     }

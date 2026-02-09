@@ -23,6 +23,7 @@ object Upperbound3:
 object NonUpperbound1:
   opaque type MyString[+T] = String
   extension (arr: MyString[Byte]) def length: Int = 0 // nowarn
+
 object NonUpperbound2:
   opaque type MyString[+T] = String
   extension [T <: MyString[Byte]](arr: T) def length2: Int = 0 // nowarn
@@ -30,3 +31,7 @@ object NonUpperbound2:
 object NonUpperbound3:
   opaque type MyString[+T] = String
   extension [T](arr: T) def length: Int = 0 // nowarn
+
+object NonUpperbound4:
+  opaque type MyString = String
+  extension (arr: MyString) def length: Int = 0 // nowarn

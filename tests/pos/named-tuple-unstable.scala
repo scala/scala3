@@ -1,4 +1,3 @@
-import scala.language.experimental.namedTuples
 import NamedTuple.{AnyNamedTuple, NamedTuple}
 
 trait Foo extends Selectable:

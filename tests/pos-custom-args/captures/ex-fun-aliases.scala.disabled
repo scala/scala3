@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.{Exists, Capability}
+import caps.{Exists, SharedCapability}
 
 class C
 

@@ -48,7 +48,7 @@ given anyCollectionIsCollection: [T] => (tIsValue: Value[T]) => Collection[AnyCo
   //given elementIsValue: Value[Element] = tIsValue
 
   type Position = AnyValue
-  given positionIsValue: Value[Position] = anyValueIsValue
+  override given positionIsValue: Value[Position] = anyValueIsValue
 
   extension (self: AnyCollection[T]) {
 

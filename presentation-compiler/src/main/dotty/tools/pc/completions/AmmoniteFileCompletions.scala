@@ -4,7 +4,7 @@ package completions
 import java.nio.file.Files
 import java.nio.file.Path
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.meta.internal.pc.CompletionFuzzy
 
 import dotty.tools.dotc.ast.tpd.*
@@ -39,10 +39,10 @@ object AmmoniteFileCompletions:
       rawFileName: String
   )(using Context): List[CompletionValue] =
     val fileName: Option[String] = Option(rawFileName)
-      .flatMap(_.split("/").nn.lastOption.map(_.nn.stripSuffix(".amm.sc.scala")))
+      .flatMap(_.split("/").lastOption.map(_.stripSuffix(".amm.sc.scala")))
 
     val split: List[String] = Option(rawPath)
-      .fold(Nil)(_.split("\\$file").nn.toList.map(_.nn))
+      .fold(Nil)(_.split("\\$file").toList.map(_.nn))
 
     val editRange = selector.headOption.map { sel =>
       if sel.sourcePos.span.isZeroExtent then posRange
@@ -63,7 +63,7 @@ object AmmoniteFileCompletions:
       )
 
     def matches(file: Path): Boolean =
-      (Files.isDirectory(file) || file.toAbsolutePath().toString.isAmmoniteScript) &&
+      (Files.isDirectory(file) || file.toAbsolutePath().toString.isScalaScript) &&
         query.exists(q => CompletionFuzzy.matches(q.nn, file.getFileName().toString))
 
     (split, workspace) match
@@ -71,10 +71,10 @@ object AmmoniteFileCompletions:
         // drop / or \
         val current = workspace.resolve(script.drop(1))
         val importPath = translateImportToPath(select).drop(1)
-        val currentPath = current.nn.getParent().nn.resolve(importPath).nn.toAbsolutePath()
+        val currentPath = current.getParent().resolve(importPath).toAbsolutePath()
         val parentTextEdit =
-          if query.exists(_.nn.isEmpty()) &&
-            Files.exists(currentPath.nn.getParent()) && Files.isDirectory(
+          if query.exists(_.isEmpty()) &&
+            Files.exists(currentPath.getParent()) && Files.isDirectory(
               currentPath
             )
           then List(parent)
@@ -84,7 +84,7 @@ object AmmoniteFileCompletions:
           .iterator().nn
           .asScala
           .toList
-          .filter(path => !fileName.contains(path.nn.getFileName().toString.stripSuffix(".sc")))
+          .filter(path => !fileName.contains(path.getFileName().toString.stripSuffix(".sc")))
           .collect {
             case file if matches(file) =>
               CompletionValue.FileSystemMember(
@@ -95,6 +95,5 @@ object AmmoniteFileCompletions:
           } ++ parentTextEdit
       case _ =>
         Nil
-    end match
   end contribute
 end AmmoniteFileCompletions

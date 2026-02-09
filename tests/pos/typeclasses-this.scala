@@ -51,7 +51,7 @@ object Instances extends Common:
       case (_, Nil) => +1
       case (x :: xs1, y :: ys1) =>
         val fst = x.compareTo(y)
-        if (fst != 0) fst else xs1.compareTo(ys1)
+        if fst != 0 then fst else xs1.compareTo(ys1)
 
   given listMonad: (List is Monad):
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =

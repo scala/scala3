@@ -10,11 +10,10 @@ class SetFunctor(val ord: Ordering) {
   type Set = List[ord.T]
   def empty: Set = Nil
 
-  implicit class helper(s: Set) {
+  extension (s: Set)
     def add(x: ord.T): Set = x :: remove(x)
     def remove(x: ord.T): Set = s.filter(e => ord.compare(x, e) != 0)
     def member(x: ord.T): Boolean = s.exists(e => ord.compare(x, e) == 0)
-  }
 }
 
 object Test {

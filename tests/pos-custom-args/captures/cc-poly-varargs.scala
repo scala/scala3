@@ -1,13 +1,15 @@
-abstract class Source[+T, Cap^]
+import language.experimental.captureChecking
+import language.experimental.separationChecking
+abstract class Source[+T]
 
-extension[T, Cap^](src: Source[T, Cap]^)
-  def transformValuesWith[U](f: (T -> U)^{Cap^}): Source[U, Cap]^{src, f} = ???
+extension[T](src: Source[T]^)
+  def transformValuesWith[U](f: (T -> U)^{src, caps.any}): Source[U]^{src, f} = ???
 
-def race[T, Cap^](sources: Source[T, Cap]^{Cap^}*): Source[T, Cap]^{Cap^} = ???
+def race[T, D^](sources: Source[T]^{D}*): Source[T]^{D} = ???
 
-def either[T1, T2, Cap^](
-    src1: Source[T1, Cap]^{Cap^},
-    src2: Source[T2, Cap]^{Cap^}): Source[Either[T1, T2], Cap]^{Cap^} =
-  val left = src1.transformValuesWith(Left(_))
-  val right = src2.transformValuesWith(Right(_))
+def either[T1, T2](
+    src1: Source[T1]^,
+    src2: Source[T2]^): Source[Either[T1, T2]]^{src1, src2} =
+  val left = src1.transformValuesWith(Left(_))    // ok
+  val right = src2.transformValuesWith(Right(_))  // ok
   race(left, right)

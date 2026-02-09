@@ -60,7 +60,7 @@ def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scalado
 
 def testContext =
   val ctx = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
-  ctx.setSetting(ctx.settings.usejavacp, true)
+  ctx.setSetting(ctx.settings.Yusejavacp, true)
   ctx
 
 def testDocContext(files: Seq[File] = Nil) = DocContext(testArgs(files), testContext)

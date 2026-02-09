@@ -32,6 +32,7 @@ jobs:
 
   publish-winget:
     uses: ./.github/workflows/publish-winget.yml
+    if: false # TODO: Requires setting up initial WinGet package
     with:
       version: ${{ inputs.version }}
     secrets:
@@ -60,7 +61,7 @@ jobs:
     needs: build-chocolatey
     with:
       version     : ${{ inputs.version }}
-      java-version: 8
+      java-version: 17
   publish-chocolatey:
     uses: ./.github/workflows/publish-chocolatey.yml
     needs: [ build-chocolatey, test-chocolatey ]

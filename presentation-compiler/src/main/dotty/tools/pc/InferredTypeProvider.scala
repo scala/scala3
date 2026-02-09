@@ -3,10 +3,10 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.annotation.tailrec
-import scala.meta.internal.metals.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 import scala.meta as m
 
 import dotty.tools.dotc.ast.Trees.*
@@ -29,22 +29,21 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
 
-/**
- * Tries to calculate edits needed to insert the inferred type annotation
- * in all the places that it is possible such as:
- * - value or variable declaration
- * - methods
- * - pattern matches
- * - for comprehensions
- * - lambdas
+/** Tries to calculate edits needed to insert the inferred type annotation in
+ *  all the places that it is possible such as:
+ *    - value or variable declaration
+ *    - methods
+ *    - pattern matches
+ *    - for comprehensions
+ *    - lambdas
  *
- * The provider will not check if the type does not exist, since there is no way to
- * get that data from the presentation compiler. The actual check is being done via
- * scalameta parser in InsertInferredType code action.
+ *  The provider will not check if the type does not exist, since there is no
+ *  way to get that data from the presentation compiler. The actual check is
+ *  being done via scalameta parser in InsertInferredType code action.
  *
- * @param params position and actual source
- * @param driver Scala 3 interactive compiler driver
- * @param config presentation compielr configuration
+ *  @param params position and actual source
+ *  @param driver Scala 3 interactive compiler driver
+ *  @param config presentation compielr configuration
  */
 final class InferredTypeProvider(
     params: OffsetParams,
@@ -75,7 +74,7 @@ final class InferredTypeProvider(
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
     given locatedCtx: Context = driver.localContext(params)
-    val indexedCtx = IndexedContext(locatedCtx)
+    val indexedCtx = IndexedContext(pos)(using locatedCtx)
     val autoImportsGen = AutoImports.generator(
       pos,
       sourceText,
@@ -94,14 +93,14 @@ final class InferredTypeProvider(
         tpe match
           case tref: TypeRef =>
             indexedCtx.lookupSym(
-              tref.currentSymbol
+              tref.currentSymbol,
+              Some(tref.prefix)
             ) == IndexedContext.Result.InScope
           case AppliedType(tycon, args) =>
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
-      if isInScope(tpe)
-      then tpe
-      else tpe.deepDealias
+      if isInScope(tpe) then tpe
+      else tpe.deepDealiasAndSimplify
 
     val printer = ShortenedTypePrinter(
       symbolSearch,
@@ -137,7 +136,6 @@ final class InferredTypeProvider(
             findNamePos(sourceText, vl, keywordOffset).endPos.toLsp
           adjustOpt.foreach(adjust => endPos.setEnd(adjust.adjustedEndPos))
           val spaceBefore = name.isOperatorName
-
           new TextEdit(
             endPos,
             printTypeAscription(optDealias(tpt.typeOpt), spaceBefore) + {
@@ -183,8 +181,7 @@ final class InferredTypeProvider(
           typeNameEdit ::: imports
 
         rhs match
-          case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -194,7 +191,6 @@ final class InferredTypeProvider(
               )
             )
           case _ => simpleType
-        end match
       /* `def a[T](param : Int) = param`
        *     turns into
        * `def a[T](param : Int): Int = param`
@@ -224,8 +220,7 @@ final class InferredTypeProvider(
           while i >= 0 && sourceText(i) != ':' do i -= 1
           i
         rhs match
-          case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -293,9 +288,7 @@ final class InferredTypeProvider(
       text: String,
       tree: untpd.NamedDefTree,
       kewordOffset: Int
-  )(using
-      Context
-  ): SourcePosition =
+  )(using Context): SourcePosition =
     val realName = tree.name.stripModuleClassSuffix.toString.toList
 
     // `NamedDefTree.namePos` is incorrect for bacticked names

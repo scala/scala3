@@ -26,7 +26,6 @@ trait BCodeIdiomatic {
   import coreBTypes.*
 
 
-  lazy val JavaStringBuilderClassName = jlStringBuilderRef.internalName
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"
@@ -188,52 +187,6 @@ trait BCodeIdiomatic {
       }
 
     } // end of method genPrimitiveShift()
-
-    /* Creates a new `StringBuilder` instance with the requested capacity
-     *
-     * can-multi-thread
-     */
-    final def genNewStringBuilder(size: Int): Unit = {
-      jmethod.visitTypeInsn(Opcodes.NEW, JavaStringBuilderClassName)
-      jmethod.visitInsn(Opcodes.DUP)
-      jmethod.visitLdcInsn(Integer.valueOf(size))
-      invokespecial(
-        JavaStringBuilderClassName,
-        INSTANCE_CONSTRUCTOR_NAME,
-        "(I)V",
-        itf = false
-      )
-    }
-
-    /* Issue a call to `StringBuilder#append` for the right element type
-     *
-     * can-multi-thread
-     */
-    final def genStringBuilderAppend(elemType: BType): Unit = {
-      val paramType = elemType match {
-        case ct: ClassBType if ct.isSubtypeOf(StringRef)          => StringRef
-        case ct: ClassBType if ct.isSubtypeOf(jlStringBufferRef)  => jlStringBufferRef
-        case ct: ClassBType if ct.isSubtypeOf(jlCharSequenceRef)  => jlCharSequenceRef
-        // Don't match for `ArrayBType(CHAR)`, even though StringBuilder has such an overload:
-        // `"a" + Array('b')` should NOT be "ab", but "a[C@...".
-        case _: RefBType                                              => ObjectRef
-        // jlStringBuilder does not have overloads for byte and short, but we can just use the int version
-        case BYTE | SHORT                                             => INT
-        case pt: PrimitiveBType                                       => pt
-      }
-      val bt = MethodBType(List(paramType), jlStringBuilderRef)
-      invokevirtual(JavaStringBuilderClassName, "append", bt.descriptor)
-    }
-
-    /* Extract the built `String` from the `StringBuilder`
-     *
-     * can-multi-thread
-     */
-    final def genStringBuilderEnd: Unit = {
-      invokevirtual(JavaStringBuilderClassName, "toString", genStringBuilderEndDesc)
-    }
-    // Use ClassBType refs instead of plain string literal to make sure that needed ClassBTypes are initialized and reachable
-    private lazy val genStringBuilderEndDesc = MethodBType(Nil, StringRef).descriptor
 
     /* Concatenate top N arguments on the stack with `StringConcatFactory#makeConcatWithConstants`
      * (only works for JDK 9+)

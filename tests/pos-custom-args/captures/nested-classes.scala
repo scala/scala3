@@ -1,13 +1,14 @@
 import language.experimental.captureChecking
 import annotation.{capability, constructorOnly}
 
-class IO extends caps.Capability
+class IO extends caps.SharedCapability
 class Blah
 class Pkg(using io: IO):
   class Foo:
+    this: Foo^{Pkg.this} =>
     def m(foo: Blah^{io}) = ???
 class Pkg2(using io: IO):
-  class Foo:
+  class Foo uses Pkg2.this.io:
     def m(foo: Blah^{io}): Any = io; ???
 
 def main(using io: IO) =

@@ -28,11 +28,12 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
 import scala.annotation.internal.sharable
+import compiletime.uninitialized
 
 object FileUtils {
   def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
     val encoder: CharsetEncoder = charset.newEncoder
-    val writer = new OutputStreamWriter(Files.newOutputStream(path, options: _*), encoder)
+    val writer = new OutputStreamWriter(Files.newOutputStream(path, options*), encoder)
     newAsyncBufferedWriter(new BufferedWriter(writer), threadsafe)
   }
   def newAsyncBufferedWriter(underlying: Writer, threadsafe: Boolean): LineWriter = {
@@ -151,7 +152,7 @@ object FileUtils {
       //a failure detected will case an Failure, Success indicates a close
       val asyncStatus = Promise[Unit]()
       private val scheduled = new AtomicBoolean
-      @volatile var reuseBuffer: CharBuffer = _
+      @volatile var reuseBuffer: CharBuffer = uninitialized
 
       def ensureProcessed(buffer: CharBuffer): Unit = {
         if (asyncStatus.isCompleted) {

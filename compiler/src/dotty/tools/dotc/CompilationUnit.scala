@@ -14,7 +14,6 @@ import ast.Trees.{Import, Ident}
 import typer.Nullables
 import core.Decorators.*
 import config.{SourceVersion, Feature}
-import StdNames.nme
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations.isMacroAnnotation
@@ -158,10 +157,10 @@ object CompilationUnit {
     unit1
   }
 
-  /** Create a compilation unit corresponding to an in-memory String. 
+  /** Create a compilation unit corresponding to an in-memory String.
    *  Used for `compiletime.testing.typeChecks`.
    */
-  def apply(name: String, source: String)(using Context): CompilationUnit = {
+  def apply(name: String, source: String): CompilationUnit = {
     val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
     new CompilationUnit(src, null)
   }

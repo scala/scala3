@@ -1,12 +1,13 @@
-class C extends caps.Capability
+class C extends caps.SharedCapability
+class STR(s: String)
 object test1:
-  case class Ref(x: String^)
+  case class Ref(x: STR^)
 
   def test(c: C) =
-    val x1 = Ref("hello")
+    val x1 = Ref(STR("hello"))
     val y = x1 match
       case Ref(z) => z
-    val yc: String = y
+    val yc: STR^ = y
 
 object test2:
   case class Ref(x: () => Unit)
@@ -31,4 +32,4 @@ object test2:
 
     val y4 = y3 match
       case Ref(xx) => xx
-    val y4c: () ->{y3} Unit = y4
+    val y4c: () => Unit = y4

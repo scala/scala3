@@ -1,5 +1,7 @@
 package dotty.tools.pc.tests.tokens
 
+import java.nio.file.Path
+
 import dotty.tools.pc.base.BaseSemanticTokensSuite
 
 import org.junit.Test
@@ -34,6 +36,24 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
           |  }
           |}
           |""".stripMargin
+    )
+
+  @Test def `metals-6823` =
+    check(
+      s"""|package <<example>>/*namespace*/
+            |
+            | @<<main>>/*class*/ def <<main1>>/*method,definition*/(): <<Unit>>/*class,abstract*/ =
+            |     val <<array>>/*variable,definition,readonly*/ = <<Array>>/*class*/(1, 2, 3)
+            |     <<println>>/*method*/(<<array>>/*variable,readonly*/)
+            |
+            |@<<main>>/*class*/ def <<main2>>/*method,definition*/(): <<Unit>>/*class,abstract*/ =
+            |   val <<list>>/*variable,definition,readonly*/ = <<List>>/*class*/(1, 2, 3)
+            |   <<println>>/*method*/(<<list>>/*variable,readonly*/)
+            |
+            |@<<main>>/*class*/ def <<main3>>/*method,definition*/(): <<Unit>>/*class,abstract*/ =
+            |   val <<list>>/*variable,definition,readonly*/ = <<List>>/*class*/(1, 2, 3)
+            |   <<println>>/*method*/(<<list>>/*variable,readonly*/)
+            |""".stripMargin
     )
 
   @Test def `Comment(Single-Line, Multi-Line)` =
@@ -258,7 +278,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
           |  } = new:
           |    def <<scalameta>>/*method,definition*/ = "4.0"
           |  <<V>>/*variable,readonly*/.<<scalameta>>/*method*/
-          |end StructuralTypes
+          |end <<StructuralTypes>>/*class,definition*/
           |""".stripMargin
     )
 
@@ -350,30 +370,30 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |
          |object <<B>>/*class*/ {
          |  val <<a>>/*variable,definition,readonly*/ = for {
-         |    <<foo>>/*variable,definition,readonly*/ <- <<List>>/*class*/("a", "b", "c")
+         |    <<foo>>/*parameter,declaration,readonly*/ <- <<List>>/*class*/("a", "b", "c")
          |    <<_>>/*class,abstract*/ = <<println>>/*method*/("print!")
-         |  } yield <<foo>>/*variable,readonly*/
+         |  } yield <<foo>>/*parameter,readonly*/
          |}
          |""".stripMargin
     )
 
   @Test def `named-arg-backtick` =
     check(
-        """|object <<Main>>/*class*/ {
+      """|object <<Main>>/*class*/ {
            |  def <<foo>>/*method,definition*/(<<`type`>>/*parameter,declaration,readonly*/: <<String>>/*type*/): <<String>>/*type*/ = <<`type`>>/*parameter,readonly*/
            |  val <<x>>/*variable,definition,readonly*/ = <<foo>>/*method*/(
            |    <<`type`>>/*parameter,readonly*/ = "abc"
            |  )
            |}
-          |""".stripMargin,
+          |""".stripMargin
     )
 
   @Test def `end-marker` =
     check(
-        """|def <<foo>>/*method,definition*/ =
+      """|def <<foo>>/*method,definition*/ =
            |  1
            |end <<foo>>/*method,definition*/
-           |""".stripMargin,
+           |""".stripMargin
     )
 
   @Test def `constructor` =
@@ -431,4 +451,21 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
         |  <<usage>>/*method*/[<<Option>>/*class,abstract*/[<<Int>>/*class,abstract*/]](<<_>>/*parameter,readonly*/.<<typeArg>>/*method*/[<<Some>>/*class*/[<<Int>>/*class,abstract*/]].<<value>>/*variable,readonly*/.<<inferredTypeArg>>/*method*/[<<String>>/*type*/]("str"))
         |}
         |""".stripMargin
+    )
+
+  @Test def `local-object-with-end-i7246` =
+    check(
+      """|def <<bar>>/*method,definition*/ =
+         |  object <<foo>>/*class*/:
+         |    def <<aaa>>/*method,definition*/ = <<???>>/*method*/
+         |  end <<foo>>/*class,definition*/
+         |""".stripMargin
+    )
+
+  @Test def i7256 =
+    check(
+      """|object <<Test>>/*class*/:
+         |  def <<methodA>>/*method,definition*/: <<Unit>>/*class,abstract*/ = <<???>>/*method*/
+         |export <<Test>>/*class*/.<<methodA>>/*method*/
+         |""".stripMargin
     )

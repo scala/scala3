@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/mutability2.scala:2:6 ---------------------------------------------------------
+2 |  var ctr = 0  // error
+  |      ^^^
+  |      Mutable variable ctr is defined in a class that does not extend `Stateful` or `Mutable`.
+  |      The variable needs to be annotated with `untrackedCaptures` to allow this.

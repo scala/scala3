@@ -1,7 +1,7 @@
 import language.experimental.saferExceptions
 import language.experimental.modularity
 
-class FileSystem extends caps.Capability
+class FileSystem extends caps.SharedCapability
 
 class Logger(using tracked val fs: FileSystem):
   def log(s: String): Unit = ???

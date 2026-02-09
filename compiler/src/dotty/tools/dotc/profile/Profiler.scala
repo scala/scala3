@@ -1,8 +1,6 @@
 package dotty.tools.dotc.profile
 
 import scala.annotation.*
-import scala.language.unsafeNulls
-
 import java.io.{FileWriter, PrintWriter}
 import java.nio.file.Paths
 import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
@@ -117,12 +115,12 @@ sealed trait Profiler {
   protected def beforeImplicitSearch(pt: Type): TracedEventId  = TracedEventId.Empty
   protected def afterImplicitSearch(event: TracedEventId): Unit = ()
 
-  inline def onMacroSplice[T](macroSym: Symbol)(inline body: T): T =
-    val event = beforeMacroSplice(macroSym)
+  inline def onInlineCall[T](inlineSym: Symbol)(inline body: T): T =
+    val event = beforeInlineCall(inlineSym)
     try body
-    finally afterMacroSplice(event)
-  protected def beforeMacroSplice(macroSym: Symbol): TracedEventId = TracedEventId.Empty
-  protected def afterMacroSplice(event: TracedEventId): Unit = ()
+    finally afterInlineCall(event)
+  protected def beforeInlineCall(inlineSym: Symbol): TracedEventId = TracedEventId.Empty
+  protected def afterInlineCall(event: TracedEventId): Unit = ()
 
   inline def onCompletion[T](root: Symbol, associatedFile: => AbstractFile)(inline body: T): T =
     val (event, completionName) = beforeCompletion(root, associatedFile)
@@ -178,7 +176,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
 
   enum Category:
     def name: String = this.toString().toLowerCase()
-    case Run, Phase, File, TypeCheck, Implicit, Macro, Completion
+    case Run, Phase, File, TypeCheck, Implicit, Inline, Completion
   private [profile] val chromeTrace =
     if ctx.settings.YprofileTrace.isDefault
     then null
@@ -317,8 +315,8 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   override def beforeImplicitSearch(pt: Type): TracedEventId = traceDurationStart(Category.Implicit, s"?[${symbolName(pt.typeSymbol)}]", colour = "yellow")
   override def afterImplicitSearch(event: TracedEventId): Unit = traceDurationEnd(Category.Implicit, event, colour = "yellow")
 
-  override def beforeMacroSplice(macroSym: Symbol): TracedEventId = traceDurationStart(Category.Macro, s"«${symbolName(macroSym)}»", colour = "olive")
-  override def afterMacroSplice(event: TracedEventId): Unit = traceDurationEnd(Category.Macro, event, colour = "olive")
+  override def beforeInlineCall(inlineSym: Symbol): TracedEventId = traceDurationStart(Category.Inline, s"«${symbolName(inlineSym)}»", colour = "olive")
+  override def afterInlineCall(event: TracedEventId): Unit = traceDurationEnd(Category.Inline, event, colour = "olive")
 
   override def beforeCompletion(root: Symbol, associatedFile: => AbstractFile): (TracedEventId, String) =
     if chromeTrace == null

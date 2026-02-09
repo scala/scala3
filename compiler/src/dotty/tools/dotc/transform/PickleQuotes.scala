@@ -15,7 +15,6 @@ import ast.TreeTypeMap
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.config.ScalaRelease.*
 
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.StdNames.*
@@ -139,7 +138,7 @@ class PickleQuotes extends MacroTransform {
 
       /** Get the holeContents of the transformed tree */
       def getContents() =
-        val res = holeContents.result
+        val res = holeContents.result()
         holeContents.clear()
         res
     end HoleContentExtractor

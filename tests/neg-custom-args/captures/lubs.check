@@ -4,6 +4,8 @@
    |             Found:    (x1 : D^{d1})
    |             Required: D
    |
+   |             Note that capability `d1` cannot flow into capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lubs.scala:18:13 -----------------------------------------
 18 |  val _: D = x2 // error
@@ -11,11 +13,15 @@
    |             Found:    (x2 : D^{d1})
    |             Required: D
    |
+   |             Note that capability `d1` cannot flow into capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lubs.scala:19:13 -----------------------------------------
 19 |  val _: D = x3 // error
    |             ^^
    |             Found:    (x3 : D^{d1, d2})
    |             Required: D
+   |
+   |             Note that capability `d1` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

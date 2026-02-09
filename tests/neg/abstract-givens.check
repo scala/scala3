@@ -10,7 +10,10 @@
 -- [E164] Declaration Error: tests/neg/abstract-givens.scala:9:8 -------------------------------------------------------
 9 |  given z[T](using T): Seq[T] = List(summon[T]) // error
   |        ^
-  |        error overriding given instance z in trait T of type [T](using x$1: T): List[T];
+  |        error overriding given instance z in trait T² of type [T](using x$1: T): List[T];
   |          given instance z of type [T](using x$1: T): Seq[T] has incompatible type
+  |
+  |        where:    T  is a type variable
+  |                  T² is a trait in the empty package
   |
   | longer explanation available when compiling with `-explain`

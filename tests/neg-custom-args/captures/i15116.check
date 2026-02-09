@@ -1,68 +1,48 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:3:13 ----------------------------------------
-3 |  val x = Foo(m)   // error
-  |          ^^^^^^
-  |          Found:    Foo{val m²: (Bar.this.m : String^)}^{Bar.this.m}
-  |          Required: Foo
-  |
-  |          where:    m  is a value in class Bar
-  |                    m² is a value in class Foo
-  |
-  |
-  |          Note that the expected type Foo
-  |          is the previously inferred type of value x
-  |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Bar.this.m : String^)}^{Bar.this.m}
-  |          must conform to this type.
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:5:13 ----------------------------------------
+-- Error: tests/neg-custom-args/captures/i15116.scala:5:13 -------------------------------------------------------------
 5 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m²: (Baz.this.m : String^)}^{Baz.this.m}
-  |          Required: Foo
+  |          value x needs an explicit type because the inferred type does not conform to
+  |          the type that is externally visible in other compilation units.
   |
-  |          where:    m  is a value in trait Baz
-  |                    m² is a value in class Foo
+  |           Inferred type          : test.Foo{val m: (Bar.this.m² : test.STR^)}^{Bar.this.m²}
+  |           Externally visible type: test.Foo
   |
-  |
-  |          Note that the expected type Foo
-  |          is the previously inferred type of value x
-  |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Baz.this.m : String^)}^{Baz.this.m}
-  |          must conform to this type.
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:7:13 ----------------------------------------
+  |          where:    ^  refers to a root capability in the type of value m²
+  |                    m  is a value in class Foo
+  |                    m² is a value in class Bar
+-- Error: tests/neg-custom-args/captures/i15116.scala:7:13 -------------------------------------------------------------
 7 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m²: (Bar1.this.m : String^)}^{Bar1.this.m}
-  |          Required: Foo
+  |          value x needs an explicit type because the inferred type does not conform to
+  |          the type that is externally visible in other compilation units.
   |
-  |          where:    m  is a value in class Bar1
-  |                    m² is a value in class Foo
+  |           Inferred type          : test.Foo{val m: (Baz.this.m² : test.STR^)}^{Baz.this.m²}
+  |           Externally visible type: test.Foo
   |
-  |
-  |          Note that the expected type Foo
-  |          is the previously inferred type of value x
-  |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Bar1.this.m : String^)}^{Bar1.this.m}
-  |          must conform to this type.
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:9:13 ----------------------------------------
+  |          where:    ^  refers to a root capability in the type of value m²
+  |                    m  is a value in class Foo
+  |                    m² is a value in trait Baz
+-- Error: tests/neg-custom-args/captures/i15116.scala:9:13 -------------------------------------------------------------
 9 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m²: (Baz2.this.m : String^)}^{Baz2.this.m}
-  |          Required: Foo
+  |          value x needs an explicit type because the inferred type does not conform to
+  |          the type that is externally visible in other compilation units.
   |
-  |          where:    m  is a value in trait Baz2
-  |                    m² is a value in class Foo
+  |           Inferred type          : test.Foo{val m: (Bar1.this.m² : test.STR^)}^{Bar1.this.m²}
+  |           Externally visible type: test.Foo
   |
-  |
-  |          Note that the expected type Foo
-  |          is the previously inferred type of value x
-  |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Baz2.this.m : String^)}^{Baz2.this.m}
-  |          must conform to this type.
-  |
-  | longer explanation available when compiling with `-explain`
+  |          where:    ^  refers to a root capability in the type of value m²
+  |                    m  is a value in class Foo
+  |                    m² is a value in class Bar1
+-- Error: tests/neg-custom-args/captures/i15116.scala:11:13 ------------------------------------------------------------
+11 |  val x = Foo(m)   // error
+   |          ^^^^^^
+   |          value x needs an explicit type because the inferred type does not conform to
+   |          the type that is externally visible in other compilation units.
+   |
+   |           Inferred type          : test.Foo{val m: (Baz2.this.m² : test.STR^)}^{Baz2.this.m²}
+   |           Externally visible type: test.Foo
+   |
+   |          where:    ^  refers to a root capability in the type of value m²
+   |                    m  is a value in class Foo
+   |                    m² is a value in trait Baz2

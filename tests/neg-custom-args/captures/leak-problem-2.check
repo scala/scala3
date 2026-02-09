@@ -1,7 +1,9 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leak-problem-2.scala:8:8 ---------------------------------
 8 |  = race(Seq(src1, src2)) // error
   |    ^^^^^^^^^^^^^^^^^^^^^
-  |    Found:    Source[box T^?]^{src1, src2}
+  |    Found:    Source[T^'s1]^{src1, src2}
   |    Required: Source[T]
+  |
+  |    Note that capability `src1` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`

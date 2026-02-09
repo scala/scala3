@@ -3,8 +3,6 @@ package core
 package tasty
 
 import java.util.UUID
-import scala.language.unsafeNulls
-
 import dotty.tools.tasty.{TastyFormat, TastyVersion, TastyBuffer, TastyReader, TastyHeaderUnpickler, UnpicklerConfig}
 import dotty.tools.tasty.besteffort.{BestEffortTastyHeader, BestEffortTastyHeaderUnpickler}
 
@@ -15,7 +13,6 @@ import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds.*
 import dotty.tools.tasty.TastyHeader
-import dotty.tools.tasty.TastyBuffer.Addr
 
 case class CommonTastyHeader(
   uuid: UUID,

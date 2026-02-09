@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 import scala.language.`future-migration`
 import scala.reflect.ClassTag

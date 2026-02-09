@@ -136,12 +136,10 @@ object ClassPath {
     else split(path)
 
   /** Expand dir out to contents, a la extdir */
-  def expandDir(extdir: String): List[String] = {
-    AbstractFile getDirectory extdir match {
+  def expandDir(extdir: String): List[String] =
+    AbstractFile.getDirectory(extdir) match
       case null => Nil
       case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
-    }
-  }
 
   /** Expand manifest jar classpath entries: these are either urls, or paths
    *  relative to the location of the jar.

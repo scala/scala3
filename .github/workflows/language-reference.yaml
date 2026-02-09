@@ -24,14 +24,14 @@ jobs:
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: 'dotty'
           fetch-depth: 0
           ssh-key: ${{ secrets.DOCS_KEY }}
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17
@@ -49,7 +49,7 @@ jobs:
 
       - name: Push changes to scala3-reference-docs
         if: github.event_name == 'push'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: lampepfl/scala3-reference-docs
           fetch-depth: 0
@@ -69,23 +69,4 @@ jobs:
             git push
           fi
           cd ..
-
-  backport-to-main:
-    name: Create pull request with backport to main
-    permissions:
-      pull-requests: write  # for repo-sync/pull-request to create a PR
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: repo-sync/pull-request@v2
-        with:
-          destination_branch: main
-          pr_label: area:documentation
-          pr_title: Sync with the stable documentation branch
-          pr_body: |
-            This pull request is syncing the main with changes from language-reference-stable.
-
-            It was created automatically after ${{ github.event.head_commit.id }} by @${{ github.event.head_commit.author.username }}
-          pr_assignee: ${{ github.event.head_commit.author.username }}
 

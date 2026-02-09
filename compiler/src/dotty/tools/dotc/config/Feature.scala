@@ -28,22 +28,24 @@ object Feature:
 
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
+  val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val separationChecking = experimental("separationChecking")
   val into = experimental("into")
-  val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
-  val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
-  val betterFors = experimental("betterFors")
   val packageObjectValues = experimental("packageObjectValues")
+  val multiSpreads = experimental("multiSpreads")
+  val subCases = experimental("subCases")
+  val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
-      .filterNot(_ == captureChecking) // TODO is this correct?
+      .filterNot(sym => sym == captureChecking || sym == separationChecking) // TODO is this correct?
 
   val values = List(
     (nme.help, "Display all available features"),
@@ -59,15 +61,18 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
+    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
+    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
     (into, "Allow into modifier on parameter types"),
-    (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
-    (betterMatchTypeExtractors, "Enable better match type extractors"),
-    (betterFors, "Enable improvements in `for` comprehensions")
+    (packageObjectValues, "Enable experimental package objects as values"),
+    (multiSpreads, "Enable experimental varargs with multi-spreads"),
+    (subCases, "Enable experimental match expressions with sub-cases"),
+    (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -122,8 +127,6 @@ object Feature:
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
-  def betterForsEnabled(using Context) = enabled(betterFors)
-
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
@@ -140,7 +143,7 @@ object Feature:
   /** Is captureChecking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
-    || ctx.compilationUnit.needsCaptureChecking
+    || ctx.originalCompilationUnit.needsCaptureChecking
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -160,6 +163,10 @@ object Feature:
     ctx.compilationUnit.sourceVersion match
       case Some(v) => v
       case none => sourceVersionSetting
+
+  /* Should we behave as scala 2?*/
+  def shouldBehaveAsScala2(using Context): Boolean =
+    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`

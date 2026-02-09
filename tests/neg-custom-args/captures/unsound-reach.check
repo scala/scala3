@@ -2,14 +2,32 @@
 9 |class Bar extends Foo[File^]: // error
   |                  ^^^^^^^^^^
   |                  Type variable X of trait Foo cannot be instantiated to File^ since
-  |                  that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:14:19 -----------------------------------------------------
-14 |class Bar2 extends Foo2[File^]: // error
-   |                   ^
-   |                   Type variable X of constructor Foo2 cannot be instantiated to box File^ since
-   |                   that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:23:21 -----------------------------------------------------
-23 |        boom.use(f): (f1: File^{backdoor*}) => // error
-   |                     ^
-   |                     Local reach capability backdoor* leaks into capture scope of method bad
-24 |            escaped = f1
+  |                  that type captures the root capability `any`.
+  |
+  |                  where:    ^ refers to the root capability caps.any
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:18:31 --------------------------------
+18 |    val backdoor: Foo[File^] = new Bar   // error
+   |                               ^^^^^^^
+   |                               Found:    Bar^'s1
+   |                               Required: Foo[File^{any}]
+   |
+   |                               Note that capability `any²` cannot flow into capture set {any}
+   |                               because any² in class Bar is not visible from any in value backdoor.
+   |
+   |                               where:    any  is a root capability in the type of value backdoor
+   |                                         any² is a root capability created in class Bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:27:32 --------------------------------
+27 |    val backdoor: Foo2[File^] = new Bar2   // error
+   |                                ^^^^^^^^
+   |                                Found:    Bar2^'s2
+   |                                Required: Foo2[File^{any}]
+   |
+   |                                Note that capability `any²` cannot flow into capture set {any}
+   |                                because any² in class Bar2 is not visible from any in value backdoor.
+   |
+   |                                where:    any  is a root capability in the type of value backdoor
+   |                                          any² is a root capability created in class Bar2
+   |
+   | longer explanation available when compiling with `-explain`

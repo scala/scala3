@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package util
 
-import scala.language.unsafeNulls
 
 import core.Names.*
 
@@ -55,7 +54,7 @@ object NameTransformer {
    *  the Scala spec as well as the Java spec.
    */
   def encode(name: SimpleName): SimpleName = {
-    var buf: StringBuilder = null
+    var buf: StringBuilder | Null = null
     val len = name.length
     var i = 0
     while (i < len) {
@@ -88,11 +87,11 @@ object NameTransformer {
    */
   def decode(name: SimpleName): SimpleName = {
     //System.out.println("decode: " + name);//DEBUG
-    var buf: StringBuilder = null
+    var buf: StringBuilder | Null = null
     val len = name.length
     var i = 0
     while (i < len) {
-      var ops: OpCodes = null
+      var ops: OpCodes | Null = null
       var unicode = false
       val c = name(i)
       if (c == '$' && i + 2 < len) {

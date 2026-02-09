@@ -6,4 +6,4 @@ lazy val i20476 = project
 
 lazy val i18231 = project
   .in(file("i18231"))
-  .settings(scalacOptions += "-release:8")
+  .settings(scalacOptions += "-release:17")

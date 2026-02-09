@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 // nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)
 
 object Test {

@@ -1,0 +1,38 @@
+-- [E127] Pattern Match Error: tests/neg/22550b.scala:16:9 -------------------------------------------------------------
+16 |    case Matches[Unit](x) => println(x) // error // error
+   |         ^^^^^^^^^^^^
+   |Matches[Unit] cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | An unapply method should be in an object, take a single explicit term parameter, and:
+   |   - If it is just a test, return a Boolean. For example case even()
+   |   - If it returns a single sub-value of type T, return an Option[T]
+   |   - If it returns several sub-values T1,...,Tn, group them in an optional tuple Option[(T1,...,Tn)]
+   |
+   | Additionaly, unapply or unapplySeq methods cannot take type parameters after their explicit term parameter.
+   |
+   | Sometimes, the number of sub-values isn't fixed and we would like to return a sequence.
+   | For this reason, you can also define patterns through unapplySeq which returns Option[Seq[T]].
+   | This mechanism is used for instance in pattern case List(x1, ..., xn)
+    --------------------------------------------------------------------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/22550b.scala:16:37 ----------------------------------------------------------------
+16 |    case Matches[Unit](x) => println(x) // error // error
+   |                                     ^
+   |                                     Not found: x
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Each identifier in Scala needs a matching declaration. There are two kinds of
+   | identifiers: type identifiers and value identifiers. Value identifiers are introduced
+   | by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
+   | `class`, `enum`, or `trait` declarations.
+   |
+   | Identifiers refer to matching declarations in their environment, or they can be
+   | imported from elsewhere.
+   |
+   | Possible reasons why no matching declaration was found:
+   |  - The declaration or the use is mis-spelt.
+   |  - An import is missing.
+   |  - The declaration exists but refers to a type in a context where a term is expected, or vice-versa.
+    --------------------------------------------------------------------------------------------------------------------

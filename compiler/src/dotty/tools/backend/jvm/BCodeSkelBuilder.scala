@@ -169,7 +169,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef) = cd0 match {
+    def genPlainClass(cd0: TypeDef) = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
 
@@ -598,13 +598,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case labnode: asm.tree.LabelNode => labnode.getLabel
         case _ =>
           val pp = new asm.Label
-          mnode visitLabel pp
+          mnode.visitLabel(pp)
           pp
       }
     }
     def markProgramPoint(lbl: asm.Label): Unit = {
       val skip = (lbl == null) || isAtProgramPoint(lbl)
-      if (!skip) { mnode visitLabel lbl }
+      if (!skip) { mnode.visitLabel(lbl) }
     }
     def isAtProgramPoint(lbl: asm.Label): Boolean = {
       def getNonLineNumberNode(a: asm.tree.AbstractInsnNode): asm.tree.AbstractInsnNode  = a match {

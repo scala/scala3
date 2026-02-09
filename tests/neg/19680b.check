@@ -7,7 +7,10 @@
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   |
-  | Tree: "hello"
+  | Tree:
+  |
+  | "hello"
+  |
   | I tried to show that
   |   ("hello" : String)
   | conforms to

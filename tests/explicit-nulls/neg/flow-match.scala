@@ -3,13 +3,11 @@
 object MatchTest {
   def f6(s: String | Null): String = s match {
     case s2 => s2 // error
-    case null => "other" // error
-    case s3 => s3
+    case s3 => s3 // OK since not null
   }
 
   def f7(s: String | Null): String = s match {
     case null => "other"
-    case null => "other" // error
-    case s3 => s3
+    case s3 => s3 // OK since not null
   }
 }

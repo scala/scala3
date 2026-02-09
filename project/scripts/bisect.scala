@@ -13,6 +13,8 @@ import java.io.File
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 val usageMessage = """
   |Usage:
@@ -21,6 +23,7 @@ val usageMessage = """
   |The <validation-command> should be one of:
   |* compile <arg1> <arg2> ...
   |* run <arg1> <arg2> ...
+  |* test <arg1> <arg2> ...
   |* <custom-validation-script-path>
   |
   |The arguments for 'compile' and 'run' should be paths to the source file(s) and optionally additional options passed directly to scala-cli.
@@ -101,6 +104,7 @@ object ScriptOptions:
 enum ValidationCommand:
   case Compile(args: Seq[String])
   case Run(args: Seq[String])
+  case Test(args: Seq[String])
   case CustomValidationScript(scriptFile: File)
 
   def validationScript: File = this match
@@ -108,6 +112,8 @@ enum ValidationCommand:
       ValidationScript.tmpScalaCliScript(command = "compile", args)
     case Run(args) =>
       ValidationScript.tmpScalaCliScript(command = "run", args)
+    case Test(args) =>
+      ValidationScript.tmpScalaCliScript(command = "test", args)
     case CustomValidationScript(scriptFile) =>
       ValidationScript.copiedFrom(scriptFile)
 
@@ -115,6 +121,7 @@ object ValidationCommand:
   def fromArgs(args: Seq[String]) = args match
     case Seq("compile", commandArgs*) => Compile(commandArgs)
     case Seq("run", commandArgs*) => Run(commandArgs)
+    case Seq("test", commandArgs*) => Test(commandArgs)
     case Seq(path) => CustomValidationScript(new File(path))
 
 
@@ -151,7 +158,6 @@ case class ReleasesRange(first: Option[String], last: Option[String]):
       val index = releases.indexWhere(_.version == version)
       assert(index > 0, s"${version} matches no nightly compiler release")
       index
-
     val startIdx = first.map(releaseIndex(_)).getOrElse(0)
     val endIdx = last.map(releaseIndex(_) + 1).getOrElse(releases.length)
     val filtered = releases.slice(startIdx, endIdx).toVector
@@ -173,17 +179,20 @@ object Releases:
   lazy val allReleases: Vector[Release] =
     val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
     val xml = io.Source.fromURL(
-      "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+      "https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
     )
     re.findAllMatchIn(xml.mkString)
       .flatMap{ m => Option(m.group(1)).map(Release.apply) }
       .toVector
+      .sortBy: release =>
+        (release.version, release.date)
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
 case class Release(version: String):
   private val re = raw".+-bin-(\d{8})-(\w{7})-NIGHTLY".r
-  def date: String =
+  def date: LocalDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE)
+  def dateString: String =
     version match
       case re(date, _) => date
       case _ => sys.error(s"Could not extract date from release name: $version")

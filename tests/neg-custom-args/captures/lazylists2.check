@@ -1,49 +1,50 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:18:4 ------------------------------------
-18 |    final class Mapped extends LazyList[B]:  // error
-   |    ^
-   |    Found:    LazyList[box B^?]^{f, xs}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:24:4 ------------------------------------
+24 |    new Mapped  // error
+   |    ^^^^^^^^^^
+   |    Found:    LazyList[B^'s1]^{f, xs}
    |    Required: LazyList[B]^{f}
-19 |      this: (Mapped^{xs, f}) =>
-20 |      def isEmpty = false
-21 |      def head: B = f(xs.head)
-22 |      def tail: LazyList[B]^{this} = xs.tail.map(f)
-23 |    new Mapped
+   |
+   |    Note that capability `xs` cannot flow into capture set {f}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:27:4 ------------------------------------
-27 |    final class Mapped extends LazyList[B]:  // error
-   |    ^
-   |    Found:    LazyList[box B^?]^{f, xs}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:33:4 ------------------------------------
+33 |    new Mapped  // error
+   |    ^^^^^^^^^^
+   |    Found:    LazyList[B^'s2]^{f, xs}
    |    Required: LazyList[B]^{xs}
-28 |      this: Mapped^{xs, f} =>
-29 |      def isEmpty = false
-30 |      def head: B = f(xs.head)
-31 |      def tail: LazyList[B]^{this} = xs.tail.map(f)
-32 |    new Mapped
+   |
+   |    Note that capability `f` cannot flow into capture set {xs}.
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 --------------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 ---------------------------------
 40 |      def head: B = f(xs.head)  // error
    |                    ^
-   |         reference (f : A => B) is not included in the allowed capture set {xs} of the self type of class Mapped
--- Error: tests/neg-custom-args/captures/lazylists2.scala:41:48 --------------------------------------------------------
+   |                 Reference `f` is not included in the allowed capture set {xs} of the self type of class Mapped.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazylists2.scala:41:48 ---------------------------------
 41 |      def tail: LazyList[B]^{this}= xs.tail.map(f) // error
    |                                                ^
-   |         reference (f : A => B) is not included in the allowed capture set {xs} of the self type of class Mapped
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:45:4 ------------------------------------
-45 |    final class Mapped extends LazyList[B]:  // error
-   |    ^
-   |    Found:    LazyList[box B^?]^{f, xs}
+   |                 Reference `f` is not included in the allowed capture set {xs} of the self type of class Mapped.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:51:4 ------------------------------------
+51 |    new Mapped  // error
+   |    ^^^^^^^^^^
+   |    Found:    LazyList[B^'s3]^{f, xs}
    |    Required: LazyList[B]^{xs}
-46 |      this: (Mapped^{xs, f}) =>
-47 |      def isEmpty = false
-48 |      def head: B = f(xs.head)
-49 |      def tail: LazyList[B]^{xs, f} = xs.tail.map(f)
-50 |    new Mapped
+   |
+   |    Note that capability `f` cannot flow into capture set {xs}.
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/lazylists2.scala:60:10 --------------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazylists2.scala:60:10 ---------------------------------
 60 |    class Mapped2 extends Mapped:  // error
    |    ^
-   |    references {f, xs} are not all included in the allowed capture set {} of the self type of class Mapped2
+   |    References {f, xs} are not all included in the allowed capture set {} of the self type of class Mapped2.
+   |
 61 |      this: Mapped =>
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:62:4 ------------------------------------
+62 |    new Mapped2 // error
+   |    ^^^^^^^^^^^
+   |    Found:    LazyList[B^'s4]^{f, xs}
+   |    Required: LazyList[B]
+   |
+   |    Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

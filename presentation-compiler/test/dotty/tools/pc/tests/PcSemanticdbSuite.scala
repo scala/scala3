@@ -2,9 +2,10 @@ package dotty.tools.pc.tests
 
 import java.net.URI
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.semanticdb.{SymbolOccurrence, TextDocument}
 import dotty.tools.pc.base.BasePCSuite
-import scala.language.unsafeNulls
 
 import org.junit.Test
 
@@ -74,9 +75,8 @@ class PcSemanticdbSuite extends BasePCSuite:
       sb.append(doc.text.substring(offset, endPos))
       val isPrimaryConstructor =
         symtab.get(occ.symbol).exists(_.isPrimary)
-      if (!occ.symbol.isPackage && !isPrimaryConstructor) {
+      if !occ.symbol.isPackage && !isPrimaryConstructor then
         printSymbol(sb, occ.symbol)
-      }
       offset = endPos
     }
     sb.append(doc.text.substring(offset))
@@ -91,30 +91,27 @@ class PcSemanticdbSuite extends BasePCSuite:
   implicit val occurrenceOrdering: Ordering[SymbolOccurrence] =
     new Ordering[SymbolOccurrence]:
       override def compare(x: SymbolOccurrence, y: SymbolOccurrence): Int =
-        if (x.range.isEmpty) 0
-        else if (y.range.isEmpty) 0
-        else {
+        if x.range.isEmpty then 0
+        else if y.range.isEmpty then 0
+        else
           val a = x.range.get
           val b = y.range.get
           val byLine = Integer.compare(
             a.startLine,
             b.startLine
           )
-          if (byLine != 0) {
+          if byLine != 0 then
             byLine
-          } else {
+          else
             val byEnd = Integer.compare(
               a.endCharacter,
               b.endCharacter
             )
-            if (byEnd != 0) {
+            if byEnd != 0 then
               byEnd
-            } else {
+            else
               val byCharacter = Integer.compare(
                 a.startCharacter,
                 b.startCharacter
               )
               byCharacter
-            }
-          }
-        }

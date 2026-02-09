@@ -35,7 +35,7 @@ class PatmatExhaustivityTest {
         e.printStackTrace(printWriter)
     }
 
-    stringBuffer.toString.trim.nn.replaceAll("\\s+\n", "\n") match {
+    stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
       case "" => Nil
       case s  => s.linesIterator.toSeq
     }

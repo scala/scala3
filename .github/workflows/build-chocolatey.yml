@@ -27,7 +27,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Replace the version placeholder
         uses: richardrigutins/replace-in-files@v2
         with:
@@ -49,7 +49,7 @@ jobs:
       - name: Build the Chocolatey package (.nupkg)
         run: choco pack ./pkgs/chocolatey/scala.nuspec --out ./pkgs/chocolatey
       - name: Upload the Chocolatey package to GitHub
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scala.nupkg
           path: ./pkgs/chocolatey/scala.${{ inputs.version }}.nupkg

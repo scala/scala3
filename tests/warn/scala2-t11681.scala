@@ -23,7 +23,7 @@ trait BadAPI extends InterFace {
     a
   }
   override def call(a: Int,
-                    b: String, // warn now
+                    b: String, // no warn (override)
                     c: Double): Int = {
     println(c)
     a
@@ -98,7 +98,7 @@ trait Anonymous {
 }
 trait Context[A]
 trait Implicits {
-  def f[A](implicit ctx: Context[A]) = answer // warn implicit param even though only marker
+  def f[A](implicit ctx: Context[A]) = answer // no warn after all; previously, warn implicit param even though marker
   def g[A: Context] = answer // no warn bound that is marker only
 }
 class Bound[A: Context] // no warn bound that is marker only

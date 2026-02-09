@@ -7,6 +7,7 @@ import core.*
 import Contexts.*, Trees.*, Types.*
 import DenotTransformers.*, MegaPhase.*
 import ExtensionMethods.*, ValueClasses.*
+import Decorators.*
 
 
 /** This phase inlines calls to methods of value classes.
@@ -58,12 +59,18 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    */
   private def rewire(tree: Tree, mtArgs: List[Tree] = Nil, mArgss: List[List[Tree]] = Nil)
     (using Context): Tree =
+    def noTypeApplyIn(tree: Tree): Boolean = tree match
+      case _: TypeApply => false
+      case Apply(fn, _) => noTypeApplyIn(fn)
+      case _ => true
     tree match {
       case Apply(qual, mArgs) =>
         rewire(qual, mtArgs, mArgs :: mArgss)
       case TypeApply(qual, mtArgs2) =>
-        assert(mtArgs == Nil)
-        rewire(qual, mtArgs2, mArgss)
+        if noTypeApplyIn(qual) then
+          rewire(qual, mtArgs2, mArgss)
+        else
+          rewire(qual, mtArgs, mtArgs2 :: mArgss)
       case sel @ Select(qual, _) =>
         val origMeth = sel.symbol
         val origCls = origMeth.enclosingClass

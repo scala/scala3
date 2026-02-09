@@ -25,8 +25,9 @@ given apply: [C, E] => Combinator[Apply[C, E]] {
   }
 }
 
-given combine[A: Combinator, B: [X] =>> Combinator[X] { type Context = A.Context }]
-    : Combinator[Combine[A, B]] with
+given combine
+  : [A: Combinator, B: [X] =>> Combinator[X] { type Context = A.Context }]
+    => Combinator[Combine[A, B]]:
   type Context = A.Context
   type Element = (A.Element, B.Element)
   extension(self: Combine[A, B])

@@ -38,7 +38,7 @@ object BestEffortTastyFormat {
   // added AST tag - Best Effort TASTy only
   final val ERRORtype = 50
 
-  def astTagToString(tag: Int) = tag match {
+  def astTagToString(tag: Int): String = tag match {
     case ERRORtype => "ERRORtype"
     case _ => TastyFormat.astTagToString(tag)
   }

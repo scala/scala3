@@ -41,14 +41,10 @@ object CompletionItemResolver extends ItemResolver:
           case _ =>
             item
         end match
-
       case _ => item
     end match
-  end resolve
 
-  private def fullDocstring(gsym: Symbol, search: SymbolSearch)(using
-      Context
-  ): String =
+  private def fullDocstring(gsym: Symbol, search: SymbolSearch)(using Context): String =
     def docs(gsym: Symbol): String =
       search.symbolDocumentation(gsym).fold("")(_.docstring().nn)
     val gsymDoc = docs(gsym)
@@ -62,7 +58,7 @@ object CompletionItemResolver extends ItemResolver:
     if companion == NoSymbol || gsym.is(JavaDefined) then
       if gsymDoc.isEmpty() then
         if gsym.isAliasType then
-          fullDocstring(gsym.info.deepDealias.typeSymbol, search)
+          fullDocstring(gsym.info.deepDealiasAndSimplify.typeSymbol, search)
         else if gsym.is(Method) then
           gsym.info.finalResultType match
             case tr @ TermRef(_, sym) =>
@@ -86,7 +82,5 @@ object CompletionItemResolver extends ItemResolver:
               |${gsymDoc}
               |""".stripMargin
         ).sorted.mkString("\n")
-    end if
-  end fullDocstring
 
 end CompletionItemResolver

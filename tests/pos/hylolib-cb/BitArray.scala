@@ -22,86 +22,79 @@ final class BitArray private (
 
   /** Reserves enough storage to store `n` elements in `this`. */
   def reserveCapacity(n: Int, assumeUniqueness: Boolean = false): BitArray =
-    if (n == 0) {
+    if n == 0 then
       this
-    } else {
+    else
       val k = 1 + ((n - 1) >> 5)
-      if (assumeUniqueness) {
+      if assumeUniqueness then
         _bits = _bits.reserveCapacity(k, assumeUniqueness)
         this
-      } else {
+      else
         new BitArray(_bits.reserveCapacity(k), _count)
-      }
-    }
 
   /** Adds a new element at the end of the array. */
   def append(bit: Boolean, assumeUniqueness: Boolean = false): BitArray =
     val result = if assumeUniqueness && (count < capacity) then this else copy(count + 1)
     val p = BitArray.Position(count)
-    if (p.bucket >= _bits.count) {
+    if p.bucket >= _bits.count then
       result._bits = _bits.append(if bit then 1 else 0)
-    } else {
+    else
       result.setValue(bit, p)
-    }
     result._count += 1
     result
 
   /** Removes and returns the last element, or returns `None` if the array is empty. */
   def popLast(assumeUniqueness: Boolean = false): (BitArray, Option[Boolean]) =
-    if (isEmpty) {
+    if isEmpty then
       (this, None)
-    } else {
+    else
       val result = if assumeUniqueness then this else copy()
       val bit = result.at(BitArray.Position(count))
       result._count -= 1
       (result, Some(bit))
-    }
 
   /** Removes all elements in the array, keeping allocated storage iff `keepStorage` is true. */
   def removeAll(
       keepStorage: Boolean = false,
       assumeUniqueness: Boolean = false
   ): BitArray =
-    if (isEmpty) {
+    if isEmpty then
       this
-    } else if (keepStorage) {
+    else if keepStorage then
       val result = if assumeUniqueness then this else copy()
       result._bits.removeAll(keepStorage, assumeUniqueness = true)
       result._count = 0
       result
-    } else {
+    else
       BitArray()
-    }
 
   /** Returns `true` iff all elements in `this` are `false`. */
   def allFalse: Boolean =
-    if (isEmpty) {
+    if isEmpty then
       true
-    } else {
+    else
       val k = (count - 1) >> 5
       def loop(i: Int): Boolean =
-        if (i == k) {
+        if i == k then
           val m = (1 << (count & 31)) - 1
           (_bits.at(k) & m) == 0
-        } else if (_bits.at(i) != 0) {
+        else if _bits.at(i) != 0 then
           false
-        } else {
+        else
           loop(i + 1)
-        }
       loop(0)
-    }
 
   /** Returns `true` iff all elements in `this` are `true`. */
   def allTrue: Boolean =
-    if (isEmpty) {
+    if isEmpty then {
       true
     } else {
       val k = (count - 1) >> 5
       def loop(i: Int): Boolean =
-        if (i == k) {
+        if i == k then {
           val m = (1 << (count & 31)) - 1
           (_bits.at(k) & m) == m
-        } else if (_bits.at(i) != ~0) {
+        } else if _bits.at(i) != ~0 then {
           false
         } else {
           loop(i + 1)
@@ -136,14 +129,14 @@ final class BitArray private (
       assumeUniqueness: Boolean = false
   ): BitArray =
     require(this.count == other.count)
-    if (isEmpty) {
+    if isEmpty then {
       this
     } else {
       val result = if assumeUniqueness then this else copy()
       var u = assumeUniqueness
       val k = (count - 1) >> 5
 
-      for (i <- 0 until k) {
+      for i <- 0 until k do {
         result._bits = result._bits.modifyAt(
           i, (n) => operation(n, other._bits.at(n)),
           assumeUniqueness = u
@@ -184,7 +177,7 @@ final class BitArray private (
     *   O(1).
     */
   def positionAfter(p: BitArray.Position): BitArray.Position =
-    if (p.offsetInBucket == 63) {
+    if p.offsetInBucket == 63 then {
       BitArray.Position(p.bucket + 1, 0)
     } else {
       BitArray.Position(p.bucket, p.offsetInBucket + 1)
@@ -244,7 +237,7 @@ final class BitArray private (
 
   /** Returns an independent copy of `this`. */
   def copy(minimumCapacity: Int = 0): BitArray =
-    if (minimumCapacity > capacity) {
+    if minimumCapacity > capacity then {
       // If the requested capacity on the copy is greater than what we have, `reserveCapacity` will
       // create an independent value.
       reserveCapacity(minimumCapacity)
@@ -313,7 +306,7 @@ object BitArray {
   /** Creates an array with the given `bits`. */
   def apply[T](bits: Boolean*): BitArray =
     var result = new BitArray(HyArray[Int](), 0)
-    for (b <- bits) result = result.append(b, assumeUniqueness = true)
+    for b <- bits do result = result.append(b, assumeUniqueness = true)
     result
 
 }

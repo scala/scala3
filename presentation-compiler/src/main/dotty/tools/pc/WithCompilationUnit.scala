@@ -1,14 +1,12 @@
 package dotty.tools.pc
 
-import scala.language.unsafeNulls
-
 import java.nio.file.Paths
 
-import scala.meta as m
-
+import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.VirtualFileParams
+import scala.meta as m
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
@@ -20,13 +18,13 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 class WithCompilationUnit(
     val driver: InteractiveDriver,
-    params: VirtualFileParams,
+    params: VirtualFileParams
 ):
-  val uri = params.uri()
-  val filePath = Paths.get(uri)
-  val sourceText = params.text
-  val text = sourceText.toCharArray()
-  val source =
+  val uri: java.net.URI = params.uri()
+  val filePath: java.nio.file.Path = Paths.get(uri)
+  val sourceText: String = params.text
+  val text: Array[Char] = sourceText.toCharArray()
+  val source: SourceFile =
     SourceFile.virtual(filePath.toString, sourceText)
   driver.run(uri, source)
   given ctx: Context = driver.currentCtx
@@ -50,7 +48,7 @@ class WithCompilationUnit(
     def primaryConstructorTypeParam(owner: Symbol) =
       for
         typeParams <- owner.primaryConstructor.paramSymss.headOption
-        param <- typeParams.find(_.name == sym.name)
+        param      <- typeParams.find(_.name == sym.name)
         if (param.isType)
       yield param
     def additionalForEnumTypeParam(enumClass: Symbol) =
@@ -76,7 +74,9 @@ class WithCompilationUnit(
         }
       else Set.empty
     val all =
-      if sym.is(Flags.ModuleClass) then
+      if sym.is(Flags.Exported) then
+        Set(sym, sym.sourceSymbol)
+      else if sym.is(Flags.ModuleClass) then
         Set(sym, sym.companionModule, sym.companionModule.companion)
       else if sym.isClass then
         Set(sym, sym.companionModule, sym.companion.moduleClass)
@@ -89,7 +89,7 @@ class WithCompilationUnit(
         Set(
           sym,
           info.member(sym.asTerm.name.setterName).symbol,
-          info.member(sym.asTerm.name.getterName).symbol,
+          info.member(sym.asTerm.name.getterName).symbol
         ) ++ sym.allOverriddenSymbols.toSet
       // type used in primary constructor will not match the one used in the class
       else if sym.isTypeParam && sym.owner.isPrimaryConstructor then
@@ -100,6 +100,5 @@ class WithCompilationUnit(
           ++ additionalForEnumTypeParam(sym.maybeOwner) + sym
       else Set(sym)
     all.filter(s => s != NoSymbol && !s.isError)
-  end symbolAlternatives
 
 end WithCompilationUnit

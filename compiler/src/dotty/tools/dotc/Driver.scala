@@ -9,7 +9,7 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
-import config.Feature
+import util.chaining.*
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -38,7 +38,7 @@ class Driver {
         finish(compiler, run)
       catch
         case ex: FatalError =>
-          report.error(ex.getMessage.nn) // signals that we should fail compilation.
+          report.error(ex.getMessage) // signals that we should fail compilation.
         case ex: Throwable if ctx.usedBestEffortTasty =>
           report.bestEffortError(ex, "Some best-effort tasty files were not able to be read.")
           throw ex
@@ -83,15 +83,26 @@ class Driver {
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
 
-    inContext(ictx) {
+    inContext(ictx):
       if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
-      fileNamesOrNone.map { fileNames =>
+      fileNamesOrNone.map: fileNames =>
         val files = fileNames.map(ctx.getFile)
         (files, fromTastySetup(files))
-      }
-    }
+      .tap: _ =>
+        if !ctx.settings.Yreporter.isDefault then
+          ctx.settings.Yreporter.value match
+          case "help" =>
+          case reporterClassName =>
+            try
+              Class.forName(reporterClassName).getDeclaredConstructor().newInstance() match
+              case userReporter: Reporter =>
+                ictx.setReporter(userReporter)
+              case badReporter => report.error:
+                em"Not a reporter: ${ctx.settings.Yreporter.value}"
+            catch case e: ReflectiveOperationException => report.error:
+              em"Could not create reporter ${ctx.settings.Yreporter.value}: ${e}"
   }
 
   /** Setup extra classpath of tasty and jar files */
@@ -117,7 +128,7 @@ class Driver {
         .distinct
       val ctx1 = ctx.fresh
       val fullClassPath =
-        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator.nn)
+        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
     else ctx
 

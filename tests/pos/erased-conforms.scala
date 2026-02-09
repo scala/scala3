@@ -1,11 +1,11 @@
 import language.experimental.erasedDefinitions
-erased class ErasedTerm
+class ErasedTerm extends compiletime.Erased
 
-erased class <::<[-From, +To] extends ErasedTerm
+class <::<[-From, +To] extends ErasedTerm
 
-erased class =::=[From, To] extends (From <::< To)
+class =::=[From, To] extends (From <::< To)
 
-erased given [X] => (X =::= X) = scala.compiletime.erasedValue
+inline given [X] => (X =::= X) = new =::=
 
 extension [From](x: From)
   inline def cast[To](using From <::< To): To = x.asInstanceOf[To] // Safe cast because we know `From <:< To`

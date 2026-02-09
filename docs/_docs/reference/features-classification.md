@@ -40,7 +40,7 @@ These constructs replace existing constructs with the aim of making the language
  - [Extension methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque type aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.
- - [Top-level definitions](dropped-features/package-objects.md) replace package objects, dropping syntactic boilerplate.
+ - [Top-level definitions](other-new-features/toplevel-definitions.md) replace package objects, dropping syntactic boilerplate.
  - [Export clauses](other-new-features/export.md)
  provide a simple and general way to express aggregation, which can replace the
  previous facade pattern of package objects inheriting from classes.

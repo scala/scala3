@@ -1,6 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
 
 import reflect.ClassTag
 import annotation.tailrec
@@ -17,7 +16,7 @@ import annotation.tailrec
  *  get promoted to be first in the queue. Elements are evicted
  *  at the `last` position.
  */
-class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
+class LRUCache[Key >: Null <: AnyRef | Null : ClassTag, Value >: Null: ClassTag] {
   import LRUCache.*
   val keys: Array[Key] = new Array[Key](Retained)
   val values: Array[Value] = new Array(Retained)

@@ -2,7 +2,7 @@ sealed abstract class X
 sealed case class A(x: Int) extends X
 
 // test reachability on mixed sealed / non-sealed matches
-object Test extends App {
+object Test {
   val B: X = A(0)
   val C: X = A(1)
 

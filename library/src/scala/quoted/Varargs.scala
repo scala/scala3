@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 /** Expression representation of literal sequence of expressions.
  *
  *  `Varargs` can be used to create the an expression `args` that will be used as varargs `'{ f($args: _*) }`
@@ -32,7 +34,7 @@ object Varargs {
     Repeated(xs.map(_.asTerm).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
   }
 
-  /** Matches a literal sequence of expressions and return a sequence of expressions.
+  /** Matches a literal sequence of expressions and returns a sequence of expressions.
    *
    *  Usage:
    *  ```scala

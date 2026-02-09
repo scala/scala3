@@ -288,7 +288,7 @@ object Denotations {
      */
     inline def disambiguate(inline p: Symbol => Boolean)(using Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
-      case mdenot => suchThat(p) orElse NoQualifyingRef(alternatives)
+      case mdenot => suchThat(p) `orElse` NoQualifyingRef(alternatives)
     }
 
     /** Return symbol in this denotation that satisfies the given predicate.
@@ -480,9 +480,14 @@ object Denotations {
 
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
+          val compareCtx =
+            if sym1.is(JavaDefined) && sym2.is(JavaDefined) then
+              ctx.withProperty(TypeComparer.ComparingJavaMethods, Some(()))
+            else ctx
+
+          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false)(using compareCtx) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false)(using compareCtx) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
@@ -811,7 +816,7 @@ object Denotations {
         var cur = this
         // search for containing period as long as nextInRun increases.
         var next = nextInRun
-        while next.validFor.code > valid.code && !(next.validFor contains currentPeriod) do
+        while next.validFor.code > valid.code && !next.validFor.contains(currentPeriod) do
           cur = next
           next = next.nextInRun
         if next.validFor.code > valid.code then
@@ -857,7 +862,7 @@ object Denotations {
         // but to be defensive we check for infinite loop anyway
         var cur = this
         var cnt = 0
-        while !(cur.validFor contains currentPeriod) do
+        while !cur.validFor.contains(currentPeriod) do
           //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
           cur = cur.nextInRun
           // Note: One might be tempted to add a `prev` field to get to the new denotation
@@ -1228,16 +1233,16 @@ object Denotations {
     def mapInherited(owndenot: PreDenotation, prevdenot: PreDenotation, pre: Type)(using Context): PreDenotation =
       derivedUnion(denot1.mapInherited(owndenot, prevdenot, pre), denot2.mapInherited(owndenot, prevdenot, pre))
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
-      derivedUnion(denot1 filterWithPredicate p, denot2 filterWithPredicate p)
+      derivedUnion(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
     def filterDisjoint(denot: PreDenotation)(using Context): PreDenotation =
-      derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
+      derivedUnion(denot1.filterDisjoint(denot), denot2.filterDisjoint(denot))
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
       g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
-      else denot1 union denot2
+      else denot1 `union` denot2
   }
 
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
@@ -1245,7 +1250,7 @@ object Denotations {
     def toDenot(pre: Type)(using Context): Denotation =
       denot1.toDenot(pre).meet(denot2.toDenot(pre), pre)
     def containsSym(sym: Symbol): Boolean =
-      (denot1 containsSym sym) || (denot2 containsSym sym)
+      denot1.containsSym(sym) || denot2.containsSym(sym)
     type AsSeenFromResult = PreDenotation
     def computeAsSeenFrom(pre: Type)(using Context): PreDenotation =
       derivedUnion(denot1.asSeenFrom(pre), denot2.asSeenFrom(pre))
@@ -1310,9 +1315,9 @@ object Denotations {
   }
 
   /** The current denotation of the static reference given by path,
-    *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
-    *  if generateStubs is set, generates stubs for missing top-level symbols
-    */
+   *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+   *  if generateStubs is set, generates stubs for missing top-level symbols
+   */
   def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)

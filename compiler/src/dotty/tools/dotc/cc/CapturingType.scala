@@ -34,12 +34,19 @@ object CapturingType:
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
     assert(!boxed || !parent.derivesFrom(defn.Caps_CapSet))
-    if refs.isAlwaysEmpty && !refs.keepAlways then parent
+    if refs.isAlwaysEmpty && !refs.keepAlways && !parent.derivesFromCapability then
+      parent
     else parent match
+      case parent @ CapturingType(parent1, refs1) if refs == CaptureSet.Fluid =>
+        // <fluid> displaces existing capture sets whether boxed or not
+        apply(parent1, refs, boxed)
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
-        AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
+        val refs1 =
+          if parent.derivesFromStateful then refs.associateWithStateful() else refs
+        refs1.adoptClassifier(parent.inheritedClassifier)
+        AnnotatedType(parent, CaptureAnnotation(refs1, boxed)(defn.RetainsAnnot))
 
   /** An extractor for CapturingTypes. Capturing types are recognized if
    *   - the annotation is a CaptureAnnotation and we are not past CheckCapturingPhase, or
@@ -52,11 +59,11 @@ object CapturingType:
     else decomposeCapturingType(tp)
 
   /** Decompose `tp` as a capturing type without taking IgnoreCaptures into account */
-  def decomposeCapturingType(tp: Type)(using Context): Option[(Type, CaptureSet)] = tp match
+  def decomposeCapturingType(using Context)(tp: Type, alsoRetains: Boolean = isCaptureChecking): Option[(Type, CaptureSet)] = tp match
     case AnnotatedType(parent, ann: CaptureAnnotation)
     if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
-    case AnnotatedType(parent, ann) if ann.symbol.isRetains && isCaptureChecking =>
+    case AnnotatedType(parent, ann: RetainingAnnotation) if ann.isStrict && alsoRetains =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets
@@ -68,7 +75,10 @@ object CapturingType:
       // type `C^{f}` which does not have a capture annotation yet. The transformed
       // type would be in a copy of the dependent function type, but it is useless
       // since we need to check the original reference.
-      try Some((parent, ann.tree.toCaptureSet))
+      //
+      // TODO In other situations we expect that the type is already transformed to a
+      // CapturingType and we should crash if this not the case.
+      try Some((parent, ann.toCaptureSet))
       catch case ex: IllegalCaptureRef => None
     case _ =>
       None
@@ -80,5 +90,10 @@ object CapturingType:
     ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined
 
 end CapturingType
+
+object CapturingOrRetainsType:
+   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
+    if ctx.mode.is(Mode.IgnoreCaptures) then None
+    else CapturingType.decomposeCapturingType(tp, alsoRetains = true)
 
 

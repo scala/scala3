@@ -1,0 +1,16 @@
+-- Warning: tests/init-global/warn/resolve-outer-of-parent.scala:7:16 --------------------------------------------------
+7 |  def foo() = O.d // warn
+  |              ^^^
+  |              Access uninitialized field value d. Calling trace:
+  |              ├── object O:	[ resolve-outer-of-parent.scala:14 ]
+  |              │   ^
+  |              ├── val d = new D	[ resolve-outer-of-parent.scala:19 ]
+  |              │           ^^^^^
+  |              ├── class D extends b.C { // D --> parent C --> outer B	[ resolve-outer-of-parent.scala:16 ]
+  |              │   ^
+  |              ├── val field_d = bar2()	[ resolve-outer-of-parent.scala:17 ]
+  |              │                 ^^^^^^
+  |              ├── def bar2() = B.this.foo()	[ resolve-outer-of-parent.scala:9 ]
+  |              │                ^^^^^^^^^^^^
+  |              └── def foo() = O.d // warn	[ resolve-outer-of-parent.scala:7 ]
+  |                              ^^^

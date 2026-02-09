@@ -14,7 +14,7 @@ case class Mode(val bits: Int) extends AnyVal {
   def | (that: Mode): Mode = Mode(bits | that.bits)
   def & (that: Mode): Mode = Mode(bits & that.bits)
   def &~ (that: Mode): Mode = Mode(bits & ~that.bits)
-  def is (that: Mode): Boolean = (bits & that.bits) == that.bits
+  infix def is (that: Mode): Boolean = (bits & that.bits) == that.bits
 
   def isExpr: Boolean = (this & PatternOrTypeBits) == None
 
@@ -91,6 +91,14 @@ object Mode {
    */
   val ImplicitExploration: Mode = newMode(12, "ImplicitExploration")
 
+  /** We are currently inside a capture set.
+   *  A term name could be a capture variable, so we need to
+   *  check that it is valid to use as type name.
+   *  Since this mode is only used during annotation typing,
+   *  we can reuse the value of `ImplicitExploration` to save bits.
+   */
+  val InCaptureSet: Mode = ImplicitExploration
+
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
 
@@ -132,6 +140,15 @@ object Mode {
    *  In this case, identifiers should never be imported.
    */
   val InPackageClauseName: Mode = newMode(19, "InPackageClauseName")
+
+  /** When creating capset Vars in cc.Setup, mark the variable to be in
+   *  the result type of the context's owner, so that nested vals cannot
+   *  be included in it.
+   *  Reuses the value of InPackageClauseName to save Mode bits.
+   *  This is OK since InPackageClauseName is only set and tested during Typer,
+   *  and CCPreciseOwner only has an effect during phase CheckCaptures.
+   */
+  val CCPreciseOwner = InPackageClauseName
 
   /** We are in the IDE */
   val Interactive: Mode = newMode(20, "Interactive")

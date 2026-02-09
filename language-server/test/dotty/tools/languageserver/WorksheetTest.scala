@@ -90,7 +90,7 @@ class WorksheetTest {
           case _ => "odd"
         }${m2}"""
       .run(m1,
-        ((m1 to m2), "val res0: String = odd"))
+        ((m1 to m2), "val res0: String = \"odd\""))
   }
 
   @Test def evaluationException: Unit = {

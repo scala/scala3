@@ -46,7 +46,7 @@ class DottyPrimitives(ictx: Context) {
    * operation is an array get/set, we inspect the type of the receiver
    * to demux the operation.
    *
-   * @param fun The method symbol
+   * @param app The method symbol
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
@@ -127,7 +127,7 @@ class DottyPrimitives(ictx: Context) {
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
-      assert(!(primitives contains s), "Duplicate primitive " + s)
+      assert(!primitives.contains(s), "Duplicate primitive " + s)
       primitives(s) = code
     }
 

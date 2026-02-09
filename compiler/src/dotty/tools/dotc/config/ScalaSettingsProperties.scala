@@ -3,29 +3,26 @@ package config
 
 import Settings.Setting.ChoiceWithHelp
 import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
-import scala.language.unsafeNulls
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 
 object ScalaSettingsProperties:
 
   private lazy val minTargetVersion = classfileVersionMap.keysIterator.min
   private lazy val maxTargetVersion = classfileVersionMap.keysIterator.max
 
+  private val minReleaseVersion = 17
+
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
 
   def supportedReleaseVersions: List[String] =
-    if scala.util.Properties.isJavaAtLeast("9") then
-      val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
-      val maxVersion = Math.min(jdkVersion, maxTargetVersion)
-      (minTargetVersion to maxVersion).toList.map(_.toString)
-    else List(minTargetVersion).map(_.toString)
-
-  def supportedScalaReleaseVersions: List[String] =
-    ScalaRelease.values.toList.map(_.show)
+    val jdkVersion = Runtime.version().feature()
+    val maxVersion = Math.min(jdkVersion, maxTargetVersion)
+    (minReleaseVersion to maxVersion).toList.map(_.toString)
 
   def supportedSourceVersions: List[String] =
-    (SourceVersion.values.toList.diff(SourceVersion.illegalSourceVersionNames)).toList.map(_.toString)
+    SourceVersion.values.diff(SourceVersion.illegalInSettings)
+      .map(_.toString).toList
 
   def supportedLanguageFeatures: List[ChoiceWithHelp[String]] =
     Feature.values.map((n, d) => ChoiceWithHelp(n.toString, d))

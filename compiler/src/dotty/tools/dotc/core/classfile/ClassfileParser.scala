@@ -5,7 +5,7 @@ package classfile
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
+import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler, UnpickleException }
 
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
@@ -306,7 +306,9 @@ class ClassfileParser(
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
-      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
+      val addendum = e match
+        case _: UnpickleException => ""
+        case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
         i"""  class file ${classfile.canonicalPath} is broken$addendum,
           |  reading aborted with ${e.getClass}:
@@ -369,26 +371,20 @@ class ClassfileParser(
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
       val superType =
-        if (classRoot.symbol == defn.ComparableClass ||
-                 classRoot.symbol == defn.JavaCloneableClass ||
-                 classRoot.symbol == defn.JavaSerializableClass) {
-          // Treat these interfaces as universal traits
-          in.nextChar
+        val superClass = in.nextChar
+        // Treat these interfaces as universal traits
+        if classRoot.symbol == defn.ComparableClass
+        || classRoot.symbol == defn.JavaCloneableClass
+        || classRoot.symbol == defn.JavaSerializableClass
+        then
           defn.AnyType
-        }
         else
-          pool.getSuperClass(in.nextChar).typeRef
+          pool.getSuperClass(superClass).typeRef
       val ifaceCount = in.nextChar
-      var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
-        // Dotty deviation: was
-        //    var ifaces = for (i <- List.range(0, ifaceCount)) ...
-        // This does not typecheck because the type parameter of List is now lower-bounded by Int | Char.
-        // Consequently, no best implicit for the "Integral" evidence parameter of "range"
-        // is found. Previously, this worked because of weak conformance, which has been dropped.
-
+      val ifaces = List.fill(ifaceCount.toInt):
+        pool.getSuperClass(in.nextChar).typeRef
       superType :: ifaces
     }
-
 
     val result = unpickleOrParseInnerClasses()
     if (!result.isDefined) {
@@ -408,8 +404,8 @@ class ClassfileParser(
         moduleRoot.setPrivateWithin(privateWithin)
         moduleRoot.sourceModule.setPrivateWithin(privateWithin)
 
-      for (i <- 0 until in.nextChar) parseMember(method = false)
-      for (i <- 0 until in.nextChar) parseMember(method = true)
+      for (_ <- 0 until in.nextChar) parseMember(method = false)
+      for (_ <- 0 until in.nextChar) parseMember(method = true)
 
       classRoot.registerCompanion(moduleRoot.symbol)
       moduleRoot.registerCompanion(classRoot.symbol)
@@ -502,7 +498,7 @@ class ClassfileParser(
         *  and make constructor type polymorphic in the type parameters of the class
         */
       def normalizeConstructorInfo() = {
-        val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.typeRef))
+        val rt = classRoot.typeRef.appliedTo(classRoot.typeParams.map(_.typeRef))
 
         def resultType(tpe: Type): Type = tpe match {
           case mt @ MethodType(paramNames) => mt.derivedLambdaType(paramNames, mt.paramInfos, rt)
@@ -525,7 +521,7 @@ class ClassfileParser(
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
-      if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
+      if (ctx.explicitNulls) denot.info = ImplicitNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
 
       // seal java enums
       if (isEnum) {
@@ -1128,7 +1124,7 @@ class ClassfileParser(
       def parseScalaSigBytes: Array[Byte] = {
         val tag = in.nextByte.toChar
         assert(tag == STRING_TAG, tag)
-        pool getBytes in.nextChar
+        pool.getBytes(in.nextChar)
       }
 
       def parseScalaLongSigBytes: Array[Byte] = {

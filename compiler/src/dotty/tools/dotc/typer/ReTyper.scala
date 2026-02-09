@@ -175,7 +175,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def inferView(from: Tree, to: Type)(using Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
-  override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit = ()
+  override def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit = ()
 
   override def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree = tree
 

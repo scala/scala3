@@ -1,14 +1,14 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/spread-problem.scala:8:6 ---------------------------------
+-- Error: tests/neg-custom-args/captures/spread-problem.scala:8:7 ------------------------------------------------------
 8 |  race(Seq(src1, src2)*) // error
-  |  ^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    Source[box T^?]^{src1, src2}
-  |  Required: Source[T]
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/spread-problem.scala:11:6 --------------------------------
+  |       ^^^^^^^^^^^^^^^^
+  |       Sequence argument type annotation `*` cannot be used here:
+  |       the corresponding parameter has type Seq[Source[T]^{C}] which is not a repeated parameter type
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/spread-problem.scala:11:7 --------------------------------
 11 |  race(src1, src2) // error
-   |  ^^^^^^^^^^^^^^^^
-   |  Found:    Source[box T^?]^{src1, src2}
-   |  Required: Source[T]
+   |       ^^^^^^^^^^
+   |       Found:    (Source[T]^, Source[T]^)
+   |       Required: Seq[Source[T]^{C}]
+   |
+   |       where:    C is a type variable with constraint >: scala.caps.CapSet and <: scala.caps.CapSet^
    |
    | longer explanation available when compiling with `-explain`

@@ -1,0 +1,36 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-caps.scala:18:46 -----------------------------------
+18 |  def addWritesToConsole: (Int, Int) -> Int = (a, b) => // error
+   |                                              ^
+   |                                       Found:    (a: Int, b: Int) ->{Test.this.console} Int
+   |                                       Required: (Int, Int) -> Int
+   |
+   |                                       Note that capability `Test.this.console` cannot flow into capture set {}.
+   |
+19 |    log(s"adding a ($a) to b ($b)")(using console)
+20 |    a + b
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-caps.scala:28:46 -----------------------------------
+28 |  def addWritesToConsole: (Int, Int) -> Int = (a, b) => // error
+   |                                              ^
+   |                                      Found:    (a: Int, b: Int) ->{Test1.this.console} Int
+   |                                      Required: (Int, Int) -> Int
+   |
+   |                                      Note that capability `Test1.this.console` cannot flow into capture set {}.
+   |
+29 |    log(s"adding a ($a) to b ($b)")(using console)
+30 |    a + b
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-caps.scala:37:46 -----------------------------------
+37 |  def addWritesToConsole: (Int, Int) -> Int = (a, b) => // error
+   |                                              ^
+   |                                           Found:    (a: Int, b: Int) ->{Test2.console} Int
+   |                                           Required: (Int, Int) -> Int
+   |
+   |                                           Note that capability `Test2.console` cannot flow into capture set {}.
+   |
+38 |    log(s"adding a ($a) to b ($b)")(using console)
+39 |    a + b
+   |
+   | longer explanation available when compiling with `-explain`

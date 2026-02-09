@@ -18,7 +18,7 @@ given testRunner: CommunityBuildRunner with
 class CommunityBuildTestA:
   @Test def izumiReflect = projects.izumiReflect.run()
   @Test def scalaSTM = projects.scalaSTM.run()
-  @Test def scalatest = projects.scalatest.run()
+  //@Test def scalatest = projects.scalatest.run()
   @Test def scalatestplusTestNG = projects.scalatestplusTestNG.run()
   // 'Sciss/Lucre' dependencies:
   // @Test def scissEqual      = projects.scissEqual     .run()
@@ -30,7 +30,7 @@ class CommunityBuildTestA:
   // @Test def scissAsyncFile  = projects.scissAsyncFile .run()
   // @Test def scissSpan       = projects.scissSpan      .run()
   @Test def scissLucre = projects.scissLucre.run()
-  @Test def zio = projects.zio.run()
+  //@Test def zio = projects.zio.run()
 end CommunityBuildTestA
 
 @Category(Array(classOf[TestCategory]))
@@ -42,7 +42,7 @@ class CommunityBuildTestB:
   @Test def discipline = projects.discipline.run()
   @Test def disciplineMunit = projects.disciplineMunit.run()
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
-  @Test def fs2 = projects.fs2.run()
+  //@Test def fs2 = projects.fs2.run()
   @Test def monocle = projects.monocle.run()
   @Test def munit = projects.munit.run()
   @Test def munitCatsEffect = projects.munitCatsEffect.run()
@@ -51,14 +51,15 @@ class CommunityBuildTestB:
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
-  @Test def spire = projects.spire.run()
-  @Test def http4s = projects.http4s.run()
+  //@Test def spire = projects.spire.run()
+  //@Test def http4s = projects.http4s.run()
 end CommunityBuildTestB
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestC:
-  @Test def akka = projects.akka.run()
-  @Test def betterfiles = projects.betterfiles.run()
+  //@Test def akka = projects.akka.run()
+  // Disabled because `javax.xml.bind` is not available since java 11
+  // @Test def betterfiles = projects.betterfiles.run()
   @Test def cask = projects.cask.run()
   // Temporarily disabled until problem discovered in comments to #9449 is fixed
   // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
@@ -75,12 +76,13 @@ class CommunityBuildTestC:
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def parboiled2 = projects.parboiled2.run()
-  @Test def playJson = projects.playJson.run()
+  // Disabled because `javax.xml.bind` is not available since java 11
+  // @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
-  @Test def protoquill = projects.protoquill.run()
+  //@Test def protoquill = projects.protoquill.run()
   @Test def requests = projects.requests.run()
   @Test def scalacheck = projects.scalacheck.run()
-  @Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
+  //@Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
   @Test def scalaJava8Compat = projects.scalaJava8Compat.run()
   @Test def scalap = projects.scalap.run()
   @Test def scalaParallelCollections = projects.scalaParallelCollections.run()

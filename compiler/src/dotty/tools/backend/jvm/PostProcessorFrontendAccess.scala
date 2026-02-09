@@ -118,7 +118,7 @@ object PostProcessorFrontendAccess {
           case (Some(release), Some(_)) =>
             report.warning(s"The value of ${s.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
             release
-          case (None, None) => "8" // least supported version by default
+          case (None, None) => "17" // least supported version by default
 
       override val debug: Boolean = ctx.debug
       override val dumpClassesDirectory: Option[String] = s.Xdumpclasses.valueSetByUser
@@ -146,7 +146,7 @@ object PostProcessorFrontendAccess {
      override def backendReporting: BackendReporting = {
        val local = localReporter.get()
        if local eq null then directBackendReporting
-       else local.nn
+       else local
      }
 
     override object directBackendReporting extends BackendReporting {

@@ -3,10 +3,11 @@ package dotty.tools.pc
 import java.nio.file.Paths
 import java.util as ju
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.NavigateAST
+import dotty.tools.dotc.ast.untpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -17,37 +18,35 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j
 import org.eclipse.lsp4j.SelectionRange
 
-/**
- * Provides the functionality necessary for the `textDocument/selectionRange` request.
+/** Provides the functionality necessary for the `textDocument/selectionRange`
+ *  request.
  *
- * @param compiler Metals Global presentation compiler wrapper.
- * @param params offset params converted from the selectionRange params.
+ *  @param compiler Metals Global presentation compiler wrapper.
+ *  @param params offset params converted from the selectionRange params.
  */
-class SelectionRangeProvider(
-    driver: InteractiveDriver,
-    params: ju.List[OffsetParams]
-):
+class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetParams]):
 
-  /**
-   * Get the seletion ranges for the provider params
+  /** Get the seletion ranges for the provider params
    *
-   * @return selection ranges
+   *  @return selection ranges
    */
   def selectionRange(): List[SelectionRange] =
     given ctx: Context = driver.currentCtx
 
     params.asScala.toList.map { param =>
-
       val uri = param.uri().nn
       val text = param.text().nn
       val filePath = Paths.get(uri)
       val source = SourceFile.virtual(filePath.toString, text)
       driver.run(uri, source)
       val pos = driver.sourcePosition(param)
-      val path =
-        Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
+      val unit = driver.compilationUnits(uri)
 
-      val bareRanges = path
+      val untpdPath: List[Tree] = NavigateAST
+        .pathTo(pos.span, List(unit.untpdTree), true).collect:
+          case untpdTree: Tree => untpdTree
+
+      val bareRanges = untpdPath
         .flatMap(selectionRangesFromTree(pos))
 
       val comments =
@@ -77,32 +76,46 @@ class SelectionRangeProvider(
     }
   end selectionRange
 
-  /** Given a tree, create a seq of [[SelectionRange]]s corresponding to that tree. */
-  private def selectionRangesFromTree(pos: SourcePosition)(tree: tpd.Tree)(using Context) =
+  /** Given a tree, create a seq of [[SelectionRange]]s corresponding to that
+   *  tree.
+   */
+  private def selectionRangesFromTree(pos: SourcePosition)(tree: Tree)(using Context) =
     def toSelectionRange(srcPos: SourcePosition) =
       val selectionRange = new SelectionRange()
       selectionRange.setRange(srcPos.toLsp)
       selectionRange
 
-    val treeSelectionRange = toSelectionRange(tree.sourcePos)
+    def maybeToSelectionRange(srcPos: SourcePosition): Option[SelectionRange] =
+      if srcPos.contains(pos) then Some(toSelectionRange(srcPos)) else None
 
-    tree match
-      case tpd.DefDef(name, paramss, tpt, rhs) =>
-        // If source position is within a parameter list, add a selection range covering that whole list.
-        val selectedParams =
-          paramss
-            .iterator
-            .flatMap: // parameter list to a sourcePosition covering the whole list
-              case Seq(param) => Some(param.sourcePos)
-              case params @ Seq(head, tail*) =>
-                val srcPos = head.sourcePos
-                val lastSpan = tail.last.span
-                Some(SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer))
-              case Seq() => None
-            .find(_.contains(pos))
-            .map(toSelectionRange)
-        selectedParams ++ Seq(treeSelectionRange)
-      case _ => Seq(treeSelectionRange)
+    val treeSelectionRange = Seq(toSelectionRange(tree.sourcePos))
+
+    def allArgsSelectionRange(args: List[Tree]): Option[SelectionRange] =
+      args match
+        case Nil => None
+        case list =>
+          val srcPos = list.head.sourcePos
+          val lastSpan = list.last.span
+          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span `union` lastSpan, srcPos.outer)
+          maybeToSelectionRange(allArgsSrcPos)
+
+    val allSelectionRanges: Iterable[SelectionRange] = tree match
+      case vdef @ ValDef(_, _, _) =>
+        maybeToSelectionRange(vdef.namePos)
+      case tdef @ TypeDef(_, _) =>
+        maybeToSelectionRange(tdef.namePos)
+      case mdef @ ModuleDef(_, _) =>
+        maybeToSelectionRange(mdef.namePos)
+      case DefDef(_, paramss, _, _) =>
+        paramss.flatMap(allArgsSelectionRange)
+      case Apply(_, args) =>
+        allArgsSelectionRange(args)
+      case TypeApply(_, args) =>
+        allArgsSelectionRange(args)
+      case Function(args, _) =>
+        allArgsSelectionRange(args)
+      case _ => Seq.empty
+    allSelectionRanges ++ treeSelectionRange
 
   private def setParent(
       child: SelectionRange,

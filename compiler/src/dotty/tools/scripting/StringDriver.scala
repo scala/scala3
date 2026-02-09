@@ -1,7 +1,5 @@
 package dotty.tools.scripting
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{ Files, Paths, Path }
 
 import dotty.tools.dotc.Driver

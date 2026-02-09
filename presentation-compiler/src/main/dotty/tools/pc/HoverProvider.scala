@@ -3,18 +3,21 @@ package dotty.tools.pc
 import java.util as ju
 
 import scala.meta.internal.metals.Report
-import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.pc.ScalaHover
 import scala.meta.pc.ContentType
 import scala.meta.pc.HoverSignature
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.untpd.InferredTypeTree
 import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -25,8 +28,6 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.InteractiveEnrichments.*
-import dotty.tools.dotc.ast.untpd.InferredTypeTree
-import dotty.tools.dotc.core.StdNames
 
 object HoverProvider:
 
@@ -49,7 +50,7 @@ object HoverProvider:
     val path = unit
       .map(unit => Interactive.pathTo(unit.tpdTree, pos.span))
       .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos))
-    val indexedContext = IndexedContext(ctx)
+    val indexedContext = IndexedContext(pos)(using ctx)
 
     def typeFromPath(path: List[Tree]) =
       if path.isEmpty then NoType else path.head.typeOpt
@@ -81,14 +82,13 @@ object HoverProvider:
               |- ${path.map(_.toString()).mkString("\n- ")}
               |trees:
               |- ${unit
-               .map(u => List(u.tpdTree))
-               .getOrElse(driver.openedTrees(uri).map(_.tree))
-               .map(_.toString()).mkString("\n- ")}
+              .map(u => List(u.tpdTree))
+              .getOrElse(driver.openedTrees(uri).map(_.tree))
+              .map(_.toString()).mkString("\n- ")}
               |""".stripMargin,
           s"$uri::$posId"
         )
-      end report
-      reportContext.unsanitized.create(report, ifVerbose = true)
+      reportContext.unsanitized.create(() => report, /*ifVerbose =*/ true)
       ju.Optional.empty().nn
     else
       val skipCheckOnName =
@@ -96,7 +96,7 @@ object HoverProvider:
 
       val printerCtx = Interactive.contextOfPath(path)
       val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(
-        using IndexedContext(printerCtx)
+        using IndexedContext(pos)(using printerCtx)
       )
       MetalsInteractive.enclosingSymbolsWithExpressionType(
         enclosing,
@@ -110,22 +110,23 @@ object HoverProvider:
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer, contentType)
         case symbolTpes @ ((symbol, tpe, None) :: _) =>
-          val exprTpw = tpe.widenTermRefExpr.deepDealias
+          val exprTpw = tpe.widenTermRefExpr.deepDealiasAndSimplify
           val hoverString =
             tpw match
               // https://github.com/scala/scala3/issues/8891
               case tpw: ImportType =>
                 printer.hoverSymbol(symbol, symbol.paramRef)
               case _ =>
-                val (tpe, sym) =
+                val (innerTpe, sym) =
                   if symbol.isType then (symbol.typeRef, symbol)
                   else enclosing.head.seenFrom(symbol)
 
                 val finalTpe =
-                  if tpe != NoType then tpe
+                  if tpe.isNamedTupleType then tpe.widenTermRefExpr
+                  else if innerTpe != NoType then innerTpe
                   else tpw
 
-                printer.hoverSymbol(sym, finalTpe.deepDealias)
+                printer.hoverSymbol(sym, finalTpe.deepDealiasAndSimplify)
             end match
           end hoverString
 
@@ -134,7 +135,7 @@ object HoverProvider:
             .map(_.docstring())
             .mkString("\n")
 
-          val expresionTypeOpt = 
+          val expresionTypeOpt =
             if symbol.name == StdNames.nme.??? then
               InferExpectedType(search, driver, params).infer()
             else printer.expressionType(exprTpw)
@@ -159,9 +160,8 @@ object HoverProvider:
               ).nn
             case _ =>
               ju.Optional.empty().nn
-          end match
         case (_, tpe, Some(namedTupleArg)) :: _ =>
-          val exprTpw = tpe.widenTermRefExpr.deepDealias
+          val exprTpw = tpe.widenTermRefExpr.deepDealiasAndSimplify
           printer.expressionType(exprTpw) match
             case Some(tpe) =>
               ju.Optional.of(
@@ -190,11 +190,12 @@ object HoverProvider:
     case SelectDynamicExtractor(sel, n, name, rest) =>
       def findRefinement(tp: Type): Option[HoverSignature] =
         tp match
-          case RefinedType(_, refName, tpe) if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
+          case RefinedType(_, refName, tpe)
+              if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
             val resultType =
               rest match
                 case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
-                    tpe.tpe.widenTermRefExpr.deepDealias
+                  tpe.tpe.widenTermRefExpr.deepDealiasAndSimplify
                 case _ if n == nme.selectDynamic => tpe.resultType
                 case _ => tpe
 
@@ -220,12 +221,21 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.typeOpt.widen.deepDealias match
-        case r: RefinedType => Some(r)
-        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.deepDealias)
-        case _ => None
+      def extractRefinements(t: Type): List[Type] = t match
+        case r: RefinedType => List(r)
+        case t: (TypeRef | AppliedType) =>
+          // deepDealiasAndSimplify can succeed with no progress, so we have to avoid infinite loops
+          val t1 = t.deepDealiasAndSimplify
+          if t1 == t then Nil
+          else extractRefinements(t1)
+        case t: TermRef => extractRefinements(t.widen)
+        case t: TypeProxy => List(t.termSymbol.info.deepDealiasAndSimplify)
+        case AndType(l, r) => List(extractRefinements(l), extractRefinements(r)).flatten
+        case _ => Nil
 
-      refTpe.flatMap(findRefinement).asJava
+      val refTpe: List[Type] = extractRefinements(sel.typeOpt)
+
+      refTpe.flatMap(findRefinement).headOption.asJava
     case _ =>
       ju.Optional.empty().nn
 
@@ -250,5 +260,3 @@ object SelectDynamicExtractor:
         Some(sel, n, name, rest)
       case _ => None
     end match
-  end unapply
-end SelectDynamicExtractor

@@ -148,7 +148,7 @@ object ASMConverters {
 
     private def convertBsmArgs(a: Array[Object]): List[Object] = a.iterator.map({
       case h: asm.Handle => convertMethodHandle(h)
-      case _ => a // can be: Class, method Type, primitive constant
+      case x => x // can be: Class, method Type, primitive constant
     }).toList
 
     private def convertMethodHandle(h: asm.Handle): MethodHandle = MethodHandle(h.getTag, h.getOwner, h.getName, h.getDesc, h.isInterface)

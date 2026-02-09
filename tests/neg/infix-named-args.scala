@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 class C:
   def f = 42 + (x = 1) // error // werror
   def multi(x: Int, y: Int): Int = x + y

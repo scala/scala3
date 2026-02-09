@@ -20,7 +20,7 @@ object Lib {
         e
 
       case e @ '{ Some($x: Int) } =>
-        e: Expr[T & Some[Int]]
+        e: Expr[T] & Expr[Some[Int]]
         x: Expr[Int]
         e
 

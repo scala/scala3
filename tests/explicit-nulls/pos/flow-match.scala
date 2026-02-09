@@ -55,4 +55,20 @@ object MatchTest {
     case s2 => s2.nn
     case s3 => s3
   }
+
+  def f8(a: AnyRef | Null): String = a match {
+    case null => "null"
+    case s: String => s
+    case _ =>
+      val a2: AnyRef = a
+      a.toString
+  }
+
+  def f9(a: AnyRef | Null): String = a match {
+    case null => "null"
+    case s: String => s
+    case a1 =>
+      val a2: AnyRef = a1
+      a1.toString
+  }
 }

@@ -1,5 +1,5 @@
 -- Error: tests/neg/i9329.scala:8:6 ------------------------------------------------------------------------------------
 8 |class GrandSon extends Son // error
-  |      ^
+  |      ^^^^^^^^
   |class GrandSon needs to be abstract, since def name: String in trait Parent is not defined 
   |(The class implements abstract override def name: String in trait Son but that definition still needs an implementation)

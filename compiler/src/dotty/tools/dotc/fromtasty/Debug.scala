@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import scala.language.unsafeNulls
-
 import scala.util.control.NonFatal
 
 import dotty.tools.io.Directory

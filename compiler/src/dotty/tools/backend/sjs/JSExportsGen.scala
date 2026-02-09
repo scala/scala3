@@ -22,8 +22,7 @@ import TypeErasure.ErasedValueType
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 import dotty.tools.dotc.report
 
-import dotty.tools.sjs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe}
-import dotty.tools.sjs.ir.Names.DefaultModuleID
+import dotty.tools.sjs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe, WellKnownNames => jswkn}
 import dotty.tools.sjs.ir.OriginalName.NoOriginalName
 import dotty.tools.sjs.ir.Position.NoPosition
 import dotty.tools.sjs.ir.Trees.OptimizerHints
@@ -87,7 +86,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       symForAnnot.annotations.collect {
         case annot if annot.symbol == jsdefn.JSExportTopLevelAnnot =>
           val jsName = annot.argumentConstantString(0).get
-          val moduleID = annot.argumentConstantString(1).getOrElse(DefaultModuleID)
+          val moduleID = annot.argumentConstantString(1).getOrElse(jswkn.DefaultModuleID)
           TopLevelExportInfo(moduleID, jsName)(annot.tree.sourcePos)
       }
     }
@@ -319,7 +318,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
-      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)(Unversioned)
+      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(using firstAlt.sourcePos), None, None)(Unversioned)
     } else {
       genMemberExportOrDispatcher(name, isProp, alts, static = false)
     }
@@ -370,7 +369,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       }
     }
 
-    js.JSPropertyDef(flags, genExpr(jsName)(alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
+    js.JSPropertyDef(flags, genExpr(jsName)(using alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
   }
 
   private def genExportMethod(alts0: List[Symbol], jsName: JSName, static: Boolean)(using Context): js.JSMethodDef = {
@@ -947,8 +946,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Names.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(Names.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(jswkn.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(jswkn.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
           case jstpe.ClassType(_, _)                      => InstanceOfTypeTest(tpe)
 
           case jstpe.ArrayType(_, _) => InstanceOfTypeTest(tpe)
@@ -975,10 +974,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
   class FormalArgsRegistry(val minArgc: Int, needsRestParam: Boolean) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[jsNames.LocalName] =
-      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(NoPosition).name)
+      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(using NoPosition).name)
 
     private val restParamName: jsNames.LocalName =
-      if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
+      if (needsRestParam) freshLocalIdent("rest")(using NoPosition).name
       else null
 
     def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) = {

@@ -33,7 +33,7 @@ import Decorators.*
  */
 class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
-  val treeMap: tpd.Tree => tpd.Tree = identity _,
+  val treeMap: tpd.Tree => tpd.Tree = identity,
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
@@ -56,7 +56,7 @@ class TreeTypeMap(
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
    */
-  private val mapOwnerThis = new TypeMap with cc.CaptureSet.IdempotentCaptRefMap {
+  private val mapOwnerThis = new TypeMap {
     private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
       case Nil => tp
       case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
@@ -103,8 +103,8 @@ class TreeTypeMap(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
           self = tmap.transformSub(self),
-          body = impl.body mapconserve
-            (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
+          body = impl.body.mapconserve:
+            tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner)))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
@@ -225,6 +225,11 @@ class TreeTypeMap(
         val tmap1 = tmap.withMappedSyms(
           origCls(cls).typeParams ::: origDcls,
           cls.typeParams ::: mappedDcls)
+        mapped.foreach { sym =>
+          // outer Symbols can reference nested ones in info,
+          // so we remap that once again with the updated TreeTypeMap
+          sym.info = tmap1.mapType(sym.info)
+        }
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
         tmap1
       }

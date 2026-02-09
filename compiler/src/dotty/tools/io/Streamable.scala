@@ -5,7 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
 
 import java.net.URL
 import java.io.{ BufferedInputStream, InputStream }
@@ -87,7 +86,7 @@ object Streamable {
     def creationCodec: Codec = implicitly[Codec]
 
     /** Caller is responsible for closing the returned BufferedSource. */
-    def chars(codec: Codec): BufferedSource = Source.fromInputStream(inputStream())(codec)
+    def chars(codec: Codec): BufferedSource = Source.fromInputStream(inputStream())(using codec)
 
     /** Beware! Leaks an InputStream which will not be closed until it gets finalized. */
     def lines(): Iterator[String] = lines(creationCodec)
@@ -132,7 +131,7 @@ object Streamable {
     }.toByteArray()
 
   def slurp(is: => InputStream)(implicit codec: Codec): String =
-    new Chars { def inputStream() = is } slurp codec
+    new Chars { def inputStream() = is }.slurp(codec)
 
   def slurp(url: URL)(implicit codec: Codec): String =
     slurp(url.openStream())

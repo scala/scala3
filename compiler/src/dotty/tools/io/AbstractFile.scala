@@ -42,7 +42,7 @@ object AbstractFile {
    */
   def getDirectory(path: Path): AbstractFile =
     if (path.isDirectory) new PlainFile(path)
-    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) ZipArchive fromFile path.toFile
+    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) ZipArchive.fromFile(path.toFile)
     else null
 
   /**
@@ -54,7 +54,7 @@ object AbstractFile {
     if (url.getProtocol != "file") null
     else new PlainFile(new Path(Paths.get(url.toURI)))
 
-  def getResources(url: URL): AbstractFile = ZipArchive fromManifestURL url
+  def getResources(url: URL): AbstractFile = ZipArchive.fromManifestURL(url)
 }
 
 /**
@@ -115,7 +115,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def container : AbstractFile
 
   /** Returns the underlying File if any and null otherwise. */
-  def file: JFile = try {
+  def file: JFile | Null = try {
     if (jpath == null) null
     else jpath.toFile
   } catch {
@@ -123,7 +123,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns the underlying Path if any and null otherwise. */
-  def jpath: JPath
+  def jpath: JPath | Null
 
   /** An underlying source, if known.  Mostly, a zip/jar file. */
   def underlyingSource: Option[AbstractFile] = None
@@ -196,12 +196,12 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns all abstract subfiles of this abstract directory. */
-  def iterator(): Iterator[AbstractFile]
+  def iterator: Iterator[AbstractFile]
 
   /** Drill down through subdirs looking for the target, as in lookupName.
    *  Ths target name is the last of parts.
    */
-  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile =
+  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile | Null =
     var file: AbstractFile = this
     var i = 0
     val n = parts.length - 1

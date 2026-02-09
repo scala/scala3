@@ -378,7 +378,7 @@ object Semantic:
 // ----- Checker State -----------------------------------
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Context, Trace, Promoted, Cache.Data, Reporter) ?=> T
+  type Contextual[T] = (Context, Trace, Promoted, Cache.Data, Reporter, TreeCache.CacheData) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -442,6 +442,43 @@ object Semantic:
       errors.nonEmpty
 
   inline def reporter(using r: Reporter): Reporter = r
+
+// ----- Cache for Trees -----------------------------
+
+  object TreeCache:
+    class CacheData:
+      private val emptyTrees = mutable.Set[ValOrDefDef]()
+      private val templatesToSkip = mutable.Set[Template]()
+
+      def checkTemplateBodyValidity(tpl: Template, className: String)(using Context): Unit =
+        if (templatesToSkip.contains(tpl))
+          throw new TastyTreeException(className)
+
+        val errorCount = ctx.reporter.errorCount
+        tpl.forceFields()
+
+        if (ctx.reporter.errorCount > errorCount)
+          templatesToSkip.add(tpl)
+          throw new TastyTreeException(className)
+
+      extension (tree: ValOrDefDef)
+        def getRhs(using Context): Tree =
+          def getTree: Tree =
+            val errorCount = ctx.reporter.errorCount
+            val rhs = tree.rhs
+  
+            if (ctx.reporter.errorCount > errorCount)
+              emptyTrees.add(tree)
+              report.warning("Ignoring analyses of " + tree.name + " due to error in reading TASTy.")
+              EmptyTree
+            else
+              rhs
+  
+          if (emptyTrees.contains(tree)) EmptyTree
+          else getTree
+  end TreeCache
+
+  inline def treeCache(using t: TreeCache.CacheData): TreeCache.CacheData = t
 
 // ----- Operations on domains -----------------------------
   extension (a: Value)
@@ -576,7 +613,7 @@ object Semantic:
         case ref: Ref =>
           val target = if needResolve then resolve(ref.klass, field) else field
           if target.is(Flags.Lazy) then
-            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+            val rhs = target.defTree.asInstanceOf[ValDef].getRhs
             eval(rhs, ref, target.owner.asClass, cacheResult = true)
           else if target.exists then
             val obj = ref.objekt
@@ -591,7 +628,7 @@ object Semantic:
                 // return `Hot` here, errors are reported in checking `ThisRef`
                 Hot
               else if target.hasSource then
-                val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
+                val rhs = target.defTree.asInstanceOf[ValOrDefDef].getRhs
                 eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
                 val error = CallUnknown(field)(trace)
@@ -631,6 +668,8 @@ object Semantic:
         val methodType = atPhaseBeforeTransforms { meth.info.stripPoly }
         var allArgsHot = true
         val allParamTypes = methodType.paramInfoss.flatten.map(_.repeatedToSingle)
+        if(allParamTypes.size != args.size)
+          report.warning("[Internal error] Number of parameters do not match number of arguments in " + meth.name)
         val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
           val tryReporter = Reporter.errorsIn { arg.promote }
           allArgsHot = allArgsHot && tryReporter.errors.isEmpty
@@ -715,7 +754,7 @@ object Semantic:
               else
                 reporter.reportAll(tryReporter.errors)
                 extendTrace(ddef) {
-                  eval(ddef.rhs, ref, cls, cacheResult = true)
+                  eval(ddef.getRhs, ref, cls, cacheResult = true)
                 }
             else if ref.canIgnoreMethodCall(target) then
               Hot
@@ -777,7 +816,7 @@ object Semantic:
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { init(tpl, ref, cls) }
             else
-              val initCall = ddef.rhs match
+              val initCall = ddef.getRhs match
                 case Block(call :: _, _) => call
                 case call => call
               extendTrace(ddef) { eval(initCall, ref, cls) }
@@ -796,7 +835,7 @@ object Semantic:
               extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
               ref
             else
-              extendTrace(ddef) { eval(ddef.rhs, ref, cls, cacheResult = true) }
+              extendTrace(ddef) { eval(ddef.getRhs, ref, cls, cacheResult = true) }
           else if ref.canIgnoreMethodCall(ctor) then
             Hot
           else
@@ -906,8 +945,7 @@ object Semantic:
 
               case Cold => Cold
 
-              case ref: Ref => eval(vdef.rhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
-
+              case ref: Ref => eval(vdef.getRhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
               case _ =>
                  report.warning("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
                  Hot
@@ -1114,7 +1152,7 @@ object Semantic:
    *
    *  The class to be checked must be an instantiable concrete class.
    */
-  private def checkClass(classSym: ClassSymbol)(using Cache.Data, Context): Unit =
+  private def checkClass(classSym: ClassSymbol)(using Cache.Data, Context, TreeCache.CacheData): Unit =
     val thisRef = ThisRef(classSym)
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
@@ -1149,8 +1187,12 @@ object Semantic:
    */
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given Cache.Data()
+    given TreeCache.CacheData()
     for classSym <- classes if isConcreteClass(classSym) && !classSym.isStaticObject do
-      checkClass(classSym)
+      try
+        checkClass(classSym)
+      catch
+        case TastyTreeException(className) => report.warning("Skipping the analysis of " + classSym.show + " due to an error reading the body of " + className + "'s TASTy.")
 
 // ----- Semantic definition --------------------------------
   type ArgInfo = TraceValue[Value]
@@ -1320,10 +1362,10 @@ object Semantic:
           }
 
       case closureDef(ddef) =>
-        Fun(ddef.rhs, thisV, klass)
+        Fun(ddef.getRhs, thisV, klass)
 
       case PolyFun(ddef) =>
-        Fun(ddef.rhs, thisV, klass)
+        Fun(ddef.getRhs, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
@@ -1375,7 +1417,7 @@ object Semantic:
 
       case vdef : ValDef =>
         // local val definition
-        eval(vdef.rhs, thisV, klass)
+        eval(vdef.getRhs, thisV, klass)
 
       case ddef : DefDef =>
         // local method
@@ -1497,6 +1539,8 @@ object Semantic:
    * @param klass     The class to which the template belongs.
    */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
+    treeCache.checkTemplateBodyValidity(tpl, klass.show)
+
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.objekt.field(vdef.symbol)
     }.toMap
@@ -1593,8 +1637,8 @@ object Semantic:
 
     // class body
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
-      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
-        val res = eval(vdef.rhs, thisV, klass)
+      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.getRhs.isEmpty =>
+        val res = eval(vdef.getRhs, thisV, klass)
         // TODO: Improve promotion to avoid handling enum initialization specially
         //
         // The failing case is tests/init/pos/i12544.scala due to promotion failure.

@@ -3,8 +3,11 @@ package snippets
 
 import java.nio.file.Path
 
-case class SnippetCompilerArg(flag: SCFlags):
+case class SnippetCompilerArg(flag: SCFlags, scalacOptions: Seq[String] = Seq.empty):
   def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
+  def withScalacOptions(opts: Seq[String]): SnippetCompilerArg = copy(scalacOptions = scalacOptions ++ opts)
+  def merge(other: SnippetCompilerArg): SnippetCompilerArg =
+    SnippetCompilerArg(other.flag, scalacOptions ++ other.scalacOptions)
 
 enum SCFlags(val flagName: String):
   case Compile extends SCFlags("compile")

@@ -3,8 +3,12 @@ package translators
 
 case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtils:
   def plain(str: String): SignatureBuilder = copy(content = content :+ Plain(str))
-  def name(str: String, dri: DRI): SignatureBuilder = copy(content = content :+ Name(str, dri))
-  def tpe(text: String, dri: Option[DRI]): SignatureBuilder = copy(content = content :+ Type(text, dri))
+  def name(str: String, dri: DRI, isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
+    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
+    copy(content = content ++ (Name(str, dri) :: suffix))
+  def tpe(text: String, dri: Option[DRI], isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
+    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
+    copy(content = content ++ (Type(text, dri) :: suffix))
   def keyword(str: String): SignatureBuilder = copy(content = content :+ Keyword(str))
   def tpe(text: String, dri: DRI): SignatureBuilder = copy(content = content :+ Type(text, Some(dri)))
   def signature(s: Signature): SignatureBuilder = copy(content = content ++ s)
@@ -90,7 +94,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
     }
 
   def typeParamList(on: TypeParameterList) = list(on.toList, List(Plain("[")), List(Plain("]"))){ (bdr, e) =>
-    bdr.annotationsInline(e).keyword(e.variance).tpe(e.name, Some(e.dri)).signature(e.signature)
+    bdr.annotationsInline(e).keyword(e.variance).tpe(e.name, Some(e.dri), e.isCaptureVar).signature(e.signature)
   }
 
   def functionTermParameters(paramss: Seq[TermParameterList]) =

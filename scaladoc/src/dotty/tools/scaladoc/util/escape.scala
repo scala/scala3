@@ -1,10 +1,10 @@
 package dotty.tools.scaladoc.util
 
 object Escape:
-  def escapeUrl(url: String) = url
+  def escapeUrl(url: String): String = url
     .replace("#","%23")
 
-  def escapeFilename(filename: String) =
+  def escapeFilename(filename: String): String =
     // from compiler/src/dotty/tools/dotc/util/NameTransformer.scala
     val escaped = filename
       .replace("~", "$tilde")

@@ -20,17 +20,15 @@ object Names {
    */
   type PreName = Name | String
 
-  /** A common superclass of Name and Symbol. After bootstrap, this should be
-   *  just the type alias Name | Symbol
-   */
-  abstract class Designator
+  /** A common type of Name and Symbol */
+  type Designator = Name | Symbols.Symbol
 
   /** A name is either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, Showable derives CanEqual {
+  abstract class Name extends Showable derives CanEqual {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
@@ -185,7 +183,7 @@ object Names {
     def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
 
-    @sharable // because of synchronized block in `and`
+    @sharable // because of synchronized block in `add`
     private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
 
     private def add(info: NameInfo): TermName = synchronized {
@@ -393,7 +391,7 @@ object Names {
             // because asserts are caught in exception handlers which might
             // cause other failures. In that case the first, important failure
             // is lost.
-            System.err.nn.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
             Thread.dumpStack()
             assert(false)
           }
@@ -404,8 +402,8 @@ object Names {
      *  from GenBCode or it also contains one of the allowed methods below.
      */
     private def toStringOK = {
-      val trace: Array[StackTraceElement] = Thread.currentThread.nn.getStackTrace.asInstanceOf[Array[StackTraceElement]]
-      !trace.exists(_.getClassName.nn.endsWith("GenBCode")) ||
+      val trace: Array[StackTraceElement] = Thread.currentThread.getStackTrace.asInstanceOf[Array[StackTraceElement]]
+      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
       trace.exists(elem =>
           List(
               "mangledString",

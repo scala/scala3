@@ -1,9 +1,15 @@
 import language.experimental.captureChecking
-import caps.cap
+import caps.any
+
+trait List[+T]:
+  def foreach(op: T => Unit): Unit = ???
+
+object List:
+  def apply[T](elem: T): List[T] = ???
 
 def test(io: Object^, async: Object^) =
-  def compose(op: List[(() ->{cap} Unit, () ->{cap} Unit)]): List[() ->{op*} Unit] =
-    List(() => op.foreach((f,g) => { f(); g() }))
+  def compose(op: List[(() ->{any} Unit, () ->{any} Unit)]): List[() ->{op*} Unit] =
+    List(() => op.foreach((f,g) => { f(); g() })) // was error now OK
 
   def compose1(op: List[(() ->{async} Unit, () ->{io} Unit)]): List[() ->{op*} Unit] =
     compose(op)

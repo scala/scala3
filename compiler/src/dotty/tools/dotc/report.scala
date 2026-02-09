@@ -20,8 +20,11 @@ object report:
   private def issueWarning(warning: Warning)(using Context): Unit =
     ctx.reporter.report(warning)
 
+  def configurationWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+    issueWarning(ConfigurationWarning(msg, pos.sourcePos))
+
   def deprecationWarning(msg: Message, pos: SrcPos, origin: String = "")(using Context): Unit =
-    issueWarning(new DeprecationWarning(msg, pos.sourcePos, origin))
+    issueWarning(DeprecationWarning(msg, addInlineds(pos), origin))
 
   def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
@@ -66,7 +69,7 @@ object report:
 
   def error(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     val fullPos = addInlineds(pos)
-    ctx.reporter.report(new Error(msg, fullPos))
+    ctx.reporter.report(Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
   def error(msg: => String, pos: SrcPos)(using Context): Unit =
@@ -84,8 +87,8 @@ object report:
   def bestEffortError(ex: Throwable, msg: String)(using Context): Unit =
     val stackTrace =
       Option(ex.getStackTrace()).map { st =>
-        if st.nn.isEmpty then ""
-        else s"Stack trace: \n ${st.nn.mkString("\n ")}".stripMargin
+        if st.isEmpty then ""
+        else s"Stack trace: \n ${st.mkString("\n ")}".stripMargin
       }.getOrElse("")
     // Build tools and dotty's test framework may check precisely for
     // "Unsuccessful best-effort compilation." error text.
@@ -95,19 +98,21 @@ object report:
           |Cause:
           | ${ex.toString.replace("\n", "\n ")}
           |${stackTrace}"""
-    ctx.reporter.report(new Error(fullMsg, NoSourcePosition))
+    ctx.reporter.report(Error(fullMsg, NoSourcePosition))
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
-      if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
-      else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
-    else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
+    if sourceVersion != SourceVersion.`2.13` then
+      // ignore errors or warningsfor Scala 2 stdlib sources
+      if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
+        if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
+        else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+      else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
 
   def incompleteInputError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
-    ctx.reporter.incomplete(new Error(msg, pos.sourcePos))
+    ctx.reporter.incomplete(Error(msg, pos.sourcePos))
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
@@ -138,11 +143,11 @@ object report:
 
   private def addInlineds(pos: SrcPos)(using Context): SourcePosition =
     def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match
-      case inlined :: inlineds1 => pos.withOuter(recur(inlined.sourcePos, inlineds1))
+      case inlined :: inlineds =>
+        val outer = recur(inlined.sourcePos, inlineds)
+        pos.withOuter(outer)
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
-
-  private object messageRendering extends MessageRendering
 
   // Should only be called from Run#enrichErrorMessage.
   def enrichErrorMessage(errorMessage: String)(using Context): String =

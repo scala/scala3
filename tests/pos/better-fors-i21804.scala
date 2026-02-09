@@ -1,5 +1,3 @@
-import scala.language.experimental.betterFors
-
 case class Container[A](val value: A) {
   def map[B](f: A => B): Container[B] = Container(f(value))
 }

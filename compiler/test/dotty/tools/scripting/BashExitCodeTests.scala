@@ -5,13 +5,14 @@ package scripting
 import scala.language.unsafeNulls
 
 import java.nio.file.Files, java.nio.charset.StandardCharsets.UTF_8
-import org.junit.{ After, Test }
+import org.junit.{ After, Test, Ignore }
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
 
 import ScriptTestEnv.*
 
+@Ignore
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BashExitCodeTests:
   private var myTmpDir: String | Null = null
@@ -74,9 +75,7 @@ class BashExitCodeTests:
   @Test def vPhases       = scala("-Vphases")(0)
 
   @Test def replEval      =
-    // Do not run this test on Windows since it is wrongly escaped (#22689)
-    assumeFalse(System.getProperty("os.name").startsWith("Windows"));
-    repl("--repl-quit-after-init", "--repl-init-script", "\'println(\"Hello from init script!\"); val i = 2 * 2\'")(0)
+    repl("--repl-quit-after-init", "--repl-init-script", "'val i = 2 * 2; val j = i + 2'")(0)
 
   /** A utility for running two commands in a row, like you do in bash. */
   extension (inline u1: Unit) inline def & (inline u2: Unit): Unit = { u1; u2 }

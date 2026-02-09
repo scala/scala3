@@ -73,10 +73,16 @@ object JSSymUtils {
           lazy val pc = sym.info.paramNamess.map(_.size).sum
 
           sym.name match {
-            case nme.apply                             => Call
-            case JSUnaryOpMethodName(code) if pc == 0  => UnaryOp(code)
-            case JSBinaryOpMethodName(code) if pc == 1 => BinaryOp(code)
-            case _                                     => default
+            case nme.apply =>
+              Call
+            case JSUnaryOpMethodName(code, defaultsToOp)
+                if (defaultsToOp || sym.hasAnnotation(jsdefn.JSOperatorAnnot)) && pc == 0 =>
+              UnaryOp(code)
+            case JSBinaryOpMethodName(code, defaultsToOp)
+                if (defaultsToOp || sym.hasAnnotation(jsdefn.JSOperatorAnnot)) && pc == 1 =>
+              BinaryOp(code)
+            case _ =>
+              default
           }
         } else {
           default
@@ -164,9 +170,9 @@ object JSSymUtils {
       sym.getAnnotation(jsdefn.JSNameAnnot).fold[JSName] {
         JSName.Literal(defaultJSName)
       } { annotation =>
-        annotation.arguments.head match {
-          case Literal(Constant(name: String)) => JSName.Literal(name)
-          case tree                            => JSName.Computed(tree.symbol)
+        annotation.argumentConstantString(0) match {
+          case Some(name) => JSName.Literal(name)
+          case None       => JSName.Computed(annotation.arguments.head.symbol)
         }
       }
     }
@@ -182,6 +188,7 @@ object JSSymUtils {
         sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
       val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase) {
+        // See also JSCodeGen.genActualArgs
         val list =
           for ((name, info) <- paramNamesAndTypes) yield {
             val v =
@@ -230,43 +237,70 @@ object JSSymUtils {
     end sjsNeedsField
   }
 
+  /** Extractor for a `TermName` that *may* be a JS unary operator.
+   *
+   *  If it may be a JS unary operator, then a method with that name may have
+   *  the `@JSOperator` annotation, and it will be treated as such.
+   *
+   *  If a method has neither `@JSName` nor `@JSOperator`, then a default is
+   *  chosen. If the `Boolean` value is `true`, the default is to treat the
+   *  method as if it had `@JSOperator`. If it is `false`, the default is *not*
+   *  to treat it as an operator.
+   *
+   *  Currently, all JS unary operators default to `@JSOperator`.
+   */
   private object JSUnaryOpMethodName {
     private val map = Map(
-      nme.UNARY_+ -> js.JSUnaryOp.+,
-      nme.UNARY_- -> js.JSUnaryOp.-,
-      nme.UNARY_~ -> js.JSUnaryOp.~,
-      nme.UNARY_! -> js.JSUnaryOp.!
+      nme.UNARY_+ -> (js.JSUnaryOp.+, true),
+      nme.UNARY_- -> (js.JSUnaryOp.-, true),
+      nme.UNARY_~ -> (js.JSUnaryOp.~, true),
+      nme.UNARY_! -> (js.JSUnaryOp.!, true),
     )
 
-    def unapply(name: TermName): Option[js.JSUnaryOp.Code] =
+    def unapply(name: TermName): Option[(js.JSUnaryOp.Code, Boolean)] =
       map.get(name)
   }
 
+  /** Extractor for a `TermName` that *may* be a JS binary operator.
+   *
+   *  If it may be a JS binary operator, then a method with that name may have
+   *  the `@JSOperator` annotation, and it will be treated as such.
+   *
+   *  If a method has neither `@JSName` nor `@JSOperator`, then a default is
+   *  chosen. If the `Boolean` value is `true`, the default is to treat the
+   *  method as if it had `@JSOperator`. If it is `false`, the default is *not*
+   *  to treat it as an operator.
+   *
+   *  Most JS binary operators default to `@JSOperator`. Currently, the only
+   *  exception is `**`, for backward compatibility reasons.
+   */
   private object JSBinaryOpMethodName {
     private val map = Map(
-      nme.ADD -> js.JSBinaryOp.+,
-      nme.SUB -> js.JSBinaryOp.-,
-      nme.MUL -> js.JSBinaryOp.*,
-      nme.DIV -> js.JSBinaryOp./,
-      nme.MOD -> js.JSBinaryOp.%,
+      nme.ADD -> (js.JSBinaryOp.+, true),
+      nme.SUB -> (js.JSBinaryOp.-, true),
+      nme.MUL -> (js.JSBinaryOp.*, true),
+      nme.DIV -> (js.JSBinaryOp./, true),
+      nme.MOD -> (js.JSBinaryOp.%, true),
 
-      nme.LSL -> js.JSBinaryOp.<<,
-      nme.ASR -> js.JSBinaryOp.>>,
-      nme.LSR -> js.JSBinaryOp.>>>,
-      nme.OR  -> js.JSBinaryOp.|,
-      nme.AND -> js.JSBinaryOp.&,
-      nme.XOR -> js.JSBinaryOp.^,
+      nme.LSL -> (js.JSBinaryOp.<<, true),
+      nme.ASR -> (js.JSBinaryOp.>>, true),
+      nme.LSR -> (js.JSBinaryOp.>>>, true),
+      nme.OR  -> (js.JSBinaryOp.|, true),
+      nme.AND -> (js.JSBinaryOp.&, true),
+      nme.XOR -> (js.JSBinaryOp.^, true),
 
-      nme.LT -> js.JSBinaryOp.<,
-      nme.LE -> js.JSBinaryOp.<=,
-      nme.GT -> js.JSBinaryOp.>,
-      nme.GE -> js.JSBinaryOp.>=,
+      nme.LT -> (js.JSBinaryOp.<, true),
+      nme.LE -> (js.JSBinaryOp.<=, true),
+      nme.GT -> (js.JSBinaryOp.>, true),
+      nme.GE -> (js.JSBinaryOp.>=, true),
 
-      nme.ZAND -> js.JSBinaryOp.&&,
-      nme.ZOR  -> js.JSBinaryOp.||
+      nme.ZAND -> (js.JSBinaryOp.&&, true),
+      nme.ZOR  -> (js.JSBinaryOp.||, true),
+
+      termName("**") -> (js.JSBinaryOp.**, false),
     )
 
-    def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
+    def unapply(name: TermName): Option[(js.JSBinaryOp.Code, Boolean)] =
       map.get(name)
   }
 }

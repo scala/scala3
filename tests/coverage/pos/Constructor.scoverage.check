@@ -110,6 +110,23 @@ C
 Class
 covtest.C
 x
+161
+162
+13
+<none>
+Literal
+false
+0
+false
+1
+
+6
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+x
 153
 158
 13
@@ -120,7 +137,7 @@ false
 false
 def x
 
-6
+7
 Constructor.scala
 covtest
 C
@@ -137,7 +154,7 @@ false
 false
 f(x)
 
-7
+8
 Constructor.scala
 covtest
 C
@@ -154,7 +171,24 @@ false
 false
 x
 
-8
+9
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+g
+188
+189
+16
+<none>
+Literal
+false
+0
+false
+2
+
+10
 Constructor.scala
 covtest
 C
@@ -171,7 +205,7 @@ false
 false
 def g
 
-9
+11
 Constructor.scala
 covtest
 O
@@ -188,7 +222,24 @@ false
 false
 def g
 
-10
+12
+Constructor.scala
+covtest
+O
+Object
+covtest.O
+y
+231
+232
+20
+<none>
+Literal
+false
+0
+false
+1
+
+13
 Constructor.scala
 covtest
 O
@@ -205,7 +256,7 @@ false
 false
 def y
 
-11
+14
 Constructor.scala
 covtest
 O
@@ -221,21 +272,4 @@ false
 0
 false
 g(y)
-
-12
-Constructor.scala
-covtest
-O
-Object
-covtest.O
-<init>
-237
-238
-21
-y
-Ident
-false
-0
-false
-y
 

@@ -1,6 +1,6 @@
 import scala.language.experimental.erasedDefinitions
 
-erased class EC
+class EC extends compiletime.Erased
 
 class X1(implicit i: Int)
 class X2(using i: Int)

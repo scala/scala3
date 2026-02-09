@@ -9,3 +9,8 @@
   |│           ^^^^^^^
   |└── (() => x) // warn	[ global-irrelevance3.scala:9 ]
   |           ^
+  |The mutable state is created through: 
+  |├── object A:	[ global-irrelevance3.scala:1 ]
+  |│   ^
+  |└── val p: Pair = foo()	[ global-irrelevance3.scala:3 ]
+  |                  ^^^^^
