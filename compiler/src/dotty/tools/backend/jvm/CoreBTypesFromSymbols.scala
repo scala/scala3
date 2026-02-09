@@ -11,16 +11,16 @@ import dotty.tools.dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import BCodeAsmCommon.*
-import dotty.tools.dotc.core.Flags.{JavaDefined, ModuleClass, PackageClass, Trait}
-import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase}
+import dotty.tools.dotc.core.Flags.{JavaDefined, Method, ModuleClass, PackageClass, Trait}
+import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import DottyBackendInterface.{*, given}
 import PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
+import dotty.tools.backend.jvm.BackendReporting.{ClassNotFoundWhenBuildingInlineInfoFromSymbol, ClassSymbolInfoFailureSI9111}
 
 import scala.annotation.threadUnsafe
 import scala.tools.asm
 
-
-final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess)(using val ctx: Context) extends CoreBTypes(ppa) {
+final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ctx: Context) extends CoreBTypes(ppa) {
 
   @threadUnsafe private lazy val classBTypeFromInternalNameMap =
     collection.concurrent.TrieMap.empty[String, ClassBType]
@@ -45,7 +45,7 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess)(using va
         val internalName = classSym.javaBinaryName
         // We first create and add the ClassBType to the hash map before computing its info. This
         // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-        val result = classBType(internalName, classSym, true)((ct, cs) => Right(createClassInfo(ct, cs)))
+        val result = classBType(internalName, classSym, true)((ct, cs) => Right(createClassInfo(ct, cs.asClass)))
         convertedClasses(classSym) = result
         result
       })
@@ -60,7 +60,8 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess)(using va
         interfaces = Nil,
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
         nestedClasses = LazyWithoutLock(getMemberClasses(mcs).map(classBTypeFromSymbol)),
-        nestedInfo = LazyWithoutLock(None)
+        nestedInfo = LazyWithoutLock(None),
+        inlineInfoSource = InlineInfoSource.Missing
       ))
     )
   }
@@ -151,7 +152,7 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess)(using va
 
     val nestedInfo = buildNestedInfo(classSym)
 
-    ClassInfo(superClass, interfaces, flags, LazyWithoutLock(memberClasses), LazyWithoutLock(nestedInfo))
+    ClassInfo(superClass, interfaces, flags, LazyWithoutLock(memberClasses), LazyWithoutLock(nestedInfo), InlineInfoSource.Symbol(classSym.asClass, classBType.internalName))
   }
 
   /** For currently compiled classes: All locally defined classes including local classes.
