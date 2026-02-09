@@ -4,11 +4,11 @@ package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
 import ast.tpd, tpd.*
-import util.Spans.Span
+import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
 import printing.Texts.Text
 import cc.{isRetainsLike, RetainingAnnotation}
-import config.Feature
+import config.Feature.sourceVersion
 import Decorators.*
 
 import scala.annotation.internal.sharable
@@ -141,6 +141,9 @@ object Annotations {
     assert(tpe.isInstanceOf[AppliedType | TypeRef], tpe)
 
     def tree(using Context) = TypeTree(tpe)
+
+    def oldTree(using Context): Tree =
+      New(tpe, Nil).withSpan(NoSpan)
 
     override def symbol(using Context) = tpe.typeSymbol
 
