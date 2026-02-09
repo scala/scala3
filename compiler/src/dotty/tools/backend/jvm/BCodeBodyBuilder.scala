@@ -804,7 +804,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
             case _ =>
               null
           }
-          generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span, specificReceiver)
+          generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app, specificReceiver)
 
         // 'new' constructor call: Note: since constructors are
         // thought to return an instance of what they construct,
@@ -829,7 +829,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
               stack.push(rt)
               genLoadArguments(args, paramTKs(app))
               stack.pop(2)
-              genCallMethod(ctor, InvokeStyle.Special, app.span)
+              genCallMethod(ctor, InvokeStyle.Special, app)
 
             case _ =>
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
@@ -839,7 +839,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = ts.asmBoxTo(nativeKind)
-          bc.invokestatic(ts.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
+          bc.invokestatic(ts.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
           generatedType = ts.boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
@@ -847,7 +847,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           val boxType = ts.unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
           val MethodNameAndType(mname, methodType) = ts.asmUnboxTo(boxType)
-          bc.invokestatic(ts.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
+          bc.invokestatic(ts.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
@@ -885,7 +885,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
               // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
               val target: String = tpeTK(qual).asRefBType.classOrArrayType
               val methodBType = asmMethodType(sym)
-              bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor)
+              bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor, app)
               generatedType = methodBType.returnType
             } else {
               val receiverClass = if (!invokeStyle.isVirtual) null else {
@@ -901,7 +901,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
                   defn.ObjectClass
                 } else qualSym
               }
-              generatedType = genCallMethod(sym, invokeStyle, app.span, receiverClass)
+              generatedType = genCallMethod(sym, invokeStyle, app, receiverClass)
             }
           }
       }
@@ -1410,7 +1410,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
      * invocation instruction, otherwise `method.owner`. A specific receiver class is needed to
      * prevent IllegalAccessError in some virtual and super calls (aladdin bug 455, i22628).
      */
-    def genCallMethod(method: Symbol, style: InvokeStyle, pos: Span = NoSpan, specificReceiver: Symbol = null): BType = {
+    private def genCallMethod(method: Symbol, style: InvokeStyle, pos: Positioned | Null = null, specificReceiver: Symbol = null): BType = {
       val methodOwner = method.owner
 
       // the class used in the invocation's method descriptor in the classfile
@@ -1463,9 +1463,9 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = traitSuperAccessorName(method)
-          bc.invokestatic(receiverName, staticName, staticDesc, isInterface)
+          bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
-          bc.invokespecial(receiverName, jname, mdescr, isInterface)
+          bc.invokespecial(receiverName, jname, mdescr, isInterface, pos)
         }
       } else {
         val opc = style match {
@@ -1473,7 +1473,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           case Special => Opcodes.INVOKESPECIAL
           case Virtual => if (isInterface) Opcodes.INVOKEINTERFACE else Opcodes.INVOKEVIRTUAL
         }
-        bc.emitInvoke(opc, receiverName, jname, mdescr, isInterface)
+        bc.emitInvoke(opc, receiverName, jname, mdescr, isInterface, pos)
       }
 
       bmType.returnType
