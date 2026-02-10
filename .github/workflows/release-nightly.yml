@@ -7,14 +7,13 @@ on:
     - cron: '0 3 * * *'  # Every day at 3 AM
 
 jobs:
-
-  ## TODO: Add the compilation pipeline here
-
-  ## TODO: Add the test pipeline here
+  stdlib-tests:
+    uses: ./.github/workflows/stdlib.yaml
+    secrets: inherit
 
   release-maven-artifacts:
-    # TODO: Add a dependency to the test ad compilation pipeline before releasing
     uses: ./.github/workflows/release-maven-artifacts.yml
+    needs: [stdlib-tests]
     with:
       environment: release-nightly
     secrets: inherit
