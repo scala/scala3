@@ -311,9 +311,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val superClass: String = if (ps.isEmpty) ObjectRef.internalName else internalName(ps.head.typeSymbol)
 
       // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
-      // At this point `superCallTargets` won't be modified any more so let's reuse it (since using `++` would operate on lists and may lead to duplicates)
-      superCallTargets.addAll(classBTypeFromSymbol(claszSymbol).info.interfaces)
-      val interfaces = superCallTargets
+      // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.
+      //  It could be cleaned up given some work to make sure changing the order isn't a problem.)
+      val directInterfaces = claszSymbol.directlyInheritedTraits
+      val directInterfacesBTypes = directInterfaces.map(classBTypeFromSymbol)
+      val baseClassesBTypes = directInterfaces.iterator.flatMap(_.asClass.baseClasses.drop(1)).map(classBTypeFromSymbol).toSet
+      val additionalBTypes = superCallTargets.filter(!directInterfacesBTypes.contains(_))
+      val interfaces = directInterfacesBTypes.filter(t => !baseClassesBTypes(t) || superCallTargets(t)) ++ additionalBTypes
 
       val interfaceNames0 = interfaces.iterator.map(_.internalName).toList
       /* To avoid deadlocks when combining objects, lambdas and multi-threading,
