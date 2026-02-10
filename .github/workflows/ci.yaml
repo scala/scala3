@@ -85,6 +85,7 @@ jobs:
     permissions:
       contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
+    needs: [stdlib-tests]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
