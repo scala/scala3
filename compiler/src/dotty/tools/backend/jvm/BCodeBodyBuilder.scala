@@ -1420,8 +1420,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       import InvokeStyle.*
       if (style == Super) {
         val ownerBType = toTypeKind(method.owner.info)
-        if (method.owner.is(Trait)) {
-          superCallTargets.add(ownerBType.asInstanceOf[ClassBType])
+        if (method.owner.isInterface) {
+          superCallTargets.add(ownerBType.asClassBType)
         }
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
