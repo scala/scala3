@@ -108,7 +108,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
     // List only directly inherited interfaces.
     // This is not only a performance optimization (as the JVM needs to handle fewer inheritance declarations),
     // but also required for correctness in the presence of sealed interfaces (see i23479):
-    // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `A` directly is illegal.
+    // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `B` directly is illegal.
     val allBaseClasses = classSym.directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
     val interfaces = classSym.directlyInheritedTraits.filter(!allBaseClasses(_)).map(classBTypeFromSymbol)
 
