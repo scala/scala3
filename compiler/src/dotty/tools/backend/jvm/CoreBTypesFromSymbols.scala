@@ -569,8 +569,8 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
-        (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(unboxed), UNIT))),
-        (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(unboxed), UNIT)))
+        (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT))),
+        (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT)))
       )
     }))
   }
