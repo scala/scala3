@@ -184,7 +184,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName,
-        branch
+        branch,
+        ignored = isTreeExcluded(tree)
       )
       ctx.base.coverage.nn.addStatement(statement)
       id
@@ -240,7 +241,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return instrumentation result, with the preparation statement, coverage call and tree separated
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
-      if !isTreeExcluded(tree) && canInstrumentApply(tree) then
+      if canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
 
@@ -267,7 +268,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
       val sym = tree.symbol
-      if !isTreeExcluded(tree) && canInstrumentParameterless(sym) then
+      if canInstrumentParameterless(sym) then
         // call to a local parameterless method f
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
         InstrumentedParts.singleExpr(coverageCall, tree)
@@ -275,18 +276,14 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         InstrumentedParts.notCovered(tree)
 
     private def tryInstrument(tree: Literal)(using Context): InstrumentedParts =
-      if !isTreeExcluded(tree) then
-        val coverageCall = createInvokeCall(tree, tree.sourcePos)
-        InstrumentedParts.singleExpr(coverageCall, tree)
-      else
-        InstrumentedParts.notCovered(tree)
-
+      val coverageCall = createInvokeCall(tree, tree.sourcePos)
+      InstrumentedParts.singleExpr(coverageCall, tree)
 
     private def tryInstrument(tree: Select)(using Context): InstrumentedParts =
       val sym = tree.symbol
       val qual = transform(tree.qualifier).ensureConforms(tree.qualifier.tpe)
       val transformed = cpy.Select(tree)(qual, tree.name)
-      if !isTreeExcluded(tree) && canInstrumentParameterless(sym) then
+      if canInstrumentParameterless(sym) then
         // call to a parameterless method
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
         InstrumentedParts.singleExpr(coverageCall, transformed)
@@ -311,9 +308,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // - If t.isEmpty then `transform(t) == t` always hold,
         //   so we can avoid calling transform in that case.
         tree
-      else if isTreeExcluded(tree) then
-        // Tree is in an excluded region, transform but don't instrument
-        transform(tree)
       else
         val transformed = transform(tree)
         val coverageCall = createInvokeCall(tree, tree.sourcePos, branch = true)
@@ -525,10 +519,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * and the call is inserted at another place.
      */
     private def instrumentBody(parent: DefDef, body: Tree)(using Context): Tree =
-      // Don't instrument if the method is in an excluded region
-      if isTreeExcluded(parent) then
-        return body
-
       /* recurse on closures, so that we insert the call at the leaf:
 
          def g: (a: Ta) ?=> (b: Tb) = {
@@ -558,10 +548,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      *  the rhs Block, otherwise `HoistSuperArgs` will not be happy (see #17042).
      */
     private def instrumentSecondaryCtor(ctorDef: DefDef)(using Context): Tree =
-      // Don't instrument if the constructor is in an excluded region
-      if isTreeExcluded(ctorDef) then
-        return ctorDef.rhs
-
       // compute position like in instrumentBody
       val namePos = ctorDef.namePos
       val pos = namePos.withSpan(namePos.span.withStart(ctorDef.span.start))

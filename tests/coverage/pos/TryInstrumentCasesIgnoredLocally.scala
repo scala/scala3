@@ -46,8 +46,22 @@ class AllTreesIgnoredLocally:
   def ignoredBody: Int = 99
   // $COVERAGE-ON$
 
-  // --- instrumentSecondaryCtor ---
+  def coveredClosureDef: Int ?=> Int =
+    99
+  // $COVERAGE-OFF$
+  def ignoredClosureDef: Int ?=> Int =
+    99
+  // $COVERAGE-ON$
 
+  def coveredClosureBody: Int ?=> Int =
+    99
+  def ignoredClosureBody: Int ?=> Int =
+  // $COVERAGE-OFF$
+    99
+  // $COVERAGE-ON$
+
+
+// --- instrumentSecondaryCtor ---
 class CoveredCtor(val x: Int):
   def this(s: String) =
     this(s.length)

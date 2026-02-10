@@ -177,6 +177,244 @@ covtest
 C
 Class
 covtest.C
+block
+169
+178
+12
+<none>
+Literal
+false
+0
+true
+"literal"
+
+10
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+block
+183
+184
+13
+<none>
+Literal
+false
+0
+true
+0
+
+11
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+block
+148
+157
+11
+block
+DefDef
+false
+0
+true
+def block
+
+12
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+cond
+215
+220
+16
+<none>
+Literal
+false
+0
+true
+false
+
+13
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+cond
+226
+230
+16
+<none>
+Literal
+false
+0
+true
+true
+
+14
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+cond
+226
+230
+16
+<none>
+Literal
+true
+0
+true
+true
+
+15
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+cond
+240
+245
+17
+<none>
+Literal
+false
+0
+true
+false
+
+16
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+cond
+240
+245
+17
+<none>
+Literal
+true
+0
+true
+false
+
+17
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+cond
+188
+196
+15
+cond
+DefDef
+false
+0
+true
+def cond
+
+18
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+280
+285
+20
+<none>
+Literal
+false
+0
+true
+false
+
+19
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+291
+293
+20
+<none>
+Literal
+false
+0
+true
+()
+
+20
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+291
+293
+20
+<none>
+Literal
+true
+0
+true
+()
+
+21
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+293
+293
+20
+<none>
+Literal
+true
+0
+true
+
+
+22
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+249
+264
+19
+partialCond
+DefDef
+false
+0
+true
+def partialCond
+
+23
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
 new1
 331
 337
@@ -188,7 +426,7 @@ false
 false
 new {}
 
-10
+24
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -205,7 +443,7 @@ false
 false
 def new1
 
-11
+25
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -222,7 +460,7 @@ false
 false
 ()
 
-12
+26
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -239,7 +477,7 @@ true
 false
 ()
 
-13
+27
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -256,7 +494,7 @@ false
 false
 1
 
-14
+28
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -273,7 +511,7 @@ true
 false
 => 1
 
-15
+29
 SimpleMethodsIgnoredLocally.scala
 covtest
 C

@@ -58,6 +58,40 @@ covtest
 AllTreesIgnoredLocally
 Class
 covtest.AllTreesIgnoredLocally
+ignoredApply
+161
+166
+8
++
+Apply
+false
+0
+true
+x + 1
+
+3
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredApply
+129
+145
+8
+ignoredApply
+DefDef
+false
+0
+true
+def ignoredApply
+
+4
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
 coveredLiteral
 236
 238
@@ -69,7 +103,7 @@ false
 false
 42
 
-3
+5
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -86,7 +120,41 @@ false
 false
 def coveredLiteral
 
-4
+6
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredLiteral
+287
+289
+14
+<none>
+Literal
+false
+0
+true
+42
+
+7
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredLiteral
+261
+279
+14
+ignoredLiteral
+DefDef
+false
+0
+true
+def ignoredLiteral
+
+8
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -103,7 +171,7 @@ false
 false
 s.length
 
-5
+9
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -120,7 +188,41 @@ false
 false
 def coveredSelect
 
-6
+10
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredSelect
+468
+476
+20
+length
+Apply
+false
+0
+true
+s.length
+
+11
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredSelect
+432
+449
+20
+ignoredSelect
+DefDef
+false
+0
+true
+def ignoredSelect
+
+12
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -137,7 +239,7 @@ false
 false
 1
 
-7
+13
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -154,7 +256,7 @@ false
 false
 def local
 
-8
+14
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -171,7 +273,7 @@ false
 false
 local
 
-9
+15
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -188,7 +290,75 @@ false
 false
 def coveredIdent
 
-10
+16
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+local
+668
+669
+29
+<none>
+Literal
+false
+0
+true
+1
+
+17
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+local
+651
+660
+29
+local
+DefDef
+false
+0
+true
+def local
+
+18
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredIdent
+674
+679
+30
+local
+Ident
+false
+0
+true
+local
+
+19
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredIdent
+623
+639
+28
+ignoredIdent
+DefDef
+false
+0
+true
+def ignoredIdent
+
+20
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -205,7 +375,7 @@ false
 false
 x > 0
 
-11
+21
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -222,7 +392,7 @@ false
 false
 "pos"
 
-12
+22
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -239,7 +409,7 @@ true
 false
 "pos"
 
-13
+23
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -256,7 +426,7 @@ false
 false
 "neg"
 
-14
+24
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -273,7 +443,7 @@ true
 false
 "neg"
 
-15
+25
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -290,7 +460,109 @@ false
 false
 def coveredBranch
 
-16
+26
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBranch
+881
+886
+39
+>
+Apply
+false
+0
+true
+x > 0
+
+27
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBranch
+892
+897
+39
+<none>
+Literal
+false
+0
+true
+"pos"
+
+28
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBranch
+892
+897
+39
+<none>
+Literal
+true
+0
+true
+"pos"
+
+29
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBranch
+907
+912
+40
+<none>
+Literal
+false
+0
+true
+"neg"
+
+30
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBranch
+907
+912
+40
+<none>
+Literal
+true
+0
+true
+"neg"
+
+31
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBranch
+838
+855
+38
+ignoredBranch
+DefDef
+false
+0
+true
+def ignoredBranch
+
+32
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -307,7 +579,7 @@ false
 false
 99
 
-17
+33
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 AllTreesIgnoredLocally
@@ -324,16 +596,186 @@ false
 false
 def coveredBody
 
-18
+34
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBody
+1034
+1036
+46
+<none>
+Literal
+false
+0
+true
+99
+
+35
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredBody
+1011
+1026
+46
+ignoredBody
+DefDef
+false
+0
+true
+def ignoredBody
+
+36
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+$anonfun
+1100
+1102
+50
+<none>
+Literal
+false
+0
+false
+99
+
+37
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredClosureDef
+1059
+1080
+49
+coveredClosureDef
+DefDef
+false
+0
+false
+def coveredClosureDef
+
+38
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+$anonfun
+1166
+1168
+53
+<none>
+Literal
+false
+0
+true
+99
+
+39
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredClosureDef
+1125
+1146
+52
+ignoredClosureDef
+DefDef
+false
+0
+true
+def ignoredClosureDef
+
+40
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+$anonfun
+1233
+1235
+57
+<none>
+Literal
+false
+0
+false
+99
+
+41
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredClosureBody
+1191
+1213
+56
+coveredClosureBody
+DefDef
+false
+0
+false
+def coveredClosureBody
+
+42
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+$anonfun
+1300
+1302
+60
+<none>
+Literal
+false
+0
+true
+99
+
+43
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+ignoredClosureBody
+1238
+1260
+58
+ignoredClosureBody
+DefDef
+false
+0
+false
+def ignoredClosureBody
+
+44
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 CoveredCtor
 Class
 covtest.CoveredCtor
 <init>
-1128
-1136
-52
+1392
+1400
+66
 <init>
 DefDef
 false
@@ -341,20 +783,54 @@ false
 false
 def this
 
-19
+45
 TryInstrumentCasesIgnoredLocally.scala
 covtest
 CoveredCtor
 Class
 covtest.CoveredCtor
 <init>
-1159
-1167
-53
+1423
+1431
+67
 length
 Apply
 false
 0
 false
+s.length
+
+46
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+IgnoredCtor
+Class
+covtest.IgnoredCtor
+<init>
+1485
+1493
+71
+<init>
+DefDef
+false
+0
+true
+def this
+
+47
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+IgnoredCtor
+Class
+covtest.IgnoredCtor
+<init>
+1516
+1524
+72
+length
+Apply
+false
+0
+true
 s.length
 

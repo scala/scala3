@@ -126,6 +126,329 @@ covtest
 BranchesIgnoredLocally
 Class
 covtest.BranchesIgnoredLocally
+ignoredBranch
+204
+209
+10
+>
+Apply
+false
+0
+true
+x > 0
+
+7
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+215
+225
+10
+<none>
+Literal
+false
+0
+true
+"positive"
+
+8
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+215
+225
+10
+<none>
+Literal
+true
+0
+true
+"positive"
+
+9
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+235
+249
+11
+<none>
+Literal
+false
+0
+true
+"non-positive"
+
+10
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+235
+249
+11
+<none>
+Literal
+true
+0
+true
+"non-positive"
+
+11
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+161
+178
+9
+ignoredBranch
+DefDef
+false
+0
+true
+def ignoredBranch
+
+12
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+310
+315
+14
+<none>
+Literal
+false
+0
+true
+"one"
+
+13
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+307
+315
+14
+<none>
+Block
+true
+0
+true
+=> "one"
+
+14
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+330
+335
+15
+<none>
+Literal
+false
+0
+true
+"two"
+
+15
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+327
+335
+15
+<none>
+Block
+true
+0
+true
+=> "two"
+
+16
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+350
+357
+16
+<none>
+Literal
+false
+0
+true
+"other"
+
+17
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+347
+357
+16
+<none>
+Block
+true
+0
+true
+=> "other"
+
+18
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+253
+269
+13
+ignoredMatch
+DefDef
+false
+0
+true
+def ignoredMatch
+
+19
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+396
+401
+19
+/
+Apply
+false
+0
+true
+1 / 0
+
+20
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+396
+397
+19
+<none>
+Literal
+false
+0
+true
+1
+
+21
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+396
+401
+19
+/
+Apply
+true
+0
+true
+1 / 0
+
+22
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+449
+451
+21
+<none>
+Literal
+false
+0
+true
+-1
+
+23
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+446
+451
+21
+<none>
+Block
+true
+0
+true
+=> -1
+
+24
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+361
+380
+18
+ignoredTryCatch
+DefDef
+false
+0
+true
+def ignoredTryCatch
+
+25
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
 coveredMatch
 536
 541
@@ -137,7 +460,7 @@ false
 false
 "int"
 
-7
+26
 BranchesIgnoredLocally.scala
 covtest
 BranchesIgnoredLocally
@@ -154,7 +477,7 @@ true
 false
 => "int"
 
-8
+27
 BranchesIgnoredLocally.scala
 covtest
 BranchesIgnoredLocally
@@ -171,7 +494,7 @@ false
 false
 "string"
 
-9
+28
 BranchesIgnoredLocally.scala
 covtest
 BranchesIgnoredLocally
@@ -188,7 +511,7 @@ true
 false
 => "string"
 
-10
+29
 BranchesIgnoredLocally.scala
 covtest
 BranchesIgnoredLocally
@@ -205,7 +528,7 @@ false
 false
 "other"
 
-11
+30
 BranchesIgnoredLocally.scala
 covtest
 BranchesIgnoredLocally
@@ -222,7 +545,7 @@ true
 false
 => "other"
 
-12
+31
 BranchesIgnoredLocally.scala
 covtest
 BranchesIgnoredLocally
