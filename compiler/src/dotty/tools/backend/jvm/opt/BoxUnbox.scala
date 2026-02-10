@@ -14,7 +14,7 @@ package dotty.tools
 package backend.jvm
 package opt
 
-import scala.annotation.{tailrec, unused}
+import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
@@ -24,6 +24,7 @@ import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.BCodeUtils.*
+import dotty.tools.dotc.core.StdNames.nme
 
 final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreBTypes) {
 
@@ -790,7 +791,7 @@ final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreB
 
   private object Tuple {
     private def boxedTypes(mi: MethodInsnNode): List[Type] = Type.getArgumentTypes(mi.desc).toList
-    private def tupleClass(mi: MethodInsnNode): InternalName = mi.owner
+    private def tupleClass(mi: MethodInsnNode): InternalName = if mi.owner.endsWith("$") then mi.owner.substring(0, mi.owner.length - 1) else mi.owner
 
     def checkTupleCreation(insn: AbstractInsnNode, expectedKind: Option[Tuple], prodCons: ProdConsAnalyzer): Option[(BoxCreation, Tuple)] = {
       def checkKind(mi: MethodInsnNode): Option[Tuple] = expectedKind match {
@@ -798,8 +799,22 @@ final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreB
         case None => Some(Tuple(boxedTypes(mi), tupleClass(mi)))
       }
 
+      // The compiler transforms `TupleN.apply` into `new TupleN` only for specialized versions, so we must check for both
       insn match {
-        // no need to check for TupleN.apply: the compiler transforms case companion apply calls to constructor invocations
+        case mi: MethodInsnNode if mi.owner.startsWith("scala/Tuple") && mi.name == nme.apply.toString =>
+          checkKind(mi).flatMap(tk =>
+            val numArgs = Type.getArgumentTypes(mi.desc).length
+            val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - numArgs)
+            if receiverProds.size == 1 then
+              val prod = receiverProds.head
+              if prodCons.consumersOfOutputsFrom(prod) == Set(mi) then
+                Some(ModuleFactory(prod, mi), tk)
+              else
+                None
+            else
+              None
+          )
+
         case ti: TypeInsnNode if ti.getOpcode == NEW =>
           for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if backendUtils.isTupleConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
