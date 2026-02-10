@@ -242,8 +242,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
                   if (traitMethodForwarderKind > 0) GenericForwarder
                   else null
               }
-            }
-            else {
+            } else {
               val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
               if (forwarderKind < 0)
                 null
