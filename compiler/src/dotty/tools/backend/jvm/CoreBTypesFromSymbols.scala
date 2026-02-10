@@ -506,8 +506,8 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
       val unboxed = if primitive == defn.ObjectClass then ObjectRef else primitiveTypeMap(primitive)
-      val refClass = Symbols.requiredClass("scala.runtime." + boxed.name.toString + ".Ref")
-      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + boxed.name.toString + ".Ref")
+      val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
+      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
         (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), classBTypeFromSymbol(refClass)))),
         (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), classBTypeFromSymbol(volatileRefClass))))
@@ -520,8 +520,8 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
   private lazy val _srRefZeroMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
-      val refClass = Symbols.requiredClass("scala.runtime." + boxed.name.toString + ".Ref")
-      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + boxed.name.toString + ".Ref")
+      val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
+      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
         (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), classBTypeFromSymbol(refClass)))),
         (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), classBTypeFromSymbol(volatileRefClass))))
@@ -566,8 +566,8 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
       val unboxed = if primitive == defn.ObjectClass then ObjectRef else primitiveTypeMap(primitive)
-      val refClass = Symbols.requiredClass("scala.runtime." + boxed.name.toString + ".Ref")
-      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + boxed.name.toString + ".Ref")
+      val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
+      val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
         (classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(unboxed), UNIT))),
         (classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(unboxed), UNIT)))
