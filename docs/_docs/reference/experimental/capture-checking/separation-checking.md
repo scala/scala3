@@ -108,7 +108,7 @@ val x = a.get // ok
 One can also drop the explicit type of `b` and leave it to be inferred. That would
 not cause a separation error either.
 ```scala
-val a: Ref^ = Ref(0
+val a: Ref^ = Ref(0)
 val b = a
 val x = a.get // ok
 ```
@@ -129,22 +129,22 @@ Here, the definition of `b` is in error since the hidden sets of the two `^`s in
 
 When a `fresh` appears in the return type of a function it means a "fresh" top capability, different from what is known at the call site. Separation checking makes sure this is the case. For instance, the following is OK:
 ```scala
-def newRef(): Ref^ = Ref(1)
+def newRef(): Ref^{fresh} = Ref(1)
 ```
 And so is this:
 ```scala
-def newRef(): Ref^ =
+def newRef(): Ref^{fresh} =
   val a = Ref(1)
   a
 ```
 But the next definitions would cause a separation error:
 ```scala
 val a = Ref(1)
-def newRef(): Ref^ = a // error
+def newRef(): Ref^{fresh} = a // error
 ```
 The rule is that the hidden set of a `fresh` in a return type cannot reference exclusive or read-only capabilities defined outside of the function. What about parameters? Here's another illegal version:
 ```scala
-def incr(a: Ref^): Ref^ =
+def incr(a: Ref^): Ref^{fresh} =
   a.set(a.get + 1)
   a
 ```
@@ -158,9 +158,9 @@ Therefore, parameters cannot appear in the hidden sets of fresh result `fresh`s 
 
 ### Consume Parameters
 
-Returning parameters in fresh result `fresh`s is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
+Returning `fresh` parameters is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
 ```scala
-def incr(consume a: Ref^): Ref^ =
+def incr(consume a: Ref^): Ref^{fresh} =
   a.set(a.get + 1)
   a
 ```
@@ -183,7 +183,7 @@ Consume parameters enforce linear access to resources. This can be very useful. 
 
 For instance, we can define a function `linearAdd` that adds elements to buffers in-place without violating referential transparency:
 ```scala
-def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
+def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^{fresh} =
   buf += elem
 ```
 `linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `consume` modifier on `buf` ensures that the argument is not used after the call.
@@ -225,7 +225,7 @@ to `Buffer[T]^{any}` whereas the second expands to `Buffer[T]^{any.rd}`.
 Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `consume` modifier to the method itself.
 ```scala
 class Buffer[T] extends Mutable:
-  consume def +=(x: T): Buffer[T]^ = this // ok
+  consume def +=(x: T): Buffer[T]^{fresh} = this // ok
 ```
 `consume` on a method in a `Mutable` class implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
 ```scala
