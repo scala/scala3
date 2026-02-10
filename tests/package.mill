@@ -1,0 +1,3 @@
+package build.tests
+
+// dummy package so that tests/sjs-unit/package.mill is taken into account by Mill

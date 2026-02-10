@@ -1,0 +1,18 @@
+package build.`test-helpers`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait TestHelpers extends CrossScala3Module {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+  def sources = Task.Sources("src")
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.junit.jupiter:junit-jupiter-api:${Versions.junitJupiter}"
+  )
+}
+
+object `package` extends Cross[TestHelpers](BuildType.allValues)

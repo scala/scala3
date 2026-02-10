@@ -1,0 +1,68 @@
+package build.`language-server`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait LanguageServer extends CrossScala3Module {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.repl(crossValue)
+  )
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.eclipse.lsp4j:org.eclipse.lsp4j:0.6.0"
+      // overridden version below
+      // Original comment: Work around https://github.com/eclipse/lsp4j/issues/295
+      .exclude(("org.eclipse.xtend", "org.eclipse.xtend.lib")),
+    mvn"org.eclipse.xtend:org.eclipse.xtend.lib:2.16.0",
+    mvn"com.fasterxml.jackson.core:jackson-databind:${Versions.jacksonVersion}"
+  )
+  def scalacOptions = super.scalacOptions().filter(_ != "-Yexplicit-nulls")
+
+  def testSrc = Task.Source("test")
+
+  object test extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.`test-helpers`(crossValue)
+    )
+    def libraryPrecomputedRunClasspath: T[Seq[String]] =
+      build.library(crossValue).precomputedRunClasspath
+    def libraryRunClasspath: T[Seq[PathRef]] =
+      Task {
+        build.library(crossValue)
+          .runClasspath()
+          .filter(ref => os.exists(ref.path))
+      }
+    def testSources = Task {
+      Seq(testSrc(), buildInfoDir())
+    }
+    def buildInfoDir = Task {
+      val tq = "\"\"\""
+      val content =
+        s"""package dotty.tools.languageserver.util.server
+          |
+          |object BuildInfo {
+          |  def ideTestsCompilerVersion = "${publishVersion()}"
+          |  def ideTestsCompilerArguments: Seq[String] = Nil
+          |  def ideTestsDependencyClasspath = ${libraryPrecomputedRunClasspath().map(p => s"new java.io.File($tq$p$tq)").mkString("Seq[java.io.File](", ", ", ")")}
+          |}
+          |""".stripMargin
+
+      os.write(Task.dest / "BuildInfo.scala", content)
+
+      PathRef(Task.dest)
+    }
+    def runClasspath = Task {
+      val precomputedLibrary = libraryPrecomputedRunClasspath().map(os.Path(_))
+      val actualLibrary = libraryRunClasspath().map(_.path)
+      if (precomputedLibrary.filter(os.exists) != actualLibrary.filter(os.exists))
+        sys.error(
+          "Warning: standard library class path calculation mismatch: " +
+          s"pre-computed value $precomputedLibrary differs from actual value $actualLibrary."
+        )
+      super.runClasspath()
+    }
+  }
+}
+
+object `package` extends Cross[LanguageServer](BuildType.allValues)

@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.2-RC1"
+  val referenceVersion = "3.8.2-RC1" // Redefined in mill-build/src/scala3build/Versions.scala
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -70,7 +70,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.8.3"
+  val developedVersion = "3.8.3" // Redefined in mill-build/src/scala3build/Versions.scala
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -79,7 +79,7 @@ object Build {
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
   */
-  val baseVersion = s"$developedVersion-RC1"
+  val baseVersion = s"$developedVersion-RC1" // Redefined in mill-build/src/scala3build/Versions.scala
 
   /** The version of TASTY that should be emitted, checked in runtime test
    *  For defails on how TASTY version should be set see related discussions:
@@ -97,7 +97,7 @@ object Build {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimetnal
    */
-  val expectedTastyVersion = "28.9-experimental-1"
+  val expectedTastyVersion = "28.9-experimental-1" // Redefined in mill-build/src/scala3build/Versions.scala
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
@@ -1075,8 +1075,8 @@ object Build {
         "com.lihaoyi" %% "fansi"      % "0.5.1",
         "com.lihaoyi" %% "sourcecode" % "0.4.4",
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "io.get-coursier" % "interface" % "1.0.28", // used by the REPL for dependency resolution
-        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
+        "io.get-coursier" % "interface" % "1.0.28", // used by the REPL for dependency resolution // copied in build.mill
+        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments // copied in build.mill
       ),
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
@@ -1354,9 +1354,9 @@ object Build {
       // More info here: https://github.com/scala-js/scala-js/issues/5217
       Compile / packageBin / mappings := {
         (Compile / packageBin / mappings).value.filter(file =>
-          file._2.endsWith(".sjsir")
-          || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
-          || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
+          file._2.endsWith(".sjsir") // copied in build.mill
+          || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class") // copied in build.mill
+          || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class")) // copied in build.mill
       },
       libraryDependencies += ("org.scala-js" %% "scalajs-library" % scalaJSVersion % Provided).cross(CrossVersion.for3Use2_13),
       libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
@@ -1528,9 +1528,9 @@ object Build {
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
+        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1", // Copied in Mill build
         Dependencies.compilerInterface,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13), // Copied in Mill build
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
@@ -1657,10 +1657,10 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
+        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1", // Copied in Mill build
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13), // Copied in Mill build
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
@@ -1785,8 +1785,8 @@ object Build {
       Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.8.2",
-        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
+        "nl.big-o" % "liqp" % "0.8.2", // copied in build.mill
+        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site // copied in build.mill
         Dependencies.`jackson-dataformat-yaml`,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
       ),
@@ -2051,15 +2051,15 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.6.3"
+    val mtagsVersion = "1.6.3" // copied in Plasmon build.mill
     Seq(
       libraryDependencies ++= Seq(
-        "org.lz4" % "lz4-java" % "1.8.0",
-        "io.get-coursier" % "interface" % "1.0.18",
+        "org.lz4" % "lz4-java" % "1.8.0", // copied in build.mill
+        "io.get-coursier" % "interface" % "1.0.18", // copied in build.mill
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
-        "com.google.guava" % "guava" % "33.2.1-jre",
+        "com.google.guava" % "guava" % "33.2.1-jre", // copied in build.mill
       ),
-      libraryDependencies += ("org.scalameta" % s"mtags-shared_${ScalaLibraryPlugin.scala2Version}" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % s"mtags-shared_${ScalaLibraryPlugin.scala2Version}" % mtagsVersion % SourceDeps), // copied in build.mill
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
@@ -2113,11 +2113,11 @@ object Build {
     settings(commonBootstrappedSettings).
     settings(
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0", // copied in Mill
         Dependencies.`jackson-databind`
       ),
       // Work around https://github.com/eclipse/lsp4j/issues/295
-      dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
+      dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0", // copied in Mill
       // Exclude the dependency that is resolved transively, the stdlib
       // is a project dependency instead
       excludeDependencies += "org.scala-lang" %% "scala3-library",
@@ -2324,35 +2324,35 @@ object Build {
           else (dir / subdir ** "*.scala").get
 
         (
-          (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
-            -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
-            -- "UTF16Test.scala" // refutable pattern match
-            -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
-            -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
+          (dir / "shared/src/test/scala" ** (("*.scala": FileFilter) // Copied in Mill build
+            -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore // Copied in Mill build
+            -- "UTF16Test.scala" // refutable pattern match // Copied in Mill build
+            -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error // Copied in Mill build
+            -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that // Copied in Mill build
             )).get
 
-          ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
+          ++ (dir / "shared/src/test/require-sam" ** "*.scala").get // Copied in Mill build
+          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get // Copied in Mill build
+          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get // Copied in Mill build
 
-          ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
-            -- "StackTraceTest.scala" // would require `npm install source-map-support`
-            -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
+          ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter) // Copied in Mill build
+            -- "StackTraceTest.scala" // would require `npm install source-map-support` // Copied in Mill build
+            -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala // Copied in Mill build
             )).get
 
-          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
-          ++ (dir / "js/src/test/require-new-target" ** "*.scala").get
-          ++ (dir / "js/src/test/require-sam" ** "*.scala").get
-          ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
+          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get // Copied in Mill build
+          ++ (dir / "js/src/test/require-new-target" ** "*.scala").get // Copied in Mill build
+          ++ (dir / "js/src/test/require-sam" ** "*.scala").get // Copied in Mill build
+          ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get // Copied in Mill build
 
-          ++ conditionally(!hasModules, "js/src/test/require-no-modules")
-          ++ conditionally(hasModules, "js/src/test/require-modules")
-          ++ conditionally(hasModules && !linkerConfig.closureCompiler && !isWebAssembly, "js/src/test/require-multi-modules")
-          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-dynamic-import")
-          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule")
+          ++ conditionally(!hasModules, "js/src/test/require-no-modules") // Copied in Mill build
+          ++ conditionally(hasModules, "js/src/test/require-modules") // Copied in Mill build
+          ++ conditionally(hasModules && !linkerConfig.closureCompiler && !isWebAssembly, "js/src/test/require-multi-modules") // Copied in Mill build
+          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-dynamic-import") // Copied in Mill build
+          ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule") // Copied in Mill build
 
-          ++ conditionally(hasAsyncAwait, "js/src/test/require-async-await")
-          ++ conditionally(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await")
+          ++ conditionally(hasAsyncAwait, "js/src/test/require-async-await") // Copied in Mill build
+          ++ conditionally(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await") // Copied in Mill build
         )
       },
 

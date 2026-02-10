@@ -1,0 +1,132 @@
+package build.`presentation-compiler`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait PresentationCompiler extends CrossScala3Module {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+
+  def libraryPrecomputedRunClasspath: T[Seq[String]] =
+    build.library(crossValue).precomputedRunClasspath
+  def pcTestCasesPrecomputedJarPath: T[String] =
+    (build.`presentation-compiler-testcases`(crossValue).jarPath / "out.jar").toString
+  def libraryRunClasspath: T[Seq[PathRef]] =
+    Task {
+      build.library(crossValue)
+        .runClasspath()
+        .filter(ref => os.exists(ref.path))
+    }
+  def pcTestCasesJar: T[PathRef] =
+    build.`presentation-compiler-testcases`(crossValue).jar
+
+  def buildInfoSources = Task {
+    val dir = Task.dest
+    os.write(
+      dir / "dotty/tools/pc/buildinfo/BuildInfo.scala",
+      s"""package dotty.tools.pc.buildinfo
+         |
+         |object BuildInfo {
+         |  def scalaVersion = "${scalaVersion()}"
+         |}
+         |""".stripMargin,
+      createFolders = true
+    )
+    PathRef(dir)
+  }
+
+  def mtagsVersion = "1.6.3"
+
+  def src = Task.Source("src")
+  def testSrc = Task.Source("test")
+
+  def mtagsSharedSources = Task {
+    val srcPath = defaultResolver().classpath(
+      Seq(mvn"org.scalameta:mtags-shared_${Versions.scala2Version}:$mtagsVersion".dep.withTransitive(false)),
+      sources = true
+    )
+    assert(srcPath.length == 1, "Expected a single source JAR")
+    val srcJar = srcPath.head.path
+    os.unzip(srcJar, Task.dest)
+
+    for (f <- os.walk(Task.dest) if os.isFile(f) && f.last.endsWith(".scala")) {
+      val lines = os.read.lines(f).toList
+      val updatedLines = Shading.insertUnsafeNullsImport(Shading.replaceProtobuf(lines))
+      os.write.over(f, updatedLines.mkString(System.lineSeparator()))
+    }
+
+    PathRef(Task.dest)
+  }
+
+  def sources = Task {
+    Seq(src(), mtagsSharedSources(), buildInfoSources())
+  }
+
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.lz4:lz4-java:1.8.0",
+    mvn"io.get-coursier:interface:1.0.28",
+    mvn"org.scalameta:mtags-interfaces:$mtagsVersion",
+    mvn"com.google.guava:guava:33.2.1-jre"
+  )
+  def scalacOptions = super.scalacOptions() ++ Seq(
+    "-source", "3.3", // Original comment: To avoid fatal migration warnings
+    "-Yexplicit-nulls", "-Wsafe-init"
+  )
+
+  object test extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.`presentation-compiler-testcases`(crossValue)
+    )
+    def testSources = Task {
+      Seq(testSrc(), testBuildInfoSources())
+    }
+
+    def testBuildInfoSources = Task {
+      val dir = Task.dest
+      val tq = "\"\"\""
+      // TODO Add scala3-presentation-compiler-testcases cp too
+      val testDepCp = libraryPrecomputedRunClasspath() :+ pcTestCasesPrecomputedJarPath()
+      os.write(
+        dir / "dotty/tools/pc/tests/buildinfo/BuildInfo.scala",
+        s"""package dotty.tools.pc.tests.buildinfo
+           |
+           |import java.io.File
+           |
+           |object BuildInfo {
+           |  def scalaVersion = "${scalaVersion()}"
+           |  def ideTestsDependencyClasspath = ${testDepCp.map(p => s"new File($tq$p$tq)").mkString("Seq[File](", ", ", ")")}
+           |}
+           |""".stripMargin,
+        createFolders = true
+      )
+      PathRef(dir)
+    }
+
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      mvn"org.hamcrest:hamcrest-core:1.3"
+    )
+
+    def runClasspath = Task {
+      val precomputedLibrary = libraryPrecomputedRunClasspath().map(os.Path(_))
+      val actualLibrary = libraryRunClasspath().map(_.path)
+      if (precomputedLibrary.filter(os.exists) != actualLibrary.filter(os.exists))
+        sys.error(
+          "Warning: standard library class path calculation mismatch: " +
+          s"pre-computed value $precomputedLibrary differs from actual value $actualLibrary."
+        )
+      val precomputedPcTestCases = os.Path(pcTestCasesPrecomputedJarPath())
+      val actualPcTestCases = pcTestCasesJar().path
+      if (precomputedPcTestCases != actualPcTestCases)
+        sys.error(
+          "Warning: PC testcases class path calculation mismatch: " +
+          s"pre-computed value $precomputedPcTestCases differs from actual value $actualPcTestCases."
+        )
+      super.runClasspath()
+    }
+  }
+}
+
+object `package` extends Cross[PresentationCompiler](BuildType.allValues)

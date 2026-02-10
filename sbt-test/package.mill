@@ -1,0 +1,13 @@
+package build.`sbt-test`
+
+import scala3build.*
+
+import mill.*
+
+trait Runner extends CrossScala3Module {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.library(crossValue)
+  )
+}
+
+object runner extends Cross[Runner](BuildType.allValues)

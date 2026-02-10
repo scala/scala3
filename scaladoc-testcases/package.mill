@@ -1,0 +1,16 @@
+package build.`scaladoc-testcases`
+
+import scala3build.*
+
+import mill.*
+
+trait ScaladocTestcases extends CrossScala3Module with mill.scala3build.CompileClassesPathHelper {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+  def sources = Task(Seq(baseSources()))
+
+  def baseSources = Task.Source("src")
+}
+
+object `package` extends Cross[ScaladocTestcases](BuildType.allValues)

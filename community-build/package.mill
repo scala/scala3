@@ -1,0 +1,26 @@
+package build.`community-build`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+object `package` extends Scala3Module {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.library(buildType)
+  )
+  def buildType = BuildType.Bootstrapping
+
+  def testSrc = Task.Source("test")
+
+  object test extends Scala3Tests {
+    def testSources = Task {
+      Seq(testSrc())
+    }
+
+    def testArgsDefault = super.testArgsDefault() ++ Seq(
+      "--include-categories=dotty.communitybuild.TestCategory",
+      "--run-listener=dotty.communitybuild.FailureSummarizer"
+    )
+  }
+}

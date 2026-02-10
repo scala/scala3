@@ -1,0 +1,120 @@
+package build.`library-js`
+
+import scala3build.*
+
+import mill.*
+import mill.api.BuildCtx
+import mill.scalalib.*
+import mill.util.Jvm
+
+trait LibraryJs extends SharedLibrarySettings with Scala3JsModule {
+  def isJS = true
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.library(crossValue)
+  )
+  def compileMvnDeps = super.compileMvnDeps() ++ Seq(
+    mvn"org.scala-js::scalajs-library:${Versions.scalaJSVersion}"
+      .withDottyCompat(scalaVersion())
+      .exclude(("org.scala-lang", "scala-library"))
+  )
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.scala-js:scalajs-javalib:${Versions.scalaJSVersion}"
+  )
+  def pomSettings = super.pomSettings().copy(
+    organization = "org.scala-js"
+  )
+  def artifactName = "scalajs-scalalib_2.13"
+
+  def sources = Task {
+    val baseSources = super.sources()
+    val expandedBaseSources = baseSources.flatMap { ref =>
+      os.walk(ref.path)
+        .filter(os.isFile)
+        .filter(_.last.endsWith(".scala"))
+    }
+    val expandedRelativeBaseSourcesSet = baseSources
+      .flatMap { ref =>
+        os.walk(ref.path)
+          .filter(os.isFile)
+          .filter(_.last.endsWith(".scala"))
+          .map(_.subRelativeTo(ref.path))
+      }
+      .toSet
+    val excludedBaseSourcesSet = Set(
+      os.sub / "scala/runtime/BoxesRunTime.java",
+      os.sub / "scala/math/ScalaNumber.java"
+    )
+    val librarySources = build.library(crossValue).sources().flatMap { ref =>
+      if (os.isDir(ref.path))
+        os.walk(ref.path)
+          .filter(os.isFile)
+          .filter { f =>
+            val subPath = f.subRelativeTo(ref.path)
+            !expandedRelativeBaseSourcesSet.contains(subPath) &&
+              !excludedBaseSourcesSet.contains(subPath)
+          }
+          .map(PathRef(_))
+      else
+        Seq(ref)
+    }
+
+    val filteredExpandedBaseSources = expandedBaseSources.filter { f =>
+      // Excluding those feels like a typo in project/Build.scala, in the original sbt build
+      // but keeping BoxesRunTime.scala makes some sjs-compiler-tests fail
+      f.last != "BoxesRunTime.scala" &&
+        f.last != "ScalaNumber.scala"
+    }
+    filteredExpandedBaseSources.map(PathRef(_)) ++ librarySources
+  }
+  def scalacOptions = Task {
+    val mapSourceOpt =
+      if (Versions.isRelease) {
+        val baseURI = BuildCtx.workspaceRoot.toNIO.toUri.toASCIIString
+        val dottyVersion = publishVersion()
+        Seq(s"-scalajs-mapSourceURI:$baseURI->${Constants.dottyGithubRawUserContentUrl}/$dottyVersion/")
+      }
+      else
+        Nil
+    super.scalacOptions() ++ mapSourceOpt
+  }
+
+  def patches: T[Seq[PathRef]] = Task {
+    val cp = defaultResolver().classpath(
+      Seq(
+        mvn"org.scala-js:scalajs-scalalib_2.13:${Versions.stdlibBootstrappedVersion}+${Versions.scalaJSVersion}"
+          .exclude(("org.scala-js", "scalajs-javalib"))
+      )
+    )
+
+    assert(cp.length == 2)
+
+    cp
+  }
+
+  def localClassPathForJar = Task {
+    val destDir = Task.dest
+    val localCp = localClasspath()
+    for (entry <- localCp if os.exists(entry.path); f <- os.walk(entry.path) if os.isFile(f)) {
+      val keep = f.last.endsWith(".sjsir") ||
+        f.last == "UnitOps.tasty" ||
+        f.last == "UnitOps.class" ||
+        f.last == "UnitOps$.class" ||
+        f.last == "AnonFunctionXXL.tasty" ||
+        f.last == "AnonFunctionXXL.class"
+      if (keep) {
+        val subPath = f.subRelativeTo(entry.path)
+        val dest = destDir / subPath
+        if (!os.exists(dest))
+          os.copy(f, dest, createFolders = true)
+      }
+    }
+    PathRef(destDir)
+  }
+  def jar: T[PathRef] = Task {
+    val jar = Task.dest / s"scalajs-scalalib_2.13-${publishVersion()}.jar"
+    Jvm.createJar(jar, Seq(localClassPathForJar().path), manifest())
+    PathRef(jar)
+  }
+}
+
+object `package` extends Cross[LibraryJs](BuildType.allValues)

@@ -199,7 +199,7 @@ trait RunnerOrchestration {
      */
     private def createProcess(): RunnerProcess =
       val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
-      val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
+      val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibraryClassPath
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
       val args = Seq("-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
         (if debugMode then Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,quiet=n") else Seq.empty)

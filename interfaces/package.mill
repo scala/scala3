@@ -1,0 +1,5 @@
+package build.interfaces
+
+import scala3build.*
+
+object `package` extends Scala3JavaModule

@@ -1,0 +1,23 @@
+import mill.Task
+import mill.api.{BuildCtx, PathRef}
+import mill.meta.MillBuildRootModule
+import mill.javalib.*
+
+object `package` extends MillBuildRootModule {
+
+  def scalaJSVersion = "1.20.1"
+
+  def mvnDeps = Seq(
+    mvn"com.github.lolgab::mill-mima_mill1:0.2.0",
+    mvn"org.ow2.asm:asm:9.9",
+    mvn"org.eclipse.jgit:org.eclipse.jgit:7.5.0.202512021534-r",
+    mvn"org.scala-js:scalajs-linker_2.13:$scalaJSVersion"
+  )
+
+  def sources = Task {
+    val extraSrcDir = BuildCtx.withFilesystemCheckerDisabled {
+      PathRef(BuildCtx.workspaceRoot / "tasty/src")
+    }
+    super.sources() ++ Seq(extraSrcDir)
+  }
+}

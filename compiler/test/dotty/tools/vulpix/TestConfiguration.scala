@@ -29,10 +29,10 @@ object TestConfiguration {
     "-Wconf:id=E222:s", // name=EncodedPackageName don't warn about file names with hyphens
   )
 
-  val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
+  val basicClasspath = mkClasspath(List(Properties.scalaLibraryClassPath))
 
   val withCompilerClasspath = mkClasspath(List(
-    Properties.scalaLibrary,
+    Properties.scalaLibraryClassPath,
     Properties.scalaAsm,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
@@ -63,7 +63,7 @@ object TestConfiguration {
     replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
-    classpaths.map({ p =>
+    classpaths.flatMap(_.split(File.pathSeparator)).map({ p =>
       val file = new java.io.File(p)
       assert(file.exists, s"File $p couldn't be found.")
       file.getAbsolutePath

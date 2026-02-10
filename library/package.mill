@@ -1,0 +1,62 @@
+package build.library
+
+import scala3build.*
+
+import mill.*
+
+import java.io.File
+
+trait Library extends SharedLibrarySettings with mill.scala3build.CompileClassesPathHelper {
+  def scalacOptions = super.scalacOptions() ++ Seq(
+    "-sourcepath", sources().map(_.path).distinct.mkString(File.pathSeparator)
+  )
+
+  def libraryPropertiesResourceDir = Task {
+
+    val shellBanner: String =
+      """%n      ________ ___   / /  ___
+        |%n    / __/ __// _ | / /  / _ |
+        |%n  __\\ \\/ /__/ __ |/ /__/ __ |
+        |%n /____/\\___/_/ |_/____/_/ | |
+        |%n                          |/  %s""".stripMargin.replace("\n", "")
+
+    val contents =
+      s"""version.number=${publishVersion()}
+          |maven.version.number=${publishVersion()}
+          |copyright.string=Copyright 2002-${VersionUtil.currentYear}, LAMP/EPFL
+          |shell.banner=$shellBanner
+          |""".stripMargin
+    os.write(Task.dest / "library.properties", contents)
+    PathRef(Task.dest)
+  }
+
+  def resources = Task {
+    super.resources() ++ Seq(libraryPropertiesResourceDir())
+  }
+
+  def sources = Task.Sources("src")
+
+  def patches: T[Seq[PathRef]] = Task {
+    Seq(build.`library-2`.compile().classes)
+  }
+
+  private def jarSubPath = os.sub / s"scala-library-${Versions.dottyVersion}.jar"
+  def jar = Task {
+    val jar0 = super.jar()
+    val dest = Task.dest / jarSubPath
+    os.copy(jar0.path, dest)
+    PathRef(dest)
+  }
+
+  def runClasspath =
+    Task {
+      Seq(jar())
+    }
+
+  def precomputedRunClasspath: T[Seq[String]] =
+    Task {
+      Seq((jarPath / jarSubPath).toString)
+    }
+}
+
+object `package` extends Cross[Library](BuildType.allValues)

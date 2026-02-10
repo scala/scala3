@@ -1,0 +1,50 @@
+package build.`scaladoc-js`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+object `package` extends Module {
+  trait Common extends CrossScala3Module with Scala3JsModule {
+    def scalaJSVersion = Versions.scalaJSVersion
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.`library-js`(crossValue)
+    )
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      mvn"org.scala-js::scalajs-dom::2.8.0"
+    )
+
+    def css = Task.Source(os.sub / "css")
+  }
+  object common extends Cross[Common](BuildType.allValues)
+
+  trait Contributors extends CrossScala3Module with Scala3JsModule {
+    def scalaJSVersion = Versions.scalaJSVersion
+    def moduleDeps = super.moduleDeps ++ Seq(
+      common(crossValue)
+    )
+    def scalaJSUseMainModuleInitializer = true
+    def css = Task.Source(os.sub / "css")
+  }
+  object contributors extends Cross[Contributors](BuildType.allValues)
+
+  trait Main extends CrossScala3Module with Scala3JsModule {
+    def testSrc = Task.Source("test")
+
+    def scalaJSVersion = Versions.scalaJSVersion
+    def moduleDeps = super.moduleDeps ++ Seq(
+      common(crossValue)
+    )
+    def scalaJSUseMainModuleInitializer = true
+    // scalacOptions -= "-Yexplicit-nulls"
+
+    object test extends Scala3JsTests {
+      def moduleDeps = super.moduleDeps ++ Seq(
+        build.`test-helpers`(crossValue)
+      )
+      def testSources = Seq(testSrc())
+    }
+  }
+  object main extends Cross[Main](BuildType.allValues)
+}

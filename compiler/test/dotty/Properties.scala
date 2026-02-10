@@ -17,12 +17,18 @@ object Properties {
   private def propIsTrue(name: String): Boolean =
     sys.props.getOrElse(name, "FALSE") == "TRUE"
 
+  private def prop(name: String): String =
+    sys.props.getOrElse(
+      name,
+      sys.error(s"Java property $name not set")
+    )
+
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
 
   val testCache: Path =
     sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
-      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
+      Paths.get(prop("user.home"), ".cache", "dotty", "test")
     }
 
   /** Tests should run interactive? */
@@ -52,31 +58,31 @@ object Properties {
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
   /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
+  def dottyCompilerManagedSources: Path = Paths.get(prop("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
-  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
+  def dottyInterfaces: String = prop("dotty.tests.classes.dottyInterfaces")
 
   /** dotty-compiler jar */
-  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
+  def dottyCompiler: String = prop("dotty.tests.classes.dottyCompiler")
 
   /** dotty-repl jar */
-  def dottyRepl: String = sys.props("dotty.tests.classes.dottyRepl")
+  def dottyRepl: String = prop("dotty.tests.classes.dottyRepl")
 
   /** dotty-staging jar */
-  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
+  def dottyStaging: String = prop("dotty.tests.classes.dottyStaging")
 
   /** dotty-tasty-inspector jar */
-  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector")
+  def dottyTastyInspector: String = prop("dotty.tests.classes.dottyTastyInspector")
 
   /** tasty-core jar */
-  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")
+  def tastyCore: String = prop("dotty.tests.classes.tastyCore")
 
   /** compiler-interface jar */
-  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
+  def compilerInterface: String = prop("dotty.tests.classes.compilerInterface")
 
   /** scala-library jar */
-  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
+  def scalaLibraryClassPath: String = prop("dotty.tests.classes.scalaLibrary")
 
   // TODO: Remove this once we migrate the test suite
   def usingScalaLibraryCCTasty: Boolean = true
@@ -85,20 +91,20 @@ object Properties {
   def usingScalaLibraryTasty: Boolean = true
 
   /** scala-asm jar */
-  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
+  def scalaAsm: String = prop("dotty.tests.classes.scalaAsm")
 
   /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
+  def jlineTerminal: String = prop("dotty.tests.classes.jlineTerminal")
 
   /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+  def jlineReader: String = prop("dotty.tests.classes.jlineReader")
 
   /** scalajs-javalib jar */
-  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
+  def scalaJSJavalib: String = prop("dotty.tests.classes.scalaJSJavalib")
 
   /** scalajs-scalalib jar */
-  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib")
+  def scalaJSScalalib: String = prop("dotty.tests.classes.scalaJSScalalib")
 
   /** scalajs-library jar */
-  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
+  def scalaJSLibrary: String = prop("dotty.tests.classes.scalaJSLibrary")
 }

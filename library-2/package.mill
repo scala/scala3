@@ -1,0 +1,52 @@
+package build.`library-2`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+object `package` extends ScalaModule {
+  def scalaVersion = Versions.scala2Version
+
+  def scalaLibraryMvnDeps = Task(Nil)
+
+  def scalacOptions = Task {
+    val baseOptions = super.scalacOptions()
+      .filterNot(_ != "--java-output-version:17")
+      .filterNot(_ != "-Yexplicit-nulls")
+      .filterNot(_ != "-Wsafe-init")
+    baseOptions ++ Seq(
+      "-release:17",
+      s"-sourcepath:${scala2LibraryDir().path}",
+      "-opt:local", // Original sbt build comment: Important: local optimization are fine, inlining is prohibited!
+    )
+  }
+
+  def scala2LibraryDir: T[PathRef] = Task {
+    val sourceJars = defaultResolver().classpath(
+      Seq(mvn"org.scala-lang:scala-library:${Versions.scala2Version}"),
+      sources = true
+    )
+    assert(sourceJars.length == 1, s"Expected a single source JAR for scala-library, got $sourceJars")
+    val sourceJar = sourceJars.head.path
+    os.unzip(sourceJar, Task.dest)
+
+    // Original sbt build comment: Auxilary source files that cannot be compield
+    val excludedSourceFiles = Seq[os.SubPath](
+      "scala/AnyRef.scala",
+      "scala/Any.scala",
+      "scala/Nothing.scala",
+      "scala/Null.scala",
+      "scala/Singleton.scala",
+    )
+
+    for (f <- excludedSourceFiles)
+      os.remove(Task.dest / f)
+
+    PathRef(Task.dest)
+  }
+
+  def sources = Task {
+    Seq(scala2LibraryDir())
+  }
+}

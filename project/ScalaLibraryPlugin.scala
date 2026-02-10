@@ -358,55 +358,55 @@ object ScalaLibraryPlugin extends AutoPlugin {
   }
 
   private lazy val filesToCopy = Set(
-    "scala/Function0",
-    "scala/Function1",
-    "scala/Function2",
-    "scala/Product1",
-    "scala/Product2",
-    "scala/Tuple1",
-    "scala/Tuple2",
-    "scala/collection/ArrayOps",
-    "scala/collection/Stepper",
-    "scala/collection/DoubleStepper",
-    "scala/collection/IntStepper",
-    "scala/collection/LongStepper",
-    "scala/collection/immutable/DoubleVectorStepper",
-    "scala/collection/immutable/IntVectorStepper",
-    "scala/collection/immutable/LongVectorStepper",
-    "scala/collection/immutable/Range",
-    "scala/jdk/Accumulator",
-    "scala/jdk/DoubleAccumulator",
-    "scala/jdk/IntAccumulator",
-    "scala/jdk/LongAccumulator",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleBinaryOperator",
-    "scala/jdk/FunctionWrappers$FromJavaBooleanSupplier",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleConsumer",
-    "scala/jdk/FunctionWrappers$FromJavaDoublePredicate",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleSupplier",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleToIntFunction",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleToLongFunction",
-    "scala/jdk/FunctionWrappers$FromJavaIntBinaryOperator",
-    "scala/jdk/FunctionWrappers$FromJavaDoubleUnaryOperator",
-    "scala/jdk/FunctionWrappers$FromJavaIntPredicate",
-    "scala/jdk/FunctionWrappers$FromJavaIntConsumer",
-    "scala/jdk/FunctionWrappers$FromJavaIntSupplier",
-    "scala/jdk/FunctionWrappers$FromJavaIntToDoubleFunction",
-    "scala/jdk/FunctionWrappers$FromJavaIntToLongFunction",
-    "scala/jdk/FunctionWrappers$FromJavaIntUnaryOperator",
-    "scala/jdk/FunctionWrappers$FromJavaLongBinaryOperator",
-    "scala/jdk/FunctionWrappers$FromJavaLongConsumer",
-    "scala/jdk/FunctionWrappers$FromJavaLongPredicate",
-    "scala/jdk/FunctionWrappers$FromJavaLongSupplier",
-    "scala/jdk/FunctionWrappers$FromJavaLongToDoubleFunction",
-    "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction",
-    "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator",
-    "scala/runtime/AbstractFunction0",
-    "scala/runtime/AbstractFunction1",
-    "scala/runtime/AbstractFunction2",
-    "scala/runtime/AbstractPartialFunction",
-    "scala/runtime/NonLocalReturnControl",
-    "scala/util/Sorting",
-    "scala/util/hashing/MurmurHash3",
+    "scala/Function0", // copied in Mill build
+    "scala/Function1", // copied in Mill build
+    "scala/Function2", // copied in Mill build
+    "scala/Product1", // copied in Mill build
+    "scala/Product2", // copied in Mill build
+    "scala/Tuple1", // copied in Mill build
+    "scala/Tuple2", // copied in Mill build
+    "scala/collection/ArrayOps", // copied in Mill build
+    "scala/collection/Stepper", // copied in Mill build
+    "scala/collection/DoubleStepper", // copied in Mill build
+    "scala/collection/IntStepper", // copied in Mill build
+    "scala/collection/LongStepper", // copied in Mill build
+    "scala/collection/immutable/DoubleVectorStepper", // copied in Mill build
+    "scala/collection/immutable/IntVectorStepper", // copied in Mill build
+    "scala/collection/immutable/LongVectorStepper", // copied in Mill build
+    "scala/collection/immutable/Range", // copied in Mill build
+    "scala/jdk/Accumulator", // copied in Mill build
+    "scala/jdk/DoubleAccumulator", // copied in Mill build
+    "scala/jdk/IntAccumulator", // copied in Mill build
+    "scala/jdk/LongAccumulator", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoubleBinaryOperator", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaBooleanSupplier", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoubleConsumer", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoublePredicate", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoubleSupplier", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoubleToIntFunction", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoubleToLongFunction", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntBinaryOperator", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaDoubleUnaryOperator", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntPredicate", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntConsumer", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntSupplier", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntToDoubleFunction", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntToLongFunction", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaIntUnaryOperator", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongBinaryOperator", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongConsumer", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongPredicate", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongSupplier", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongToDoubleFunction", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongToIntFunction", // copied in Mill build
+    "scala/jdk/FunctionWrappers$FromJavaLongUnaryOperator", // copied in Mill build
+    "scala/runtime/AbstractFunction0", // copied in Mill build
+    "scala/runtime/AbstractFunction1", // copied in Mill build
+    "scala/runtime/AbstractFunction2", // copied in Mill build
+    "scala/runtime/AbstractPartialFunction", // copied in Mill build
+    "scala/runtime/NonLocalReturnControl", // copied in Mill build
+    "scala/util/Sorting", // copied in Mill build
+    "scala/util/hashing/MurmurHash3", // copied in Mill build
   )
 
   /** Extract the SourceFile attribute from class file bytecode */

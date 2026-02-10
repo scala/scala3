@@ -1,0 +1,201 @@
+package build.tests.`sjs-junit`
+
+import scala3build.*
+
+import mill.*
+import mill.scalajslib.*
+import mill.scalalib.*
+import org.scalajs.linker.interface.*
+
+trait SjsUnit extends CrossScala3Module with Scala3JsModule {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.`library-js`(crossValue)
+  )
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.scala-js:scalajs-junit-test-runtime_2.13:${Versions.scalaJSVersion}"
+  )
+
+  def scalaJSConfig = Task.Anon {
+    super.scalaJSConfig()
+      .withSemantics(TestSuiteLinkerOptions.semantics)
+  }
+
+  def scalacOptions = Task {
+    super.scalacOptions().filter { opt =>
+      opt != "-Werror" && opt != "-deprecation" && opt != "-Yexplicit-nulls"
+    } ++
+    Seq(
+      "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews"
+    )
+  }
+
+  def scalaJsSources = Task {
+    import org.eclipse.jgit.api._
+    import org.eclipse.jgit.lib._
+
+    val ver = Versions.scalaJSVersion
+    val dest = Task.dest
+
+    System.err.println(s"Fetching Scala.js source version $ver")
+
+    new CloneCommand()
+      .setDirectory(dest.toIO)
+      .setURI("https://github.com/scala-js/scala-js.git")
+      // .setNoCheckout(true)
+      .call()
+
+    val git = Git.open(dest.toIO)
+    System.err.println(s"Checking out Scala.js source version $ver")
+    git.getRepository().getConfig().setEnum("core", null, "autocrlf", CoreConfig.AutoCRLF.FALSE)
+    git.checkout().setName(s"v$ver").call()
+
+    // no need to keep this, plus this confuses some git commands like git clean
+    os.remove.all(dest / ".git")
+
+    PathRef(dest)
+  }
+
+  def buildInfoSources = Task {
+
+    val moduleKind0 = moduleKind()
+    val sems = Semantics.Defaults // might not work in fast opt
+
+    val useClosure = // isFullLinkJS &&
+      moduleKind0 != ModuleKind.ESModule
+
+    SjsUnitConstantHolderGenerator.generate(
+      Task.dest,
+      "org.scalajs.testsuite.utils.BuildInfo",
+      "scalaVersion" -> scalaVersion(),
+      "hasSourceMaps" -> false, //DottyJSPlugin.wantSourceMaps.value (original sbt build comment)
+      "isNoModule" -> (moduleKind0 == ModuleKind.NoModule),
+      "isESModule" -> (moduleKind0 == ModuleKind.ESModule),
+      "isCommonJSModule" -> (moduleKind0 == ModuleKind.CommonJSModule),
+      "usesClosureCompiler" -> useClosure,
+      "hasMinifiedNames" -> (useClosure || scalaJSMinify()),
+      "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
+      "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+      "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
+      "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+      "compliantNullPointers" -> (sems.nullPointers == CheckedBehavior.Compliant),
+      "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
+      "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
+      "productionMode" -> sems.productionMode,
+      "esVersion" -> 5, // FIXME esFeatures().esVersion.edition,
+      "useECMAScript2015Semantics" -> false, // FIXME esFeatures().useECMAScript2015Semantics,
+      "isWebAssembly" -> scalaJSExperimentalUseWebAssembly()
+    )
+
+    PathRef(Task.dest)
+  }
+
+  def sources = Task {
+    super.sources() ++ Seq(buildInfoSources()) ++
+      os.walk(scalaJsSources().path / "test-suite/js/src/main/scala")
+        .filter(_.last.endsWith(".scala"))
+        .filter(!_.last.startsWith("Typechecking"))
+        .filter(os.isFile)
+        .map(PathRef(_)) ++
+      os.walk(scalaJsSources().path / "junit-async/js/src/main/scala")
+        .filter(_.last.endsWith(".scala"))
+        .filter(os.isFile)
+        .map(PathRef(_))
+  }
+
+  def testSrc = Task.Source("test")
+
+  trait SjsUnitTests extends Scala3JsTests {
+    def isFull: Boolean = false
+    def configTask = if (isFull) fullScalaJSConfig else fastScalaJSConfig
+    def testSources = Task {
+      val linkerConfig = configTask()
+
+      val moduleKind = linkerConfig.moduleKind
+      val hasModules = moduleKind != ModuleKind.NoModule
+      val hasAsyncAwait = linkerConfig.esFeatures.esVersion >= ESVersion.ES2017
+      val isWebAssembly = linkerConfig.experimentalUseWebAssembly
+
+      val testSuiteDir = scalaJsSources().path / "test-suite"
+      def scalaFilesUnder(dir: os.SubPath): Seq[os.Path] =
+        os.walk(testSuiteDir / dir)
+          .filter(_.last.endsWith(".scala"))
+          .filter(os.isFile)
+      def scalaFilesIf(cond: Boolean, dir: os.SubPath): Seq[os.Path] =
+        if (cond) scalaFilesUnder(dir) else Nil
+
+      val extra = Seq(
+        scalaFilesUnder("shared/src/test/scala")
+          .filter(_.last != "ReflectiveCallTest.scala") // Original comment: uses many forms of structural calls that are not allowed in Scala 3 anymore
+          .filter(_.last != "UTF16Test.scala") // Original comment: refutable pattern match
+          .filter(_.last != "CharsetTest.scala") // Original comment: bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
+          .filter(_.last != "ClassDiffersOnlyInCaseTest.scala"), // Original comment: looks like the Scala 3 compiler itself does not deal with that
+        // scalaFilesUnder("shared/src/test/require-sam"),
+        // scalaFilesUnder("shared/src/test/require-jdk8"),
+        // scalaFilesUnder("shared/src/test/require-jdk7"),
+        scalaFilesUnder("js/src/test/scala")
+          .filter(_.last != "StackTraceTest.scala") // Original comment: would require `npm install source-map-support`
+          .filter(_.last != "UnionTypeTest.scala"), // Original comment: requires the Scala 2 macro defined in Typechecking*.scala
+        // scalaFilesUnder("js/src/test/require-2.12"),
+        scalaFilesUnder("js/src/test/require-new-target"),
+        // scalaFilesUnder("js/src/test/require-sam"),
+        scalaFilesUnder("js/src/test/scala-new-collections"),
+        scalaFilesIf(!hasModules, "js/src/test/require-no-modules"),
+        scalaFilesIf(hasModules, "js/src/test/require-modules"),
+        scalaFilesIf(hasModules && !linkerConfig.closureCompiler && !isWebAssembly, "js/src/test/require-multi-modules"),
+        scalaFilesIf(moduleKind == ModuleKind.ESModule, "js/src/test/require-dynamic-import"),
+        scalaFilesIf(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule"),
+        scalaFilesIf(hasAsyncAwait, "js/src/test/require-async-await"),
+        scalaFilesIf(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await")
+      )
+      Seq(testSrc()) ++ extra.flatten.map(PathRef(_))
+    }
+    def scalacOptions = super.scalacOptions() ++ Seq(
+      "-scalajs-genStaticForwardersForNonTopLevelObjects"
+    )
+
+    /* For some reason, in Scala 3, the implementation of IterableDefaultTest
+     * resolves to `scala.collection.ArrayOps.ArrayIterator`, whose `next()`
+     * method is not compliant when called past the last element on Scala.js.
+     * It relies on catching an `ArrayIndexOutOfBoundsException`.
+     * We have to ignore it here.
+     */
+    // Test / testOptions := Seq(Tests.Filter(_ != "org.scalajs.testsuite.javalib.lang.IterableDefaultTest")),
+
+    def resources = Task {
+      val testDir = scalaJsSources().path / "test-suite/js/src/test"
+      def jsFilesUnder(dir: os.SubPath): Seq[os.Path] =
+        os.walk(testDir / dir)
+          .filter(_.last.endsWith(".js"))
+          .filter(os.isFile)
+
+      val common = jsFilesUnder("resources")
+
+      val moduleSpecific = configTask().moduleKind match {
+        case ModuleKind.NoModule       => Nil
+        case ModuleKind.CommonJSModule => jsFilesUnder("resources-commonjs")
+        case ModuleKind.ESModule       => jsFilesUnder("resources-esmodule")
+      }
+
+      for (f <- common ++ moduleSpecific)
+        os.copy(f, Task.dest / f.last)
+
+      super.resources() ++ Seq(PathRef(Task.dest))
+    }
+
+    def testModuleInitializers = Task.Anon {
+      super.testModuleInitializers() ++ TestSuiteLinkerOptions.moduleInitializers
+    }
+
+    def scalaJsTestInputs = Task.Anon {
+      val resourceDir = scalaJsSources().path / "test-suite/js/src/test/resources"
+      val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toNIO
+      org.scalajs.jsenv.Input.Script(f) +: super.scalaJsTestInputs()
+    }
+  }
+  object test extends SjsUnitTests
+  object `full-test` extends SjsUnitTests {
+    def isFull = true
+  }
+}
+
+object `package` extends Cross[SjsUnit](BuildType.allValues)

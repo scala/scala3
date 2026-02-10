@@ -48,7 +48,7 @@ class TastyBootstrapTests {
         // as well as bootstrapped compiler:
         defaultOutputDir + dotty1Group + "/dotty1/",
         // and the other compiler dependencies:
-        Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
+        Properties.compilerInterface, Properties.scalaLibraryClassPath, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
       Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")

@@ -1,0 +1,30 @@
+package build.`sbt-bridge`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait SbtBridge extends CrossScala3Module { outer =>
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+  def sources = Task.Sources("src")
+  def testSources = Task.Sources("test")
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.scala-sbt:compiler-interface:1.10.7"
+  )
+
+  object test extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.`test-helpers`(crossValue)
+    )
+    def testSources = outer.testSources
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      mvn"org.scala-sbt:zinc-apiinfo_2.13:1.8.0"
+        .exclude(("org.scala-lang", "*"))
+    )
+  }
+}
+
+object `package` extends Cross[SbtBridge](BuildType.allValues)

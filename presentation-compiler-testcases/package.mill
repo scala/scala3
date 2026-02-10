@@ -1,0 +1,23 @@
+package build.`presentation-compiler-testcases`
+
+import scala3build.*
+
+import mill.*
+
+trait PresentationCompilerTestcases extends CrossScala3Module with mill.scala3build.CompileClassesPathHelper {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+  def src = Task.Source("src")
+  def sources = Task {
+    Seq(src())
+  }
+
+  def precomputedRunClasspath: T[Seq[String]] =
+    Task {
+      resolvedRunMvnDeps().map(_.path.toString) ++
+        Seq(compileClassesPath0.toString)
+    }
+}
+
+object `package` extends Cross[PresentationCompilerTestcases](BuildType.allValues)

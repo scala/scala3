@@ -1,0 +1,133 @@
+name: CI
+on:
+  push:
+    branches:
+    - mill-build
+  pull_request:
+
+jobs:
+  compile-all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        # submodules: true
+    - uses: coursier/setup-action@v2
+    - name: No modules with empty sources
+      run: ./mill -i ci.noEmptySources --tasks __.allSourceFiles
+    - name: No orphan sources
+      run: ./mill -i ci.noOrphanSources --sourceTasks '__.{allSourceFiles,compileResources}'
+    - name: Compile everything
+      run: ./mill -i __.compile
+    - name: Pre-upload artifact
+      run: |
+        mv ~/.cache/coursier/v1 coursier-cache
+        mv ~/.cache/mill mill-cache
+        if test -d ~/.cache/mill/download; then
+          chmod +x ~/.cache/mill/download/*
+        fi
+    - name: Upload build output
+      uses: actions/upload-artifact@v4
+      with:
+        name: out
+        path: out
+        if-no-files-found: error
+        retention-days: 3
+    - name: Upload coursier cache
+      uses: actions/upload-artifact@v4
+      with:
+        name: coursier-cache
+        path: coursier-cache
+        if-no-files-found: error
+        retention-days: 3
+    - name: Upload Mill cache
+      uses: actions/upload-artifact@v4
+      with:
+        name: mill-cache
+        path: mill-cache
+        if-no-files-found: error
+        retention-days: 3
+
+  repl-test:
+    runs-on: ubuntu-latest
+    needs: compile-all
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - uses: actions/download-artifact@v4
+      with:
+        name: out
+        path: out
+    - uses: actions/download-artifact@v4
+      with:
+        name: coursier-cache
+        path: coursier-cache
+    - uses: actions/download-artifact@v4
+      with:
+        name: mill-cache
+        path: mill-cache
+    - name: Post-download artifacts
+      run: |
+        mkdir -p ~/.cache/coursier
+        mv coursier-cache ~/.cache/coursier/v1
+        mv mill-cache ~/.cache/mill
+        if test -d ~/.cache/mill/download; then
+          chmod +x ~/.cache/mill/download/*
+        fi
+    - uses: coursier/setup-action@v2
+    - name: Install expect
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y expect
+        expect -v
+    - name: Prepare for REPL test
+      run: ./mill -i 'repl[final].compile'
+    - name: Run REPL test
+      env:
+        TERM: dumb
+      run: project/scripts/mill-repl-test.expect
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: compile-all
+    name: ${{ matrix.BUILD_TYPE }}
+    strategy:
+      fail-fast: false
+      matrix:
+        BUILD_TYPE: ["bootstrapping", "final"]
+        TEST: ["test", "full-test"]
+    timeout-minutes: 120
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        # submodules: true
+    - uses: actions/download-artifact@v4
+      with:
+        name: out
+        path: out
+    - uses: actions/download-artifact@v4
+      with:
+        name: coursier-cache
+        path: coursier-cache
+    - uses: actions/download-artifact@v4
+      with:
+        name: mill-cache
+        path: mill-cache
+    - name: Post-download artifacts
+      run: |
+        mkdir -p ~/.cache/coursier
+        mv coursier-cache ~/.cache/coursier/v1
+        mv mill-cache ~/.cache/mill
+        if test -d ~/.cache/mill/download; then
+          chmod +x ~/.cache/mill/download/*
+        fi
+    - uses: coursier/setup-action@v2
+    - name: Test
+      run: ./mill -i '__[${{ matrix.BUILD_TYPE }}].${{ matrix.TEST }}'
+      env:
+        DOTTY_CI_RUN: true

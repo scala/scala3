@@ -1,0 +1,14 @@
+package build.`tasty-inspector`
+
+import scala3build.*
+
+import mill.*
+
+trait TastyInspector extends CrossScala3Module {
+  def compileModuleDeps = super.compileModuleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+  def sources = Task.Sources("src")
+}
+
+object `package` extends Cross[TastyInspector](BuildType.allValues)

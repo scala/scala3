@@ -1,0 +1,64 @@
+package build.repl
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait Repl extends CrossScala3Module { outer =>
+  def src = Task.Source("src")
+  def testSrc = Task.Source("test")
+  def testResources = Task.Source("test-resources")
+
+  def sources = Task {
+    Seq(src())
+  }
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue)
+  )
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.jline:jline-reader:3.29.0",
+    mvn"org.jline:jline-terminal:3.29.0",
+    mvn"org.jline:jline-terminal-jni:3.29.0",
+    mvn"com.lihaoyi::pprint:0.9.3".exclude(("org.scala-lang", "*")),
+    mvn"com.lihaoyi::fansi:0.5.1".exclude(("org.scala-lang", "*")),
+    mvn"com.lihaoyi::sourcecode:0.4.4".exclude(("org.scala-lang", "*")),
+    mvn"io.get-coursier:interface:1.0.28", // Original comment: used by the REPL for dependency resolution
+    mvn"org.virtuslab:using_directives:1.1.4"
+  )
+  def defaultTask() = "runRepl"
+  def runRepl(args: String*) = {
+    if (!mill.constants.Util.hasConsole())
+      sys.error("Refusing to run the REPL without an interactive terminal. Run Mill like './mill -i ...' in order to run the REPL")
+    run(Task.Anon(mill.api.Args("-usejavacp", args)))
+  }
+  object test extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.compiler(crossValue).test
+    )
+    def testSources = Seq(testSrc())
+    def compileResources =
+      // Getting
+      //     Could not detect the parent class of task repl.bootstrapping.test.compileResources.super.test. Please report this at https://github.com/com-lihaoyi/mill/issues/new/choose .
+      // when adding
+      //     super[JavaModule].compileResources() ++
+      Seq(testResources())
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      mvn"com.github.sbt:junit-interface:0.13.3"
+    )
+
+    def replTestForkArgs = Task {
+      Seq(
+        s"-Ddotty.tests.classes.dottyRepl=${outer.jar().path}"
+      )
+    }
+
+    def forkArgs: T[Seq[String]] = Task {
+      super.forkArgs() ++
+        build.compiler(crossValue).test.compilerTestForkArgs() ++
+        replTestForkArgs()
+    }
+  }
+}
+
+object `package` extends Cross[Repl](BuildType.allValues)

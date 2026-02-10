@@ -736,7 +736,7 @@ trait ParallelTesting extends RunnerOrchestration:
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
-        val timer = new Timer()
+        lazy val timer = new Timer()
         val logProgress = isInteractive && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then

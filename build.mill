@@ -1,0 +1,105 @@
+//| mill-version: 1.1.2
+//| bspScriptIgnore:
+//| - ".plasmon/"
+//| - "bench/"
+//| - "bin/"
+//| - "community-build/"
+//| - "compiler/test/"
+//| - "compiler/test-resources/"
+//| - "language-server/"
+//| - "project/"
+//| - "repl/test/"
+//| - "repl/test-resources/"
+//| - "sandbox/"
+//| - "sbt-test/"
+//| - "scaladoc/"
+//| - "scaladoc-js/"
+//| - "sjs-compiler-tests/"
+//| - "tests/"
+
+package build
+
+import mill.*
+import mill.util.Tasks
+import mill.api.BuildCtx
+import mill.constants.OutFiles
+
+object ci extends Module {
+
+  val allowEmptySources = Set(
+    "sjs-compiler-tests.bootstrapping",
+    "sjs-compiler-tests.final"
+  )
+
+  def noEmptySources(tasks: mill.util.Tasks[Seq[PathRef]]) = Task.Command[Unit] {
+    val values = tasks.value.zip(Task.sequence(tasks.value)())
+    val invalid = values
+      .filter(_._2.isEmpty)
+      .filter {
+        case (m, _) =>
+          val moduleName = m.toString.stripSuffix(".allSourceFiles")
+          !allowEmptySources.contains(moduleName)
+      }
+
+    if (invalid.nonEmpty) {
+      System.err.println("Found modules with no sources:")
+      for ((m, _) <- invalid)
+        System.err.println(s"  $m")
+      sys.error(s"Found modules with no sources: ${invalid.map(_._1).mkString(", ")}")
+    }
+  }
+
+  def noOrphanSources(sourceTasks: Tasks[Seq[PathRef]]) = Task.Command[Unit] {
+    val allSources = Task.sequence(sourceTasks.value)()
+      .flatten
+      .map(_.path)
+      .filter(_.startsWith(BuildCtx.workspaceRoot))
+      .flatMap { path =>
+        if (os.isDir(path)) os.walk(path)
+        else Seq(path)
+      }
+      .map(_.subRelativeTo(BuildCtx.workspaceRoot))
+      .toSet
+
+    val ignore = Seq[os.SubPath](
+      "bench",
+      "bench-micro",
+      "bench-run",
+      "bin",
+      "library-aux", // Unused directory?
+      // See comment in library-js/package.mill about these two
+      "library-js/src/scala/math/ScalaNumber.scala",
+      "library-js/src/scala/runtime/BoxesRunTime.scala",
+      "mill-build",
+      "project",
+      "sbt-test",
+      "tests"
+    )
+
+    val outDir = BuildCtx.workspaceRoot / OutFiles.OutFiles.out
+    val foundFiles = os.walk(
+      BuildCtx.workspaceRoot,
+      skip = p =>
+        p.startsWith(outDir) || {
+          val subPath = p.subRelativeTo(BuildCtx.workspaceRoot)
+          (subPath.segments.length == 1 && subPath.segments.head.startsWith(".")) ||
+            ignore.exists(subPath.startsWith)
+        }
+    )
+    val foundSources = foundFiles
+      .filter(_.last.endsWith(".scala"))
+      .filter(os.isFile)
+      .map(_.subRelativeTo(BuildCtx.workspaceRoot))
+
+    pprint.err.log(foundSources.length)
+
+    val orphanSources = foundSources.filter(!allSources.contains(_))
+
+    if (orphanSources.nonEmpty) {
+      System.err.println(" Found orphan sources:")
+      for (f <- orphanSources)
+        System.err.println(s"  $f")
+      sys.error("Found orphan sources")
+    }
+  }
+}

@@ -1,0 +1,25 @@
+package build.tasty
+
+import scala3build.*
+
+import mill.*
+
+trait Tasty extends CrossScala3Module { outer =>
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.library(crossValue) // why do we need an explicit crossValue here?
+  )
+  def sources = Task.Sources("src")
+  def scalacOptions = super.scalacOptions() ++ Seq(
+    "-source:3.0-migration"
+  )
+
+  def testSources = Task.Sources("test")
+  object test extends Scala3Tests {
+    def testSources = outer.testSources
+    def forkEnv = super.forkEnv() ++ Seq(
+      "EXPECTED_TASTY_VERSION" -> Versions.expectedTastyVersion
+    )
+  }
+}
+
+object `package` extends Cross[Tasty](BuildType.allValues)

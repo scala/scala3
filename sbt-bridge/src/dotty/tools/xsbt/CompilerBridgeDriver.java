@@ -61,7 +61,7 @@ public class CompilerBridgeDriver extends Driver {
     return false;
   }
 
-  private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
+  public static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
       HashMap<AbstractFile, VirtualFile> lookup) {
     return lookup.computeIfAbsent(sourceFile.file(), path -> {
       reportMissingFile(reporter, sourceFile);
@@ -128,7 +128,7 @@ public class CompilerBridgeDriver extends Driver {
         .setIncCallback(incCallback)
         .setProgressCallback(progressCallback);
 
-      Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
+      Contexts.Context context = setup(args, initialCtx).map(t -> t._2()).getOrElse(() -> initialCtx);
 
       if (ScalacCommand.isHelpFlag(context.settings(), context.settingsState())) {
         throw new InterfaceCompileFailed(args, new Problem[0], StopInfoError);
@@ -172,7 +172,7 @@ public class CompilerBridgeDriver extends Driver {
     }
   }
 
-  private static AbstractFile asDottyFile(VirtualFile virtualFile) {
+  public static AbstractFile asDottyFile(VirtualFile virtualFile) {
     if (virtualFile instanceof PathBasedFile) {
       java.nio.file.Path path = ((PathBasedFile) virtualFile).toPath();
       return new PlainFile(new Path(path));

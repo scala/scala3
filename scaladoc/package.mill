@@ -1,0 +1,165 @@
+package build.scaladoc
+
+import scala3build.*
+
+import mill.*
+import mill.api.BuildCtx
+import mill.scalalib.*
+
+trait Scaladoc extends CrossScala3Module { scaladoc =>
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.compiler(crossValue),
+    build.`tasty-inspector`(crossValue),
+  )
+
+  def src = Task.Source("src")
+  def testSrc = Task.Source("test")
+
+  def `test-documentations` = Task.Source("test-documentations")
+
+  def buildInfoSources = Task {
+    val dir = Task.dest
+    os.write(
+      dir / "dotty/tools/scaladoc/BuildInfo.scala",
+      s"""package dotty.tools.scaladoc
+         |
+         |object BuildInfo {
+         |  def version = "${Versions.dottyVersion}"
+         |}
+         |""".stripMargin,
+      createFolders = true
+    )
+    PathRef(dir)
+  }
+
+  def sources = Task {
+    Seq(src(), buildInfoSources())
+  }
+  def testSources = Task {
+    Seq(testSrc(), buildInfoTestSources())
+  }
+  def scalacOptions = super.scalacOptions() ++ Seq(
+    "-experimental"
+  )
+  def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"com.vladsch.flexmark:flexmark:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-util-ast:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-util-data:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-util-html:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-anchorlink:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-autolink:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-emoji:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-gfm-strikethrough:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-gfm-tasklist:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-wikilink:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-tables:${Versions.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-yaml-front-matter:${Versions.flexmarkVersion}",
+    mvn"nl.big-o:liqp:0.8.2",
+    mvn"org.jsoup:jsoup:1.17.2", // Original comment: Needed to process .html files for static site
+    mvn"com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${Versions.jacksonVersion}"
+  )
+  def mainClass = Some("dotty.tools.scaladoc.Main")
+
+  def scaladocTestcasesCompile: T[mill.javalib.api.CompilationResult] =
+    build.`scaladoc-testcases`(crossValue).compile
+  def scaladocTestcasesCompileClassesPath: os.Path =
+    build.`scaladoc-testcases`(crossValue).compileClassesPath0
+  def buildInfoTestSources = Task {
+    val dir = Task.dest
+    val tq = "\"\"\""
+    os.write(
+      dir / "dotty/tools/scaladoc/test/BuildInfo.scala",
+      s"""package dotty.tools.scaladoc.test
+         |
+         |object BuildInfo {
+         |  def test_testcasesOutputDir: Seq[String] = Seq($tq$scaladocTestcasesCompileClassesPath$tq)
+         |  def test_testcasesSourceRoot: String = $tq${build.`scaladoc-testcases`(crossValue).baseSources().path}$tq
+         |  def testDocumentationRoot: String = $tq${`test-documentations`().path}$tq
+         |}
+         |""".stripMargin,
+      createFolders = true
+    )
+    PathRef(dir)
+  }
+
+  def mainResourceDir = Task.Source(os.sub / "resources")
+
+  def bundleCssResources = Task {
+    val cssSubDir = os.sub / "dotty_res/styles/theme"
+    val cssDir = mainResourceDir().path / cssSubDir
+
+    for (dir <- os.walk(cssDir, includeTarget = true).filter(os.isDir)) {
+      val subPath = dir.subRelativeTo(cssDir)
+      val cssFiles = os.list(dir).filter(_.last.endsWith(".css")).filter(os.isFile)
+      val bundleContent = geny.Generator.from(cssFiles).map(os.read.bytes)
+      val bundlePath = Task.dest / cssSubDir / subPath / "bundle.css"
+      os.write(bundlePath, bundleContent, createFolders = true)
+    }
+
+    PathRef(Task.dest)
+  }
+
+  def generateScaladocTestCasesAssets() = Task.Command {
+    BuildCtx.withFilesystemCheckerDisabled {
+      DocumentationWebsite.generateScaladocTestCasesAssets(
+        BuildCtx.workspaceRoot,
+        build.`scaladoc-js`.contributors(crossValue).fullLinkJS().dest.path,
+        build.`scaladoc-js`.contributors(crossValue).css().path
+      )
+    }
+  }
+
+  def websiteAssets = Task {
+    val dest = Task.dest
+    DocumentationWebsite.generateStaticAssets(
+      BuildCtx.workspaceRoot,
+      build.`scaladoc-js`.contributors(crossValue).fullLinkJS().dest.path,
+      build.`scaladoc-js`.main(crossValue).fullLinkJS().dest.path,
+      build.`scaladoc-js`.contributors(crossValue).css().path,
+      build.`scaladoc-js`.common(crossValue).css().path,
+      dest
+    )
+    PathRef(dest)
+  }
+
+  def resources = Task {
+    generateScaladocTestCasesAssets()
+
+    super.resources() ++ Seq(
+      bundleCssResources(),
+      websiteAssets()
+    )
+  }
+
+  object test extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.`test-helpers`(crossValue)
+    )
+    def testSources = scaladoc.testSources
+    def runClasspath = Task {
+      // Ensure scaladoc-testcases is compiled, so that the directory
+      // we refer to via scaladocTestcasesCompileClassesPath exists
+      val fromCompile = scaladocTestcasesCompile().classes.path
+      val beforeCompile = scaladocTestcasesCompileClassesPath
+      if (fromCompile != beforeCompile)
+        sys.error(
+          "Warning: scaladoc-testcases compilation output dir calculation mismatch: " +
+          s"pre-computed value $beforeCompile differs from actual value $fromCompile."
+        )
+      super.runClasspath()
+    }
+  }
+
+  def testSourceLinksSrc = Task.Source("test-source-links")
+  object `test-source-links` extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.scaladoc(crossValue).test,
+      build.`test-helpers`(crossValue)
+    )
+    def testSources = Task {
+      Seq(testSourceLinksSrc())
+    }
+  }
+}
+
+object `package` extends Cross[Scaladoc](BuildType.allValues)

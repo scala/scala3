@@ -1,0 +1,27 @@
+package build.sandbox
+
+import scala3build.*
+
+import mill.*
+
+trait SandboxScalajs extends CrossScala3Module with Scala3JsModule {
+  def moduleDeps = super.moduleDeps ++ Seq(
+    build.`library-js`(crossValue)
+  )
+  def src = Task.Source("src")
+  def testSrc = Task.Source("test")
+
+  def sources = Task {
+    Seq(src())
+  }
+
+  def scalaJSUseMainModuleInitializer = true
+
+  object test extends Scala3JsTests {
+    def testSources = Task {
+      Seq(testSrc())
+    }
+  }
+}
+
+object scalajs extends Cross[SandboxScalajs](BuildType.allValues)
