@@ -170,6 +170,7 @@ subsection:
       - title: Capture Checking
         index: reference/experimental/capture-checking/cc.md
         subsection:
+          - page: reference/experimental/capture-checking/overview.md
           - page: reference/experimental/capture-checking/basics.md
           - page: reference/experimental/capture-checking/classes.md
           - page: reference/experimental/capture-checking/polymorphism.md
