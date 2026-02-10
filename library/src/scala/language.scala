@@ -282,14 +282,14 @@ object language {
 
     /** Experimental support for capture checking; implies support for pureFunctions
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/capture-checking]]
      */
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
     /** Experimental support for separation checking; requires captureChecking also to be enabled.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/capture-checking/separation-checking]]
      */
     @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
     object separationChecking
