@@ -96,13 +96,17 @@ object Inliner:
     }
   end isElideableExpr
 
-  // InlineCopier is a more fault-tolerant copier that does not cause errors when
-  // function types in applications are undefined. This is necessary since we copy at
-  // the same time as establishing the proper context in which the copied tree should
-  // be evaluated. This matters for opaque types, see neg/i14653.scala.
+  /** InlineCopier is a more fault-tolerant copier that does not cause errors in two situations:
+   *   - Function types in applications are undefined. This is necessary since we copy at
+   *     the same time as establishing the proper context in which the copied tree should
+   *     be evaluated. This matters for opaque types, see neg/i14653.scala.
+   *   - The application is spurious (in the sense of isSpuriousApply). We leave
+   *     the application around to be eliminated later by the inline typer.
+   */
   private class InlineCopier() extends TypedTreeCopier:
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
-      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
+      if fun.tpe.widen.exists && !isSpuriousApply(fun, args)
+      then super.Apply(tree)(fun, args)
       else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
 
   // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
@@ -937,6 +941,9 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
       specializeEq(inlineIfNeeded(constToLiteral(BetaReduce(super.typedApply(tree, pt))), pt, locked))
+
+    override def isAcceptedSpuriousApply(fun: Tree, args: List[untpd.Tree])(using Context): Boolean =
+      tpd.isSpuriousApply(fun, args)
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
