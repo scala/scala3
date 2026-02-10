@@ -444,6 +444,24 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
               getPop(1),
               loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
           }
+          // Explicitly check for `x.equals(null)` when x is known nonnull
+          else if mi.owner == "java/lang/Object" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;)Z" then
+            frameAt(mi).foreach(frame =>
+              val thisNullness = frame.peekStack(1)
+              val otherNullness = frame.peekStack(0)
+              if thisNullness == NotNullValue && otherNullness == NullValue then
+                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
+            )
+          // As well as `Objects.equals` (which in Scala can be `x == y`) with `(null, null)`, `(null, nonnull)`, and `(nonnull, null)`
+          else if mi.owner == "java/util/Objects" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;Ljava/lang/Object;)Z" then
+            frameAt(mi).foreach(frame =>
+              val thisNullness = frame.peekStack(1)
+              val otherNullness = frame.peekStack(0)
+              if thisNullness == NullValue && otherNullness == NullValue then
+                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_1))
+              else if (thisNullness == NullValue && otherNullness == NotNullValue) || (thisNullness == NotNullValue && otherNullness == NullValue) then
+                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
+            )
 
         case _ =>
       }
