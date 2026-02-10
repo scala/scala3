@@ -1,0 +1,360 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredApply
+101
+106
+6
++
+Apply
+false
+0
+false
+x + 1
+
+1
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredApply
+69
+85
+6
+coveredApply
+DefDef
+false
+0
+false
+def coveredApply
+
+2
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredLiteral
+236
+238
+12
+<none>
+Literal
+false
+0
+false
+42
+
+3
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredLiteral
+210
+228
+12
+coveredLiteral
+DefDef
+false
+0
+false
+def coveredLiteral
+
+4
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredSelect
+401
+409
+18
+length
+Apply
+false
+0
+false
+s.length
+
+5
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredSelect
+365
+382
+18
+coveredSelect
+DefDef
+false
+0
+false
+def coveredSelect
+
+6
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+local
+589
+590
+25
+<none>
+Literal
+false
+0
+false
+1
+
+7
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+local
+572
+581
+25
+local
+DefDef
+false
+0
+false
+def local
+
+8
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredIdent
+595
+600
+26
+local
+Ident
+false
+0
+false
+local
+
+9
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredIdent
+544
+560
+24
+coveredIdent
+DefDef
+false
+0
+false
+def coveredIdent
+
+10
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBranch
+784
+789
+35
+>
+Apply
+false
+0
+false
+x > 0
+
+11
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBranch
+795
+800
+35
+<none>
+Literal
+false
+0
+false
+"pos"
+
+12
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBranch
+795
+800
+35
+<none>
+Literal
+true
+0
+false
+"pos"
+
+13
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBranch
+810
+815
+36
+<none>
+Literal
+false
+0
+false
+"neg"
+
+14
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBranch
+810
+815
+36
+<none>
+Literal
+true
+0
+false
+"neg"
+
+15
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBranch
+741
+758
+34
+coveredBranch
+DefDef
+false
+0
+false
+def coveredBranch
+
+16
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBody
+986
+988
+44
+<none>
+Literal
+false
+0
+false
+99
+
+17
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+AllTreesIgnoredLocally
+Class
+covtest.AllTreesIgnoredLocally
+coveredBody
+963
+978
+44
+coveredBody
+DefDef
+false
+0
+false
+def coveredBody
+
+18
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+CoveredCtor
+Class
+covtest.CoveredCtor
+<init>
+1128
+1136
+52
+<init>
+DefDef
+false
+0
+false
+def this
+
+19
+TryInstrumentCasesIgnoredLocally.scala
+covtest
+CoveredCtor
+Class
+covtest.CoveredCtor
+<init>
+1159
+1167
+53
+length
+Apply
+false
+0
+false
+s.length
+
