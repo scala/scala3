@@ -179,12 +179,25 @@ object ImplicitNullInterop:
       case tp: TypeParamRef =>
         nullify(tp)
       case tp: AnnotatedType =>
+        val savedState = state
+        var isNullAnnot = true
         val underlyingMode =
           if isNullableAnnot(tp.annot) then NullMode.Explicit
           else if isNotNullAnnot(tp.annot) then NullMode.Skip
-          else state.currentTypeMode
-        state = state.copy(currentTypeMode = underlyingMode)
-        this(tp.underlying)
+          else
+            isNullAnnot = false
+            state.currentTypeMode
+        state = savedState.copy(currentTypeMode = underlyingMode)
+        val parent2 = this(tp.parent)
+        state = savedState
+        if isNullAnnot then parent2
+        else parent2 match
+          case FlexibleType(_, parent2a) =>
+            FlexibleType(derivedAnnotatedType(tp, parent2a, tp.annot))
+          case OrNull(parent2a) =>
+            OrNull(derivedAnnotatedType(tp, parent2a, tp.annot))
+          case _ =>
+            derivedAnnotatedType(tp, parent2, tp.annot)
       case appTp @ AppliedType(tycon, targs) =>
         val savedState = state
         // If Java-defined tycon, don't nullify outer level of type args (Java classes are fully nullified)
