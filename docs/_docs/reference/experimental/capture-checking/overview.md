@@ -7,7 +7,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 ### Introduction
 
 Tracked capabilities are the most important new feature of Scala. This page gives an overview of
-the underlying concepts, focussing on what capabilities can express and what one can do with them.
+the underlying concepts, focusing on what capabilities can express and what one can do with them.
 
 For a more systematic description of all the details we refer you to the following pages:
 
@@ -45,7 +45,7 @@ Here, `ExclusiveCapability` is a subtrait of `Capability` that prevents concurre
 
 ### Capability Tracking
 
-Capabilities in Scala 3 are *tracked*. This means that we record in a type the capabilities that can be accessed by values of that type. We write `A^{c}` for the type of values of type `A` that can access the capability `c`.
+Capabilities in Scala 3 are *tracked*. This means that we record in a type which capabilities can be accessed by values of that type. We write `A^{c}` for the type of values of type `A` that can access the capability `c`.
 
 For instance we can define a class `Logger` for sending log messages to a file and instantiate it like this:
 ```scala
@@ -56,7 +56,7 @@ For instance we can define a class `Logger` for sending log messages to a file a
 ```
 Note the type `Logger^{out}` of `lg` above. It indicates not only that `lg` is of class `Logger` but also that it can access file `out`. We also say `lg` _captures_ `out` and call `Logger^{out}` a _capturing type_.
 
-Generally, the type `A^{c₍, ..., cₙ}` stands for instances that retain capabilities `c₁, ..., cₙ`. `A` alone stands for instances that retain no capabilities, i.e. `A` is equivalent to `A^{}`. We also say `A` is _pure_. The opposite of pure `A` describes instances of `A` that can retain arbitrary capabilities. This type is `A^{any}`, or, shorter, `A^`.
+Generally, the type `A^{c₁, ..., cₙ}` stands for instances that retain capabilities `c₁, ..., cₙ`. `A` alone stands for instances that retain no capabilities, i.e. `A` is equivalent to `A^{}`. We also say `A` is _pure_. The opposite of pure `A` describes instances of `A` that can retain arbitrary capabilities. This type is `A^{any}`, or, shorter, `A^`.
 
 Values of capturing types are themselves considered capabilities. For instance `lg` above is treated as a capability even though its class `Logger` does not extend `Capability`.
 
@@ -77,7 +77,7 @@ The function type `A -> B` is considered to be pure, so it cannot
 retain any capability. We then use the following shorthands.
 
 ```scala
-   A ->{c₍, ..., cₙ} B   =  (A -> B)^{c₍, ..., cₙ}
+   A ->{c₁, ..., cₙ} B   =  (A -> B)^{c₁, ..., cₙ}
                 A => B   =  A ->{any} B
 ```
 
@@ -96,7 +96,7 @@ val exec = new Runnable {
 }
 ```
 the value `exec` has type `Runnable^{lg}` since `lg` is accessed by `Runnable`'s method `run`.
-Methods can be converted to a functions by just naming the method without passing any parameters (this is called eta expansion). For instance the value `exec.run` would have type `() ->{lg} Unit`.
+Methods can be converted to functions by just naming the method without passing any parameters (this is called eta expansion). For instance the value `exec.run` would have type `() ->{lg} Unit`.
 
 ### Lifetimes
 
@@ -129,7 +129,7 @@ The fine grained control of lifetimes is one of the properties that set tracked 
 
 Capabilities like `out` or `lg` are objects with which a program interacts as usual. This aspect of object capabilities is one of their strengths since it leads to ergonomic notation. Capabilities are also often used to establish some kind of context that establishes permissions to execute some effects.
 
-For instance, in the Gears framework for concurrent systems we have `Async` capabilities that allow a computation to suspend while waiting for an external event (and possibly be cancelled in the process). This is modelled by having the `Async` class extend a capability trait:
+For instance, in the [Gears](https://lampepfl.github.io/gears/) framework for concurrent systems we have `Async` capabilities that allow a computation to suspend while waiting for an external event (and possibly be cancelled in the process). This is modeled by having the `Async` class extend a capability trait:
 
 ```scala
    	class Async extends SharedCapability
@@ -141,14 +141,14 @@ For instance, in the Gears framework for concurrent systems we have `Async` capa
 One common issue with traditional capabilities is that passing many capabilities as parameters to all the places that need them can get tedious quickly. In Scala this is much less of a problem since capabilities can be passed as implicit parameters via `using` clauses. For instance, the following method calls `readDataEventually` without having to pass the parameter `async` explicitly.
 ```scala
 def processData(using Async) =
-  val file = File(“~/some/path”)
+  val file = File("~/some/path")
   readDataEventually(file)
 ```
 Since the parameter is not mentioned, we also don’t need a name for it in its definition. So the method above is a convenient shorthand for the following more explicit definition.
 
 ```scala
 def processData(using async: Async) =
-  val file = File(“~/some/path”)
+  val file = File("~/some/path")
   readDataEventually(file)(using async)
 ```
 
