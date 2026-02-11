@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.Flags.{JavaDefined, Method, ModuleClass, PackageCla
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import DottyBackendInterface.{*, given}
 import PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
-import dotty.tools.backend.jvm.BackendReporting.{ClassNotFoundWhenBuildingInlineInfoFromSymbol, ClassSymbolInfoFailureSI9111}
 
 import scala.annotation.threadUnsafe
 import scala.tools.asm
