@@ -10,10 +10,16 @@ When discussing [escape checking](basics.md#escape-checking), we referred to a s
 That is, capture sets can contain only capabilities that are visible at the point where the set is
 defined. But that raises the question: where is a universal capability `any` defined?
 
-The key principle is that each occurrence of `any` (and each `fresh`) represents a _different_
-capability. Each `any` can subsume capabilities of the same or outer level, including other `any`s.
-This property is central to [separation checking](separation-checking.md), where each `any` gets
-its own hidden set of capabilities it subsumes.
+The key principle is that each occurrence of `any` represents a _different_ capability. Each `any`
+can subsume capabilities of the same or outer level, including other `any`s. This property is
+central to [separation checking](separation-checking.md), where each `any` gets its own hidden set
+of capabilities it subsumes.
+
+Besides `any`, there is a related capability `fresh` (available via `import caps.fresh`) that can
+appear in function type results. While `any` in a function result refers to the enclosing scope's
+local `any`, `fresh` introduces a new existentially bound capability, guaranteeing that each call
+produces a distinct, isolated result. We cover `fresh` in detail
+[below](#parameter-and-result-anys-in-function-types).
 
 ## Where `any` Appears
 
@@ -31,10 +37,11 @@ actual capabilities passed in.
 `A^{any} -> B^{any}`), it refers to the local `any` of the enclosing scope. Two calls to such a
 function produce results with the same capture-set bound.
 
-**Result `fresh`s**: Instead of `any`, one can write `fresh` in a function result type
+**Result `fresh`s**: Instead of `any`, one can write `fresh` in the result type of a function type
 (e.g., `A^ -> B^{fresh}`). This indicates that each call to the function yields a result capturing
 a fresh, distinct capability, hence the name. Unlike a result `any`, a result `fresh` is isolated:
-it cannot be merged with capabilities from the enclosing scope.
+it cannot be merged with capabilities from the enclosing scope. Note that `fresh` applies only to
+function types, not to method return types (which use `any`).
 
 So, when writing `T^` (shorthand for `T^{any}`), `any` is a way of saying "captures something"
 without naming what it is precisely, and depending on the context, the capture checker imposes

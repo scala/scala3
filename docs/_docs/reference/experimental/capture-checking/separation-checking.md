@@ -156,6 +156,25 @@ val b: Ref^ = incr(a)
 Here, `b` aliases `a` but does not hide it. If we referred to `a` afterwards we would be surprised to see that the reference has now a value of 2.
 Therefore, parameters cannot appear in the hidden sets of result `any`s either, at least not in general. An exception to this rule is described in the next section.
 
+### `fresh` in Function Type Results
+
+While method return types use `any`, function types use `fresh` in their result positions to express that each call yields a result with a distinct capability. As explained in [scoped capabilities](scoped-capabilities.md#expansion-rules-for-function-types), `fresh` in a function result is existentially bound: `() -> Ref^{fresh}` means `() -> ∃fresh. Ref^{fresh}`.
+
+From a separation-checking perspective, `fresh` results are important because they let the checker prove non-aliasing across calls:
+```scala
+val mkRef: () -> Ref^{fresh} = () => Ref(1)
+val a = mkRef()  // Ref^{fresh₁}
+val b = mkRef()  // Ref^{fresh₂}
+```
+Since `fresh₁` and `fresh₂` are distinct existentials, the capture sets of `a` and `b` don't interfere — they are separated. This would not hold if the function type used `any` in its result instead, since both results would share the same capture-set bound and could therefore alias.
+
+The same hidden-set discipline applies: the hidden set of a result `fresh` cannot contain capabilities from outside the function. For instance:
+```scala
+val a = Ref(1)
+val bad: () => Ref^{fresh} = () => a  // error
+```
+Here, `a` is captured by the closure and would need to flow into the result `fresh`. But since `a` is also visible outside the function, this would violate the freshness guarantee — the returned `Ref` would not truly be a new, unaliased capability.
+
 ### Consume Parameters
 
 Returning parameters in result `any`'s is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
