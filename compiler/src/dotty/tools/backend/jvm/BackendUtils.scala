@@ -9,7 +9,7 @@ import scala.collection.mutable
 import scala.collection.BitSet
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 
 import scala.language.unsafeNulls
 import dotty.tools.backend.jvm.analysis.{InstructionStackEffect, ProdConsAnalyzer}
@@ -456,6 +456,11 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
 
 object BackendUtils {
 
+  private def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
+  final val emitSource = debugLevel >= 1
+  final val emitLines = debugLevel >= 2
+  final val emitVars = debugLevel >= 3
+
   private lazy val primitiveTypes: Map[String, asm.Type] = Map(
     ("Unit", asm.Type.VOID_TYPE),
     ("Boolean", asm.Type.BOOLEAN_TYPE),
@@ -877,4 +882,21 @@ object BackendUtils {
 
   // ===
 
+  def compilingArray(using Context) =
+    ctx.compilationUnit.source.file.name == "Array.scala"
+
+  private val primitiveCompilationUnits = Set(
+    "Unit.scala",
+    "Boolean.scala",
+    "Char.scala",
+    "Byte.scala",
+    "Short.scala",
+    "Int.scala",
+    "Float.scala",
+    "Long.scala",
+    "Double.scala"
+  )
+
+  def compilingPrimitive(using Context) =
+    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
 }
