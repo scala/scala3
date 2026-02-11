@@ -3,9 +3,9 @@
   |                          ^^^^^^^^^^^^^
   |                          Read-only method map accesses exclusive capability `Iterator.this`;
   |                          method map should be declared an update method to allow this.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-iterator4.scala:21:81 --------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mut-iterator4.scala:21:77 --------------------------------
 21 |def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U]^{it, f} = new Iterator: // error
-   |                                                                                 ^
+   |                                                                             ^
    |Found:    Iterator[U^'s1]^{it.rd, f, it, any}
    |Required: Iterator[U]^{it, f}
    |

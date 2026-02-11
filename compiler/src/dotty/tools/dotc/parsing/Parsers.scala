@@ -2929,7 +2929,9 @@ object Parsers {
      */
     def newExpr(): Tree =
       val start = in.skipToken()
-      def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
+      def reposition(t: Tree) =
+        val end = if t.span.exists then in.lastOffset max t.span.end else in.lastOffset
+        t.withSpan(Span(start, end))
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
@@ -2943,11 +2945,12 @@ object Parsers {
           else parent
       case parents =>
         // With brace syntax, the last token consumed by a parser is }, but with indent syntax,
-        // the last token consumed by a parser is OUTDENT, which causes mismatching spans, so don't reposition.
+        // the last token consumed by a parser is OUTDENT, which causes mismatching spans, so don't update end.
         val indented = in.token == INDENT
         val body =
-          val bo = templateBodyOpt(emptyConstructor, parents, derived = Nil)
-          if !indented then reposition(bo) else bo
+          val tbo = templateBodyOpt(emptyConstructor, parents, derived = Nil)
+          if indented then tbo.withSpan(tbo.span.withStart(start))
+          else reposition(tbo)
         New(body)
     end newExpr
 
