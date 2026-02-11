@@ -180,23 +180,13 @@ object BackendReporting {
   }
   final case class FieldNotFound(name: String, descriptor: String, ownerInternalName: InternalName, missingClass: Option[ClassNotFound]) extends MissingBytecodeWarning
 
-  sealed trait NoClassBTypeInfo extends OptimizerWarning {
-    override def toString = this match {
-      case NoClassBTypeInfoMissingBytecode(cause) =>
-        cause.toString
+  final case class NoClassBTypeInfo(cause: MissingBytecodeWarning) extends OptimizerWarning {
+    override def toString: String =
+      cause.toString
 
-      case NoClassBTypeInfoClassSymbolInfoFailedSI9111(classFullName) =>
-        s"Failed to get the type of class symbol $classFullName due to scala/bug#9111."
-    }
-
-    def emitWarning(settings: CompilerSettings): Boolean = this match {
-      case NoClassBTypeInfoMissingBytecode(cause)         => cause.emitWarning(settings)
-      case NoClassBTypeInfoClassSymbolInfoFailedSI9111(_) => settings.optWarningNoInlineMissingBytecode
-    }
+    def emitWarning(settings: CompilerSettings): Boolean =
+      cause.emitWarning(settings)
   }
-
-  final case class NoClassBTypeInfoMissingBytecode(cause: MissingBytecodeWarning) extends NoClassBTypeInfo
-  final case class NoClassBTypeInfoClassSymbolInfoFailedSI9111(classFullName: String) extends NoClassBTypeInfo
 
   /**
    * Used in the CallGraph for nodes where an issue occurred determining the callee information.
@@ -340,9 +330,6 @@ object BackendReporting {
       case NoInlineInfoAttribute(internalName) =>
         s"The Scala classfile $internalName does not have a ScalaInlineInfo attribute."
 
-      case ClassSymbolInfoFailureSI9111(classFullName) =>
-        s"Failed to get the type of a method of class symbol $classFullName due to scala/bug#9111."
-
       case ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass) =>
         s"Failed to build the inline information: $missingClass"
 
@@ -353,13 +340,11 @@ object BackendReporting {
     def emitWarning(settings: CompilerSettings): Boolean = this match {
       case NoInlineInfoAttribute(_)                             => settings.optWarningNoInlineMissingScalaInlineInfoAttr
       case ClassNotFoundWhenBuildingInlineInfoFromSymbol(cause) => cause.emitWarning(settings)
-      case ClassSymbolInfoFailureSI9111(_)                      => settings.optWarningNoInlineMissingBytecode
       case UnknownScalaInlineInfoVersion(_, _)                  => settings.optWarningNoInlineMissingScalaInlineInfoAttr
     }
   }
 
   final case class NoInlineInfoAttribute(internalName: InternalName) extends ClassInlineInfoWarning
-  final case class ClassSymbolInfoFailureSI9111(classFullName: String) extends ClassInlineInfoWarning
   final case class ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass: ClassNotFound) extends ClassInlineInfoWarning
   final case class UnknownScalaInlineInfoVersion(internalName: InternalName, version: Int) extends ClassInlineInfoWarning
 }
