@@ -56,7 +56,11 @@ For instance we can define a class `Logger` for sending log messages to a file a
 ```
 Note the type `Logger^{out}` of `lg` above. It indicates not only that `lg` is of class `Logger` but also that it can access file `out`. We also say `lg` _captures_ `out` and call `Logger^{out}` a _capturing type_.
 
-Generally, the type `A^{c₁, ..., cₙ}` stands for instances that retain capabilities `c₁, ..., cₙ`. `A` alone stands for instances that retain no capabilities, i.e. `A` is equivalent to `A^{}`. We also say `A` is _pure_. The opposite of pure `A` describes instances of `A` that can retain arbitrary capabilities. This type is `A^{any}`, or, shorter, `A^`.
+Generally, the type `A^{c₁, ..., cₙ}` stands for instances that retain capabilities `c₁, ..., cₙ`.
+If class `A` does not extend `Capability`, then the type `A` alone stands for instances
+that retain no capabilities, i.e. `A` is equivalent to `A^{}`. We also say `A` is _pure_.
+The opposite of pure `A` describes instances of `A` that can retain arbitrary capabilities.
+This type is `A^{any}`, or, shorter, `A^`.
 
 Values of capturing types are themselves considered capabilities. For instance `lg` above is treated as a capability even though its class `Logger` does not extend `Capability`.
 
