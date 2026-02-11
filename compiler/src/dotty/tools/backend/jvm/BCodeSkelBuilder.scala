@@ -130,7 +130,6 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
   abstract class PlainSkelBuilder(cunit: CompilationUnit)
     extends BCClassGen
     with    BCAnnotGen
-    with    BCInnerClassGen
     with    JAndroidBuilder
     with    BCForwardersGen
     with    BCPickles
@@ -155,14 +154,14 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      funSym.info.firstParamTypes.map(toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      funSym.info.firstParamTypes.map(ts.toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {
-      toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
+      ts.toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
-    def tpeTK(tree: Tree): BType = { toTypeKind(tree.tpe) }
+    def tpeTK(tree: Tree): BType = { ts.toTypeKind(tree.tpe) }
 
     override def getCurrentCUnit(): CompilationUnit = { cunit }
 
@@ -175,7 +174,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       claszSymbol       = cd0.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = claszSymbol.isStaticModuleClass
-      thisName          = internalName(claszSymbol)
+      thisName          = ts.internalName(claszSymbol)
 
       cnode = new ClassNode1()
 
@@ -304,7 +303,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ts.ObjectRef.internalName else internalName(ps.head.typeSymbol)
+      val superClass: String = if (ps.isEmpty) ts.ObjectRef.internalName else ts.internalName(ps.head.typeSymbol)
 
       // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
       // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.
@@ -348,11 +347,11 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
 
-      if (emitSource) {
+      if (BackendUtils.emitSource) {
         cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
+      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, ts.internalName, ts.asmMethodType(_).descriptor) match {
         case Some(BCodeAsmCommon.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
@@ -647,7 +646,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         case _                     => a
       }
 
-      if (emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
+      if (BackendUtils.emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
         val nr =
           val sourcePos = tree.sourcePos
           (
@@ -746,7 +745,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         if (isMethSymStaticCtor) CLASS_CONSTRUCTOR_NAME
         else jMethodName
 
-      val mdesc = asmMethodType(methSymbol).descriptor
+      val mdesc = ts.asmMethodType(methSymbol).descriptor
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
                                         else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
       if !lengthOk then
@@ -851,7 +850,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
       methSymbol  = dd.symbol
       jMethodName = methSymbol.javaSimpleName
-      returnType  = asmMethodType(methSymbol).returnType
+      returnType  = ts.asmMethodType(methSymbol).returnType
       isMethSymStaticCtor = methSymbol.isStaticConstructor
 
       resetMethodBookkeeping(dd)
@@ -933,7 +932,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
           else
             genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
 
-          if (emitVars) {
+          if (BackendUtils.emitVars) {
             // add entries to LocalVariableTable JVM attribute
             val onePastLastProgramPoint = currProgramPoint()
             val hasStaticBitSet = ((flags & asm.Opcodes.ACC_STATIC) != 0)
@@ -1003,9 +1002,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         )
         // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
         val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
-        val jowner = internalName(callee.owner)
+        val jowner = ts.internalName(callee.owner)
         val jname  = callee.javaSimpleName
-        val jtype  = asmMethodType(callee).descriptor
+        val jtype  = ts.asmMethodType(callee).descriptor
         insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)
         // PUTSTATIC `thisName`.CREATOR;
         insnParcB  = new asm.tree.FieldInsnNode(asm.Opcodes.PUTSTATIC, thisName, "CREATOR", andrFieldDescr)
