@@ -25,19 +25,19 @@ produces a distinct, isolated result. We cover `fresh` in detail
 
 We distinguish four positions where `any` (or `fresh`) can appear:
 
-**Local `any`s**: Every class, method body, and block has its own local `any`. It abstracts over the
+1. **Local `any`s**: Every class, method body, and block has its own local `any`. It abstracts over the
 capabilities used inside that scope, representing them by a single name to the outside world. Local
 `any`s form a subcapturing hierarchy based on lexical nesting.
 
-**Parameter `any`s**: When `any` appears in a function parameter type (e.g., `def foo(x: T^)`), it
+2. **Parameter `any`s**: When `any` appears in a function parameter type (e.g., `def foo(x: T^)`), it
 gets its own `any` scoped to that parameter. At call sites, parameter `any`s are instantiated to the
 actual capabilities passed in.
 
-**Result `any`s**: When `any` appears in a function result type (e.g., `A^ -> B^`, i.e.,
+3. **Result `any`s**: When `any` appears in a function result type (e.g., `A^ -> B^`, i.e.,
 `A^{any} -> B^{any}`), it refers to the local `any` of the enclosing scope. Two calls to such a
 function produce results with the same capture-set bound.
 
-**Result `fresh`s**: Instead of `any`, one can write `fresh` in the result type of a function type
+4. **Result `fresh`s**: Instead of `any`, one can write `fresh` in the result type of a function type
 (e.g., `A^ -> B^{fresh}`). This indicates that each call to the function yields a result capturing
 a fresh, distinct capability, hence the name. Unlike a result `any`, a result `fresh` is isolated:
 it cannot be merged with capabilities from the enclosing scope. Note that `fresh` applies only to
