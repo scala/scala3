@@ -127,24 +127,24 @@ Here, the definition of `b` is in error since the hidden sets of the two `^`s in
 
 ### Checking Return Types
 
-When a `fresh` appears in the return type of a function it means a "fresh" top capability, different from what is known at the call site. Separation checking makes sure this is the case. For instance, the following is OK:
+When an `any` appears in the return type of a method it means a top capability that is different from what is known at the call site. Separation checking makes sure this is the case. For instance, the following is OK:
 ```scala
-def newRef(): Ref^{fresh} = Ref(1)
+def newRef(): Ref^ = Ref(1)
 ```
 And so is this:
 ```scala
-def newRef(): Ref^{fresh} =
+def newRef(): Ref^ =
   val a = Ref(1)
   a
 ```
 But the next definitions would cause a separation error:
 ```scala
 val a = Ref(1)
-def newRef(): Ref^{fresh} = a // error
+def newRef(): Ref^ = a // error
 ```
-The rule is that the hidden set of a `fresh` in a return type cannot reference exclusive or read-only capabilities defined outside of the function. What about parameters? Here's another illegal version:
+The rule is that the hidden set of an `any` in a return type cannot reference exclusive or read-only capabilities defined outside of the function. What about parameters? Here's another illegal version:
 ```scala
-def incr(a: Ref^): Ref^{fresh} =
+def incr(a: Ref^): Ref^ =
   a.set(a.get + 1)
   a
 ```
@@ -154,13 +154,13 @@ val a = Ref(1)
 val b: Ref^ = incr(a)
 ```
 Here, `b` aliases `a` but does not hide it. If we referred to `a` afterwards we would be surprised to see that the reference has now a value of 2.
-Therefore, parameters cannot appear in the hidden sets of fresh result `fresh`s either, at least not in general. An exception to this rule is described in the next section.
+Therefore, parameters cannot appear in the hidden sets of result `any`s either, at least not in general. An exception to this rule is described in the next section.
 
 ### Consume Parameters
 
-Returning `fresh` parameters is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
+Returning parameters in result `any`'s is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
 ```scala
-def incr(consume a: Ref^): Ref^{fresh} =
+def incr(consume a: Ref^): Ref^ =
   a.set(a.get + 1)
   a
 ```
@@ -183,7 +183,7 @@ Consume parameters enforce linear access to resources. This can be very useful. 
 
 For instance, we can define a function `linearAdd` that adds elements to buffers in-place without violating referential transparency:
 ```scala
-def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^{fresh} =
+def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
   buf += elem
 ```
 `linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `consume` modifier on `buf` ensures that the argument is not used after the call.
@@ -225,7 +225,7 @@ to `Buffer[T]^{any}` whereas the second expands to `Buffer[T]^{any.rd}`.
 Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `consume` modifier to the method itself.
 ```scala
 class Buffer[T] extends Mutable:
-  consume def +=(x: T): Buffer[T]^{fresh} = this // ok
+  consume def +=(x: T): Buffer[T]^ = this // ok
 ```
 `consume` on a method in a `Mutable` class implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
 ```scala

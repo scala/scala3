@@ -8,12 +8,16 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 When discussing [escape checking](basics.md#escape-checking), we referred to a scoping discipline.
 That is, capture sets can contain only capabilities that are visible at the point where the set is
-defined. But that raises the question: where is a universal capability `any` defined? In fact, what
-is written as the top type `any` can mean different capabilities, depending on scope.
+defined. But that raises the question: where is a universal capability `any` defined?
 
-## Different Kinds of `any`
+The key principle is that each occurrence of `any` (and each `fresh`) represents a _different_
+capability. Each `any` can subsume capabilities of the same or outer level, including other `any`s.
+This property is central to [separation checking](separation-checking.md), where each `any` gets
+its own hidden set of capabilities it subsumes.
 
-We will discuss four distinct kinds of root capabilities in this chapter:
+## Where `any` Appears
+
+We distinguish four positions where `any` (or `fresh`) can appear:
 
 **Local `any`s**: Every class, method body, and block has its own local `any`. It abstracts over the
 capabilities used inside that scope, representing them by a single name to the outside world. Local
@@ -36,8 +40,7 @@ So, when writing `T^` (shorthand for `T^{any}`), `any` is a way of saying "captu
 without naming what it is precisely, and depending on the context, the capture checker imposes
 restrictions on which capabilities are allowed to flow into them by means of subcapturing. Writing
 `T^{fresh}` instead says "captures something new and isolated"; see the comparison
-[below](#any-vs-fresh-in-function-type-results) for the practical difference. We will further expand
-on these ideas later when discussing [separation checking](separation-checking.md).
+[below](#any-vs-fresh-in-function-type-results) for the practical difference.
 
 Another analogy for the different `any`s is that they are some form of implicitly named existential
 or abstract self-capture set attached to elements of the program structure, e.g., scopes,
@@ -71,8 +74,9 @@ determines where a capability can flow: it can flow into `any`s at the same leve
 nested, but not outward to enclosing scopes (which would mean a capability lives longer than its
 lexical lifetime). The compiler computes a capability's level by walking up the ownership chain
 until reaching a symbol that represents a level boundary. Level boundaries are:
-- **Classes** (but not inner non-static module classes)
-- **Methods** (but not accessors or constructors)
+- **Classes**
+- **Static objects**
+- **Methods**
 
 Local values like `f1`, `f2`, `ref`, etc., don't define their own levels. They inherit the level of
 their enclosing method or class. For example, this means:
@@ -115,15 +119,14 @@ cannot appear in a type outside its defining scope. In such cases, the capture s
 the smallest visible super capture set:
 
 ```scala
-def test(fs: FileSystem^/*{any₁}*/): Logger^/*{any₂}*/ =
+def test(fs: FileSystem^/*{any₁}*/): Logger^{fs} =
   val localLogger = Logger(fs)
   localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
 ```
 
 Here, `localLogger` cannot appear in the result type because it's a local variable. The capture set
-`{localLogger}` widens to `{fs}` (since `localLogger` captures `fs`) which widens to the parameter's
-`any₁`. In effect, `fs` flows via the parameter's `any₁` into the result's `any₂` (which is visible
-outside of `test`), instead of `localLogger`.
+`{localLogger}` widens to `{fs}` (since `localLogger` captures `fs`), which is visible
+outside of `test`.
 
 #### Try-With-Resources, Again
 
