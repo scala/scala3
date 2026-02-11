@@ -19,7 +19,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
-import dotty.tools.backend.jvm.BackendReporting.NoClassBTypeInfoMissingBytecode
+import dotty.tools.backend.jvm.BackendReporting.NoClassBTypeInfo
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
 
 class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) {
@@ -65,7 +65,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
     if internalName == "null" then ts.ObjectRef
     else ts.classBType(internalName, internalName, fromSymbol = false) { (_, n) =>
       byteCodeRepository.classNode(n) match {
-        case Left(msg) => Left(NoClassBTypeInfoMissingBytecode(msg))
+        case Left(msg) => Left(NoClassBTypeInfo(msg))
         case Right(c) => computeClassInfoFromClassNode(c)
       }
     }
