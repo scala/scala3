@@ -46,7 +46,7 @@ trait CoverageSupport { this: ParallelTesting =>
             .sorted(java.util.Comparator.reverseOrder())
             .forEach(Files.delete)
         } catch {
-          case _: Exception => // Ignore cleanup errors
+          case NonFatal(_) => // Ignore cleanup errors
         }
       }
     }
