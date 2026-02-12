@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
 import scala.annotation.tailrec
+import dotty.tools.dotc.interactive.InteractivePlatform
 
 object Contexts {
 
@@ -918,7 +919,11 @@ object Contexts {
     }
 
     protected def newPlatform(using Context): Platform =
-      if (settings.scalajs.value) new SJSPlatform
+      if settings.scalajs.value then new SJSPlatform
+      else if settings.sourcepath.value.nonEmpty && settings.YpruneSourcepath.value then 
+        val platform = new InteractivePlatform(settings.sourcepath.value)
+        println(s"InteractivePlatform created with sourcepath: ${platform.rootPackage.name}")
+        platform
       else new JavaPlatform
 
     /** The loader that loads the members of _root_ */

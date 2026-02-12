@@ -424,6 +424,7 @@ private sealed trait YSettings:
   val YbackendWorkerQueue: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-worker-queue", "backend threads worker queue size", 0 to 1000, 0)
   val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after", aliases = List("-stop")) // backward compat
   val YstopBefore: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
+  val YpruneSourcepath: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprune-sourcepath", "Prune method bodies from sources loaded from sourcepath (for presentation compiler optimization)")
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydetailed-stats", "Show detailed internal compiler stats (needs Stats.enabled to be set to true).")
   val YprintPos: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-pos", "Show tree positions.")

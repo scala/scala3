@@ -372,6 +372,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
       for phase <- allPhases do
         doEnterPhase(phase)
+        // println(s"phase: ${phase.phaseName}")
+        // println(ctx.source)
+        // println(units.map(_.untpdTree))
+        // println(units.map(_.tpdTree))
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
           Stats.trackTime(s"phase time ms/$phase") {
@@ -525,7 +529,6 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     val sources =
       scalaSources.map(sourceFile(_, isJava = false)) ++
        javaSources.map(sourceFile(_, isJava = true))
-
     compileSources(sources)
   }
 
