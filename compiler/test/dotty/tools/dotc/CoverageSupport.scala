@@ -23,9 +23,7 @@ trait CoverageSupport { this: ParallelTesting =>
       val coverageFile = coverageDir.resolve("scoverage.coverage")
 
       try {
-        if (!Files.exists(coverageFile)) {
-          throw new AssertionError(s"Coverage file missing: $coverageFile for test ${testSource.title}")
-        }
+       assert(Files.exists(coverageFile), s"Coverage file missing: $coverageFile for test ${testSource.title}"))
 
         if (Files.size(coverageFile) == 0) {
           throw new AssertionError(s"Coverage file is empty: $coverageFile for test ${testSource.title}")
