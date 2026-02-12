@@ -1420,7 +1420,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       import InvokeStyle.*
       if (style == Super) {
         val ownerBType = toTypeKind(method.owner.info)
-        if (method.owner.isInterface) {
+        if (isInterface) {
           superCallTargets.add(ownerBType.asClassBType)
         }
         if (isInterface && !method.is(JavaDefined)) {
