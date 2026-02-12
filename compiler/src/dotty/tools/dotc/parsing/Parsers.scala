@@ -1191,24 +1191,22 @@ object Parsers {
 
     private def migrateInfixOp(opInfo: OpInfo, isType: Boolean)(infixOp: InfixOp): Tree = {
       def isNamedTupleOperator = opInfo.operator.name match
-        case nme.EQ | nme.NE |  nme.eq | nme.ne | nme.`++` | nme.zip => true
+        case nme.EQ | nme.NE |  nme.eq | nme.ne | nme.`++` | nme.zip | nme.PUREARROW => true
         case _ => false
+      def handle(args: List[Tree]): Tree =
+        import MigrationVersion.AmbiguousNamedTupleSyntax as ANTS
+        report.errorOrMigrationWarning(DeprecatedInfixNamedArgumentSyntax(), infixOp.right.srcPos, ANTS)
+        if ANTS.needsPatch then
+          val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), args)
+          patch(source, infixOp.span, asApply.show(using ctx.withoutColors))
+          asApply // allow to use pre-3.6 syntax in migration mode
+        else infixOp
       if isType then infixOp
       else infixOp.right match
         case Tuple(args) if args.exists(_.isInstanceOf[NamedArg]) && !isNamedTupleOperator =>
-          report.errorOrMigrationWarning(DeprecatedInfixNamedArgumentSyntax(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleSyntax)
-          if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
-            val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), args)
-            patch(source, infixOp.span, asApply.show(using ctx.withoutColors))
-            asApply // allow to use pre-3.6 syntax in migration mode
-          else infixOp
+          handle(args)
         case Parens(assign @ Assign(ident, value)) if !isNamedTupleOperator =>
-          report.errorOrMigrationWarning(DeprecatedInfixNamedArgumentSyntax(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleSyntax)
-          if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
-            val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), assign :: Nil)
-            patch(source, infixOp.span, asApply.show(using ctx.withoutColors))
-            asApply // allow to use pre-3.6 syntax in migration mode
-          else infixOp
+          handle(assign :: Nil)
         case _ => infixOp
     }
 
