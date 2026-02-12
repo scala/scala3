@@ -5,6 +5,7 @@ def foo(using Quotes) =
 
   val x: Type[Int] = ???
   val hkt: Type[List] = ???
+  val anyExpr: Expr[Any] = '{0}
 
   val '{$t0} = '{0} // ok
   val '{$t1: Int} = '{0} // ok
@@ -86,3 +87,13 @@ def foo(using Quotes) =
   hkt match // warn
     case '[t] => ()
 
+  anyExpr match // ok
+    case '{ $x: t } => ()
+
+  anyExpr match // warn
+    case '{ type t <: String; $x: t } => ()
+
+  // nested (causes a different shape of QuotePattern)
+  def f[A: Type](e: Expr[A]): Expr[A] =
+    e match // ok
+      case '{ $e2 } => e2
