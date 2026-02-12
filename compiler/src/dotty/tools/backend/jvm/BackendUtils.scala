@@ -10,6 +10,7 @@ import scala.collection.BitSet
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Definitions
 
 import scala.language.unsafeNulls
 import dotty.tools.backend.jvm.analysis.{InstructionStackEffect, ProdConsAnalyzer}
@@ -381,7 +382,8 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
       "scala/Array$",
       "scala/collection/ArrayOps$",
       "scala/collection/StringOps$",
-    ) ++ BackendUtils.primitiveTypes.keysIterator
+      "scala/TupleXXL$"
+    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$") ++ BackendUtils.primitiveTypes.keysIterator
 
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
