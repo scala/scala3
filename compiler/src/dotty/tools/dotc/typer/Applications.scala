@@ -658,7 +658,7 @@ trait Applications extends Compatibility {
      *    - "does not have parameter" if a named parameter does not mention a formal
      *      parameter name.
      */
-    def reorder[T <: Untyped](args: TreeList[T]): TreeList[T] =
+    def reorder[T <: Untyped](args: TreeList[T]): TreeList[T] = {
 
       extension [A](list: List[A]) inline def dropOne = if list.isEmpty then list else list.tail // aka list.drop(1)
 
@@ -715,7 +715,7 @@ trait Applications extends Compatibility {
        */
       def handleNamed(pnames: List[Name], args: TreeList[T],
                       nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
-                      missingArgs: Boolean): TreeList[T] =
+                      missingArgs: Boolean): TreeList[T] = {
         pnames match
         case pname :: pnames if nameToArg.contains(pname) =>
           val arg = nameToArg(pname) // use the named argument for this parameter
@@ -750,6 +750,7 @@ trait Applications extends Compatibility {
           case nil => // no more args, continue to pick up any preceding named args
             if pnames.isEmpty then nil
             else handleNamed(pnames.dropOne, args = nil, nameToArg, toDrop, missingArgs)
+      }
 
       // Skip prefix of positional args, then handleNamed
       def handlePositional(pnames: List[Name], args: TreeList[T]): TreeList[T] =
@@ -765,7 +766,7 @@ trait Applications extends Compatibility {
         case nil => nil
 
       handlePositional(methodType.paramNames, args)
-    end reorder
+    } // end reorder
 
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
