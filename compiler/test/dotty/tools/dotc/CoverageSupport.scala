@@ -29,13 +29,8 @@ trait CoverageSupport { this: ParallelTesting =>
         
 
         // Verify file can be deserialized (valid format)
-        try {
           val sourceRoot = Paths.get(".").toAbsolutePath.toString
-          Serializer.deserialize(coverageFile, sourceRoot)
-        } catch {
-          case e: Exception =>
-            throw new AssertionError(s"Coverage file has invalid format: $coverageFile for test ${testSource.title}: ${e.getMessage}")
-        }
+          assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
       } finally {
         // Cleanup temporary directory even if exceptions are thrown
         try {
