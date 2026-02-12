@@ -1425,6 +1425,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver) && !method.isScalaStatic
         val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
 
+        // TODO this JVM bug was resolved a very long time ago, workaround could be removed?
         // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
         // when an interface method overrides a member of Object (note that all interfaces implicitly
         // have superclass Object), the receiver needs to be the interface declaring the override (and
@@ -1466,7 +1467,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         }
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
-          val staticName = traitSuperAccessorName(method)
+          val staticName = BackendUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
           bc.invokespecial(receiverName, jname, mdescr, isInterface, pos)
@@ -1772,6 +1773,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
 
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
+      // TODO: this comment seems to indicate this is very old and could be removed? this lib isn't recommended since >=2.13
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
