@@ -57,12 +57,6 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
   @threadUnsafe private lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
   @threadUnsafe private lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
 
-  final def traitSuperAccessorName(sym: Symbol): String = {
-    val nameString = sym.javaSimpleName
-    if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
-    else nameString + "$"
-  }
-
 
   /*
    * can-multi-thread
