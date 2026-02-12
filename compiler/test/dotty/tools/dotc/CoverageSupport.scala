@@ -25,9 +25,8 @@ trait CoverageSupport { this: ParallelTesting =>
       try {
        assert(Files.exists(coverageFile), s"Coverage file missing: $coverageFile for test ${testSource.title}"))
 
-        if (Files.size(coverageFile) == 0) {
-          throw new AssertionError(s"Coverage file is empty: $coverageFile for test ${testSource.title}")
-        }
+        assert(Files.size(coverageFile) > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
+        
 
         // Verify file can be deserialized (valid format)
         try {
