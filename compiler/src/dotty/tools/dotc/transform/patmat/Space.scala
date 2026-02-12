@@ -308,20 +308,31 @@ object SpaceEngine {
    *  @param  pt The scrutinee body type
    */
   def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
-    if pat.body.isType then
-      pat.bindings match
-        case Nil => pt =:= pat.tpe // constant type: '[T]
-        case binding +: Nil => // generic type variable: '[t]
-          def isTypeRefWithWildcardBounds(tree: Tree) =
-            val info = tree.symbol.info
-            info match
-              case TypeBounds(_, hi) => hi.isAny
-              case _ => false
-          isTypeRefWithWildcardBounds(binding) && isTypeRefWithWildcardBounds(pat.body)
-
+    def isTypeRefWithWildcardBounds(tree: Tree) =
+      val info = tree.symbol.info
+      info match
+        case TypeBounds(_, hi) => hi.isAny
         case _ => false
-    else pat.body match // expr: '{$x: T}
-      case _: SplicePattern | Typed(_: SplicePattern, _) => pat.bindings.isEmpty && pt <:< pat.tpe
+    def getAppliedType(tree: Type) =
+      tree match
+        case AppliedType(_, actual +: Nil) => actual
+    def toExprType(tree: Type) =
+      AppliedType(defn.QuotedExprClass.typeRef, List(tree))
+    if pat.body.isType then
+      if (!getAppliedType(pt.widen).etaExpand.isInstanceOf[LambdaType])
+        pat.bindings match
+          case Nil => pt =:= pat.tpe // constant type: '[T]
+          case binding +: Nil => // generic type variable: '[t]
+            isTypeRefWithWildcardBounds(binding) && isTypeRefWithWildcardBounds(pat.body)
+          case _ => false
+      else false
+    else pat.body match
+      case _: SplicePattern | Typed(_: SplicePattern, _) =>
+        pat.bindings match
+          case Nil => pt <:< pat.tpe // expr: '{$x: T}
+          case binding +: Nil => // expr with generic type variable: '{$x: t}
+            isTypeRefWithWildcardBounds(binding) && (toExprType(getAppliedType(pt) & binding.tpe) <:< pat.tpe)
+          case _ => false
       case _ => false
   }
 
@@ -398,12 +409,19 @@ object SpaceEngine {
             || fun.symbol == defn.QuoteMatching_TypeMatch_unapply
         then
           val quotePattern = QuotePatterns.decode(unapp)
+          def removeTypeVar(tree: Type) =
+            if quotePattern.bindings.isEmpty then tree
+            else tree match
+              case AppliedType(cons, List(AndType(a, b))) if a == quotePattern.bindings.head.tpe => AppliedType(cons, List(b))
+              case AppliedType(cons, List(AndType(a, b))) if b == quotePattern.bindings.head.tpe => AppliedType(cons, List(a))
+              case _ => tree
+
           if (isIrrefutableQuotePattern(quotePattern, quotePattern.tpe)) then
             if quotePattern.body.isType then
               if(quotePattern.bindings.isEmpty) Typ(quotePattern.tpe, decomposed = false)
-              else Typ(defn.QuotedTypeClass.typeRef.appliedTo(WildcardType), decomposed = false)
+              else Typ(defn.QuotedTypeClass.typeRef.appliedTo(TypeBounds(defn.NothingType, defn.AnyType)), decomposed = false)
             else
-              Typ(quotePattern.tpe, decomposed = false)
+              Typ(removeTypeVar(quotePattern.tpe), decomposed = false)
           else unapplyProd()
         else unapplyProd()
 

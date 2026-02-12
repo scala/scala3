@@ -4,13 +4,16 @@ def call() = 0
 def foo(using Quotes) =
 
   val x: Type[Int] = ???
+  val hkt: Type[List] = ???
 
   val '{$t0} = '{0} // ok
   val '{$t1: Int} = '{0} // ok
-  val '{call(); $t2: tpe} = '{0} // warn
+  val '{$t2: t} = '{0} // ok
+  val '{call(); $t3: tpe} = '{0} // warn
   val '[t] = x // ok
   val '[type t <: String; t] = x // warn
   val '[List[t]] = x // warn
+  val '[t] = hkt // warn
 
   // wrapped in other types
   ('{1}, '{0}) match // ok
@@ -31,6 +34,9 @@ def foo(using Quotes) =
   ('{1}, x) match // ok
     case ('{$y}, '[t]) => ()
 
+  ('{1}, x) match // ok
+    case ('{$y: t}, '[q]) => ()
+
   (x, x) match // ok
     case ('[t], '[q]) => ()
 
@@ -49,6 +55,9 @@ def foo(using Quotes) =
 
   '{1} match // ok
     case '{$y: Int} => ()
+
+  '{1} match // ok
+    case '{$y: t} => ()
 
   '{""} match // warn
     case '{$z: Int} => ()
@@ -73,3 +82,7 @@ def foo(using Quotes) =
 
   x match // warn
     case '[Int] => ()
+
+  hkt match // warn
+    case '[t] => ()
+
