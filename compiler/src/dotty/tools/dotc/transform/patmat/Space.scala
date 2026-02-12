@@ -327,9 +327,10 @@ object SpaceEngine {
           case _ => false
       else false
     else pat.body match
-      case _: SplicePattern | Typed(_: SplicePattern, _) =>
+      case _: SplicePattern | Typed(_: SplicePattern, _) | Block(List(TypeDef(_, _: Hole)), _: SplicePattern) =>
         pat.bindings match
-          case Nil => pt <:< pat.tpe // expr: '{$x: T}
+          case Nil =>
+            pt <:< pat.tpe // expr: '{$x: T}
           case binding +: Nil => // expr with generic type variable: '{$x: t}
             isTypeRefWithWildcardBounds(binding) && (toExprType(getAppliedType(pt) & binding.tpe) <:< pat.tpe)
           case _ => false
@@ -414,6 +415,8 @@ object SpaceEngine {
             else tree match
               case AppliedType(cons, List(AndType(a, b))) if a == quotePattern.bindings.head.tpe => AppliedType(cons, List(b))
               case AppliedType(cons, List(AndType(a, b))) if b == quotePattern.bindings.head.tpe => AppliedType(cons, List(a))
+              case AppliedType(cons, List(arg)) if arg == quotePattern.bindings.head.tpe =>
+                AppliedType(cons, List(TypeBounds(defn.NothingType, defn.AnyType)))
               case _ => tree
 
           if (isIrrefutableQuotePattern(quotePattern, quotePattern.tpe)) then
