@@ -184,8 +184,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0 ||
-        BackendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass) // seems mixin forwarders are not synthetic...
+      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
 
     if (isGeneratedForwarder) None
     else {
@@ -227,7 +226,8 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             // we *do* inline trait super accessors if selected by a different heuristic. in this case, the `invokespecial` is then
             // inlined in turn (chosen by the same heuristic), or the code is rolled back. but we don't inline them just because
             // they are forwarders.
-            val isTraitSuperAccessor = BackendUtils.isTraitSuperAccessor(callee.callee, callee.calleeDeclarationClass)
+            val isTraitSuperAccessor = BackendUtils.isTraitSuperAccessor(callee.callee, callee.calleeDeclarationClass) ||
+              BackendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass)
             if (isTraitSuperAccessor) {
               // inline static trait super accessors if the corresponding trait method is a forwarder or trivial (scala-dev#618)
               {

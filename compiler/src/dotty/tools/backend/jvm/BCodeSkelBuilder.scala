@@ -694,7 +694,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         case ValDef(name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
         case dd: DefDef =>
-          /* First generate a static forwarder if this is a non-private trait
+          /* First generate a static forwarder if this is a non-private
            * trait method. This is required for super calls to this method, which
            * go through the static forwarder in order to work around limitations
            * of the JVM.
@@ -787,7 +787,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      */
     private def makeStatifiedDefDef(dd: DefDef): DefDef =
       val origSym = dd.symbol.asTerm
-      val newSym = makeStatifiedDefSymbol(origSym, origSym.name)
+      val newSym = BackendUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
         val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
@@ -822,24 +822,18 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      * encode super calls.
      */
     private def makeStaticForwarder(dd: DefDef): DefDef =
+      // !!!
+      // This logic is somewhat duplicated in the inline info definition, which is not very clean,
+      // but remember to change it there if you make changes here
+      // !!!
       val origSym = dd.symbol.asTerm
-      val name = traitSuperAccessorName(origSym).toTermName
-      val sym = makeStatifiedDefSymbol(origSym, name)
+      val name = BackendUtils.traitSuperAccessorName(origSym).toTermName
+      val sym = BackendUtils.makeStatifiedDefSymbol(origSym, name)
       tpd.DefDef(sym, { paramss =>
         val params = paramss.head
         tpd.Apply(params.head.select(origSym), params.tail)
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
-
-    private def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName): TermSymbol =
-      val info = origSym.info match
-        case mt: MethodType =>
-          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
-      origSym.copy(
-        name = name.toTermName,
-        flags = Method | JavaStatic,
-        info = info
-      ).asTerm
 
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs
