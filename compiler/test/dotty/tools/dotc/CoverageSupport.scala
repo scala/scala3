@@ -6,6 +6,8 @@ import scala.language.unsafeNulls
 
 import java.nio.file.{Files, Paths}
 import java.nio.charset.StandardCharsets
+import scala.util.Try
+import scala.util.control.NonFatal
 import dotty.tools.dotc.coverage.Serializer
 import vulpix._
 import reporting.TestReporter
@@ -23,14 +25,12 @@ trait CoverageSupport { this: ParallelTesting =>
       val coverageFile = coverageDir.resolve("scoverage.coverage")
 
       try {
-       assert(Files.exists(coverageFile), s"Coverage file missing: $coverageFile for test ${testSource.title}"))
-
+        assert(Files.exists(coverageFile), s"Coverage file missing: $coverageFile for test ${testSource.title}")
         assert(Files.size(coverageFile) > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
-        
 
         // Verify file can be deserialized (valid format)
-          val sourceRoot = Paths.get(".").toAbsolutePath.toString
-          assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
+        val sourceRoot = Paths.get(".").toAbsolutePath.toString
+        assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
       } finally {
         // Cleanup temporary directory even if exceptions are thrown
         try {
