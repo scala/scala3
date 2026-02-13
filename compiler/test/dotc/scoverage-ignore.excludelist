@@ -85,6 +85,7 @@ match-sub-cases.scala
 match-sub-sub-cases.scala
 matchtype.scala
 minicheck.scala
+minicheck-toplevel.scala
 mt-scrutinee-widen3.scala
 null.scala
 pf-sub-cases.scala
