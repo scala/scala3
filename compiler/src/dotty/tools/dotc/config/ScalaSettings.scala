@@ -320,17 +320,18 @@ private sealed trait WarningSettings:
     def inferUnion(using Context): Boolean = allOr(WinferUnion)
     def safeInit(using Context): Boolean = allOr(WsafeInit)
 
-/** -opt "Optimizer" settings */
+/** "Optimizer" settings */
 private sealed trait OptimizerSettings:
   self: SettingGroup =>
 
-  val opt = MultiChoiceHelpSetting(
-    RootSetting,
-    name = "opt",
+  val opt = BooleanSetting(RootSetting, "opt", "Optimize generated JVM bytecode.")
+
+  val YoptSpecific = MultiChoiceHelpSetting(
+    ForkSetting,
+    name = "Yopt-specific",
     helpArg = "optimization",
-    descr = "Enable optimizations: `-opt:all`, `-opt:unreachable-code`; `-opt:help` for details.",
+    descr = "Enable specific optimizations: `-Yopt-specific:unreachable-code`; `-Yopt-specific:help` for details.",
     choices = List(
-      ChoiceWithHelp("all", ""),
       ChoiceWithHelp("unreachable-code", "Eliminate unreachable code, exception handlers guarding no instructions, redundant metadata (debug information, line numbers)."),
       ChoiceWithHelp("simplify-jumps", "Simplify branching instructions, eliminate unnecessary ones."),
       ChoiceWithHelp("compact-locals", "Eliminate empty slots in the sequence of local variables."),
@@ -345,7 +346,7 @@ private sealed trait OptimizerSettings:
     ),
     default = Nil
   )
-  private def optEnabled(s: String)(using Context): Boolean = opt.value.contains("all") || opt.value.contains(s)
+  private def optEnabled(s: String)(using Context): Boolean = opt.value || YoptSpecific.value.contains(s)
   def optUnreachableCode(using Context): Boolean = optEnabled("unreachable-code")
   def optSimplifyJumps(using Context): Boolean = optEnabled("simplify-jumps")
   def optCompactLocals(using Context): Boolean = optEnabled("compact-locals")
@@ -383,15 +384,15 @@ private sealed trait OptimizerSettings:
       |Quoting may not be needed in a build file.""".stripMargin
   val optInline: Setting[List[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
 
-  val optInlineHeuristics = ChoiceSetting(
-    RootSetting,
-    name = "opt-inline-heuristics",
+  val YoptInlineHeuristics = ChoiceSetting(
+    ForkSetting,
+    name = "Yopt-inline-heuristics",
     helpArg = "strategy",
     descr = "Set the heuristics for inlining decisions.",
     choices = List("at-inline-annotated", "everything", "default"),
     default = "default")
 
-  val optWarnings = MultiChoiceHelpSetting(
+  val Wopt = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wopt",
     helpArg = "warning",
@@ -407,7 +408,7 @@ private sealed trait OptimizerSettings:
     ),
     default = Nil
   )
-  private def optWarningsEnabled(s: String)(using Context): Boolean = optWarnings.value.contains("all") || optWarnings.value.contains(s)
+  private def optWarningsEnabled(s: String)(using Context): Boolean = Wopt.value.contains("all") || Wopt.value.contains(s)
   def optWarningsSummaryOnly(using Context): Boolean = optWarningsEnabled("at-inline-failed-summary")
   def optWarningEmitAtInlineFailed(using Context): Boolean =
     optWarningsEnabled("at-inline-failed-summary") ||
