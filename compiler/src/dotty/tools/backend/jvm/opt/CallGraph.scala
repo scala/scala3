@@ -28,7 +28,7 @@ import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValu
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{Lazy, LazyWithoutLock => FLazy} // TODO LazyWithoutLock should probably be not inside PPFA...
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess,
                 byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
@@ -152,7 +152,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
               }
             }
 
-          val paramTps = FLazy(Type.getArgumentTypes(call.desc))
+          val paramTps = Type.getArgumentTypes(call.desc)
           // This is the type where method lookup starts (implemented in byteCodeRepository.methodNode)
           val preciseOwner =
             if (isStaticCallsite(call)) call.owner
@@ -268,10 +268,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     (result, map, writtenLocals)
   }
 
-  private def computeArgInfos(callee: Either[OptimizerWarning, Callee], callsiteInsn: MethodInsnNode, paramTps: FLazy[Array[Type]], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
+  private def computeArgInfos(callee: Either[OptimizerWarning, Callee], callsiteInsn: MethodInsnNode, paramTps: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
     if (callee.isLeft) IntMap.empty
     else {
-      val numArgs = FLazy(paramTps.get.length + (if (callsiteInsn.getOpcode == Opcodes.INVOKESTATIC) 0 else 1))
+      val numArgs = paramTps.length + (if (callsiteInsn.getOpcode == Opcodes.INVOKESTATIC) 0 else 1)
       argInfosForSams(callee.get.samParamTypes, callsiteInsn, numArgs, typeAnalyzer)
     }
   }
@@ -279,12 +279,12 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   private def computeCapturedArgInfos(lmf: LambdaMetaFactoryCall, indyParamTypes: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
     val capturedTypes = indyParamTypes.map(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
     val capturedSams = samTypes(capturedTypes)
-    argInfosForSams(capturedSams, lmf.indy, FLazy(indyParamTypes.length), typeAnalyzer)
+    argInfosForSams(capturedSams, lmf.indy, indyParamTypes.length, typeAnalyzer)
   }
 
-  private def argInfosForSams(sams: IntMap[ClassBType], consumerInsn: AbstractInsnNode, numConsumed: FLazy[Int], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
+  private def argInfosForSams(sams: IntMap[ClassBType], consumerInsn: AbstractInsnNode, numConsumed: Int, typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
     lazy val consumerFrame = typeAnalyzer.frameAt(consumerInsn)
-    lazy val firstConsumedSlot = consumerFrame.stackTop - numConsumed.get + 1
+    lazy val firstConsumedSlot = consumerFrame.stackTop - numConsumed + 1
     val samInfos: IntMap[ArgInfo] = sams flatMap {
       case (index, _) =>
         val argInfo = consumerFrame.getValue(firstConsumedSlot + index) match {
@@ -337,7 +337,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   /**
    * Analyze a callsite and gather meta-data that can be used for inlining decisions.
    */
-  private def analyzeCallsite(calleeMethodNode: MethodNode, calleeDeclarationClassBType: ClassBType, call: MethodInsnNode, paramTps: FLazy[Array[Type]], calleeSourceFilePath: Option[String], callsiteClass: ClassBType): CallsiteInfo = {
+  private def analyzeCallsite(calleeMethodNode: MethodNode, calleeDeclarationClassBType: ClassBType, call: MethodInsnNode, paramTps: Array[Type], calleeSourceFilePath: Option[String], callsiteClass: ClassBType): CallsiteInfo = {
     val methodSignature = (calleeMethodNode.name, calleeMethodNode.desc)
 
     try {
@@ -384,7 +384,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
             sourceFilePath = calleeSourceFilePath,
             annotatedInline = methodInlineInfo.annotatedInline,
             annotatedNoInline = methodInlineInfo.annotatedNoInline,
-            samParamTypes = samParamTypes(calleeMethodNode, paramTps.get, receiverType),
+            samParamTypes = samParamTypes(calleeMethodNode, paramTps, receiverType),
             warning = warning)
 
         case None =>

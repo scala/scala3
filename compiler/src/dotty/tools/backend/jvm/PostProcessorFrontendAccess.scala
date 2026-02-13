@@ -48,20 +48,6 @@ object PostProcessorFrontendAccess {
     def get: T
   }
 
-  /** Does not synchronize on the frontend. (But still synchronizes on itself, so terrible name) */
-  class LazyWithoutLock[T](init: => T) extends Lazy[T] {
-    @volatile private var isInit: Boolean = false
-    private var v: T = uninitialized
-
-    override def get: T =
-      if isInit then v
-      else this.synchronized {
-        if !isInit then v = init
-        isInit = true
-        v
-      }
-  }
-
   /** A container for value with lazy initialization synchronized on compiler frontend
    * Used for sharing variables requiring a Context for initialization, between different threads
    * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
