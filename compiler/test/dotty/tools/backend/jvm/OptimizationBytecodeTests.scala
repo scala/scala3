@@ -7,7 +7,7 @@ import org.junit.Test
 class OptimizationBytecodeTests extends DottyBytecodeTest {
   override def initCtx = {
     val ctx = super.initCtx
-    ctx.setSetting(ctx.settings.opt, List(ChoiceWithHelp("all", "")))
+    ctx.setSetting(ctx.settings.opt, true)
     ctx.setSetting(ctx.settings.optInline, List("**"))
     // Probably don't:
     //ctx.setSetting(ctx.settings.YoptInlineHeuristics, "everything")
