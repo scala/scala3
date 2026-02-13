@@ -14,7 +14,7 @@ import BCodeAsmCommon.*
 import dotty.tools.dotc.core.Flags.{JavaDefined, Method, ModuleClass, PackageClass, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import DottyBackendInterface.{*, given}
-import PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
+import PostProcessorFrontendAccess.Lazy
 
 import scala.annotation.threadUnsafe
 import scala.tools.asm
@@ -58,8 +58,8 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
         superClass = Some(ObjectRef),
         interfaces = Nil,
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
-        nestedClasses = LazyWithoutLock(getMemberClasses(mcs).map(classBTypeFromSymbol)),
-        nestedInfo = LazyWithoutLock(None),
+        nestedClasses = getMemberClasses(mcs).map(classBTypeFromSymbol),
+        nestedInfo = None,
         inlineInfoSource = InlineInfoSource.Missing
       ))
     )
@@ -151,7 +151,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
 
     val nestedInfo = buildNestedInfo(classSym)
 
-    ClassInfo(superClass, interfaces, flags, LazyWithoutLock(memberClasses), LazyWithoutLock(nestedInfo), InlineInfoSource.Symbol(classSym.asClass, classBType.internalName))
+    ClassInfo(superClass, interfaces, flags, memberClasses, nestedInfo, InlineInfoSource.Symbol(classSym.asClass, classBType.internalName))
   }
 
   /** For currently compiled classes: All locally defined classes including local classes.
