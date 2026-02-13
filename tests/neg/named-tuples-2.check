@@ -1,3 +1,11 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/neg/named-tuples-2.scala:3:2 ---------------------------------------
+3 |  person match // warn
+  |  ^^^^^^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: (_, _, _)
+  |
+  | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/named-tuples-2.scala:4:9 ---------------------------------------------------------------------------
 4 |    case (name, age) => () // error
   |         ^
