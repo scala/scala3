@@ -20,7 +20,7 @@ import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.NoClassBTypeInfo
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.{Lazy, LazyWithoutLock}
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) {
 
@@ -133,6 +133,6 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
 
     val interfaces: List[ClassBType] = classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile).toList
 
-    Right(ClassInfo(superClass, interfaces, flags, LazyWithoutLock(nestedClasses), LazyWithoutLock(nestedInfo), InlineInfoSource.Classfile(classNode)))
+    Right(ClassInfo(superClass, interfaces, flags, nestedClasses, nestedInfo, InlineInfoSource.Classfile(classNode)))
   }
 }

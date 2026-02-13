@@ -9,15 +9,14 @@ import scala.tools.asm
 import scala.collection.{SortedMap, mutable}
 import scala.collection.immutable.ArraySeq
 import dotty.tools.backend.jvm.BTypes.{EmptyInlineInfo, InlineInfo, InternalName, MethodInlineInfo}
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.opt.InlineInfoAttribute
+import DottyBackendInterface.given
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, Sealed}
 import dotty.tools.dotc.core.Phases.picklerPhase
 import dotty.tools.dotc.core.Symbols.{requiredClass as _, *}
-import DottyBackendInterface.given
 
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types.abstractTermNameFilter
@@ -593,7 +592,7 @@ enum InlineInfoSource:
  * @param inlineInfoSource    Information about this class for the inliner.
  */
 final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[ClassBType], flags: Int,
-                           nestedClasses: Lazy[List[ClassBType]], nestedInfo: Lazy[Option[NestedInfo]],
+                           nestedClasses: List[ClassBType], nestedInfo: Option[NestedInfo],
                            inlineInfoSource: InlineInfoSource) {
   private var _inlineInfo: InlineInfo | Null = null
 
@@ -872,17 +871,17 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
 
   def isPublic: Either[NoClassBTypeInfo, Boolean] = info.map(i => (i.flags & asm.Opcodes.ACC_PUBLIC) != 0)
 
-  def isNestedClass: Either[NoClassBTypeInfo, Boolean] = info.map(_.nestedInfo.get.isDefined)
+  def isNestedClass: Either[NoClassBTypeInfo, Boolean] = info.map(_.nestedInfo.isDefined)
 
   def enclosingNestedClassesChain: Either[NoClassBTypeInfo, List[ClassBType]] = {
     isNestedClass.flatMap(isNested => {
       // if isNested is true, we know that info.get is defined, and nestedInfo.get is also defined.
-      if (isNested) info.get.nestedInfo.get.get.enclosingClass.enclosingNestedClassesChain.map(this :: _)
+      if (isNested) info.get.nestedInfo.get.enclosingClass.enclosingNestedClassesChain.map(this :: _)
       else Right(Nil)
     })
   }
 
-  def innerClassAttributeEntry: Either[NoClassBTypeInfo, Option[InnerClassEntry]] = info.map(i => i.nestedInfo.get map {
+  def innerClassAttributeEntry: Either[NoClassBTypeInfo, Option[InnerClassEntry]] = info.map(i => i.nestedInfo map {
     case NestedInfo(_, outerName, innerName, isStaticNestedClass) =>
       // the static flag in the InnerClass table has a special meaning, see InnerClass comment
       def adjustStatic(flags: Int): Int = (flags & ~Opcodes.ACC_STATIC |
