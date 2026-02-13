@@ -80,9 +80,7 @@ object TestSources {
 
   def scoverageIgnoreExcludelistFile: String = "compiler/test/dotc/scoverage-ignore.excludelist"
 
-  def scoverageIgnoreExcludelisted: List[String] =
-    if Properties.testsInstrumentCoverage then loadList(scoverageIgnoreExcludelistFile)
-    else Nil
+  def scoverageIgnoreExcludelisted: List[String] = loadList(scoverageIgnoreExcludelistFile)
 
   // load lists
 
