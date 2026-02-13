@@ -756,7 +756,7 @@ object BackendUtils {
             // When re-writing the closure callsite to the implMethod, we have to insert a cast.
             //
             // The check below ensures that
-            //   (1) the implMethod type has the expected signature (captured types plus argument types
+            //   (1) the implMethod type has the expected arguments (captured types plus argument types
             //       from instantiatedMethodType)
             //   (2) the receiver of the implMethod matches the first captured type, if any, otherwise
             //       the first parameter type of instantiatedMethodType
@@ -785,7 +785,7 @@ object BackendUtils {
               }
 
             val isIndyLambda =
-              asm.Type.getType(implMethod.getDesc) == expectedImplMethodType             // (1)
+              asm.Type.getType(implMethod.getDesc).getArgumentTypes.sameElements(expectedImplMethodType.getArgumentTypes) // (1)
                 && receiverType.forall(rt => implMethod.getOwner == rt.getInternalName)  // (2)
                 && samMethodType.getArgumentTypes.corresponds(instantiatedMethodArgTypes)((samArgType, instArgType) =>
                 samArgType == instArgType || BCodeUtils.isReference(samArgType) && BCodeUtils.isReference(instArgType)) // (3)
