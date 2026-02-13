@@ -20,7 +20,7 @@ import scala.annotation.threadUnsafe
 import scala.tools.asm
 
 
-final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val superCallsMap: ReadOnlyMap[Symbol, List[ClassSymbol]])(using val ctx: Context) extends CoreBTypes(ppa) {
+final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess)(using val ctx: Context) extends CoreBTypes(ppa) {
 
   @threadUnsafe private lazy val classBTypeFromInternalNameMap =
     collection.concurrent.TrieMap.empty[String, ClassBType]
@@ -90,23 +90,12 @@ final class CoreBTypesFromSymbols(val ppa: PostProcessorFrontendAccess, val supe
     val superClass = if (superClassSym == NoSymbol) None
     else Some(classBTypeFromSymbol(superClassSym))
 
-    /*
-     * All interfaces implemented by a class, except for those inherited through the superclass.
-     * Redundant interfaces are removed unless there is a super call to them.
-     */
-    val superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = classSym.directlyInheritedTraits
-      val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
-      val superCalls = superCallsMap.getOrElse(classSym, List.empty)
-      val superCallsSet = superCalls.toSet
-      val additional = superCalls.filter(t => !directlyInheritedTraitsSet(t) && t.is(Trait))
-      //      if (additional.nonEmpty)
-      //        println(s"$fullName: adding supertraits $additional")
-      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCallsSet(t)) ++ additional
-    }
-
-    val interfaces = superInterfaces.map(classBTypeFromSymbol)
+    // List only directly inherited interfaces.
+    // This is not only a performance optimization (as the JVM needs to handle fewer inheritance declarations),
+    // but also required for correctness in the presence of sealed interfaces (see i23479):
+    // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `B` directly is illegal.
+    val allBaseClasses = classSym.directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
+    val interfaces = classSym.directlyInheritedTraits.filter(!allBaseClasses(_)).map(classBTypeFromSymbol)
 
     val flags = BCodeUtils.javaFlags(classSym)
 

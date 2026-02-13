@@ -41,7 +41,7 @@ class GenBCode extends Phase { self =>
   private var _bTypes: CoreBTypesFromSymbols | Null = null
   def bTypes(using Context): CoreBTypesFromSymbols = {
     if _bTypes eq null then
-      _bTypes = CoreBTypesFromSymbols(frontendAccess, superCallsMap)(using ctx)
+      _bTypes = CoreBTypesFromSymbols(frontendAccess)(using ctx)
     _bTypes.nn
   }
 

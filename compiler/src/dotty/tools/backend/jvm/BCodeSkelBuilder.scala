@@ -310,8 +310,8 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.
       //  It could be cleaned up given some work to make sure changing the order isn't a problem.)
       val directInterfaces = claszSymbol.directlyInheritedTraits
-      val directInterfacesBTypes = directInterfaces.map(classBTypeFromSymbol)
-      val baseClassesBTypes = directInterfaces.iterator.flatMap(_.asClass.baseClasses.drop(1)).map(classBTypeFromSymbol).toSet
+      val directInterfacesBTypes = directInterfaces.map(ts.classBTypeFromSymbol)
+      val baseClassesBTypes = directInterfaces.iterator.flatMap(_.asClass.baseClasses.drop(1)).map(ts.classBTypeFromSymbol).toSet
       val additionalBTypes = superCallTargets.filter(!directInterfacesBTypes.contains(_))
       val interfaces = directInterfacesBTypes.filter(t => !baseClassesBTypes(t) || superCallTargets(t)) ++ additionalBTypes
 
