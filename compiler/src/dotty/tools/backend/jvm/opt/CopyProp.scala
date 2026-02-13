@@ -160,12 +160,12 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
         case mi: MethodInsnNode =>
           // rewrite `ClassTag(classOf[X]).newArray` to `new Array[X]`
-          val newArrayCls = BackendUtils.classTagNewArrayArg(mi, prodCons)
-          if (newArrayCls != null) {
+          val newArrayInstr = BackendUtils.classTagNewArrayInstr(mi, prodCons)
+          if (newArrayInstr != null) {
             val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
             if (receiverProds.size == 1) {
               toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
-              toReplace(mi) = List(new TypeInsnNode(ANEWARRAY, newArrayCls))
+              toReplace(mi) = List(newArrayInstr)
               toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
             }
           }
