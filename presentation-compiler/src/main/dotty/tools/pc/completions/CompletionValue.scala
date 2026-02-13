@@ -285,7 +285,8 @@ object CompletionValue:
   case class Coursier(
       label: String,
       override val insertText: Option[String],
-      override val range: Option[Range]
+      override val range: Option[Range],
+      isVersionCompletion: Boolean = false
   ) extends CompletionValue:
     override val filterText: Option[String] = insertText
     override def completionItemDataKind: Integer = CompletionSource.CoursierKind.ordinal

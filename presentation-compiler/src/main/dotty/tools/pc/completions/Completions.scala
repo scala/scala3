@@ -1078,7 +1078,9 @@ class Completions(
                             else s1.detailString.compareTo(s2.detailString)
             end if
           case (sym1: CompletionValue.Coursier, sym2: CompletionValue.Coursier) =>
-            sym1.label.compareTo(sym2.label)
+            val comparison = IdentifierComparator.compare(sym1.label, sym2.label)
+            if sym1.isVersionCompletion && sym2.isVersionCompletion then -comparison
+            else comparison
           case _ =>
             val byClass = prioritizeByClass(o1, o2)
             if byClass != 0 then byClass

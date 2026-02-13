@@ -147,7 +147,6 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|org.scala-lang
          |org.scala-lang-osgi
-         |org.scala-lang.modules
          |""".stripMargin
     )
 
