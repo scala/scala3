@@ -22,13 +22,15 @@ import BCodeUtils.FrameExtensions
 import scala.annotation.switch
 import java.util.concurrent.ConcurrentHashMap
 import PostProcessorFrontendAccess.Lazy
-import dotty.tools.dotc.core.Flags.{Method, JavaStatic}
+import dotty.tools.dotc.core.Flags.{JavaStatic, Method}
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{Symbol, TermSymbol}
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.util.SourcePosition
 import DottyBackendInterface.symExtensions
+
+import scala.tools.asm.Opcodes.{ANEWARRAY, NEWARRAY}
 
 /**
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
@@ -805,7 +807,7 @@ object BackendUtils {
 
   // ==============================================================================================
 
-  def classTagNewArrayArg(mi: MethodInsnNode, prodCons: ProdConsAnalyzer): InternalName | Null = {
+  def classTagNewArrayInstr(mi: MethodInsnNode, prodCons: ProdConsAnalyzer): AbstractInsnNode | Null = {
     if (mi.name == "newArray" && mi.owner == "scala/reflect/ClassTag" && mi.desc == "(I)Ljava/lang/Object;") {
       val prods = prodCons.initialProducersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
       if (prods.size == 1) prods.head match {
@@ -816,9 +818,22 @@ object BackendUtils {
               case ldc: LdcInsnNode =>
                 ldc.cst match {
                   case tp: asm.Type if tp.getSort == asm.Type.OBJECT || tp.getSort == asm.Type.ARRAY =>
-                    return tp.getInternalName
+                    return new TypeInsnNode(ANEWARRAY, tp.getInternalName)
                   case _ =>
                 }
+
+              case fld: FieldInsnNode =>
+                if fld.name == "TYPE" && fld.desc == "Ljava/lang/Class;" then fld.owner match
+                  case "java/lang/Boolean" => return new IntInsnNode(NEWARRAY, Opcodes.T_BOOLEAN)
+                  case "java/lang/Byte" => return new IntInsnNode(NEWARRAY, Opcodes.T_BYTE)
+                  case "java/lang/Short" => return new IntInsnNode(NEWARRAY, Opcodes.T_SHORT)
+                  case "java/lang/Character" => return new IntInsnNode(NEWARRAY, Opcodes.T_CHAR)
+                  case "java/lang/Integer" => return new IntInsnNode(NEWARRAY, Opcodes.T_INT)
+                  case "java/lang/Long" => return new IntInsnNode(NEWARRAY, Opcodes.T_LONG)
+                  case "java/lang/Float" => return new IntInsnNode(NEWARRAY, Opcodes.T_FLOAT)
+                  case "java/lang/Double" => return new IntInsnNode(NEWARRAY, Opcodes.T_DOUBLE)
+                  case _ =>
+
               case _ =>
             }
           }
