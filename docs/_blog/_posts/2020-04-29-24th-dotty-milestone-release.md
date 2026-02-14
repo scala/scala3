@@ -8,7 +8,7 @@ date: 2020-04-29
 
 Hello! We are excited to announce 0.24.0-RC1 of Dotty. In this version, we have updated the standard library to 2.13.2. Also, we have made some work to make error messages more user-friendly and a bunch of other polishings to the language.
 
-You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://dotty.epfl.ch/) and scrolling down to the "Create a Dotty Project" section.
+You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://nightly.scala-lang.org/) and scrolling down to the "Create a Dotty Project" section.
 
 Alternatively, you can try this version of Scala online via [Scastie](https://scastie.scala-lang.org/). Once you're there, click "Build Settings" and set "Target" to "Dotty".
 
@@ -76,7 +76,7 @@ Bar 22
 Bar 22
 ```
 
-This new change, however, comes with rather intricated rules – if you are interested to learn about them in details, see [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html#rules-for-overriding) on inlines and the PR #[8543](https://github.com/scala/scala3/pull/8543/files) which introduced the change.
+This new change, however, comes with rather intricated rules – if you are interested to learn about them in details, see [documentation](https://nightly.scala-lang.org/docs/reference/metaprogramming/inline.html#rules-for-overriding) on inlines and the PR #[8543](https://github.com/scala/scala3/pull/8543/files) which introduced the change.
 
 # Let us know what you think!
 
@@ -124,7 +124,7 @@ According to `git shortlog -sn --no-merges 0.23.0-RC1..0.24.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

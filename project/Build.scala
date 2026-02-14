@@ -418,7 +418,7 @@ object Build {
 
   def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
     val extMap = Seq("-external-mappings:" +
-        (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," else "") +
+        (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/," else "") +
         ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/")
     Seq(
       "-skip-by-regex:.+\\.internal($|\\..+)",
@@ -2452,7 +2452,7 @@ object Build {
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, useful for debugging tests")
 
-  // Published on https://dotty.epfl.ch/ by nightly builds
+  // Published on https://nightly.scala-lang.org/ by nightly builds
   // Contains additional internal/contributing docs
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for snapshot release")
 
@@ -2853,7 +2853,7 @@ object ScaladocConfigs {
   import Build._
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
-  def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
+  def dottyExternalMapping = ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/"
   def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/"
   def defaultSourceLinks(version: String, allowGitSHA: Boolean = true) = {
     def dottySrcLink(v: String) = sys.env.get("GITHUB_SHA") match {

@@ -201,7 +201,7 @@ object MetalsInteractive:
           if tpt.span != parent.span && !tpt.symbol.is(Synthetic) =>
         List((tpt.symbol, tpt.typeOpt, None))
 
-      /* TypeTest class https://dotty.epfl.ch/docs/reference/other-new-features/type-test.html
+      /* TypeTest class https://nightly.scala-lang.org/docs/reference/other-new-features/type-test.html
        * compiler automatically adds unapply if possible, we need to find the type symbol
        */
       case (head @ CaseDef(pat, _, _)) :: _

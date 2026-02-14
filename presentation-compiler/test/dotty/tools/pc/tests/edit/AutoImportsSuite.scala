@@ -534,7 +534,7 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
         |$code
         |}""".stripMargin
 
-  // https://dotty.epfl.ch/docs/internals/syntax.html#soft-keywords
+  // https://nightly.scala-lang.org/docs/internals/syntax.html#soft-keywords
   @Test
   def `soft-keyword-check-test` =
     List(

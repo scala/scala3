@@ -1,7 +1,7 @@
 package covtest
 
 /**
-  * Enum Types: https://dotty.epfl.ch/docs/reference/enums/adts.html
+  * Enum Types: https://nightly.scala-lang.org/docs/reference/enums/adts.html
   * Taken from https://github.com/scala/scala3-example-project
   */
 object  EnumTypes:

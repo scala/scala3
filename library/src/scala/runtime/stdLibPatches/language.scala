@@ -33,21 +33,21 @@ private[scala] object language:
 
     /** Experimental support for named type arguments.
       *
-      * @see [[https://dotty.epfl.ch/docs/reference/other-new-features/named-typeargs]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/named-typeargs]]
       */
     @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
 
     /** Experimental support for generic number literals.
       *
-      * @see [[https://dotty.epfl.ch/docs/reference/changed-features/numeric-literals]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/changed-features/numeric-literals]]
       */
     @compileTimeOnly("`genericNumberLiterals` can only be used at compile time in import statements")
     object genericNumberLiterals
 
     /** Experimental support for `erased` modifier
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/erased-defs]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/erased-defs]]
      */
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
@@ -67,7 +67,7 @@ private[scala] object language:
 
     /** Experimental support for typechecked exception capabilities
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/canthrow]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/canthrow]]
      */
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
@@ -83,21 +83,21 @@ private[scala] object language:
 
     /** Experimental support for pure function type syntax
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/purefuns]]
      */
     @compileTimeOnly("`pureFunctions` can only be used at compile time in import statements")
     object pureFunctions
 
     /** Experimental support for capture checking; implies support for pureFunctions
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/cc]]
      */
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
     /** Experimental support for separation checking; requires captureChecking also to be enabled.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/cc]]
      */
     @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
     object separationChecking
@@ -105,7 +105,7 @@ private[scala] object language:
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/into-modifier]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
     @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
@@ -113,7 +113,7 @@ private[scala] object language:
 
     /** Experimental support for named tuples.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
     @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
@@ -125,15 +125,15 @@ private[scala] object language:
      *   - better syntax and conventions for type classes
      *   - ability to merge exported types in intersections
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/modularity]]
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/typeclasses]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/modularity]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/typeclasses]]
      */
     @compileTimeOnly("`modularity` can only be used at compile time in import statements")
     object modularity
 
     /** Was needed to add support for relaxed imports of extension methods.
       * The language import is no longer needed as this is now a standard feature since SIP was accepted.
-      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/contextual/extension-methods]]
       */
     @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
     @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
@@ -149,7 +149,7 @@ private[scala] object language:
 
     /** Experimental support for quote pattern matching with polymorphic functions
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/quoted-patterns-with-polymorphic-functions]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/quoted-patterns-with-polymorphic-functions]]
      */
     @compileTimeOnly("`quotedPatternsWithPolymorphicFunctions` can only be used at compile time in import statements")
     object quotedPatternsWithPolymorphicFunctions
@@ -218,7 +218,7 @@ private[scala] object language:
     * **Why allow and control the feature?** For compatibility and migration reasons,
     * strict equality is opt-in. See linked documentation for more information.
     *
-    * @see [[https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality]]
+    * @see [[https://nightly.scala-lang.org/docs/reference/contextual/multiversal-equality]]
     */
   @compileTimeOnly("`strictEquality` can only be used at compile time in import statements")
   object strictEquality
@@ -245,7 +245,7 @@ private[scala] object language:
   /** Unsafe Nulls fot Explicit Nulls
     * Inside the "unsafe" scope, `Null` is considered as a subtype of all reference types.
     *
-    * @see [[http://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html]]
+    * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/explicit-nulls.html]]
     */
   @compileTimeOnly("`unsafeNulls` can only be used at compile time in import statements")
   object unsafeNulls
