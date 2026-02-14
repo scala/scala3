@@ -3506,39 +3506,37 @@ object Types extends TypeUtils {
     override final def baseClasses(using Context): List[ClassSymbol] = hi.baseClasses
   }
 
-  object FlexibleType {
+  object FlexibleType:
     def apply(tp: Type)(using Context): FlexibleType =
       assert(tp.isValueType, s"Should not flexify ${tp}")
-      tp match {
-      case ft: FlexibleType => ft
-      case _ =>
-        // val tp1 = tp.stripNull()
-        // if tp1.isNullType then
-        //   // (Null)? =:= ? >: Null <: (Object & Null)
-        //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
-        // else
-        //   // (T | Null)? =:= ? >: T | Null <: T
-        //   // (T)? =:= ? >: T | Null <: T
-        //   val hi = tp1
-        //   val lo = if hi eq tp then OrNull(hi) else tp
-        //   FlexibleType(lo, hi)
-        //
-        // The commented out code does more work to analyze the original type to ensure the
-        // flexible type is always a subtype of the original type and the Object type.
-        // It is not necessary according to the use cases, so we choose to use a simpler
-        // rule.
-        FlexibleType(OrNull(tp), tp)
-    }
-
-    def make(tp: Type)(using Context): Type =
       tp match
-        case _: FlexibleType => tp
-        case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
-        case wt: WildcardType => wt.optBounds match
-          case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
-          case _ => wt
-        case other => FlexibleType(tp)
-  }
+        case ft: FlexibleType => ft
+        case _ => FlexibleType(OrNull(tp), tp)
+          // val tp1 = tp.stripNull()
+          // if tp1.isNullType then
+          //   // (Null)? =:= ? >: Null <: (Object & Null)
+          //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
+          // else
+          //   // (T | Null)? =:= ? >: T | Null <: T
+          //   // (T)? =:= ? >: T | Null <: T
+          //   val hi = tp1
+          //   val lo = if hi eq tp then OrNull(hi) else tp
+          //   FlexibleType(lo, hi)
+          //
+          // The commented out code does more work to analyze the original type to ensure the
+          // flexible type is always a subtype of the original type and the Object type.
+          // It is not necessary according to the use cases, so we choose to use a simpler
+          // rule.
+
+    def make(tp: Type)(using Context): Type = tp match
+      case _: FlexibleType => tp // tp is already flexible
+      case SimpleOrNull(_) => tp // tp is already nullable
+      case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
+      case wt: WildcardType => wt.optBounds match
+        case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
+        case _ => wt
+      case other => FlexibleType(tp)
+  end FlexibleType
 
   // --- AndType/OrType ---------------------------------------------------------------
 
@@ -3811,13 +3809,19 @@ object Types extends TypeUtils {
    *    case OrNull(tp1) => // tp had the form `tp1 | Null`
    *    case _ => // tp was not a nullable union
    */
-  object OrNull {
+  object OrNull:
     def apply(tp: Type)(using Context) =
       if tp.isNullType then tp else OrType(tp, defn.NullType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
       val tp1 = tp.stripNull()
       if tp1 ne tp then Some(tp1) else None
-  }
+
+  object SimpleOrNull:
+    def unapply(tp: Type)(using Context): Option[Type] =
+      tp match
+        case OrType(tp1, tp2) if tp1.isNullType => Some(tp2)
+        case OrType(tp1, tp2) if tp2.isNullType => Some(tp1)
+        case _ => None
 
   // ----- ExprType and LambdaTypes -----------------------------------
 

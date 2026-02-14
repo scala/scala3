@@ -1144,17 +1144,23 @@ class Definitions {
   // improve the precision of type nullification.
   // We don't require that any of these annotations be present in the class path, but we want to
   // create Symbols for the ones that are present, so they can be checked during nullification.
+  // The annotation from jspecify is designed to be used on types only; however, it is common to use it
+  // on fields and method parameters required by some frameworks, so we need to recognize annotations
+  // form `AnnotatedType` as well as from `Symbol`.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "javax.validation.constraints.NotNull" ::
-    "androidx.annotation.NonNull" ::
+    "jakarta.annotation.Nonnull" ::
     "android.support.annotation.NonNull" ::
     "android.annotation.NonNull" ::
+    "androidx.annotation.NonNull" ::
+    "androidx.annotation.RecentlyNonNull" ::
     "com.android.annotations.NonNull" ::
     "org.eclipse.jdt.annotation.NonNull" ::
     "edu.umd.cs.findbugs.annotations.NonNull" ::
     "org.checkerframework.checker.nullness.qual.NonNull" ::
     "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NonNullType" ::
     "org.jetbrains.annotations.NotNull" ::
     "org.springframework.lang.NonNull" ::
     "org.springframework.lang.NonNullApi" ::
@@ -1163,7 +1169,31 @@ class Definitions {
     "reactor.util.annotation.NonNull" ::
     "reactor.util.annotation.NonNullApi" ::
     "io.reactivex.annotations.NonNull" ::
+    "io.reactivex.rxjava3.annotations.NonNull" ::
     "org.jspecify.annotations.NonNull" :: Nil)
+
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is explicitly nullable.
+  @tu lazy val NullableAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "javax.annotation.Nullable" ::
+    "javax.annotation.CheckForNull" ::
+    "jakarta.annotation.Nullable" ::
+    "android.support.annotation.Nullable" ::
+    "android.annotation.Nullable" ::
+    "androidx.annotation.Nullable" ::
+    "androidx.annotation.RecentlyNullable" ::
+    "com.android.annotations.Nullable" ::
+    "org.eclipse.jdt.annotation.Nullable" ::
+    "edu.umd.cs.findbugs.annotations.Nullable" ::
+    "org.checkerframework.checker.nullness.qual.Nullable" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableType" ::
+    "org.jetbrains.annotations.Nullable" ::
+    "org.springframework.lang.Nullable" ::
+    "reactor.util.annotation.Nullable" ::
+    "io.reactivex.annotations.Nullable" ::
+    "io.reactivex.rxjava3.annotations.Nullable" ::
+    "org.jspecify.annotations.Nullable" :: Nil)
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
