@@ -6,6 +6,8 @@ import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.core.Types.OrType
 import dotty.tools.dotc.report
+import dotty.tools.dotc.reporting.ErrorMessageID
+import dotty.tools.dotc.reporting.InferUnionWarning
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 class WInferUnion extends MiniPhase {
@@ -21,9 +23,9 @@ class WInferUnion extends MiniPhase {
       tpt.isInstanceOf[InferredTypeTree] && tpt.tpe.stripTypeVar.isInstanceOf[OrType]
     inferredOrTypes.foreach: tpt =>
       report.warning(
-        em"""|A type argument was inferred to be union type ${tpt.tpe.stripTypeVar}
-             |This may indicate a programming error.
-             |""", tpt.srcPos)
+        InferUnionWarning(tpt.tpe.stripTypeVar),
+        tpt.srcPos
+      )
     tree
 }
 
