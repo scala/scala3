@@ -18,15 +18,29 @@ class WInferUnion extends MiniPhase {
 
   override def isEnabled(using Context): Boolean = ctx.settings.Whas.inferUnion
 
-  override def transformTypeApply(tree: tpd.TypeApply)(using Context): tpd.Tree =
-    val inferredOrTypes = tree.args.find: tpt =>
-      tpt.isInstanceOf[InferredTypeTree] && tpt.tpe.stripTypeVar.isInstanceOf[OrType]
-    inferredOrTypes.foreach: tpt =>
-      report.warning(
-        InferUnionWarning(tpt.tpe.stripTypeVar),
-        tpt.srcPos
-      )
+  override def transformTypeApply(tree: tpd.TypeApply)(using Context): tpd.Tree = {
+    val inferredOrTypes = tree.args.find { tpt =>
+      tpt.isInstanceOf[InferredTypeTree] &&
+      tpt.tpe.stripTypeVar.isInstanceOf[OrType]
+    }
+
+    inferredOrTypes.foreach { tpt =>
+      val isSelect = tree.fun.isInstanceOf[tpd.Select]
+      val hasMultipleArgs = tree match {
+        case parent: tpd.TypeApply => false
+        case _ => false
+      }
+
+      if (isSelect || tree.args.length > 1) {
+        report.warning(
+          InferUnionWarning(tpt.tpe.stripTypeVar),
+          tpt.srcPos
+        )
+      }
+    }
+
     tree
+  }
 }
 
 object WInferUnion:
