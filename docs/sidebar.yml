@@ -428,3 +428,6 @@ subsection:
       - page: reference/error-codes/E220.md
       - page: reference/error-codes/E221.md
       - page: reference/error-codes/E222.md
+      - page: reference/error-codes/E223.md
+      - page: reference/error-codes/E224.md
+      - page: reference/error-codes/E225.md
