@@ -2009,6 +2009,7 @@ object Build {
 
         val outputDir = "scaladoc/output/reference"
         val languageReferenceConfig = Def.task {
+          val ccDocs = s"${docs.getAbsolutePath}/_docs/reference/experimental/capture-checking"
           Scala3.value
             .add(OutputDir(outputDir))
             .add(SiteRoot(docs.getAbsolutePath))
@@ -2019,6 +2020,11 @@ object Build {
               s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"
             )))
             .add(GenerateAPI(false))
+            .add(SnippetCompiler(List(
+              s"$ccDocs=compile|-language:experimental.captureChecking",
+              s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+              s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+            )))
         }
 
         val generateDocs = generateDocumentation(languageReferenceConfig)
