@@ -1206,13 +1206,16 @@ object RefChecks {
             member.symbol.isPublic && memberHidesMethod(member)
         if member.exists then target.typeSymbol else NoSymbol
       if sym.is(HasDefaultParams) then
-        val getterDenot =
+        val hasDefault =
           val receiverName = explicitInfo.firstParamNames.head
-          val num = sym.info.paramNamess.flatten.indexWhere(_ == receiverName)
-          val getterName = DefaultGetterName(sym.name.toTermName, num = num)
-          sym.owner.info.member(getterName)
-        if getterDenot.exists
-        then report.warning(ExtensionHasDefault(sym), getterDenot.symbol.srcPos)
+          val params = sym.paramSymss.flatten
+          val num = params.indexWhere(_.name == receiverName)
+          num >= 0 && params(num).is(HasDefault) && {
+            val getterName = DefaultGetterName(sym.name.toTermName, num = num)
+            sym.owner.info.member(getterName).exists
+          }
+        if hasDefault
+        then report.warning(ExtensionHasDefault(sym), sym.srcPos)
       if !sym.nextOverriddenSymbol.exists then
         val target = targetOfHiddenExtension
         if target.exists then
