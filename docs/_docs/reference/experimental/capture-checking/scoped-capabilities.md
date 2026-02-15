@@ -4,6 +4,9 @@ title: "Scoped Capabilities"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/scoped-capabilities.html
 ---
 
+```scala sc:nocompile sc-name:preamble
+```
+
 ## Introduction
 
 When discussing [escape checking](basics.md#escape-checking), we referred to a scoping discipline.
@@ -61,7 +64,7 @@ capability available in the outer scope as well as locally defined ones. At the 
 a true universal `any` — the local `any` of the global scope — which all other local `any`s
 ultimately subsume:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 // top level: the global `any`
 class Outer: // has local any₁
   val f1: File^ = File("f1") // File^{any₁}
@@ -97,7 +100,7 @@ we cannot assign the closure to `ref`, because `{f3}` is subcapture-bounded by `
 When a capability is used, it must be checked for compatibility with the capture-set constraints of
 all enclosing scopes. This process is called _charging_ the capability to the environment.
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def outer(fs: FileSystem^): Unit =
   def inner: () ->{fs} Unit =
     () => fs.read()  // fs is used here
@@ -111,7 +114,7 @@ When the capture checker sees `fs.read()`, it verifies that `fs` can flow into e
 
 If any scope refuses to absorb the capability, capture checking fails:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def process(fs: FileSystem^): Unit =
   val f: () -> Unit = () => fs.read()  // Error: fs cannot flow into {}
 ```
@@ -125,7 +128,7 @@ When capabilities flow outward to enclosing scopes, they must remain visible. A 
 cannot appear in a type outside its defining scope. In such cases, the capture set is _widened_ to
 the smallest visible super capture set:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def test(fs: FileSystem^/*{any₁}*/): Logger^{fs} =
   val localLogger = Logger(fs)
   localLogger  // Type widens from Logger^{localLogger} to Logger^{fs}
@@ -140,7 +143,7 @@ outside of `test`.
 Local `any`s are one of the mechanisms that enable [escape checking](basics.md#escape-checking) for
 the try-with-resources pattern. They prevent escaping of scoped capabilities through (direct or
 indirect) assignment to mutable variables:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def withFile[T](block: File^ => T): T
 
 var esc: File^/*{any₁}*/ = null
@@ -161,7 +164,7 @@ A class receives its own local `any` for the scope of its body. This `any` serve
 a new `any` that will be attached to each instance of the class. Inside the class body, references
 to the class's `any` are implicitly prefixed by the path `this`:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Logger(fs: FileSystem^): // local any₁
   // Logger has its own local any₁, accessed as this.any₁
   val file: File^ = fs.open("log.txt")  // File^{this.any₁}
@@ -173,7 +176,7 @@ clause are essentially unified with the `any` of the current class. This unifica
 all inherited members are accessed through `this`, and hence the local `any`s will conform through
 subtyping with each other:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait Super: // local any₁
   val doSomething: () => Unit // () ->{any₁} Unit
 
@@ -189,7 +192,7 @@ constraints on the contents of a class's `any` through its self-type, reporting 
 When creating an instance, the class's template `any` is substituted with a new `any` specific to
 the new object:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def test(fs: FileSystem^) = /* local any₁ */
   val logger1 = Logger(fs)  // New logger1.any for this instance, capturing fs
   val logger2 = Logger(fs)  // New logger2.any, distinct from logger1.any
@@ -200,7 +203,7 @@ to the rules outlined earlier.
 Conceptually, a class' local `any` behaves like an implicit [capture-set member](polymorphism.md#capability-members)
 present in the class and all its supertypes:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Logger(fs: FileSystem^) extends Super:
   type Cap^
   val file: File^{Cap} = ...
@@ -215,7 +218,7 @@ So far we've discussed local `any`s that follow the lexical nesting hierarchy. B
 
 Consider this method:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def makeLogger(fs: FileSystem^): Logger^ = new Logger(fs)
 ```
 
@@ -227,7 +230,7 @@ means that this `any` has to be defined in a scope in which `fs` is visible.
 
 In logic, the usual way to achieve this scoping is with an existential binder. We can express the
 type of `makeLogger` like this:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 makeLogger: (fs: ∃any₁.FileSystem^{any₁}): ∃fresh. Logger^{fresh}
 ```
 In words: `makeLogger` takes a parameter `fs` of type `Filesystem` capturing _some_ universal
@@ -235,7 +238,7 @@ capability `any₁` and returns a `Logger` capturing some (possibly different) `
 
 We can also turn the existential in the function parameter to a universal "forall" in the function
 itself. In that alternative notation, the type of `makeLogger` would read like this:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 makeLogger: ∀any₁.(fs: FileSystem^{any₁}): ∃fresh. Logger^{fresh}
 ```
 There's a connection with [capture polymorphism](polymorphism.md) here. `any`s in function
@@ -246,11 +249,11 @@ arbitrary capabilities.
 
 The conventions for method types carry over to function types. A function type with `fresh` in the
 result, such as
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 (x: T) -> U^{fresh}
 ```
 is interpreted as having an existentially bound `fresh`:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 (x: T) -> ∃fresh.U^{fresh}
 ```
 The same rules hold for all kinds of function arrows: `->`, `=>`, `?->`, and `?=>`. So `fresh` can in
@@ -258,7 +261,7 @@ this case absorb the function parameter `x` since `x` is locally bound in the fu
 
 Only `fresh` expands to existentially bound capabilities, and it does so regardless of how the
 function is written. For instance, both of these types have existentially bound result capabilities:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 A => B^{fresh}                         // ∃fresh. A ->{any} B^{fresh}
 (x: A) -> B -> C^{fresh}               // (x: A) -> ∃fresh. B -> C^{fresh}
 ```
@@ -282,7 +285,7 @@ determines the binding structure automatically from where `fresh` appears in the
 
 The rules above establish a key practical distinction when writing function types. Consider:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 import caps.fresh
 class A
 class B
@@ -314,14 +317,14 @@ sometimes we want the `fresh` to be bound by an _outer_ function instead. This c
 using type aliases or capture-set parameters to "tunnel" the `fresh` through an inner function type.
 
 Consider these type definitions:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class A
 type F[X] = (t: String) -> X
 type G[C^] = (t: String) -> A^{C}
 ```
 
 With these aliases, we can write:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val x: (s: String) -> F[A^{fresh}] = ???
 val y: (s: String) -> G[{fresh}] = ???
 ```
@@ -330,7 +333,7 @@ In both cases, the `fresh` is bound by the outer function `(s: String) -> ...`, 
 function `(t: String) -> ...`. This works because `fresh` appears outside the inner function type
 definition—it is passed as a type argument or capture-set argument to the alias. The expanded types
 are:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 x: ∃fresh. (s: String) -> (t: String) -> A^{fresh}
 y: ∃fresh. (s: String) -> (t: String) -> A^{fresh}
 ```
@@ -343,7 +346,7 @@ existentially bound at an outer scope.
 Inside the function body, parameter `any`s are at the **same level** as the function's local `any`.
 This means the function's local `any` can subsume capabilities from parameters:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def process(x: File^/* parameter {any₁} */): Unit = /* local any₂ */
   val y: File^/*{any₂}*/ = x  // OK: x's any is at process's level, same as process's local any
   val f: () =>/*{any₂}*/ Unit = () => x.read()  // OK: closure's local any subsumes x
@@ -358,20 +361,20 @@ Result `fresh`s (i.e., those we assign an existential capture set in function-re
 absorb capabilities that would allow scoped resources to escape. Consider trying to leak a file by
 directly returning a closure that captures it:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 withFile[() => File^]("test.txt"): f =>
 //       ^^^^^^^^^^^ T = () => File^, i.e., () ->{any} File^{any} for some outer any
   () => f  // We want to return this as () => File^
 ```
 
 The lambda `(f: File^) => () => f` has inferred type:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 (f: File^) -> () ->{f} File^{f}
 ```
 The inner closure explicitly captures `f`. To fit the expected type `File^ => () => File^`, we'd
 need to widen through these steps:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 (f: File^) -> () ->{f} File^{f}         // inferred: captures f explicitly
 (f: File^) -> () ->{any} File^{any}     // widen to any
 (f: File^) -> ∃fresh. () ->{fresh} File^{fresh} // apply existential rule for result `fresh`
@@ -384,7 +387,7 @@ into this outer `any`, so the assignment fails.
 
 Otherwise, allowing widening `∃fresh. () ->{fresh} File^{fresh}` to `() => File^` would let the scoped file escape:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f)
 //           ^^^^^^^^^^^ any here is in the outer scope
 escaped().read()  // Use-after-close!
@@ -397,7 +400,7 @@ Beyond preventing escaping capabilities, the principle of isolating result `fres
 [tracking mutation and allocation effects](mutability.md) and
 [separation checking](separation-checking.md), e.g., for a function returning a new mutable
 reference cell on each call
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def freshCell(init: Int): Cell^ = new Cell(s)
 val c1 = freshCell(0).set(42) // Cell^{fresh₁}
 val c2 = freshCell(11)        // Cell^{fresh₂}, fresh₁ and fresh₂ are incomparable

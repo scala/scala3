@@ -4,10 +4,13 @@ title: "Capture Checking of Classes"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/classes.html
 ---
 
+```scala sc:nocompile sc-name:preamble
+```
+
 ## Introduction
 
 The principles for capture checking closures also apply to classes. For instance, consider:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Logger(using fs: FileSystem):
   def log(s: String): Unit = ... summon[FileSystem] ...
 
@@ -20,7 +23,7 @@ of `test` is of type `Logger^{xfs}`
 Sometimes, a tracked capability is meant to be used only in the constructor of a class, but
 is not intended to be retained as a field. This fact can be communicated to the capture
 checker by declaring the parameter as `@constructorOnly`. Example:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 import annotation.constructorOnly
 
 class NullLogger(using @constructorOnly fs: FileSystem):
@@ -31,7 +34,7 @@ def test2(using fs: FileSystem): NullLogger = NullLogger() // OK
 The captured references of a class include _local capabilities_ and _argument capabilities_. Local capabilities are capabilities defined outside the class and referenced from its body. Argument capabilities are passed as parameters to the primary constructor of the class. Local capabilities are inherited:
 the local capabilities of a superclass are also local capabilities of its subclasses. Example:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Cap extends caps.SharedCapability
 
 def test(a: Cap, b: Cap, c: Cap) =
@@ -48,7 +51,7 @@ the capture set of that call is `{a, b, c}`.
 ## Capture Set of This
 
 The capture set of the type of `this` of a class is inferred by the capture checker, unless the type is explicitly declared with a self-type annotation like this one:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class C:
   self: D^{a, b} => ...
 ```
@@ -60,7 +63,7 @@ The inference observes the following constraints:
  - The type of `this` must observe all constraints where `this` is used.
 
 For instance, in
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Cap extends caps.SharedCapability
 def test(c: Cap) =
   class A:
@@ -83,7 +86,7 @@ The self-type inference behaves differently depending on whether all subclasses 
 ¹We ignore here the possibility that non-open classes have subclasses in other compilation units (e.g. for testing) and assume that these subclasses do not change the inferred self type.
 
 For example (assuming all definitions are in the same file):
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class A:
   def fn: A = this   // ok
 
@@ -109,7 +112,7 @@ open class E:
 
 The capture set of `this` of a class or trait also serves as an upper bound of the possible capture
 sets of extending classes
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 abstract class Root:
   this: Root^ => // the default, can capture anything
 
@@ -130,7 +133,7 @@ Generally, the further up a class hierarchy we go, the more permissive/impure th
 of a class will be (and the more restrictive/pure it will be if we traverse the hierarchy downwards).
 For example, Scala 3's top reference type `AnyRef`/`Object` conceptually has the universal
 capability
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class AnyRef:
   this: AnyRef^ =>
   // ...
@@ -140,19 +143,19 @@ Similarly, pure `Iterator`s are subtypes of impure ones.
 ## Capture Tunneling
 
 Consider the following simple definition of a `Pair` class:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Pair[+A, +B](x: A, y: B):
   def fst: A = x
   def snd: B = y
 ```
 What happens if `Pair` is instantiated like this (assuming `ct` and `fs` are two capabilities in scope)?
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def x: Int ->{ct} String
 def y: Logger^{fs}
 def p = Pair(x, y)
 ```
 The last line will be typed as follows:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def p: Pair[Int ->{ct} String, Logger^{fs}] = Pair(x, y)
 ```
 This might seem surprising. The `Pair(x, y)` value does capture capabilities `ct` and `fs`. Why don't they show up in its type at the outside?
@@ -160,7 +163,7 @@ This might seem surprising. The `Pair(x, y)` value does capture capabilities `ct
 The answer is capture tunneling. Once a type variable is instantiated to a capturing type, the
 capture is not propagated beyond this point. On the other hand, if the type variable is instantiated
 again on access, the capture information "pops out" again. For instance, even though `p` is technically pure because its capture set is empty, writing `p.fst` would record a reference to the captured capability `ct`. So if this access was put in a closure, the capability would again form part of the outer capture set. E.g.
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 () => p.fst : () -> Int ->{ct} String
 ```
 In other words, references to capabilities "tunnel through" in generic instantiations from creation to access; they do not affect the capture set of the enclosing generic data constructor applications.
@@ -169,7 +172,7 @@ This principle plays an important part in making capture checking concise and pr
 ## Captures of New
 
 Consider the following class, assuming we have capabilities `io`, `async`, and `out` in our environment:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class C(x: () => Unit):
   val f: File^{io} = File()
   def g() =
@@ -188,7 +191,7 @@ field `f`.
 
 The external elements of the capture set of a class can be declared explicitly with a `uses` clause:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class C(x: () => Unit) uses out, io:
   val f: File^{io} = File()
   def g() =
@@ -204,7 +207,7 @@ A `uses` clause must be given if a class that is visible in other compilation un
 The previous section described what capabilities get captured by the value of a class instance creation expression. But this is not the only relevant capture set linked with `new`. It's also important to know which capabilities are accessed when a class is initialized.
 
 For example, consider:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class D():
   val str: String =
     out.println("str was initialized")
@@ -214,7 +217,7 @@ Here, the initialization of `D` accesses the capability `out`. Therefore, the fu
 
 The capabilities accessed during initialization of a class can be declared in the class with a `uses_init` clause, like this:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class D() uses_init out:
   val str: String =
     out.println("str was initialized")
@@ -240,7 +243,7 @@ As a larger example, we present an implementation of lazy lists and some use cas
 our lists are lazy only in their tail part. This corresponds to what the Scala-2 type `Stream` did, whereas Scala 3's `LazyList` type computes strictly less since it is also lazy in the first argument.
 
 Here is the base trait `LzyList` for our version of lazy lists:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait LzyList[+A]:
   def isEmpty: Boolean
   def head: A
@@ -250,14 +253,14 @@ Note that `tail` carries a capture annotation. It says that the tail of a lazy l
 potentially capture the same references as the lazy list as a whole.
 
 The empty case of a `LzyList` is written as usual:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 object LzyNil extends LzyList[Nothing]:
   def isEmpty = true
   def head = ???
   def tail = ???
 ```
 Here is a formulation of the class for lazy cons nodes:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 import scala.compiletime.uninitialized
 
 final class LzyCons[+A](hd: A, tl: () => LzyList[A]^) extends LzyList[A]:
@@ -279,7 +282,7 @@ the private mutable field `cache`. Note that the typing of the assignment `cache
 
 Here is an extension method to define an infix cons operator `#:` for lazy lists. It is analogous
 to `::` but instead of a strict list it produces a lazy list without evaluating its right operand.
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 extension [A](x: A)
   def #:(xs1: => LzyList[A]^): LzyList[A]^{xs1} =
     LzyCons(x, () => xs1)
@@ -290,7 +293,7 @@ of `#:` is a lazy list that captures that argument.
 As an example usage of `#:`, here is a method `tabulate` that creates a lazy list
 of given length with a generator function `gen`. The generator function is allowed
 to have side effects.
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def tabulate[A](n: Int)(gen: Int => A): LzyList[A]^{gen} =
   def recur(i: Int): LzyList[A]^{gen} =
     if i == n then LzyNil
@@ -298,7 +301,7 @@ def tabulate[A](n: Int)(gen: Int => A): LzyList[A]^{gen} =
   recur(0)
 ```
 Here is a use of `tabulate`:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class LimitExceeded extends Exception
 def squares(n: Int)(using ct: CanThrow[LimitExceeded]) =
   tabulate(10): i =>
@@ -310,7 +313,7 @@ The inferred result type of `squares` is `LzyList[Int]^{ct}`, i.e it is a lazy l
 one or more times.
 
 Here are some further extension methods for mapping, filtering, and concatenating lazy lists:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 extension [A](xs: LzyList[A]^)
   def map[B](f: A => B): LzyList[B]^{xs, f} =
     if xs.isEmpty then LzyNil
@@ -339,7 +342,7 @@ Their capture annotations are all as one would expect:
 
 Of course the function passed to `map` or `filter` could also be pure. After all, `A -> B` is a subtype of `(A -> B)^{any}` which is the same as `A => B`. In that case, the pure function
 argument will _not_ show up in the result type of `map` or `filter`. For instance:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val xs = squares(10)
 val ys: LzyList[Int]^{xs} = xs.map(_ + 1)
 ```
@@ -353,7 +356,7 @@ This concludes our example. It's worth mentioning that an equivalent program def
 these elements are represented by a type variable. This means we don't need to annotate anything there either.
 
 Another possibility would be a variant of lazy lists that requires all functions passed to `map`, `filter` and other operations like it to be pure. E.g. `map` on such a list would be defined like this:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 extension [A](xs: LzyList[A])
   def map[B](f: A -> B): LzyList[B] = ...
 ```

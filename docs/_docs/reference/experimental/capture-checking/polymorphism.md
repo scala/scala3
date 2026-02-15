@@ -4,6 +4,9 @@ title: "Capability Polymorphism"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/polymorphism.html
 ---
 
+```scala sc:nocompile sc-name:preamble
+```
+
 ## Introduction
 
 Capture checking supports capture-polymorphic programming in two complementary styles:
@@ -18,7 +21,7 @@ between polymorphism through subtyping versus parametric polymorphism through ty
 
 In many cases, such a higher-order functions, we do not need new syntax to be polymorphic over
 capturing types. The classic example is `map` over lists:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait List[+A]:
   // Works for pure functions AND capturing functions!
   def map[B](f: A => B): List[B]
@@ -33,7 +36,7 @@ such as `List`.
 
 Contrasting this against lazy collections such as `LzyList` from the [previous section](classes.md),
 the implicit capability polymorphism induces an additional capture set on the result of `map`:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 extension [A](xs: LzyList[A]^)
   def map[B](f: A => B): LzyList[B]^{xs, f}
 ```
@@ -48,7 +51,7 @@ with explicit generic effect parameters.
 In some situations, it is convenient or necessary to parameterize definitions by a capture set.
 This allows an API to state precisely which capabilities its clients may use. Consider a `Source`
 that stores `Listeners`:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Source[X^]:
   private var listeners: Set[Listener^{X}] = Set.empty
   def register(x: Listener^{X}): Unit =
@@ -67,7 +70,7 @@ Capture-set variables without user-provided bounds range over the interval
  whose domain is "all capture sets", not all types.
 
 Under the hood, a capture-set variable is implemented as a normal type parameter with special bounds:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Source[X >: CapSet <: CapSet^]:
   ...
 ```
@@ -81,7 +84,7 @@ be erased entirely by the compiler in the future.
 Capture-set variables are inferred in the same way as ordinary type variables.
 They can also be instantiated explicitly with capture-set literals or other
 capture-set variables:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Async extends caps.SharedCapability
 
 def listener(a: Async): Listener^{a} = ???
@@ -104,7 +107,7 @@ The following example takes an unordered `Set` of futures and produces a `Stream
 results in the order in which the futures complete. Using an explicit capture variable `C^`, the
 signature expresses that the cumulative capture set of the input futures is preserved in the
 resulting stream:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def collect[T, C^](fs: Set[Future[T]^{C}])(using Async^): Stream[Future[T]^{C}] =
   val channel = Channel()
   fs.forEach.(_.onComplete(v => channel.send(v)))
@@ -114,7 +117,7 @@ def collect[T, C^](fs: Set[Future[T]^{C}])(using Async^): Stream[Future[T]^{C}] 
 #### Tracking the evolution of mutable objects
 A common use case for explicit capture parameters is when a mutable object’s reachable capabilities
 _grow_ due to mutation. For example, concatenating effectful iterators:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class ConcatIterator[A, C^](var iterators: mutable.List[IterableOnce[A]^{C}]):
   def concat(it: IterableOnce[A]^): ConcatIterator[A, {C, it}]^{this, it} =
     iterators ++= it                             //            ^
@@ -145,12 +148,12 @@ implicitly or would otherwise be unclear.
 
 Capture parameters can also be introduced as *capability members*, in the same way that type
 parameters can be replaced with type members. The earlier example
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Source[X^]:
   private var listeners: Set[Listener^{X}] = Set.empty
 ```
 can be written instead as:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Source:
   type X^
   private var listeners: Set[Listener^{this.X}] = Set.empty
@@ -164,13 +167,13 @@ A capability member behaves like a path-dependent capture-set variable. It may a
 annotations using paths such as `{this.X}`.
 
 Capability members can also have capture-set bounds, restricting which capabilities they may contain:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait Reactor:
   type Cap^ <: {caps.any}
   def onEvent(h: Event ->{this.Cap} Unit): Unit
 ```
 Each implementation of Reactor may refine `Cap^` to a more specific capture set:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait GUIReactor extends Reactor:
   type Cap^ <: {ui, log}
 ```

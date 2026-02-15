@@ -4,6 +4,12 @@ title: "Stateful Capabilities"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/mutability.html
 ---
 
+```scala sc-name:preamble
+//{
+import caps.*
+//}
+```
+
 ## Introduction
 
 An important class of effects represents accesses to mutable variables and mutable data structures. This is intimately tied with the concept of _program state_. Stateful capabilities are capabilities that allow to consult and change the program state.
@@ -17,7 +23,7 @@ For instance, consider a simple reference cell:
 import caps.Mutable
 
 class Ref[T](init: T) extends Mutable:
-  var fld: T
+  var fld: T = init
 
 val r: Ref[Int]^ = Ref(22)
 ```
@@ -35,7 +41,7 @@ A capability is called
 ## The `Stateful` Trait
 
 In the `scala.caps` object we define a new trait
-```scala
+```scala sc:nocompile
 trait Stateful extends ExclusiveCapability
 ```
 It is used as a marker trait for classes that can consult and change the global program state.
@@ -46,12 +52,13 @@ These classes typically contain mutable variables and/or _update methods_.
 Update methods are declared using a new soft modifier `update`.
 
 **Example:**
-```scala
+```scala sc-compile-with:preamble
 class Counter extends Stateful:
   private var count = 0
   def value: Int = count
-  update def incr(x: Int): Unit = current = x
+  update def incr(x: Int): Unit = count = x
 ```
+
 `update` can only be used in classes or objects extending `Stateful`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Stateful` may access exclusive capabilities only if they are defined in the method itself or passed to it in parameters.
 
 In class `Counter`, the `incr` method should be declared as an update method since it accesses `this` as an exclusive write capability by writing to the variable `this.count` in its environment.
@@ -61,7 +68,7 @@ can only access exclusive capabilities defined in the class or passed to it in p
 
 For instance, we can also define counter objects that update a shared variable that is external to the object:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 object Registry extends Stateful:
   var sharedCount = 0
   update class CounterX:
@@ -69,6 +76,7 @@ object Registry extends Stateful:
       sharedCount += 1
       sharedCount
 ```
+
 Normal method members of `Stateful` classes cannot call update methods. This is indicated since accesses in the callee are recorded in the caller. So if the callee captures exclusive capabilities so does the caller.
 
 An update method cannot implement or override a normal method, whereas normal methods may implement or override update methods. Since methods such as `toString` or `==` inherited from Object are normal methods, it follows that none of these methods may be implemented as an update method.
@@ -101,27 +109,28 @@ to be an update method and update methods are not allowed to override regular me
 
 Consider the trait `IterableOnce` from the standard library.
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait IterableOnce[+T] extends Stateful:
   def iterator: Iterator[T]^{this}
   update def foreach(op: T => Unit): Unit
   update def exists(op: T => Boolean): Boolean
   ...
 ```
+
 The trait is a stateful type with many update methods, among them `foreach` and `exists`. These need to be classified as `update` because their implementation in the subtrait `Iterator` uses the update method `next`.
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait Iterator[T] extends IterableOnce[T]:
   def iterator = this
   def hasNext: Boolean
   update def next(): T
   update def foreach(op: T => Unit): Unit = ...
-  update def exists(op; T => Boolean): Boolean = ...
+  update def exists(op: T => Boolean): Boolean = ...
   ...
 ```
 But there are other implementations of `IterableOnce` that are not stateful types (even though they do indirectly extend the `Stateful` trait). Notably, collection classes implement `IterableOnce` by creating a fresh
 `iterator` each time one is required. The mutation via `next()` is then restricted to the state of that iterator, whereas the underlying collection is unaffected. These implementations would implement each `update` method in `IterableOnce` by a normal method without the `update` modifier.
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait Iterable[T] extends IterableOnce[T]:
   def iterator = new Iterator[T] { ... }
   def foreach(op: T => Unit) = iterator.foreach(op)
@@ -140,12 +149,12 @@ But it also has two other properties that are explained in the following.
 
 Each time one creates a value of a mutable type one gets a separate fresh object that can be updated independently
 of other objects. This property is expressed by extending the `Separate` trait in the `scala.caps` object:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait Separate extends Stateful
 ```
 If a value of a type extending Separate is created, a fresh `any` is automatically
 added to the value's capture set:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class S extends Separate
 val s = S()   // s: S^
 ```
@@ -153,13 +162,13 @@ val s = S()   // s: S^
 Whether or not a class should be `Separate` is a design question. For instance here is a
 design of `Iterator` with a `map` method that is `Stateful` but not `Separate`:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Iterator[T] extends Stateful:
   def hasNext: Boolean
   update def next: T
   update def map[U](f: T => U): Iterator[U]^{this, f} = new Iterator:
     def hasNext = Iterator.this.hasNext
-    update def next: Iterator.this.next
+    update def next = Iterator.this.next
 
 def listIterator[T](xs: List[T]): Iterator[T]^ = new Iterator:
   var current = xs
@@ -171,7 +180,7 @@ Here, `listIterator` returns a fresh iterator with separate state, whereas `map`
 
 One could also decide to make iterator a `Separate` class:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class SepIterator[T] extends Stateful, Separate:
   def hasNext: Boolean
   update def next: T
@@ -185,7 +194,7 @@ would inform us that creating a mapped iterator invalidates any future accesses 
 ## The Unscoped Classifier
 
 Usually, capabilities have bounded lifetimes. For instance, consider again the withFile method:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class File:
   def read(): String = ...
   def close(): Unit = ...
@@ -203,7 +212,7 @@ since the cell itself is a capability.
 We can make this compile by declaring `Ref` cells to be `Unscoped`.
 Capabilities classified as `Unscoped` can escape their environment. For instance, the following
 is permitted:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Ref[T](init: T) extends Separate, Unscoped
 
 withFile: f =>
@@ -218,13 +227,13 @@ from a `withFile` does not affect the lifetime of `f`.
 
 Classes such as ref-cells, arrays, or matrices are stateful, unscoped, and their instances represent fresh capabilities. This common combination is expressed by the `Mutable` trait in the `scala.caps` object.
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 trait Mutable extends Stateful, Separate, Unscoped
 ```
 
 Examples:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Ref[T](init: T) extends Mutable:
   private var current = init
   def get: T = current
@@ -242,7 +251,7 @@ facade class that reveals some part of an underlying `Mutable` capability.
 ## Arrays
 
 The class `scala.Array` is considered a `Mutable` class if [separation checking](./separation-checking.md) is enabled. In that context, class Array can be considered to be declared roughly as follows:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Array[T] extends Mutable:
   def length: Int
   def apply(i: Int): T
@@ -262,12 +271,12 @@ If `x` is an exclusive capability of a type extending `Stateful`, `x.rd` is its 
 A reference to a type extending trait `Stateful` gets an implicit capture set `{any.rd}` provided no explicit capture set is given. This is different from other capability traits which implicitly add `{any}`.
 
 For instance, consider:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def addContents(from: Ref[Int], to: Ref[Int]^): Unit =
   to.set(to.get + from.get)
 ```
 Here, `from` is implicitly read-only, and `to`'s type has capture set `any`. I.e. with explicit capture sets this would read:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def addContents(from: Ref[Int]^{any.rd}, to: Ref[Int]^{any}): Unit
 ```
 In other words, the explicit `^` indicates where state changes can happen.
@@ -279,18 +288,18 @@ An access `p.m` to an update method or class `m` in a stateful type is permitted
 A _read-only access_ is a reference to a type extending `Stateful` where one of the following conditions hold:
 
  1. The reference is `this` and the access is not from an update method of the class of `this`. For instance:
-    ```scala
+    ```scala sc:nocompile sc-compile-with:preamble
     class Ref[T] extends Mutable:
       var current: T
       def get: T = this.current // read-only access to `this`
     ```
  2. The reference is a path where the path itself or a prefix of that path has a read-only capture set. For instance:
-    ```scala
+    ```scala sc:nocompile sc-compile-with:preamble
     val r: Ref[Int]^{any.rd} = new Ref[T](22)
     def get = r.get // read-only access to `r`
     ```
     Another example:
-    ```scala
+    ```scala sc:nocompile sc-compile-with:preamble
     class RefContainer extends Mutable:
       val r: Ref[Int]^ = new Ref[Int](22)
     val c: RefContainer = RefContainer()
@@ -298,12 +307,12 @@ A _read-only access_ is a reference to a type extending `Stateful` where one of 
     ```
     In the last example, `c.r` is a read-only access since the prefix `c` is a read-only reference. Note that `^{any.rd}` was implicitly added to `c: RefContainer` since `RefContainer` is a `Stateful` capability class.
  3. The expected type of the reference is a value type that is not a stateful type. For instance:
-    ```scala
+    ```scala sc:nocompile sc-compile-with:preamble
     val r: Ref[Int]^ = Ref(22)
     val x: Object = r     // read-only access to `r`
     ```
  4. The reference is immediately followed by a selection with a member that is a normal method or class (not an update method or class). For instance:
-    ```scala
+    ```scala sc:nocompile sc-compile-with:preamble
     val r: Ref[Int]^ = Ref(22)
     r.get                 // read-only access to `r`
     ```
@@ -317,7 +326,7 @@ A read-only access charges the read-only capability `x.rd` to its environment. O
 
 Consider a reference `x` and two closures `f` and `g`.
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val x = Ref(1)
 val f = () => x.get    // f: () ->{x.rd} Unit
 val g = () => x.set(1) // g: () ->{x} Unit
@@ -327,7 +336,7 @@ val g = () => x.set(1) // g: () ->{x} Unit
 accesses an update method of `x`, so its capture set is `{x}`.
 
 A reference to a stateful type with an exclusive capture set can be widened to a reference with a read-only set. For instance, the following is OK:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val a: Ref[Int]^ = Ref(1)
 val b1: Ref[Int]^{a.rd} = a
 val b2: Ref[Int]^{any.rd} = a
@@ -338,7 +347,7 @@ val b2: Ref[Int]^{any.rd} = a
 Lazy val initializers in `Stateful` classes are subject to read-only restrictions similar to those for normal methods. Specifically, a lazy val initializer in a `Stateful` class cannot call update methods or refer to non-local exclusive capabilities, i.e., capabilities defined outside the lazy val's scope.
 
 For example, when a lazy val is declared in a local method's scope, its initializer may freely use capabilities from the surrounding environment:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 def example(r: Ref[Int]^) =
   lazy val goodInit: () ->{r.rd} Int =
     val i = r.get() // ok: read-only access
@@ -346,7 +355,7 @@ def example(r: Ref[Int]^) =
     () => r.get() + i
 ```
 However, within a `Stateful` class, a lazy val declaration has only read access to non-local exclusive capabilities:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Wrapper(val r: Ref[Int]^) extends Stateful:
   lazy val badInit: () ->{r} Int =
     r.set(100) // error: call to update method
@@ -363,7 +372,7 @@ This is rejected because initializers should not perform mutations on external s
 
 The restriction applies only to **non-local** capabilities. A lazy val can freely call update methods on capabilities it creates locally within its initializer:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Example:
   lazy val localMutation: () => Int =
     val local: Ref[Int]^ = Ref(10)  // created in initializer
@@ -383,7 +392,7 @@ If a capability `r` is a read-only access, then one cannot use `r` to call an up
 
 Example:
 
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 class Ref[T](init: T) extends Mutable:
   var current = init
 
@@ -405,7 +414,7 @@ ro.set(22)        // disallowed, since `ro` is read-only access
 Under [separation checking](./separation-checking.md), mutable fields are allowed to be declared only in `Stateful` classes. Updates to these fields can then only happen in update methods of these classes.
 
 But sometimes, disallowing assignments to mutable fields from normal methods is too restrictive. For instance:
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 import caps.unsafe.untrackedCaptures
 
 class Cache[T](eval: () -> T):
@@ -439,11 +448,11 @@ But for mutations, we use a capture set in a second role, in which it defines a 
 The contradiction can be solved by distinguishing these two roles. For access permissions, we express read-only sets with an additional _qualifier_ `reader`. That qualifier is used only in the formal theory and the implementation, it currently cannot be expressed in source.
 We add an implicit read-only qualifier `reader` to all capture sets on stateful types that consist only of shared or read-only capabilities.
 So when we write
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val b1: Ref[A]^{a.rd} = a
 ```
 we really mean
-```scala
+```scala sc:nocompile sc-compile-with:preamble
 val b1: Ref[A]^{a.rd}.reader = a
 ```
 

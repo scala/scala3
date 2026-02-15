@@ -2956,6 +2956,9 @@ object ScaladocConfigs {
         s"$stdlib/src/scala/util/control=compile",
         s"$stdlib/src/scala/util=compile",
         s"$stdlib/src/scala=compile",
+        "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
+        "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+        "docs/_docs/reference/experimental/capture-checking/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
