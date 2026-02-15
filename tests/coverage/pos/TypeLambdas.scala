@@ -1,7 +1,7 @@
 package covtest
 
 /**
-  * Type Lambdas: https://nightly.scala-lang.org/docs/reference/new-types/type-lambdas.html
+  * Type Lambdas: https://xxxxx.xxxx.xx/docs/reference/new-types/type-lambdas.html
   * Taken from https://github.com/scala/scala3-example-project
   */
 object TypeLambdas:
