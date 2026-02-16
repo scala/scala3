@@ -1771,7 +1771,7 @@ object desugar {
       val sel = Select(fn, op.name).withSpan(selectPos)
       if (left.sourcePos.endLine < op.sourcePos.startLine)
         sel.pushAttachment(MultiLineInfix, ())
-      val apply = arg match
+      arg match
         case Parens(arg) =>
           Apply(sel, assignToNamedArg(arg) :: Nil)
         case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
@@ -1780,14 +1780,13 @@ object desugar {
           Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
           Apply(sel, arg :: Nil)
-      apply.withSpan(Span(left.span.start, right.span.end, point = op.span.start))
 
     val apply = if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
     else
-      makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
+      makeOp(left, right, Span(left.span.start, op.span.end, point = op.span.start))
     apply.pushAttachment(WasTypedInfix, ())
-    return apply
+    apply.withSpan(Span(left.span.start, right.span.end, point = op.span.start))
   }
 
   /** Translate throws type `A throws E1 | ... | En` to
