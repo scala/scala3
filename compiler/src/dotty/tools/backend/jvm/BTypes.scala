@@ -24,7 +24,7 @@ import dotty.tools.dotc.core.Types.abstractTermNameFilter
 import scala.annotation.tailrec
 import scala.tools.asm.Opcodes
 import scala.tools.asm.Opcodes.{ACC_ABSTRACT, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC}
-import scala.tools.asm.tree.ClassNode
+import scala.tools.asm.tree.{ClassNode, ModuleNode}
 
 
 /**
@@ -51,7 +51,7 @@ sealed trait BType {
     case FLOAT  => "F"
     case LONG   => "J"
     case DOUBLE => "D"
-    case ClassBType(internalName) => "L" + internalName + ";"
+    case c: ClassBType            => "L" + c.internalName + ";"
     case ArrayBType(component)    => "[" + component
     case MethodBType(args, res)   => args.mkString("(", "", ")" + res)
   }
@@ -224,9 +224,9 @@ sealed trait BType {
     case FLOAT  => asm.Type.FLOAT_TYPE
     case LONG   => asm.Type.LONG_TYPE
     case DOUBLE => asm.Type.DOUBLE_TYPE
-    case ClassBType(internalName) => asm.Type.getObjectType(internalName) // see (*) above
-    case a: ArrayBType            => asm.Type.getObjectType(a.descriptor)
-    case m: MethodBType           => asm.Type.getMethodType(m.descriptor)
+    case c: ClassBType  => asm.Type.getObjectType(c.internalName) // see (*) above
+    case a: ArrayBType  => asm.Type.getObjectType(a.descriptor)
+    case m: MethodBType => asm.Type.getMethodType(m.descriptor)
   }
 
   def asRefBType       : RefBType       = this.asInstanceOf[RefBType]
@@ -343,8 +343,8 @@ sealed trait RefBType extends BType {
    * This can be verified for example using javap or ASMifier.
    */
   def classOrArrayType: String = this match {
-    case ClassBType(internalName) => internalName
-    case a: ArrayBType            => a.descriptor
+    case c: ClassBType => c.internalName
+    case a: ArrayBType => a.descriptor
   }
 }
 
@@ -572,7 +572,7 @@ sealed trait RefBType extends BType {
 
 enum InlineInfoSource:
   case Symbol(classSym: ClassSymbol, internalName: InternalName)
-  case Classfile(classNode: ClassNode)
+  case Classfile(classNode: ClassNode, moduleNode: Option[ModuleNode])
   case Missing
 
 /**
@@ -621,12 +621,12 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
           // symbols being compiled. For non-compiled classes, we could not build MethodInlineInfos
           // for those mixin members, which prevents inlining.
           else bCodeRepository.classNode(internalName) match {
-            case Right(classNode) =>
-              inlineInfoFromClassfile(classNode)
+            case Right(classNode, moduleNode) =>
+              inlineInfoFromClassfile(classNode, moduleNode)
             case Left(missingClass) =>
               EmptyInlineInfo.copy(warning = Some(ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass)))
           }
-        case InlineInfoSource.Classfile(classNode) => inlineInfoFromClassfile(classNode)
+        case InlineInfoSource.Classfile(classNode, moduleNode) => inlineInfoFromClassfile(classNode, moduleNode)
         case InlineInfoSource.Missing => EmptyInlineInfo
       }
     _inlineInfo.nn
@@ -677,7 +677,8 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
         methodInlineInfos(signature) = info
     }
 
-    InlineInfo(classSym.is(Final), sam, methodInlineInfos, None)
+    // if we have a symbol, we're compiling the class, so we assume it's accessible
+    InlineInfo(classSym.is(Final), sam, methodInlineInfos, None, isAccessible = true)
   }
 
 
@@ -686,10 +687,10 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
    * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
    * metadata available in the classfile (ACC_FINAL flags, etc.).
    */
-  def inlineInfoFromClassfile(classNode: ClassNode): InlineInfo = {
+  def inlineInfoFromClassfile(classNode: ClassNode, moduleNode: Option[ModuleNode]): InlineInfo = {
     def fromClassfileAttribute: Option[InlineInfo] = {
       if (classNode.attrs == null) None
-      else classNode.attrs.asScala.collectFirst{ case a: InlineInfoAttribute => a.inlineInfo}
+      else classNode.attrs.asScala.collectFirst{ case a: InlineInfoAttribute => a.inlineInfo }
     }
 
     def fromClassfileWithoutAttribute = {
@@ -717,11 +718,13 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
       val abstractMethods = classNode.methods.asScala.filter(m => (m.access & ACC_ABSTRACT) != 0)
       val sam = if abstractMethods.size == 1 then Some(abstractMethods.head.name + abstractMethods.head.desc) else None
 
-      InlineInfo(
-        isEffectivelyFinal = isFinalClass,
-        sam = sam,
-        methodInfos = methodInfos,
-        warning)
+      // No module => always accessible
+      val isAccessible = moduleNode.forall(m =>
+        val nodePackageName = classNode.name.substring(0, classNode.name.lastIndexOf('/'))
+        m.exports.asScala.exists(e => (e.modules == null || e.modules.size == 0) && e.packaze == nodePackageName)
+      )
+
+      InlineInfo(isFinalClass, sam, methodInfos, warning, isAccessible)
     }
 
     fromClassfileAttribute.getOrElse(fromClassfileWithoutAttribute)
@@ -764,24 +767,9 @@ case class NestedInfo(enclosingClass: ClassBType,
 case class InnerClassEntry(name: String, outerName: String, innerName: String, flags: Int)
 
 /**
-   * A ClassBType represents a class or interface type. The necessary information to build a
-   * ClassBType is extracted from compiler symbols and types, see BTypesFromSymbols.
-   *
-   * The `offset` and `length` fields are used to represent the internal name of the class. They
-   * are indices into some character array. The internal name can be obtained through the method
-   * `internalNameString`, which is abstract in this component. Name creation is assumed to be
-   * hash-consed, so if two ClassBTypes have the same internal name, they NEED to have the same
-   * `offset` and `length`.
-   *
-   * The actual implementation in subclass BTypesFromSymbols uses the global `chrs` array from the
-   * name table. This representation is efficient because the JVM class name is obtained through
-   * `classSymbol.javaBinaryName`. This already adds the necessary string to the `chrs` array,
-   * so it makes sense to reuse the same name table in the backend.
-   *
-   * ClassBType is not a case class because we want a custom equals method, and because the
-   * extractor extracts the internalName, which is what you typically need.
-   */
-final class ClassBType private(val internalName: String, val fromSymbol: Boolean, private val ts: CoreBTypes) extends RefBType {
+ * A ClassBType represents a class or interface type.
+ */
+case class ClassBType private(val internalName: String, private val ts: CoreBTypes) extends RefBType {
   /**
    * Write-once variable allows initializing a cyclic graph of infos. This is required for
    * nested classes. Example: for the definition `class A { class B }` we have
@@ -832,12 +820,6 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
       )
       assert(info.get.nestedClasses.forall(c => ifInit(c)(_.isNestedClass.get)), info.get.nestedClasses)
   }
-
-  /**
-   * The internal name of a class is the string returned by java.lang.Class.getName, with all '.'
-   * replaced by '/'. For example "java/lang/String".
-   */
-  //def internalName: String = internalNameString(offset, length)
 
   /**
    * @return The class name without the package prefix
@@ -960,21 +942,6 @@ final class ClassBType private(val internalName: String, val fromSymbol: Boolean
     }
     fcs
   }
-
-  /**
-   * Custom equals / hashCode: we only compare the name (offset / length)
-   */
-  override def equals(o: Any): Boolean = (this eq o.asInstanceOf[Object]) || (o match {
-    case c: ClassBType @unchecked => c.internalName == this.internalName
-    case _ => false
-  })
-
-  override def hashCode: Int = {
-    import scala.runtime.Statics
-    var acc: Int = -889275714
-    acc = Statics.mix(acc, internalName.hashCode)
-    Statics.finalizeHash(acc, 2)
-  }
 }
 
 object ClassBType {
@@ -995,11 +962,11 @@ object ClassBType {
    * @tparam T           The type of the state that will be threaded into the `init` function.
    * @return             The `ClassBType`
    */
-  final def apply[T](internalName: InternalName, t: T, fromSymbol: Boolean, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType = {
+  final def apply[T](internalName: InternalName, t: T, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType = {
     val cached = cache.get(internalName)
     if cached ne null then cached
     else {
-      val newRes = new ClassBType(internalName, fromSymbol, ts)
+      val newRes = new ClassBType(internalName, ts)
       // synchronized is required to ensure proper initialization of info.
       // see comment on def info
       newRes.synchronized {
@@ -1014,11 +981,6 @@ object ClassBType {
       }
     }
   }
-
-  /**
-   * Pattern matching on a ClassBType extracts the `internalName` of the class.
-   */
-  def unapply(c: ClassBType): Some[String] = Some(c.internalName)
 
   // Primitive classes have no super class. A ClassBType for those is only created when
   // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
@@ -1185,11 +1147,15 @@ object BTypes {
    * @param warning                Contains a warning message if an error occurred when building this
    *                               InlineInfo, for example if some classfile could not be found on
    *                               the classpath. This warning can be reported later by the inliner.
+   *
+   * @param isAccessible           Whether this class's internals can be inlined into callsites, i.e.,
+   *                               it is exported from a public module.
    */
   final case class InlineInfo(isEffectivelyFinal: Boolean,
                               sam: Option[String],
                               methodInfos: collection.SortedMap[(String, String), MethodInlineInfo],
-                              warning: Option[BackendReporting.ClassInlineInfoWarning]) {
+                              warning: Option[BackendReporting.ClassInlineInfoWarning],
+                              isAccessible: Boolean) {
     lazy val methodInfosSorted: IndexedSeq[((String, String), MethodInlineInfo)] = {
       val result = new Array[((String, String), MethodInlineInfo)](methodInfos.size)
       var i = 0
@@ -1202,7 +1168,7 @@ object BTypes {
     }
   }
 
-  val EmptyInlineInfo = InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = SortedMap.empty, warning = None)
+  val EmptyInlineInfo = InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = SortedMap.empty, warning = None, isAccessible = false)
 
   /**
    * Metadata about a method, used by the inliner.
