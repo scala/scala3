@@ -96,6 +96,6 @@ private[dotty] trait NoSourcePaths {
 }
 
 private[dotty] trait NoClassPaths {
-  def findClassFile(className: String): Option[AbstractFile] = None
+  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = None
   private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = Seq.empty
 }

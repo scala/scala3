@@ -115,7 +115,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 
   def addClass(classNode: ClassNode): Unit = {
-    val classType = bTypesFromClassfile.classBTypeFromClassNode(classNode)
+    val classType = bTypesFromClassfile.classBTypeFromClassNode(classNode, None)
     classNode.methods.asScala.foreach(addMethod(_, classType))
   }
 
@@ -171,10 +171,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
 
           val callee: Either[OptimizerWarning, Callee] = {
             for {
-              (method, declarationClass) <- byteCodeRepository.methodNode(preciseOwner, call.name, call.desc): Either[OptimizerWarning, (MethodNode, InternalName)]
-              (declarationClassNode, calleeSourceFilePath) <- byteCodeRepository.classNodeAndSourceFilePath(declarationClass): Either[OptimizerWarning, (ClassNode, Option[String])]
+              (method, declarationClass) <- byteCodeRepository.methodNode(preciseOwner, call.name, call.desc)
+              ((declarationClassNode, declarationModuleNode), calleeSourceFilePath) <- byteCodeRepository.classNodeAndSourceFilePath(declarationClass)
             } yield {
-              val declarationClassBType = bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode)
+              val declarationClassBType = bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode, declarationModuleNode)
               val info = analyzeCallsite(method, declarationClassBType, call, paramTps, calleeSourceFilePath, definingClass)
               import info._
               Callee(
