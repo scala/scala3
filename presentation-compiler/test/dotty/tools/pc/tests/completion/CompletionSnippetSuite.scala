@@ -2,8 +2,8 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class CompletionSnippetSuite extends BaseCompletionSuite:
 
@@ -15,6 +15,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|apply($0)
+         |unapplySeq($0)
          |""".stripMargin
     )
 
@@ -79,7 +80,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
   // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Ignore("Fuzzy should be provided by dotty")
   @Test def `type-empty` =
-    if (scala.util.Properties.isJavaAtLeast("9")) {
+    if scala.util.Properties.isJavaAtLeast("9") then
       checkSnippet(
         """
           |object Main {
@@ -90,7 +91,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         """|MyType
            |""".stripMargin
       )
-    } else {
+    else
       checkSnippet(
         """
           |object Main {
@@ -103,13 +104,12 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
            |MTOMFeature
            |""".stripMargin
       )
-    }
 
     // Dotty does not currently support fuzzy completions. Please take a look at
     // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Ignore("Fuzzy should be provided by dotty")
   @Test def `type-new-empty` =
-    if (scala.util.Properties.isJavaAtLeast("9")) {
+    if scala.util.Properties.isJavaAtLeast("9") then
       checkSnippet(
         """
           |object Main {
@@ -121,7 +121,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         """|MyType
            |""".stripMargin
       )
-    } else {
+    else
       checkSnippet(
         """
           |object Main {
@@ -135,7 +135,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
            |MTOMFeature
            |""".stripMargin
       )
-    }
 
   @Test def `type` =
     checkSnippet(
@@ -172,7 +171,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |ArrayDequeOps[$0]
          |ArrayDeque
          |ArrayDeque
-         |ArrayDequeOps
          |""".stripMargin
     )
 
@@ -289,7 +287,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       "scala.util.Try@@(1)",
-      "scala.util.Try(1)"
+      "scala.util.Try(1)",
+      assertSingleItem = false
     )
 
   @Test def `case-class` =
@@ -300,18 +299,39 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       "scala.util.Tr@@(1)",
       "scala.util.Try(1)",
-      filter = str => str.contains("Try")
+      filter = str => str.contains("Try"),
+      assertSingleItem = false
     )
 
   @Test def `case-class2` =
     checkSnippet(
-      s"""|object Main {
-          |  scala.util.Tr@@
+      s"""|object wrapper:
+          |  case class Test2(x: Int)
+          |  object Test2:
+          |    def apply(x: Int): Test2 = ???
+          |object Main {
+          |  wrapper.Test@@
           |}
           |""".stripMargin,
-      """|Try
-         |Try($0)
+      """|Test2($0)
+         |new wrapper.Test2
+         |Test2
          |""".stripMargin
+    )
+
+  @Test def `case-class2-edit` =
+    checkEditLine(
+      s"""|object wrapper:
+          |  case class Test2(x: Int)
+          |  object Test2:
+          |    def apply(x: Int): Test2 = ???
+          |object Main {
+          |  ___
+          |}
+          |""".stripMargin,
+      "wrapper.Test@@",
+      "new wrapper.Test2",
+      filter = _.contains("new Test2")
     )
 
   @Test def `case-class3` =
@@ -322,9 +342,10 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       // Note: the class and trait items in here are invalid. So
       // they are filtered out.
-      """|Try
-         |Try($0)
-         |""".stripMargin
+      """|Try($0) - [T](r: => T): Try[T]
+         |Try -  scala.util
+         |""".stripMargin,
+      includeDetail = true
     )
 
   @Test def `symbol` =
@@ -352,15 +373,16 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  Wi@@
           |}
           |""".stripMargin,
-      """|Widget -  example
-         |Widget($0) - (name: String): Widget
+      """|Widget($0) - (name: String): Widget
          |Widget($0) - (age: Int): Widget
          |Widget($0) - (name: String, age: Int): Widget
+         |Widget -  example
          |""".stripMargin,
       includeDetail = true,
       topLines = Some(4)
     )
 
+  @Ignore
   @Test def `no-apply` =
     checkSnippet(
       s"""|package example
@@ -373,10 +395,49 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
       """|Widget -  example
          |Window -  java.awt
          |WindowPeer -  java.awt.peer
-         |WithFilter -  scala.collection
+         |WithFilter - [A](p: A => Boolean, xs: Array[A]): WithFilter[A]
+         |WithFilter - [A, CC[_$$2]](self: IterableOps[A, CC, ?], p: A => Boolean): WithFilter[A, CC]
+         |WithFilter - [K, V, IterableCC[_$$3], CC[_$$4,_$$5] <: IterableOps[?, AnyConstr, ?]](self: MapOps[K, V, CC, ?] & IterableOps[(K, V), IterableCC, ?], p: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC]
+         |WithFilter - [K, V, IterableCC[_$$1], MapCC[X,Y] <: scala.collection.Map[X, Y], CC[X,Y] <: scala.collection.Map[X, Y] & SortedMapOps[X, Y, CC, ?]](self: SortedMapOps[K, V, CC, ?] & MapOps[K, V, MapCC, ?] & IterableOps[(K, V), IterableCC, ?], p: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, MapCC, CC]
+         |WithFilter - [A, IterableCC[_$$1], CC[X] <: SortedSet[X]](self: SortedSetOps[A, CC, ?] & IterableOps[A, IterableCC, ?], p: A => Boolean): WithFilter[A, IterableCC, CC]
+         |WithFilter - (p: Char => Boolean, s: String): WithFilter
+         |WithFilter - [A](l: Stream[A] @uncheckedVariance, p: A => Boolean): WithFilter[A]
          |""".stripMargin,
-      includeDetail = true,
-      topLines = Some(4)
+      includeDetail = true
+    )
+
+  @Test def `no-apply2` =
+    checkSnippet(
+      s"""|package example
+          |
+          |object TestObject {}
+          |object Main {
+          |  TestObjec@@
+          |}
+          |""".stripMargin,
+      """|TestObject -  example
+         |""".stripMargin,
+      includeDetail = true
+    )
+
+  @Test def `dont-enter-empty-paramlist` =
+    checkSnippet(
+      s"""|package example
+          |
+          |object Main {
+          |  ListMa@@
+          |}
+          |""".stripMargin,
+      """|ListMap($0) - [K, V](elems: (K, V)*): ListMap[K, V]
+         |new ListMap - [K, V]: ListMap[K, V]
+         |ListMap -  scala.collection.immutable
+         |ListMap($0) - [K, V](elems: (K, V)*): ListMap[K, V]
+         |new ListMap - [K, V]: ListMap[K, V]
+         |ListMap -  scala.collection.mutable
+         |ListMapBuilder - [K, V]: ListMapBuilder[K, V]
+         |ConcurrentSkipListMap -  java.util.concurrent
+         |""".stripMargin,
+      includeDetail = true
     )
 
   // https://github.com/scalameta/metals/issues/4004
@@ -393,7 +454,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  extension (s: String)
           |    def bar = 0
           |  val bar = "abc".bar
-      """.stripMargin
+      """.stripMargin,
+      filter = _.contains("bar: Int")
     )
 
   // https://github.com/scalameta/metals/issues/4004
@@ -410,5 +472,36 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  extension (s: String)
           |    def bar() = 0
           |  val bar = "abc".bar()
-      """.stripMargin
+      """.stripMargin,
+      filter = _.contains("bar: Int")
+    )
+
+  @Test def `brackets-already-present` =
+    check(
+      """|package a
+         |case class AAA[T]()
+         |object O {
+         |  val l: AA@@[Int] = ???
+         |}
+         |""".stripMargin,
+      """|AAA a
+         |ArrowAssoc scala.Predef
+         |""".stripMargin
+    )
+
+  @Test def `brackets-already-present-edit` =
+    checkEdit(
+      """|package a
+         |case class AAA[T]()
+         |object O {
+         |  val l: AA@@[Int] = ???
+         |}
+         |""".stripMargin,
+      """|package a
+         |case class AAA[T]()
+         |object O {
+         |  val l: AAA[Int] = ???
+         |}
+         |""".stripMargin,
+      assertSingleItem = false
     )

@@ -21,7 +21,7 @@ object TastyUtils:
 
   private def normalTasty(tastyURI: URI): String =
     val tastyBytes = Files.readAllBytes(Paths.get(tastyURI))
-    new TastyPrinter(tastyBytes.nn).showContents()
+    new TastyPrinter(tastyBytes.nn, isBestEffortTasty = false, testPickler = false).showContents()
 
   private def htmlTasty(
       tastyURI: URI,
@@ -37,10 +37,9 @@ object TastyUtils:
           .element("pre", "class='container is-dark'")(_.raw(tastyHtml))
       }
       .render
-  end htmlTasty
 
   private def tastyHtmlPageTitle(file: URI) =
-    val filename = Paths.get(file).nn.getFileName().toString
+    val filename = Paths.get(file).getFileName().toString
     s"TASTy for $filename"
 
   private val standaloneHtmlStyles =

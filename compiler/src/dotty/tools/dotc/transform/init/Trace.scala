@@ -6,6 +6,7 @@ import core.*
 import Contexts.*
 import ast.tpd.*
 import util.SourcePosition
+import util.SourceFile
 
 import Decorators.*, printing.SyntaxHighlighting
 
@@ -42,27 +43,43 @@ object Trace:
 
   inline def extendTrace[T](node: Tree)(using t: Trace)(op: Trace ?=> T): T = op(using t.add(node))
 
+  /**
+   * Returns whether the source file exists
+   *
+   * The method SourceFile#exists always return true thus cannot be used.
+   */
+  def fileExists(source: SourceFile): Boolean =
+    source.content().nonEmpty
+
   def buildStacktrace(trace: Trace, preamble: String)(using Context): String = if trace.isEmpty then "" else preamble + {
     var lastLineNum = -1
     var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
     trace.foreach { tree =>
       val isLastTraceItem = tree `eq` trace.last
       val pos = tree.sourcePos
+      val hasSource = fileExists(pos.source)
       val line =
-        if pos.source.exists then
-          val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-          val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
-          i"$code\t$loc"
+        if pos.exists then
+          // Show more information for external code without source
+          val file = if hasSource then pos.source.file.name else pos.source.file.path
+          val loc = file + ":" + (pos.line + 1)
+          val code =
+            if hasSource then
+              SyntaxHighlighting.highlight(pos.lineContent.trim)
+            else
+              "(no source)"
+
+          i"$code\t[ $loc ]"
         else
           tree match
             case defDef: DefTree =>
               // The definition can be huge, avoid printing the whole definition.
               defDef.symbol.showFullName
             case _ =>
-              tree.show.split(System.lineSeparator(), 2).nn.head.nn
+              tree.show.split(System.lineSeparator(), 2).head
 
       val positionMarkerLine =
-        if pos.exists && pos.source.exists then
+        if pos.exists && hasSource then
           (if isLastTraceItem then EMPTY_PADDING else CONNECTING_INDENT)+ positionMarker(pos)
         else
           ""
@@ -86,7 +103,7 @@ object Trace:
    */
   private def positionMarker(pos: SourcePosition): String =
     val trimmed = pos.source.lineContent(pos.start).takeWhile(c => c.isWhitespace).length
-    val padding = pos.startColumnPadding.substring(trimmed).nn
+    val padding = pos.startColumnPadding.substring(trimmed)
     val carets =
       if (pos.startLine == pos.endLine)
         "^" * math.max(1, pos.endColumn - pos.startColumn)

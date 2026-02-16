@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
 import org.junit.Assume._
+import org.junit.Ignore
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -31,13 +32,6 @@ class BootstrappedOnlyCompilationTests {
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
     ).checkCompile()
   }
-
-  // @Test
-  def posWithCompilerCC: Unit =
-    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompilerCC")
-    aggregateTests(
-      compileDir("tests/pos-with-compiler-cc/dotc", withCompilerOptions.and("-language:experimental.captureChecking"))
-    ).checkCompile()
 
   @Test def posWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
@@ -120,8 +114,12 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyBlacklisted))
-      .checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
   }
 
   @Test def runWithCompiler: Unit = {
@@ -135,14 +133,44 @@ class BootstrappedOnlyCompilationTests {
       if scala.util.Properties.isWin then basicTests
       else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
-    aggregateTests(tests*).checkRuns()
+    val compilationTest = withCoverage(aggregateTests(tests*))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
+  }
+
+  @Ignore @Test def runScala2LibraryFromTasty: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runScala2LibraryFromTasty")
+    // These tests recompile the entire scala2-library from TASTy,
+    // they are resource intensive and should not run alongside other tests to avoid timeouts
+    aggregateTests(
+      compileFile("tests/run-custom-args/scala2-library-from-tasty-jar.scala", withCompilerOptions),
+      compileFile("tests/run-custom-args/scala2-library-from-tasty.scala", withCompilerOptions),
+    ).limitThreads(2).checkRuns() // TODO reduce to limitThreads(1) if it still causes problems, this would be around 50% slower based on local benchmarking
   }
 
   @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
-    aggregateTests(
+    val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
-    ).checkRuns()
+    ))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
+  }
+
+  @Test def posBootstrappedOnly: Unit = {
+    given TestGroup = TestGroup("compilePosBootstrappedOnly")
+    compileFilesInDir("tests/pos-bootstrapped", defaultOptions).checkCompile()
+  }
+
+  @Test def warnBootstrappedOnly: Unit = {
+    given TestGroup = TestGroup("compileWarnBootstrappedOnly")
+    compileFilesInDir("tests/warn-bootstrapped", defaultOptions).checkWarnings()
   }
 
   // Pickling Tests ------------------------------------------------------------
@@ -163,7 +191,6 @@ class BootstrappedOnlyCompilationTests {
       compileDir("compiler/src/dotty/tools/dotc/config", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/parsing", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/printing", picklingWithCompilerOptions),
-      compileDir("compiler/src/dotty/tools/repl", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/rewrites", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/transform", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/typer", picklingWithCompilerOptions),
@@ -183,7 +210,7 @@ class BootstrappedOnlyCompilationTests {
 
     // 1. hack with absolute path for -Xplugin
     // 2. copy `pluginFile` to destination
-    def compileFilesInDir(dir: String): CompilationTest = {
+    def compileFilesInDir(dir: String, run: Boolean = false): CompilationTest = {
       val outDir = defaultOutputDir + "testPlugins/"
       val sourceDir = new java.io.File(dir)
 
@@ -191,7 +218,10 @@ class BootstrappedOnlyCompilationTests {
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)
-        val flags = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+        val flags = {
+          val base = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+          if run then base.withRunClasspath(withCompilerClasspath) else base
+        }
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)
       }
 
@@ -200,14 +230,15 @@ class BootstrappedOnlyCompilationTests {
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
     compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
+    compileFilesInDir("tests/plugins/run", run = true).checkRuns()
   }
 }
 
-object BootstrappedOnlyCompilationTests extends ParallelTesting {
+object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 100.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

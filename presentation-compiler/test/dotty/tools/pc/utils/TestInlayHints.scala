@@ -1,16 +1,17 @@
 package dotty.tools.pc.utils
 
 import scala.collection.mutable.ListBuffer
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.pc.InlayHints
 
-import scala.meta.internal.jdk.CollectionConverters._
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.utils.TextEdits
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
+import com.google.gson.JsonElement
 import org.eclipse.lsp4j.InlayHint
 import org.eclipse.lsp4j.TextEdit
-import org.eclipse.{lsp4j => l}
+import org.eclipse.lsp4j as l
 
-object TestInlayHints {
+object TestInlayHints:
 
   // For not local symbols - semanticdb symbol
   //  val x = 123
@@ -24,35 +25,31 @@ object TestInlayHints {
   //     |
   //     v
   // val y<<: T/*(0:5,0:5)*/>> = x
-  def decorationString(inlayHint: InlayHint): String = {
+  def decorationString(inlayHint: InlayHint): String =
     val buffer = ListBuffer.empty[String]
 
-    val labels = inlayHint.getLabel().nn.asScala match {
+    val labels = inlayHint.getLabel().nn.asScala match
       case Left(label) => List(label)
       case Right(labelParts) => labelParts.asScala.map(_.getValue()).toList
-    }
     val data =
-      inlayHint.getData().asInstanceOf[Array[Any]]
+      InlayHints.fromData(inlayHint.getData().asInstanceOf[JsonElement])._2
     buffer += "/*"
     labels.zip(data).foreach { case (label, data) =>
-      buffer += label.nn
+      buffer += label
       buffer ++= readData(data)
     }
     buffer += "*/"
     buffer.toList.mkString
-  }
 
-  private def readData(data: Any): List[String] = {
-    data match {
-      case data: String if data.isEmpty => Nil
-      case data: String => List("<<", data, ">>")
-      case data: l.Position =>
+  private def readData(data: Either[String, l.Position]): List[String] =
+    data match
+      case Left("") => Nil
+      case Left(data) => List("<<", data, ">>")
+      case Right(data) =>
         val str = s"(${data.getLine()}:${data.getCharacter()})"
         List("<<", str, ">>")
-    }
-  }
 
-  def applyInlayHints(text: String, inlayHints: List[InlayHint]): String = {
+  def applyInlayHints(text: String, inlayHints: List[InlayHint]): String =
     val textEdits = inlayHints.map { hint =>
       val newText = decorationString(hint)
       val range = new l.Range(hint.getPosition(), hint.getPosition())
@@ -62,9 +59,6 @@ object TestInlayHints {
       )
     }
     TextEdits.applyEdits(text, textEdits)
-  }
 
   def removeInlayHints(text: String): String =
     text.replaceAll(raw"\/\*(.*?)\*\/", "").nn
-
-}

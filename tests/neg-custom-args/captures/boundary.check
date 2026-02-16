@@ -1,0 +1,65 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------
+ 4 |  boundary[AnyRef^]:
+ 5 |    l1 ?=> // error // error
+   |  ^
+   |  Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
+   |  The leakage occurred when trying to match the following types:
+   |
+   |  Found:    scala.util.boundary.Label[Object^'s1]^'s2
+   |  Required: scala.util.boundary.Label[Object^{any}]^
+   |
+   |  where:    ^   refers to a root capability classified as Control in the type of value local
+   |            any is the root capability caps.any
+   |
+ 6 |      boundary[Unit]: l2 ?=>
+ 7 |        boundary.break(l2)(using l1) // error
+ 8 |      ???
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from boundary.scala:72
+72 |    val local = Label[T]()
+   |                ^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:7:33 --------------------------------------
+7 |        boundary.break(l2)(using l1) // error
+  |                                 ^^
+  |Found:    (local : scala.util.boundary.Label[Object^])
+  |Required: scala.util.boundary.Label[scala.util.boundary.Label[Unit]^²]^{any}
+  |
+  |Note that capability `any²` cannot flow into capture set {any}.
+  |
+  |where:    ^    refers to the root capability caps.any
+  |          ^²   refers to a root capability classified as Control in the type of value local²
+  |          any  is a root capability classified as Control created in package <empty> when checking argument to parameter label of method break
+  |          any² is a root capability classified as Control in the type of value local
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------
+ 4 |  boundary[AnyRef^]:
+ 5 |    l1 ?=> // error // error
+   |  ^
+   |  Found:    scala.util.boundary.Break[AnyRef^{any}] @unchecked
+   |  Required: scala.util.boundary.Break[Object^{any²}] @unchecked
+   |
+   |  Note that capability `any²` cannot flow into capture set {any}.
+   |
+   |  The error occurred for a synthesized tree:  _
+   |
+   |  where:    any  is the root capability caps.any
+   |            any² is a root capability created in package <empty>
+   |
+ 6 |      boundary[Unit]: l2 ?=>
+ 7 |        boundary.break(l2)(using l1) // error
+ 8 |      ???
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from boundary.scala:74
+74 |    catch case ex: Break[T] @unchecked =>
+   |                   ^
+    --------------------------------------------------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`

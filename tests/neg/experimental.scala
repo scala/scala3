@@ -1,4 +1,4 @@
-//> using options -Yno-experimental
+
 
 class Test0 {
   import language.experimental.namedTypeArguments // error
@@ -9,11 +9,11 @@ class Test0 {
 }
 
 class Test1 {
-  import scala.language.experimental.erasedDefinitions
+  import scala.language.experimental.erasedDefinitions // error
   import scala.compiletime.erasedValue
   type UnivEq[A]
   object UnivEq:
-    erased def force[A]: UnivEq[A] = erasedValue
+    inline def force[A]: UnivEq[A] = erasedValue
     extension [A](erased proof: UnivEq[A])
       inline def univEq(a: A, b: A): Boolean =
         a == b

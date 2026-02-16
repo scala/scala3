@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/22145c.scala:4:35 -----------------------------------------------------------------
+4 |  def bar(base: Collection) = base.foo // error
+  |                              ^^^^^^^^
+  |                              value foo is not a member of foo.Collection

@@ -91,7 +91,7 @@ object PrepareInlineable {
         postTransform(super.transform(preTransform(tree)))
 
       protected def checkUnstableAccessor(accessedTree: Tree, accessor: Symbol)(using Context): Unit =
-        if ctx.settings.WunstableInlineAccessors.value then
+        if ctx.settings.Whas.unstableInlineAccessors then
           val accessorTree = accessorDef(accessor, accessedTree.symbol)
           report.warning(reporting.UnstableInlineAccessor(accessedTree.symbol, accessorTree), accessedTree)
     }
@@ -105,8 +105,8 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
-            tree // TODO: create a proper accessor for the private constructor
+            report.error("Private constructors used in inline methods require @publicInBinary", tree.srcPos)
+            tree
           }
           else
             val accessor = useAccessor(tree)

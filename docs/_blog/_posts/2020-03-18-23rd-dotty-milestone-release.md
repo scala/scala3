@@ -8,7 +8,7 @@ date: 2020-03-18
 
 Hello! We are excited to announce 0.23.0-RC1 of Dotty. This version brings safe initialization checks, minor syntactic changes related to the context parameters, type-level bitwise operations and improvements of the metaprogramming capabilities.
 
-You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://dotty.epfl.ch/) and scrolling down to the "Create a Dotty Project" section.
+You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://nightly.scala-lang.org/) and scrolling down to the "Create a Dotty Project" section.
 
 Alternatively, you can try this version of Scala online via [Scastie](https://scastie.scala-lang.org/). Once you're there, click "Build Settings" and set "Target" to "Dotty".
 
@@ -52,10 +52,10 @@ In this release, we have added an aid for the programmer to detect such mistakes
 1 error found
 ```
 
-You can learn more about the feature from the [documentation](https://dotty.epfl.ch/0.23.0-RC1/docs/reference/other-new-features/safe-initialization.html). For the discussion, see PR [#7789](https://github.com/scala/scala3/pull/7789).
+You can learn more about the feature from the [documentation](https://nightly.scala-lang.org/0.23.0-RC1/docs/reference/other-new-features/safe-initialization.html). For the discussion, see PR [#7789](https://github.com/scala/scala3/pull/7789).
 
 ## Bitwise Int compiletime operations
-In the previous release, Dotty has [received](https://dotty.epfl.ch/blog/2020/02/05/22nd-dotty-milestone-release.html#primitive-compiletime-operations-on-singleton-types) a support for type-level arithmetic operations on integers. In this release, we are extending this support by adding bitwise operations. For example:
+In the previous release, Dotty has [received](https://nightly.scala-lang.org/blog/2020/02/05/22nd-dotty-milestone-release.html#primitive-compiletime-operations-on-singleton-types) a support for type-level arithmetic operations on integers. In this release, we are extending this support by adding bitwise operations. For example:
 
 ```scala
 import scala.compiletime.ops.int._
@@ -106,7 +106,7 @@ The old syntax for context parameters was as follows:
 def f(given x: Int) = x * x
 ```
 
-In the previous release, it was [replaced](https://dotty.epfl.ch/blog/2020/02/05/22nd-dotty-milestone-release.html#further-improvements-to-the-context-parameters-syntax) by the new `using` syntax:
+In the previous release, it was [replaced](https://nightly.scala-lang.org/blog/2020/02/05/22nd-dotty-milestone-release.html#further-improvements-to-the-context-parameters-syntax) by the new `using` syntax:
 
 ```scala
 def f(using x: Int) = x * x
@@ -293,7 +293,7 @@ According to `git shortlog -sn --no-merges 0.22.0-RC1..0.23.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

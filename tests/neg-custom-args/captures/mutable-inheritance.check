@@ -1,0 +1,15 @@
+-- Error: tests/neg-custom-args/captures/mutable-inheritance.scala:7:16 ------------------------------------------------
+7 |class C extends B(??? : Int => Int), caps.Stateful // error
+  |                ^^^^^^^^^^^^^^^^^^^
+  |                illegal inheritance: class C which extends `Stateful` is not allowed to also extend class B
+  |                since class B retains exclusive capabilities but does not extend `Stateful`.
+-- Error: tests/neg-custom-args/captures/mutable-inheritance.scala:18:16 -----------------------------------------------
+18 |class H extends G, caps.Stateful // error
+   |                ^
+   |                illegal inheritance: class H which extends `Stateful` is not allowed to also extend class G
+   |                since class G retains exclusive capabilities but does not extend `Stateful`.
+-- Error: tests/neg-custom-args/captures/mutable-inheritance.scala:4:18 ------------------------------------------------
+4 |  class A extends E, caps.Stateful // error
+  |                  ^
+  |                  illegal inheritance: class A which extends `Stateful` is not allowed to also extend class E
+  |                  since class E retains exclusive capabilities but does not extend `Stateful`.

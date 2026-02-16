@@ -1,0 +1,39 @@
+-- [E007] Type Mismatch Error: tests/neg/into-inferred.scala:33:32 -----------------------------------------------------
+33 |  val l1: List[into[Keyword]] = l :+ "then" :+ "else"  // error
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |                                Found:    List[Conversion.into[Keyword] | String]
+   |                                Required: List[Conversion.into[Keyword]]
+   |
+   | longer explanation available when compiling with `-explain`
+-- Feature Warning: tests/neg/into-inferred.scala:21:43 ----------------------------------------------------------------
+21 |  val ys: List[into[Keyword]] = List(ifKW, "then", "else")         // warn // warn
+   |                                           ^^^^^^
+   |      Use of implicit conversion given instance given_Conversion_String_Keyword in object Test should be enabled
+   |      by adding the import clause 'import scala.language.implicitConversions'
+   |      or by setting the compiler option -language:implicitConversions.
+   |      See the Scala docs for value scala.language.implicitConversions for a discussion
+   |      why the feature should be explicitly enabled.
+-- Feature Warning: tests/neg/into-inferred.scala:21:51 ----------------------------------------------------------------
+21 |  val ys: List[into[Keyword]] = List(ifKW, "then", "else")         // warn // warn
+   |                                                   ^^^^^^
+   |      Use of implicit conversion given instance given_Conversion_String_Keyword in object Test should be enabled
+   |      by adding the import clause 'import scala.language.implicitConversions'
+   |      or by setting the compiler option -language:implicitConversions.
+   |      See the Scala docs for value scala.language.implicitConversions for a discussion
+   |      why the feature should be explicitly enabled.
+-- Feature Warning: tests/neg/into-inferred.scala:34:42 ----------------------------------------------------------------
+34 |  val l2: List[into[Keyword]] = l ++ List("then", "else")  // warn // warn
+   |                                          ^^^^^^
+   |      Use of implicit conversion given instance given_Conversion_String_Keyword in object Test should be enabled
+   |      by adding the import clause 'import scala.language.implicitConversions'
+   |      or by setting the compiler option -language:implicitConversions.
+   |      See the Scala docs for value scala.language.implicitConversions for a discussion
+   |      why the feature should be explicitly enabled.
+-- Feature Warning: tests/neg/into-inferred.scala:34:50 ----------------------------------------------------------------
+34 |  val l2: List[into[Keyword]] = l ++ List("then", "else")  // warn // warn
+   |                                                  ^^^^^^
+   |      Use of implicit conversion given instance given_Conversion_String_Keyword in object Test should be enabled
+   |      by adding the import clause 'import scala.language.implicitConversions'
+   |      or by setting the compiler option -language:implicitConversions.
+   |      See the Scala docs for value scala.language.implicitConversions for a discussion
+   |      why the feature should be explicitly enabled.

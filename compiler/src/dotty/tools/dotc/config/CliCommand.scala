@@ -1,13 +1,12 @@
 package dotty.tools.dotc
 package config
 
-import scala.language.unsafeNulls
-
 import Settings.*
 import core.Contexts.*
 import printing.Highlighting
+import reporting.NoExplanation
 
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
 
 trait CliCommand:
@@ -33,8 +32,8 @@ trait CliCommand:
     |<phases> means one or a comma-separated list of:
     |  - (partial) phase names with an optional "+" suffix to include the next phase
     |  - the string "all"
-    |  example: -Xprint:all prints all phases.
-    |  example: -Xprint:typer,mixin prints the typer and mixin phases.
+    |  example: -Vprint:all prints all phases.
+    |  example: -Vprint:typer,mixin prints the typer and mixin phases.
     |  example: -Ylog:erasure+ logs the erasure phase and the phase after the erasure phase.
     |           This is useful because during the tree transform of phase X, we often
     |           already are in phase X + 1.
@@ -45,7 +44,7 @@ trait CliCommand:
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
-      case x if x startsWith "@"  => CommandLineParser.expandArg(x)
+      case x if x.startsWith("@") => CommandLineParser.expandArg(x)
       case x                      => List(x)
     }
 
@@ -53,21 +52,25 @@ trait CliCommand:
   end distill
 
   /** Creates a help message for a subset of options based on cond */
-  protected def availableOptionsMsg(p: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def availableOptionsMsg(p: Setting[?] => Boolean, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
     // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
     def help(s: Setting[?]): (String, String) =
       // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
       def defaultValue = s.default match
         case _: Int | _: String => s.default.toString
         case _ => ""
-      val info = List(shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
+      val deprecationMessage = s.deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
+      val info = List(deprecationMessage, shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
 
     val ss = settings.allSettings.filter(p).toList.sortBy(_.name)
     val formatter = Columnator("", "", maxField = 30)
     val fresh = ContextBase().initialCtx.fresh.setSettings(summon[SettingsState])
-    formatter(List(ss.map(help) :+ ("@<file>", "A text file containing compiler arguments (options and source files).")))(using fresh)
+    var msg = ss.map(help)
+    if showArgFileMsg then
+      msg = msg :+ ("@<file>", "A text file containing compiler arguments (options and source files).")
+    formatter(List(msg))(using fresh)
   end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
@@ -123,7 +126,8 @@ trait CliCommand:
    */
   def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState, Context): Option[List[String]] =
     // Print all warnings encountered during arguments parsing
-    summary.warnings.foreach(report.warning(_))
+    for warning <- summary.warnings; message = NoExplanation(warning) do
+      report.configurationWarning(message)
 
     if summary.errors.nonEmpty then
       summary.errors foreach (report.error(_))

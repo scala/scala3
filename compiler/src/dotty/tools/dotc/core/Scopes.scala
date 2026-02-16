@@ -152,7 +152,7 @@ object Scopes {
       var syms: PreDenotation = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
-        syms = syms union e.sym.denot
+        syms = syms `union` e.sym.denot
         e = lookupNextEntry(e)
       }
       syms

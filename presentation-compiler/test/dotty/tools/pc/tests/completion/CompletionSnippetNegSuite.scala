@@ -9,19 +9,19 @@ import org.junit.Test
 
 class CompletionSnippetNegSuite extends BaseCompletionSuite:
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       isCompletionSnippetsEnabled = false
     )
 
   @Test def `member` =
     checkSnippet(
-      """
-        |object Main {
-        |  List.appl@@
-        |}
-        |""".stripMargin,
-      "apply"
+      """|object Main {
+         |  List.appl@@
+         |}
+         |""".stripMargin,
+      """|apply
+         |unapplySeq""".stripMargin
     )
 
   @Test def `scope` =

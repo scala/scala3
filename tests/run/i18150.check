@@ -1,0 +1,2 @@
+List(Error(illegal inheritance: self type Banana of class Banana does not conform to self type Apple
+of parent trait RecursiveSelfTypeEntity,class Banana extends RecursiveSelfTypeEntity[Apple]:,6,Typer))

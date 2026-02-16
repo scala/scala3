@@ -63,39 +63,49 @@ At the end of their supervision period, the supervisor reports to the team durin
 
 ## Maintenance List
 
-The following is the list of all the principal areas of the compiler and the core team members who are responsible for their maintenance:
+The following is the list of all the principal areas of the compiler and the internal team members who are responsible for their maintenance:
 
 ### Compiler
-- Parser: @odersky, @hamzaremmal
-- Typer: @odersky, @smarter, (@dwijnand), @noti0nal
-- Erasure: @smarter, @odersky
-- Enums: @bishabosha
-- Derivation & Mirrors: @bishabosha, (@dwijnand), @EugeneFlesselle
-- Export: @bishabosha, @odersky
-- Pattern Matching: @dwijnand, (@liufengyun), @sjrd
-- Inline: @nicolasstucki, @odersky, @hamzaremmal
-- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb, @hamzaremmal
-- Match types: @sjrd, @dwijnand, @Decel, @Linyxus
-- GADT: @dwijnand, @Linyxus
-- Initialization checker: @olhotak, @liufengyun
-- Safe nulls: @noti0na1, @olhotak
-- Transforms: @szymon-rd, @sjrd, @odersky, @smarter
-- tailrec: @sjrd, @mbovel
+- Parser: @odersky
+- Typer: @odersky, @noti0nal, @bracevac, (@smarter)
+- Erasure: @odersky, (@smarter)
+- Enums: @zielinsky
+- Derivation & Mirrors:
+- Export: @odersky
+- Pattern Matching: @sjrd, @noti0na1, @zielinsky
+- Inline: @odersky, @jchyb
+- Metaprogramming (Quotes, Reflect, Staging): @jchyb
+- Match types: @sjrd, @Linyxus
+- GADT: @Linyxus
+- Initialization checker: @liufengyun, @olhotak, @EnzeXing
+- Transforms: @sjrd, @odersky, @smarter
+- Tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
-- JVM backend: @sjrd
-- Java-compat: @smarter, @dwijnand
-- Capture checker: @odersky, @Linyxus
+- JVM backend: @sjrd, @tanishiking, @lrytz
+- Java-compat: @tanishiking, @lrytz, (@smarter)
+- Extension Methods: @odersky
+- Safe nulls (experimental): @noti0na1
+- Capture checker (experimental): @odersky, @Linyxus, @bracevac, @noti0na1
+- Modularity (experimental): (@KacperFKorban)
+- Named Tuples: @odersky, @aherlihy
+- Standard library: @lrytz, @SethTisue, @natsukagami, @noti0na1 
 
 ### Tooling
-- REPL: @dwijnand, @prolativ
-- Scaladoc: @Florian3k
-- SemanticDB: @tanishiking
-- Coverage: @TheElectronWill
-- Linting (especially unused warnings) / Reporting UX: @szymon-rd
+- REPL:
+- Runner/CLI: @Gedochao, (@tgodzik)
+- IDE: @tgodzik, @zielinsky
+- Scaladoc: (@Florian3k)
+- SemanticDB: @natsukagami, (@tanishiking)
+- Coverage: (@KacperFKorban)
+- Linting (especially unused warnings) / Reporting UX: @som-snytt, (@tgodzik)
+- Presentation Compiler: @tgodzik, @natsukagami, @zielinsky, (@rochala)
+- Debug Adapter: @tgodzik
+- Scastie: @warcholjakub, (@rochala)
 
 ### Infrastructure
-- CI: @hamzaremmal
-- Community Build: @hamzaremmal
+- CI: @WojciechMazur
+- Community Build: @WojciechMazur
 - Open Community Build: @WojciechMazur
-- Vulpix: @dwijnand, @prolativ
+- Vulpix:
 - Benchmarks: @mbovel
+- Releases: @WojciechMazur (Scala 3 Next), @tgodzik (Scala 3.3 LTS)

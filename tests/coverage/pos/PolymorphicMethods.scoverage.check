@@ -72,19 +72,19 @@ C[String]().f("str", 0)
 3
 PolymorphicMethods.scala
 covtest
-PolyMeth
-Object
-covtest.PolyMeth
-<init>
-147
-158
-7
-<init>
-Apply
+C
+Class
+covtest.C
+f
+221
+223
+10
+<none>
+Literal
 false
 0
 false
-C[String]()
+()
 
 4
 PolymorphicMethods.scala

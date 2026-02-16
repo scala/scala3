@@ -1,7 +1,5 @@
 package dotty.tools.dotc.quoted
 
-import scala.language.unsafeNulls
-
 import java.util.Base64
 import java.nio.charset.StandardCharsets.UTF_8
 

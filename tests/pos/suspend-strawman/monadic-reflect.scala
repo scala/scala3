@@ -48,7 +48,7 @@ trait Monadic[M[_]: Monad]:
    */
   def reify[R](prog: CanReflect[M] ?=> R): M[R] =
     boundary [M[R]]:
-      given CanReflect[M] with
+      given CanReflect[M]:
         def reflect[R2](mr: M[R2]): R2 =
           suspend [R2, M[R]] (k => mr.flatMap(k.resume))
       pure(prog)

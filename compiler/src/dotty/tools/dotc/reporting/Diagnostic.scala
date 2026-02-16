@@ -2,15 +2,13 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.config.Settings.Setting
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.chaining.*
 
 import java.util.{Collections, Optional, List => JList}
-import scala.util.chaining.*
 import core.Decorators.toMessage
 
 object Diagnostic:
@@ -27,6 +25,9 @@ object Diagnostic:
   ) extends Diagnostic(msg, pos, ERROR):
     def this(str: => String, pos: SourcePosition) = this(str.toMessage, pos)
 
+  def Error(msg: Message, pos: SourcePosition): Error = new Error(msg, pos)
+  def Error(str: => String, pos: SourcePosition): Error = new Error(str, pos)
+
   /** A sticky error is an error that should not be hidden by backtracking and
    *  trying some alternative path. Typically, errors issued after catching
    *  a TypeError exception are sticky.
@@ -36,12 +37,26 @@ object Diagnostic:
     pos: SourcePosition
   ) extends Error(msg, pos)
 
+  /** A Warning with an origin. The semantics of `origin` depend on the warning.
+   *  For example, an unused import warning has an origin that specifies the unused selector.
+   *  The origin of a deprecation is the deprecated element.
+   */
+  trait OriginWarning(val origin: String):
+    self: Warning =>
+  object OriginWarning:
+    val NoOrigin = "..."
+
+  /** Lints are likely to be filtered. Provide extra axes for filtering by `-Wconf`.
+   */
+  class LintWarning(msg: Message, pos: SourcePosition, origin: String = OriginWarning.NoOrigin)
+  extends Warning(msg, pos), OriginWarning(origin)
+
   class Warning(
     msg: Message,
     pos: SourcePosition
   ) extends Diagnostic(msg, pos, WARNING) {
-    def toError: Error = new Error(msg, pos).tap(e => if isVerbose then e.setVerbose())
-    def toInfo: Info = new Info(msg, pos).tap(e => if isVerbose then e.setVerbose())
+    def toError: Error = Error(msg, pos).tap(e => if isVerbose then e.setVerbose())
+    def toInfo: Info = Info(msg, pos).tap(e => if isVerbose then e.setVerbose())
     def isSummarizedConditional(using Context): Boolean = false
   }
 
@@ -73,12 +88,15 @@ object Diagnostic:
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.unchecked
   }
 
-  class DeprecationWarning(
-    msg: Message,
-    pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
+  class DeprecationWarning(msg: Message, pos: SourcePosition, origin: String)
+  extends ConditionalWarning(msg, pos), OriginWarning(origin):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
-  }
+
+  class ConfigurationWarning(msg: Message, pos: SourcePosition) extends ConditionalWarning(msg, pos):
+    def enablingOption(using Context): Setting[Boolean] = ConfigurationWarning.setting
+    override def isSummarizedConditional(using Context): Boolean = false
+  object ConfigurationWarning:
+    private val setting = Setting.internal("-configuration", value = true)
 
   class MigrationWarning(
     msg: Message,
@@ -103,5 +121,5 @@ class Diagnostic(
   override def diagnosticRelatedInformation: JList[interfaces.DiagnosticRelatedInformation] =
     Collections.emptyList()
 
-  override def toString: String = s"$getClass at $pos: $message"
+  override def toString: String = s"$getClass at $pos L${pos.line+1}: $message"
 end Diagnostic

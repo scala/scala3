@@ -2,9 +2,8 @@ package dotty.tools.pc.utils
 
 import scala.language.unsafeNulls
 
-import dotty.tools.pc.completions.CompletionSource
 import dotty.tools.dotc.util.DiffUtil
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.completions.CompletionSource
 
 import org.hamcrest
 import org.hamcrest.*
@@ -16,7 +15,7 @@ trait PcAssertions:
       actual: String,
       includeSources: Boolean,
       snippet: Option[String] = None,
-      completionSources: List[CompletionSource] = Nil,
+      completionSources: List[CompletionSource] = Nil
   ): Unit =
     val longestExpeceted =
       expected.linesIterator.map(_.length).maxOption.getOrElse(0)
@@ -78,7 +77,7 @@ trait PcAssertions:
       message: String,
       snippet: Option[String] = None
   ): Unit =
-    if (expected != obtained) then
+    if expected != obtained then
       val description = new StringDescription
 
       description.appendText(System.lineSeparator)
@@ -97,7 +96,7 @@ trait PcAssertions:
       snippet: Option[String] = None
   ): Unit =
     val _actual = actual.asInstanceOf[AnyRef]
-    if (!matcher.matches(_actual)) then
+    if !matcher.matches(_actual) then
       val description = new StringDescription
 
       snippet.map(addSnippet(description))
@@ -118,16 +117,14 @@ trait PcAssertions:
       error.setStackTrace(Array.empty)
       throw error
 
-
   private def lineByLineDiffMatcher(
-    expected: String,
-    completionSources: List[CompletionSource] = Nil,
-    isCompletion: Boolean = false
+      expected: String,
+      completionSources: List[CompletionSource] = Nil,
+      isCompletion: Boolean = false
   ): TypeSafeMatcher[String] =
     def getDetailedMessage(diff: String): String =
       val lines = diff.linesIterator.toList
       val sources = completionSources.padTo(lines.size, CompletionSource.Empty)
-      val maxLength = lines.map(_.length).maxOption.getOrElse(0)
       var completionIndex = 0
       lines.map: line =>
         if line.startsWith(Console.BOLD + Console.RED) || line.startsWith("  ") then
@@ -154,9 +151,9 @@ trait PcAssertions:
         unifyNewlines(expected) == unifyNewlines(item)
 
   private def sideBySideDiffMatcher(
-    expected: String,
-    completionSources: List[CompletionSource] = Nil,
-    isCompletion: Boolean = false
+      expected: String,
+      completionSources: List[CompletionSource] = Nil,
+      isCompletion: Boolean = false
   ): TypeSafeMatcher[String] =
     def getDetailedMessage(diff: String): String =
       val lines = diff.linesIterator.toList

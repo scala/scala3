@@ -6,7 +6,7 @@ object Macros {
 
   def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
     import quotes.reflect.*
-    report.error("here is the the argument is " + x.asTerm.underlyingArgument.show, x.asTerm.underlyingArgument.pos)
+    report.error("here is the argument is " + x.asTerm.underlyingArgument.show, x.asTerm.underlyingArgument.pos)
     '{}
   }
 

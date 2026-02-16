@@ -1,7 +1,0 @@
-scala> 1.to(10).mkString
-val res0: String = 12345678910
-
-scala>:settings -Vrepl-max-print-characters:10
-
-scala> 1.to(10).mkString
-val res1: String = 123456789 ... large output truncated, print value to show all

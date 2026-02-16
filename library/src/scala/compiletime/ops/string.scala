@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object string:
   /** Concatenation of two `String` singleton types.
    *  ```scala
@@ -11,7 +13,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type +[X <: String, Y <: String] <: String
+  infix type +[X <: String, Y <: String] <: String
 
   /** Length of a `String` singleton type.
    *  ```scala

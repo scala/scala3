@@ -4,17 +4,20 @@ import vulpix.TestConfiguration
 
 import org.junit.Test
 
-import dotc.ast.Trees._
-import dotc.core.Decorators._
-import dotc.core.Contexts._
-import dotc.core.Phases._
-import dotc.core.Types._
-import dotc.core.Symbols._
+import dotc.ast.Trees.*
+import dotc.ast.tpd
+import dotc.core.Decorators.*
+import dotc.core.Contexts.*
+import dotc.core.Constants.*
+import dotc.core.Phases.*
+import dotc.core.Types.*
+import dotc.core.Symbols.*
 
 import java.io.File
-import java.nio.file._
+import java.nio.file.*
 
 class AnnotationsTest:
+  def augmentedClassPath(path: Path) = s"${path}${File.pathSeparator}${TestConfiguration.basicClasspath}"
 
   @Test def annotTreeNotErased: Unit =
     withJavaCompiled(
@@ -95,3 +98,31 @@ class AnnotationsTest:
       val term: TermSymbol = requiredClass("java.lang.invoke.MethodHandle").requiredMethod("invokeExact")
       assert(term.hasAnnotation(defn.NativeAnnot), i"${term.annotations}")
     }
+
+  @Test def `inlined annot arg is retrieved`: Unit =
+    val javaSources =
+      VirtualJavaSource("Param.java",
+        """|import java.lang.annotation.*;
+           |@Inherited @Target({ElementType.FIELD}) @Retention(RetentionPolicy.RUNTIME)
+           |public @interface Param { String[] value(); }""".stripMargin)
+      :: Nil
+    val scalaSources =
+      """object Bar { inline transparent def bar() = Array("a", "b", "c") }"""
+      :: "@Param(Bar.bar()) class Foo"
+      :: Nil
+    withJavaCompiled(javaSources*): javaOutputDir =>
+      inCompilerContext(augmentedClassPath(javaOutputDir), scalaSources = scalaSources*):
+        val cls = requiredClass("Foo")
+        val param = requiredClass("Param")
+        val annots = cls.annotations
+        assert(annots.size == 2, i"$annots") // includes SourceFile
+        val annot = annots.find(_.symbol == param).getOrElse(assert(false, s"Missing $param"))
+        assert(annot.arguments.size == 1, i"${annot.arguments}")
+        extension (t: tpd.Tree)
+          def stripNamedArg = tpd.stripNamedArg(t)
+          def stripInlined = tpd.stripInlined(t)
+        annot.arguments(0).stripNamedArg.stripInlined match
+        case Apply(Apply(_, List(Typed(SeqLiteral(ks, _), _))), _) =>
+          assert(ks.length == 3, i"$ks")
+          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == List("a", "b", "c"))
+        case bad => assert(false, s"Bad arg $bad")

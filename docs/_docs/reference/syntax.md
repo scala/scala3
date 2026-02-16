@@ -60,9 +60,10 @@ idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
 spliceId         ::=  ‘$’ alphaid ;
 
-integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
+integerLiteral   ::=  (decimalNumeral | hexNumeral | binaryNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
 hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
+binaryNumeral    ::=  ‘0’ (‘b’ | ‘B’) binaryDigit [{binaryDigit | ‘_’} binaryDigit]
 
 floatingPointLiteral
                  ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
@@ -177,12 +178,11 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ### Types
 ```
 Type              ::=  FunType
-                    |  HkTypeParamClause ‘=>>’ Type
-                    |  FunParamClause ‘=>>’ Type
+                    |  TypTypeParamClause ‘=>>’ Type
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-                    |  HKTypeParamClause '=>' Type
+                    |  TypTypeParamClause '=>' Type
 FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
@@ -198,10 +198,11 @@ SimpleType        ::=  SimpleLiteral
                     |  id
                     |  Singleton ‘.’ id
                     |  Singleton ‘.’ ‘type’
-                    |  ‘(’ Types ‘)’
+                    |  ‘(’ [Types] ‘)’
+                    |  ‘(’ NameAndType {‘,’ NameAndType} ‘)’
                     |  Refinement
-                    |  SimpleType1 TypeArgs
-                    |  SimpleType1 ‘#’ id
+                    |  SimpleType TypeArgs
+                    |  SimpleType ‘#’ id
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
@@ -214,17 +215,22 @@ ParamValueType    ::=  Type [‘*’]
 TypeArgs          ::=  ‘[’ Types ‘]’
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
-TypeParamBounds   ::=  TypeBounds {‘:’ Type}
+TypeAndCtxBounds  ::=  TypeBounds [':' ContextBounds]
+ContextBounds     ::=  ContextBound
+                    |  ContextBound ':' ContextBounds         -- to be deprecated
+                    |  '{' ContextBound {',' ContextBound} '}'
+ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
+NameAndType       ::=  id ‘:’ Type
 ```
 
 ### Expressions
 ```
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr
-                    |  HkTypeParamClause ‘=>’ Expr
+                    |  TypTypeParamClause ‘=>’ Expr
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
-                    |  HkTypeParamClause ‘=>’ Block
+                    |  TypTypeParamClause ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -240,6 +246,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr
                     |  PrefixOperator SimpleExpr ‘=’ Expr
+                    |  InfixExpr id [nl] `=' Expr                              -- only if language.postfixOps is enabled
                     |  SimpleExpr ArgumentExprs ‘=’ Expr
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause
@@ -263,7 +270,8 @@ SimpleExpr        ::=  SimpleRef
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]
                     |  ‘new’ TemplateBody
-                    |  ‘(’ ExprsInParens ‘)’
+                    |  ‘(’ [ExprsInParens] ‘)’
+                    |  ‘(’ NamedExprInParens {‘,’ NamedExprInParens} ‘)’
                     |  SimpleExpr ‘.’ id
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs
@@ -272,18 +280,18 @@ SimpleExpr        ::=  SimpleRef
 ColonArgument     ::=  colon [LambdaStart]
                        indent (CaseClauses | Block) outdent
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
-                    |  HkTypeParamClause ‘=>’
+                    |  TypTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ TypeBlock ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
-ExprInParens      ::=  PostfixExpr ‘:’ Type
-                    |  Expr
+ExprInParens      ::=  PostfixExpr ‘:’ Type |  Expr
 ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
                     |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
+NamedExprInParens ::=  id ‘=’ ExprInParens
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr
 BlockExpr         ::=  <<< (CaseClauses | Block) >>>
@@ -330,7 +338,10 @@ SimplePattern1    ::=  SimpleRef
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
                     |  ‘_’
+NamedPattern      ::=  id ‘=’ Pattern
 Patterns          ::=  Pattern {‘,’ Pattern}
+                    |  NamedPattern {‘,’ NamedPattern}
+
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
 ```
@@ -338,13 +349,16 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
 ### Type and Value Parameters
 ```
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeParamBounds
+ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeAndCtxBounds
+
+DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
+DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
+TypTypeParam      ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeBounds
 
 HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
-HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] | ‘_’) TypeBounds
+HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id  | ‘_’) [HkTypeParamClause] TypeBounds
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
@@ -356,12 +370,10 @@ DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParam
 DefParamClause    ::=  DefTypeParamClause
                     |  DefTermParamClause
                     |  UsingParamClause
-TypelessClauses   ::=  TypelessClause {TypelessClause}
-TypelessClause    ::=  DefTermParamClause
+ConstrParamClauses::=  ConstrParamClause {ConstrParamClause}
+ConstrParamClause ::=  DefTermParamClause
                     |  UsingParamClause
 
-DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
 DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
 UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
@@ -392,7 +404,7 @@ LocalModifier     ::=  ‘abstract’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
-Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}
+Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
@@ -415,6 +427,7 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 ```
 RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
+                    |  ‘var’ ValDcl
                     |  ‘type’ {nl} TypeDef
 ValDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
@@ -427,23 +440,37 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
                     |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
 DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                             DefDef(_, name, paramss, tpe, expr)
-                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
+                    |  ‘this’ ConstrParamClauses [DefImplicitClause] ‘=’ ConstrExpr DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
 DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
-TypeDef           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
+TypeDef           ::=  id [HkTypeParamClause] {FunParamClause}TypeBounds         TypeDefTree(_, name, tparams, bound
                        [‘=’ Type]
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘given’ GivenDef
+                    |  'given' (GivenDef | OldGivenDef)
 ClassDef          ::=  id ClassConstr [Template]
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
+
+GivenDef          ::=  [id ':'] GivenSig
+GivenSig          ::=  GivenImpl
+                    |  '(' ')' '=>' GivenImpl
+                    |  GivenConditional '=>' GivenSig
+GivenImpl         ::=  GivenType ([‘=’ Expr] | TemplateBody)
+                    |  ConstrApps TemplateBody
+GivenConditional  ::=  DefTypeParamClause
+                    |  DefTermParamClause
+                    |  '(' FunArgTypes ')'
+                    |  GivenType
+GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
+
+OldGivenDef       ::=  [OldGivenSig] (AnnotType [‘=’ Expr] | StructuralInstance) -- syntax up to Scala 3.5, to be deprecated in the future
+OldGivenSig       ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’          -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
+
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
@@ -452,7 +479,7 @@ ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 Template          ::=  InheritClauses [TemplateBody]
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
-ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
+ConstrApp         ::=  SimpleType {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
                     |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}

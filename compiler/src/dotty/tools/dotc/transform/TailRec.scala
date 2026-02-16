@@ -4,9 +4,9 @@ package transform
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.em
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import Constants.Constant
-import NameKinds.{TailLabelName, TailLocalName, TailTempName}
+import NameKinds.{DefaultGetterName, TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
@@ -196,7 +196,8 @@ class TailRec extends MiniPhase {
         def isInfiniteRecCall(tree: Tree): Boolean = {
           def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
-            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => tailArgOrPureExpr(rhs)
+            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) =>
+              tailArgOrPureExpr(rhs) || varForRewrittenThis.exists(_ == lhs.symbol && rhs.tpe.isStable)
             case Assign(lhs: Ident, rhs: Ident) => lhs.symbol == rhs.symbol
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
@@ -324,7 +325,14 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
-        if (isRecursiveCall)
+        if isRecursiveCall then
+          if ctx.settings.Whas.recurseWithDefault then
+            tree.args.find(_.symbol.name.is(DefaultGetterName)) match
+            case Some(arg) =>
+              val DefaultGetterName(_, index) = arg.symbol.name: @unchecked
+              report.warning(RecurseWithDefault(calledMethod.info.firstParamNames(index)), tree.srcPos)
+            case _ =>
+
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
@@ -344,6 +352,12 @@ class TailRec extends MiniPhase {
                 assignParamPairs
               case prefix: This if prefix.symbol == enclosingClass =>
                 // Avoid assigning `this = this`
+                assignParamPairs
+              case prefix
+              if prefix.symbol.is(Module)
+              && prefix.symbol.moduleClass == enclosingClass
+              && isPurePath(prefix) =>
+                // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
@@ -429,8 +443,21 @@ class TailRec extends MiniPhase {
           assert(false, "We should never have gotten inside a pattern")
           tree
 
-        case tree: ValOrDefDef =>
-          if (isMandatory) noTailTransform(tree.rhs)
+        case tree: ValDef =>
+          // This could contain a return statement in a code block, so we do have to go into it.
+          cpy.ValDef(tree)(rhs = noTailTransform(tree.rhs))
+
+        case tree: DefDef =>
+          if (isMandatory)
+            if (tree.symbol.is(Synthetic))
+              noTailTransform(tree.rhs)
+            else
+              // We can't tail recurse through nested definitions, so don't want to propagate to child nodes
+              // We don't want to fail if there is a call that would recurse (as this would be a non self recurse), so don't
+              // want to call noTailTransform
+              // We can however warn in this case, as its likely in this situation that someone would expect a tail
+              // recursion optimization and enabling this to optimise would be a simple case of inlining the inner method
+              new NestedTailRecAlerter(method, tree.symbol).traverse(tree)
           tree
 
         case _: Super | _: This | _: Literal | _: TypeTree | _: TypeDef | EmptyTree =>
@@ -446,13 +473,27 @@ class TailRec extends MiniPhase {
 
         case Return(expr, from) =>
           val fromSym = from.symbol
-          val inTailPosition = !fromSym.is(Label) || tailPositionLabeledSyms.contains(fromSym)
+          val inTailPosition = tailPositionLabeledSyms.contains(fromSym) // Label returns are only tail if the label is in tail position
+             || (fromSym eq method) // Method returns are only tail if we are looking at the original method
           cpy.Return(tree)(transform(expr, inTailPosition), from)
 
         case _ =>
           super.transform(tree)
       }
     }
+  }
+
+  class NestedTailRecAlerter(method: Symbol, inner: Symbol) extends TreeTraverser {
+    override def traverse(tree: tpd.Tree)(using Context): Unit =
+      tree match {
+        case a: Apply =>
+          if (a.fun.symbol eq method) {
+            report.warning(new TailrecNestedCall(method, inner), a.srcPos)
+          }
+          traverseChildren(tree)
+        case _ =>
+          traverseChildren(tree)
+      }
   }
 }
 

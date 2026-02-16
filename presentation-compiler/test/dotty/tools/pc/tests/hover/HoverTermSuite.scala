@@ -2,9 +2,22 @@ package dotty.tools.pc.tests.hover
 
 import dotty.tools.pc.base.BaseHoverSuite
 
+import org.junit.Ignore
 import org.junit.Test
 
 class HoverTermSuite extends BaseHoverSuite:
+
+  @Test def `n-ary lamba` =
+    check(
+      """|object testRepor {
+         |  val listOfTuples = List(1 -> 1, 2 -> 2, 3 -> 3)
+         |
+         |  listOfTuples.map((k@@ey, value) => key + value)
+         |}
+         |""".stripMargin,
+      """|val key: Int
+         |""".stripMargin.hover
+    )
 
   @Test def `map` =
     check(
@@ -56,6 +69,7 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin.hover
     )
 
+  @Ignore
   @Test def `interpolator-name` =
     check(
       """
@@ -68,6 +82,7 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin.hover
     )
 
+  @Ignore
   @Test def `interpolator-macro` =
     check(
       """
@@ -269,9 +284,9 @@ class HoverTermSuite extends BaseHoverSuite:
         |  } yield x
         |}
         |""".stripMargin,
-      """|Option[Int]
-         |override def headOption: Option[A]
-         |""".stripMargin.hover
+      """|```scala
+         |override def headOption: Option[Int]
+         |```""".stripMargin.hover
     )
 
   @Test def `object` =
@@ -596,6 +611,21 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin
     )
 
+  @Test def `i20560` =
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlDriver",
+      """```scala
+        |val res: Int
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i20560-2` =
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlInexisting",
+      "" // crashes in the Macro; no type info
+    )
+
   @Test def `import-rename` =
     check(
       """
@@ -614,7 +644,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |
         |```scala
         |val tt: AB[Int, String]
-        |```""".stripMargin,
+        |```""".stripMargin
     )
 
   @Test def `import-rename2` =
@@ -635,8 +665,8 @@ class HoverTermSuite extends BaseHoverSuite:
         |
         |```scala
         |def test(d: S[Int], f: S[Char]): AB[Int, String]
-        |```""".stripMargin,
-  )
+        |```""".stripMargin
+    )
 
   @Test def `import-no-rename` =
     check(
@@ -652,4 +682,287 @@ class HoverTermSuite extends BaseHoverSuite:
         |val abc: scala.collection.Map[Int, Int]
         |```
         |""".stripMargin
+    )
+
+  @Test def `dealias-type-members-in-structural-types1`: Unit =
+    check(
+      """object Obj {
+        |  trait A extends Sup { self =>
+        |    type T
+        |    def member : T
+        |  }
+        |  val x: A { type T = Int} = ???
+        |
+        |  <<x.mem@@ber>>
+        |
+        |}""".stripMargin,
+      """def member: Int""".stripMargin.hover
+    )
+
+  @Test def `dealias-type-members-in-structural-types2`: Unit =
+    check(
+      """object Obj:
+        |  trait A extends Sup { self =>
+        |    type T
+        |    def fun(body: A { type T = self.T} => Unit) = ()
+        |  }
+        |  val x: A { type T = Int} = ???
+        |
+        |  x.fun: <<y@@y>> =>
+        |    ()
+        |""".stripMargin,
+      """yy: A{type T = Int}""".stripMargin.hover
+    )
+
+  @Test def `right-assoc-extension`: Unit =
+    check(
+      """
+        |case class Wrap[+T](x: T)
+        |
+        |extension [T](a: T)
+        |  def <<*@@:>>[U <: Tuple](b: Wrap[U]): Wrap[T *: U] = Wrap(a *: b.x)
+        |""".stripMargin,
+      "extension [T](a: T) def *:[U <: Tuple](b: Wrap[U]): Wrap[T *: U]".hover
+    )
+
+  @Test def `dont-ignore-???-in-path`: Unit =
+    check(
+      """object Obj:
+        |  val x = ?@@??
+        |""".stripMargin,
+      """def ???: Nothing""".stripMargin.hover
+    )
+
+  @Test def `named-tuples`: Unit =
+    check(
+      """
+        |val foo = (name = "Bob", age = 42, height = 1.9d)
+        |val foo_name = foo.na@@me
+        |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuples2`: Unit =
+    check(
+      """|import NamedTuple.*
+         |
+         |class NamedTupleSelectable extends Selectable {
+         |  type Fields <: AnyNamedTuple
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person = new NamedTupleSelectable {
+         |  type Fields = (name: String, city: String)
+         |}
+         |
+         |val person_name = person.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuples3`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est
+         |""".stripMargin,
+      "def test: (path : String, num : Int, line : Int)".hover
+    )
+
+  @Test def `named-tuples4`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hel@@lo ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      "def hello: (path : String, num : Int)".hover
+    )
+
+  @Test def `named-tuples5`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test(x: (path: String, num: Int)) =
+         |  x ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est(hello)
+         |""".stripMargin,
+      "def test(x: (path : String, num : Int)): (path : String, num : Int, line : Int)".hover
+    )
+
+  @Test def `value-of`: Unit =
+    check(
+      """|enum Foo(val key: String) {
+         |  case Bar extends Foo("b")
+         |  case Baz extends Foo("z")
+         |}
+         |
+         |object Foo {
+         |  def parse(key: String) = Foo.va@@lueOf("b")
+         |
+         |""".stripMargin,
+      "def valueOf($name: String): Foo".hover
+    )
+
+  @Test def `i7460` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.foo.sub@@string(2, 4)
+         |""".stripMargin,
+      "def substring(x$0: Int, x$1: Int): String".hover
+    )
+
+  @Test def `i7460-2` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.bar.sub@@string(2, 4)
+         |""".stripMargin,
+      "def substring(x$0: Int, x$1: Int): String".hover
+    )
+
+  @Test def `multiple-valdefs-1` =
+    check(
+      """|object O {
+         |  val x@@x, yy, zz = 1
+         |}
+         |""".stripMargin,
+      "val xx: Int".hover
+    )
+
+  @Test def `multiple-valdefs-2` =
+    check(
+      """|object O {
+         |  val xx, y@@y, zz = 1
+         |}
+         |""".stripMargin,
+      "val yy: Int".hover
+    )
+
+  @Test def `multiple-valdefs-3` =
+    check(
+      """|object O {
+         |  val xx, yy, z@@z = 1
+         |}
+         |""".stripMargin,
+      "val zz: Int".hover
+    )
+
+  @Test def `multiple-valdefs-4` =
+    check(
+      """|object O {
+         |  val xx, thisIsAVeryLongNa@@me, zz = 1
+         |}
+         |""".stripMargin,
+      "val thisIsAVeryLongName: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-1` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-2` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val aa: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.a@@a
+         |""".stripMargin,
+      "val aa: Int & String".hover
+    )
+
+  @Test def `intersection_of_selectable-3` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.b@@b
+         |""".stripMargin,
+      "val bb: String".hover
+    )
+
+  @Test def `intersection_of_selectable-4` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type C = Record { val cc: Float }
+         |type AB = A & B
+         |type ABC = AB & C
+         |
+         |val abc: ABC = Record().asInstanceOf[ABC]
+         |val abc_a = abc.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-5` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type AL = List[Int] & Record { val aa: Int }
+         |
+         |val al: AL = ???.asInstanceOf[ABC]
+         |val al_a = al.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def i7763 =
+    check(
+      """|case class MyItem(name: String)
+         |
+         |def handle(item: MyItem) =
+         |  item match {
+         |    case MyItem(na@@me = n2) => println(n2)
+         |  }
+         |""".stripMargin,
+      "val name: String".hover
+    )
+
+  @Test def `opaque-type-method-call` =
+    check(
+      """|object History {
+         |  opaque type Builder[A] = String
+         |  def emptyBuilder: Builder[Unit] = ""
+         |  def build(b: Builder[Unit]): Int = ???
+         |}
+         |object Main {
+         |  <<History.bui@@ld(History.emptyBuilder)>>
+         |}
+         |""".stripMargin,
+      """|def build(b: Builder[Unit]): Int
+         |""".stripMargin.hover
     )

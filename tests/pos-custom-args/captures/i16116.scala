@@ -9,14 +9,13 @@ trait CpsMonad[F[_]] {
 
 object CpsMonad {
   type Aux[F[_],C] = CpsMonad[F] { type Context = C }
-  given CpsMonad[Future] with {}
+  given CpsMonad[Future]()
 }
 
 @experimental
 object Test {
 
-  @capability
-  class CpsTransform[F[_]] {
+  class CpsTransform[F[_]] extends caps.SharedCapability {
      def await[T](ft: F[T]): T^{ this } = ???
   }
 
@@ -27,12 +26,15 @@ object Test {
       def apply[A](expr: (CpsTransform[F], C) ?=> A): F[A] = ???
   }
 
-  def asyncPlus[F[_]](a:Int, b:F[Int])(using cps: CpsTransform[F]): Int^{ cps } =
-    a + (cps.await(b).asInstanceOf[Int])
+  class C(x: Int):
+    def +(that: C): C = ???
+
+  def asyncPlus[F[_]](a:C, b:F[C])(using cps: CpsTransform[F]): C^{ cps } =
+    a + (cps.await(b).asInstanceOf[C])
 
   def testExample1Future(): Unit =
      val fr = cpsAsync[Future] {
-        val y = asyncPlus(1,Future successful 2).asInstanceOf[Int]
+        val y = asyncPlus(C(1),Future successful C(2)).asInstanceOf[Int]
         y+1
      }
 

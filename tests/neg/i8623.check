@@ -1,13 +1,12 @@
--- [E142] Type Error: tests/neg/i8623.scala:11:2 -----------------------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/i8623.scala:11:9 ------------------------------------------------------------------
 11 |  unseal.pos  // error
-   |  ^^^^^^
-   |  Failure to generate given instance for type ?{ pos: ? } from argument of type ?1.tasty.Tree)
+   |  ^^^^^^^^^^
+   |  value pos is not a member of ?1.tasty.Tree.
+   |  Extension methods were tried, but the search failed with:
    |
-   |  I found: <skolem>.tasty.pos(unseal(given_QC[Any]))
-   |  But the part corresponding to `<skolem>` is not a reference that can be generated.
-   |  This might be because resolution yielded as given instance a function that is not
-   |  known to be total and side-effect free.
+   |      cannot construct a tree referring to ?1.tasty.type because of skolem prefix (?1 : QC)
+   |      
+   |      where:    ?1 is an unknown value of type QC
+   |      
    |
    |  where:    ?1 is an unknown value of type QC
-   |
-   | longer explanation available when compiling with `-explain`

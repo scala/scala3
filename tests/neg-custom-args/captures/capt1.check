@@ -1,54 +1,92 @@
--- Error: tests/neg-custom-args/captures/capt1.scala:4:11 --------------------------------------------------------------
-4 |  () => if x == null then y else y  // error
-  |           ^
-  |           (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
-  |           of an enclosing function literal with expected type () -> C
--- Error: tests/neg-custom-args/captures/capt1.scala:7:11 --------------------------------------------------------------
-7 |  () => if x == null then y else y  // error
-  |           ^
-  |           (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
-  |           of an enclosing function literal with expected type Matchable
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
-14 |  def f(y: Int) = if x == null then y else y  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:5:2 ------------------------------------------
+5 |  () => if x == null then y else y  // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    () ->{x} C
+  |  Required: () -> C
+  |
+  |  Note that capability `x` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:8:2 ------------------------------------------
+8 |  () => if x == null then y else y  // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    () ->{x} C^'s1
+  |  Required: Matchable
+  |
+  |  Note that capability `x` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:16:2 -----------------------------------------
+16 |  f  // error
    |  ^
    |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
-15 |  f
+   |
+   |  Note that capability `x` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:21:2 -----------------------------------------
-21 |  class F(y: Int) extends A:   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:24:2 -----------------------------------------
+24 |  F(22)  // error
+   |  ^^^^^
+   |  Found:    A^{x}
+   |  Required: A
+   |
+   |  Note that capability `x` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:27:2 -----------------------------------------
+27 |  new A: // error
    |  ^
    |  Found:    A^{x}
    |  Required: A
-22 |    def m() = if x == null then y else y
-23 |  F(22)
+   |
+   |  Note that capability `x` cannot flow into capture set {}.
+   |
+28 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:26:2 -----------------------------------------
-26 |  new A: // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:38:51 -------------------------------------------------------------
+38 |  val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Separation failure: Illegal access to {x} which is hidden by the previous definition
+   |           of value z2 with type () ->{} C^.
+   |           This type hides capabilities  {any, x}
+   |
+   |           where:    ^   refers to a root capability in the type of value z2
+   |                     any is a root capability created in value z2
+-- Error: tests/neg-custom-args/captures/capt1.scala:40:25 -------------------------------------------------------------
+40 |  val z1: () => Cap = f1(x) // error
+   |                         ^
+   |                         Separation failure: Illegal access to {x} which is hidden by the previous definition
+   |                         of value z3 with type () ->{x} C^.
+   |                         This type hides capabilities  {any, x}
+   |
+   |                         where:    ^   refers to a root capability in the type of value z3
+   |                                   any is a root capability created in value z3
+-- Error: tests/neg-custom-args/captures/capt1.scala:43:7 --------------------------------------------------------------
+43 |    if x == null then  // error: separation
+   |       ^
+   |       Separation failure: Illegal access to {x} which is hidden by the previous definition
+   |       of value z1 with type () => C^.
+   |       This type hides capabilities  {x}
+   |
+   |       where:    => refers to a root capability in the type of value z1
+   |                 ^  refers to a root capability in the type of value z1
+-- Error: tests/neg-custom-args/captures/capt1.scala:44:12 -------------------------------------------------------------
+44 |      () => x  // error: separation
+   |            ^
+   |            Separation failure: Illegal access to {x} which is hidden by the previous definition
+   |            of value z1 with type () => C^.
+   |            This type hides capabilities  {x}
+   |
+   |            where:    => refers to a root capability in the type of value z1
+   |                      ^  refers to a root capability in the type of value z1
+-- Error: tests/neg-custom-args/captures/capt1.scala:47:2 --------------------------------------------------------------
+47 |  x // error: separation
    |  ^
-   |  Found:    A^{x}
-   |  Required: A
-27 |    def m() = if x == null then y else y
+   |  Separation failure: Illegal access to {x} which is hidden by the previous definition
+   |  of value z1 with type () => C^.
+   |  This type hides capabilities  {x}
    |
-   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/capt1.scala:32:12 -------------------------------------------------------------
-32 |  val z2 = h[() -> Cap](() => x) // error // error
-   |           ^^^^^^^^^^^^
-   |           Sealed type variable X cannot be instantiated to () -> box C^ since
-   |           the part box C^ of that type captures the root capability `cap`.
-   |           This is often caused by a local capability in an argument of method h
-   |           leaking as part of its result.
--- Error: tests/neg-custom-args/captures/capt1.scala:32:30 -------------------------------------------------------------
-32 |  val z2 = h[() -> Cap](() => x) // error // error
-   |                              ^
-   |                            (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
-   |                            of an enclosing function literal with expected type () -> box C^
--- Error: tests/neg-custom-args/captures/capt1.scala:34:12 -------------------------------------------------------------
-34 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |           Sealed type variable X cannot be instantiated to box () ->{x} Cap since
-   |           the part C^ of that type captures the root capability `cap`.
-   |           This is often caused by a local capability in an argument of method h
-   |           leaking as part of its result.
+   |  where:    => refers to a root capability in the type of value z1
+   |            ^  refers to a root capability in the type of value z1

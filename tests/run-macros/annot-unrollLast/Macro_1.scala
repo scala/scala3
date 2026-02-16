@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 package example
 
@@ -12,7 +12,7 @@ class unrollLast extends StaticAnnotation
 
 @experimental
 class unrollHelper extends MacroAnnotation {
-  def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition] =
+  def transform(using Quotes)(tree: quotes.reflect.Definition, companion: Option[quotes.reflect.Definition]): List[quotes.reflect.Definition] =
     import quotes.reflect._
     tree match
       case tree: DefDef => transformDefDef(tree)

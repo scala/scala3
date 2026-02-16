@@ -265,7 +265,7 @@ class TastyHeaderUnpicklerTest {
 object TastyHeaderUnpicklerTest {
 
   def fillHeader(maj: Int, min: Int, exp: Int, compiler: String): TastyBuffer = {
-    val compilerBytes = compiler.getBytes(java.nio.charset.StandardCharsets.UTF_8).nn
+    val compilerBytes = compiler.getBytes(java.nio.charset.StandardCharsets.UTF_8)
     val buf = new TastyBuffer(header.length + 32 + compilerBytes.length)
     for (ch <- header) buf.writeByte(ch.toByte)
     buf.writeNat(maj)
@@ -304,7 +304,7 @@ object TastyHeaderUnpicklerTest {
       fail()
     }
     catch {
-      case err: UnpickleException => assert(err.getMessage.nn.contains(message))
+      case err: UnpickleException => assert(err.getMessage.contains(message))
     }
   }
 

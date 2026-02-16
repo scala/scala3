@@ -13,8 +13,10 @@ def Test[T] =
     case _: C => ???   // ok
   C() match
     case _: O.T => ???  // warn
+    case _ => ???
   C() match
     case _: T => ???   // warn
+    case _ => ???
 
   (??? : Any) match
     case _: List[O.T] => ???  // warn

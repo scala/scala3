@@ -6,7 +6,8 @@ class NT(t: Tup):
 object NT:
   extension (x: NT)
     def app(n: Int): Boolean = true
-  given Conversion[NT, Tup] = _.toTup
+  given c1: Conversion[NT, Tup] = _.toTup
+  implicit def c2(t: NT): Tup = c1(t)
 
 def test =
   val nt = new NT(Tup())

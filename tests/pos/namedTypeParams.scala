@@ -11,7 +11,6 @@ object Test {
 }
 
 object TestInterleaving{
-  import language.experimental.clauseInterleaving
   def f2[X](using DummyImplicit)[Y](x: X, y: Y): Int = ???
 
   f2[X = Int][Y = String](1, "")

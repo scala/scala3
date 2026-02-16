@@ -70,7 +70,7 @@ Right now, we record GADT constraints for:
 -   function/method type parameters
 -   class type parameters
 
-There is a branch on the way which will also record them for type members (so path-dependent types) and singleton types. It has a paper associated: "Implementing path-depepdent GADTs for Scala 3".
+There is a branch on the way which will also record them for type members (so path-dependent types) and singleton types. It has a paper associated: "Implementing path-dependent GADTs for Scala 3".
 
 ### What are necessary relationships? Any examples?
 

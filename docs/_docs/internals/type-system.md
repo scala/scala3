@@ -36,6 +36,7 @@ Type -+- ProxyType --+- NamedType ----+--- TypeRef
       |              +- TypeVar
       |              +- HKTypeLambda
       |              +- MatchType
+      |              +- FlexibleType
       |
       +- GroundType -+- AndType
                      +- OrType

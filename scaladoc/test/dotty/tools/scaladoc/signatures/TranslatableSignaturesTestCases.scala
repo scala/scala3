@@ -55,6 +55,8 @@ class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all
 
 class Annotations extends SignatureTest("annotations", SignatureTest.all)
 
+class Deprecated extends SignatureTest("deprecated", SignatureTest.all)
+
 class InheritanceLoop extends SignatureTest("inheritanceLoop", SignatureTest.all)
 
 class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.all.filter(_ != "class"),
@@ -120,3 +122,13 @@ class MatchTypeTuple extends SignatureTest("matchTypeTuple", SignatureTest.all)
 class InfixTypes extends SignatureTest("infixTypes", SignatureTest.all)
 
 class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)
+
+class RefinedFunctionTypes extends SignatureTest("refinedFunctionTypes", SignatureTest.all)
+
+class RightAssocExtension extends SignatureTest("rightAssocExtension", SignatureTest.all)
+
+class NamedTuples extends SignatureTest("namedTuples", SignatureTest.all)
+
+class InnerClasses extends SignatureTest("innerClasses", SignatureTest.all)
+
+class OptionalParams extends SignatureTest("optionalParams", SignatureTest.all)

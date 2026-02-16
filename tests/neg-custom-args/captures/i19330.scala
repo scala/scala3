@@ -1,4 +1,6 @@
+
 import language.experimental.captureChecking
+
 
 trait Logger
 def usingLogger[T](op: Logger^ => T): T = ???
@@ -11,8 +13,8 @@ class Bar extends Foo:
 
 def foo(x: Foo): x.T =
   val leaked = usingLogger[x.T]: l =>  // error
-    val t: () => Logger^ = () => l
-    t: x.T
+    val t: () => Logger^ = () => l // error
+    t: x.T // error
   leaked
 
 def test(): Unit =

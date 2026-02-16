@@ -1,0 +1,16 @@
+-- Warning: tests/init-global/warn/inner-extends-outer.scala:22:19 -----------------------------------------------------
+22 |  def bar(): Int = f2 // warn
+   |                   ^^
+   |                   Access uninitialized field value f2. Calling trace:
+   |                   ├── object O extends T {	[ inner-extends-outer.scala:15 ]
+   |                   │   ^
+   |                   ├── val f1 = foo(new Outer(this))	[ inner-extends-outer.scala:20 ]
+   |                   │            ^^^^^^^^^^^^^^^^^^^^
+   |                   ├── def foo(i: Outer): Int =	[ inner-extends-outer.scala:16 ]
+   |                   │   ^
+   |                   ├── i2.g()	[ inner-extends-outer.scala:18 ]
+   |                   │   ^^^^^^
+   |                   ├── def g(): Int = Outer.this.t.bar()	[ inner-extends-outer.scala:11 ]
+   |                   │                  ^^^^^^^^^^^^^^^^^^
+   |                   └── def bar(): Int = f2 // warn	[ inner-extends-outer.scala:22 ]
+   |                                        ^^

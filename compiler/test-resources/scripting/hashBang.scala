@@ -1,8 +1,8 @@
-#!/usr/bin/env scala
+#!/usr/bin/env fake-program-to-test-hashbang-removal
 # comment
 STUFF=nada
 !#
-
+// everything above this point should be ignored by the compiler
 def main(args: Array[String]): Unit =
   System.err.printf("mainClassFromStack: %s\n",mainFromStack)
   assert(mainFromStack.contains("hashBang"),s"fromStack[$mainFromStack]")

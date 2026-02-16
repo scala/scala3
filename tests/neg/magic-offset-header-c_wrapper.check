@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-c.scala:3:18 ----------------------------------------------
+3 |  val x: String = 0  // error
+  |                  ^
+  |                  Found:    (0 : Int)
+  |                  Required: String
+  |
+  | longer explanation available when compiling with `-explain`

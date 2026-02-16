@@ -1,5 +1,7 @@
 package scala.annotation.internal
 
+import language.experimental.captureChecking
+
 import scala.annotation.Annotation
 
 /** An annotation to record a Scala2 pickled alias.

@@ -1,0 +1,27 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/filevar-multi-ios.scala:22:15 ----------------------------
+22 |      o.file = f  // error
+   |               ^
+   |               Found:    (f : File^{io3})
+   |               Required: File^{o.io}
+   |
+   |               Note that capability `f` cannot flow into capture set {o.io}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/filevar-multi-ios.scala:23:16 ----------------------------
+23 |      o.file2 = f // error
+   |                ^
+   |                Found:    (f : File^{io3})
+   |                Required: File^{o.io2}
+   |
+   |                Note that capability `f` cannot flow into capture set {o.io2}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/filevar-multi-ios.scala:40:16 ----------------------------
+40 |      o.file2 = f // error
+   |                ^
+   |                Found:    (f : File^{io3})
+   |                Required: File^{o.io2}
+   |
+   |                Note that capability `f` cannot flow into capture set {o.io2}.
+   |
+   | longer explanation available when compiling with `-explain`

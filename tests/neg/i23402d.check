@@ -1,0 +1,12 @@
+-- [E120] Naming Error: tests/neg/i23402d.scala:5:4 --------------------------------------------------------------------
+5 |def f(x: Any): Unit = ??? // error
+  |    ^
+  |    Conflicting definitions:
+  |    def f[T](x: T): Unit in the top-level definitions in package <empty> at line 4 and
+  |    def f(x: Any): Unit in the top-level definitions in package <empty> at line 5
+  |    have the same type (x: Object): Unit after erasure.
+  |
+  |    Consider adding a @targetName annotation to one of the conflicting definitions
+  |    for disambiguation.
+  |
+  | longer explanation available when compiling with `-explain`

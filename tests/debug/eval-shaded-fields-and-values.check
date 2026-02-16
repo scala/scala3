@@ -1,0 +1,5 @@
+break A$B 9
+eval x1 + x2 + x3
+result Ax1Bx2x3
+eval x1 + A.this.x2 + this.x3
+result Ax1Ax2Bx3

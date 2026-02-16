@@ -4,7 +4,7 @@ package completions
 import dotty.tools.dotc.ast.tpd.TypeDef
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object FilenameCompletions:
 
@@ -27,6 +27,3 @@ object FilenameCompletions:
         )
       )
     else Nil
-
-  end contribute
-end FilenameCompletions

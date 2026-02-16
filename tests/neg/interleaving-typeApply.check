@@ -1,29 +1,29 @@
--- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:10:11 --------------------------------------------
-10 |        f3[String]() // error
-   |           ^
-   |           Type argument String does not conform to upper bound Int
-   |
-   | longer explanation available when compiling with `-explain`
--- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:11:16 --------------------------------------------
-11 |        f5[Int][Unit] // error
+-- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:9:11 ---------------------------------------------
+9 |        f3[String]() // error
+  |           ^
+  |           Type argument String does not conform to upper bound Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:10:16 --------------------------------------------
+10 |        f5[Int][Unit] // error
    |                ^
    |                Type argument Unit does not conform to upper bound String
    |
    | longer explanation available when compiling with `-explain`
--- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:12:19 --------------------------------------------
-12 |        f5[String][Unit] // error // error
+-- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:11:19 --------------------------------------------
+11 |        f5[String][Unit] // error // error
    |                   ^
    |                   Type argument Unit does not conform to upper bound String
    |
    | longer explanation available when compiling with `-explain`
--- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:12:11 --------------------------------------------
-12 |        f5[String][Unit] // error // error
+-- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:11:11 --------------------------------------------
+11 |        f5[String][Unit] // error // error
    |           ^
    |           Type argument String does not conform to upper bound Int
    |
    | longer explanation available when compiling with `-explain`
--- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:13:11 --------------------------------------------
-13 |        f7[String]()[Unit] // error
+-- [E057] Type Mismatch Error: tests/neg/interleaving-typeApply.scala:12:11 --------------------------------------------
+12 |        f7[String]()[Unit] // error
    |           ^
    |           Type argument String does not conform to upper bound Int
    |

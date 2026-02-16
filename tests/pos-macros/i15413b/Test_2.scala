@@ -1,3 +1,3 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 def test = bar.foo

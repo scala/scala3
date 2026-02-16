@@ -1,0 +1,68 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:5:27 --------------------------
+5 |  val f: IO^ => IO^ = x => x // error
+  |                           ^
+  |Found:    (x : IO^)
+  |Required: IO^{any}
+  |
+  |Note that capability `x` cannot flow into capture set {any}
+  |because (x : IO^) in an enclosing function is not visible from any in value f.
+  |
+  |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
+  |          any is a root capability in the type of value f
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:10:38 -------------------------
+10 |  val g: [R] -> (IO^{f*} => R) -> R = f  // error // error
+   |                                      ^
+   |                                      Found:    (f : [R] => (x$1: IO^{any} ->{any} R) -> R)
+   |                                      Required: [R] => (x$1: IO^{f*} ->{any} R) -> R
+   |
+   |                                      Note that capability `any` cannot flow into capture set {f*}.
+   |
+   |                                      where:    any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:13:38 -------------------------
+13 |  val g: [R] -> (IO^{f*} -> R) -> R = f  // error // error
+   |                                      ^
+   |                                      Found:    (f : [R] => (x$1: IO^{any} -> R) -> R)
+   |                                      Required: [R] => (x$1: IO^{f*} -> R) -> R
+   |
+   |                                      Note that capability `any` cannot flow into capture set {f*}.
+   |
+   |                                      where:    any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:19:40 -------------------------
+19 |  val g: [R] -> (IO^ -> R) -> IO^{f*} = f  // error
+   |                                        ^
+   |             Found:    (f : [R] => (x$1: IO^ -> R) -> IO^{fresh})
+   |             Required: [R] => (x$1: IO^ -> R) -> IO^{f*}
+   |
+   |             Note that capability `fresh` cannot flow into capture set {f*}.
+   |
+   |             where:    ^     refers to the root capability caps.any
+   |                       fresh is a root capability associated with the result type of (x$1: IO^ -> R): IO^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:20:40 -------------------------
+20 |  val h: [R] -> (IO^{f*} -> R) -> IO^ = f  // error
+   |                                        ^
+   |        Found:    (f : [R] => (x$1: IO^{any} -> R) -> IO^{fresh})
+   |        Required: [R] => (x$1: IO^{f*} -> R) -> IO^
+   |
+   |        Note that capability `any` cannot flow into capture set {f*}.
+   |
+   |        where:    ^     refers to a root capability in the type of value h
+   |                  any   is the root capability caps.any
+   |                  fresh is a root capability associated with the result type of (x$1: IO^{any} -> R): IO^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:10:13 ----------------------------------------------
+10 |  val g: [R] -> (IO^{f*} => R) -> R = f  // error // error
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         f* cannot be tracked since its deep capture set is empty
+-- Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:13:13 ----------------------------------------------
+13 |  val g: [R] -> (IO^{f*} -> R) -> R = f  // error // error
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         f* cannot be tracked since its deep capture set is empty

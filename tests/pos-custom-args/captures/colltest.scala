@@ -1,3 +1,4 @@
+import language.experimental.captureChecking
 // Showing a problem with recursive references
 object CollectionStrawMan5 {
 
@@ -17,14 +18,13 @@ object CollectionStrawMan5 {
   trait View[+A] extends Iterable[A] with IterableLike[A]
 
   case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
-    self: Partition[A]^{underlying, p} =>
 
-    class Partitioned(expected: Boolean) extends View[A]:
-      this: Partitioned^{self} =>
+    class Partitioned(expected: Boolean) extends View[A] uses Partition.this:
+      this: Partitioned^{Partition.this} =>
       def iterator: Iterator[A]^{this} =
         underlying.iterator.filter((x: A) => p(x) == expected)
 
-    val left: Partitioned^{self} = Partitioned(true)
-    val right: Partitioned^{self} = Partitioned(false)
+    val left: Partitioned^{Partition.this} = Partitioned(true)
+    val right: Partitioned^{Partition.this} = Partitioned(false)
   }
 }

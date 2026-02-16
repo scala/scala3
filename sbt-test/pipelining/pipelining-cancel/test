@@ -1,0 +1,6 @@
+# - Test depending on a project where upstream runs short of reaching backend,
+#   and cancels pipelined tasty writing.
+# - Because `a` finishes compile run before the sending the signal to Zinc
+#   that pipeline jar is written, sbt will continue to the downstream project anyway.
+# - Downstream project `b` will fail as it can't find a.A from upstream.
+-> b/compile

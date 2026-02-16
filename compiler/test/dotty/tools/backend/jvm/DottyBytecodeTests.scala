@@ -158,6 +158,126 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def switchOnUnionOfInts = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(x: 1 | 2 | 3 | 4 | 5) = x match {
+        |    case 1 => println(3)
+        |    case 2 | 3 => println(2)
+        |    case 4 => println(1)
+        |    case 5 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfStrings = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(s: "one" | "two" | "three" | "four" | "five") = s match {
+        |    case "one" => println(3)
+        |    case "two" | "three" => println(2)
+        |    case "four" | "five" => println(1)
+        |    case _ => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfChars = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(ch: 'a' | 'b' | 'c' | 'd' | 'e'): Int = ch match {
+        |    case 'a' => 1
+        |    case 'b' => 2
+        |    case 'c' => 3
+        |    case 'd' => 4
+        |    case 'e' => 5
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfIntSingletons = {
+    val source =
+      """
+        |object Foo {
+        |  final val One = 1
+        |  final val Two = 2
+        |  final val Three = 3
+        |  final val Four = 4
+        |  final val Five = 5
+        |  type Values = One.type | Two.type | Three.type | Four.type | Five.type
+        |
+        |  def foo(s: Values) = s match {
+        |    case One => println(3)
+        |    case Two | Three => println(2)
+        |    case Four => println(1)
+        |    case Five => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfStringSingletons = {
+    val source =
+      """
+        |object Foo {
+        |  final val One = "one"
+        |  final val Two = "two"
+        |  final val Three = "three"
+        |  final val Four = "four"
+        |  final val Five = "five"
+        |  type Values = One.type | Two.type | Three.type | Four.type | Five.type
+        |
+        |  def foo(s: Values) = s match {
+        |    case One => println(3)
+        |    case Two | Three => println(2)
+        |    case Four => println(1)
+        |    case Five => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
   @Test def matchWithDefaultNoThrowMatchError = {
     val source =
       """class Test {
@@ -1487,6 +1607,28 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test
+  def simpleTupleExtraction(): Unit = {
+    val code =
+      """class C {
+        |  def f1(t: (Int, String)) =
+        |    val (i, s) = t
+        |    i + s.length
+        |}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
+      val f1 = getMethod(c, "f1")
+      assertNoInvoke(f1, "scala/Tuple2$", "apply") // no Tuple2.apply call
+      // no `new` instruction
+      val hasNew = instructionsFromMethod(f1).exists {
+        case Op(Opcodes.NEW) => true
+        case _ => false
+      }
+      assertFalse("f1 should not have NEW instruction", hasNew)
+    }
+  }
+
+  @Test
   def deprecation(): Unit = {
     val code =
       """@deprecated
@@ -1841,6 +1983,91 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       )
 
       assertSameCode(instructions, expected)
+    }
+  }
+
+  /**
+   * Test 'additional' imports are generated in deterministic order
+   * https://github.com/scala/scala3/issues/20496
+   */
+  @Test def deterministicAdditionalImports = {
+    val source =
+    """trait Actor:
+        |  def receive() = ()
+        |trait Timers:
+        |  def timers() = ()
+        |abstract class ShardCoordinator extends Actor with Timers
+        |class PersistentShardCoordinator extends ShardCoordinator:
+        |  def foo =
+        |    super.receive()
+        |    super.timers()""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+
+      val expected = List("Actor", "Timers")
+      assertEquals(expected, clsNode.interfaces.asScala)
+    }
+  }
+
+  // Test for https://github.com/scala/scala3/issues/24997
+  // Automatic untupling should not introduce extra CHECKCAST instructions for unused tuple elements
+  @Test def i24997 = {
+    val source =
+      """|class Wrapper[A](value: A):
+        |  def use[B](f: A => B): B = f(value)
+        |
+        |class Test:
+        |  def withCase: Int =
+        |    val w = Wrapper(("42", "Answer"))
+        |    w.use { case (s, _) => s.length }
+        |
+        |  def withoutCase: Int =
+        |    val w = Wrapper(("42", "Answer"))
+        |    w.use { (s, _) => s.length }
+        |""".stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+
+      // Get instructions for both methods
+      def getCheckCastCount(methodPrefix: String): Int = {
+        clsNode.methods.asScala.filter(_.name.startsWith(methodPrefix)).map { method =>
+          instructionsFromMethod(method).count {
+            case TypeOp(Opcodes.CHECKCAST, _) => true
+            case _ => false
+          }
+        }.sum
+      }
+
+      val withCaseCasts = getCheckCastCount("withCase")
+      val withoutCaseCasts = getCheckCastCount("withoutCase")
+
+      // Both methods should have the same number of CHECKCAST instructions
+      // (specifically, they should NOT have extra ones for unused wildcard elements)
+      assertEquals(s"withCase should have 1 CHECKCAST", 1, withCaseCasts)
+      assertEquals(s"withoutCase should have 1 CHECKCAST", 1, withoutCaseCasts)
+    }
+  }
+
+  @Test def i24997_placeholder = {
+    // Regression test for https://github.com/scala/scala3/pull/25085
+    // Ensure that placeholder syntax `_ + _` works correctly when tupled.
+    // The previous fix accidentally removed the binding for the used synthetic parameters.
+    val source =
+      """|class Test:
+        |  def use(f: ((Int, Int)) => Int): Int = f((1, 2))
+        |
+        |  def test: Int =
+        |    use { _ + _ }
+        |""".stripMargin
+    checkBCode(source) { dir =>
+      // The main verification is that it compiles.
+      // We can also check that `test` method exists.
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      assert(clsNode.methods.asScala.exists(_.name == "test"))
     }
   }
 }

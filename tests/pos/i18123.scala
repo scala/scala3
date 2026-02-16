@@ -7,7 +7,8 @@ extension [T](inline parse0: P[T])
   inline def | [V >: T](inline other: P[V]): P[V] = ???
 
 extension [T](inline parse0: => P[T])
-  inline def rep[V](inline min: Int = 0)(using repeater: Implicits.Repeater[T, V]): P[V] = ???
+  // transparent needed to make this compile in 3.4+
+  transparent inline def rep[V](inline min: Int = 0)(using repeater: Implicits.Repeater[T, V]): P[V] = ???
 
 object Implicits:
   trait Repeater[-T, R]

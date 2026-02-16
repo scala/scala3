@@ -1,6 +1,7 @@
 package dotty.tools.languageserver
 
 import org.junit.Test
+import org.junit.Ignore
 
 import dotty.tools.languageserver.util.Code._
 
@@ -227,7 +228,7 @@ class HoverTest {
   @Test def enums: Unit = {
     code"""|package example
            |enum TestEnum3:
-           | case ${m1}A${m2} // no tooltip
+           |  case ${m1}A${m2} // no tooltip
            |
            |"""
       .hover(m1 to m2, hoverContent("example.TestEnum3"))
@@ -245,6 +246,7 @@ class HoverTest {
       .hover(m3 to m4, hoverContent("Double"))
   }
 
+  @Ignore
   @Test def annotation: Unit = {
     code"""|@${m1}deprecated${m2} def ${m3}x${m4} = 42.0"""
       .hover(m1 to m2, hoverContent("deprecated"))

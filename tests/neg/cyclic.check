@@ -4,9 +4,13 @@
   |            Overloaded or recursive method f needs return type
   |
   |            The error occurred while trying to compute the signature of method f
+  |              which required to type the right hand side of method f since no explicit type was given
   |              which required to compute the signature of method g
+  |              which required to type the right hand side of method g since no explicit type was given
   |              which required to compute the signature of method h
+  |              which required to type the right hand side of method h since no explicit type was given
   |              which required to compute the signature of method i
+  |              which required to type the right hand side of method i since no explicit type was given
   |              which required to compute the signature of method f
   |
   |             Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.

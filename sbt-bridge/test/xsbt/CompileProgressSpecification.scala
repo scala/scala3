@@ -66,7 +66,6 @@ class CompileProgressSpecification {
         "MegaPhase{pruneErasedDefs,...,arrayConstructors}",
         "erasure",
         "constructors",
-        "genSJSIR",
         "genBCode"
       )
     val missingExpectedPhases = someExpectedPhases -- allPhases.toSet

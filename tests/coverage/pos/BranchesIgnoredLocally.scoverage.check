@@ -1,0 +1,564 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredBranch
+92
+97
+5
+>
+Apply
+false
+0
+false
+x > 0
+
+1
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredBranch
+103
+113
+5
+<none>
+Literal
+false
+0
+false
+"positive"
+
+2
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredBranch
+103
+113
+5
+<none>
+Literal
+true
+0
+false
+"positive"
+
+3
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredBranch
+123
+137
+6
+<none>
+Literal
+false
+0
+false
+"non-positive"
+
+4
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredBranch
+123
+137
+6
+<none>
+Literal
+true
+0
+false
+"non-positive"
+
+5
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredBranch
+49
+66
+4
+coveredBranch
+DefDef
+false
+0
+false
+def coveredBranch
+
+6
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+204
+209
+10
+>
+Apply
+false
+0
+true
+x > 0
+
+7
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+215
+225
+10
+<none>
+Literal
+false
+0
+true
+"positive"
+
+8
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+215
+225
+10
+<none>
+Literal
+true
+0
+true
+"positive"
+
+9
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+235
+249
+11
+<none>
+Literal
+false
+0
+true
+"non-positive"
+
+10
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+235
+249
+11
+<none>
+Literal
+true
+0
+true
+"non-positive"
+
+11
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredBranch
+161
+178
+9
+ignoredBranch
+DefDef
+false
+0
+true
+def ignoredBranch
+
+12
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+310
+315
+14
+<none>
+Literal
+false
+0
+true
+"one"
+
+13
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+307
+315
+14
+<none>
+Block
+true
+0
+true
+=> "one"
+
+14
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+330
+335
+15
+<none>
+Literal
+false
+0
+true
+"two"
+
+15
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+327
+335
+15
+<none>
+Block
+true
+0
+true
+=> "two"
+
+16
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+350
+357
+16
+<none>
+Literal
+false
+0
+true
+"other"
+
+17
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+347
+357
+16
+<none>
+Block
+true
+0
+true
+=> "other"
+
+18
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredMatch
+253
+269
+13
+ignoredMatch
+DefDef
+false
+0
+true
+def ignoredMatch
+
+19
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+396
+401
+19
+/
+Apply
+false
+0
+true
+1 / 0
+
+20
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+396
+397
+19
+<none>
+Literal
+false
+0
+true
+1
+
+21
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+396
+401
+19
+/
+Apply
+true
+0
+true
+1 / 0
+
+22
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+449
+451
+21
+<none>
+Literal
+false
+0
+true
+-1
+
+23
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+446
+451
+21
+<none>
+Block
+true
+0
+true
+=> -1
+
+24
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+ignoredTryCatch
+361
+380
+18
+ignoredTryCatch
+DefDef
+false
+0
+true
+def ignoredTryCatch
+
+25
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+536
+541
+25
+<none>
+Literal
+false
+0
+false
+"int"
+
+26
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+533
+541
+25
+<none>
+Block
+true
+0
+false
+=> "int"
+
+27
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+564
+572
+26
+<none>
+Literal
+false
+0
+false
+"string"
+
+28
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+561
+572
+26
+<none>
+Block
+true
+0
+false
+=> "string"
+
+29
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+587
+594
+27
+<none>
+Literal
+false
+0
+false
+"other"
+
+30
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+584
+594
+27
+<none>
+Block
+true
+0
+false
+=> "other"
+
+31
+BranchesIgnoredLocally.scala
+covtest
+BranchesIgnoredLocally
+Class
+covtest.BranchesIgnoredLocally
+coveredMatch
+474
+490
+24
+coveredMatch
+DefDef
+false
+0
+false
+def coveredMatch
+

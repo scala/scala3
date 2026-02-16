@@ -8,7 +8,7 @@ def Case2 = {
   object WriteOf:
     final inline def tuple[T <: Tuple]: Write[T] = ???
 
-  given EntryToJson[T]: scala.Conversion[T, JsonStructureEntry[T]] = ???
+  given EntryToJson: [T] => scala.Conversion[T, JsonStructureEntry[T]] = ???
   class JsonStructureEntry[T](t: T):
     def writeAs[X >: T](using Write[X]): util.Try[JsonVal] = ???
 

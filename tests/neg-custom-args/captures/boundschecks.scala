@@ -11,7 +11,7 @@ object test {
     f[Tree^](t) // error
     f[Tree](t)  // error
     val c1 = C(t) // error
-    val c2 = C[Tree^](t) // error
+    val c2 = C[Tree^](t) // error // error
     val c3 = C[Tree](t)  // error
 
     val foo: C[Tree^] = ???

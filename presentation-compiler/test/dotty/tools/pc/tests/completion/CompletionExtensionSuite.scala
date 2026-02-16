@@ -17,12 +17,14 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (extension)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
   @Test def `simple-old-syntax` =
     check(
-      """|package example
+      """package example
         |
         |object Test:
         |  implicit class TestOps(a: Int):
@@ -30,8 +32,9 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |
         |def main = 100.test@@
         |""".stripMargin,
-      """|testOps(b: Int): String (implicit)
-        |""".stripMargin
+      """testOps(b: Int): String (implicit)
+        |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `simple2` =
@@ -94,7 +97,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |def main = "foo".iden@@
         |""".stripMargin,
       """|identity: String (implicit)
-        |""".stripMargin // identity2 won't be available
+        |""".stripMargin, // identity2 won't be available
+      filter = _.contains("(implicit)")
     )
 
   @Test def `filter-by-type-subtype` =
@@ -152,7 +156,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    def incr: Int = num + 1
          |
          |def main = 100.incr
-         |""".stripMargin
+         |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `simple-edit-old` =
@@ -174,7 +179,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    def incr: Int = num + 1
          |
          |def main = 100.incr
-         |""".stripMargin
+         |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `simple-edit-suffix` =
@@ -201,7 +207,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
 
   @Test def `simple-edit-suffix-old` =
     checkEdit(
-     """|package example
+      """|package example
         |
         |object enrichments:
         |  implicit class A (val num: Int):
@@ -209,7 +215,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |
         |def main = 100.pl@@
         |""".stripMargin,
-     """|package example
+      """|package example
         |
         |import example.enrichments.A
         |
@@ -221,6 +227,9 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |""".stripMargin
     )
 
+  /** For optimization, we don't show any completions here as it would bring
+   *  every extension method into the completion list.
+   */
   @Test def `simple-empty` =
     check(
       """|package example
@@ -231,11 +240,12 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |
          |def main = 100.@@
          |""".stripMargin,
-      """|incr: Int (extension)
-         |""".stripMargin,
+      "",
       filter = _.contains("(extension)")
     )
 
+  /** Some as above, but for implicit completions.
+   */
   @Test def `simple-empty-old` =
     check(
       """|package example
@@ -246,8 +256,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |
          |def main = 100.@@
          |""".stripMargin,
-      """|testOps(b: Int): String (implicit)
-         |""".stripMargin,
+      "",
       filter = _.contains("(implicit)")
     )
 
@@ -262,11 +271,13 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (extension)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
   @Test def `directly-in-pkg1-old` =
-  check(
+    check(
       """|
          |package examples:
          |  implicit class A(num: Int):
@@ -276,6 +287,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (implicit)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -290,6 +303,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (extension)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -304,6 +319,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (implicit)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -391,7 +408,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |testVal: Int (implicit)
          |testVar: Int (implicit)
          |testOps(b: Int): String (implicit)
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(4)
     )
 
   @Test def `implicit-val-edit` =
@@ -413,5 +431,47 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    val testVal: Int = 42
          |
          |def main = 100.testVal
-         |""".stripMargin
+         |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `extension-for-case-class` =
+    check(
+      """|case class Bar():
+         |  def baz(): Unit = ???
+         |
+         |object Bar:
+         |  extension (f: Bar)
+         |    def qux: Unit = ???
+         |
+         |object Main:
+         |  val _ = Bar().@@
+         |""".stripMargin,
+      """|baz(): Unit
+         |copy(): Bar
+         |qux: Unit
+         |asInstanceOf[X0]: X0
+         |canEqual(that: Any): Boolean
+         |equals(x$0: Any): Boolean
+         |getClass[X0 >: Bar](): Class[? <: X0]
+         |hashCode(): Int
+         |isInstanceOf[X0]: Boolean
+         |productArity: Int
+         |productElement(n: Int): Any
+         |productElementName(n: Int): String
+         |productElementNames: Iterator[String]
+         |productIterator: Iterator[Any]
+         |productPrefix: String
+         |synchronized[X0](x$0: X0): X0
+         |toString(): String
+         |->[B](y: B): (Bar, B)
+         |ensuring(cond: Boolean): Bar
+         |ensuring(cond: Bar => Boolean): Bar
+         |ensuring(cond: Boolean, msg: => Any): Bar
+         |ensuring(cond: Bar => Boolean, msg: => Any): Bar
+         |nn: `?1`.type
+         |runtimeChecked: `?2`.type
+         |formatted(fmtstr: String): String
+         |→[B](y: B): (Bar, B)
+         | """.stripMargin
     )

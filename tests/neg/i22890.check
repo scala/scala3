@@ -1,0 +1,7 @@
+-- [E161] Naming Error: tests/neg/i22890/caps_1.java:3:0 ---------------------------------------------------------------
+3 |class caps { // error: caps is already defined as package caps
+  |^
+  |caps is already defined as package scala.caps
+package scala contains object and package with same name: caps.
+This indicates that there are several versions of the Scala standard library on the classpath.
+The build should be reconfigured so that only one version of the standard library is on the classpath.

@@ -1,0 +1,20 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23746.scala:5:2 -----------------------------------------
+5 |  () => op.run()  // error
+  |  ^^^^^^^^^^^^^^
+  |  Found:    () ->{any} Unit
+  |  Required: () -> Unit
+  |
+  |  Note that capability `any` cannot flow into capture set {}.
+  |
+  |  where:    any is a root capability in the type of type X
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23746.scala:10:4 ----------------------------------------
+10 |    () => op.run()  // error
+   |    ^^^^^^^^^^^^^^
+   |    Found:    () ->{a} Unit
+   |    Required: () -> Unit
+   |
+   |    Note that capability `a` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

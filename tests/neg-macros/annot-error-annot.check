@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:17:6 ---------------------------------------------------------
 16 |@error
 17 |class cGlobal // error
@@ -34,12 +33,14 @@
 32 |  given gMember2: Num[Int] with // error
    |  ^
    |  MACRO ERROR
+   |
 33 |    def zero = 0
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:35:8 ---------------------------------------------------------
 34 |  @error
 35 |  given gMember3(using DummyImplicit): Num[Int] with // error
    |  ^
    |  MACRO ERROR
+   |
 36 |    def zero = 0
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:39:8 ---------------------------------------------------------
 38 |  @error
@@ -76,12 +77,14 @@
 54 |    given gLocal2: Num[Int] with // error
    |    ^
    |    MACRO ERROR
+   |
 55 |      def zero = 0
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:57:10 --------------------------------------------------------
 56 |    @error
 57 |    given gLocal3(using DummyImplicit): Num[Int] with // error
    |    ^
    |    MACRO ERROR
+   |
 58 |      def zero = 0
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:61:10 --------------------------------------------------------
 60 |    @error
@@ -118,10 +121,12 @@
 10 |given gGlobal2: Num[Int] with // error
    |^
    |MACRO ERROR
+   |
 11 |  def zero = 0
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:13:6 ---------------------------------------------------------
 12 |@error
 13 |given gGlobal3(using DummyImplicit): Num[Int] with // error
    |^
    |MACRO ERROR
+   |
 14 |  def zero = 0

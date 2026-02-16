@@ -76,6 +76,40 @@ test$package
 Object
 <empty>.test$package
 Test
+101
+120
+8
+||
+Apply
+false
+0
+false
+true || notCalled()
+
+4
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+101
+105
+8
+<none>
+Literal
+false
+0
+false
+true
+
+5
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
 109
 120
 8
@@ -86,7 +120,41 @@ false
 false
 notCalled()
 
-4
+6
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+150
+170
+9
+&&
+Apply
+false
+0
+false
+false && notCalled()
+
+7
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+150
+155
+9
+<none>
+Literal
+false
+0
+false
+false
+
+8
 lifting-bool/test.scala
 <empty>
 test$package
@@ -103,7 +171,41 @@ false
 false
 notCalled()
 
-5
+9
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+200
+230
+10
+||
+Apply
+false
+0
+false
+(true || false) || notCalled()
+
+10
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+201
+205
+10
+<none>
+Literal
+false
+0
+false
+true
+
+11
 lifting-bool/test.scala
 <empty>
 test$package
@@ -120,7 +222,75 @@ false
 false
 notCalled()
 
-6
+12
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+249
+278
+11
+&&
+Apply
+false
+0
+false
+true && (false && notCalled()
+
+13
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+249
+253
+11
+<none>
+Literal
+false
+0
+false
+true
+
+14
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+258
+278
+11
+&&
+Apply
+false
+0
+false
+false && notCalled()
+
+15
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+258
+263
+11
+<none>
+Literal
+false
+0
+false
+false
+
+16
 lifting-bool/test.scala
 <empty>
 test$package
@@ -137,7 +307,41 @@ false
 false
 notCalled()
 
-7
+17
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+299
+329
+12
+&&
+Apply
+false
+0
+false
+(true && false) && notCalled()
+
+18
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+300
+304
+12
+<none>
+Literal
+false
+0
+false
+true
+
+19
 lifting-bool/test.scala
 <empty>
 test$package
@@ -154,7 +358,7 @@ false
 false
 notCalled()
 
-8
+20
 lifting-bool/test.scala
 <empty>
 test$package
@@ -171,24 +375,7 @@ false
 false
 println(s"$a $b $c $d $e")
 
-9
-lifting-bool/test.scala
-<empty>
-test$package
-Object
-<empty>.test$package
-Test
-349
-366
-13
-s
-Apply
-false
-0
-false
-s"$a $b $c $d $e"
-
-10
+21
 lifting-bool/test.scala
 <empty>
 test$package
@@ -205,7 +392,7 @@ false
 false
 f(true, false)
 
-11
+22
 lifting-bool/test.scala
 <empty>
 test$package
@@ -222,7 +409,7 @@ false
 false
 println(x)
 
-12
+23
 lifting-bool/test.scala
 <empty>
 test$package
@@ -239,7 +426,41 @@ false
 false
 f(true || notCalled(), false && notCalled())
 
-13
+24
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+424
+443
+18
+||
+Apply
+false
+0
+false
+true || notCalled()
+
+25
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+424
+428
+18
+<none>
+Literal
+false
+0
+false
+true
+
+26
 lifting-bool/test.scala
 <empty>
 test$package
@@ -256,7 +477,41 @@ false
 false
 notCalled()
 
-14
+27
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+445
+465
+18
+&&
+Apply
+false
+0
+false
+false && notCalled()
+
+28
+lifting-bool/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+445
+450
+18
+<none>
+Literal
+false
+0
+false
+false
+
+29
 lifting-bool/test.scala
 <empty>
 test$package
@@ -273,7 +528,7 @@ false
 false
 notCalled()
 
-15
+30
 lifting-bool/test.scala
 <empty>
 test$package
@@ -290,7 +545,7 @@ false
 false
 println(x)
 
-16
+31
 lifting-bool/test.scala
 <empty>
 test$package

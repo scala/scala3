@@ -1,29 +1,23 @@
 package dotty.tools.pc
 
-import dotty.tools.dotc.ast.tpd.*
+import scala.jdk.CollectionConverters.*
+import scala.meta.pc.OffsetParams
+import scala.meta.pc.SymbolDocumentation
+import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
+
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.parsing.Tokens.closingRegionTokens
-import dotty.tools.dotc.reporting.ErrorMessageID
-import dotty.tools.dotc.reporting.ExpectedTokenButFound
 import dotty.tools.dotc.util.Signatures
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.Spans
-import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import org.eclipse.lsp4j as l
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
-import scala.jdk.CollectionConverters.*
-import scala.jdk.OptionConverters.*
-import scala.meta.internal.metals.ReportContext
-import scala.meta.pc.OffsetParams
-import scala.meta.pc.SymbolDocumentation
-import scala.meta.pc.SymbolSearch
+import org.eclipse.lsp4j as l
 
 object SignatureHelpProvider:
 
@@ -44,7 +38,7 @@ object SignatureHelpProvider:
         val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx)
 
         val localizedContext = Interactive.contextOfPath(path)(using driver.currentCtx)
-        val indexedContext = IndexedContext(driver.currentCtx)
+        val indexedContext = IndexedContext(pos)(using driver.currentCtx)
 
         given Context = localizedContext.fresh
           .setCompilationUnit(unit)
@@ -83,7 +77,11 @@ object SignatureHelpProvider:
     val methodParams = info.parameters().nn.asScala
     val typeParams = info.typeParameters().nn.asScala
 
-    def updateParams(params: List[Signatures.Param], typeParamIndex: Int, methodParamIndex: Int): List[Signatures.Param] =
+    def updateParams(
+        params: List[Signatures.Param],
+        typeParamIndex: Int,
+        methodParamIndex: Int
+    ): List[Signatures.Param] =
       params match
         case (head: Signatures.MethodParam) :: tail =>
           val rest = updateParams(tail, typeParamIndex, methodParamIndex + 1)
@@ -91,7 +89,7 @@ object SignatureHelpProvider:
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
-                  paramDoc.nn.displayName()
+                  paramDoc.displayName()
                 else head.name
               head.copy(name = newName.nn, doc = Some(paramDoc.docstring.nn)) :: rest
             case _ => head :: rest
@@ -134,13 +132,13 @@ object SignatureHelpProvider:
             case _ => false
           val prefix = if isImplicit then "using " else ""
           val isTypeParams = paramList.forall(_.isInstanceOf[Signatures.TypeParam]) && paramList.nonEmpty
-          val wrap: String => String = label => if isTypeParams then
-            s"[$label]"
-          else
-            s"($label)"
+          val wrap: String => String = label =>
+            if isTypeParams then
+              s"[$label]"
+            else
+              s"($label)"
           wrap(labels.mkString(prefix, ", ", ""))
         }.mkString
-
 
     val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
     val label = s"${signature.name}$paramLists$returnTypeLabel"
@@ -149,10 +147,8 @@ object SignatureHelpProvider:
     sig.setParameters(paramInfoss.asJava)
     documentation.foreach(sig.setDocumentation(_))
     sig
-  end signatureToSignatureInformation
 
-  /**
-   * Convert `param` to `ParameterInformation`
+  /** Convert `param` to `ParameterInformation`
    */
   private def paramToParameterInformation(
       param: Signatures.Param

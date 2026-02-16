@@ -14,7 +14,7 @@ type OnChannel = Channel => Any
   val case1: OnChannel = Mockito.mock[OnChannel]
   val case2: OnChannel = Mockito.mock
   val case3 = Mockito.mock[OnChannel]
-  val case4: OnChannel =  Mockito.mock[OnChannel](summon[ClassTag[OnChannel]])
+  val case4: OnChannel =  Mockito.mock[OnChannel](using summon[ClassTag[OnChannel]])
 
   // not a regressive case, but an added improvement with the fix for the above
   val case5: Channel => Any = Mockito.mock[Channel => Any]

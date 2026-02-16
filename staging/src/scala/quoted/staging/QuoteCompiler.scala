@@ -25,6 +25,7 @@ import dotty.tools.io.{Path, VirtualFile}
 import scala.quoted.runtime.impl._
 
 import scala.annotation.tailrec
+import scala.compiletime.uninitialized
 import scala.concurrent.Promise
 import scala.quoted.{Expr, Quotes, Type}
 
@@ -34,7 +35,7 @@ import scala.quoted.{Expr, Quotes, Type}
 private class QuoteCompiler extends Compiler:
 
   /** Either `Left` with name of the classfile generated or `Right` with the value contained in the expression */
-  private var result: Either[String, Any] = null
+  private var result: Either[String, Any] = uninitialized
 
   override protected def frontendPhases: List[List[Phase]] =
     List(List(new QuotedFrontend))
@@ -48,7 +49,9 @@ private class QuoteCompiler extends Compiler:
 
   override def newRun(implicit ctx: Context): ExprRun =
     reset()
-    new ExprRun(this, ctx.addMode(Mode.ReadPositions))
+    val run = new ExprRun(this, ctx.addMode(Mode.ReadPositions))
+    run.doNotEnrichErrorMessage
+    run
 
   def outputClassName: TypeName = "Generated$Code$From$Quoted".toTypeName
 

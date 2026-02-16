@@ -23,7 +23,13 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.report
+import dotty.tools.dotc.ast.Trees.SyntheticUnit
+import dotty.tools.dotc.ast.Positioned
+
+import tpd.*
+import DottyBackendInterface.symExtensions
 
 /*
  *
@@ -31,16 +37,7 @@ import dotty.tools.dotc.report
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder extends BCodeSkelBuilder {
-  // import global.*
-  // import definitions.*
-  import tpd.*
-  import int.{_, given}
-  import DottyBackendInterface.symExtensions
-  import bTypes.*
-  import coreBTypes.*
-
-  protected val primitives: DottyPrimitives
+trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) extends BCodeSkelBuilder {
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
@@ -48,6 +45,31 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   abstract class PlainBodyBuilder(cunit: CompilationUnit) extends PlainSkelBuilder(cunit) {
 
     import Primitives.TestOp
+
+    private object DesugaredSelect {
+      private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
+
+      def cached(i: Ident): Option[tpd.Select] = {
+        var found = desugared.get(i.tpe)
+        if (found == null) {
+          tpd.desugarIdent(i) match {
+            case sel: tpd.Select =>
+              desugared.put(i.tpe, sel)
+              found = sel
+            case _ =>
+          }
+        }
+        Option(found)
+      }
+
+      def unapply(s: tpd.Tree): Option[(Tree, Name)] = {
+        s match {
+          case t: tpd.Select => Some((t.qualifier, t.name))
+          case t: Ident => cached(t).map(c => (c.qualifier, c.name))
+          case _ => None
+        }
+      }
+    }
 
     /* ---------------- helper utils for generating methods and code ---------------- */
 
@@ -141,7 +163,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // binary operation
         case rarg :: Nil =>
           val isShift = isShiftOp(code)
-          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg))
+          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), ts)
 
           if (isShift || isBitwiseOp(code)) {
             assert(resKind.isIntegralType || (resKind == BOOL),
@@ -154,11 +176,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           stack.pop()
 
           (code: @switch) match {
-            case ADD => bc add resKind
-            case SUB => bc sub resKind
-            case MUL => bc mul resKind
-            case DIV => bc div resKind
-            case MOD => bc rem resKind
+            case ADD => bc.add(resKind)
+            case SUB => bc.sub(resKind)
+            case MUL => bc.mul(resKind)
+            case DIV => bc.div(resKind)
+            case MOD => bc.rem(resKind)
 
             case OR  | XOR | AND => bc.genPrimitiveLogical(code, resKind)
 
@@ -181,7 +203,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       import ScalaPrimitivesOps.*
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
-      val elementType = typeOfArrayOp.getOrElse[bTypes.BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
+      val elementType = ts.typeOfArrayOp.getOrElse[BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
 
       var generatedType = expectedType
 
@@ -218,10 +240,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val success = new asm.Label
       val failure = new asm.Label
 
-      val hasElse = !elsep.isEmpty && (elsep match {
-        case Literal(value) if value.tag == UnitTag => false
-        case _ => true
-      })
+      val hasElse = !elsep.hasAttachment(SyntheticUnit)
 
       genCond(condp, success, failure, targetIfNoJump = success)
       markProgramPoint(success)
@@ -250,6 +269,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if hasElse then
           genLoadTo(elsep, expectedType, dest)
         else
+          lineNumber(tree.cond)
           genAdaptAndSendToDest(UNIT, expectedType, dest)
         expectedType
       end if
@@ -272,11 +292,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         genCond(tree, success, failure, targetIfNoJump = success)
         // success block
         markProgramPoint(success)
-        bc boolconst true
-        bc goTo after
+        bc.boolconst(true)
+        bc.goTo(after)
         // failure block
         markProgramPoint(failure)
-        bc boolconst false
+        bc.boolconst(false)
         // after
         markProgramPoint(after)
 
@@ -370,7 +390,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // load receiver of non-static implementation of lambda
 
             // darkdimius: I haven't found in spec `this` reference should go
-            // but I was able to derrive it by reading
+            // but I was able to derive it by reading
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
             val DesugaredSelect(prefix, _) = fun: @unchecked
@@ -399,7 +419,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // the generatedType to `Array` below, the call to adapt at the end would fail. The situation is
             // similar for primitives (`I` vs `Int`).
             if (tree.symbol != defn.ArrayClass && !tree.symbol.isPrimitiveValueClass) {
-              generatedType = classBTypeFromSymbol(claszSymbol)
+              generatedType = ts.classBTypeFromSymbol(claszSymbol)
             }
           }
 
@@ -432,22 +452,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val tk = symInfoTK(sym)
           generatedType = tk
 
-          val desugared = cachedDesugarIdent(t)
-          desugared match {
-            case None =>
-              if (!sym.is(Package)) {
-                if (sym.is(Module)) genLoadModule(sym)
-                else locals.load(sym)
-              }
-            case Some(t) =>
-              genLoad(t, generatedType)
+          if (!sym.is(Package)) {
+            if (sym.is(Module)) genLoadModule(sym)
+            else locals.load(sym)
           }
 
         case Literal(value) =>
           if (value.tag != UnitTag) (value.tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = srNullRef
+            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = ts.srNullRef
             case _                  => genConstant(value);               generatedType = tpeTK(tree)
           }
 
@@ -470,7 +484,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = UNIT
           genStat(tree)
 
-        case av @ ArrayValue(_, _) =>
+        case av: tpd.JavaSeqLiteral =>
           generatedType = genArrayValue(av)
 
         case mtch @ Match(_, _) =>
@@ -502,21 +516,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val stackDiff = stack.heightDiffWrt(targetStackSize)
           if stackDiff != 0 then
             if expectedType == UNIT then
-              bc dropMany stackDiff
+              bc.dropMany(stackDiff)
             else
               val loc = locals.makeTempLocal(expectedType)
               bc.store(loc.idx, expectedType)
-              bc dropMany stackDiff
+              bc.dropMany(stackDiff)
               bc.load(loc.idx, expectedType)
           end if
-          bc goTo label
+          bc.goTo(label)
         case LoadDestination.Return =>
-          bc emitRETURN returnType
+          bc.emitRETURN(returnType)
         case LoadDestination.Throw =>
           val thrownType = expectedType
-          // `throw null` is valid although scala.Null (as defined in src/libray-aux) isn't a subtype of Throwable.
-          // Similarly for scala.Nothing (again, as defined in src/libray-aux).
-          assert(thrownType.isNullType || thrownType.isNothingType || thrownType.asClassBType.isSubtypeOf(jlThrowableRef))
+          // `throw null` is valid although scala.Null (as defined in src/library-aux) isn't a subtype of Throwable.
+          // Similarly for scala.Nothing (again, as defined in src/library-aux).
+          assert(thrownType.isNullType || thrownType.isNothingType || thrownType.asClassBType.isSubtypeOf(ts.jlThrowableRef).getOrElse(false))
           emit(asm.Opcodes.ATHROW)
     end genAdaptAndSendToDest
 
@@ -581,12 +595,12 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case ClazzTag   =>
           val tp = toTypeKind(const.typeValue)
           if tp.isPrimitive then
-            val boxedClass = boxedClassOfPrimitive(tp.asPrimitiveBType)
+            val boxedClass = ts.boxedClassOfPrimitive(tp.asPrimitiveBType)
             mnode.visitFieldInsn(
               asm.Opcodes.GETSTATIC,
               boxedClass.internalName,
               "TYPE", // field name
-              jlClassRef.descriptor
+              ts.jlClassRef.descriptor
             )
           else
             mnode.visitLdcInsn(tp.toASMType)
@@ -635,7 +649,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               }
               locals.store(earlyReturnVar)
             }
-            bc goTo nextCleanup
+            bc.goTo(nextCleanup)
             shouldEmitCleanup = true
         }
       } else {
@@ -698,20 +712,20 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if (l.isPrimitive && r.isPrimitive)
           genConversion(l, r, cast)
         else if (l.isPrimitive) {
-          bc drop l
+          bc.drop(l)
           if (cast) {
-            mnode.visitTypeInsn(asm.Opcodes.NEW, jlClassCastExceptionRef.internalName)
-            bc dup ObjectRef
+            mnode.visitTypeInsn(asm.Opcodes.NEW, ts.jlClassCastExceptionRef.internalName)
+            bc.dup(ts.ObjectRef)
             emit(asm.Opcodes.ATHROW)
           } else {
-            bc boolconst false
+            bc.boolconst(false)
           }
         }
         else if (r.isPrimitive && cast) {
           abort(s"Erasure should have added an unboxing operation to prevent this cast. Tree: $t")
         }
         else if (r.isPrimitive) {
-          bc isInstance boxedClassOfPrimitive(r.asPrimitiveBType)
+          bc.isInstance(ts.boxedClassOfPrimitive(r.asPrimitiveBType))
         }
         else {
           assert(r.isRef, r) // ensure that it's not a method
@@ -738,7 +752,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
       genLoadArguments(args, List.fill(args.size)(INT))
       (argsSize /*: @switch*/) match {
-        case 1 => bc newarray elemKind
+        case 1 => bc.newarray(elemKind)
         case _ =>
           val descr = ("[" * argsSize) + elemKind.descriptor // denotes the same as: arrayN(elemKind, argsSize).descriptor
           mnode.visitMultiANewArrayInsn(descr, argsSize)
@@ -751,10 +765,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args: @unchecked
+          val List(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
 
           generatedType = toTypeKind(c.typeValue)
-          mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
+          mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
         case Apply(t :TypeApply, _) =>
           generatedType =
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
@@ -791,9 +805,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               mkArrayConstructorCall(arr, app, args)
 
             case rt: ClassBType =>
-              assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
+              assert(ts.classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
-              bc dup generatedType
+              bc.dup(generatedType)
               stack.push(rt)
               stack.push(rt)
               genLoadArguments(args, paramTKs(app))
@@ -807,16 +821,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
-          val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
-          bc.invokestatic(srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
-          generatedType = boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
+          val MethodNameAndType(mname, methodType) = ts.asmBoxTo(nativeKind)
+          bc.invokestatic(ts.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
+          generatedType = ts.boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
-          val boxType = unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
+          val boxType = ts.unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
-          val MethodNameAndType(mname, methodType) = asmUnboxTo(boxType)
-          bc.invokestatic(srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
+          val MethodNameAndType(mname, methodType) = ts.asmUnboxTo(boxType)
+          bc.invokestatic(ts.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
@@ -879,18 +893,23 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     } // end of genApply()
 
     private def genArrayValue(av: tpd.JavaSeqLiteral): BType = {
-      val ArrayValue(tpt, elems) = av: @unchecked
+      val tpt = av.tpe match {
+        case JavaArrayType(elem) => elem
+        case _ =>
+          report.error(em"JavaSeqArray with type ${av.tpe} reached backend: $av", ctx.source.atSpan(av.span))
+          UnspecifiedErrorType
+      }
 
       lineNumber(av)
-      genArray(elems, tpt)
+      genArray(av.elems, tpt)
     }
 
     private def genArray(elems: List[Tree], elemType: Type): BType = {
       val elmKind       = toTypeKind(elemType)
       val generatedType = ArrayBType(elmKind)
 
-      bc iconst   elems.length
-      bc newarray elmKind
+      bc.iconst(elems.length)
+      bc.newarray(elmKind)
 
       // during the genLoad below, there is the result, its dup, and the index
       stack.push(generatedType)
@@ -900,10 +919,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var i = 0
       var rest = elems
       while (!rest.isEmpty) {
-        bc dup     generatedType
-        bc iconst  i
+        bc.dup(    generatedType)
+        bc.iconst( i)
         genLoad(rest.head, elmKind)
-        bc astore  elmKind
+        bc.astore( elmKind)
         rest = rest.tail
         i = i + 1
       }
@@ -1071,7 +1090,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             }
             markProgramPoint(keepGoing)
           }
-          bc goTo default
+          bc.goTo(default)
         }
 
         // emit blocks for common patterns
@@ -1110,12 +1129,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     end emitLocalVarScopes
 
     def adapt(from: BType, to: BType): Unit = {
-      if (!from.conformsTo(to)) {
-        to match {
-          case UNIT => bc drop from
-          case _    => bc.emitT2T(from, to)
-        }
-      } else if (from.isNothingType) {
+      if (from.isNothingType) {
         /* There are two possibilities for from.isNothingType: emitting a "throw e" expressions and
          * loading a (phantom) value of type Nothing.
          *
@@ -1144,7 +1158,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          *       - Every time when generating an ATHROW, a new basic block is started.
          *       - During classfile writing, such basic blocks are found to be dead: no branches go there
          *       - Eliminating dead code would probably require complex shifts in the output byte buffer
-         *       - But there's an easy solution: replace all code in the dead block with with
+         *       - But there's an easy solution: replace all code in the dead block with
          *         `nop; nop; ... nop; athrow`, making sure the bytecode size stays the same
          *       - The corresponding stack frame can be easily generated: on entering a dead the block,
          *         the frame requires a single Throwable on the stack.
@@ -1175,13 +1189,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          * inserted instead - after all, an expression of type scala.runtime.Null$ can only be null.
          */
         if (lastInsn.getOpcode != asm.Opcodes.ACONST_NULL) {
-          bc drop from
-          emit(asm.Opcodes.ACONST_NULL)
+          bc.drop(from)
+          if (to != UNIT)
+            emit(asm.Opcodes.ACONST_NULL)
+        } else if (to == UNIT) {
+          bc.drop(from)
         }
-      }
-      else (from, to) match  {
-        case (BYTE, LONG) | (SHORT, LONG) | (CHAR, LONG) | (INT, LONG) => bc.emitT2T(INT, LONG)
-        case _ => ()
+      } else if (!from.conformsTo(to).get) {
+        to match {
+          case UNIT => bc.drop(from)
+          case _    => bc.emitT2T(from, to)
+        }
       }
     }
 
@@ -1191,7 +1209,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       tree match {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
         case t: Ident             => // dotty specific
-          cachedDesugarIdent(t) match {
+          DesugaredSelect.cached(t) match {
             case Some(sel) => genLoadQualifier(sel)
             case None =>
               assert(t.symbol.owner == this.claszSymbol)
@@ -1249,14 +1267,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genConversion(from: BType, to: BType, cast: Boolean): Unit = {
       if (cast) { bc.emitT2T(from, to) }
       else {
-        bc drop from
-        bc boolconst (from == to)
+        bc.drop(from)
+        bc.boolconst(from == to)
       }
     }
 
     def genCast(to: RefBType, cast: Boolean): Unit = {
-      if (cast) { bc checkCast  to }
-      else      { bc isInstance to }
+      if cast then bc.checkCast(to)
+      else bc.isInstance(to)
     }
 
     /* Is the given symbol a primitive operation? */
@@ -1278,15 +1296,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate string concatenation
      *
-     * On JDK 8: create and append using `StringBuilder`
-     * On JDK 9+: use `invokedynamic` with `StringConcatFactory`
+     * use `invokedynamic` with `StringConcatFactory`
      */
     def genStringConcat(tree: Tree): BType = {
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x
         case List(Literal(Constant("")), arg) =>
-          genLoad(arg, ObjectRef)
+          genLoad(arg, ts.ObjectRef)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
@@ -1304,93 +1321,71 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             }
             .toList
 
-          // `StringConcatFactory` only got added in JDK 9, so use `StringBuilder` for lower
-          if (backendUtils.classfileVersion < asm.Opcodes.V9) {
+          /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
+           * the string concatenation is longer (unlikely), we spill into multiple calls
+           */
+          val MaxIndySlots = 200
+          val TagArg = '\u0001'    // indicates a hole (in the recipe string) for an argument
+          val TagConst = '\u0002'  // indicates a hole (in the recipe string) for a constant
 
-            // Estimate capacity needed for the string builder
-            val approxBuilderSize = concatArguments.view.map {
-              case Literal(Constant(s: String)) => s.length
-              case Literal(c @ Constant(_)) if c.isNonUnitAnyVal => String.valueOf(c).length
-              case _ => 0
-            }.sum
-            bc.genNewStringBuilder(approxBuilderSize)
+          val recipe = new StringBuilder()
+          val argTypes = Seq.newBuilder[asm.Type]
+          val constVals = Seq.newBuilder[String]
+          var totalArgSlots = 0
+          var countConcats = 1     // ie. 1 + how many times we spilled
 
-            stack.push(jlStringBuilderRef) // during the genLoad below, there is a reference to the StringBuilder on the stack
-            for (elem <- concatArguments) {
-              val elemType = tpeTK(elem)
-              genLoad(elem, elemType)
-              bc.genStringBuilderAppend(elemType)
+          val savedStackSize = stack.recordSize()
+
+          for (elem <- concatArguments) {
+            val tpe = tpeTK(elem)
+            val elemSlots = tpe.size
+
+            // Unlikely spill case
+            if (totalArgSlots + elemSlots >= MaxIndySlots) {
+              stack.restoreSize(savedStackSize)
+              for _ <- 0 until countConcats do
+                stack.push(ts.StringRef)
+              bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result(), ts)
+              countConcats += 1
+              totalArgSlots = 0
+              recipe.setLength(0)
+              argTypes.clear()
+              constVals.clear()
             }
-            stack.pop()
 
-            bc.genStringBuilderEnd
-          } else {
-
-            /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
-             * the string concatenation is longer (unlikely), we spill into multiple calls
-             */
-            val MaxIndySlots = 200
-            val TagArg = '\u0001'    // indicates a hole (in the recipe string) for an argument
-            val TagConst = '\u0002'  // indicates a hole (in the recipe string) for a constant
-
-            val recipe = new StringBuilder()
-            val argTypes = Seq.newBuilder[asm.Type]
-            val constVals = Seq.newBuilder[String]
-            var totalArgSlots = 0
-            var countConcats = 1     // ie. 1 + how many times we spilled
-
-            val savedStackSize = stack.recordSize()
-
-            for (elem <- concatArguments) {
-              val tpe = tpeTK(elem)
-              val elemSlots = tpe.size
-
-              // Unlikely spill case
-              if (totalArgSlots + elemSlots >= MaxIndySlots) {
-                stack.restoreSize(savedStackSize)
-                for _ <- 0 until countConcats do
-                  stack.push(StringRef)
-                bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
-                countConcats += 1
-                totalArgSlots = 0
-                recipe.setLength(0)
-                argTypes.clear()
-                constVals.clear()
-              }
-
-              elem match {
-                case Literal(Constant(s: String)) =>
-                  if (s.contains(TagArg) || s.contains(TagConst)) {
-                    totalArgSlots += elemSlots
-                    recipe.append(TagConst)
-                    constVals += s
-                  } else {
-                    recipe.append(s)
-                  }
-
-                case other =>
+            elem match {
+              case Literal(Constant(s: String)) =>
+                if (s.contains(TagArg) || s.contains(TagConst)) {
                   totalArgSlots += elemSlots
-                  recipe.append(TagArg)
-                  val tpe = tpeTK(elem)
-                  argTypes += tpe.toASMType
-                  genLoad(elem, tpe)
-                  stack.push(tpe)
-              }
-            }
-            stack.restoreSize(savedStackSize)
-            bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+                  recipe.append(TagConst)
+                  constVals += s
+                } else {
+                  recipe.append(s)
+                }
 
-            // If we spilled, generate one final concat
-            if (countConcats > 1) {
-              bc.genIndyStringConcat(
-                TagArg.toString * countConcats,
-                Seq.fill(countConcats)(StringRef.toASMType),
-                Seq.empty
-              )
+              case other =>
+                totalArgSlots += elemSlots
+                recipe.append(TagArg)
+                val tpe = tpeTK(elem)
+                argTypes += tpe.toASMType
+                genLoad(elem, tpe)
+                stack.push(tpe)
             }
           }
+          stack.restoreSize(savedStackSize)
+          bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result(), ts)
+
+          // If we spilled, generate one final concat
+          if (countConcats > 1) {
+            bc.genIndyStringConcat(
+              TagArg.toString * countConcats,
+              Seq.fill(countConcats)(ts.StringRef.toASMType),
+              Seq.empty,
+              ts
+            )
+          }
       }
-      StringRef
+      ts.StringRef
     }
 
     /**
@@ -1444,10 +1439,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isInterface = isEmittedInterface(receiverClass)
       import InvokeStyle.*
       if (style == Super) {
+        val ownerBType = toTypeKind(method.owner.info)
+        if (isInterface) {
+          superCallTargets.add(ownerBType.asClassBType)
+        }
         if (isInterface && !method.is(JavaDefined)) {
-          val args = new Array[BType](bmType.argumentTypes.length + 1)
-          val ownerBType = toTypeKind(method.owner.info)
-          bmType.argumentTypes.copyToArray(args, 1)
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface)
@@ -1468,7 +1464,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate the scala ## method. */
     def genScalaHash(tree: Tree): BType = {
-      genLoad(tree, ObjectRef)
+      genLoad(tree, ts.ObjectRef)
       genCallMethod(NoSymbol, InvokeStyle.Static) // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
     }
 
@@ -1505,7 +1501,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           bc.emitIF(op, success)
         }
-        if (targetIfNoJump != failure) bc goTo failure
+        if (targetIfNoJump != failure) bc.goTo(failure)
       }
     }
 
@@ -1518,8 +1514,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.emitIF(op, success)
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           (op: @unchecked) match { // references are only compared with EQ and NE
-            case EQ => bc emitIFNULL    success
-            case NE => bc emitIFNONNULL success
+            case EQ => bc.emitIFNULL(   success)
+            case NE => bc.emitIFNONNULL(success)
           }
         } else {
           def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
@@ -1536,7 +1532,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           bc.emitIF(op, success)
         }
-        if (targetIfNoJump != failure) bc goTo failure
+        if (targetIfNoJump != failure) bc.goTo(failure)
       }
     }
 
@@ -1567,10 +1563,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val nonNullSide = if (ScalaPrimitivesOps.isReferenceEqualityOp(code)) ifOneIsNull(l, r) else null
         if (nonNullSide != null) {
           // special-case reference (in)equality test for null (null eq x, x eq null)
-          genLoad(nonNullSide, ObjectRef)
-          genCZJUMP(success, failure, op, ObjectRef, targetIfNoJump)
+          genLoad(nonNullSide, ts.ObjectRef)
+          genCZJUMP(success, failure, op, ts.ObjectRef, targetIfNoJump)
         } else {
-          val tk = tpeTK(l).maxType(tpeTK(r))
+          val tk = tpeTK(l).maxType(tpeTK(r), ts)
           genLoad(l, tk)
           stack.push(tk)
           genLoad(r, tk)
@@ -1664,12 +1660,12 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val areSameFinals = l.tpe.typeSymbol.is(Final) && r.tpe.typeSymbol.is(Final) && (l.tpe =:= r.tpe)
         // todo: remove
         def isMaybeBoxed(sym: Symbol): Boolean = {
-          (sym == defn.ObjectClass) ||
-            (sym == defn.JavaSerializableClass) ||
-            (sym == defn.ComparableClass) ||
-            (sym derivesFrom defn.BoxedNumberClass) ||
-            (sym derivesFrom defn.BoxedCharClass) ||
-            (sym derivesFrom defn.BoxedBooleanClass)
+          sym == defn.ObjectClass
+          || sym == defn.JavaSerializableClass
+          || sym == defn.ComparableClass
+          || sym.derivesFrom(defn.BoxedNumberClass)
+          || sym.derivesFrom(defn.BoxedCharClass)
+          || sym.derivesFrom(defn.BoxedBooleanClass)
         }
         !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
@@ -1688,9 +1684,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           } else defn.BoxesRunTimeModule_externalEquals
         }
 
-        genLoad(l, ObjectRef)
-        stack.push(ObjectRef)
-        genLoad(r, ObjectRef)
+        genLoad(l, ts.ObjectRef)
+        stack.push(ts.ObjectRef)
+        genLoad(r, ts.ObjectRef)
         stack.pop()
         genCallMethod(equalsMethod, InvokeStyle.Static)
         genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
@@ -1698,38 +1694,38 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       else {
         if (isNull(l)) {
           // null == expr -> expr eq null
-          genLoad(r, ObjectRef)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump)
+          genLoad(r, ts.ObjectRef)
+          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNull(r)) {
           // expr == null -> expr eq null
-          genLoad(l, ObjectRef)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump)
+          genLoad(l, ts.ObjectRef)
+          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNonNullExpr(l)) {
           // SI-7852 Avoid null check if L is statically non-null.
-          genLoad(l, ObjectRef)
-          stack.push(ObjectRef)
-          genLoad(r, ObjectRef)
+          genLoad(l, ts.ObjectRef)
+          stack.push(ts.ObjectRef)
+          genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> if (l eq null) r eq null else l.equals(r)
-          val eqEqTempLocal = locals.makeLocal(ObjectRef, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
+          val eqEqTempLocal = locals.makeLocal(ts.ObjectRef, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
           val lNull    = new asm.Label
           val lNonNull = new asm.Label
 
-          genLoad(l, ObjectRef)
-          stack.push(ObjectRef)
-          genLoad(r, ObjectRef)
+          genLoad(l, ts.ObjectRef)
+          stack.push(ts.ObjectRef)
+          genLoad(r, ts.ObjectRef)
           stack.pop()
           locals.store(eqEqTempLocal)
-          bc dup ObjectRef
-          genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectRef, targetIfNoJump = lNull)
+          bc.dup(ts.ObjectRef)
+          genCZJUMP(lNull, lNonNull, Primitives.EQ, ts.ObjectRef, targetIfNoJump = lNull)
 
           markProgramPoint(lNull)
-          bc drop ObjectRef
+          bc.drop(ts.ObjectRef)
           locals.load(eqEqTempLocal)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump = lNonNull)
+          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump = lNonNull)
 
           markProgramPoint(lNonNull)
           locals.load(eqEqTempLocal)
@@ -1747,7 +1743,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}
 
       report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
-      val generatedType = classBTypeFromSymbol(functionalInterface)
+      val generatedType = ts.classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.
       val isSerializable = functionalInterface.isSerializable || defn.isFunctionClass(functionalInterface)
@@ -1760,7 +1756,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       val targetHandle =
         new asm.Handle(invokeStyle,
-          classBTypeFromSymbol(lambdaTarget.owner).internalName,
+          ts.classBTypeFromSymbol(lambdaTarget.owner).internalName,
           lambdaTarget.javaSimpleName,
           asmMethodType(lambdaTarget).descriptor,
           /* itf = */ isInterface)
@@ -1774,8 +1770,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
-      // TODO specialization
-      val instantiatedMethodType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
       val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
@@ -1788,7 +1782,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
 
       val methodName = samMethod.javaSimpleName
-      val samMethodType = asmMethodType(samMethod).toASMType
+      val samMethodBType = asmMethodType(samMethod)
+      val samMethodType = samMethodBType.toASMType
+
+      def boxInstantiated(instantiatedType: BType, samType: BType): BType =
+        if(!samType.isPrimitive && instantiatedType.isPrimitive)
+          ts.boxedClassOfPrimitive(instantiatedType.asPrimitiveBType)
+        else instantiatedType
+      // TODO specialization
+      val instantiatedMethodBType = new MethodBType(
+        lambdaParamTypes.map(p =>  toTypeKind(p)),
+        boxInstantiated(toTypeKind(lambdaTarget.info.resultType), samMethodBType.returnType)
+      )
+
+      val instantiatedMethodType = instantiatedMethodBType.toASMType
+
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
@@ -1820,9 +1828,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       val metafactory =
         if (flags != 0)
-          jliLambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
+          ts.jliLambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
         else
-          jliLambdaMetaFactoryMetafactoryHandle
+          ts.jliLambdaMetaFactoryMetafactoryHandle
 
       bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
 

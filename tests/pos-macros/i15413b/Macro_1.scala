@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental -Werror -WunstableInlineAccessors
+//> using options -Werror -WunstableInlineAccessors
 
 package bar
 

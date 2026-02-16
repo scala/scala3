@@ -3,7 +3,7 @@ trait Type[T]:
 
 type varchar
 
-given Type[varchar] with
+given Type[varchar]:
   type Out = String
 
 class Placeholder[T, U]
@@ -17,7 +17,7 @@ trait Encoder[P, X]:
 object Encoder:
   def apply[P, X](placeholder: P)(using e: Encoder[P, X]): X => String = e.encode
 
-  given [T, X]: Encoder[Placeholder[T, X], X] with
+  given [T, X] => Encoder[Placeholder[T, X], X]:
     def encode(x: X): String = ???
 
 def Test =

@@ -137,7 +137,7 @@ Otherwise, soft keywords are treated as actual keywords in the following situati
  - `as`, if it appears in a renaming import clause.
  - `derives`, if it appears after an extension clause or after the name and possibly parameters of a class, trait, object, or enum definition.
  - `end`, if it appears at the start of a line following a statement (i.e. definition or toplevel expression) and is followed on the same line by a single non-comment token that is:
-   - one of the keywords `for`, `given`, `if`, `match`, `new`, `this`, `throw`, `try`, `val`, `while`, or
+   - one of the keywords `for`, `given`, `if`, `match`, `new`, `this`, `throw`, `try`, `val`, `while`, `extension` or
    - an identifier.
  - `extension`, if it appears at the start of a statement and is followed by `(` or `[`.
  - `inline`, if it is followed by any token that can start an expression.
@@ -332,9 +332,10 @@ Literal  ::=  [‘-’] integerLiteral
 ### Integer Literals
 
 ```ebnf
-integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
+integerLiteral   ::=  (decimalNumeral | hexNumeral | binaryNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
 hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
+binaryNumeral    ::=  ‘0’ (‘b’ | ‘B’) binaryDigit [{binaryDigit | ‘_’} binaryDigit]
 ```
 
 Values of type `Int` are all integer numbers between $-2\^{31}$ and $2\^{31}-1$, inclusive.
@@ -357,7 +358,7 @@ The numeric ranges given by these types are:
 The digits of a numeric literal may be separated by arbitrarily many underscores for purposes of legibility.
 
 > ```scala
-> 0           21_000      0x7F        -42L        0xFFFF_FFFF
+> 0           21_000      0x7F        -42L        0xFFFF_FFFF        0b0100_0010
 > ```
 
 ### Floating Point Literals

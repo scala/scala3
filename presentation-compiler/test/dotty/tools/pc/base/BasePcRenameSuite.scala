@@ -2,9 +2,9 @@ package dotty.tools.pc.base
 
 import java.net.URI
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.{RangeReplace, TextEdits}
 
@@ -17,7 +17,7 @@ class BasePcRenameSuite extends BasePCSuite with RangeReplace:
       wrap: Boolean = true
   ): Unit =
     val original =
-      if (!wrap) methodBody
+      if !wrap then methodBody
       else
         s"""|object Main {
             |def method() = {
@@ -70,6 +70,6 @@ class BasePcRenameSuite extends BasePCSuite with RangeReplace:
       .get()
 
     val obtained =
-      if (!range.isPresent()) base else replaceInRange(base, range.get())
+      if !range.isPresent() then base else replaceInRange(base, range.get())
 
     assertNoDiff(expected, obtained)

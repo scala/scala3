@@ -1,0 +1,12 @@
+import caps.*
+
+class IO
+
+def f[C^](io: IO^{C}) = ???
+
+def test =
+  f[{}](???)
+  f[{}](???)
+  f[{any}](???)
+  f[Nothing](???) // error
+  f[String](???) // error

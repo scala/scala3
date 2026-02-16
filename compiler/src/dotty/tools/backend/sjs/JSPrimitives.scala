@@ -30,12 +30,14 @@ object JSPrimitives {
   inline val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
   inline val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
-  inline val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
+  inline val JS_ASYNC = JS_IMPORT_META + 1 // js.async
+  inline val JS_AWAIT = JS_ASYNC + 1       // js.await
+
+  inline val CONSTRUCTOROF = JS_AWAIT + 1                               // runtime.constructorOf(clazz)
   inline val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
   inline val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   inline val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  inline val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
-  inline val DYNAMIC_IMPORT = LINKING_INFO + 1                          // runtime.dynamicImport
+  inline val DYNAMIC_IMPORT = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1        // runtime.dynamicImport
 
   inline val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
   inline val IN = STRICT_EQ + 1                            // js.special.in
@@ -48,9 +50,12 @@ object JSPrimitives {
   inline val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
   inline val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
-  inline val THROW = DEBUGGER + 1
+  inline val LINKTIME_IF = DEBUGGER + 1 // LinkingInfo.linkTimeIf
 
-  inline val UNION_FROM = THROW + 1                       // js.|.from
+  inline val THROW = LINKTIME_IF + 1 // <special-ops>.throw
+  inline val NEW_ARRAY = THROW + 1   // scala.runtime.Arrays.newArray
+
+  inline val UNION_FROM = NEW_ARRAY + 1                   // js.|.from
   inline val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
 
   inline val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
@@ -71,8 +76,8 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   override def getPrimitive(sym: Symbol): Int =
     jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
 
-  override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
-    jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
+  override def getPrimitive(app: Apply, tpe: Type): Int =
+    jsPrimitives.getOrElse(app.fun.symbol(using ictx), super.getPrimitive(app, tpe))
 
   override def isPrimitive(sym: Symbol): Boolean =
     jsPrimitives.contains(sym) || super.isPrimitive(sym)
@@ -88,7 +93,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     // !!! Code duplicate with DottyPrimitives
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
-      assert(!(primitives contains s), "Duplicate primitive " + s)
+      assert(!primitives.contains(s), "Duplicate primitive " + s)
       primitives(s) = code
     }
 
@@ -110,6 +115,8 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
 
     addPrimitive(jsdefn.JSPackage_typeOf, TYPEOF)
     addPrimitive(jsdefn.JSPackage_native, JS_NATIVE)
+    addPrimitive(jsdefn.JSPackage_async, JS_ASYNC)
+    addPrimitive(jsdefn.JSPackage_await, JS_AWAIT)
 
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
 
@@ -122,7 +129,6 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
     addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
-    addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
     addPrimitive(jsdefn.Runtime_dynamicImport, DYNAMIC_IMPORT)
 
     addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)
@@ -136,7 +142,10 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
+    addPrimitive(jsdefn.LinkingInfo_linkTimeIf, LINKTIME_IF)
+
     addPrimitive(defn.throwMethod, THROW)
+    addPrimitive(defn.newArrayMethod, NEW_ARRAY)
 
     addPrimitive(jsdefn.PseudoUnion_from, UNION_FROM)
     addPrimitive(jsdefn.PseudoUnion_fromTypeConstructor, UNION_FROM_TYPE_CONSTRUCTOR)

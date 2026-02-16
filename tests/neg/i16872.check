@@ -1,0 +1,36 @@
+-- [E006] Not Found Error: tests/neg/i16872.scala:8:6 ------------------------------------------------------------------
+8 |      aa, // error
+  |      ^^
+  |      Not found: aa
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i16872.scala:9:6 ------------------------------------------------------------------
+9 |      bb, // error
+  |      ^^
+  |      Not found: bb
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i16872.scala:10:6 -----------------------------------------------------------------
+10 |      cc, // error
+   |      ^^
+   |      Not found: cc
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i16872.scala:16:6 -----------------------------------------------------------------
+16 |      dd, // error
+   |      ^^
+   |      Not found: dd
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i16872.scala:17:6 -----------------------------------------------------------------
+17 |      ee, // error
+   |      ^^
+   |      Not found: ee - did you mean eq? or perhaps ne?
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i16872.scala:18:6 -----------------------------------------------------------------
+18 |      ff, // error
+   |      ^^
+   |      Not found: ff
+   |
+   | longer explanation available when compiling with `-explain`

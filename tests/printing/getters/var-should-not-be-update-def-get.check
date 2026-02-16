@@ -1,0 +1,10 @@
+[[syntax trees at end of MegaPhase{pruneErasedDefs, uninitialized, inlinePatterns, vcInlineMethods, seqLiterals, intercepted, getters, specializeFunctions, specializeTuples, collectNullableFields, elimOuterSelect, resolveSuper, functionXXLForwarders, paramForwarding, genericTuples, letOverApply, arrayConstructors}]] // tests/printing/getters/var-should-not-be-update-def-get.scala
+package <empty> {
+  import scala.language.experimental.captureChecking
+  @SourceFile("tests/printing/getters/var-should-not-be-update-def-get.scala")
+    trait Foo() extends Object, scala.caps.Mutable {
+    def x: Int
+    update def x_=(x$1: Int): Unit
+  }
+}
+

@@ -1,14 +1,13 @@
-import scala.language.experimental.clauseInterleaving
 
 object functorInterleaving:
-  //taken from https://dotty.epfl.ch/docs/reference/contextual/type-classes.html
+  //taken from https://nightly.scala-lang.org/docs/reference/contextual/type-classes.html
   //at version 3.1.1-RC1-bin-20210930-01f040b-NIGHTLY
   //modified to have type interleaving
   trait Functor[F[_]]:
     def map[A](x: F[A])[B](f: A => B): F[B]
 
 
-  given Functor[List] with
+  given Functor[List]:
     def map[A](x: List[A])[B](f: A => B): List[B] =
       x.map(f)
 

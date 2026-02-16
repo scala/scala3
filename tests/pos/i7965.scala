@@ -5,8 +5,6 @@ trait Z
 
 abstract class Test {
   def x: Has[X] | (Has[Y] & Has[Z])
-  val y: Has[? >: (X & Y) | (X & Z) <: (X | Y) & (X | Z)] = x
-
   def foo[T <: Has[_]](has: T): T = has
   foo(x)
 }

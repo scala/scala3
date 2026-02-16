@@ -27,12 +27,14 @@ class CompletionTest {
 
   @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }"
-      .completion(("summon", Method, "[T](using x: T): x.type"))
+      .completion(("summon", Method, "[T](using x: T): (x : T)"))
   }
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "Conversion"))
+      .completion(
+        ("Conversion", Class, "Conversion"),
+        ("Conversion", Module, "Conversion"))
   }
 
   @Test def implicitSearchCrash: Unit =
@@ -942,7 +944,7 @@ class CompletionTest {
     code"""object A {
           |  Array.concat${m1}
           |}"""
-      .completion(("concat", Method, "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"))
+      .completion(("concat", Method, "[T](xss: Array[T]*)(using evidence$1: scala.reflect.ClassTag[T]): Array[T]"))
   }
 
   @Test def i12465_hkt: Unit =
@@ -954,14 +956,8 @@ class CompletionTest {
       .noCompletions()
 
   @Test def i13624_annotType: Unit =
-    val expected1 = Set(
-        ("MyAnnotation", Class, "MyAnnotation"),
-        ("MyAnnotation", Module, "MyAnnotation"),
-      )
-    val expected2 = Set(
-        ("MyAnnotation", Class, "Foo.MyAnnotation"),
-        ("MyAnnotation", Module, "Foo.MyAnnotation"),
-      )
+    val expected1 = Set(("MyAnnotation", Class, "MyAnnotation"))
+    val expected2 = Set(("MyAnnotation", Class, "Foo.MyAnnotation"))
     code"""object Foo{
           |  class MyAnnotation extends annotation.StaticAnnotation
           |}
@@ -984,14 +980,8 @@ class CompletionTest {
   @Test def i13624_annotation : Unit =
     code"""@annotation.implicitNot${m1}
           |@annotation.implicitNotFound @mai${m2}"""
-      .completion(m1,
-          ("implicitNotFound", Class, "scala.annotation.implicitNotFound"),
-          ("implicitNotFound", Module, "scala.annotation.implicitNotFound"),
-      )
-      .completion(m2,
-          ("main", Class, "main"),
-          ("main", Module, "main"),
-      )
+      .completion(m1, ("implicitNotFound", Class, "scala.annotation.implicitNotFound"))
+      .completion(m2, ("main", Class, "main"))
 
   @Test def i13623_annotation : Unit =
     code"""import annot${m1}"""
@@ -999,7 +989,7 @@ class CompletionTest {
 
   @Test def importAnnotationAfterImport : Unit =
     code"""import java.lang.annotation; import annot${m1}"""
-      .completion(("annotation", Module, "scala.annotation"))
+      .completion(("annotation", Module, "java.lang.annotation"))
 
   @Test def completeTemplateConstrArgType: Unit = {
     code"""import scala.concurrent.Future
@@ -1040,6 +1030,7 @@ class CompletionTest {
         ("ensuring", Method, "(cond: Boolean): Foo.Bar.type"),
         ("##", Method, "=> Int"),
         ("nn", Method, "=> Foo.Bar.type"),
+        ("runtimeChecked", Method, "=> Foo.Bar.type"),
         ("==", Method, "(x$0: Any): Boolean"),
         ("ensuring", Method, "(cond: Boolean, msg: => Any): Foo.Bar.type"),
         ("ne", Method, "(x$0: Object): Boolean"),
@@ -1489,7 +1480,6 @@ class CompletionTest {
         ("xDef", Method, "=> Int"),
         ("xVal", Field, "Int"),
         ("xObject", Module, "Foo.xObject"),
-        ("xClass", Module, "Foo.xClass"),
         ("xClass", Class, "Foo.xClass")))
   }
 
@@ -1498,8 +1488,8 @@ class CompletionTest {
           |  1 match { case foo if fo${m1} => }
           |  1 match { case foo => fo${m2} }
           """
-      .completion(m1, Set(("foo", Field, "Int")))
-      .completion(m2, Set(("foo", Field, "Int")))
+      .completion(m1, Set(("foo", Field, "(1 : Int)")))
+      .completion(m2, Set(("foo", Field, "(1 : Int)")))
   }
 
   @Test def patternGuardCompletionsUnApply: Unit = {
@@ -1557,9 +1547,7 @@ class CompletionTest {
            |object T:
            |  extension (x: Test.TestSel$m1)
            |"""
-      .completion(m1, Set(
-        ("TestSelect", Module, "Test.TestSelect"), ("TestSelect", Class, "Test.TestSelect")
-      ))
+      .completion(m1, Set(("TestSelect", Class, "Test.TestSelect")))
 
   @Test def extensionDefinitionCompletionsSelectNested: Unit =
     code"""|object Test:
@@ -1568,9 +1556,7 @@ class CompletionTest {
            |object T:
            |  extension (x: Test.Test2.TestSel$m1)
            |"""
-      .completion(m1, Set(
-        ("TestSelect", Module, "Test.Test2.TestSelect"), ("TestSelect", Class, "Test.Test2.TestSelect")
-      ))
+      .completion(m1, Set(("TestSelect", Class, "Test.Test2.TestSelect")))
 
   @Test def extensionDefinitionCompletionsSelectInside: Unit =
     code"""|object Test:
@@ -1721,4 +1707,32 @@ class CompletionTest {
      .completion(m1, Set(
        ("getOrElse", Method, "[V1 >: String](key: Int, default: => V1): V1"),
      ))
+
+  @Test def noEnumCompletionInNewContext: Unit =
+    code"""|enum TestEnum:
+           |  case TestCase
+           |object M:
+           |  TestEnu$m1
+           |  TestEnum.TestCa$m2
+           |  val x: TestEnu$m3
+           |  val y: TestEnum.Tes$m4
+           |  new TestEnu$m5
+           |  new TestEnum.TestCas$m6
+           |"""
+     .completion(m1, Set(("TestEnum", Module, "TestEnum")))
+     .completion(m2, Set(("TestCase", Field, "TestEnum")))
+     .completion(m3, Set(("TestEnum", Module, "TestEnum"), ("TestEnum", Class, "TestEnum")))
+     .completion(m4, Set(("TestCase", Field, "TestEnum")))
+     .completion(m5, Set())
+     .completion(m6, Set())
+
+  @Test def namedTupleCompletion: Unit =
+    code"""|
+           |val person: (name: String, city: String) =
+           |  (name = "Jamie", city = "Lausanne")
+           |
+           |val n = person.na$m1
+           |"""
+      .completion(m1, Set(("name", Field, "String")))
+
 }

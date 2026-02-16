@@ -1,0 +1,4 @@
+-- Error: tests/neg/mixed_cc/B.scala:4:7 -------------------------------------------------------------------------------
+4 |val x: Object^{A.B} = ??? // error
+  |       ^^^^^^^^^^^^
+  |       mixed_cc.A.B.type cannot be tracked since its capture set is empty

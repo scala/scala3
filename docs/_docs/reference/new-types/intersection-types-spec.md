@@ -46,11 +46,6 @@ A & B <: B       A & B <: A
 In another word, `A & B` is the same type as `B & A`, in the sense that the two types
 have the same values and are subtypes of each other.
 
-If `C` is a co- or contravariant type constructor, then `C[A] & C[B]` can be simplified using the following rules:
-
-- If `C` is covariant, `C[A] & C[B] ~> C[A & B]`
-- If `C` is contravariant, `C[A] & C[B] ~> C[A | B]`
-
 When `C` is covariant, `C[A & B] <: C[A] & C[B]` can be derived:
 
 ```

@@ -1,0 +1,65 @@
+index: index.md
+subsection:
+  - title: Reference
+    directory: docs/reference
+    # Embed sidebar.reference.yml, performed by `generateScalaDocumentation` sbt task
+  - title: Contributing
+    directory: docs/contributing
+    index: contributing/index.md
+    subsection:
+      - page: contributing/getting-started.md
+      - page: contributing/setting-up-your-ide.md
+      - index: contributing/issues/diagnosing-your-issue.md
+        subsection:
+          - page: contributing/issues/reproduce.md
+          - page: contributing/issues/cause.md
+          - page: contributing/issues/areas.md
+      - index: contributing/debugging/debugging.md
+        subsection:
+          - page: contributing/debugging/ide-debugging.md
+          - page: contributing/debugging/inspection.md
+          - page: contributing/debugging/other-debugging.md
+      - page: contributing/testing.md
+      - page: contributing/scaladoc.md
+      - page: contributing/community-build.md
+      - page: contributing/sending-in-a-pr.md
+      - page: contributing/cheatsheet.md
+      - title: Procedures
+        directory: procedures
+        index: contributing/procedures/index.md
+        subsection:
+          - page: contributing/procedures/release.md
+          - page: contributing/procedures/vulpix.md
+          - page: contributing/procedures/contributing-to-stdlib.md
+      - title: High Level Architecture
+        directory: architecture
+        index: contributing/architecture/index.md
+        subsection:
+          - page: contributing/architecture/lifecycle.md
+          - page: contributing/architecture/context.md
+          - page: contributing/architecture/phases.md
+          - page: contributing/architecture/types.md
+          - page: contributing/architecture/time.md
+          - page: contributing/architecture/symbols.md
+  - title: Internals
+    directory: docs/internals
+    index: internals/index.md
+    subsection:
+      - page: internals/backend.md
+      - page: internals/classpaths.md
+      - page: internals/contexts.md
+      - page: internals/dotc-scalac.md
+      - page: internals/higher-kinded-v2.md
+      - page: internals/overall-structure.md
+      - page: internals/explicit-nulls.md
+      - page: internals/periods.md
+      - page: internals/syntax.md
+      - page: internals/type-system.md
+      - page: internals/dotty-internals-1-notes.md
+      - page: internals/debug-macros.md
+      - page: internals/gadts.md
+      - page: internals/coverage.md
+      - page: internals/best-effort-compilation.md
+      - page: internals/syntax-3.1.md
+  - page: release-notes-0.1.2.md  # Referenced from https://www.scala-lang.org/blog/2017/05/31/first-dotty-milestone-release.html
+    hidden: true

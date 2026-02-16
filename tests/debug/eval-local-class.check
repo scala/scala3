@@ -1,0 +1,9 @@
+break A$B$1 9
+eval new B
+result B
+eval x1 + x2
+result x1x2
+eval A.this.x1
+result Ax1
+eval this.x2
+result Bx2

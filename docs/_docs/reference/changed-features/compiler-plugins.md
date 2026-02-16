@@ -18,7 +18,7 @@ For experimentation and research, Scala 3 introduces _research plugin_. Research
 are more powerful than Scala 2 analyzer plugins as they let plugin authors customize
 the whole compiler pipeline. One can easily replace the standard typer by a custom one or
 create a parser for a domain-specific language. However, research plugins are only
-enabled with the `-experimental` compiler flag or in nightly/snapshot releases of Scala 3.
+enabled for nightly or snaphot releases of Scala 3.
 
 Common plugins that add new phases to the compiler pipeline are called
 _standard plugins_ in Scala 3. In terms of features, they are similar to
@@ -67,7 +67,7 @@ class DivideZero extends StandardPlugin:
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
-  def init(options: List[String]): List[PluginPhase] =
+  override def initialize(options: List[String])(using Context): List[PluginPhase] =
     (new DivideZeroPhase) :: Nil
 
 class DivideZeroPhase extends PluginPhase:
@@ -90,7 +90,7 @@ end DivideZeroPhase
 ```
 
 The plugin main class (`DivideZero`) must extend the trait `StandardPlugin`
-and implement the method `init` that takes the plugin's options as argument
+and implement the method `initialize` that takes the plugin's options as argument
 and returns a list of `PluginPhase`s to be inserted into the compilation pipeline.
 
 Our plugin adds one compiler phase to the pipeline. A compiler phase must extend

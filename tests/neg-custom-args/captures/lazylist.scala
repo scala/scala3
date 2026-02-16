@@ -38,4 +38,4 @@ def test(cap1: Cap, cap2: Cap, cap3: Cap) =
   val ref3 = ref1.map(g)
   val ref3c: LazyList[Int]^{cap2} = ref3 // error
   val ref4 = (if cap1 == cap2 then ref1 else ref2).map(h)
-  val ref4c: LazyList[Int]^{cap1, ref3, cap3} = ref4 // error
+  val ref4c: LazyList[Int]^{cap1, ref3} = ref4 // error

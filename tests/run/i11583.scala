@@ -20,11 +20,11 @@ extension [A](a: A)
 
 @main def Test =
 
-  given Context with
+  given Context:
     type Type = String
     type Term = Boolean
 
-  given Env with
+  given Env:
     type Extra = Int
 
   val t1: (String, Boolean, Int) = true.:#:("hello")(23)

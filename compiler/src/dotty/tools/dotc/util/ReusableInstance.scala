@@ -1,7 +1,7 @@
 package dotty.tools.dotc.util
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.chaining.*
+import dotty.tools.dotc.util.chaining.*
 
 /** A wrapper for a list of cached instances of a type `T`.
   * The wrapper is recursion-reentrant: several instances are kept, so

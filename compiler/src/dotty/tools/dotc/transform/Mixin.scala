@@ -16,7 +16,10 @@ import StdNames.*
 import Names.*
 import NameKinds.*
 import NameOps.*
+import Phases.erasurePhase
 import ast.Trees.*
+
+import dotty.tools.dotc.transform.sjs.JSSymUtils.isJSType
 
 object Mixin {
   val name: String = "mixin"
@@ -93,7 +96,7 @@ object Mixin {
  *                <mods> def x_=(y: T) = ()
  *
  *          4.5 (done in `mixinForwarders`) For every method
- *          `<mods> def f[Ts](ps1)...(psN): U` imn M` that needs to be disambiguated:
+ *          `<mods> def f[Ts](ps1)...(psN): U` in M` that needs to be disambiguated:
  *
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
  *
@@ -112,6 +115,15 @@ object Mixin {
  */
 class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd.*
+
+  /** Infos before erasure of the generated mixin forwarders.
+   *
+   *  These will be used to generate Java generic signatures of the mixin
+   *  forwarders. Normally we use the types before erasure; we cannot do that
+   *  for mixin forwarders since they are created after erasure, and therefore
+   *  their type history does not have anything recorded for before erasure.
+   */
+  val mixinForwarderGenericInfos = MutableSymbolMap[Type]()
 
   override def phaseName: String = Mixin.name
 
@@ -248,7 +260,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         case Some((_, _, args)) => args.iterator
         case _ => Iterator.empty
       def nextArgument() =
-        if argsIt.hasNext then argsIt.next
+        if argsIt.hasNext then argsIt.next()
         else
           assert(
               impl.parents.forall(_.tpe.typeSymbol != mixin),
@@ -262,7 +274,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for
         getter <- mixin.info.decls.toList
         if getter.isGetter
-           && !getter.isEffectivelyErased
            && !wasOneOf(getter, Deferred)
            && !getter.isConstExprFinalVal
       yield
@@ -273,7 +284,15 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             else if (getter.is(Lazy, butNot = Module))
               transformFollowing(superRef(getter).appliedToNone)
             else if (getter.is(Module))
-              New(getter.info.resultType, List(This(cls)))
+              if ctx.settings.scalajs.value && getter.moduleClass.isJSType then
+                if getter.is(Scala2x) then
+                  report.error(
+                      em"""Implementation restriction: cannot extend the Scala 2 trait $mixin
+                          |containing the object $getter that extends js.Any""",
+                      cls.srcPos)
+                transformFollowing(superRef(getter).appliedToNone)
+              else
+                New(getter.info.resultType, List(This(cls)))
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
@@ -296,8 +315,25 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(DefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
+        transformFollowing(DefDef(mkMixinForwarderSym(meth.asTerm), forwarderRhsFn(meth)))
       }
+
+    def mkMixinForwarderSym(target: TermSymbol): TermSymbol =
+      val sym = mkForwarderSym(target, extraFlags = MixedIn)
+      val (infoBeforeErasure, isDifferentThanInfoNow) = atPhase(erasurePhase) {
+        val beforeErasure = cls.thisType.memberInfo(target)
+        (beforeErasure, !(beforeErasure =:= sym.info))
+      }
+      if isDifferentThanInfoNow then
+        // The info before erasure would not have been the same as the info now.
+        // We want to store it for the backend to compute the generic Java signature.
+        // However, we must still avoid doing that if erasing that signature would
+        // not give the same erased type. If it doesn't, we'll just give a completely
+        // incorrect Java signature. (This could be improved by generating dedicated
+        // bridges, but we don't go that far; scalac doesn't either.)
+        if TypeErasure.transformInfo(target, infoBeforeErasure) =:= sym.info then
+          mixinForwarderGenericInfos(sym) = infoBeforeErasure
+      sym
 
     cpy.Template(impl)(
       constr =

@@ -1,6 +1,6 @@
 object test:
 
-  @annotation.capability class FileSystem
+  class FileSystem extends caps.SharedCapability
 
   def foo(fs: FileSystem) =
 

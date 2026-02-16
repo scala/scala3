@@ -98,7 +98,7 @@ object Test6 {
 
 object Test7 {
   class Fix[F[_]] {
-    class Foo { type R >: F[T] <: F[T] } // error: cyclic
+    class Foo { type R >: F[T] <: F[T] } // error
     type T = F[Foo#R]
   }
 
@@ -149,9 +149,9 @@ object Test9 {
 object i4369 {
   trait X { self =>
     type R <: Z
-    type Z >: X { type R = self.R; type Z = self.R } // error: cyclic // error: cyclic // error: cyclic
+    type Z >: X { type R = self.R; type Z = self.R } // error: cyclic
   }
-  class Foo extends X { type R = Foo; type Z = Foo }
+  class Foo extends X { type R = Foo; type Z = Foo } // error
 }
 object i4370 {
   class Foo { type R = A }

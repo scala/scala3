@@ -1,4 +1,4 @@
-given foo(using x: Int): AnyRef with
+given foo: (x: Int) => AnyRef:
   type T = x.type
 
 // #7859
@@ -6,17 +6,17 @@ given foo(using x: Int): AnyRef with
 trait Lub2[A, B]:
   type Output
 
-given [A <: C, B <: C, C]: Lub2[A, B] with
+given [A <: C, B <: C, C] => Lub2[A, B]:
   type Output = C
 
 trait Lub[Union]:
   type Output
 
-given [A]: Lub[A] with
+given [A] => Lub[A]:
   type Output = A
 
-given [Left, Right](
-    using lubLeft: Lub[Right], lubRight: Lub[Right])(
-    using lub2: Lub2[lubLeft.Output, lubRight.Output])
-  : Lub[Left | Right] with
+given [Left, Right]
+    => (lubLeft: Lub[Right], lubRight: Lub[Right])
+    => (lub2: Lub2[lubLeft.Output, lubRight.Output])
+    => Lub[Left | Right]:
   type Output = lub2.Output

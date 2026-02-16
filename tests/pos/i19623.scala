@@ -22,7 +22,7 @@ trait RecordLike[R] {
   val r: %{ val name: String; } = ???
 
   // originally derived in macro, use dummy instance instead
-  transparent inline given outputRecordLike[R <: %]: RecordLike[R] = null.asInstanceOf[
+  transparent inline given outputRecordLike: [R <: %] => RecordLike[R] = null.asInstanceOf[
     RecordLike[R] {
       type ElemTypes = String *: EmptyTuple
     }

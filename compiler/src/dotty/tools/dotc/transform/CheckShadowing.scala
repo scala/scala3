@@ -1,38 +1,17 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees.EmptyTree
-import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.util.{Property, SrcPos}
-import dotty.tools.dotc.core.Symbols.ClassSymbol
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Flags.EmptyFlags
 import dotty.tools.dotc.ast.tpd.TreeTraverser
-import dotty.tools.dotc.core.Types.watchList
-import dotty.tools.dotc.core.Types.NoType
-import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.semanticdb.TypeOps
-import dotty.tools.dotc.cc.boxedCaptureSet
-import dotty.tools.dotc.core.Symbols.{NoSymbol, isParamOrAccessor}
-import scala.collection.mutable
-import dotty.tools.dotc.core.Scopes.Scope
-import scala.collection.immutable.HashMap
 import dotty.tools.dotc.core.Symbols
-import dotty.tools.dotc.typer.ImportInfo
-import dotty.tools.dotc.ast.untpd.ImportSelector
-import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees.Ident
-import dotty.tools.dotc.core.Names.TypeName
-import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Mode.Type
 import dotty.tools.dotc.core.Names.SimpleName
 
 class CheckShadowing extends MiniPhase:
@@ -49,25 +28,21 @@ class CheckShadowing extends MiniPhase:
 
   override def description: String = CheckShadowing.description
 
-  override def isRunnable(using Context): Boolean =
-    super.isRunnable &&
-    ctx.settings.Wshadow.value.nonEmpty &&
-    !ctx.isJava
+  override def isEnabled(using Context): Boolean = ctx.settings.WshadowHas.any
 
-  // Setup before the traversal
+  override def isRunnable(using Context): Boolean =
+    super.isRunnable && ctx.settings.WshadowHas.any && !ctx.isJava
+
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
     val data = ShadowingData()
     val fresh = ctx.fresh.setProperty(_key, data)
     shadowingDataApply(sd => sd.registerRootImports())(using fresh)
 
-  // Reporting on traversal's end
   override def transformUnit(tree: tpd.Tree)(using Context): tpd.Tree =
     shadowingDataApply(sd =>
       reportShadowing(sd.getShadowingResult)
     )
     tree
-
-  // MiniPhase traversal :
 
   override def prepareForPackageDef(tree: tpd.PackageDef)(using Context): Context =
     shadowingDataApply(sd => sd.inNewScope())
@@ -91,16 +66,16 @@ class CheckShadowing extends MiniPhase:
     )
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
-    if tree.symbol.isAliasType then // if alias, the parent is the current symbol
-      nestedTypeTraverser(tree.symbol).traverse(tree.rhs)
-    if tree.symbol.is(Param) then // if param, the parent is up
-      val owner = tree.symbol.owner
+    val sym = tree.symbol
+    if sym.isAliasType then // if alias, the parent is the current symbol
+      nestedTypeTraverser(sym).traverse(tree.rhs)
+    if sym.is(Param) then // if param, the parent is up
+      val owner = sym.owner
       val parent = if (owner.isConstructor) then owner.owner else owner
       nestedTypeTraverser(parent).traverse(tree.rhs)(using ctx.outer)
-      shadowingDataApply(sd => sd.registerCandidate(parent, tree))
-    else
-      ctx
-
+      if isValidTypeParamOwner(sym.owner) then
+        shadowingDataApply(sd => sd.registerCandidate(parent, tree))
+    ctx
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
     shadowingDataApply(sd => sd.outOfScope())
@@ -115,13 +90,14 @@ class CheckShadowing extends MiniPhase:
     tree
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
-    if tree.symbol.is(Param) &&  isValidTypeParamOwner(tree.symbol.owner) then // Do not register for constructors the work is done for the Class owned equivalent TypeDef
+    // Do not register for constructors the work is done for the Class owned equivalent TypeDef
+    if tree.symbol.is(Param) && isValidTypeParamOwner(tree.symbol.owner) then
       shadowingDataApply(sd => sd.computeTypeParamShadowsFor(tree.symbol.owner)(using ctx.outer))
-    if tree.symbol.isAliasType then // No need to start outer here, because the TypeDef reached here it's already the parent
+    // No need to start outer here, because the TypeDef reached here it's already the parent
+    if tree.symbol.isAliasType then
       shadowingDataApply(sd => sd.computeTypeParamShadowsFor(tree.symbol)(using ctx))
     tree
 
-  // Helpers :
   private def isValidTypeParamOwner(owner: Symbol)(using Context): Boolean =
     !owner.isConstructor && !owner.is(Synthetic) && !owner.is(Exported)
 
@@ -141,7 +117,7 @@ class CheckShadowing extends MiniPhase:
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
-        case t:tpd.TypeDef =>
+        case t: tpd.TypeDef =>
           val newCtx = shadowingDataApply(sd =>
             sd.registerCandidate(parent, t)
           )
@@ -157,7 +133,7 @@ class CheckShadowing extends MiniPhase:
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
-        case t:tpd.Import =>
+        case t: tpd.Import =>
           val newCtx = shadowingDataApply(sd => sd.registerImport(t))
           traverseChildren(tree)(using newCtx)
         case _ =>
@@ -240,7 +216,7 @@ object CheckShadowing:
         val declarationScope = ctx.effectiveScope
         val res = declarationScope.lookup(symbol.name)
         res match
-          case s: Symbol if s.isType => Some(s)
+          case s: Symbol if s.isType && s != symbol => Some(s)
           case _ => lookForUnitShadowedType(symbol)(using ctx.outer)
 
     /** Register if the valDef is a private declaration that shadows an inherited field */
@@ -310,4 +286,3 @@ object CheckShadowing:
       case class ShadowResult(warnings: List[ShadowWarning])
 
 end CheckShadowing
-

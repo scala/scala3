@@ -2,18 +2,25 @@ package dotty.tools
 package dotc
 package printing
 
-import scala.language.unsafeNulls
-
-import scala.collection.mutable
-
 import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
 import reporting.Message
-import util.DiffUtil
+import util.{DiffUtil, SimpleIdentitySet}
 import Highlighting.*
 
 object Formatting {
+
+  /** Essentially, a function Context => T, which can be created with `delay` */
+  abstract class Delay[T]:
+    def apply(c: Context): T
+
+  /** Delay a Context => T computation so that it is generated from the embedded
+   *  context of a string formatter instead of the enclosing context. This is needed
+   *  to make disambiguation work for such embedded computations.
+   */
+  def delay[T](fn: Context ?=> T): Delay[T] = new Delay[T]:
+    def apply(c: Context) = fn(using c)
 
   object ShownDef:
     /** Represents a value that has been "shown" and can be consumed by StringFormatter.
@@ -42,7 +49,9 @@ object Formatting {
     trait CtxShow:
       def run(using Context): Shown
 
-    private inline def CtxShow(inline x: Context ?=> Shown) = new CtxShow { def run(using Context) = x(using ctx) }
+    private inline def CtxShow(inline x: Context ?=> Shown) =
+      class InlinedCtxShow extends CtxShow { def run(using Context) = x(using ctx) }
+      new InlinedCtxShow
     private def toStr[A: Show](x: A)(using Context): String = Shown.toStr(toShown(x))
     private def toShown[A: Show](x: A)(using Context): Shown = Show[A].show(x).runCtxShow
 
@@ -50,7 +59,11 @@ object Formatting {
     object ShowAny extends Show[Any]:
       def show(x: Any): Shown = x
 
-    class ShowImplicits3:
+    class ShowImplicits4:
+      given [X: Show]: Show[X | Null] with
+        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x))
+
+    class ShowImplicits3 extends ShowImplicits4:
       given Show[Product] = ShowAny
 
     class ShowImplicits2 extends ShowImplicits3:
@@ -72,18 +85,22 @@ object Formatting {
       given [X: Show]: Show[Seq[X]] with
         def show(x: Seq[X]) = CtxShow(x.map(toStr))
 
+      given [X: Show]: Show[Delay[X]] = new Show:
+        def show(x: Delay[X]) = CtxShow(c ?=> x(c))
+
+      given Show[Seq[Nothing]] with
+        def show(x: Seq[Nothing]) = CtxShow(x)
+
       given [K: Show, V: Show]: Show[Map[K, V]] with
         def show(x: Map[K, V]) =
           CtxShow(x.map((k, v) => s"${toStr(k)} => ${toStr(v)}"))
-      end given
 
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
         def show(x: H *: T) =
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
-      end given
 
-      given [X: Show]: Show[X | Null] with
-        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
+      given [X <: AnyRef: Show]: Show[SimpleIdentitySet[X]] with
+        def show(x: SimpleIdentitySet[X]) = summon[Show[List[X]]].show(x.toList)
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
@@ -107,19 +124,29 @@ object Formatting {
           case Atoms.Range(lo, hi) => CtxShow(s"Range(${toStr(lo.toList)}, ${toStr(hi.toList)})")
       end given
 
+      given Show[ast.untpd.Modifiers] with
+        def show(x: ast.untpd.Modifiers) =
+          CtxShow(s"Modifiers(${toStr(x.flags)}, ${toStr(x.privateWithin)}, ${toStr(x.annotations)}, ${toStr(x.mods)})")
+
+      given Show[ast.untpd.Mod] with
+        def show(x: ast.untpd.Mod) = CtxShow(s"Mod(${toStr(x.flags)})")
+
       given Show[Showable]                            = ShowAny
       given Show[Shown]                               = ShowAny
       given Show[Int]                                 = ShowAny
       given Show[Char]                                = ShowAny
       given Show[Boolean]                             = ShowAny
       given Show[Integer]                             = ShowAny
+      given Show[Long]                                = ShowAny
       given Show[String]                              = ShowAny
       given Show[Class[?]]                            = ShowAny
       given Show[Throwable]                           = ShowAny
       given Show[StringBuffer]                        = ShowAny
+      given Show[StringBuilder]                       = ShowAny
       given Show[CompilationUnit]                     = ShowAny
       given Show[Phases.Phase]                        = ShowAny
       given Show[TyperState]                          = ShowAny
+      given Show[Unit]                                = ShowAny
       given Show[config.ScalaVersion]                 = ShowAny
       given Show[io.AbstractFile]                     = ShowAny
       given Show[parsing.Scanners.Scanner]            = ShowAny
@@ -146,8 +173,8 @@ object Formatting {
     private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.runCtxShow match {
       case arg: Seq[?] if suffix.indexOf('%') == 0 && suffix.indexOf('%', 1) != -1 =>
         val end = suffix.indexOf('%', 1)
-        val sep = StringContext.processEscapes(suffix.substring(1, end))
-        (arg.mkString(sep), suffix.substring(end + 1))
+        val sep = StringContext.processEscapes(suffix.substring(1, end).nn)
+        (arg.mkString(sep), suffix.substring(end + 1).nn)
       case arg: Seq[?] =>
         (arg.map(showArg).mkString("[", ", ", "]"), suffix)
       case arg =>
@@ -173,7 +200,7 @@ object Formatting {
     * The idea is to do this for known cases that are useful and then fall back
     * on regular syntax highlighting for the cases which are unhandled.
     *
-    * Please not that if used in combination with `disambiguateTypes` the
+    * Please note that if used in combination with `disambiguateTypes` the
     * correct `Context` for printing should also be passed when calling the
     * method.
     *

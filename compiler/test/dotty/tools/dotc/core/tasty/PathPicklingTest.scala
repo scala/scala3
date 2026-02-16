@@ -30,7 +30,7 @@ class PathPicklingTest {
     val out = JFile("out/testPathPickling")
     val cwd = JFile("").getAbsolutePath()
     delete(out)
-    out.mkdir()
+    out.mkdirs()
 
     locally {
       val ignorantProcessLogger = ProcessLogger(_ => ())
@@ -47,8 +47,8 @@ class PathPicklingTest {
       val sb = new StringBuffer
       val jar = JarArchive.open(Path(s"$out/out.jar"), create = false)
       try
-        for file <- jar.iterator() if file.name.endsWith(".tasty") do
-          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true))
+        for file <- jar.iterator if file.name.endsWith(".tasty") do
+          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true, isBestEffortTasty = false))
       finally jar.close()
       sb.toString()
 

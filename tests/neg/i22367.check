@@ -1,0 +1,8 @@
+-- Error: tests/neg/i22367.scala:3:36 ----------------------------------------------------------------------------------
+3 |@annotation.implicitAmbiguous("cba".reverse) // error
+  |                              ^^^^^^^^^^^^^
+  |                              @implicitAmbiguous requires constant expressions as a parameter
+-- Error: tests/neg/i22367.scala:6:47 ----------------------------------------------------------------------------------
+6 |def f(using @annotation.implicitNotFound("cba".reverse) e: E[Int]): Unit = () // error
+  |                                         ^^^^^^^^^^^^^
+  |                                         @implicitNotFound requires constant expressions as a parameter

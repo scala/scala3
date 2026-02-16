@@ -8,6 +8,7 @@ import StdNames.nme
 import Names.Name
 import NameKinds.DefaultGetterName
 import config.Printers.capt
+import Capabilities.*
 
 /** Classification and transformation methods for function methods and
  *  synthetic case class methods that need to be treated specially.
@@ -57,16 +58,16 @@ object Synthetics:
 
   /** Transform the type of a method either to its type under capture checking
    *  or back to its previous type.
-   *  @param  sym  The method to transform @pre needsTransform(sym) must hold.
+   *  @param  symd The method to transform @pre needsTransform(sym) must hold.
    *  @param  info The possibly already mapped info of sym
    */
   def transform(symd: SymDenotation, info: Type)(using Context): SymDenotation =
 
     /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
      *  An apply method in a case class like this:
-     *    case class CC(a: A^{d}, b: B, c: C^{cap})
+     *    case class CC(a: A^{d}, b: B, c: C^{any})
      *  would get type
-     *    def apply(a': A^{d}, b: B, c': C^{cap}): CC^{a', c'} { val a = A^{a'}, val c = C^{c'} }
+     *    def apply(a': A^{d}, b: B, c': C^{any}): CC^{a', c'} { val a = A^{a'}, val c = C^{c'} }
      *  where `'` is used to indicate the difference between parameter symbol and refinement name.
      *  Analogous for the copy method.
      */
@@ -77,12 +78,11 @@ object Synthetics:
           case tp: MethodOrPoly =>
             tp.derivedLambdaType(resType = augmentResult(tp.resType))
           case _ =>
-            val refined = trackedParams.foldLeft(tp) { (parent, pref) =>
-              RefinedType(parent, pref.paramName,
+            val refined = trackedParams.foldLeft(tp): (parent, pref) =>
+              parent.refinedOverride(pref.paramName,
                 CapturingType(
                   atPhase(ctx.phase.next)(pref.underlying.stripCapturing),
                   CaptureSet(pref)))
-            }
             CapturingType(refined, CaptureSet(trackedParams*))
         if trackedParams.isEmpty then info
         else augmentResult(info).showing(i"augment apply/copy type $info to $result", capt)
@@ -112,7 +112,7 @@ object Synthetics:
       case _ =>
         info
 
-    /** Augment an unapply of type `(x: C): D` to `(x: C^{cap}): D^{x}` */
+    /** Augment an unapply of type `(x: C): D` to `(x: C^{any}): D^{x}` */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
@@ -132,23 +132,26 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
+      val paramCaptures = CaptureSet(enclThis, GlobalAny)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
-        mt1 => mt.paramInfos.map(_.capturing(CaptureSet.universal)),
+        mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
 
     def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
       val (et: ExprType) = info: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      def mapFinalResult(tp: Type, f: Type => Type): Type =
-        val defn.FunctionNOf(args, res, isContextual) = tp: @unchecked
-        if defn.isFunctionNType(res) then
-          defn.FunctionNOf(args, mapFinalResult(res, f), isContextual)
-        else
+      def mapFinalResult(tp: Type, f: Type => Type): Type = tp match
+        case FunctionOrMethod(args, res) =>
+          tp.derivedFunctionOrMethod(args, mapFinalResult(res, f))
+        case _ =>
           f(tp)
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
     def transformCompareCaptures =
-      MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType)
+      val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+      MethodType(
+        defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
+        defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
       case DefaultGetterName(nme.copy, n) =>

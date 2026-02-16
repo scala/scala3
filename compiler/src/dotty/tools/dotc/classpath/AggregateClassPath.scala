@@ -4,8 +4,6 @@
 package dotty.tools
 package dotc.classpath
 
-import scala.language.unsafeNulls
-
 import java.net.URL
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.immutable.ArraySeq
@@ -31,25 +29,6 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
   private def aggregatesForPackage(pkg: PackageName): Seq[ClassPath] = packageIndex.synchronized {
     packageIndex.getOrElseUpdate(pkg.dottedString, aggregates.filter(_.hasPackage(pkg)))
-  }
-
-  override def findClass(className: String): Option[ClassRepresentation] = {
-    val (pkg, _) = PackageNameUtils.separatePkgAndClassNames(className)
-
-    def findEntry(isSource: Boolean): Option[ClassRepresentation] =
-      aggregatesForPackage(PackageName(pkg)).iterator.map(_.findClass(className)).collectFirst {
-        case Some(s: SourceFileEntry) if isSource => s
-        case Some(s: BinaryFileEntry) if !isSource => s
-      }
-
-    val classEntry = findEntry(isSource = false)
-    val sourceEntry = findEntry(isSource = true)
-
-    (classEntry, sourceEntry) match {
-      case (Some(c: BinaryFileEntry), Some(s: SourceFileEntry)) => Some(BinaryAndSourceFilesEntry(c, s))
-      case (c @ Some(_), _) => c
-      case (_, s) => s
-    }
   }
 
   override def asURLs: Seq[URL] = aggregates.flatMap(_.asURLs)

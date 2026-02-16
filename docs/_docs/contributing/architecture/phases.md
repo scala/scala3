@@ -63,7 +63,7 @@ Finally are [staging], which ensures that quotes conform to the
 trees to embedded TASTy strings.
 
 ### `transformPhases`
-These phases are concerned with tranformation into lower-level forms
+These phases are concerned with transformation into lower-level forms
 suitable for the runtime system, with two sub-groupings:
 - High-level transformations: All phases from [firstTransform] to [erasure].
   Most of these phases transform syntax trees, expanding high-level constructs

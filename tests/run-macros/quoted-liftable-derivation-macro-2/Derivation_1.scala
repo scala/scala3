@@ -9,7 +9,7 @@ object Lft {
   given Lft[Int] with
     def toExpr(x: Int)(using Quotes) = Expr(x)
 
-  inline given derived[T](using inline m: Mirror.Of[T]): Lft[T] = ${ derivedExpr('m) }
+  inline given derived: [T] => (inline m: Mirror.Of[T]) => Lft[T] = ${ derivedExpr('m) }
 
   private def derivedExpr[T](mirrorExpr: Expr[Mirror.Of[T]])(using Quotes, Type[T]): Expr[Lft[T]] = {
     val tpe = summonExprOrError[Type[T]]

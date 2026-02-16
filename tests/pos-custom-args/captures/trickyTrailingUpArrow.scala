@@ -1,9 +1,10 @@
-object Test:
+ class STR
+ object Test extends caps.Stateful:
   var x = 0
-  type FreshContext = String^
+  type FreshContext = STR^
   x += 1
 
-  inline def ctx(using c: String) = c
+  inline def ctx(using c: STR) = c
 
-  val y: String^ -> Unit = ???
-  val z: String^ ?-> Unit = ???
+  val y: STR^ -> Unit = ???
+  val z: STR^ ?-> Unit = ???

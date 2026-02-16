@@ -182,7 +182,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
         |import java.util.concurrent.CompletableFuture
         |object Main extends CompletableFuture[$0]
         |""".stripMargin,
-        assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `replace` =
@@ -195,7 +195,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
         |import java.util.concurrent.CompletableFuture
         |object Main extends CompletableFuture[$0]
         |""".stripMargin,
-        assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `block1` =
@@ -309,7 +309,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       filter = _.contains("java.util"),
-      assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `type` =
@@ -328,7 +328,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       filter = _.contains("scala.util"),
-      assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `partial-function` =
@@ -700,7 +700,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |object Main {
          |  val a = ListBuffer($0)
          |}""".stripMargin,
-      filter = _.contains("[A]")
+      filter = _.startsWith("ListBuffer[A]")
     )
 
   @Test def `type-import` =
@@ -767,7 +767,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |package b:
          |  def main: Unit = incre@@
          |""".stripMargin,
-      """|increment3: Int
+      """|increment3 - d: Int
          |increment - a: Int
          |increment2 - a.c: Int
          |""".stripMargin
@@ -810,9 +810,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|fooBar: String
-         |fooBar: List[Int]
-         |fooBar(n: Int): Int
-         |""".stripMargin,
+         |fooBar - test.A: List[Int]
+         |""".stripMargin
     )
 
   @Test def `type-apply` =
@@ -827,8 +826,9 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |
          |val j = MyTy@@
          |""".stripMargin,
-      """|MyType(m: Long): MyType
-         |MyType - demo.other""".stripMargin,
+      """|MyType(m: Long): MyType - demo.other
+         |MyType - demo.other
+         """.stripMargin
     )
 
   @Test def `type-apply2` =
@@ -843,8 +843,9 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |
          |val j = MyTy@@
          |""".stripMargin,
-      """|MyType(m: Long): MyType
-         |MyType - demo.other""".stripMargin,
+      """|MyType(m: Long): MyType - demo.other
+         |MyType - demo.other
+      """.stripMargin
     )
 
   @Test def `method-name-conflict` =
@@ -935,4 +936,14 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       ""
+    )
+
+  @Test def `metals-i6593` =
+    check(
+      """|package a:
+         |  class UniqueObject
+         |package b:
+         |  val i = Uniq@@
+         |""".stripMargin,
+      "UniqueObject(): UniqueObject - a"
     )

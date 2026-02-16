@@ -52,26 +52,30 @@ class TupleShowTests extends DottyTest:
     ))
     chkEq(exp, obt)
 
-  @Test def tup3_show10 = chkEq("(Int,\n  Long,\n  Short)".normEOL, tup3.toText(ctx.printer).mkString(10, false))
+  @Test def tup3_show10 = chkEq("(Int,\n  Long,\n  Short)".normEOL, tup3.toText(ctx.printer).mkString(10))
 
-  val res21 = """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
-                 |  Int, Long, Long, Long, Long, Long, Int)""".stripMargin.normEOL
+  val res21: String =
+    """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
+       |  Int, Long, Long, Long, Long, Long, Int)""".stripMargin.normEOL
 
-  val res22 = """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
-                 |  Int, Long, Long, Long, Long, Long, Int, Long)""".stripMargin.normEOL
+  val res22: String =
+    """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
+       |  Int, Long, Long, Long, Long, Long, Int, Long)""".stripMargin.normEOL
 
-  val res23 = """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
-                 |  Int, Long, Long, Long, Long, Long, Int, Long, Short)""".stripMargin.normEOL
+  val res23: String =
+    """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
+       |  Int, Long, Long, Long, Long, Long, Int, Long, Short)""".stripMargin.normEOL
 
-  val res24 = """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
-                 |  Int, Long, Long, Long, Long, Long, Int, Long, Short, Short)""".stripMargin.normEOL
+  val res24: String =
+    """|(Int, Int, Int, Int, Int, Long, Long, Long, Long, Long, Int, Int, Int, Int,
+       |  Int, Long, Long, Long, Long, Long, Int, Long, Short, Short)""".stripMargin.normEOL
 
   def chkEq[A](expected: A, obtained: A) = assert(expected == obtained, diff(s"$expected", s"$obtained"))
 
   /** On Windows the string literal in this test source file will be read with `\n` (b/c of "-encoding UTF8")
   *   but the compiler will correctly emit \r\n as the line separator.
   *   So we align the expected result to faithfully compare test results. */
-  extension (str: String) def normEOL = if EOL == "\n" then str else str.replace("\n", EOL).nn
+  extension (str: String) def normEOL: String = if EOL == "\n" then str else str.replace("\n", EOL)
 
   def diff(exp: String, obt: String) =
     val min = math.min(exp.length, obt.length)

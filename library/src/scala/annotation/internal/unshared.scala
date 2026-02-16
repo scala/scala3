@@ -1,5 +1,7 @@
 package scala.annotation.internal
 
+import language.experimental.captureChecking
+
 import scala.annotation.Annotation
 
 /** An annotation indicating to `-Ycheck:reentrant` that an object will not be accessed from multiple threads.
