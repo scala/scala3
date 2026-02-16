@@ -26,7 +26,7 @@ object Properties {
     }
 
   /** Tests should run interactive? */
-  val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
+  val testsInteractive: Boolean = false //propIsNullOrTrue("dotty.tests.interactive")
 
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define

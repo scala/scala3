@@ -1,7 +1,7 @@
 -- Error: tests/neg/i19731.scala:4:6 -----------------------------------------------------------------------------------
 4 |class F1 extends Foo: // error
   |      ^^
-  |      class F1 needs to be abstract, since def foo(): Unit in class F1 is not defined 
+  |      class F1 needs to be abstract, since def foo(): Unit in class F1 is not defined
 -- Error: tests/neg/i19731.scala:7:6 -----------------------------------------------------------------------------------
 7 |class F2 extends Foo: // error
   |      ^^

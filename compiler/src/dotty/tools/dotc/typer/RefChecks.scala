@@ -758,7 +758,9 @@ object RefChecks {
           def showDclAndLocation(sym: Symbol) =
             s"${sym.showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
+            val notdefined = s"${showDclAndLocation(member)} is not defined"
+            val text = if !msg.isEmpty then s"$notdefined $msg" else notdefined
+            abstractClassError(mustBeMixin = false, text)
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -924,8 +926,26 @@ object RefChecks {
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
-      if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazzNamePos)
+      def errorPos(cls: ClassSymbol) =
+        val isEnumAnonCls = // courtesy of Checking.checkEnum
+          cls.isAnonymousClass
+          && cls.owner.isTerm
+          && {
+               cls.owner.flagsUNSAFE.isAllOf(EnumCase)
+            || (cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.flagsUNSAFE.isAllOf(Private | Synthetic)
+          }
+        if isEnumAnonCls then
+          println(i"CHK ${cls.owner.srcPos.sourcePos} or ${cls.owner.srcPos.span} in ${
+            cls.parentSyms.head.children.map(child => (child, child.srcPos.sourcePos, child.srcPos.span, child.info))
+          }")
+          //cls.parentSyms.head.children.filterNot(_.isClass).head.srcPos
+          //cls.parentSyms.head.children.find(_.srcPos.sourcePos `contains` cls.owner.srcPos.sourcePos)
+          cls.owner.srcPos
+        else
+          clazzNamePos
+
+      if abstractErrors.nonEmpty then
+        report.error(abstractErrorMessage, errorPos(clazz))
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()

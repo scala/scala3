@@ -282,6 +282,7 @@ object DesugarEnums {
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree = {
     assert(impl.body.isEmpty)
+    println(i"EXPAND $name at $span")
     if (!enumClass.exists) EmptyTree
     else if (impl.parents.isEmpty)
       expandSimpleEnumCase(name, mods, definesLookups, span)
