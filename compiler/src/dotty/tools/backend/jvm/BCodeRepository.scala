@@ -21,12 +21,11 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.{FifoCache, InlineInfoAttributePrototype}
 import PostProcessorFrontendAccess.Lazy
 
-import scala.annotation.nowarn
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm
 import scala.tools.asm.tree.*
-import scala.tools.asm.{Attribute, Type}
+import scala.tools.asm.{Attribute, ClassReader, Type}
 
 /**
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
@@ -34,11 +33,13 @@ import scala.tools.asm.{Attribute, Type}
  */
 class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes)(using Context) {
 
+  type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
+
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: Lazy[concurrent.Map[InternalName, (ClassNode, String)]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty)
+  val compilingClasses: Lazy[concurrent.Map[InternalName, (ClassAndModuleNodes, String)]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty)
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -53,15 +54,15 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * Note - although this is typed a mutable.Map, individual simple get and put operations are threadsafe as the
    * underlying data structure is synchronized.
    */
-  private val parsedClasses: Lazy[mutable.Map[InternalName, Either[ClassNotFound, ClassNode]]] =
-    frontendAccess.perRunLazy(FifoCache[InternalName, Either[ClassNotFound, ClassNode]](maxCacheSize, threadsafe = true))
+  private val parsedClasses: Lazy[mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]]] =
+    frontendAccess.perRunLazy(FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true))
 
   def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
-    case Some(path) if path != "<no file>" => compilingClasses.get(classNode.name) = (classNode, path)
-    case _                                 => parsedClasses.get(classNode.name) = Right(classNode)
+    case Some(path) if path != "<no file>" => compilingClasses.get(classNode.name) = ((classNode, None), path)
+    case _                                 => parsedClasses.get(classNode.name) = Right(classNode, None)
   }
 
-  private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassNode] = {
+  private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     parsedClasses.get.getOrElseUpdate(internalName, parseClass(internalName))
   }
 
@@ -69,7 +70,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * The class node and source file path (if the class is being compiled) for an internal name. If
    * the class node is not yet available, it is parsed from the classfile on the compile classpath.
    */
-  def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassNode, Option[String])] = {
+  def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassAndModuleNodes, Option[String])] = {
     compilingClasses.get.get(internalName) match {
       case Some((c, p)) => Right((c, Some(p)))
       case _            => parsedClassNode(internalName).map((_, None))
@@ -80,7 +81,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * The class node for an internal name. If the class node is not yet available, it is parsed from
    * the classfile on the compile classpath.
    */
-  def classNode(internalName: InternalName): Either[ClassNotFound, ClassNode] = {
+  def classNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     compilingClasses.get.get(internalName) match {
       case Some((c, _)) => Right(c)
       case None         => parsedClassNode(internalName)
@@ -98,7 +99,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
     def fieldNodeImpl(parent: InternalName): Either[FieldNotFound, (FieldNode, InternalName)] = {
       classNode(parent) match {
         case Left(e)  => Left(FieldNotFound(name, descriptor, classInternalName, Some(e)))
-        case Right(c) =>
+        case Right(c, _) =>
           c.fields.asScala.find(f => f.name == name && f.desc == descriptor) match {
             case Some(f) => Right((f, parent))
             case None    =>
@@ -181,7 +182,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
             case Some(m) => Right(Some((m, owner.name)))
             case _ =>
               if (owner.superName == null) Right(None)
-              else classNode(owner.superName).flatMap(findInSuperClasses(_, publicInstanceOnly = isInterface(owner)))
+              else classNode(owner.superName).flatMap((c, _) => findInSuperClasses(c, publicInstanceOnly = isInterface(owner)))
           }
       }
     }
@@ -193,7 +194,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
       def findIn(owner: ClassNode): Option[ClassNotFound] = {
         owner.interfaces.asScala.filter(!visited(_)).collectFirst(((i: String) => classNode(i) match {
           case Left(e) => Some(e)
-          case Right(c) =>
+          case Right(c, _) =>
             visited += i
             // private and static methods are excluded, see jvms-5.4.3.3
             for (m <- findMethod(c) if !isPrivateMethod(m) && !isStaticMethod(m)) found += ((m, c))
@@ -246,7 +247,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
       Left(MethodNotFound(name, descriptor, ownerInternalNameOrArrayDescriptor, None))
     } else {
       def notFound(cnf: Option[ClassNotFound]) = Left(MethodNotFound(name, descriptor, ownerInternalNameOrArrayDescriptor, cnf))
-      val res: Either[ClassNotFound, Option[(MethodNode, InternalName)]] = classNode(ownerInternalNameOrArrayDescriptor).flatMap(c =>
+      val res: Either[ClassNotFound, Option[(MethodNode, InternalName)]] = classNode(ownerInternalNameOrArrayDescriptor).flatMap((c, _) =>
         // TODO: if `c` is an interface, should directly go to `findInInterfaces`
         findInSuperClasses(c).flatMap {
           case None => findInInterfaces(c)
@@ -281,11 +282,11 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
     }
   }
 
-  private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassNode] = {
+  private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     val fullName = internalName.replace('/', '.')
-    frontendAccess.findClassFile(fullName).flatMap { classFile =>
+    frontendAccess.findClassFileAndModuleFile(fullName).flatMap { (classFile, moduleFile) =>
       val classNode = new ClassNode1
-      val classReader = new asm.ClassReader(classFile.toByteArray)
+      val classReader = new ClassReader(classFile.toByteArray)
 
       try {
         // Passing the InlineInfoAttributePrototype makes the ClassReader invoke the specific `read`
@@ -293,7 +294,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
         // Attribute.
         // We don't need frames when inlining, but we want to keep the local variable table, so we
         // don't use SKIP_DEBUG.
-        classReader.accept(classNode, Array[Attribute](InlineInfoAttributePrototype), asm.ClassReader.SKIP_FRAMES)
+        classReader.accept(classNode, Array[Attribute](InlineInfoAttributePrototype), ClassReader.SKIP_FRAMES)
         // SKIP_FRAMES leaves line number nodes. Remove them because they are not correct after
         // inlining.
         // TODO: we need to remove them also for classes that are not parsed from classfiles, why not simplify and do it once when inlining?
@@ -302,15 +303,23 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
         //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
         //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
         removeLineNumbersAndAddLMFImplMethods(classNode)
-        Some(classNode)
+
+        val moduleNode = moduleFile.map(f =>
+          val node = new ClassNode1
+          val moduleReader = new ClassReader(f.toByteArray)
+          moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)
+          node.module
+        )
+
+        Some(classNode, moduleNode)
       } catch {
         case ex: Exception =>
           frontendAccess.backendReporting.warning(em"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
           None
       }
     } match {
-      case Some(node) => Right(node)
-      case None       => Left(ClassNotFound(internalName))
+      case Some(nodes) => Right(nodes)
+      case None        => Left(ClassNotFound(internalName))
     }
   }
 }

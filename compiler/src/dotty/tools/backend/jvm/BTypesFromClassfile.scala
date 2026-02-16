@@ -17,7 +17,7 @@ import scala.annotation.{switch, unused}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.{ClassNode, InnerClassNode}
+import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.NoClassBTypeInfo
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
@@ -63,10 +63,10 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
     // JLS §4.1 "There is also a special null type, the type of the expression null [...]
     //           In practice, the programmer can ignore the null type and just pretend that null is merely a special literal that can be of any reference type."
     if internalName == "null" then ts.ObjectRef
-    else ts.classBType(internalName, internalName, fromSymbol = false) { (_, n) =>
+    else ts.classBType(internalName, internalName) { (_, n) =>
       byteCodeRepository.classNode(n) match {
         case Left(msg) => Left(NoClassBTypeInfo(msg))
-        case Right(c) => computeClassInfoFromClassNode(c)
+        case Right(c, m) => computeClassInfoFromClassNode(c, m)
       }
     }
   }
@@ -74,13 +74,13 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
   /**
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
-  def classBTypeFromClassNode(classNode: ClassNode): ClassBType = {
-    ts.classBType(classNode.name, classNode, fromSymbol = false) { (_, cn) =>
-      computeClassInfoFromClassNode(cn)
+  def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): ClassBType = {
+    ts.classBType(classNode.name, classNode) { (_, cn) =>
+      computeClassInfoFromClassNode(cn, moduleNode)
     }
   }
 
-  private def computeClassInfoFromClassNode(classNode: ClassNode): Right[Nothing, ClassInfo] = {
+  private def computeClassInfoFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Right[Nothing, ClassInfo] = {
     val superClass = classNode.superName match {
       case null =>
         assert(classNode.name == ts.ObjectRef.internalName, s"class with missing super type: ${classNode.name}")
@@ -105,7 +105,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
     def nestedInCurrentClass(innerClassNode: InnerClassNode): Boolean = {
       (innerClassNode.outerName != null && innerClassNode.outerName == classNode.name) ||
       (innerClassNode.outerName == null && {
-        val classNodeForInnerClass = byteCodeRepository.classNode(innerClassNode.name).get // TODO: don't `get` here, but set the info to Left at the end
+        val (classNodeForInnerClass, _) = byteCodeRepository.classNode(innerClassNode.name).get // TODO: don't `get` here, but set the info to Left at the end
         classNodeForInnerClass.outerClass == classNode.name
       })
     }
@@ -133,6 +133,6 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
 
     val interfaces: List[ClassBType] = classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile).toList
 
-    Right(ClassInfo(superClass, interfaces, flags, nestedClasses, nestedInfo, InlineInfoSource.Classfile(classNode)))
+    Right(ClassInfo(superClass, interfaces, flags, nestedClasses, nestedInfo, InlineInfoSource.Classfile(classNode, moduleNode)))
   }
 }

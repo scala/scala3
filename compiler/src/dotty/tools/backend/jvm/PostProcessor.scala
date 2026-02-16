@@ -24,7 +24,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
   private val inlinerHeuristics   = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
   private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile)
   private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, primitives, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
   private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
   val classfileWriters            = new ClassfileWriters(frontendAccess)
   val classfileWriter             = classfileWriters.ClassfileWriter()
@@ -148,8 +148,8 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
-      val a = ts.classBTypeFromInternalName(inameA)
-      val b = ts.classBTypeFromInternalName(inameB)
+      val a = ts.classBTypeFromInternalName(inameA).head
+      val b = ts.classBTypeFromInternalName(inameB).head
       val lub = a.jvmWiseLUB(b).get
       val lubName = lub.internalName
       assert(lubName != "scala/Any")

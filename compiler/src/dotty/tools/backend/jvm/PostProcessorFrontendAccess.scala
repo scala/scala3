@@ -4,8 +4,7 @@ package backend.jvm
 import scala.collection.mutable.{Clearable, HashSet}
 import dotty.tools.dotc.util.*
 import dotty.tools.dotc.reporting.Message
-import dotty.tools.io.AbstractFile
-
+import dotty.tools.io.{AbstractFile, ClassPath}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
@@ -32,7 +31,7 @@ sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
 
   def getEntryPoints: List[String]
 
-  def findClassFile(name: String): Option[io.AbstractFile]
+  def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])]
 
   private val frontendLock: AnyRef = new Object()
 
@@ -198,7 +197,7 @@ object PostProcessorFrontendAccess {
       case cp => cp
     }
 
-    override def findClassFile(name: String): Option[io.AbstractFile] =
-      optimizerClassPath.findClassFile(name)
+    override def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])] =
+      optimizerClassPath.findClassFileAndModuleFile(name)
   }
 }

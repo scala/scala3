@@ -21,9 +21,6 @@ import scala.tools.asm
 
 final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ctx: Context) extends CoreBTypes(ppa) {
 
-  @threadUnsafe private lazy val classBTypeFromInternalNameMap =
-    collection.concurrent.TrieMap.empty[String, ClassBType]
-
   /**
    * Cache for the method classBTypeFromSymbol.
    */
@@ -44,7 +41,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
         val internalName = classSym.javaBinaryName
         // We first create and add the ClassBType to the hash map before computing its info. This
         // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-        val result = classBType(internalName, classSym, true)((ct, cs) => Right(createClassInfo(ct, cs.asClass)))
+        val result = classBType(internalName, classSym)((ct, cs) => Right(createClassInfo(ct, cs.asClass)))
         convertedClasses(classSym) = result
         result
       })
@@ -53,7 +50,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {
     assert(moduleClassSym.isTopLevelModuleClass, s"not a top-level module class: $moduleClassSym")
     val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
-    classBType(internalName, moduleClassSym, true)((_, mcs) =>
+    classBType(internalName, moduleClassSym)((_, mcs) =>
       Right(ClassInfo(
         superClass = Some(ObjectRef),
         interfaces = Nil,

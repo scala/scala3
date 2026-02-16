@@ -59,6 +59,7 @@ case class InlineInfoAttribute(inlineInfo: InlineInfo) extends Attribute(InlineI
     if (inlineInfo.isEffectivelyFinal)      flags |= 1
     //                                      flags |= 2 // no longer written
     if (inlineInfo.sam.isDefined)           flags |= 4
+    if (inlineInfo.isAccessible)            flags |= 8
     result.putByte(flags)
 
     for (samNameDesc <- inlineInfo.sam) {
@@ -106,6 +107,7 @@ case class InlineInfoAttribute(inlineInfo: InlineInfo) extends Attribute(InlineI
       val isFinal           = (flags & 1) != 0
       val hasSelf           = (flags & 2) != 0
       val hasSam            = (flags & 4) != 0
+      val isAccessible      = (flags & 8) != 0
 
       if (hasSelf) nextUTF8() // no longer used
 
@@ -129,7 +131,7 @@ case class InlineInfoAttribute(inlineInfo: InlineInfo) extends Attribute(InlineI
         infos((name, desc)) = MethodInlineInfo(isFinal, isInline, isNoInline)
       }
 
-      val info = InlineInfo(isFinal, sam, infos, None)
+      val info = InlineInfo(isFinal, sam, infos, None, isAccessible)
       InlineInfoAttribute(info)
     } else {
       val msg = UnknownScalaInlineInfoVersion(cr.getClassName, version)
@@ -166,4 +168,4 @@ object InlineInfoAttribute {
  * In order to instruct the ASM framework to deserialize the ScalaInlineInfo attribute, we need
  * to pass a prototype instance when running the class reader.
  */
-object InlineInfoAttributePrototype extends InlineInfoAttribute(InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = collection.SortedMap(), warning = None))
+object InlineInfoAttributePrototype extends InlineInfoAttribute(InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = collection.SortedMap(), warning = None, isAccessible = false))

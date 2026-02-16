@@ -30,8 +30,8 @@ import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
-              callGraph: CallGraph, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, primitives: DottyPrimitives,
+              callGraph: CallGraph, coreBTypes: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer) {
 
   // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
@@ -57,7 +57,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
 
           mi.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME &&
             mi.owner == callsite.callee.get.calleeDeclarationClass.internalName &&
-            byteCodeRepository.classNode(mi.owner).map(hasMethod).getOrElse(false)
+            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false)
         }
       case _ => false
     })
@@ -788,6 +788,15 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
     }
   }
 
+  private val isInternalCache = mutable.Map.empty[String, Boolean]
+  private def isInternal(name: String): Boolean = isInternalCache.getOrElseUpdate(name,
+    coreBTypes.classBTypeFromInternalName(name)
+              .getOrElse(bTypesFromClassfile.classBTypeFromParsedClassfile(name))
+              .info match {
+      case Left(_) => true // we must be conservative!
+      case Right(info) => !info.inlineInfo(byteCodeRepository, primitives, coreBTypes)(using ppa.ctx).isAccessible
+    })
+
   /**
    * Returns
    *   - `Right(Nil)` if all instructions can be safely inlined
@@ -797,9 +806,6 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
    *     error occurred
    */
   private def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), List[AbstractInsnNode]] = {
-    // TODO: We should handle Java modules and their dependencies more generally...
-    def isInternal(name: String): Boolean =
-      name.startsWith("jdk/internal") || name.startsWith("sun/")
     /*
      * Check if `instruction` can be transplanted to `destinationClass`.
      *

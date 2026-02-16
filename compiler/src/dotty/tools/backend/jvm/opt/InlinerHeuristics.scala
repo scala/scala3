@@ -48,8 +48,8 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // classpath. In order to get only the callsites being compiled, we start at the map of
     // compilingClasses in the byteCodeRepository.
     val compilingMethods = for {
-      (classNode, _) <- byteCodeRepository.compilingClasses.get.valuesIterator
-      methodNode     <- classNode.methods.iterator.asScala
+      ((classNode, _), _) <- byteCodeRepository.compilingClasses.get.valuesIterator
+      methodNode          <- classNode.methods.iterator.asScala
     } yield methodNode
 
     compilingMethods.map(methodNode => {
