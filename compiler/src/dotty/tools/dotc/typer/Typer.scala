@@ -2714,10 +2714,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(tree.tpt, AnyTypeConstructorProto)
 
     val tparams = tpt1.tpe.dealiasKeepAnnotsAndOpaques.typeParams
-     if tpt1.tpe.isError then
-       val args1 = tree.args.mapconserve(typedType(_))
-       assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
-     else if (tparams.isEmpty) {
+    if tpt1.tpe.isError then
+      val args1 = tree.args.mapconserve(typedType(_))
+      assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
+    else if (tparams.isEmpty) {
       report.error(TypeDoesNotTakeParameters(tpt1.tpe, tree.args), tree.srcPos)
       tpt1
     }
@@ -2763,22 +2763,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               (arg, tparamBounds)
             else
               (arg, WildcardType)
-          if (desugaredArg.isType)
-            arg match {
-              case untpd.WildcardTypeBoundsTree()
-              if tparam.paramInfo.isLambdaSub &&
-                 tpt1.tpe.typeParamSymbols.nonEmpty =>
-                // An unbounded `_` automatically adapts to type parameter bounds. This means:
-                // If we have wildcard application C[?], where `C` is a class replace
-                // with C[? >: L <: H] where `L` and `H` are the bounds of the corresponding
-                // type parameter in `C`.
-                // The transform does not apply for patterns, where empty bounds translate to
-                // wildcard identifiers `_` instead.
-                TypeTree(tparamBounds).withSpan(arg.span)
-              case _ =>
-                typedType(desugaredArg, argPt, mapPatternBounds = true)
-            }
-          else desugaredArg.withType(UnspecifiedErrorType)
+          arg match {
+            case untpd.WildcardTypeBoundsTree()
+            if tparam.paramInfo.isLambdaSub &&
+                tpt1.tpe.typeParamSymbols.nonEmpty =>
+              // An unbounded `_` automatically adapts to type parameter bounds. This means:
+              // If we have wildcard application C[?], where `C` is a class replace
+              // with C[? >: L <: H] where `L` and `H` are the bounds of the corresponding
+              // type parameter in `C`.
+              // The transform does not apply for patterns, where empty bounds translate to
+              // wildcard identifiers `_` instead.
+              TypeTree(tparamBounds).withSpan(arg.span)
+            case _ =>
+              val typedArg = typedType(desugaredArg, argPt, mapPatternBounds = true)
+              if typedArg.isType then typedArg
+              else desugaredArg.withType(UnspecifiedErrorType)
+          }
         }
         args.zipWithConserve(tparams)(typedArg)
       }

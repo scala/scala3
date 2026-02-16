@@ -2104,7 +2104,7 @@ object Parsers {
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       else
         val tpt = simpleType1()
-        if in.featureEnabled(Feature.modularity)  && in.token == LPAREN then
+        if in.featureEnabled(Feature.modularity) && in.token == LPAREN then
           parArgumentExprss(wrapNew(tpt))
         else
           tpt
