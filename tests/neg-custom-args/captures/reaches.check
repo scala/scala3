@@ -1,19 +1,19 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:23:11 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:23:28 --------------------------------------
 23 |    cur = (() => f.write()) :: Nil  // error
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
-   |           Found:    List[() ->{f} Unit]
-   |           Required: List[() ->{C} Unit]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |          Found:    List[() ->{f} Unit]
+   |          Required: List[() ->{C} Unit]
    |
-   |           Note that capability `f` cannot flow into capture set {C}.
+   |          Note that capability `f` cannot flow into capture set {C}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:34:7 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:34:24 --------------------------------------
 34 |      (() => f.write()) :: Nil // error
-   |       ^^^^^^^^^^^^^^^^^^^^^^^
-   |       Found:    List[() ->{f} Unit]
-   |       Required: List[() ->{C} Unit]^{}
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^
+   |      Found:    List[() ->{f} Unit]
+   |      Required: List[() ->{C} Unit]^{}
    |
-   |       Note that capability `f` cannot flow into capture set {C} of value cur.
+   |      Note that capability `f` cannot flow into capture set {C} of value cur.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:54:27 --------------------------------------
