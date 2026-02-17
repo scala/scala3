@@ -22,6 +22,37 @@ import scala.tools.asm
 //      (one can argue we should reuse one of the other existing helper objects, but that's for a later cleanup)
 
 object BCodeUtils {
+  val MAX_BYTES_PER_UTF8_CONSTANT = 65535
+  /** Checks that the given signature if present, or the concatenation of the given name and descriptor, do not exceed the JVM's UTF-8 text size limits. */
+  def checkConstantStringLength(sig: String | Null, name: String, desc: String = ""): Boolean = {
+    // The JVM enforces a max length of 65535 bytes per UTF-8 constant.
+    // In practice the set of UTF-8 that Java uses can't be more than 4 bytes per char.
+    def count(str: String, startAt: Int): Int =
+      var byteCount = startAt
+      for
+        i <- 0 until str.length
+      do
+        val c = str.charAt(i)
+        byteCount += (
+          if c <= 0x7F then 1
+          else if c <= 0x7FF then 2
+          else if Character.isHighSurrogate(c) || Character.isLowSurrogate(c) then 2
+          else 3
+        )
+      byteCount
+
+    // For performance, since we expect few large strings, check if the string is obviously fine first.
+    val totalCount =
+      if sig eq null then
+        if name.length + desc.length < MAX_BYTES_PER_UTF8_CONSTANT / 4 then 0
+        else count(desc, count(name, 0))
+      else if sig.length >= MAX_BYTES_PER_UTF8_CONSTANT then
+        count(sig, 0)
+      else
+        0
+
+    totalCount <= MAX_BYTES_PER_UTF8_CONSTANT
+  }
 
   /**
    * Return the Java modifiers for the given symbol.
