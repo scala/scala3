@@ -230,14 +230,14 @@ Object
 <empty>.test$package
 Test
 249
-278
+279
 11
 &&
 Apply
 false
 0
 false
-true && (false && notCalled()
+true && (false && notCalled())
 
 13
 lifting-bool/test.scala
