@@ -6,7 +6,7 @@
 11 |  def b: Int = 3 // error
    |               ^
    |               @js.native members may only call js.native.
--- Error: tests/neg-scalajs/js-native-val-defs.scala:14:23 -------------------------------------------------------------
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:14:25 -------------------------------------------------------------
 14 |  def c(x: Int): Int = x + 1 // error
    |                       ^^^^^
    |                       @js.native members may only call js.native.

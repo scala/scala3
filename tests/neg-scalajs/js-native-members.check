@@ -56,7 +56,7 @@
 13 |  def c: Int = 3 // error
    |               ^
    |               Concrete members of JS native types may only call js.native.
--- Error: tests/neg-scalajs/js-native-members.scala:14:23 --------------------------------------------------------------
+-- Error: tests/neg-scalajs/js-native-members.scala:14:25 --------------------------------------------------------------
 14 |  def d(x: Int): Int = x + 1 // error
    |                       ^^^^^
    |                       Concrete members of JS native types may only call js.native.
