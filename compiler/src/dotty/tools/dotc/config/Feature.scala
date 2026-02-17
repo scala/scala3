@@ -160,7 +160,6 @@ object Feature:
   /** Is separation checking enabled for this compilation unit? */
   def sepChecksEnabled(using Context) =
     enabledBySetting(separationChecking)
-    || enabledBySetting(safe)
     || ctx.originalCompilationUnit.needsSeparationChecking
 
   /** Is safe mode set for this compilation unit? */
@@ -265,11 +264,12 @@ object Feature:
       case `separationChecking` =>
         ctx.compilationUnit.needsCaptureChecking = true
         ctx.compilationUnit.needsSeparationChecking = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
         true
       case `safe` =>
         ctx.compilationUnit.needsCaptureChecking = true
-        ctx.compilationUnit.needsSeparationChecking = true
         ctx.compilationUnit.safeMode = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
         true
       case `assumeSafe` =>
         ctx.compilationUnit.assumeSafeMode = true
