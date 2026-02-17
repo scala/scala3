@@ -106,7 +106,7 @@ object Signatures {
 
   def isEnclosingApply(tree: tpd.Tree, span: Span)(using Context): Boolean =
     tree match
-      case apply @ Apply(fun, _) => !fun.span.contains(span) && isValid(apply)
+      case apply @ Apply(fun, _) => !fun.span.contains(span) && !fun.span.isZeroExtent && isValid(apply)
       case unapply @ UnApply(fun, _, _) =>
         !fun.span.contains(span) && !ctx.definitions.isFunctionNType(tree.tpe) // we want to show tuples in unapply
       case typeTree @ AppliedTypeTree(fun, _) => !fun.span.contains(span) && isValid(typeTree)
