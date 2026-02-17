@@ -2654,7 +2654,7 @@ object Parsers {
     /* When parsing (what will become) a sub sub match, that is,
      * when in a guard of case of a match, in a guard of case of a match;
      * we will eventually reach Scanners.handleNewLine at the end of the sub sub match
-     * with an in.currretRegion of the shape `InCase +: Indented :+ InCase :+ Indented :+ ...`
+     * with an in.currentRegion of the shape `InCase +: Indented :+ InCase :+ Indented :+ ...`
      * if we did not do dropInnerCaseRegion.
      * In effect, a single outdent would be inserted by handleNewLine after the sub sub match.
      * This causes the remaining cases of the outer match to be included in the intermediate sub match.
@@ -3218,6 +3218,7 @@ object Parsers {
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {
+        in.currentRegion.proposeKnownWidth(in.indentWidth(in.offset), CASE)
         accept(CASE)
         (withinMatchPattern(pattern()), guard())
       }
@@ -3245,10 +3246,14 @@ object Parsers {
                           |an indented case.""")
             expr()
           else block()
-        case IF => atSpan(in.skipToken()):
-          // a sub match after a guard is parsed the same as one without
-          val t = inSepRegion(InCase)(postfixExpr(Location.InGuard))
-          t.asSubMatch
+        case IF =>
+          val offset = in.skipToken()
+          atSpan(offset):
+            // a sub match after a guard is parsed the same as one without
+            inSepRegion(InCase):
+              in.currentRegion.proposeKnownWidth(in.indentWidth(offset), IF)
+              postfixExpr(Location.InGuard)
+            .asSubMatch
         case other =>
           // the guard is reinterpreted as a sub-match when there is no leading IF or ARROW token
           val t = grd1.asSubMatch
@@ -3265,6 +3270,7 @@ object Parsers {
      */
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(InCase) {
+        in.currentRegion.proposeKnownWidth(in.indentWidth(in.offset), CASE)
         accept(CASE)
         in.token match {
           case USCORE if in.lookahead.isArrow =>
