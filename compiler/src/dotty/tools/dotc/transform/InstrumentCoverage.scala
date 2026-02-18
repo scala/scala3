@@ -207,8 +207,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val span = pos.span.toSynthetic
       invokeCall(statementId, span)
 
-    private def transformApplyArgs(trees: List[Tree])(using Context): List[Tree] =
-      if allConstArgs(trees) then trees else transform(trees)
+    private def erasedParamStatuses(app: Apply)(using Context): List[Boolean] =
+      app.fun.tpe.widen match
+        case mt: MethodType if mt.hasErasedParams => mt.paramErasureStatuses
+        case _ => Nil
+
+    private def transformApplyArgs(trees: List[Tree], erasedArgs: List[Boolean] = Nil)(using Context): List[Tree] =
+      if allConstArgs(trees) then trees
+      else if erasedArgs.isEmpty then transform(trees)
+      else trees.lazyZip(erasedArgs).map { (arg, isErased) =>
+        if isErased then arg else transform(arg)
+      }.toList
 
     private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
       case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>
@@ -216,7 +225,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       case a: Apply =>
         cpy.Apply(a)(
           transformInnerApply(a.fun),
-          transformApplyArgs(a.args)
+          transformApplyArgs(a.args, erasedParamStatuses(a))
         )
       case a: TypeApply =>
         cpy.TypeApply(a)(
@@ -248,7 +257,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Transform args and fun, i.e. instrument them if needed (and if possible)
         val app =
           if tree.fun.symbol eq defn.throwMethod then tree
-          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args))
+          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
 
         if needsLift(tree) then
           // Lifts the arguments. Note that if only one argument needs to be lifted, we lift them all.
@@ -263,7 +272,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           InstrumentedParts.singleExpr(coverageCall, app)
       else
         // Transform recursively but don't instrument the tree itself
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transform(tree.args))
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
@@ -382,8 +391,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             tree // transforming inline vals will result in `inline value must be pure` errors
 
           case tree: ValDef =>
-            // only transform the rhs
-            val rhs = transform(tree.rhs)
+            val rhs = if tree.symbol.isEffectivelyErased then tree.rhs else transform(tree.rhs)
             cpy.ValDef(tree)(rhs = rhs)
 
           case tree: DefDef =>
@@ -491,8 +499,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def transformTemplateParents(parents: List[Tree])(using Context): List[Tree] =
       def transformParent(parent: Tree): Tree = parent match
         case tree: Apply =>
-          // only instrument the args, not the constructor call
-          cpy.Apply(tree)(tree.fun, tree.args.mapConserve(transform))
+          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         case tree: TypeApply =>
           // args are types, instrument the fun with transformParent
           cpy.TypeApply(tree)(transformParent(tree.fun), tree.args)
