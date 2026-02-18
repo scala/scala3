@@ -266,6 +266,11 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
+  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+    if Feature.ccEnabledSomewhere then
+      SafeRefs.init()(using ctx.withPhase(thisPhase))
+    super.runOn(units)
+
   override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
@@ -774,6 +779,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // charged for the prefix `p` in `p.x`.
         markFree(sym.info.captureSet, tree)
 
+      SafeRefs.checkSafe(tree, pt)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
     }
 
@@ -830,6 +836,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             disambiguate(denot1).meet(disambiguate(denot2), qualType)
           }
         case _ => denot
+
+      SafeRefs.checkSafe(tree, pt)
 
       // Don't allow update methods to be called unless the qualifier captures
       // an exclusive reference.
@@ -1298,6 +1306,10 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context) =
       super.seqLiteralElemProto(tree, pt, declared).boxed
 
+    override def recheckNew(tree: New, pt: Type)(using Context): Type =
+      SafeRefs.checkSafe(tree, pt)
+      super.recheckNew(tree, pt)
+
     /** Recheck val and var definitions:
      *   - disallow `any` in the type of mutable vars.
      *   - for externally visible definitions: check that their inferred type
@@ -1309,6 +1321,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val savedEnv = curEnv
       val runInConstructor = !sym.isOneOf(Param | ParamAccessor | Lazy | NonMember)
       try
+        SafeRefs.checkSafeAnnots(sym)
         if sym.is(Mutable) then
           if !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
             val addendum = setup.capturedBy.get(sym) match
@@ -1400,6 +1413,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
+        SafeRefs.checkSafeAnnots(sym)
         checkNoUnboxedReaches(tree)
 
         try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
@@ -1591,6 +1605,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
+
+        SafeRefs.checkSafeAnnots(cls)
 
         super.recheckClassDef(tree, impl, cls)
       finally

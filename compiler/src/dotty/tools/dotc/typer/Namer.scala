@@ -920,12 +920,6 @@ class Namer { typer: Typer =>
       case _ =>
     }
 
-    private def addSafeMode(sym: Symbol): Unit =
-      if sym.isClass
-          && (ctx.compilationUnit.safeMode || ctx.compilationUnit.assumeSafeMode)
-      then
-        sym.addAnnotation(Annotation(defn.SafeModeAnnot, sym.span))
-
     /** Invalidate `denot` by overwriting its info with `NoType` if
      *  `denot` is a compiler generated case class method that clashes
      *  with a user-defined method in the same scope with a matching type.
@@ -1016,7 +1010,6 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
       addAnnotations(sym)
       addInlineInfo(sym)
-      addSafeMode(sym)
       denot.info = knownTypeSig `orElse` typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       normalizeFlags(denot)
@@ -1740,7 +1733,7 @@ class Namer { typer: Typer =>
        *
        *  so that an implicit `I` can be passed to `B`. See i7613.scala for more examples.
        */
-      def addUsingTraits(parents: List[Type]): List[Type] =
+      def addUsingTraits(parents: List[Type]): List[Type] = {
         lazy val existing = parents.map(_.classSymbol).toSet
         def recur(parents: List[Type]): List[Type] = parents match
           case parent :: parents1 =>
@@ -1759,7 +1752,11 @@ class Namer { typer: Typer =>
           case nil =>
             Nil
         if cls.isRealClass then recur(parents) else parents
-      end addUsingTraits
+      }
+
+      def addAssumeSafe(sym: Symbol): Unit =
+        if ctx.compilationUnit.safeMode && sym.isClass && sym.isStatic then
+          sym.addAnnotation(Annotation(defn.AssumeSafeAnnot, sym.span))
 
       completeConstructor(denot)
       denot.info = tempInfo.nn
@@ -1797,6 +1794,7 @@ class Namer { typer: Typer =>
       addConstructorProxies(cls)
       if processExports(using localCtx) then
         addConstructorProxies(cls)
+      addAssumeSafe(cls)
       cleanup()
     }
   }

@@ -42,10 +42,9 @@ object Feature:
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
   val safe = experimental("safe")
-  val assumeSafe = experimental("assumeSafe")
 
   val nonViralExperimentalFeatures: Set[TermName] =
-    Set(captureChecking, separationChecking, safe, assumeSafe)
+    Set(captureChecking, separationChecking, safe)
 
   /** Experimental language imports that imply that the importing unit
    *  is experimental.
@@ -82,7 +81,6 @@ object Feature:
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
     (safe, "Require safe mode"),
-    (assumeSafe, "Assume safe mode without compiler checks")
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -270,9 +268,6 @@ object Feature:
         ctx.compilationUnit.needsCaptureChecking = true
         ctx.compilationUnit.safeMode = true
         if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
-        true
-      case `assumeSafe` =>
-        ctx.compilationUnit.assumeSafeMode = true
         true
       case _ =>
         false

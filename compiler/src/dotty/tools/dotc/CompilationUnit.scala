@@ -78,9 +78,6 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Will be set to true is unit was compiled with `safe` language import. */
   var safeMode: Boolean = false
 
-  /** Will be set to true if unit was compiled with `assumeSafe` language import. */
-  var assumeSafeMode: Boolean = false
-
   /** Will be set to true if the unit contains a pureFunctions language import */
   var knowsPureFuns: Boolean = false
 

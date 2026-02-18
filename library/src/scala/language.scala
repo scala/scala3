@@ -38,7 +38,6 @@ import scala.annotation.compileTimeOnly
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
  *  @groupprio experimental 10
-
  */
 object language {
 
@@ -378,11 +377,6 @@ object language {
      */
     @compileTimeOnly("`safe` can only be used at compile time in import statements")
     object safe
-
-    /** Experimental support for assumed safe mode (verified by the developer)
-     */
-    @compileTimeOnly("`assumeSafe` can only be used at compile time in import statements")
-    object assumeSafe
   }
 
     /** The deprecated object contains features that are no longer officially suypported in Scala.

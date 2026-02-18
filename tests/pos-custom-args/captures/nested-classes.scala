@@ -1,4 +1,4 @@
-import language.experimental.captureChecking
+import language.experimental.safe
 import annotation.{capability, constructorOnly}
 
 class IO extends caps.SharedCapability

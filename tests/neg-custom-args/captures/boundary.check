@@ -33,7 +33,7 @@
   |
   |where:    ^    refers to the root capability caps.any
   |          ^²   refers to a root capability classified as Control in the type of value local²
-  |          any  is a root capability classified as Control created in package <empty> when checking argument to parameter label of method break
+  |          any  is a root capability classified as Control created in object test when checking argument to parameter label of method break
   |          any² is a root capability classified as Control in the type of value local
   |
   | longer explanation available when compiling with `-explain`
@@ -49,7 +49,7 @@
    |  The error occurred for a synthesized tree:  _
    |
    |  where:    any  is the root capability caps.any
-   |            any² is a root capability created in package <empty>
+   |            any² is a root capability created in object test
    |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error

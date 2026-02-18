@@ -141,6 +141,20 @@ object Contains:
 @experimental
 final class reserve extends annotation.StaticAnnotation
 
+/** An annotation for definitions that should not be accessible from code
+ *  compiled under safe mode.
+ */
+@experimental
+@getter @setter @beanGetter @beanSetter @field
+final class rejectSafe(message: String = "") extends scala.annotation.ConstantAnnotation
+
+/** An annotation for definitions that are assumed to be accessible from code
+ *  compiled under safe mode.
+ */
+@experimental
+@getter @setter @beanGetter @beanSetter @field
+final class assumeSafe extends scala.annotation.ConstantAnnotation
+
 /** Allowed only for source versions up to 3.7:
  *  An annotation on parameters `x` stating that the method's body makes
  *  use of the reach capability `x*`. Consequently, when calling the method
@@ -173,11 +187,6 @@ object internal:
    */
   final class inferred extends annotation.StaticAnnotation
 
-  /** An annotation to mark a toplevel-class as coming from a compilation
-   *  unit compiled with safe or assumeSafe language imports.
-   */
-  final class safeMode extends annotation.StaticAnnotation
-
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.
@@ -209,6 +218,7 @@ end internal
 def freeze(@internal.consume x: Mutable | Array[?]): x.type = x
 
 @experimental
+@rejectSafe("it is unavailable in safe mode")
 object unsafe:
   /** Three usages:
    *
