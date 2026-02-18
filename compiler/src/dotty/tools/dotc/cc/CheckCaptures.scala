@@ -1414,6 +1414,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
         SafeRefs.checkSafeAnnots(sym)
+        for params <- tree.paramss; param <- params do
+          SafeRefs.checkSafeAnnots(param.symbol)
+          param match
+            case param: ValDef => SafeRefs.checkSafeAnnotsInType(param.tpt)
+            case param: TypeDef => SafeRefs.checkSafeAnnotsInType(param.rhs)
+
         checkNoUnboxedReaches(tree)
 
         try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
@@ -1646,6 +1652,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           "\nThis is often caused by a locally generated exception capability leaking as part of its result.",
           tree.srcPos)
       tp
+
+    override def recheckTypeTree(tree: TypeTree)(using Context): Type =
+      SafeRefs.checkSafeAnnotsInType(tree)
+      super.recheckTypeTree(tree)
 
     /* Currently not needed, since capture checking takes place after ElimByName.
      * Keep around in case we need to get back to it

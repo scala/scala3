@@ -80,6 +80,11 @@ object SafeRefs {
       "getResource", "getResourceAsStream", "getSigners", "getTypeParameters", "getTypeName",
       "newInstance", "cast", "toGenericString"))
     rejectSafe("scala.Console")
+    rejectSafe("scala.unchecked")
+    rejectSafe("scala.annoation.unchecked.uncheckedOverride")
+    rejectSafe("scala.annotation.unchecked.uncheckedStable")
+    rejectSafe("scala.annotation.unchecked.uncheckedVariance")
+    rejectSafe("scala.annotation.unchecked.uncheckedCaptures")
 
   def isAssumedSafe(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(defn.AssumeSafeAnnot)
@@ -121,10 +126,20 @@ object SafeRefs {
       fail(sym, "it is neither compiled in safe mode nor tagged with @assumedSafe", tree.srcPos)
   }
 
+  private def checkSafeAnnot(ann: Annotation, pos: SrcPos)(using Context): Unit =
+    var errpos = ann.tree.srcPos
+    if !pos.sourcePos.exists then errpos = pos
+    checkNotRejected(ann.symbol, errpos)
+
   def checkSafeAnnots(sym: Symbol)(using Context): Unit =
     if Feature.safeEnabled then
       for ann <- sym.annotations do
-        var pos = ann.tree.srcPos
-        if !pos.sourcePos.exists then pos = sym.srcPos
-        checkNotRejected(ann.symbol, pos)
+        checkSafeAnnot(ann, sym.srcPos)
+
+  def checkSafeAnnotsInType(tree: Tree)(using Context): Unit =
+    def checkAnnotatedType(tp: Type) = tp match
+      case AnnotatedType(tp, ann) => checkSafeAnnot(ann, tree.srcPos)
+      case _ =>
+    if Feature.safeEnabled then
+      tree.tpe.foreachPart(checkAnnotatedType(_))
 }
