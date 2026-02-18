@@ -782,6 +782,11 @@ object Scanners {
                 lastOffset = prev.lastOffset
               else
                 reset()
+        case ARROW =>
+          currentRegion match
+          case r: Indented if r.outer.isInstanceOf[InCase] =>
+            insert(OUTDENT, offset)
+          case _ =>
         case END =>
           if !isEndMarker then token = IDENTIFIER
         case COLONop =>

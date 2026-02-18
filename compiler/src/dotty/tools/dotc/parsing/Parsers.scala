@@ -2478,8 +2478,12 @@ object Parsers {
 
           val t = expr1(location)
           if in.isArrow then
-            placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-            wrapPlaceholders(closureRest(start, location, convertToParams(t)))
+            if in.currentRegion.isInstanceOf[Scanners.InCase] && location == Location.InBlock then
+              checkNonParamTuple(t)
+              wrapPlaceholders(t)
+            else
+              placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
+              wrapPlaceholders(closureRest(start, location, convertToParams(t)))
           else if isWildcard(t) then
             placeholderParams = placeholderParams ::: saved
             t
