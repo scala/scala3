@@ -706,6 +706,13 @@ object BackendUtils {
     case _ => false
   }
 
+  def isJavaLangStaticLoad(insn: AbstractInsnNode): Boolean = insn match {
+    case fi: FieldInsnNode =>
+      fi.getOpcode == Opcodes.GETSTATIC &&
+      fi.owner.startsWith("java/lang/")
+    case _ => false
+  }
+
   // ==============================================================================================
 
   def isArrayGetLength(mi: MethodInsnNode): Boolean = mi.owner == "java/lang/reflect/Array" && mi.name == "getLength" && mi.desc == "(Ljava/lang/Object;)I"

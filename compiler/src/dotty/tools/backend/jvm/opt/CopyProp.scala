@@ -434,7 +434,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isModuleLoad(prod, backendUtils.modulesAllowSkipInitialization)) toRemove += prod
+            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isJavaLangStaticLoad(prod) || BackendUtils.isModuleLoad(prod, backendUtils.modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
