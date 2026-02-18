@@ -4,22 +4,19 @@ title: "How to Use the Capture Checker"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/how-to-use.html
 ---
 
-```scala sc:nocompile sc-name:preamble
-```
-
 ## Enabling Capture Checking
 
 Use Scala 3 nightly for the latest features and fixes.
 
 Add this import in any file that uses capture checking:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 import language.experimental.captureChecking
 ```
 
 ### Separation Checking
 
 Requires the import above:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 ```
@@ -36,7 +33,7 @@ Using the command line through explicit parameters:
 scala -S 3.nightly -language:experimental.captureChecking
 ```
 or when reading from a file:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 // foo.scala:
 //> using scala 3.nightly
 import language.experimental.captureChecking
