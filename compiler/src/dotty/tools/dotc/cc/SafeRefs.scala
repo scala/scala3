@@ -88,7 +88,7 @@ object SafeRefs {
 
   def isAssumedSafe(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(defn.AssumeSafeAnnot)
-    || sym.topLevelClass.owner == defn.ScalaPackageClass
+    || sym.topLevelClass.maybeOwner == defn.ScalaPackageClass
     || sym.isContainedIn(defn.ScalaCollectionImmutablePackageClas)
     || sym.isContainedIn(defn.ScalaRuntimePackageClass)
 

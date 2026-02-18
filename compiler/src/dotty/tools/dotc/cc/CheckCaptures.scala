@@ -1139,18 +1139,23 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - don't allow `any` to appear covariantly in type arguments
      *   - special handling of `contains[A, B]` calls
      */
-    override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
+    override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type = {
       val meth = tree.fun match
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
         case fun => fun.symbol
       def methDescr = if meth.exists then i"$meth's type " else ""
+
+      if meth == defn.Any_asInstanceOf && Feature.safeEnabled then
+        report.error(em"Cannot use asInstanceOf in safe mode", tree.srcPos)
+
       markFreeTypeArgs(tree.fun, meth, tree.args)
+
       val funType = super.recheckTypeApply(tree, pt)
       val res = resultToAny(funType, Origin.ResultInstance(funType, meth))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
-    end recheckTypeApply
+    }
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
      *  capability and assert that `{r} <: CS`.
