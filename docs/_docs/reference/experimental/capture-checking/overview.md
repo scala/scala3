@@ -24,11 +24,11 @@ For a more systematic description of all the details we refer you to the followi
 
 Tracked capabilities are supported under Scala's capture checking extension, which can be enabled
 by the language import
-```scala
+```scala sc:nocompile
 import language.experimental.captureChecking
 ```
 Some more features of capture checking having to do with mutable data structures and alias control currently require a separate language import
-```scala
+```scala sc:nocompile
 import language.experimental.separationChecking
 ```
 Both extensions are experimental, which means that details can still change. Capture checking is by now quite mature and we expect it to be stabilized soon. Separation checking is still a bit more fluid at present.
@@ -38,7 +38,7 @@ Both extensions are experimental, which means that details can still change. Cap
 Informally, a capability is a value "of interest". For instance, a file handle, an access permission token, or a mutable data structure all make sense as capabilities. But the pair `("hello", "world!")` is just a value, not a capability. Often capabilities are associated with effects. For instance, a file handle gives access to the effect of reading or writing it.
 
 One can designate a value as a capability by making the type of the value extend directly or indirectly a standard trait `Capability`. For instance, a `File` can be declared to be a capability like this:
-```scala
+```scala sc:nocompile
 	class File(path: String) extends ExclusiveCapability
 ```
 Here, `ExclusiveCapability` is a subtrait of `Capability` that prevents concurrent accesses.
@@ -48,7 +48,7 @@ Here, `ExclusiveCapability` is a subtrait of `Capability` that prevents concurre
 Capabilities in Scala 3 are *tracked*. This means that we record in a type which capabilities can be accessed by values of that type. We write `A^{c}` for the type of values of type `A` that can access the capability `c`.
 
 For instance we can define a class `Logger` for sending log messages to a file and instantiate it like this:
-```scala
+```scala sc:nocompile
   class Logger(f: File) { ... }
 
   val out = File("~/some/bits")
@@ -80,13 +80,13 @@ Function types can also be equipped with capability sets.
 The function type `A -> B` is considered to be pure, so it cannot
 retain any capability. We then use the following shorthands.
 
-```scala
+```scala sc:nocompile
    A ->{c₁, ..., cₙ} B   =  (A -> B)^{c₁, ..., cₙ}
                 A => B   =  A ->{any} B
 ```
 
 A function captures any capabilities accessed by its body. For instance the function
-```scala
+```scala sc:nocompile
 (x: Int) =>
   lg.log(s"called with parameter $x")
   x + 1
@@ -94,7 +94,7 @@ A function captures any capabilities accessed by its body. For instance the func
 has type `Int ->{lg} Int`, which is a subtype of `Int => Int`.
 
 Scala systematically distinguishes methods, which are members of classes and objects, from functions, which are objects themselves. Methods don't have expressible types and consequently don't have capability sets that can be tracked. Instead, the capability set is associated with the enclosing object. For instance, in
-```scala
+```scala sc:nocompile
 val exec = new Runnable {
   def run() = lg.log(s"called with parameter $x")
 }
@@ -109,7 +109,7 @@ For instance, here is a function that runs an operation `op` while providing a l
 file. After the operation is finished, the file is closed and the result of the operation is returned.
 The function is generic: the result type of the operation is the type parameter `T`, which can be instantiated as needed.
 
-```scala
+```scala sc:nocompile
 def logged[T](op: Logger^ => T): T =
   val f = new File("logfile")
   val l = Logger(f)
@@ -119,7 +119,7 @@ def logged[T](op: Logger^ => T): T =
 ```
 
 A problematic use of the function would leak the logger `l` in the result of the operation. For instance like this:
-```scala
+```scala sc:nocompile
   val bad = logged { l =>
     () => l.log("too late!"))
   }
@@ -135,7 +135,7 @@ Capabilities like `out` or `lg` are objects with which a program interacts as us
 
 For instance, in the [Gears](https://lampepfl.github.io/gears/) framework for concurrent systems we have `Async` capabilities that allow a computation to suspend while waiting for an external event (and possibly be cancelled in the process). This is modeled by having the `Async` class extend a capability trait:
 
-```scala
+```scala sc:nocompile
    	class Async extends SharedCapability
 
 	// A suspendable method using an Async capability
@@ -143,14 +143,14 @@ For instance, in the [Gears](https://lampepfl.github.io/gears/) framework for co
 ```
 
 One common issue with traditional capabilities is that passing many capabilities as parameters to all the places that need them can get tedious quickly. In Scala this is much less of a problem since capabilities can be passed as implicit parameters via `using` clauses. For instance, the following method calls `readDataEventually` without having to pass the parameter `async` explicitly.
-```scala
+```scala sc:nocompile
 def processData(using Async) =
   val file = File("~/some/path")
   readDataEventually(file)
 ```
 Since the parameter is not mentioned, we also don’t need a name for it in its definition. So the method above is a convenient shorthand for the following more explicit definition.
 
-```scala
+```scala sc:nocompile
 def processData(using async: Async) =
   val file = File("~/some/path")
   readDataEventually(file)(using async)
@@ -160,7 +160,7 @@ def processData(using async: Async) =
 
 Mutable variables and mutable data structures are also considered capabilities.
 For instance, consider a pair of functions for incrementing and reading a counter:
-```scala
+```scala sc:nocompile
 var counter: Int = 0
 def incr = () => counter += 1
 def current = () => counter
@@ -173,7 +173,7 @@ Mutable data structures extend trait `Mutable`, which is another subtrait of `Ca
 Methods that write to such data are marked with an `update` modifier. For instance, here is
 a class for append-buffers:
 
-```scala
+```scala sc:nocompile
 class Buffer[T] extends Mutable {
   update def append(elem: T): Unit
   def apply(pos: Int): T
@@ -187,7 +187,7 @@ Types are used to regulate calls to update methods. A reference of type `Buffer`
 
 For instance, a `copy` method between buffers could be written like this:
 
-```scala
+```scala sc:nocompile
 def copy(from: Buffer[T], to: Buffer[T]^): Unit =
   for i <- 0 until from.size do
     to.append(from(i))
@@ -201,7 +201,7 @@ In traditional object capability systems, global capabilities are ruled out. Ind
 
 But with tracked capabilities, we have another means to control access via tracked types. Consequently global capabilities can be allowed. For instance,
 here is a `Console` object:
-```scala
+```scala sc:nocompile
 object Console {
   val in: File = ...
   val out: File = ...
