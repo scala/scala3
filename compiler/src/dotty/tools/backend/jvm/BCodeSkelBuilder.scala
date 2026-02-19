@@ -339,7 +339,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
-      if !BCodeUtils.checkConstantStringLength(thisSignature, thisName) then
+      val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
+                                              else BCodeUtils.checkConstantStringLength(thisName)
+      if !lengthOk then
         report.error("Class name is too long for the JVM", claszSymbol.srcPos)
         return
       cnode.visit(backendUtils.classfileVersion, flags,
@@ -745,7 +747,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         else jMethodName
 
       val mdesc = asmMethodType(methSymbol).descriptor
-      if !BCodeUtils.checkConstantStringLength(jgensig, bytecodeName, mdesc) then
+      val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
+                                        else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
+      if !lengthOk then
         report.error("Method signature is too long for the JVM", methSymbol.srcPos)
         return
       mnode = cnode.visitMethod(

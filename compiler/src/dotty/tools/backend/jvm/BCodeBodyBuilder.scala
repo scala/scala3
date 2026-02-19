@@ -585,7 +585,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
 
         case StringTag  =>
           assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
-          if BCodeUtils.checkConstantStringLength(null, const.stringValue) then
+          if BCodeUtils.checkConstantStringLength(const.stringValue) then
             mnode.visitLdcInsn(const.stringValue) // `stringValue` special-cases null, but not for a const with StringTag
           else
             report.error("String constant is too long for the JVM", pos)
@@ -604,7 +604,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
             )
           else
             val toASM = tp.toASMType
-            if BCodeUtils.checkConstantStringLength(null, toASM.getInternalName) then
+            if BCodeUtils.checkConstantStringLength(toASM.getInternalName) then
               mnode.visitLdcInsn(toASM)
             else
               report.error("Type name is too long for the JVM", pos)
