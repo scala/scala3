@@ -3887,3 +3887,12 @@ final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
     i"""A private field shadows an inherited field with the same name.
        |This can lead to confusion as the inherited field becomes inaccessible.
        |Consider renaming the private field to avoid the shadowing."""
+
+final class PatternVariableShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
+    extends NamingMsg(PatternVariableShadowsTypeID):
+  override protected def msg(using Context): String =
+    i"pattern variable ${shadow.name} shadows ${shadowed.showLocated}"
+  override protected def explain(using Context): String =
+    i"""A pattern variable shadows an existing variable in an enclosing scope.
+       |This can lead to subtle bugs as the outer variable becomes inaccessible.
+       |Consider renaming the pattern variable to avoid the shadowing."""
