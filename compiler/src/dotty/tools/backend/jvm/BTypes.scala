@@ -704,11 +704,12 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
       // Here we are parsing from a classfile and we don't need to do anything special. Many of these
       // primitives don't even exist, for example Any.isInstanceOf.
       val methodInfos = new mutable.TreeMap[(String, String), MethodInlineInfo]()
+      val isFinalClass = BCodeUtils.isFinalClass(classNode)
       classNode.methods.forEach(methodNode => {
         val info = MethodInlineInfo(
-          effectivelyFinal                    = BCodeUtils.isFinalMethod(methodNode),
-          annotatedInline                     = false,
-          annotatedNoInline                   = false)
+          effectivelyFinal  = isFinalClass || BCodeUtils.isFinalMethod(methodNode),
+          annotatedInline   = false,
+          annotatedNoInline = false)
         methodInfos((methodNode.name, methodNode.desc)) = info
       })
 
@@ -717,7 +718,7 @@ final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[Clas
       val sam = if abstractMethods.size == 1 then Some(abstractMethods.head.name + abstractMethods.head.desc) else None
 
       InlineInfo(
-        isEffectivelyFinal = BCodeUtils.isFinalClass(classNode),
+        isEffectivelyFinal = isFinalClass,
         sam = sam,
         methodInfos = methodInfos,
         warning)
