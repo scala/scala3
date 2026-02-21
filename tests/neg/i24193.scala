@@ -30,7 +30,6 @@ object Clock {
                                      C0: Clock[F]): Clock[D[F, *]] = ???
   implicit def clockForIorT[F[_]](implicit F0: Monad[F],
                                   C0: Clock[F]): Clock[E[F, *]] = ???
-
   implicit def clockForKleisli[F[_]](implicit F0: Monad[F],
                                      C0: Clock[F]): Clock[F1[F, *]] = ???
   implicit def clockForContT[F[_]](implicit F0: Monad[F],
