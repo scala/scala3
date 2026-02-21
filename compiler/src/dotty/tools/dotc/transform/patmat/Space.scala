@@ -678,7 +678,8 @@ object SpaceEngine {
           case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
           case tp                                                          => tp
         val tp = getAppliedClass(tpOriginal)
-        def getChildren(sym: Symbol): List[Symbol] =
+        def getChildren(sym: Symbol): List[Symbol] = {
+          val baseClass = sym
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
@@ -686,6 +687,14 @@ object SpaceEngine {
             else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
             else List(child)
           }
+          // ++
+          // (if (baseClass.is(JavaDefined)
+          //   && baseClass.is(Sealed)
+          //   && !baseClass.isOneOf(AbstractOrTrait)) then
+          //     List(baseClass)
+          // else Nil)
+
+        }
         val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
 
         val parts = children.map { sym =>
@@ -718,11 +727,15 @@ object SpaceEngine {
   extension (tp: Type)
     def isDecomposableToChildren(using Context): Boolean =
       val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
-      tp.hasSimpleKind                  // can't decompose higher-kinded types
+      (tp.hasSimpleKind                  // can't decompose higher-kinded types
         && cls.is(Sealed)
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
-        && cls.children.nonEmpty        // can't decompose without children
+        && cls.children.nonEmpty)        // can't decompose without children
+        ||
+        (cls.is(Sealed)
+        && cls.is(JavaDefined)) // проверить приоритет операторов && и ||
+       // && cls.isOneOf(AbstractOrTrait) ) // don't ignore java sealed abstract classes
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
@@ -839,6 +852,9 @@ object SpaceEngine {
     if Nullables.unsafeNullsEnabled then self.stripNull() else self
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
+    // TODO: Посмотреть проходим ли мы эту проверку в случае sealed Java class, если нет
+    // попрбовать добавить доп условий для прохождения
+
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
       val tpw = tp.widen.dealias.stripUnsafeNulls()
@@ -854,18 +870,23 @@ object SpaceEngine {
       classSym.isAllOf(JavaEnum) ||
       classSym.is(Case)
 
-    !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
+    val res = !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
     && {
+      val checkable = isCheckable(sel.tpe)
+      println(s"[patmat] exhaustivityCheckable: sel = ${sel.show}, tpe = ${sel.tpe.show}, isCheckable = $checkable")
       ctx.settings.YcheckAllPatmat.value
-      || isCheckable(sel.tpe)
+      || checkable
     }
+    println(s"[patmat] exhaustivityCheckable result = $res")
+    res
   }
 
   /** Whether counter-examples should be further checked? True for GADTs. */
   private def shouldCheckExamples(tp: Type)(using Context): Boolean =
     new TypeAccumulator[Boolean] {
       override def apply(b: Boolean, tp: Type): Boolean = tp match {
+        // идет проверка на что - то типа
         case tref: TypeRef if tref.symbol.is(TypeParam) && variance != 1 => true
         case tp => b || foldOver(b, tp)
       }
@@ -882,11 +903,41 @@ object SpaceEngine {
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
     case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
+    case tp if (tp.classSymbol.is(Permits))         => println("\n\n\nCATCH INFORMATION ABOUT SETTED PERMITS FLAG!!!!\n\n\n"); tp
     case _                                          => tp
   })
 
+  /** Как я понял, общая идея проверки следующая:
+   *  берется множество targetSpace,
+   *  условно информация про всех его наследников, если у него
+   *  родительский тип,
+   *  берется множество patternSpace, это все возможные Space,
+   *  которые покрываются в данном паттерн матчинге
+   *  смотрится на дополнение targetSpace / patternSpace
+   *  и если оно не пустое, то кидается варнинг и ошибка
+   *    */
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
+
+    // TODO: Есть ли все таки в случае sealed Java class она заходит в этот момент,
+    // уже стоит пытаться здесь делать какую то доп проверку
     val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
+
+    val cls = selTyp.classSymbol
+    if cls.exists && cls.is(Sealed) && cls.is(JavaDefined) then
+      println("========= JAVA SEALED checkExhaustivity ==========")
+      println(s"selector tree = ${m.selector.show}, raw tpe = ${m.selector.tpe.show}")
+      println(s"classSym = ${cls}, fullName = ${cls.fullName}")
+      println(s"flags = ${cls.flags}, sealed = ${cls.is(Sealed)}, abstractOrTrait = ${cls.isOneOf(AbstractOrTrait)}")
+      println(s"JavaDefined = ${cls.is(JavaDefined)}")
+      println(s"isDecomposableToChildren(selTyp) = ${selTyp.isDecomposableToChildren}")
+      val children = cls.children
+      println(s"CHILDREN's SIZE: ${children.size}")
+      children.foreach {ch =>
+        println(s"child: ${ch.fullName}, flags = ${ch.flags}, JavaDefined = ${ch.is(JavaDefined)}")
+        }
+      println("==================================================")
+      println()
+
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
@@ -894,16 +945,92 @@ object SpaceEngine {
       space :: acc
     })
 
+  //      println("TRY TO PRINT SOMETHING WHEN CHECK EXHAUSTIVITY")
+
+    /** В описаний самого метода shouldCheckExamples написано:
+     *  << Следует ли дополнительно проверять контрпримеры? Верно для GADTs. >>
+     *  Пока непонятно про какие именно контрпримеры идет речь,
+     *  может быть какая-та доп. проверка на случай контр(ко)вариантности ???  */
     val checkGADTSAT = shouldCheckExamples(selTyp)
 
     val uncovered =
       flatten(simplify(minus(targetSpace, patternSpace))).filter({ s =>
         s != Empty && (!checkGADTSAT || satisfiable(s))
       })
-
+    // идея: попробовать где нибудь здесь сделать собственное доп. разложение
+    // (по сути "захардкодить" и закостылять отдельную проверку для sealed non-abstract java классов)
+    // и добавить эту проверку в uncovered
     if uncovered.nonEmpty then
-      val deduped = dedup(uncovered)
-      report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
+
+      // берется текущий символ класса, который соответствует типу селектора
+      val baseCls = selTyp.classSymbol
+
+      def isJavaNonAbstractSealed(sym: Symbol)(using Context): Boolean =
+      sym.exists
+      && sym.is(JavaDefined)
+      && !sym.isOneOf(AbstractOrTrait)
+      && sym.is(Sealed)
+      && sym.children.nonEmpty
+
+      // здесь проверяется то, что Space объекта, которого мы разложили
+      // ссылается на базовый класс. Эта проверка нужна если вдруг базовый класс
+      // в паттерн матчинге ввобще не рассматривается
+      def mentionBase(space: Space): Boolean = space match {
+        case Typ(tp, _)      => tp.classSymbol == baseCls
+        case Or(ss)          => ss.exists(mentionBase)
+        case Prod(tp, _, ss) => tp.classSymbol == baseCls || ss.exists(mentionBase)
+        case _               => false
+      }
+
+      // здесь как бы происходит "разложение" по детям
+      def permittedFrontier(root: Symbol)(using Context): List[Symbol] = {
+        def loop(sym: Symbol, seen: Set[Symbol]): List[Symbol] = {
+          if (seen(sym)) then Nil
+          else
+            val new_seen = seen + sym
+            val kids = sym.children
+            kids.flatMap { ch =>
+              val canExpand =
+                ch.is(Sealed) && !ch.isOneOf(AbstractOrTrait) && ch.children.nonEmpty
+              if canExpand then loop(ch, new_seen)
+              else List(ch)
+            }
+        }
+        loop(root, Set.empty)
+      }
+        // а дальше по детям строится вот этот Space то есть
+        // типа пространство допустимых значений для конкретного ребенка
+        def childSpace(ch: Symbol)(using Context): Space = {
+          // здесь приблизительно делал по образу и подобию 700 строки
+          val sym = if ch.is(ModuleClass) then ch.sourceModule else ch
+          val refined = TypeOps.refineUsingParent(selTyp, sym, Nil)
+          // второй параметр по умолчанию true
+          Typ(refined)
+          // Typ(refined, decomposed = true)
+        }
+
+        val deduped0 = dedup(uncovered)
+
+        val deduped =
+  //        if deduped0.exists(mentionBase) &&
+          if isJavaNonAbstractSealed(baseCls) then
+            val baseSealedJavaClassSpace = Typ(selTyp)
+            val javaBaseClassCoverage = simplify(minus(baseSealedJavaClassSpace, patternSpace))
+            val baseJavaClassUncovered =
+              if javaBaseClassCoverage == Empty then Nil else Seq(javaBaseClassCoverage)
+
+            val frontierSyms = permittedFrontier(baseCls)
+
+            val extraUncovered: Seq[Space] =
+              frontierSyms.flatMap { ch =>
+                val chSpace = childSpace(ch)
+                val reminded = simplify(minus(chSpace, patternSpace))
+                if reminded == Empty then Nil else List(chSpace)
+                }.toSeq
+            dedup(uncovered ++ extraUncovered ++ baseJavaClassUncovered)
+          else
+            deduped0
+        report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
   }
 
   private def reachabilityCheckable(sel: Tree)(using Context): Boolean =

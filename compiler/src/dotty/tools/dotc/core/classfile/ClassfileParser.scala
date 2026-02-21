@@ -990,6 +990,59 @@ class ClassfileParser(
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
           }
 
+        case tpnme.PermittedSubclassesATTR if sym.isClass =>
+          // println("SETTING SEALED PERMITS IN PERMITTED SUBCLASSES")
+          // sym.setFlag(Flags.Permits)
+          println("I'm CAME IN CASE with PermittedSubclasses Attribute")
+          println()
+          println()
+          println()
+          // if (sym.isClass) {
+          //   val cls = sym.asClass
+          //   println(s"cls AS CLASS: ${cls}")
+          //   println("SETTING SEALED FLAG IN PERMITTED SUBCLASSES")
+          //   cls.setFlag(Flags.Sealed)
+
+          //   val n = in.nextChar
+          //   println(s"NUMBER OF CLASSES: ${n}")
+          //   for i <- 0 until n do
+          //     val index = in.nextChar
+          //     println(s"PRINTING INDEX: ${index}")
+          //     val childSym = pool.getClassSymbol(index)
+          //     println(s"CHILD'S SYMBOL: ${childSym}")
+          //  // cls.addAnnotation(Annotation.Child(childSym, NoSpan))
+
+          //   println()
+          //   println()
+          //   println()
+
+          // }
+
+          val cls = sym.asClass
+          println(s"cls AS CLASS: ${cls}")
+          println("SETTING SEALED FLAG IN PERMITTED SUBCLASSES")
+       //   if (!cls.flagsUNSAFE.is(Flags.Sealed)) {
+            cls.setFlag(Flags.Sealed)
+        //  }
+
+          // val n = in.nextChar
+          // println(s"NUMBER OF CLASSES: ${n}")
+          // for i <- 0 until n do
+          //   val index = in.nextChar
+          //   println(s"PRINTING INDEX: ${index}")
+          //   val childSym = pool.getClassSymbol(index)
+          //   println(s"CHILD'S SYMBOL: ${childSym}")
+          //  // cls.addAnnotation(Annotation.Child(childSym, NoSpan))
+
+           println()
+           println()
+           println()
+
+        // TODO: Попробовать добавить сюда case с PermittedSubClasses
+        // посмотреть как определен например Flags.Deferred на 988 строке
+        // и какую метаинфу мы можем добавить/обработать
+        // также стоит может быть только проверять флаг Sealed и пытаться проставлять его
+        // и где нибудь в Space отловить/запринтитть проставленное значение
         case _ =>
       }
       in.bp = end

@@ -850,6 +850,7 @@ object JavaParsers {
         }
         else
           ObjectTpt()
+      println(s"CLASS DECLARATION IN JAVA PARSER, CLASS NAME: ${name.toSimpleName}")
       val interfaces = interfacesOpt()
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
       val (statics, body) = typeBody(CLASS, name)
@@ -863,6 +864,7 @@ object JavaParsers {
       accept(RECORD)
       val nameOffset = in.offset
       val name = identForType()
+      println(s"RECORD DECLARATION IN JAVA PARSER, RECORD NAME: ${name.toSimpleName}")
       val tparams = typeParams()
       val header = formalParams()
       val superclass = javaLangRecord() // records always extend java.lang.Record
@@ -916,6 +918,7 @@ object JavaParsers {
         }
         else
           List(ObjectTpt())
+      println(s"INTERFACE DECLARATION IN JAVA PARSER, INTERFACE NAME: ${name.toSimpleName}")
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
       val (statics, body) = typeBody(INTERFACE, name)
       val iface = atSpan(start, nameOffset) {
