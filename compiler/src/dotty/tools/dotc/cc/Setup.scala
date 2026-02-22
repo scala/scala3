@@ -612,22 +612,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
-          val typeFormals = fn.tpe.widen match
+          val formals = fn.tpe.widen match
             case tl: TypeLambda => tl.paramInfos
-            case _ => Nil
-          for ((arg, idx) <- args.zipWithIndex) do
-            arg match
-              case arg: TypeTree =>
-                val formal =
-                  if idx < typeFormals.length then typeFormals(idx)
-                  else NoType
-                if defn.isTypeTestOrCast(fn.symbol) then
-                  arg.setNuType(
-                    globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
-                else
-                  transformTT(arg, NoSymbol, boxed = true, typeArgFormal = formal) // type arguments in type applications are boxed
-              case _ =>
-                ()
+            case _ => args.map(_ => NoType)
+          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
+            if defn.isTypeTestOrCast(fn.symbol) then
+              arg.setNuType(
+                globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
+              else
+                transformTT(arg, NoSymbol, boxed = true, typeArgFormal = formal) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -889,34 +882,31 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         !ub.isAny && ub.captureSet.isAlwaysEmpty
       case _ => false
 
-    val formalPure = typeArgFormal.exists && formalIsPure(typeArgFormal)
-
-    val result =
-      !formalPure
-      && tp.typeParams.isEmpty && tp.match
-        case tp: (TypeRef | AppliedType) =>
-          val sym = tp.typeSymbol
-          if sym.isClass then
-            !sym.isPureClass && sym != defn.AnyClass
-          else
-            val tp1 = tp.dealiasKeepAnnotsAndOpaques
-            if tp1 ne tp then needsVariable(tp1, typeArgFormal)
-            else instanceCanBeImpure(tp1)
-        case tp: (RefinedOrRecType | MatchType) =>
-          needsVariable(tp.underlying, typeArgFormal)
-        case tp: AndType =>
-          needsVariable(tp.tp1, typeArgFormal) && needsVariable(tp.tp2, typeArgFormal)
-        case tp: OrType =>
-          needsVariable(tp.tp1, typeArgFormal) || needsVariable(tp.tp2, typeArgFormal)
-        case CapturingOrRetainsType(parent, refs) =>
-          needsVariable(parent, typeArgFormal)
-          && refs.isConst       // if refs is a variable, no need to add another
-          && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
-        case AnnotatedType(parent, _) =>
-          needsVariable(parent, typeArgFormal)
-        case _ =>
-          false
-    result
+    tp.typeParams.isEmpty
+    && !formalIsPure(typeArgFormal)
+    && tp.match
+      case tp: (TypeRef | AppliedType) =>
+        val sym = tp.typeSymbol
+        if sym.isClass then
+          !sym.isPureClass && sym != defn.AnyClass
+        else
+          val tp1 = tp.dealiasKeepAnnotsAndOpaques
+          if tp1 ne tp then needsVariable(tp1, typeArgFormal)
+          else instanceCanBeImpure(tp1)
+      case tp: (RefinedOrRecType | MatchType) =>
+        needsVariable(tp.underlying, typeArgFormal)
+      case tp: AndType =>
+        needsVariable(tp.tp1, typeArgFormal) && needsVariable(tp.tp2, typeArgFormal)
+      case tp: OrType =>
+        needsVariable(tp.tp1, typeArgFormal) || needsVariable(tp.tp2, typeArgFormal)
+      case CapturingOrRetainsType(parent, refs) =>
+        needsVariable(parent, typeArgFormal)
+        && refs.isConst       // if refs is a variable, no need to add another
+        && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
+      case AnnotatedType(parent, _) =>
+        needsVariable(parent, typeArgFormal)
+      case _ =>
+        false
   }
 
   /** Add a capture set variable or <fluid> set to `tp` if necessary.
