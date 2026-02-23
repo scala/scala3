@@ -325,7 +325,7 @@ object TastyFormat {
    *  compatibility, but remains backwards compatible, with all
    *  preceding `MinorVersion`.
    */
-  final val MinorVersion: Int = 9
+  final val MinorVersion: Int = 8
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing
@@ -341,7 +341,7 @@ object TastyFormat {
    *  is able to read final TASTy documents if the file's
    *  `MinorVersion` is strictly less than the current value.
    */
-  final val ExperimentalVersion: Int = 1
+  final val ExperimentalVersion: Int = 0
 
   /**This method implements a binary relation (`<:<`) between two TASTy versions.
    *
