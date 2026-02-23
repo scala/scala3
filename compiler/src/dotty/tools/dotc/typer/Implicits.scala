@@ -1478,11 +1478,10 @@ trait Implicits:
             def unrecoverableDivergentImplicit(failure: SearchFailureType): Boolean = {
               failure match
                 case failure: DivergingImplicit =>
-                  failure.lvl <= 1 && remaining.forall(compareAlternatives(_, cand) == 0) 
-                    && {
+                  failure.lvl <= 1 && remaining.forall(compareAlternatives(_, cand) <= 0) && {
                     found match
                       case found: SearchSuccess =>
-                        compareAlternatives(cand, found) == 0
+                        compareAlternatives(found, cand) <= 0
                       case _ => true
                   }
                 case _ => false
@@ -1584,6 +1583,9 @@ trait Implicits:
        *  will give an ambiguity quickly.
        */
       def compareEligibles(e1: Candidate, e2: Candidate): Int =
+        val previousImplicit = ctx.searchHistory.openSearchPairs.headOption.map(_._1)
+        if previousImplicit.contains(e1) then return -1
+        if previousImplicit.contains(e2) then return 1
         if e1 eq e2 then return 0
         val cmpLevel = e1.level - e2.level
         if cmpLevel != 0 then return -cmpLevel // 1.
@@ -1790,7 +1792,6 @@ trait Implicits:
             case failure: SearchFailure =>
               failure.reason match
                 case _: AmbiguousImplicits => failure
-                // case _: DivergingImplicit => failure
                 case reason =>
                   if contextual then
                     // If we filtered out some candidates for being too late, we should
