@@ -217,7 +217,7 @@ class PathResolver(using c: Context) {
 
     def outlineClasspath: List[dotty.tools.io.AbstractFile] =
       if c.isOutlineFirstPass then Nil
-      else c.settings.YoutlineClasspath.value match
+      else c.settings.XoutlineClasspath.value match
         case NoAbstractFile => Nil
         case file => file :: Nil
 
@@ -228,7 +228,7 @@ class PathResolver(using c: Context) {
       val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
 
       List(
-        outlineClasspath.map(newClassPath),           // 1. The outline classpath (backed by the -Youtline-classpath option)
+        outlineClasspath.map(newClassPath),           // 1. The outline classpath (backed by the -Xoutline-classpath option)
         JrtClassPath(release),                        // 2. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
         classesInPath(javaBootClassPath),             // 3. The Java bootstrap class path.
         contentsOfDirsInPath(javaExtDirs),            // 4. The Java extension class path.

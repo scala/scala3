@@ -369,6 +369,10 @@ private sealed trait XSettings:
   val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Xpickle-java", "-Yjava-tasty", "-Ypickle-java"), preferPrevious = true)
   val XearlyTastyOutput: Setting[AbstractFile] = OutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
   val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", aliases = List("-Yallow-outline-from-tasty"))
+  val XexperimentalOutline: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xexperimental-outline", "Run typechecking in two passes, a prior outline pass, and a subsequent full pass. This may be useful in combination with pipelining.", aliases = List("-Yexperimental-outline", "-Youtline"))
+  val XsecondPass: Setting[Boolean] = BooleanSetting(ForkSetting, "Xsecond-pass", "Internal use only, signal that the compiler is in the second pass after outlining.", aliases = List("-Ysecond-pass"))
+  val XoutlineClasspath: Setting[AbstractFile] = OutputSetting(ForkSetting, "Xoutline-classpath", "directory|jar", "Destination for outline classfiles.", NoAbstractFile, aliases = List("-Youtline-classpath"))
+  val XmaxParallelism: Setting[Int] = IntSetting(AdvancedSetting, "Xmax-parallelism", "When combined with -Xexperimental-outline, maximum number of parallel threads to use, 0 means all available processors", 0, aliases = List("-Ymax-parallelism"))
 
   val XmixinForceForwarders = ChoiceSetting(
     AdvancedSetting,
@@ -524,4 +528,3 @@ private sealed trait YSettings:
   @deprecated(message = "Scheduled for removal.", since = "3.5.0")
   val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles", deprecation = Deprecation.removed())
 end YSettings
-

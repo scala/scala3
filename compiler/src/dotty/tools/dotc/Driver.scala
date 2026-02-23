@@ -51,14 +51,14 @@ class Driver {
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
   protected def doCompile(files: List[AbstractFile])(using ictx: Context): Reporter =
-    val isOutline = ictx.settings.Youtline.value(using ictx)
+    val isOutline = ictx.settings.XexperimentalOutline.value(using ictx)
 
     if !isOutline then inContext(ictx):
       report.echo(s"basic compilation enabled on files ${files.headOption.map(f => s"$f...").getOrElse("[]")}")(using ictx)
       doCompile(newCompiler, files) // standard compilation
     else
       report.echo(s"Outline compilation enabled on files ${files.headOption.map(f => s"$f...").getOrElse("[]")}")(using ictx)
-      val maxParallelism = ictx.settings.YmaxParallelism.valueIn(ictx.settingsState)
+      val maxParallelism = ictx.settings.XmaxParallelism.valueIn(ictx.settingsState)
       val absParallelism = math.abs(maxParallelism)
       val isParallel = maxParallelism >= 0
       val parallelism =
@@ -67,12 +67,12 @@ class Driver {
         else ceiling
 
       // NOTE: sbt will delete this potentially as soon as you call `apiPhaseCompleted`
-      val pickleWriteOutput = ictx.settings.YearlyTastyOutput.valueIn(ictx.settingsState)
+      val pickleWriteOutput = ictx.settings.XearlyTastyOutput.valueIn(ictx.settingsState)
       val profileDestination = ictx.settings.YprofileDestination.valueIn(ictx.settingsState)
 
       if pickleWriteOutput == NoAbstractFile then
-        report.error("Requested outline compilation with `-Yexperimental-outline` " +
-          "but did not provide output directory for TASTY files (missing `-Yearly-tasty-output` flag).")(using ictx)
+        report.error("Requested outline compilation with `-Xexperimental-outline` " +
+          "but did not provide output directory for TASTY files (missing `-Xearly-tasty-output` flag).")(using ictx)
         return ictx.reporter
 
       val pickleWriteSource =
@@ -96,7 +96,7 @@ class Driver {
       }
 
       val firstPassCtx = ictx.fresh
-        .setSetting(ictx.settings.YoutlineClasspath, outlineOutput)
+        .setSetting(ictx.settings.XoutlineClasspath, outlineOutput)
       inContext(firstPassCtx):
         doCompile(newCompiler, files)
 
@@ -110,8 +110,8 @@ class Driver {
 
         val baseCtx = initCtx.fresh
           .setSettings(ictx.settingsState) // copy over the classpath arguments also
-          .setSetting(ictx.settings.YsecondPass, true)
-          .setSetting(ictx.settings.YoutlineClasspath, outlineOutput)
+          .setSetting(ictx.settings.XsecondPass, true)
+          .setSetting(ictx.settings.XoutlineClasspath, outlineOutput)
           .setCallbacks(ictx.store)
           .setDepsFinishPromise(promise)
           .setReporter(if isParallel then new StoreReporter(ictx.reporter) else ictx.reporter)
@@ -119,8 +119,8 @@ class Driver {
         if profileDestination0.nonEmpty then
           baseCtx.setSetting(ictx.settings.YprofileDestination, profileDestination0)
 
-        // if ictx.settings.YoutlineClasspath.valueIn(ictx.settingsState).isEmpty then
-        //   baseCtx.setSetting(baseCtx.settings.YoutlineClasspath, pickleWriteAsClasspath)
+        // if ictx.settings.XoutlineClasspath.valueIn(ictx.settingsState).isEmpty then
+        //   baseCtx.setSetting(baseCtx.settings.XoutlineClasspath, pickleWriteAsClasspath)
         val fileNames: Array[String] =
           if sourcesRequired then group.map(_.toString).toArray else Array.empty
         setup(fileNames, baseCtx) match
@@ -146,7 +146,7 @@ class Driver {
         // TODO: probably not good to warn here because maybe compile is incremental
         // if compilers == 1 && !userRequestedSingleGroup then
         //   val knownParallelism = maxParallelism > 0
-        //   val requestedParallelism = s"Requested parallelism with `-Ymax-parallelism` was ${maxParallelism}"
+        //   val requestedParallelism = s"Requested parallelism with `-Xmax-parallelism` was ${maxParallelism}"
         //   val computedAddedum =
         //     if knownParallelism then "."
         //     else s""",
@@ -156,7 +156,7 @@ class Driver {
         //       |  ${requestedParallelism}$computedAddedum
         //       |  With ${scalaUnits.length} units to compile I can only batch them into a single group.
         //       |  This will increase build times.
-        //       |  Perhaps consider turning off -Youtline for this project.""".stripMargin
+        //       |  Perhaps consider turning off -Xexperimental-outline for this project.""".stripMargin
         //   report.warning(message)(using firstPassCtx)
 
         val promises = fileGroups.map(_ => scala.concurrent.Promise[Unit]())

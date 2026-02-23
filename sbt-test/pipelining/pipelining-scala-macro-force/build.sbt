@@ -13,8 +13,8 @@ lazy val macros = project.in(file("macros"))
 lazy val a = project.in(file("a"))
   .dependsOn(macros)
   .settings(
-    scalacOptions += "-Youtline",
-    scalacOptions += "-Ymax-parallelism:1",
+    scalacOptions += "-Xexperimental-outline",
+    scalacOptions += "-Xmax-parallelism:1",
     scalacOptions += "-Ycheck:all",
     scalacOptions += "-Yno-suspended-units",
     scalacOptions += "-Xprint-suspension",

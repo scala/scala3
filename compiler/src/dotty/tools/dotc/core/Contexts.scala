@@ -177,13 +177,13 @@ object Contexts {
       val local = incCallback
       if local != null then op(local)
 
-    def isOutline(using Context): Boolean = settings.Youtline.value
+    def isOutline(using Context): Boolean = settings.XexperimentalOutline.value
 
     def isOutlineFirstPass(using Context): Boolean =
-      isOutline && !settings.YsecondPass.value
+      isOutline && !settings.XsecondPass.value
 
     def isOutlineSecondPass(using Context): Boolean =
-      isOutline && settings.YsecondPass.value
+      isOutline && settings.XsecondPass.value
 
     def depsFinishPromiseOpt: Option[scala.concurrent.Promise[Unit]] = Option(store(depsFinishPromiseLoc))
 
