@@ -30,8 +30,8 @@ The following rules are non-negotiable and necessary for a contribution to be co
   given in the pull request description, including a description of exactly how the change was tested manually.
 - The contributed solutions have to have been tested by the contributor on their local machine before submitting for
   review.
+    - Contributed code has to compile successfully.
     - Note: it is fine to keep solutions under development in draft format and ask maintainers for feedback.
-- **Contributed code has to compile successfully.**
 
 # Guidelines
 
@@ -49,6 +49,7 @@ given contribution from the maintainers’ perspective.
 - If LLM-based tools were used extensively in a contribution, attaching prompt history in a comment is considered a
   useful aid for code reviewers.
 - Do not open pull requests without the intention of answering code reviews and pushing it to its completion.
+- Do not forward code review questions and other discussion to an LLM.
 
 # Examples
 
@@ -72,7 +73,7 @@ given contribution from the maintainers’ perspective.
 - The author of the contribution does not understand the code they contributed.
 - The contribution does not behave as described.
 - Interaction with the author of the contribution does not pass
-  t[he Turing test](https://en.wikipedia.org/wiki/Turing_test).
+  [the Turing test](https://en.wikipedia.org/wiki/Turing_test).
 
 # Additional notes
 
