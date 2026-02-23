@@ -961,7 +961,12 @@ trait ParallelTesting extends RunnerOrchestration:
               |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
               |$showErrors
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
-        else if hasMissingAnnotations then s"\nErrors found on incorrect row numbers when compiling $testSource\n$showErrors"
+        else if hasMissingAnnotations then
+          s"""|Errors found on incorrect row numbers when compiling $testSource
+              |$showErrors
+              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
+              |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if !errorMap.isEmpty then s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"
         else null
       }

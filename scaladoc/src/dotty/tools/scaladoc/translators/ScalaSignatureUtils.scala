@@ -100,6 +100,21 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   def functionTermParameters(paramss: Seq[TermParameterList]) =
     this.list(paramss, separator = List(Plain(""))) { (bld, pList) => bld.termParamList(pList) }
 
+  def givenFunctionParameters(paramss: Seq[ Either[TermParameterList,TypeParameterList] ]) =
+    list(paramss, separator = List(Plain(" => "))) {
+        case (bld, Right(params)) => bld.typeParamList(params)
+        case (bld, Left(params))  =>
+          val (prefix, suffix) =
+            if params.parameters.length != 1 then
+              (List(Plain("(")), List(Plain(")")))
+            else
+              (List(Plain("")), List(Plain("")))
+
+          bld.list(params.parameters, prefix, suffix, forcePrefixAndSuffix = true) {
+            (bld, p) => bld.signature(p.signature)
+          }
+    }
+
 trait ScalaSignatureUtils:
   extension (tokens: Seq[String]) def toSignatureString(): String =
     tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
