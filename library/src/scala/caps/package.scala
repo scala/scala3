@@ -46,7 +46,7 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.2
+@experimental // TODO: Drop once we bootstrap with 3.8.4 (is still being used by non-bootstrap compiler)
 @deprecated
 object cap extends Capability
 
