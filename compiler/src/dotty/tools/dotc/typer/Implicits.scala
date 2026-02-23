@@ -1481,7 +1481,7 @@ trait Implicits:
                   failure.lvl <= 1 && remaining.forall(compareAlternatives(_, cand) <= 0) && {
                     found match
                       case found: SearchSuccess =>
-                        compareAlternatives(found, cand) <= 0
+                        compareAlternatives(found, cand) == 0
                       case _ => true
                   }
                 case _ => false
@@ -1494,7 +1494,9 @@ trait Implicits:
                 else if (unrecoverableDivergentImplicit(fail.reason)) {
                   val div = fail.reason.asInstanceOf[DivergingImplicit]
                   val newLvl = if(cand.ref == div.ref) div.lvl + 1 else div.lvl
-                  fail.copy(tree = fail.tree.withType(div.copy(lvl = newLvl)))
+                  val result = fail.copy(tree = fail.tree.withType(div.copy(lvl = newLvl)))
+                  val newPending = remaining.filterConserve(compareAlternatives(_, cand) < 0)
+                  rank(newPending, result, rfailures)
                 } else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
