@@ -62,6 +62,8 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
 
   /* Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting(RootSetting, "print-tasty", "Prints the raw tasty.", aliases = List("--print-tasty"))
+  @deprecated(message = "Scheduled for removal in 3.9.0, no-op since 3.8.3", since = "3.8.3")
+  val printLines: Setting[Boolean] = BooleanSetting(RootSetting, "print-lines", "Show source code line numbers.", aliases = List("--print-lines"), deprecation = Deprecation.removed(Some("3.9.0")))
 
   /* Scala.js-related settings */
   val scalajsGenStaticForwardersForNonTopLevelObjects: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs-genStaticForwardersForNonTopLevelObjects", "Generate static forwarders even for non-top-level objects (Scala.js only).")
