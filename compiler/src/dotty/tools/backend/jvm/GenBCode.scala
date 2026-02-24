@@ -7,11 +7,14 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import Symbols.*
+import dotty.tools.dotc.ast.Trees.PackageDef
+import dotty.tools.dotc.ast.tpd.{Tree, TypeDef}
+import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
 import dotty.tools.io.*
+
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.Await
 
@@ -43,8 +46,15 @@ class GenBCode extends Phase { self =>
 
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
-    if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, bTypes)
+    if _postProcessor eq null then {
+      def extractMainClasses(tree: Tree): List[String] = tree match {
+        case PackageDef(_, stats) => stats.flatMap(extractMainClasses)
+        case td: TypeDef if ctx.platform.hasMainMethod(td.symbol) =>
+          List(td.symbol.fullName.stripModuleClassSuffix.toString)
+        case _ => Nil
+      }
+      _postProcessor = new PostProcessor(extractMainClasses(ctx.compilationUnit.tpdTree), frontendAccess, bTypes)
+    }
     _postProcessor.nn
   }
 
@@ -58,7 +68,7 @@ class GenBCode extends Phase { self =>
   private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
-      _generatedClassHandler = GeneratedClassHandler(postProcessor)
+      _generatedClassHandler = GeneratedClassHandler(postProcessor, frontendAccess)
     _generatedClassHandler.nn
   }
 

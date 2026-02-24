@@ -40,16 +40,11 @@ class CodeGen(generatedClassHandler: GeneratedClassHandler, backendUtils: Backen
   def genUnit(unit: CompilationUnit)(using ctx: Context): Unit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
-    val mainClasses = mutable.ListBuffer.empty[String]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
         val sourceFile = unit.source.file
-
-        // If we're generating a `main` method, keep track of it, so the backend can generate a Main-Class attribute in the JAR if needed
-        if ctx.platform.hasMainMethod(sym) then
-          mainClasses.append(sym.fullName.stripModuleClassSuffix.toString)
 
         val mainClassNode = genClass(cd, unit)
         val mirrorClassNode =
@@ -110,7 +105,7 @@ class CodeGen(generatedClassHandler: GeneratedClassHandler, backendUtils: Backen
 
     genClassDefs(unit.tpdTree)
     generatedClassHandler.process(
-      GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList, mainClasses.toList)
+      GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList)
     )
   }
 
