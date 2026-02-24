@@ -19,7 +19,7 @@ keeping the maintainers’ workload manageable.
 
 The following rules are non-negotiable and necessary for a contribution to be considered.
 
-- Accounts posting contributions (issues, pull requests, discussions, etc.) must be controlled by humans.
+- All interactions (issues, pull requests, discussions, etc.) must be performed by a human, posts by bots are not allowed.
 - The author of the contribution is responsible for every line of code, comment, documentation, test or decision
   contained in it, regardless if it was done by hand or generated automatically by tooling.
 - What is contained in the description of a given pull request **must match** what is contained in the code.
@@ -40,7 +40,7 @@ given contribution from the maintainers’ perspective.
 
 - **State clearly in the pull request description, whether LLM-based tools were used and to what extent (
   extensively/moderately/minimally/not at all).**
-- Any code generated with an LLM should be validated and tested by the contribution author in accordance with
+- Code generated with an LLM needs to be reviewed and tested by the contributor in accordance with
   established best practices. Using an LLM is no excuse for bad code quality.
     - In particular, validation and tests should first be done on the author’s local machine, rather than submitted
       straight to the compiler CI.
@@ -72,8 +72,7 @@ given contribution from the maintainers’ perspective.
 
 - The author of the contribution does not understand the code they contributed.
 - The contribution does not behave as described.
-- Interaction with the author of the contribution does not pass
-  [the Turing test](https://en.wikipedia.org/wiki/Turing_test).
+- The reviewer has doubts whether the author of the contribution is human or a bot.
 
 # Additional notes
 
