@@ -34,7 +34,7 @@ that gets propagated and resolved further out.
 
 When a mapping `m` is performed on a capture set variable `C`, a new variable `Cm` is created that contains the mapped elements and that is linked with `C`. If `C` subsequently acquires further elements through propagation, these are also propagated to `Cm` after being transformed by the `m` mapping. `Cm` also gets the same supersets as `C`, mapped again using `m`.
 
-One interesting aspect of the capture checker concerns the implementation of capture tunnelling. The [foundational theory](https://infoscience.epfl.ch/record/290885) on which capture checking is based makes tunnelling explicit through so-called _box_ and
+One interesting aspect of the capture checker concerns the implementation of capture tunneling. The [foundational theory](https://infoscience.epfl.ch/record/290885) on which capture checking is based makes tunneling explicit through so-called _box_ and
 _unbox_ operations. Boxing hides a capture set and unboxing recovers it. The capture checker inserts virtual box and unbox operations based on actual and expected types similar to the way the type checker inserts implicit conversions. When capture set variables are first introduced, any capture set in a capturing type that is an instance of a type parameter instance is marked as "boxed". A boxing operation is
 inserted if the expected type of an expression is a capturing type with
 a boxed capture set variable. The effect of the insertion is that any references

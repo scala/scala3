@@ -171,7 +171,7 @@ class ScalaCompilerForUnitTesting {
         val virtualSrcFiles = srcFiles.toArray
         val classesOutputPath = classesOutput.getAbsolutePath()
         val output = new SingleOutput:
-          def getOutputDirectory() = classesOutput
+          def getOutputDirectory(): File = classesOutput
 
         val maybeSourcePath = if extraFiles.isEmpty then Nil else List("-sourcepath", temp.getAbsolutePath.toString)
 

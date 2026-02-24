@@ -18,7 +18,7 @@ import java.{lang => jl}
 
 /** This object contains methods to create Java Streams that operate on Scala collections
   * (sequentially or in parallel). For more information on Java streams, consult the documentation
-  * ([[https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html]]).
+  * ([[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/package-summary.html]]).
   *
   * The explicit conversion methods defined here are intended to be used in Java code. For Scala
   * code, it is recommended to use the extension methods defined in [[scala.jdk.StreamConverters]].

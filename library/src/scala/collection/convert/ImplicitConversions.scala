@@ -20,12 +20,13 @@ import language.experimental.captureChecking
 import java.util.{concurrent => juc}
 import java.{lang => jl, util => ju}
 
-import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 /** Defines implicit converter methods from Java to Scala collections. */
 @deprecated("Use `scala.jdk.CollectionConverters` instead", "2.13.0")
 trait ToScalaImplicits {
+  import scala.collection.JavaConverters.*
+
   /** Implicitly converts a Java `Iterator` to a Scala `Iterator`.
    *  @see [[JavaConverters.asScalaIterator]]
    */
@@ -80,6 +81,7 @@ trait ToScalaImplicits {
 /** Defines implicit conversions from Scala to Java collections. */
 @deprecated("Use `scala.jdk.CollectionConverters` instead", "2.13.0")
 trait ToJavaImplicits {
+  import scala.collection.JavaConverters.*
   /** Implicitly converts a Scala `Iterator` to a Java `Iterator`.
    *  @see [[JavaConverters.asJavaIterator]]
    */

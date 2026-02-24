@@ -248,7 +248,7 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   /** A `BiConsumer` that merges `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method. */
   def merger[A]: jf.BiConsumer[AnyAccumulator[A], AnyAccumulator[A]] = (a1: AnyAccumulator[A], a2: AnyAccumulator[A]) => a1 drain a2
 
-  def from[A](source: IterableOnce[A]): AnyAccumulator[A] = source match {
+  def from[A](source: IterableOnce[A]): AnyAccumulator[A] = (source: @unchecked) match {
     case acc: AnyAccumulator[A] => acc
     case _ => new AnyAccumulator[A].addAll(source)
   }

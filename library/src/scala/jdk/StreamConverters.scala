@@ -18,7 +18,7 @@ import scala.collection.convert.StreamExtensions
 /** This object provides extension methods to create [[java.util.stream.Stream Java Streams]] that
   * operate on Scala collections (sequentially or in parallel). For more information on Java
   * streams, consult the documentation
-  * ([[https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html]]).
+  * ([[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/package-summary.html]]).
   *
   * When writing Java code, use the explicit conversion methods defined in
   * [[javaapi.StreamConverters]] instead.

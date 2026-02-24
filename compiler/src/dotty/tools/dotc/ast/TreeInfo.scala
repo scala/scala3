@@ -483,9 +483,11 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef if Feature.shouldBehaveAsScala2 =>
-      if (tree.isClassDef) EmptyFlags else NoInitsInterface
-    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: TypeDef =>
+      if tree.isClassDef then
+        if Feature.shouldBehaveAsScala2 then EmptyFlags
+        else NoInits
+      else NoInitsInterface
     case tree: DefDef =>
       if tree.unforcedRhs == EmptyTree
          && tree.paramss.forall {
@@ -494,8 +496,6 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
             }
       then
         NoInitsInterface
-      else if tree.mods.is(Given) && tree.paramss.isEmpty then
-        EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
       else if Feature.shouldBehaveAsScala2 then
         EmptyFlags
       else
@@ -778,6 +778,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Inlined(call, _, _) => isExtMethodApply(call)
     case tree @ Select(qual, nme.apply) => tree.symbol.is(ExtensionMethod) || isExtMethodApply(qual)
     case tree => tree.symbol.is(ExtensionMethod)
+
+  /** Is `fn()` as spurious type application? This is the case if `fn` is a parameterless function,
+   *  the list of arguents `args` is empty, and `fn` overrides a Java method (which would
+   *  be a zero-parameter method). We accept such applications when unpickling and when
+   *  retyping during inlining.
+   */
+  def isSpuriousApply(fn: Tree, args: List[Trees.Tree[?]])(using Context): Boolean =
+    fn.tpe.widenSingleton.isInstanceOf[ExprType]
+    && args.isEmpty
+    && fn.symbol.allOverriddenSymbols.exists: sym =>
+        sym.is(JavaDefined)
+        || sym.owner == defn.AnyClass  // include Any_toString and Any_hashCode
 
   /** Is symbol potentially a getter of a mutable variable?
    */

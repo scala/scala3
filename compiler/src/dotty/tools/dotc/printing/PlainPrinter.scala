@@ -288,13 +288,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if elideCapabilityCaps
             && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && (!parent.derivesFromExclusive || refs.isReadOnly)
+            && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
-      case tp @ RetainingType(parent, refSet) =>
-        if Feature.ccEnabledSomewhere then
-          toTextCapturing(parent, refSet.retainedElementsRaw, "") ~ Str("R").provided(printDebug)
-        else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
       case tp: ErrorType =>
@@ -317,8 +313,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
-          case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            ann.tree.retainedSet.retainedElementsRaw match
+          case AnnotatedType(parent, ann: RetainingAnnotation) if !ann.isStrict =>
+            ann.retainedType.retainedElementsRaw match
               case ref :: Nil if ref.isCapRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
@@ -335,12 +331,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        if defn.SilentAnnots.contains(annot.symbol) && !printDebug then
-          toText(tpe)
-        else if annot.isInstanceOf[CaptureAnnotation] then
-          toTextLocal(tpe) ~ "^" ~ toText(annot)
-        else
-          toTextLocal(tpe) ~ " " ~ toText(annot)
+        annot match
+          case annot: RetainingAnnotation =>
+            if Feature.ccEnabledSomewhere then
+              toTextCapturing(tpe, annot.retainedType.retainedElementsRaw, "")
+              ~ Str("R").provided(printDebug)
+            else toText(tpe)
+          case annot: CaptureAnnotation =>
+            toTextLocal(tpe) ~ "^" ~ toText(annot)
+          case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
+            toText(tpe)
+          case _ =>
+            toTextLocal(tpe) ~ " " ~ toText(annot)
       case FlexibleType(_, tpe) =>
         "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
@@ -361,9 +363,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch {
-            case ex: Throwable => Str("...")
-          }
+          catch case _: Throwable => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
@@ -705,7 +705,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => stringText(Chars.escapedString(const.value.toString, quoted = true))
+    case StringTag => literalText(Chars.escapedString(const.value.toString, quoted = true))
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(Chars.escapedChar(const.charValue))
     case LongTag => literalText(const.longValue.toString + "L")
@@ -841,10 +841,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
   protected def keywordText(text: String): Text = coloredStr(text, SyntaxHighlighting.KeywordColor)
-  protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.ValDefColor)
+  protected def valDefText(text: Text): Text = coloredText(text, SyntaxHighlighting.DefinitionColor)
   protected def typeText(text: Text): Text = coloredText(text, SyntaxHighlighting.TypeColor)
   protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
-  protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
 
   protected def coloredStr(text: String, color: String): String =
     if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text

@@ -41,6 +41,28 @@ object Message:
       i"\n$what can be rewritten automatically under -rewrite $optionStr."
     else ""
 
+  /** A note can produce an added string for an error message */
+  abstract class Note:
+
+  	/** Should the note be shown before the actual message or after?
+  	 *  Default is after.
+  	 */
+    def showAsPrefix(using Context): Boolean = false
+
+    /** The note rendered as part of an error message */
+    def render(using Context): String
+
+    /** If note N1 covers note N2 then N1 and N2 won't be shown together in
+     *  an error message. Instead we show the note that's strictly better in terms
+     *  of the "covers" partial ordering, or, if there's no strict wionner, the first
+     *  added note.
+     */
+    def covers(other: Note)(using Context): Boolean = false
+
+  object Note:
+    def apply(msg: Context ?=> String) = new Note:
+      def render(using Context) = msg
+
   enum Disambiguation:
     case All
     case AllExcept(strs: List[String])
@@ -278,7 +300,7 @@ object Message:
       super.toText(sym)
   end Printer
 
-end Message
+end Message 
 
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
@@ -479,3 +501,15 @@ object NoExplanation {
     if (m.explanation == "") Some(m)
     else None
 }
+
+final class InferUnionWarning(tp: Type)(using Context)
+  extends Message(ErrorMessageID.InferUnionWarningID):
+
+  def kind: MessageKind = MessageKind.Type
+
+  def msg(using Context): String =
+    i"""A type argument was inferred to be union type $tp
+       |This may indicate a programming error.
+       |"""
+
+  def explain(using Context): String = ""

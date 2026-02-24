@@ -6,7 +6,7 @@
 libraryDependencySchemes +=
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.20.1")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.20.2")
 
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.2.1")
 
@@ -25,3 +25,6 @@ addSbtPlugin("com.gradle" % "sbt-develocity" % "1.3.1")
 addSbtPlugin("com.gradle" % "sbt-develocity-common-custom-user-data" % "1.1")
 
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
+
+addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.6")
+libraryDependencies += "com.spotify" % "missinglink-core" % "0.2.11"

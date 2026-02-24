@@ -25,3 +25,20 @@ package net.marek.tyre.automaton:
       val i: T,
     ):
       def build = "27"
+
+// duplicate issue #24326
+
+trait Local[F[_], E] {
+
+  def liftTo[G[_]]: Local[G, E] =
+    new Local.Lifted(this)
+}
+
+object Local {
+  private final class Lifted[F[_], G[_], E](
+      val underlying: Local[F, E],
+  ) extends Local[G, E]  {
+    override def liftTo[H[_]]: Local[H, E] =
+      new Lifted(underlying)
+  }
+}

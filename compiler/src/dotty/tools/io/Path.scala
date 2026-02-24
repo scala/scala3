@@ -133,7 +133,7 @@ class Path private[io] (val jpath: JPath) {
     // We don't call JPath#normalize here because it may result in resolving
     // to a different path than intended, such as when the given path contains
     // a `..` component and the preceding name is a symbolic link.
-    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#normalize--
+    // https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Path.html#normalize()
     //
     // Paths ending with `..` or `.` are handled specially here as
     // JPath#getParent wants to simply strip away that last element.

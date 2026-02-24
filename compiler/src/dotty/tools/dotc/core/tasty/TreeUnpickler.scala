@@ -354,6 +354,11 @@ class TreeUnpickler(reader: TastyReader,
         op
       }
 
+      /** Can `tag` start a type argument of a CompactAnnotation? */
+      def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
+        case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
+        case _ => false
+
       def readLengthType(): Type = {
         val end = readEnd()
 
@@ -420,7 +425,12 @@ class TreeUnpickler(reader: TastyReader,
                 val hi = readVariances(readType())
                 createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
-              AnnotatedType(readType(), Annotation(readTree()))
+              val parent = readType()
+              val ann =
+                if isCompactAnnotTypeTag(nextByte)
+                then CompactAnnotation(readType())
+                else Annotation(readTree())
+              AnnotatedType(parent, ann)
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>
@@ -814,8 +824,8 @@ class TreeUnpickler(reader: TastyReader,
             if (sym.isTerm && !sym.isOneOf(DeferredOrLazyOrMethod))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
-              sym.is(Method, butNot = Deferred) && !sym.isConstructor)
-              initsFlags &= NoInits
+              sym.isOneOf(Lazy | Method, butNot = Deferred) && !sym.isConstructor)
+              initsFlags &= NoInits // i.e. initsFlags &~= PureInterface
           case IMPORT | EXPORT =>
             skipTree()
           case PACKAGE =>
@@ -1499,6 +1509,7 @@ class TreeUnpickler(reader: TastyReader,
               else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
+              else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))

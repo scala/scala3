@@ -7,6 +7,7 @@
    |  Note that capability tail* is not included in capture set {head}.
    |
    |  where:    ^ refers to the universal root capability
+   |
 11 |  all(nextInt(all.length))
    |
    | longer explanation available when compiling with `-explain`

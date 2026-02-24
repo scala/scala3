@@ -45,7 +45,7 @@ object Symbols extends SymUtils {
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
-    extends Designator, ParamInfo, SrcPos, printing.Showable {
+    extends ParamInfo, SrcPos, printing.Showable {
 
     type ThisName <: Name
 

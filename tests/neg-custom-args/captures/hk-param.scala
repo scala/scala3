@@ -1,6 +1,6 @@
 /** Concrete collection type: View */
 trait View[+A] extends Itable[A], ILike[A, [X] =>> View[X]^]: // error
-  override def fromIterable[B](c: Itable[B]^): View[B]^{c} = ???
+  override def fromIterable[B](c: Itable[B]^): View[B]^{c} = ??? // error
 
 trait IPolyTransforms[+A, +C[A]] extends Any:
   def fromIterable[B](coll: Itable[B]^): C[B]

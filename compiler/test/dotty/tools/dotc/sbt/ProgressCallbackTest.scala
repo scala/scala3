@@ -7,7 +7,6 @@ import dotty.tools.dotc.sbt.ProgressCallbackTest.*
 import org.junit.Assert.*
 import org.junit.Test
 
-import dotty.tools.toOption
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Contexts.ctx
 import dotty.tools.dotc.CompilationUnit

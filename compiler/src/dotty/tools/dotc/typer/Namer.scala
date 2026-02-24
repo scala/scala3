@@ -991,8 +991,14 @@ class Namer { typer: Typer =>
       end if
     }
 
+    /** Add an implicit Mutable flag to consume methods in Mutable classes. This
+     *  turns the method into an update method.
+     */
     private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
-      if denot.is(Method) && denot.hasAnnotation(defn.ConsumeAnnot) then
+      if denot.is(Method)
+          && denot.hasAnnotation(defn.ConsumeAnnot)
+          && denot.owner.derivesFrom(defn.Caps_Stateful)
+      then
         denot.setFlag(Mutable)
 
     /** Intentionally left without `using Context` parameter. We need
@@ -1256,8 +1262,8 @@ class Namer { typer: Typer =>
             n += 1
 
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
-        *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
-        */
+       *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
+       */
       def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
 
         def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
@@ -2215,10 +2221,15 @@ class Namer { typer: Typer =>
         // `default-getter-variance.scala`.
         AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot, sym.span))
       else
+        inline def isJavaEnumValue = tp match
+          case tp: TermRef => tp.termSymbol.isAllOf(JavaDefined | Enum)
+          case _ => false
         // don't strip @uncheckedVariance annot for default getters
         TypeOps.simplify(tp.widenTermRefExpr,
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null)
         match
+          // For final members pointing to Java enum values, preserve the singleton type. See i24750.
+          case _ if sym.is(Final) && isJavaEnumValue => tp
           case ctp: ConstantType if sym.isInlineVal => ctp
           case tp if isTracked => tp
           case tp => TypeComparer.widenInferred(tp, pt, Widen.Unions)

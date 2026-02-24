@@ -18,7 +18,7 @@ import ast.desugar
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
-import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope, Addenda, NothingToAdd}
+import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
 import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
@@ -38,7 +38,7 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
-import Message.Disambiguation
+import Message.{Disambiguation, Note}
 
 /**  Messages
   *  ========
@@ -298,7 +298,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: Addenda = NothingToAdd)(using Context)
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], notes: List[Note] = Nil)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   private val shouldSuggestNN =
@@ -343,7 +343,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
           mapOver(tp)
         case _ =>
           mapOver(tp)
-
+    val preface = notes.filter(_.showAsPrefix).map(_.render).mkString
     val found1 = reported(found)
     reported.setVariance(-1)
     val expected1 = reported(expected)
@@ -351,7 +351,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
-    i"""|Found:    $foundStr
+    i"""|${preface}Found:    $foundStr
         |Required: $expectedStr${reported.notes}"""
   end msg
 
@@ -359,8 +359,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-
-    addenda.toAdd.mkString ++ super.msgPostscript ++ importSuggestions
+    notes.filter(!_.showAsPrefix).map(_.render).mkString ++ super.msgPostscript ++ importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
@@ -1215,14 +1214,22 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
 
 class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
 extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
-  def msg(using Context) = i"${definition.name} is a forward reference extending over the definition of ${value.name}"
+  extension (sym: Symbol) def srcLine = sym.line + 1
+
+  def msg(using Context) =
+    val ref =
+      if value != definition then i"${definition.name} (defined on line ${definition.srcLine})"
+      else i"${definition.name}"
+    i"forward reference to ${ref} extends over the definition of ${value.name} (on line ${value.srcLine})"
 
   def explain(using Context) =
     i"""|${definition.name} is used before you define it, and the definition of ${value.name}
         |appears between that use and the definition of ${definition.name}.
         |
-        |Forward references are allowed only, if there are no value definitions between
-        |the reference and the referred method definition.
+        |Forward references are allowed only if there are no value definitions between
+        |the reference and the definition that is referred to.
+        |Specifically, any statement between the reference and the definition
+        |cannot be a variable definition, and if it's a value definition, it must be lazy.
         |
         |Define ${definition.name} before it is used,
         |or move the definition of ${value.name} so it does not appear between
@@ -1353,25 +1360,6 @@ extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
         |To avoid this error, try giving ${cycleSym.name} an explicit type.
         |"""
 }
-
-class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
-extends TypeMsg(SkolemInInferredID):
-  def msg(using Context) =
-    def argStr =
-      if argument.isEmpty then ""
-      else i" from argument of type ${argument.tpe.widen}"
-    i"""Failure to generate given instance for type $pt$argStr)
-        |
-        |I found: $tree
-        |But the part corresponding to `<skolem>` is not a reference that can be generated.
-        |This might be because resolution yielded as given instance a function that is not
-        |known to be total and side-effect free."""
-  def explain(using Context) =
-    i"""The part of given resolution that corresponds to `<skolem>` produced a term that
-        |is not a stable reference. Therefore a given instance could not be generated.
-        |
-        |To trouble-shoot the problem, try to supply an explicit expression instead of
-        |relying on implicit search at this point."""
 
 class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using Context)
 extends ReferenceMsg(SuperQualMustBeParentID) {

@@ -15,6 +15,8 @@ package mutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+
+import scala.annotation.nowarn
 import java.lang.Integer.numberOfLeadingZeros
 import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
@@ -304,5 +306,6 @@ class OpenHashMap[Key, Value](initialSize : Int)
     this
   }
 
+  @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "OpenHashMap"
 }

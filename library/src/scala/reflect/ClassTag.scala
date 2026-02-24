@@ -25,27 +25,25 @@ import scala.runtime.ClassValueCompat
  * field. This is particularly useful for instantiating `Array`s whose element types are unknown
  * at compile time.
  *
- * `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags.TypeTag]]s, in that they
- * wrap only the runtime class of a given type, whereas a `TypeTag` contains all static type
- * information. That is, `ClassTag`s are constructed from knowing only the top-level class of a
- * type, without necessarily knowing all of its argument types. This runtime information is enough
- * for runtime `Array` creation.
+ * `ClassTag`s wrap only the runtime class of a given type, without necessarily knowing all of
+ * its argument types. This runtime information is enough for runtime `Array` creation.
  *
  * For example:
  * {{{
- *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems: _*)
- *   mkArray: [T](elems: T*)(implicit evidence\$1: scala.reflect.ClassTag[T])Array[T]
+ *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems*)
+ *   def mkArray[T](elems: T*)(using ClassTag[T]): Array[T]
  *
  *   scala> mkArray(42, 13)
- *   res0: Array[Int] = Array(42, 13)
+ *   val res0: Array[Int] = Array(42, 13)
  *
  *   scala> mkArray("Japan","Brazil","Germany")
- *   res1: Array[String] = Array(Japan, Brazil, Germany)
+ *   val res1: Array[String] = Array(Japan, Brazil, Germany)
  * }}}
  *
- * See [[scala.reflect.api.TypeTags]] for more examples, or the
- * [[https://docs.scala-lang.org/overviews/reflection/typetags-manifests.html Reflection Guide: TypeTags]]
- * for more details.
+ * For compile-time type information in macros, see the facilities in the
+ * [[scala.quoted]] package.
+ * For limited runtime type checks beyond what `Class[?]` provides, see
+ * [[scala.reflect.TypeTest]] and [[scala.reflect.Typeable]].
  *
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")

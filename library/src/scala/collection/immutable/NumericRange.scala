@@ -18,6 +18,7 @@ import language.experimental.captureChecking
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import scala.collection.generic.CommonErrors
+import scala.annotation.compileTimeOnly
 
 /** `NumericRange` is a more generic version of the
   *  `Range` class which works with arbitrary types.
@@ -122,6 +123,19 @@ sealed class NumericRange[T](
       count += 1
     }
   }
+
+  // NOTE: THIS METHOD SHOULD NOT BE USED ANYWHERE. IT EXISTS AS A LEGACY
+  //  AND TO KEEP BINARY COMPATIBILITY WITH SCALA 2. IT IS MARKED AS
+  //  `private[NumericRange]` BUT IT IS PUBLIC IN THE BINARY. THIS METHOD
+  //  SHOULD NOT BE REFERED TO DIRECTLY. CALLING `foreach` HERE DIRECTLY
+  //  DOESN'T INTRODUCE ANY PERFORMANCE REGRESSIONS SINCE THE BYTECODE OF
+  //  BOTH METHODS ARE THE SAME. IT IS ALSO MARKED AS `@compileTimeOnly`
+  //  TO CHECK THAT INDEED IT WILL NOT APPEAR IN ANY NEWLY COMPILED CODE
+  //  AT RUNTIME.
+  @compileTimeOnly(message = "Use `foreach` directly instead")
+  @deprecated(message = "Use `foreach` directly instead", since = "3.8.0")
+  private[NumericRange] def foreach$mVc$sp(f: T => Unit): Unit =
+    foreach(f)
 
   private def indexOfTyped(elem: T, from: Int): Int =
     posOf(elem) match {

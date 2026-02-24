@@ -47,7 +47,7 @@ object NullOpsDecorator:
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
     def isNullableUnion(using Context): Boolean = {
-      val stripped = self.stripNull()
+      val stripped = self.stripNull(stripFlexibleTypes = false)
       stripped ne self
     }
   end extension

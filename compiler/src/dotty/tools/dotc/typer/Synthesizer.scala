@@ -828,7 +828,14 @@ object Synthesizer:
 
   /** Tuple used to store the synthesis result with a list of errors.  */
   type TreeWithErrors = (Tree, List[String])
-  private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
+
+  private inline def withNoErrors(inline tree: => Tree): TreeWithErrors =
+    try
+      (tree, List.empty)
+    catch
+      case tp: TypeError =>
+        withErrors(tp.getMessage)
+
   private def withErrors(errors: String*): TreeWithErrors = (EmptyTree, errors.toList)
 
   private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)

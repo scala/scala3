@@ -41,6 +41,10 @@ sealed trait Command extends ParseResult
 /** An unknown command that will not be handled by the REPL */
 case class UnknownCommand(cmd: String) extends Command
 
+case class Dep(dep: String) extends Command
+object Dep {
+  val command: String = ":dep"
+}
 /** An ambiguous prefix that matches multiple commands */
 case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends Command
 
@@ -145,12 +149,15 @@ case object Help extends Command {
       |:reset [options]         reset the repl to its initial state, forgetting all session entries
       |:settings <options>      update compiler options, if possible
       |:silent                  disable/enable automatic printing of results
+      |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
     """.stripMargin
 }
 
 object ParseResult {
 
-  @sharable private val CommandExtract = """(:[\S]+)\s*(.*)""".r
+  // Commands must start with ":" followed by a letter (e.g. :help, :load)
+  // This ensures operators like :: or :+ are treated as Scala code, not commands
+  @sharable private val CommandExtract = """(:[a-zA-Z]\S*)\s*(.*)""".r
 
   private def parseStats(using Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)
@@ -169,6 +176,7 @@ object ParseResult {
     KindOf.command -> (arg => KindOf(arg)),
     Load.command -> (arg => Load(arg)),
     Require.command -> (arg => Require(arg)),
+    Dep.command -> (arg => Dep(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
     Settings.command -> (arg => Settings(arg)),

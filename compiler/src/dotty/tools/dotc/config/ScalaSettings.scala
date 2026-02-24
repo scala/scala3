@@ -6,7 +6,7 @@ import dotty.tools.dotc.config.Settings.{Setting, SettingAlias, SettingGroup, Se
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
@@ -171,6 +171,7 @@ private sealed trait WarningSettings:
   private val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
   private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
   private val WwrongArrow = BooleanSetting(WarningSetting, "Wwrong-arrow", "Warn if function arrow was used instead of context literal ?=>.")
+  private val WinferUnion = BooleanSetting(WarningSetting, "Winfer-union", "Warn if type argument was inferred as union type.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -289,12 +290,16 @@ private sealed trait WarningSettings:
   )
 
   object WshadowHas:
-    def allOr(s: String)(using Context) =
-      Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
+    // Is any choice set for -Wshadow?
+    def any(using Context): Boolean = Wall.value || Wshadow.value.nonEmpty
+
+    def allOr(s: String)(using Context): Boolean =
+      Wall.value || Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
     def privateShadow(using Context) =
       allOr("private-shadow")
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
+  end WshadowHas
 
   val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
 
@@ -309,6 +314,7 @@ private sealed trait WarningSettings:
     def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
     def recurseWithDefault(using Context): Boolean = allOr(WrecurseWithDefault)
     def wrongArrow(using Context): Boolean = allOr(WwrongArrow)
+    def inferUnion(using Context): Boolean = allOr(WinferUnion)
     def safeInit(using Context): Boolean = allOr(WsafeInit)
 
 /** -X "Extended" or "Advanced" settings */

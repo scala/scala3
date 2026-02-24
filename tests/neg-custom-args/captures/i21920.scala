@@ -11,7 +11,7 @@ final class Cell[A](head: () => IterableOnce[A]^):
   def headIterator: Iterator[A]^{this} = head().iterator
 
 class File private ():
-  private var closed = false
+  @caps.unsafe.untrackedCaptures private var closed = false
 
   def close() = closed = true
 

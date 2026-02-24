@@ -105,6 +105,9 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
 
   def isAnyContextFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.ContextFunction")
 
+  def isAnyFunctionType: Boolean =
+    tpe.isAnyFunction || tpe.isAnyContextFunction || tpe.isAnyImpureFunction || tpe.isAnyImpureContextFunction
+
   def isCapSet: Boolean = tpe.typeSymbol == CaptureDefs.Caps_CapSet
 
   def isCapSetPure: Boolean =
@@ -210,16 +213,20 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
 end decomposeCaptureRefs
 
 object CaptureSetType:
-  def unapply(using qctx: Quotes)(tt: qctx.reflect.TypeTree): Option[List[qctx.reflect.TypeRepr]] = decomposeCaptureRefs(tt.tpe)
+  def unapply(using qctx: Quotes)(tt: qctx.reflect.TypeRepr): Option[List[qctx.reflect.TypeRepr]] = decomposeCaptureRefs(tt)
 end CaptureSetType
 
 object CapturingType:
   def unapply(using qctx: Quotes)(typ: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, List[qctx.reflect.TypeRepr])] =
     import qctx.reflect._
     typ match
-      case AnnotatedType(base, Apply(TypeApply(Select(New(annot), _), List(CaptureSetType(refs))), Nil)) if annot.symbol.isRetainsLike =>
-        Some((base, refs))
-      case AnnotatedType(base, Apply(Select(New(annot), _), Nil)) if annot.symbol == CaptureDefs.retainsCap =>
+      case AnnotatedType(base, annot) if annot.symbol == CaptureDefs.retainsCap =>
         Some((base, List(CaptureDefs.captureRoot.termRef)))
+      case AnnotatedType(base, annot) if annot.tpe.typeSymbol.isRetainsLike =>
+        annot.tpe.match
+          case AppliedType(_, List(CaptureSetType(refs))) =>
+            Some((base, refs))
+          case _ =>
+            None
       case _ => None
 end CapturingType

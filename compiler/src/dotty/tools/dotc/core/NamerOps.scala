@@ -223,8 +223,9 @@ object NamerOps:
     companion
 
   def typeConstructorCompanion(tsym: Symbol, prefix: Type, proxy: Symbol)(using Context): TermSymbol =
-    newSymbol(tsym.owner, tsym.name.toTermName,
-        ConstructorCompanionFlags | StableRealizable | Method, ExprType(prefix.select(proxy)), coord = tsym.coord)
+    inline def core = ConstructorCompanionFlags | StableRealizable | Method
+    inline def flags = if tsym.is(Exported) then core | Exported else core
+    newSymbol(tsym.owner, tsym.name.toTermName, flags, ExprType(prefix.select(proxy)), coord = tsym.coord)
 
   /** Add all necessary constructor proxy symbols for members of class `cls`. This means:
    *

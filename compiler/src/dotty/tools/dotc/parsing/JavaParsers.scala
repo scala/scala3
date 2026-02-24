@@ -287,8 +287,8 @@ object JavaParsers {
       }
 
     def typ(): Tree =
-      annotations()
-      optArrayBrackets {
+      var annots = annotations()
+      val tp = optArrayBrackets {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
           var t = typeArgs(atSpan(in.offset)(Ident(ident())))
@@ -300,7 +300,9 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
-            annotations()
+            // Read annotations from nested type in Java.
+            // For example, the syntax for annotating `Map.Entry` is `Map.@A Entry`.
+            annots ++= annotations()
             t = typeArgs(atSpan(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
@@ -308,6 +310,7 @@ object JavaParsers {
         else
           basicType()
       }
+      annots.foldLeft(tp)((tp, ann) => Annotated(tp, ann))
 
     def typeArgs(t: Tree): Tree = {
       var wildnum = 0
@@ -554,7 +557,7 @@ object JavaParsers {
     def formalParam(): ValDef = {
       val start = in.offset
       if (in.token == FINAL) in.nextToken()
-      annotations()
+      val annots = annotations()
       var t = typ()
       if (in.token == DOTDOTDOT) {
         in.nextToken()
@@ -563,7 +566,7 @@ object JavaParsers {
         }
       }
       atSpan(start, in.offset) {
-        varDecl(Modifiers(Flags.JavaDefined | Flags.Param), t, ident().toTermName)
+        varDecl(Modifiers(Flags.JavaDefined | Flags.Param, annotations = annots), t, ident().toTermName)
       }
     }
 

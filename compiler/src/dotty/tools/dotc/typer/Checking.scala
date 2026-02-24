@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike}
+import cc.{isCaptureChecking, RetainingAnnotation}
 import cc.Mutability.isUpdateMethod
 
 import collection.mutable
@@ -696,8 +696,8 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
-    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
-      fail(em"Update method ${sym.name} must be declared in a class extending the `Mutable` trait.")
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) then
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
@@ -815,7 +815,7 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
-        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike =>
+        case tp @ AnnotatedType(underlying, annot: RetainingAnnotation) =>
           val underlying1 = this(underlying)
           val saved = inCaptureSet
           inCaptureSet = true
@@ -1354,7 +1354,7 @@ trait Checking {
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
-      for other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent() do
+      for other <- seen(decl.name) if decl.name != nme.ERROR && !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&

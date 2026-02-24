@@ -155,7 +155,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnknownNamedEnclosingClassOrObjectID // errorNumber: 139
   case IllegalCyclicTypeReferenceID // errorNumber: 140
   case MissingTypeParameterInTypeAppID // errorNumber: 141
-  case SkolemInInferredID // errorNumber: 142
+  case SkolemInInferredID extends ErrorMessageID(isActive = false) // errorNumber: 142
   case ErasedTypesCanOnlyBeFunctionTypesID // errorNumber: 143
   case CaseClassMissingNonImplicitParamListID // errorNumber: 144
   case EnumerationsShouldNotBeEmptyID // errorNumber: 145
@@ -236,6 +236,9 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case DefaultShadowsGivenID // errorNumber: 220
   case RecurseWithDefaultID // errorNumber: 221
   case EncodedPackageNameID // errorNumber: 222
+  case CannotBeIncludedID // errorNumber: 223 (unused in 3.8.2)
+  case OverrideClassID // errorNumber: 224 (unused in 3.8.2)
+  case InferUnionWarningID // errorNumber: 225
 
   def errorNumber = ordinal - 1
 

@@ -5,10 +5,10 @@ def f(xs: List[C^]) =
 
 type Proc = () => Unit
 
-class Ref[T](init: T):
+class Ref[T](init: T) extends caps.Mutable:
   private var x: T = init
   def get: T = x
-  def set(y: T) = { x = y }
+  update def set(y: T) = { x = y }
 
 class List[+A]:
   def head: A = ???
