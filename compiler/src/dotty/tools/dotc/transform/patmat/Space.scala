@@ -311,15 +311,16 @@ object SpaceEngine {
     def isTypeRefWithWildcardBounds(tree: Tree) =
       val info = tree.symbol.info
       info match
-        case TypeBounds(_, hi) => hi.isAny
+        case TypeBounds(lo, hi) => hi.isAny && lo.isNothingType
         case _ => false
     def getAppliedType(tree: Type) =
       tree match
         case AppliedType(_, actual +: Nil) => actual
     def toExprType(tree: Type) =
       AppliedType(defn.QuotedExprClass.typeRef, List(tree))
+
     if pat.body.isType then
-      if (!getAppliedType(pt.widen).etaExpand.isInstanceOf[LambdaType])
+      if !getAppliedType(pt.widen).etaExpand.isInstanceOf[LambdaType] then
         pat.bindings match
           case Nil => pt =:= pat.tpe // constant type: '[T]
           case binding +: Nil => // generic type variable: '[t]
@@ -403,13 +404,20 @@ object SpaceEngine {
         def unapplyProd() = Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
 
         // Custom logic for '[...] and '{...} quoted patterns.
-        // Since their irrefutability has to be checked against a set Type,
+        // Since their irrefutability has to be checked against a specific Type,
         // it's more practical to convert them here into `Typ(...)` (pointing
         // to that Type) instead of `Prod(...)`.
         if fun.symbol == defn.QuoteMatching_ExprMatch_unapply
             || fun.symbol == defn.QuoteMatching_TypeMatch_unapply
         then
           val quotePattern = QuotePatterns.decode(unapp)
+          // removes a type variable duplicated by typer
+          // eg. for
+          //   (expr1: Expr[Int]) match
+          //     case '{$expr2: t}
+          // quote pattern type might be retyped as Expr[Int & t]
+          // In that case, we return Expr[Int]
+          // For Expr[t], we would return Expr[_ :< Nothing :> Any]
           def removeTypeVar(tree: Type) =
             if quotePattern.bindings.isEmpty then tree
             else tree match
@@ -421,7 +429,7 @@ object SpaceEngine {
 
           if (isIrrefutableQuotePattern(quotePattern, quotePattern.tpe)) then
             if quotePattern.body.isType then
-              if(quotePattern.bindings.isEmpty) Typ(quotePattern.tpe, decomposed = false)
+              if quotePattern.bindings.isEmpty then Typ(quotePattern.tpe, decomposed = false)
               else Typ(defn.QuotedTypeClass.typeRef.appliedTo(TypeBounds(defn.NothingType, defn.AnyType)), decomposed = false)
             else
               Typ(removeTypeVar(quotePattern.tpe), decomposed = false)

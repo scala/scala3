@@ -299,11 +299,20 @@ object QuotePatterns:
     val shape = (implicits: @unchecked) match
       case Apply(Select(Quote(shape, _), _), _) :: Nil => shape
       case List(Apply(sel @ TypeApply(_, shape :: Nil), _)) =>
-        if (sel.symbol == defn.QuoteUnpickler_unpickleExprV2) sel.getAttachment(transform.PickleQuotes.OriginalTree).get
+        if (sel.symbol == defn.QuoteUnpickler_unpickleExprV2 || sel.symbol == defn.QuoteUnpickler_unpickleTypeV2) then
+          sel.getAttachment(transform.PickleQuotes.OriginalTree).get
         else shape
-      case List(Apply(Apply(Select(TypeApply(_, _), apply),List(shape)),_)) => shape
-      case List(TypeApply(Select(Apply(_, List(Apply(_,List(shape)))), _),_)) => shape
-      case List(shape @ Ident(_)) => shape
+      // transforms/optimisations done to the code after quote pickling can change it into one of the below:
+      case List(Apply(Apply(Select(TypeApply(_, _), apply),List(shape)),_)) =>
+        // scala.quoted.ToExpr.IntToExpr[(0 : Int)].apply(0)(x$1)
+        shape
+      case List(TypeApply(Select(Apply(_, List(Apply(_,List(shape)))), _),_)) =>
+        // x$1.reflect.TypeReprMethods.asType(x$1.reflect.TypeRepr.typeConstructorOf(classOf[Int])).asInstanceOf[scala.quoted.Type[Int]]
+        shape
+      case List(ident: Ident) =>
+        // Ident(t), can show up when using '[t.Underlying]
+        ident.tpe.widen match
+          case AppliedType(cons, List(arg)) if cons.typeSymbol == defn.QuotedTypeClass => TypeTree(arg)
     fun match
       // <quotes>.asInstanceOf[QuoteMatching].{ExprMatch,TypeMatch}.unapply[<typeBindings>, <resTypes>]
       case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), typeBindings :: resTypes :: Nil) =>
@@ -344,7 +353,10 @@ object QuotePatterns:
   private def unrollHkNestedPairsTypeTree(tree: Tree)(using Context): List[Tree] = tree match
     case AppliedTypeTree(tupleN, bindings) if defn.isTupleClass(tupleN.symbol) => bindings // TupleN, 1 <= N <= 22
     case AppliedTypeTree(_, head :: tail :: Nil) => head :: unrollHkNestedPairsTypeTree(tail) // KCons or *:
-    case tt: TypeTree => unrollHkNestedPairsTypeTreeFromType(tt.tpe).map(TypeTree(_))
+    case tt: TypeTree =>
+      // transforms/optimisations done to the code after quote pickling can change it into a TypeTree[_] form,
+      // where we have to convert it into Type to properly read it
+      unrollHkNestedPairsTypeTreeFromType(tt.tpe).map(TypeTree(_))
     case _ => Nil // KNil or EmptyTuple
 
   private def unrollHkNestedPairsTypeTreeFromType(tree: Type)(using Context): List[Type] = tree match
