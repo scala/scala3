@@ -93,6 +93,10 @@ def foo(using Quotes) =
   anyExpr match // warn
     case '{ type t <: String; $x: t } => ()
 
+  val t = Type.of[Int]
+  Type.of[Int] match // ok
+    case '[t.Underlying] => ()
+
   // nested (causes a different shape of QuotePattern)
   def f[A: Type](e: Expr[A]): Expr[A] =
     e match // ok
