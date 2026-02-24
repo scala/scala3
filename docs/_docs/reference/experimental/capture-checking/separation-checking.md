@@ -188,6 +188,38 @@ def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
 ```
 `linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `consume` modifier on `buf` ensures that the argument is not used after the call.
 
+### Consume Parameters and Read Accesses
+
+A good way to conceptualize consume is to that it reserves the passed capability beyond the call with the consume parameter. In the previous `Buffer` example, if we do
+```scala
+  val buf1 = linearAdd(buf, elem)
+```
+then the exclusive `buf` capability is reserved and therefore no further accesses to `buf` are possible. This means that `linearAdd` can safely overwrite `buf` by appending `elem` to it.
+
+By the same token, when we pass a read-only capability to a consume parameter, it is
+only this capability that is reserved beyond the call. For instance, here is a
+method that consumes a read-only buffer:
+```scala
+def contents[T](consume buf: Buffer[T]): Int ->{buf.rd} T =
+  i => buf(i)
+```
+The `contents` method takes a read-only buffer and turns it into a function that
+produces for each valid index the element of the buffer at that index. Passing a
+buffer to `contents` effectively freezes it: Since `buf.rd` is reserved, we cannot
+use the exclusive `buf` capability beyond the point of call, so no further appends
+are possible. On the other hand, it is possible to read the buffer, and it is also possible
+to consume that read capability again in further calls:
+```scala
+val buf = Buffer[String]()
+val buf1 = linearAdd(buf, "hi") // buf unavailable from here
+val c1 = contents(buf1)         // only buf.rd is consumed
+val c2 = contents(buf1)         // buf.rd can be consumed repeatedly
+```
+Note that the only difference between `linearAdd` and `contents` is that `linearAdd`'s consume parameter has type `Buffer[T]^` whereas the
+corresponding parameter in `contents` has type `Buffer[T]`. The first type expands
+to `Buffer[T]^{cap}` whereas the second expands to `Buffer[T]^{cap.rd}`.
+
+
 ### Consume Methods
 
 Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `consume` modifier to the method itself.
@@ -195,11 +227,44 @@ Buffers in Scala's standard library use a single-argument method `+=` instead of
 class Buffer[T] extends Mutable:
   consume def +=(x: T): Buffer[T]^ = this // ok
 ```
-`consume` on a method implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
+`consume` on a method in a `Mutable` class implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
 ```scala
 val b = Buffer[Int]() += 1 += 2
 val c = b += 3
 // b cannot be used from here
 ```
 This code is equivalent to functional append with `+`, and is at the same time more efficient since it re-uses the storage of the argument buffer.
+
+## The `freeze` Wrapper
+
+We often want to create a mutable data structure like an array, initialize by assigning to its elements and then return the array as an immutable type that does not
+capture any capabilities. This can be achieved using the `freeze` wrapper.
+
+As an example, consider a class `Arr` which is modelled after `Array` and its immutable counterpart `IArr`:
+
+```scala
+class Arr[T: reflect.ClassTag](len: Int) extends Mutable:
+  private val arr: Array[T] = new Array[T](len)
+  def get(i: Int): T = arr(i)
+  update def update(i: Int, x: T): Unit = arr(i) = x
+type IArr[T] = Arr[T]^{}
+```
+
+The `freeze` wrapper allows us to go from an `Arr` to an `IArr`, safely:
+```scala
+import caps.freeze
+
+val f: IArr[String] =
+  val a = Arr[String](2)
+  a(0) = "hello"
+  a(1) = "world"
+  freeze(a)
+```
+The `freeze` method is defined in `caps` like this:
+```scala
+def freeze(consume x: Mutable): x.type = x
+```
+It consumes a value of `Mutable` type with arbitrary capture set (since any capture set conforms to the implied `{cap.rd}`). The actual signature of
+`consume` declares that `x.type` is returned, but the actual return type after capture checking is special. Instead of `x.type` it is the underlying `Mutable` type with its top-level capture set
+mapped to `{}`. Applications of `freeze` are safe only if separation checking is enabled.
 

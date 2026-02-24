@@ -24,7 +24,7 @@ import collection.mutable
 import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
-import cc.{isRetainsLike, CaptureAnnotation}
+import cc.RetainingAnnotation
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -187,7 +187,7 @@ object TreeChecker {
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
-        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike && !annot.isInstanceOf[CaptureAnnotation] =>
+        case tp @ AnnotatedType(underlying, annot: RetainingAnnotation) =>
           val underlying1 = this(underlying)
           val annot1 = insideRetainingAnnot:
             annot.mapWith(this)
@@ -412,16 +412,16 @@ object TreeChecker {
             assert(false, s"The type of a non-Super tree must not be a SuperType, but $tree has type $tp")
           case _ =>
 
-    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
-      val tpdTree = super.typed(tree, pt)
-      Typer.assertPositioned(tree)
-      checkSuper(tpdTree)
-      if (ctx.erasedTypes)
-        // Can't be checked in earlier phases since `checkValue` is only run in
-        // Erasure (because running it in Typer would force too much)
-        checkIdentNotJavaClass(tpdTree)
-      tpdTree
-    }
+    override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
+      trace(i"checking $tree against $pt"):
+        val tpdTree = super.typed(tree, pt)
+        Typer.assertPositioned(tree)
+        checkSuper(tpdTree)
+        if (ctx.erasedTypes)
+          // Can't be checked in earlier phases since `checkValue` is only run in
+          // Erasure (because running it in Typer would force too much)
+          checkIdentNotJavaClass(tpdTree)
+        tpdTree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
       try

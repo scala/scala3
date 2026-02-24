@@ -16,8 +16,6 @@ package object tools {
      */
     transparent inline def uncheckedNN: T = x.asInstanceOf[T]
 
-    inline def toOption: Option[T] =
-      if x == null then None else Some(x.asInstanceOf[T])
   end extension
 
   object resultWrapper {

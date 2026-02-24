@@ -333,6 +333,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: LazyRef if !printDebug =>
         try toText(tp.ref)
         catch case ex: Throwable => "..."
+      case sel: cc.PathSelectionProto =>
+        "?.{ " ~ toText(sel.select.symbol) ~ "}"
       case AnySelectionProto =>
         "a type that can be selected or applied"
       case tp: SelectionProto =>
@@ -600,7 +602,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ Inlined(call, bindings, body) =>
         val bodyText = if bindings.isEmpty then toText(body) else blockText(bindings :+ body)
         if homogenizedView || !ctx.settings.XprintInline.value then bodyText
-        else if tree.inlinedFromOuterScope then stringText("{{") ~ stringText("/* inlined from outside */") ~ bodyText ~ stringText("}}")
+        else if tree.inlinedFromOuterScope then literalText("{{") ~ literalText("/* inlined from outside */") ~ bodyText ~ literalText("}}")
         else keywordText("{{") ~ keywordText("/* inlined from ") ~ toText(call) ~ keywordText(" */") ~ bodyText ~ keywordText("}}")
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
@@ -703,7 +705,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextTemplate(tree)
       case Annotated(arg, annot) =>
         def captureSet =
-          annot.asInstanceOf[tpd.Tree].toCaptureSet
+          CaptureSet(annot.asInstanceOf[tpd.Tree].retainedSet.retainedElements*)
         def toTextAnnot =
           toTextLocal(arg) ~~ annotText(annot.symbol.enclosingClass, annot)
         def toTextRetainsAnnot =
@@ -1163,6 +1165,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
       case id @ Ident(tpnme.BOUNDTYPE_ANNOT) => "@" ~ toText(id.symbol.name)
       case New(tpt) => recur(tpt)
+      case t: tpd.TypeTree if t.tpe.isInstanceOf[AppliedType] => "@" ~ toText(t.tpe)
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)
         if annotSym.exists then annotText(annotSym) else s"@${t.show}"

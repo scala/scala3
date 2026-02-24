@@ -45,10 +45,11 @@ sealed trait Capability
 trait SharedCapability extends Capability Classifier
 trait Control extends SharedCapability, Classifier
 
-trait ExclusiveCapability extends Capability, Classifier
-trait Mutable extends ExclusiveCapability, Classifier
+trait ExclusiveCapability extends Capability
+trait Stateful extends ExclusiveCapability
+trait Unscoped extends Stateful, Classifier
 ```
-Here is a graph showing the hierarchy of predefined classifier traits:
+Here is a graph showing the hierarchy of predefined capability traits. Classifier traits are underlined.
 ```
               Capability
               /        \
@@ -56,14 +57,18 @@ Here is a graph showing the hierarchy of predefined classifier traits:
             /            \
            /              \
  SharedCapability     ExclusiveCapability
+ ----------------            |
+        |                    |
+        |                 Stateful
         |                    |
         |                    |
-        |                    |
-        |                    |
-     Control              Mutable
+     Control              Unscoped
+     -------              --------
 ```
-At the top of the hierarchy, we distinguish between _shared_ and _exclusive_ capabilities in two classifier traits `SharedCapability` and `ExclusiveCapability`. All capability classes we have seen so far are shared.
-`ExclusiveCapability` is a base trait for capabilities that allow only un-aliased access to the data they represent, with the rules governed by [separation checking](separation-checking.md). Separation checking is currently an optional extension of capture checking, enabled by a different language import. Since `Capability` is a sealed trait, all capability classes are either shared or exclusive.
+At the top of the hierarchy, we distinguish between _shared_ and _exclusive_ capabilities in two traits `SharedCapability` and `ExclusiveCapability`. All capability classes we have seen so far are shared.
+`ExclusiveCapability` is a base trait for capabilities that
+are checked for anti-aliasing restrictions with the rules governed by [separation checking](separation-checking.md). Separation checking is currently an optional extension of capture checking, enabled by a different language import. Since `Capability` is a sealed trait, all capability classes are either shared or exclusive. `SharedCapability` is a classifier, but `ExclusiveCapability` is not. Therefore,
+exclusive capabilities can have shared capabilities in their capture set but not _vice versa_.
 
 `Control` capabilities are shared. This means they cannot directly or indirectly capture exclusive capabilities such as capabilities that control access to mutable state. Typical `Control` capabilities are:
 
@@ -72,6 +77,7 @@ At the top of the hierarchy, we distinguish between _shared_ and _exclusive_ cap
  - `Async` capabilities that allow to suspend.
 
 These are all expressed by having their capability classes extend `Control`.
+
 
 ### Classifier Restriction
 

@@ -66,7 +66,8 @@ val xs = usingLogFile { f =>
 }
 ```
 An error would be issued in the second case, but not the first one (this assumes a capture-aware
-formulation `LzyList` of lazily evaluated lists, which we will present later in this page).
+formulation `LzyList` of lazily evaluated lists, which we will present later in the chapter
+on [capture checking classes](classes.md)).
 
 It turns out that capture checking has very broad applications. Besides the various
 try-with-resources patterns, it can also be a key part to the solutions of many other long standing problems in programming languages. Among them:
@@ -171,6 +172,63 @@ One can also allow specific capabilities like this:
 def f(x: ->{c} Int): Int
 ```
 Here, the actual argument to `f` is allowed to use the `c` capability but no others.
+
+## Lazy Vals
+
+Lazy vals receive special treatment under capture checking, similar to parameterless methods. A lazy val has two distinct capture sets:
+
+1. **The initializer's capture set**: What capabilities the initialization code uses
+2. **The result's capture set**: What capabilities the lazy val's value captures
+
+### Initializer Captures
+
+When a lazy val is declared, its initializer is checked in its own environment (like a method body). The initializer can capture capabilities, and these are tracked separately:
+
+```scala
+def example(console: Console^) =
+  lazy val x: () -> String =
+    console.println("Computing x")  // console captured by initializer
+    () => "Hello, World!"           // result doesn't capture console
+
+  val fun: () ->{console} String = () => x()   // ok: accessing x uses console
+  val fun2: () -> String = () => x()           // error: x captures console
+```
+
+Here, the initializer of `x` uses `console` (to print a message), so accessing `x` for the first time will use the `console` capability. However, the **result** of `x` is a pure function `() -> String` that doesn't capture any capabilities.
+
+The type system tracks that accessing `x` requires the `console` capability, even though the resulting value doesn't. This is reflected in the function types: `fun` must declare `{console}` in its capture set because it accesses `x`.
+
+### Lazy Val Member Selection
+
+When accessing a lazy val member through a qualifier, the qualifier is charged to the current capture set, just like calling a parameterless method:
+
+```scala
+trait Container:
+  lazy val lazyMember: String
+
+def client(c: Container^): Unit =
+  val f1: () -> String = () => c.lazyMember        // error
+  val f2: () ->{c} String = () => c.lazyMember     // ok
+```
+
+Accessing `c.lazyMember` can trigger initialization, which may use capabilities from `c`. Therefore, the capture set must include `c`.
+
+### Equivalence with Methods
+
+For capture checking purposes, lazy vals behave identically to parameterless methods:
+
+```scala
+trait T:
+  def methodMember: String
+  lazy val lazyMember: String
+
+def test(t: T^): Unit =
+  // Both require {t} in the capture set
+  val m: () ->{t} String = () => t.methodMember
+  val l: () ->{t} String = () => t.lazyMember
+```
+
+This equivalence reflects that both can trigger computation using capabilities from their enclosing object.
 
 ## Subtyping and Subcapturing
 
@@ -288,6 +346,8 @@ loophole()
 ```
 But this will not compile either, since the capture set of the mutable variable `loophole` cannot refer to variable `f`, which is not visible
 where `loophole` is defined.
+
+### Monotonicity Rule
 
 Looking at object graphs, we observe a monotonicity property: The capture set of an object `x` covers the capture sets of all objects reachable through `x`. This property is reflected in the type system by the following _monotonicity rule_:
 

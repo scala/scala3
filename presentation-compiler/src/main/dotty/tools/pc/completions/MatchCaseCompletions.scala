@@ -11,7 +11,6 @@ import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
 
-import dotty.tools.toOption
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
@@ -135,7 +134,7 @@ object CaseKeywordCompletion:
                 ),
                 Nil,
                 range = Some(completionPos.toEditRange),
-                command = config.parameterHintsCommand().toOption.flatMap(_.asScala),
+                command = Option(config.parameterHintsCommand()).flatMap(_.asScala),
               )
             )
           else Nil

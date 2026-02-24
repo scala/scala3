@@ -31,4 +31,6 @@ object Test {
   for (case (x: String) <- xs; case (y, z) <- xs) do ()   // OK
 
   for (case (x, y) <- pairs) yield (y, x) // OK
+
+  for case x: String <- xs if x.length < 5 yield x // OK
 }

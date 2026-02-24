@@ -10,6 +10,7 @@ import Names.TermName
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import config.Printers.inlining
 import util.SimpleIdentityMap
+import CheckRealizable.{Realizable, realizability}
 
 import collection.mutable
 
@@ -417,18 +418,34 @@ class InlineReducer(inliner: Inliner)(using Context):
     for (bindings, expr) <- recur(cases) yield
       // drop unusable vals and check that no referenes to unusable symbols remain
       val cleanupUnusable = new TreeMap:
+
+        /** Whether we are currently in a type position */
+        var inType: Boolean = false
+
         override def transform(tree: Tree)(using Context): Tree =
           tree match
             case tree: ValDef if unusable.contains(tree.symbol) => EmptyTree
             case id: Ident if unusable.contains(id.symbol) =>
-              report.error(
-                em"""${id.symbol} is unusable in ${ctx.owner} because it refers to an erased expression
-                    |in the selector of an inline match that reduces to
-                    |
-                    |${Block(bindings, expr)}""",
-                tree.srcPos)
+              // This conditions allows references to erased values in type
+              // positions provided the types of these references are
+              // realizable. See erased-inline-product.scala and
+              // tests/neg/erased-inline-unrealizable-path.scala.
+              if !inType || (realizability(id.tpe.widen) ne Realizable) then
+                report.error(
+                  em"""${id.symbol} is unusable in ${ctx.owner} because it refers to an erased expression
+                      |in the selector of an inline match that reduces to
+                      |
+                      |${Block(bindings, expr)}""",
+                  tree.srcPos)
               tree
-            case _ => super.transform(tree)
+            case _ if tree.isType =>
+              val saved = inType
+              inType = true
+              val tree1 = super.transform(tree)
+              inType = saved
+              tree1
+            case _ =>
+              super.transform(tree)
 
       val bindings1 = bindings.mapConserve(cleanupUnusable.transform).collect:
         case mdef: MemberDef => mdef

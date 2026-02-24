@@ -1,50 +1,29 @@
 package dotty.tools.pc.tests
 
+import dotty.tools.pc.base.BaseDiagnosticsSuite
+import org.eclipse.lsp4j.CodeAction
+import org.eclipse.lsp4j.Diagnostic
+import org.eclipse.lsp4j.DiagnosticSeverity
+import org.junit.Test
+
 import java.net.URI
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.EmptyCancelToken
-import scala.meta.pc.VirtualFileParams
-import scala.meta.pc.CancelToken
 
-import org.junit.Test
-import org.eclipse.lsp4j.DiagnosticSeverity
-import dotty.tools.pc.utils.TestExtensions.getOffset
-import dotty.tools.pc.base.TestResources
-import java.nio.file.Path
-import dotty.tools.pc.RawScalaPresentationCompiler
-import dotty.tools.pc.utils.PcAssertions
-import org.eclipse.lsp4j.Diagnostic
-import org.eclipse.lsp4j.CodeAction
-
-class DiagnosticProviderSuite extends PcAssertions {
-  case class TestDiagnostic(startIndex: Int, endIndex: Int, msg: String, severity: DiagnosticSeverity)
-
-  val pc = RawScalaPresentationCompiler().newInstance("", TestResources.classpath.asJava, Nil.asJava)
-
-  case class TestVirtualFileParams(uri: URI, text: String) extends VirtualFileParams {
-    override def shouldReturnDiagnostics: Boolean = true
-    override def token: CancelToken = EmptyCancelToken
-  }
-
-  def check(
-    text: String,
-    expected: List[TestDiagnostic],
-    additionalChecks: List[Diagnostic] => Unit = identity
-  ): Unit =
-    val diagnostics = pc
-      .didChange(TestVirtualFileParams(URI.create("file:/Diagnostic.scala"), text))
-      .asScala
-
-    val actual = diagnostics.map(d => TestDiagnostic(d.getRange().getStart().getOffset(text), d.getRange().getEnd().getOffset(text), d.getMessage(), d.getSeverity()))
-    assertEquals(expected, actual, s"Expected [${expected.mkString(", ")}] but got [${actual.mkString(", ")}]")
-    additionalChecks(diagnostics.toList)
+class DiagnosticProviderSuite extends BaseDiagnosticsSuite {
 
   @Test def error =
     check(
       """|object M:
          |  Int.maaxValue
          |""".stripMargin,
-      List(TestDiagnostic(12,25, "value maaxValue is not a member of object Int - did you mean Int.MaxValue?", DiagnosticSeverity.Error))
+      List(
+        TestDiagnostic(
+          12,
+          25,
+          "value maaxValue is not a member of object Int - did you mean Int.MaxValue?",
+          DiagnosticSeverity.Error
+        )
+      )
     )
 
   @Test def warning =
@@ -52,7 +31,14 @@ class DiagnosticProviderSuite extends PcAssertions {
       """|object M:
          |  1 + 1
          |""".stripMargin,
-      List(TestDiagnostic(12, 17, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning))
+      List(
+        TestDiagnostic(
+          12,
+          17,
+          "A pure expression does nothing in statement position",
+          DiagnosticSeverity.Warning
+        )
+      )
     )
 
   @Test def mixed =
@@ -62,8 +48,18 @@ class DiagnosticProviderSuite extends PcAssertions {
          |  1 + 1
          |""".stripMargin,
       List(
-        TestDiagnostic(12,25, "value maaxValue is not a member of object Int - did you mean Int.MaxValue?", DiagnosticSeverity.Error),
-        TestDiagnostic(28, 33, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning)
+        TestDiagnostic(
+          12,
+          25,
+          "value maaxValue is not a member of object Int - did you mean Int.MaxValue?",
+          DiagnosticSeverity.Error
+        ),
+        TestDiagnostic(
+          28,
+          33,
+          "A pure expression does nothing in statement position",
+          DiagnosticSeverity.Warning
+        )
       )
     )
 
@@ -73,12 +69,29 @@ class DiagnosticProviderSuite extends PcAssertions {
          |  private private class Test
          |""".stripMargin,
       List(
-        TestDiagnostic(20, 27, "Repeated modifier private", DiagnosticSeverity.Error),
+        TestDiagnostic(
+          20,
+          27,
+          "Repeated modifier private",
+          DiagnosticSeverity.Error
+        )
       ),
       diags =>
-        val action = diags.head.getData().asInstanceOf[java.util.List[CodeAction]].asScala.head
-        assertWithDiff("Remove repeated modifier: \"private\"", action.getTitle(), false)
-        assertEquals(1, action.getEdit().getChanges().size(), "There should be one change")
+        val action = diags.head
+          .getData()
+          .asInstanceOf[java.util.List[CodeAction]]
+          .asScala
+          .head
+        assertWithDiff(
+          "Remove repeated modifier: \"private\"",
+          action.getTitle(),
+          false
+        )
+        assertEquals(
+          1,
+          action.getEdit().getChanges().size(),
+          "There should be one change"
+        )
     )
 
 }

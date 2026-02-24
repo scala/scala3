@@ -1,0 +1,28 @@
+-- Warning: tests/init-global/warn/global-cycle10.scala:13:14 ----------------------------------------------------------
+13 |  def foo() = new Inner // warn
+   |              ^^^^^^^^^
+   |              Accessing module class O$ before the super constructor of the object finishes! Calling trace:
+   |              ├── object O extends Base {              // error	[ global-cycle10.scala:7 ]
+   |              │   ^
+   |              ├── abstract class Base {	[ global-cycle10.scala:1 ]
+   |              │   ^
+   |              ├── foo()	[ global-cycle10.scala:4 ]
+   |              │   ^^^^^
+   |              └── def foo() = new Inner // warn	[ global-cycle10.scala:13 ]
+   |                              ^^^^^^^^^
+-- Warning: tests/init-global/warn/global-cycle10.scala:10:12 ----------------------------------------------------------
+10 |    println(msg) // warn
+   |            ^^^
+   |            Accessing module class O$ before the super constructor of the object finishes! Calling trace:
+   |            ├── object O extends Base {              // error	[ global-cycle10.scala:7 ]
+   |            │   ^
+   |            ├── abstract class Base {	[ global-cycle10.scala:1 ]
+   |            │   ^
+   |            ├── foo()	[ global-cycle10.scala:4 ]
+   |            │   ^^^^^
+   |            ├── def foo() = new Inner // warn	[ global-cycle10.scala:13 ]
+   |            │               ^^^^^^^^^
+   |            ├── class Inner {	[ global-cycle10.scala:9 ]
+   |            │   ^
+   |            └── println(msg) // warn	[ global-cycle10.scala:10 ]
+   |                        ^^^

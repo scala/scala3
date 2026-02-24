@@ -16,6 +16,7 @@ import Comments.{Comment, docCtx}
 import NameKinds.*
 import StdNames.{nme, tpnme}
 import config.Config
+import config.Feature.sourceVersion
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
@@ -283,8 +284,19 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
-      withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
-      annotatedTypeTrees += tpe.annot.tree
+      withLength:
+        pickleType(tpe.parent, richTypes)
+        tpe.annot match
+          case ann: CompactAnnotation =>
+            if sourceVersion.enablesCompactAnnotation then
+              pickleType(ann.tpe)
+            else
+              val atree = ann.oldTree
+              pickleTree(atree)
+              annotatedTypeTrees += atree
+          case ann =>
+            pickleTree(ann.tree)
+            annotatedTypeTrees += ann.tree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }

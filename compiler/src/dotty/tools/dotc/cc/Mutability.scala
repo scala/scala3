@@ -7,14 +7,17 @@ import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import Capabilities.*
 import util.SrcPos
 import config.Printers.capt
+import config.Feature
 import ast.tpd.Tree
+import typer.ProtoTypes.LhsProto
+import StdNames.nme
 
 /** Handling mutability and read-only access
  */
 object Mutability:
 
   /** Either OK, or a reason why capture set cannot be exclusive */
-  private enum Exclusivity:
+  private enum Exclusivity derives CanEqual:
     case OK
 
     /** Enclosing symbol `sym` is a method of class `cls`, but not an update method */
@@ -46,86 +49,103 @@ object Mutability:
   end Exclusivity
 
   extension (sym: Symbol)
-    /** An update method is either a method marked with `update` or
-     *  a setter of a non-transparent var.
+    /** An update method is either a method marked with `update` or a setter
+     *  of a field of a Stateful class that's not annotated with @uncheckedCaptures.
+     *  `update` is implicit for `consume` methods of Stateful classes.
      */
     def isUpdateMethod(using Context): Boolean =
       sym.isAllOf(Mutable | Method)
-        && (!sym.isSetter || sym.field.is(Transparent))
+        && (if sym.isSetter then
+              sym.owner.derivesFrom(defn.Caps_Stateful)
+              && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
+            else true
+           )
+      || ccConfig.strictMutability && sym.name == nme.update && sym == defn.Array_update
 
-    /** A read-only methid is a real method (not an accessor) in a type extending
-     *  Mutable that is not an update method.
-     */
-    def isReadOnlyMethod(using Context): Boolean =
-      sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
+    /** A read-only member is a lazy val or a method that is not an update method. */
+    def isReadOnlyMember(using Context): Boolean =
+      sym.isOneOf(MethodOrLazy) && !sym.isUpdateMethod
 
     private def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
       import Exclusivity.*
-      val encl = sym.enclosingMethodOrClass.skipConstructor
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
-      else if encl.owner == cls then
-        if encl.isUpdateMethod then OK
-        else NotInUpdateMethod(encl, cls)
-      else if encl.isStatic then OutsideClass(cls)
-      else encl.owner.inExclusivePartOf(cls)
+      else if sym.isUpdateMethod then OK
+      else if sym.owner == cls then
+        if sym.isConstructor then OK
+        else NotInUpdateMethod(sym, cls)
+      else if sym.isStatic then OutsideClass(cls)
+      else sym.owner.inExclusivePartOf(cls)
 
   extension (tp: Type)
-    /** Is this a type extending `Mutable` that has non-private update methods
+    /** Is this a type extending `Stateful` that has non-private update methods
      *  or mutable fields?
      */
-    def isMutableType(using Context): Boolean =
-      tp.derivesFrom(defn.Caps_Mutable)
+    def isStatefulType(using Context): Boolean =
+      tp.derivesFrom(defn.Caps_Stateful)
       && tp.membersBasedOnFlags(Mutable, EmptyFlags).exists: mbr =>
         if mbr.symbol.is(Method) then mbr.symbol.isUpdateMethod
-        else !mbr.symbol.is(Transparent)
+        else !mbr.symbol.hasAnnotation(defn.UntrackedCapturesAnnot)
 
-    /** OK, except if `tp` extends `Mutable` but `tp`'s capture set is non-exclusive */
-    private def exclusivity(using Context): Exclusivity =
-      if tp.derivesFrom(defn.Caps_Mutable) then
+    /** OK, except if `tp` extends `Stateful` but `tp`'s capture set is non-exclusive
+     *  @param required  if true, exclusivity can be obtained by setting the mutability
+     *                   status of some capture set variable from Ignored to Writer.
+     */
+    private def exclusivity(required: Boolean)(using Context): Exclusivity =
+      if tp.derivesFrom(defn.Caps_Stateful) then
         tp match
-          case tp: Capability if tp.isExclusive => Exclusivity.OK
-          case _ => tp.captureSet.exclusivity(tp)
+          case tp: Capability if tp.isExclusive(required) => Exclusivity.OK
+          case _ =>
+            if tp.captureSet.isExclusive(required) then Exclusivity.OK
+            else Exclusivity.ReadOnly(tp)
       else Exclusivity.OK
 
-    /** Test conditions (1) and (2) listed in `adaptReadOnly` below */
-    private def exclusivityInContext(using Context): Exclusivity = tp match
+    /** Test conditions (1) and (2) listed in `adaptReadOnly` below
+     *  @param required  if true, exclusivity can be obtained by setting the mutability
+     *                   status of some capture set variable from Ignored to Writer.
+     */
+    private def exclusivityInContext(required: Boolean = false)(using Context): Exclusivity = tp match
       case tp: ThisType =>
-        if tp.derivesFrom(defn.Caps_Mutable)
+        if tp.derivesFrom(defn.Caps_Stateful)
         then ctx.owner.inExclusivePartOf(tp.cls)
         else Exclusivity.OK
       case tp @ TermRef(prefix: Capability, _) =>
-        prefix.exclusivityInContext.andAlso(tp.exclusivity)
+        prefix.exclusivityInContext(required).andAlso(tp.exclusivity(required))
       case _ =>
-        tp.exclusivity
+        tp.exclusivity(required)
 
-  extension (cs: CaptureSet)
-    private def exclusivity(tp: Type)(using Context): Exclusivity =
-      if cs.isExclusive then Exclusivity.OK else Exclusivity.ReadOnly(tp)
+    def expectsReadOnly(using Context): Boolean = tp match
+      case tp: PathSelectionProto =>
+        tp.selector.isReadOnlyMember || tp.selector.isMutableVar && tp.pt != LhsProto
+      case _ =>
+        tp.isValueType
+        && (!tp.isStatefulType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
 
   extension (ref: TermRef | ThisType)
     /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
-     *  following is true: it appears in a non-exclusive context, or the expected
-     *  type is a value type that is not a mutable type.
+     *  following is true:
+     *    - it appears in a non-exclusive context,
+     *    - the expected type is a value type that is not a stateful type,
+     *    - the expected type is a read-only selection
      */
-    def adjustReadOnly(pt: Type)(using Context): Capability =
-      if ref.derivesFromMutable
-          && (pt.isValueType && !pt.isMutableType
-              || ref.exclusivityInContext != Exclusivity.OK)
+    def adjustReadOnly(pt: Type)(using Context): Capability = {
+      if ref.derivesFromStateful
+          && (pt.expectsReadOnly || ref.exclusivityInContext() != Exclusivity.OK)
       then ref.readOnly
       else ref
+    }.showing(i"Adjust RO $ref vs $pt = $result", capt)
 
   /** Check that we can call an update method of `qualType` or perform an assignment
    *  of a field of `qualType`.
    */
   def checkUpdate(qualType: Type, pos: SrcPos)(msg: => String)(using Context): Unit =
-    qualType.exclusivityInContext match
+    qualType.exclusivityInContext(required = true) match
       case Exclusivity.OK =>
       case err =>
         report.error(em"$msg\nsince ${err.description(qualType)}.", pos)
 
   /** Perform step (3) of adaptReadOnly below.
    *
-   *  If actual is a capturing type T^C extending Mutable, and expected is an
+   *  If actual is a capturing type T^C extending Stateful, and expected is an
    *  unboxed non-singleton value type not extending mutable, widen the capture
    *  set `C` to `ro(C).reader`.
    *  The unboxed condition ensures that the expected type is not a type variable
@@ -138,11 +158,10 @@ object Mutability:
     case actual @ CapturingType(parent, refs) =>
       val parent1 = adaptReadOnlyToExpected(parent, expected)
       val refs1 =
-        if parent1.derivesFrom(defn.Caps_Mutable)
+        if parent1.derivesFrom(defn.Caps_Stateful)
             && expected.isValueType
-            && (!expected.derivesFromMutable || expected.captureSet.isAlwaysReadOnly)
+            && (!expected.derivesFromStateful || expected.captureSet.isAlwaysReadOnly)
             && !expected.isSingleton
-            && actual.isBoxedCapturing == expected.isBoxedCapturing
         then refs.readOnly
         else refs
       actual.derivedCapturingType(parent1, refs1)
@@ -211,26 +230,44 @@ object Mutability:
 
   /** Adapt type `actual` so that it represents a read-only access
    *  if needed. `actual` is the widened version of original with capture
-   *  set improved by the VAR rule. The conditions for adaptation are
-   *  as follows (see modularity.md, section "Read-Only Accesses" for context)
-   *   1. The `original` reference is a `this` of a type extending Mutable and
+   *  set improved by the VAR rule. One of the following conditions must hold for
+   *  adaptions to be applied (see modularity.md, section "Read-Only Accesses" for context):
+   *   1. The `original` reference is a `this` of a type extending Stateful and
    *      the access is not from an update method of the class of `this`.
-   *   2. The `original` reference refers to a type extending Mutable and is a path
+   *   2. The `original` reference refers to a type extending Stateful and is a path
    *      where a prefix of that path has a read-only capture set.
    *   3. The expected type corresponding to some part of `actual` that refers
-   *      to a type extending Mutable is a value type that is not a mutable type.
+   *      to a type extending Stateful is a value type that is not a stateful type.
    *      In that case this part is adapted to a read-only capture set.
    */
   def adaptReadOnly(actual: Type, original: Type, expected: Type, tree: Tree)(using Context): Type =
     adaptReadOnlyToExpected(actual, expected) match
       case improved @ CapturingType(parent, refs)
-      if parent.derivesFrom(defn.Caps_Mutable)
+      if parent.derivesFrom(defn.Caps_Stateful)
           && expected.isValueType
-          && refs.isExclusive
-          && !original.exclusivityInContext.isOK =>
+          && refs.isExclusive()
+          && !original.exclusivityInContext().isOK =>
         improved.derivedCapturingType(parent, refs.readOnly)
           .showing(i"Adapted readonly $improved for $tree with original = $original in ${ctx.owner} --> $result", capt)
       case improved =>
         improved
 
+  /** Apply `caps.freeze(...)`. Strip all capture sets of covariant Mutable
+   *  types, turning them into `CaptureSet.emptyOfMutable`. Only Mutable types
+   *  that contribute to the overall capture set are considered, since that is the
+   *  set analyzed by consume/use checking. That means that double-flip covariant
+   *  and boxed capture sets are not dropped.
+   */
+  def freeze(tp: Type, pos: SrcPos)(using Context): Type = tp.widen match
+    case tpw @ CapturingType(parent, refs)
+    if parent.derivesFromMutable && !tpw.isBoxed =>
+      if !Feature.enabled(Feature.separationChecking) then
+        report.warning(
+          em"""freeze is safe only if separation checking is enabled.
+              |You can enable separation checking with the language import
+              |
+              |   import language.experimental.separationChecking""",
+          pos)
+      tpw.derivedCapturingType(parent, CaptureSet.emptyOfStateful)
+    case _ => tp
 end Mutability

@@ -2,19 +2,19 @@ class CC
 
 def test1(cap1: CC^) =
 
-  class Ref[T](init: T):
+  class Ref[T](init: T) extends caps.Stateful:
     private var v: T = init
-    def setV(x: T): Unit = v = x
+    update def setV(x: T): Unit = v = x
     def getV: T = v
 
 def test2(cap1: CC^) =
 
-  class Ref[T](init: T):
+  class Ref[T](init: T) extends caps.Stateful:
     private var v: T = init
-    def setV(x: T): Unit = v = x
+    update def setV(x: T): Unit = v = x
     def getV: T = v
 
-  val _ = Ref[String => String]((x: String) => x) // error
+  val _ = Ref[String => String]((x: String) => x)
   val r = Ref((x: String) => x)
 
   def scope(cap3: CC^) =

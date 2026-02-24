@@ -623,12 +623,13 @@ object Inlines:
             val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
             (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
           else (call.tpe, false)
+        val resultType = target.widenIfUnstable
         if forceCast then
           // we need to force the cast for issues with ThisTypes, as ensureConforms will just
           // check subtyping and then choose not to cast, leaving the previous, incorrect type
-          inlined.cast(target)
+          inlined.cast(resultType)
         else
-          inlined.ensureConforms(target)
+          inlined.ensureConforms(resultType)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is

@@ -11,7 +11,7 @@ import java.net.URL
 import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
 import java.nio.file.Files
 import java.util.zip.{ ZipEntry, ZipFile }
-import java.util.jar.Manifest
+import java.util.jar.{ Manifest, JarFile }
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
@@ -117,8 +117,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
   private def openZipFile(): ZipFile = try {
     release match {
       case Some(r) if file.getName.endsWith(".jar") =>
-        val releaseVersion = JDK9Reflectors.runtimeVersionParse(r)
-        JDK9Reflectors.newJarFile(file, true, ZipFile.OPEN_READ, releaseVersion)
+        new JarFile(file, true, ZipFile.OPEN_READ, Runtime.Version.parse(r))
       case _ =>
         new ZipFile(file)
     }

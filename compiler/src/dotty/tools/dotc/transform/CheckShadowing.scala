@@ -48,10 +48,10 @@ class CheckShadowing extends MiniPhase:
 
   override def description: String = CheckShadowing.description
 
-  override def isEnabled(using Context): Boolean = ctx.settings.Wshadow.value.nonEmpty
+  override def isEnabled(using Context): Boolean = ctx.settings.WshadowHas.any
 
   override def isRunnable(using Context): Boolean =
-    super.isRunnable && ctx.settings.Wshadow.value.nonEmpty && !ctx.isJava
+    super.isRunnable && ctx.settings.WshadowHas.any && !ctx.isJava
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
     val data = ShadowingData()

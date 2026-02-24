@@ -3,9 +3,9 @@ type Cap = C^
 
 type Proc = () => Unit
 
-class Ref[T](p: T):
+class Ref[T](p: T) extends caps.Mutable:
   private var x: T = p
-  def set(x: T): Unit = this.x = x
+  update def set(x: T): Unit = this.x = x
   def get: T = x
 
 def test(c: () => Unit) =

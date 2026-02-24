@@ -147,7 +147,7 @@ sealed abstract class List[+A]
 
   override def prepended[B >: A](elem: B): List[B] = elem :: this
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = prefix match {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = (prefix: @unchecked) match {
     case xs: List[B] => xs ::: this
     case _ if prefix.knownSize == 0 => this
     case b: ListBuffer[B] if this.isEmpty => b.toList

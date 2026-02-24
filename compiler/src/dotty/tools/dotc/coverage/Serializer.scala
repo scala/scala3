@@ -1,22 +1,27 @@
 package dotty.tools.dotc
 package coverage
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Path, Paths, Files}
 import java.io.Writer
 import scala.collection.mutable.StringBuilder
+import scala.io.Source
 
 /**
  * Serializes scoverage data.
- * @see https://github.com/scoverage/scalac-scoverage-plugin/blob/main/scalac-scoverage-plugin/src/main/scala/scoverage/Serializer.scala
+ * @see https://github.com/scoverage/scalac-scoverage-plugin/blob/main/serializer/src/main/scala/scoverage/serialize/Serializer.scala
  */
 object Serializer:
 
   private val CoverageFileName = "scoverage.coverage"
   private val CoverageDataFormatVersion = "3.0"
 
+  def coverageFilePath(dataDir: String): Path =
+    Paths.get(dataDir, CoverageFileName).toAbsolutePath
+
   /** Write out coverage data to the given data directory, using the default coverage filename */
   def serialize(coverage: Coverage, dataDir: String, sourceRoot: String): Unit =
-    serialize(coverage, Paths.get(dataDir, CoverageFileName).toAbsolutePath, Paths.get(sourceRoot).toAbsolutePath)
+    serialize(coverage, coverageFilePath(dataDir), Paths.get(sourceRoot).toAbsolutePath)
 
   /** Write out coverage data to a file. */
   def serialize(coverage: Coverage, file: Path, sourceRoot: Path): Unit =
@@ -84,6 +89,64 @@ object Serializer:
     coverage.statements.toSeq
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
+
+  def deserialize(file: Path, sourceRoot: String): Coverage =
+    val source = Source.fromFile(file.toFile(), UTF_8.name())
+    try deserialize(source.getLines(), Paths.get(sourceRoot).toAbsolutePath)
+    finally source.close()
+
+  def deserialize(lines: Iterator[String], sourceRoot: Path): Coverage =
+    def toStatement(lines: Iterator[String]): Statement =
+      val id: Int = lines.next().toInt
+      val sourcePath = lines.next()
+      val packageName = lines.next()
+      val className = lines.next()
+      val classType = lines.next()
+      val fullClassName = lines.next()
+      val method = lines.next()
+      val loc = Location(
+        packageName,
+        className,
+        fullClassName,
+        classType,
+        method,
+        sourceRoot.resolve(sourcePath).normalize()
+      )
+      val start: Int = lines.next().toInt
+      val end: Int = lines.next().toInt
+      val lineNo: Int = lines.next().toInt
+      val symbolName: String = lines.next()
+      val treeName: String = lines.next()
+      val branch: Boolean = lines.next().toBoolean
+      val count: Int = lines.next().toInt
+      val ignored: Boolean = lines.next().toBoolean
+      val desc = lines.toList.mkString("\n")
+      Statement(
+        loc,
+        id,
+        start,
+        end,
+        lineNo,
+        desc,
+        symbolName,
+        treeName,
+        branch,
+        ignored
+      )
+
+    val headerFirstLine = lines.next()
+    require(
+      headerFirstLine == s"# Coverage data, format version: $CoverageDataFormatVersion",
+      "Wrong file format"
+    )
+
+    val linesWithoutHeader = lines.dropWhile(_.startsWith("#"))
+    val coverage = Coverage()
+    while !linesWithoutHeader.isEmpty do
+      val oneStatementLines = linesWithoutHeader.takeWhile(_ != "\f")
+      coverage.addStatement(toStatement(oneStatementLines))
+    end while
+    coverage
 
   /** Makes a String suitable for output in the coverage statement data as a single line.
    * Escaped characters: '\\' (backslash), '\n', '\r', '\f'

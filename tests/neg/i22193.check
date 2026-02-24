@@ -22,6 +22,7 @@
 28 |  fn3( // error missing argument list for value of type (=> Unit) => Unit
    |  ^
    |  missing argument list for value of type (=> Unit) => Unit
+   |
 29 |    arg = "blue sleeps faster than tuesday",
 30 |    arg2 = "the quick brown fox jumped over the lazy dog"):
    |

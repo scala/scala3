@@ -35,7 +35,7 @@ import java.util.regex.{ Pattern, Matcher }
  *
  *  === Usage ===
 
- *  This class delegates to the [[https://docs.oracle.com/javase/8/docs/api/java/util/regex/package-summary.html java.util.regex]] package of the Java Platform.
+ *  This class delegates to the [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/package-summary.html java.util.regex]] package of the Java Platform.
  *  See the documentation for [[java.util.regex.Pattern]] for details about
  *  the regular expression syntax for pattern strings.
  *

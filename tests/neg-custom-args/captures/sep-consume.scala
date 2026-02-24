@@ -27,6 +27,8 @@ def test3(consume x: Ref^): Unit =
   foo()
   foo()
 
+def test4(consume p: Pair[Ref^, Ref^]): Ref^ = p.fst // error
+
 /*
 def test4(consume @use p: Pair[Ref^, Ref^]): Unit =
   val x: Ref^{p.fst*} = p.fst

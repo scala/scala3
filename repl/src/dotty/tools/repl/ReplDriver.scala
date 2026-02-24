@@ -34,7 +34,7 @@ import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.CompilerCommand
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
-import dotty.tools.runner.ScalaClassLoader.*
+import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
 
@@ -235,27 +235,22 @@ class ReplDriver(settings: Array[String],
         // Clear the stop flag before executing new code
         ReplBytecodeInstrumentation.setStopFlag(rendering.classLoader()(using state.context), false)
 
-        val previousSignalHandler = terminal.handle(
-          org.jline.terminal.Terminal.Signal.INT,
-          (sig: org.jline.terminal.Terminal.Signal) => {
+        val newState = terminal.withMonitoringCtrlC(
+          handler = () =>
             if (!firstCtrlCEntered) {
               firstCtrlCEntered = true
               // Set the stop flag to trigger throwIfReplStopped() in instrumented code
               ReplBytecodeInstrumentation.setStopFlag(rendering.classLoader()(using state.context), true)
-              // Also interrupt the thread as a fallback for non-instrumented code
+              // Also interrupt the thread as a fallback for non-instrumented code, e.g. IO/sleeps
               thread.interrupt()
-              out.println("\nAttempting to interrupt running thread with `Thread.interrupt`")
+              out.println("\nAttempting to interrupt running REPL command")
             } else {
               out.println("\nTerminating REPL Process...")
               System.exit(130)  // Standard exit code for SIGINT
             }
-          }
-        )
-
-        val newState =
-          try interpret(res)
-          // Restore previous handler
-          finally terminal.handle(org.jline.terminal.Terminal.Signal.INT, previousSignalHandler)
+        ) {
+          interpret(res)
+        }
 
         loop(using newState)()
       }
@@ -339,8 +334,13 @@ class ReplDriver(settings: Array[String],
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
+      case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
+        // Check for magic comments specifying dependencies
+        println("Please use `:dep com.example::artifact:version` to add dependencies in the REPL")
+        state
+
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state)
+          compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
@@ -499,9 +499,7 @@ class ReplDriver(settings: Array[String],
           val formattedTypeDefs =  // don't render type defs if wrapper initialization failed
             if newState.invalidObjectIndexes.contains(state.objectIndex) then Seq.empty
             else typeDefs(wrapperModule.symbol)
-          val highlighted = (formattedTypeDefs ++ formattedMembers)
-            .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
-          (newState, highlighted)
+          (newState, formattedTypeDefs ++ formattedMembers)
         }
         .getOrElse {
           // user defined a trait/class/object, so no module needed
@@ -654,6 +652,27 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
+    case Dep(dep) =>
+      val depStrings = List(dep)
+      if depStrings.nonEmpty then
+        val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+        if deps.nonEmpty then
+          DependencyResolver.resolveDependencies(deps) match
+            case Right(files) =>
+              if files.nonEmpty then
+                inContext(state.context):
+                  // Update both compiler classpath and classloader
+                  val prevOutputDir = ctx.settings.outputDir.value
+                  val prevClassLoader = rendering.classLoader()
+                  rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                    files,
+                    prevClassLoader,
+                    prevOutputDir
+                  )
+                  out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
+            case Left(error) =>
+              out.println(s"Error resolving dependencies: $error")
+      state
 
     case Quit =>
       // end of the world!

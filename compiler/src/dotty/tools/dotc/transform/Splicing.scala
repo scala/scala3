@@ -20,7 +20,6 @@ import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.quoted.*
-import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
 import dotty.tools.dotc.staging.QuoteTypeTags.*

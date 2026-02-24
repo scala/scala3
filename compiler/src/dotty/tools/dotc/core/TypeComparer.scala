@@ -26,6 +26,7 @@ import cc.*
 import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
+import reporting.Message.Note
 import scala.util.boundary, boundary.break
 
 /** Provides methods to compare types.
@@ -61,7 +62,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var monitored = false
 
   private var maxErrorLevel: Int = -1
-  protected var errorNotes: List[(Int, ErrorNote)] = Nil
+  protected var errorNotes: List[(Int, Note)] = Nil
 
   val undoLog = mutable.ArrayBuffer[() => Unit]()
 
@@ -549,10 +550,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
             || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
+            def remainsBoxed1 = parent1.isBoxedCapturing || parent1.dealias.match
+              case parent1: TypeRef =>
+                parent1.superType.isBoxedCapturing
+                // When comparing a type parameter with boxed upper bound on the left
+                // we should not strip the box on the right. See i24543.scala.
+              case _ =>
+                false
             val tp2a =
-              if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
-              then tp2.unboxed
-              else tp2
+              if tp1.isBoxedCapturing && !remainsBoxed1 then tp2.unboxed else tp2
             recur(parent1, tp2a)
           else thirdTry
         compareCapturing
@@ -861,7 +867,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
-            if refs1.isAlwaysEmpty then recur(tp1, parent2)
+            if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
+              recur(tp1, parent2)
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton
               // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
@@ -992,7 +999,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
-        compareAppliedType1(tp1, tycon1, args1)
+        // Special case: Java arrays are covariant.
+        // When checking overrides (frozenConstraint) of Java methods, allow B[] <: A[] if B <: A.
+        def checkJavaArrayCovariance: Boolean = tp2 match {
+          case AppliedType(tycon2, arg2 :: Nil)
+            if frozenConstraint
+              && tycon1.typeSymbol == defn.ArrayClass
+              && tycon2.typeSymbol == defn.ArrayClass
+              && args1.length == 1 =>
+            // Arrays are covariant in Java: B[] <: A[] if B <: A
+            isSubType(args1.head, arg2)
+          case _ => false
+        }
+        (checkJavaArrayCovariance && ctx.property(ComparingJavaMethods).isDefined)
+            || compareAppliedType1(tp1, tycon1, args1)
       case tp1: SingletonType =>
         def comparePaths = tp2 match
           case tp2: (TermRef | ThisType) =>
@@ -2894,7 +2914,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       throw ex
 
   /**
-   *  - Compare capture sets using subCaptures. If the lower type derives from Mutable and the
+   *  - Compare capture sets using subCaptures. If the lower type derives from Stateful and the
    *    upper type does not, make the lower set read-only.
    *  - Test whether the boxing status of tp1 and tp2 the same, or alternatively,
    *    whether the capture set `refs1` of `tp1` is subcapture of the empty set?
@@ -2902,7 +2922,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type, refs2: CaptureSet): Boolean =
     val refs1Adapted =
-      if tp1.derivesFromMutable && !tp2.derivesFromMutable
+      if tp1.derivesFromStateful && !tp2.derivesFromStateful
       then refs1.readOnly
       else refs1
     val subc = subCaptures(refs1Adapted, refs2)
@@ -2912,8 +2932,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
     subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-        || refs1.subCaptures(CaptureSet.empty, makeVarState())
+    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
+        || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
@@ -3323,12 +3343,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
 
-  /** Add given ErrorNote note, provided there is not yet an error note with
-   *  the same class as `note`.
+  /** Add given note, provided there is not yet an error note that covers `note`
+   *  If the new note is added, any existing note covered by it is removed first.
    */
-  def addErrorNote(note: ErrorNote): Unit =
-    if errorNotes.forall(_._2.kind != note.kind) then
-      errorNotes = (recCount, note) :: errorNotes
+  def addErrorNote(note: Note)(using Context): Unit =
+    if !errorNotes.exists(_._2.covers(note)) then
+      errorNotes = (recCount, note) :: errorNotes.filterConserve(n => !note.covers(n._2))
       assert(maxErrorLevel <= recCount)
       maxErrorLevel = recCount
 
@@ -3355,20 +3375,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
 object TypeComparer {
 
-  /** A base trait for data producing addenda to error messages */
-  trait ErrorNote:
-    /** A disciminating kind. An error note is not added if it has the same kind
-     *  as an already existing error note.
-     */
-    def kind: Class[?] = getClass
+  import util.Property
 
-    def description(using Context): String
-  end ErrorNote
+  /** A property key to indicate we're comparing Java-defined methods.
+   *  When it is set, arrays are treated as covariant for override checking.
+   */
+  val ComparingJavaMethods = new Property.Key[Unit]
 
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
     case OK, OKwithGADTUsed, OKwithOpaquesUsed
-    case Fail(errorNotes: List[ErrorNote])
+    case Fail(errorNotes: List[Note])
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
@@ -3546,10 +3563,10 @@ object TypeComparer {
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
     currentComparer.inNestedLevel(op)
 
-  def addErrorNote(note: ErrorNote)(using Context): Unit =
+  def addErrorNote(note: Note)(using Context): Unit =
     currentComparer.addErrorNote(note)
 
-  def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
+  def updateErrorNotes(f: PartialFunction[Note, Note])(using Context): Unit =
     currentComparer.errorNotes = currentComparer.errorNotes.mapConserve: p =>
       val (level, note) = p
       if f.isDefinedAt(note) then (level, f(note)) else p
@@ -3577,9 +3594,10 @@ object MatchReducer:
       case Stuck              => "Stuck"
       case NoInstance(fails)  => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
-/** A type comparer for reducing match types.
- *  TODO: Not sure this needs to be a type comparer. Can we make it a
- *  separate class?
+/** A [[TypeComparer]] for reducing match types.
+ *
+ *  This needs to be a [[TypeComparer]] because it mutates the `caseLambda`
+ *  field defined in [[ConstraintHandling]]. See #24488 for more details.
  */
 class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
   import MatchReducer.*
@@ -3963,7 +3981,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   private val b = new StringBuilder
   private var lastForwardGoal: String | Null = null
 
-  private def appendFailure(notes: List[ErrorNote]) =
+  private def appendFailure(notes: List[Note]) =
     if lastForwardGoal != null then  // last was deepest goal that failed
       b.append(s"  = false")
       for case note: printing.Showable <- notes do

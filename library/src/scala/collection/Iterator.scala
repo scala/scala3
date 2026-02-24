@@ -899,7 +899,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       // type testing does not discriminate based on origin.
       private def compareGap(queue: scala.collection.mutable.Queue[A]) = gap eq queue
       override def hashCode() = gap.hashCode()
-      override def equals(other: Any) = other match {
+      override def equals(other: Any) = (other: @unchecked) match {
         case x: Partner   => x.compareGap(gap) && gap.isEmpty
         case _            => super.equals(other)
       }

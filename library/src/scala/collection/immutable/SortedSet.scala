@@ -53,7 +53,7 @@ transparent trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: S
   */
 @SerialVersionUID(3L)
 object SortedSet extends SortedIterableFactory.Delegate[SortedSet](TreeSet) {
-  override def from[E: Ordering](it: IterableOnce[E]^): SortedSet[E] = it match {
+  override def from[E: Ordering](it: IterableOnce[E]^): SortedSet[E] = (it: @unchecked) match {
     case ss: SortedSet[E] if Ordering[E] == ss.ordering => ss
     case _ => super.from(it)
   }

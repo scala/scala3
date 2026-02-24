@@ -15,7 +15,7 @@ package mutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, nowarn}
 import scala.collection.generic.DefaultSerializable
 import scala.collection.immutable.List
 
@@ -68,6 +68,7 @@ class ListMap[K, V]
   final override def size: Int = siz
   override def knownSize: Int = size
   override def isEmpty: Boolean = size == 0
+  @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "ListMap"
 }
 

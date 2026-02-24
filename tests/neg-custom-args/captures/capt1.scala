@@ -24,8 +24,8 @@ def h3(x: Cap): A =
   F(22)  // error
 
 def h4(x: Cap, y: Int): A =
-  new A:
-    def m() = if x == null then y else y  // error
+  new A: // error
+    def m() = if x == null then y else y
 
 def f1(c: Cap): () ->{c} c.type = () => c // ok
 
@@ -33,11 +33,11 @@ def foo() =
   val x: C @retains[caps.cap.type] = ???
   def h[X](a: X)(b: X) = a
 
-  val z2 = h[() -> Cap](() => x) // error // error
+  val z2 = h[() -> Cap](() => x) // error
     (() => C()) // error
   val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
 
-  val z1: () => Cap = f1(x)
+  val z1: () => Cap = f1(x) // error
 
   val z4 =
     if x == null then  // error: separation

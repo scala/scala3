@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType}
+import cc.{CaptureSet, RetainingAnnotation}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -122,8 +122,9 @@ class Definitions {
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
-              tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      captureRoot.termRef)
+              tl => AnnotatedType(
+                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -717,6 +718,10 @@ class Definitions {
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
   @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
+  @tu lazy val JavaUtilObjectsClass: ClassSymbol = requiredModule("java.util.Objects").moduleClass.asClass
+  def Objects_hashCode(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
+
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
     // jl.Enum has a single constructor protected(name: String, ordinal: Int).
@@ -1012,6 +1017,9 @@ class Definitions {
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
     @tu lazy val Caps_ExclusiveCapability: ClassSymbol = requiredClass("scala.caps.ExclusiveCapability")
     @tu lazy val Caps_Control: ClassSymbol = requiredClass("scala.caps.Control")
+    @tu lazy val Caps_Stateful: ClassSymbol = requiredClass("scala.caps.Stateful")
+    @tu lazy val Caps_Separate: ClassSymbol = requiredClass("scala.caps.Separate")
+    @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_Read: ClassSymbol = requiredClass("scala.caps.Read")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
@@ -1025,6 +1033,7 @@ class Definitions {
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_freeze: TermSymbol = CapsModule.requiredMethod("freeze")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
@@ -1135,17 +1144,23 @@ class Definitions {
   // improve the precision of type nullification.
   // We don't require that any of these annotations be present in the class path, but we want to
   // create Symbols for the ones that are present, so they can be checked during nullification.
+  // The annotation from jspecify is designed to be used on types only; however, it is common to use it
+  // on fields and method parameters required by some frameworks, so we need to recognize annotations
+  // form `AnnotatedType` as well as from `Symbol`.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "javax.validation.constraints.NotNull" ::
-    "androidx.annotation.NonNull" ::
+    "jakarta.annotation.Nonnull" ::
     "android.support.annotation.NonNull" ::
     "android.annotation.NonNull" ::
+    "androidx.annotation.NonNull" ::
+    "androidx.annotation.RecentlyNonNull" ::
     "com.android.annotations.NonNull" ::
     "org.eclipse.jdt.annotation.NonNull" ::
     "edu.umd.cs.findbugs.annotations.NonNull" ::
     "org.checkerframework.checker.nullness.qual.NonNull" ::
     "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NonNullType" ::
     "org.jetbrains.annotations.NotNull" ::
     "org.springframework.lang.NonNull" ::
     "org.springframework.lang.NonNullApi" ::
@@ -1153,7 +1168,32 @@ class Definitions {
     "lombok.NonNull" ::
     "reactor.util.annotation.NonNull" ::
     "reactor.util.annotation.NonNullApi" ::
-    "io.reactivex.annotations.NonNull" :: Nil)
+    "io.reactivex.annotations.NonNull" ::
+    "io.reactivex.rxjava3.annotations.NonNull" ::
+    "org.jspecify.annotations.NonNull" :: Nil)
+
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is explicitly nullable.
+  @tu lazy val NullableAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "javax.annotation.Nullable" ::
+    "javax.annotation.CheckForNull" ::
+    "jakarta.annotation.Nullable" ::
+    "android.support.annotation.Nullable" ::
+    "android.annotation.Nullable" ::
+    "androidx.annotation.Nullable" ::
+    "androidx.annotation.RecentlyNullable" ::
+    "com.android.annotations.Nullable" ::
+    "org.eclipse.jdt.annotation.Nullable" ::
+    "edu.umd.cs.findbugs.annotations.Nullable" ::
+    "org.checkerframework.checker.nullness.qual.Nullable" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableType" ::
+    "org.jetbrains.annotations.Nullable" ::
+    "org.springframework.lang.Nullable" ::
+    "reactor.util.annotation.Nullable" ::
+    "io.reactivex.annotations.Nullable" ::
+    "io.reactivex.rxjava3.annotations.Nullable" ::
+    "org.jspecify.annotations.Nullable" :: Nil)
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -1343,8 +1383,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refSet)
+      case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
+        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
@@ -1887,11 +1927,13 @@ class Definitions {
    *   - the upper bound of a TypeParamRef in the current constraint
    */
   def asContextFunctionType(tp: Type)(using Context): Type =
-    tp.stripNull().stripTypeVar.dealias match
+    tp.stripTypeVar.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
+      case tp: FlexibleType =>
+        asContextFunctionType(tp.hi)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
@@ -1979,11 +2021,11 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
-    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read,
+    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
     RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
-    CapsUnsafeModule, CapsUnsafeModule.moduleClass,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
@@ -2378,14 +2420,14 @@ class Definitions {
     """.stripMargin)
 
     add(Object_wait,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()]].
       | *
       | *  @note   not specified by SLS as a member of AnyRef
       | */
     """.stripMargin)
 
     add(Object_waitL,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)]].
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @note not specified by SLS as a member of AnyRef
@@ -2393,7 +2435,7 @@ class Definitions {
     """.stripMargin)
 
     add(Object_waitLI,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]]
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)]]
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @param nanos   additional time, in nanoseconds range 0-999999.

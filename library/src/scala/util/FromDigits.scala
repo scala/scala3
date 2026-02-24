@@ -14,9 +14,9 @@ trait FromDigits[T] {
    *  - sign `+` or `-`
    *  - sequence of digits between 0 and 9
    *
-   * @throws MalformedNumber if digit string is not legal for the given type
-   * @throws NumberTooLarge  if value of result does not fit into `T`'s range
-   * @throws NumberTooSmall  in case of numeric underflow (e.g. a non-zero
+   * @throws FromDigits.MalformedNumber if digit string is not legal for the given type
+   * @throws FromDigits.NumberTooLarge  if value of result does not fit into `T`'s range
+   * @throws FromDigits.NumberTooSmall  in case of numeric underflow (e.g. a non-zero
    *                         floating point literal that produces a zero value)
    */
   def fromDigits(digits: String): T

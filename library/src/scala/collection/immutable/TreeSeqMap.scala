@@ -306,7 +306,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
   }.asInstanceOf[TreeSeqMap[K, V]]
 
   def from[K, V](it: collection.IterableOnce[(K, V)]^): TreeSeqMap[K, V] =
-    it match {
+    (it: @unchecked) match {
       case om: TreeSeqMap[K, V] => om
       case _ => (newBuilder[K, V] ++= it).result()
     }

@@ -39,7 +39,6 @@ import annotation.threadUnsafe
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import dotty.tools.dotc.cc.isRetains
 
 object Applications {
   import tpd.*
@@ -883,7 +882,71 @@ trait Applications extends Compatibility {
             case SAMType(samMeth, samParent) => argtpe <:< samMeth.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
             case _ => false
 
-        isCompatible(argtpe, formal)
+        // For overload resolution, allow arguments with wildcard type parameters to match
+        // formal parameters. This handles cases where isCompatible fails because the
+        // argument type has wildcards in positions where the formal type has concrete types
+        // or type variables.
+        //
+        // In the example below, the non-varargs overload (1) should be preferred.
+        // While Class[? <: Object] is not a subtype of Class[T],
+        // for applicability we check if the wildcard's bounds are compatible with the formal.
+        //
+        // ```scala
+        // def blub[T](a: Class[? <: T]): String = "a" // (1)
+        // def blub[T](a: Class[T], ints: Int*): String = "b" (2)
+        // blub(classOf[Object])  // classOf[Object]: Class[? <: Object]
+        // ```
+        //
+        // The case where argtpe has wildcard type isn't handled by isCompatible:
+        // When (where Class is invariant): (1)
+        // - formal = Class[? <: String]
+        // - argtpe = Class[String]
+        // isCompatible returns true because Class[String] <:< Class[? <: String] (String is a valid "some T <: String").
+        // On the other hand, when (2)
+        // - formal = Class[String]
+        // - argtpe = Class[? <: String]
+        // isCompatible returns false because Class[? <: String] <:< Class[String] doesn't hold.
+        //
+        // However, for overload resolution, we want to check applicability:
+        // "could this work with some type instantiation?" (yes, if ? = String)
+        def wildcardArgOK =
+          argtpe match
+            case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
+              formal match
+                case AppliedType(tycon2, args2)
+                if tycon1 =:= tycon2 && args1.length == args2.length =>
+                  // We need to handle all 4 cases, in addition to
+                  // `case (TypeBounds(_, hi), formal)` case where arg has wildcard, and formal is concrete:
+                  // because if argtpe has a wildcard type, and formal has concrete at the same position,
+                  // isComptible immediately returns false:
+                  // In the example below, argtpe = Codec[?, String, ? <: Format]
+                  // and formal = Codec[L, H, F <: Format].
+                  // isCompatible immediately returns false, because of the first type arguments.
+                  // wildcardArgOK needs to handle all combinations of TypeBounds on argtpe and formal.
+                  //
+                  // ```scala
+                  // trait Format
+                  // trait Codec[L, H, F <: Format]  // invariant
+                  //
+                  // def decode[L, H](codec: Codec[L, H, ? <: Format]): Int = 1
+                  // def decode[L, H](other: String): Int = 2
+                  // decode(null: Codec[?, String, ? <: Format]) // should return 1
+                  // ```
+                  args1.lazyZip(args2).forall {
+                    case (arg: TypeBounds, formal: TypeBounds) =>
+                      (formal.lo relaxed_<:< arg.lo) &&
+                        (arg.hi relaxed_<:< formal.hi)
+                    case (TypeBounds(_, hi), formal) =>
+                      hi relaxed_<:< formal
+                    case (arg, formal: TypeBounds) =>
+                      (formal.lo relaxed_<:< arg) && (arg relaxed_<:< formal.hi)
+                    case (a, b) =>
+                      a =:= b
+                  }
+                case _ => false
+            case _ => false
+
+        isCompatible(argtpe, formal) || wildcardArgOK
         // Only allow SAM-conversion to PartialFunction if implicit conversions
         // are enabled. This is necessary to avoid ambiguity between an overload
         // taking a PartialFunction and one taking a Function1 because
@@ -1135,6 +1198,12 @@ trait Applications extends Compatibility {
     if (ctx.owner.isClassConstructor && untpd.isSelfConstrCall(app)) ctx.thisCallArgContext
     else ctx
 
+  /** Overridden in InlineTyper to accept applications `fun()` of parameterless
+   *  methods `fun` that override some Java-defined method.
+   */
+  def isAcceptedSpuriousApply(fun: Tree, args: List[untpd.Tree])(using Context): Boolean =
+    false
+
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
@@ -1200,11 +1269,14 @@ trait Applications extends Compatibility {
             val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)
-            convertNewGenericArray(
-              widenEnumCase(
-                postProcessByNameArgs(funRef, app).computeNullable(),
-                pt))
+            if isAcceptedSpuriousApply(fun1, tree.args) then
+              fun1
+            else
+              val app = ApplyTo(tree, fun1, funRef, proto, pt)
+              convertNewGenericArray(
+                widenEnumCase(
+                  postProcessByNameArgs(funRef, app).computeNullable(),
+                  pt))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }

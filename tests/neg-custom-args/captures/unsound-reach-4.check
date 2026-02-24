@@ -12,19 +12,20 @@
    |                             Required: Foo[File^]
    |
    |                             Note that capability cap is not included in capture set {cap²}
-   |                             because cap is not visible from cap² in value backdoor.
+   |                             because cap in class Bar is not visible from cap² in value backdoor.
    |
    |                             where:    ^ and cap² refer to a fresh root capability in the type of value backdoor
-   |                                       cap        is the universal root capability
+   |                                       cap        is a fresh root capability created in class Bar
    |
    | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------
 17 |  def use(consume x: F): File^ = x // error consume override
    |      ^
-   |      error overriding method use in trait Foo of type (x: File^): File^;
-   |        method use of type (@consume x: File^): File^² has incompatible type
+   |      error overriding method use in trait Foo of type (x: File^): File^²;
+   |        method use of type (@consume x: File^): File^³ has incompatible type
    |
    |      where:    ^  refers to the universal root capability
-   |                ^² refers to a root capability associated with the result type of (@consume x: File^): File^²
+   |                ^² refers to a fresh root capability created in class Bar
+   |                ^³ refers to a root capability associated with the result type of (@consume x: File^): File^³
    |
    | longer explanation available when compiling with `-explain`

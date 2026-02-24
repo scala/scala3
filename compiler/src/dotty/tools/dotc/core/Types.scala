@@ -38,9 +38,11 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
+import ContextOps.isRechecking
 import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
+import transform.Recheck.currentRechecker
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -1099,7 +1101,7 @@ object Types extends TypeUtils {
      * methods of [[java.lang.Object]], that also does not count toward the interface's
      * abstract method count.
      *
-     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     * @see https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/FunctionalInterface.html
      *
      * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
      *
@@ -2310,7 +2312,7 @@ object Types extends TypeUtils {
 
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
-    def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
+    def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T
     def map(tm: TypeMap)(using Context): ProtoType
 
@@ -2514,15 +2516,31 @@ object Types extends TypeUtils {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if lastd.validFor.runId == ctx.runId && checkedPeriod.code != NowhereCode then
+          var needsRecompute = false
+          if lastd.validFor.runId == ctx.runId
+              && checkedPeriod.code != NowhereCode
+              && !(ctx.isRechecking
+                    && {
+                      needsRecompute = currentRechecker.needsRecompute(this, lastd)
+                      needsRecompute
+                    }
+                  )
+          then
             finish(lastd.current)
-          else lastd match {
-            case lastd: SymDenotation =>
-              if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
-              else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
-            case _ =>
-              fromDesignator
-          }
+          else
+            val newd = lastd match
+              case lastd: SymDenotation =>
+                if stillValid(lastd) && checkedPeriod.code != NowhereCode && !needsRecompute
+                then finish(lastd.current)
+                else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
+              case _ =>
+                fromDesignator
+            if needsRecompute && (newd.info ne lastd.info) then
+              // Record the previous denotation, so that it can be reset at the end
+              // of the rechecker phase
+              currentRechecker.prevSelDenots(this) = lastd
+              //println(i"NEW PATH $this: ${newd.info} at ${ctx.phase}, prefix = $prefix")
+            newd
         case _ => fromDesignator
       }
     }
@@ -3488,39 +3506,37 @@ object Types extends TypeUtils {
     override final def baseClasses(using Context): List[ClassSymbol] = hi.baseClasses
   }
 
-  object FlexibleType {
+  object FlexibleType:
     def apply(tp: Type)(using Context): FlexibleType =
       assert(tp.isValueType, s"Should not flexify ${tp}")
-      tp match {
-      case ft: FlexibleType => ft
-      case _ =>
-        // val tp1 = tp.stripNull()
-        // if tp1.isNullType then
-        //   // (Null)? =:= ? >: Null <: (Object & Null)
-        //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
-        // else
-        //   // (T | Null)? =:= ? >: T | Null <: T
-        //   // (T)? =:= ? >: T | Null <: T
-        //   val hi = tp1
-        //   val lo = if hi eq tp then OrNull(hi) else tp
-        //   FlexibleType(lo, hi)
-        //
-        // The commented out code does more work to analyze the original type to ensure the
-        // flexible type is always a subtype of the original type and the Object type.
-        // It is not necessary according to the use cases, so we choose to use a simpler
-        // rule.
-        FlexibleType(OrNull(tp), tp)
-    }
-
-    def make(tp: Type)(using Context): Type =
       tp match
-        case _: FlexibleType => tp
-        case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
-        case wt: WildcardType => wt.optBounds match
-          case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
-          case _ => wt
-        case other => FlexibleType(tp)
-  }
+        case ft: FlexibleType => ft
+        case _ => FlexibleType(OrNull(tp), tp)
+          // val tp1 = tp.stripNull()
+          // if tp1.isNullType then
+          //   // (Null)? =:= ? >: Null <: (Object & Null)
+          //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
+          // else
+          //   // (T | Null)? =:= ? >: T | Null <: T
+          //   // (T)? =:= ? >: T | Null <: T
+          //   val hi = tp1
+          //   val lo = if hi eq tp then OrNull(hi) else tp
+          //   FlexibleType(lo, hi)
+          //
+          // The commented out code does more work to analyze the original type to ensure the
+          // flexible type is always a subtype of the original type and the Object type.
+          // It is not necessary according to the use cases, so we choose to use a simpler
+          // rule.
+
+    def make(tp: Type)(using Context): Type = tp match
+      case _: FlexibleType => tp // tp is already flexible
+      case SimpleOrNull(_) => tp // tp is already nullable
+      case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
+      case wt: WildcardType => wt.optBounds match
+        case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
+        case _ => wt
+      case other => FlexibleType(tp)
+  end FlexibleType
 
   // --- AndType/OrType ---------------------------------------------------------------
 
@@ -3793,13 +3809,19 @@ object Types extends TypeUtils {
    *    case OrNull(tp1) => // tp had the form `tp1 | Null`
    *    case _ => // tp was not a nullable union
    */
-  object OrNull {
+  object OrNull:
     def apply(tp: Type)(using Context) =
       if tp.isNullType then tp else OrType(tp, defn.NullType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
       val tp1 = tp.stripNull()
       if tp1 ne tp then Some(tp1) else None
-  }
+
+  object SimpleOrNull:
+    def unapply(tp: Type)(using Context): Option[Type] =
+      tp match
+        case OrType(tp1, tp2) if tp1.isNullType => Some(tp2)
+        case OrType(tp1, tp2) if tp2.isNullType => Some(tp1)
+        case _ => None
 
   // ----- ExprType and LambdaTypes -----------------------------------
 
@@ -4209,8 +4231,8 @@ object Types extends TypeUtils {
               val parent1 = mapOver(parent)
               if ann.symbol.isRetainsLike then
                 range(
-                  AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(ann.symbol)),
-                  AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(ann.symbol)))
+                  AnnotatedType(parent1, RetainingAnnotation(defn.RetainsAnnot, defn.NothingType)),
+                  AnnotatedType(parent1, RetainingAnnotation(defn.RetainsCapAnnot)))
               else
                 parent1
             case _ => mapOver(tp)
@@ -7107,6 +7129,8 @@ object Types extends TypeUtils {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
       tp match {
+        case tp: AppliedType if defn.isTupleNType(tp) =>
+          foldOver(n + 1, tp.toNestedPairs)
         case tp: AppliedType =>
           val tpNorm = tp.tryNormalize
           if tpNorm.exists then apply(n, tpNorm)

@@ -12,8 +12,9 @@ import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
 import reporting.*
+import Message.Note
 import collection.mutable
-
+import cc.isCaptureChecking
 
 object ErrorReporting {
 
@@ -70,19 +71,6 @@ object ErrorReporting {
           case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
           case _ => foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
-
-  /** A mixin trait that can produce added elements for an error message */
-  trait Addenda:
-    def toAdd(using Context): List[String]
-    def ++(follow: Addenda) = new Addenda:
-      def toAdd(using Context) = Addenda.this.toAdd ++ follow.toAdd
-
-  object Addenda:
-    def apply(msg: Context ?=> String): Addenda = new Addenda:
-      def toAdd(using Context) = msg :: Nil
-
-  object NothingToAdd extends Addenda:
-    def toAdd(using Context): List[String] = Nil
 
   class Errors(using Context) {
 
@@ -180,7 +168,7 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, addenda: Addenda = NothingToAdd): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, notes: List[Note] = Nil): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
@@ -199,11 +187,17 @@ object ErrorReporting {
 
       def missingElse = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
-          Addenda("\nMaybe you are missing an else part for the conditional?")
+          Note("\nMaybe you are missing an else part for the conditional?") :: Nil
         case _ =>
-          NothingToAdd
+          Nil
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), addenda ++ missingElse))
+      def badTreeNote =
+        val span = tree.span
+        if tree.span.isZeroExtent && isCaptureChecking then
+          Note(i"\n\nThe error occurred for a synthesized tree:  $tree") :: Nil
+        else Nil
+
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ missingElse ++ badTreeNote))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
