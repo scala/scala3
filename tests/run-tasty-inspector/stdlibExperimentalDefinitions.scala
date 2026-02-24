@@ -45,6 +45,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.internal$",
   "scala.caps.any",
   "scala.caps.any$",
+  "scala.caps.cap",
+  "scala.caps.cap$",
   "scala.caps.fresh",
   "scala.caps.fresh$",
   "scala.caps.unsafe",
