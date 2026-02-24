@@ -1440,11 +1440,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def lhs1 = adapt(lhsCore, LhsProto, locked)
 
         def reassignmentToVal =
+          val adapted = lhs1
           val name = lhs match
-            case nt: NameTree => nt.name
-            case _ => lhs1.symbol.orElse(lhsCore.symbol).name
+            case nt: NameTree => nt.name  // respects import rename
+            case _ => adapted.symbol.name // other LHS such as X.x += y
           report.error(ReassignmentToVal(name, pt), tree.srcPos)
-          cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
+          cpy.Assign(tree)(lhsCore, typed(tree.rhs, adapted.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
           sym.isMutableVar ||
