@@ -18,14 +18,14 @@ import scala.collection.convert.StreamExtensions
 /** This object provides extension methods to create [[java.util.stream.Stream Java Streams]] that
   * operate on Scala collections (sequentially or in parallel). For more information on Java
   * streams, consult the documentation
-  * ([[https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html]]).
+  * ([[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/package-summary.html]]).
   *
   * When writing Java code, use the explicit conversion methods defined in
   * [[javaapi.StreamConverters]] instead.
   *
   * The methods `asJavaSeqStream` and `asJavaParStream` convert a collection to a Java Stream:
   *
-  * {{{
+  * ```
   *   scala> import scala.jdk.StreamConverters._
   *
   *   scala> val s = (1 to 10).toList.asJavaSeqStream
@@ -33,18 +33,18 @@ import scala.collection.convert.StreamExtensions
   *
   *   scala> s.map(_ * 2).filter(_ > 5).toScala(List)
   *   res1: List[Int] = List(6, 8, 10, 12, 14, 16, 18, 20)
-  * }}}
+  * ```
   *
   * Note: using parallel streams in the Scala REPL causes deadlocks, see
   * [[https://github.com/scala/bug/issues/9076]]. As a workaround, use `scala -Yrepl-class-based`.
   *
-  * {{{
+  * ```
   *   scala> def isPrime(n: Int): Boolean = !(2 +: (3 to Math.sqrt(n).toInt by 2) exists (n % _ == 0))
   *   isPrime: (n: Int)Boolean
   *
   *   scala> (10000 to 1000000).asJavaParStream.filter(isPrime).toScala(Vector)
   *   res6: scala.collection.immutable.Vector[Int] = Vector(10007, 10009, 10037, 10039, ...
-  * }}}
+  * ```
   *
   * A Java [[Stream]] provides operations on a sequence of elements. Streams are created from
   * [[java.util.Spliterator Spliterators]], which are similar to Iterators with the additional

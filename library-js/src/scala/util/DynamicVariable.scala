@@ -27,12 +27,12 @@ import java.lang.InheritableThreadLocal
  *  parameterless closure, executes. When the second argument finishes,
  *  the variable reverts to the previous value.
  *
- *  {{{
+ *  ```
  *  someDynamicVariable.withValue(newValue) {
  *    // ... code called in here that calls value ...
  *    // ... will be given back the newValue ...
  *  }
- *  }}}
+ *  ```
  *
  *  Each thread gets its own stack of bindings.  When a
  *  new thread is created, the `DynamicVariable` gets a copy
@@ -50,15 +50,15 @@ class DynamicVariable[T](init: T) {
    */
   private[this] var v = init
 
-  /** Retrieve the current value */
+  /** Retrieves the current value. */
   def value: T = v
 
-  /** Set the value of the variable while executing the specified
-    * thunk.
-    *
-    * @param newval The value to which to set the variable
-    * @param thunk The code to evaluate under the new setting
-    */
+  /** Sets the value of the variable while executing the specified
+   *  thunk.
+   *
+   *  @param newval The value to which to set the variable
+   *  @param thunk The code to evaluate under the new setting
+   */
   def withValue[S](newval: T)(thunk: => S): S = {
     val oldval = v
     v = newval
@@ -67,9 +67,9 @@ class DynamicVariable[T](init: T) {
     finally v = oldval
   }
 
-  /** Change the currently bound value, discarding the old value.
-    * Usually withValue() gives better semantics.
-    */
+  /** Changes the currently bound value, discarding the old value.
+   *  Usually withValue() gives better semantics.
+   */
   def value_=(newval: T) = v = newval
 
   override def toString: String = "DynamicVariable(" + value + ")"

@@ -238,7 +238,7 @@ final class LongAccumulator
     r
   }
 
-  /** Copies the elements in this `LongAccumulator` into an `Array[Long]` */
+  /** Copies the elements in this `LongAccumulator` into an `Array[Long]`. */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Long] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -260,7 +260,7 @@ final class LongAccumulator
     a
   }
 
-  /** Copies the elements in this `LongAccumulator` to a `List` */
+  /** Copies the elements in this `LongAccumulator` to a `List`. */
   override def toList: List[Long] = {
     var ans: List[Long] = Nil
     var i = index - 1
@@ -281,10 +281,9 @@ final class LongAccumulator
     ans
   }
 
-  /**
-   * Copy the elements in this `LongAccumulator` to a specified collection.
-   * Note that the target collection is not specialized.
-   * Usage example: `acc.to(Vector)`
+  /** Copies the elements in this `LongAccumulator` to a specified collection.
+   *  Note that the target collection is not specialized.
+   *  Usage example: `acc.to(Vector)`
    */
   override def to[C1](factory: Factory[Long, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

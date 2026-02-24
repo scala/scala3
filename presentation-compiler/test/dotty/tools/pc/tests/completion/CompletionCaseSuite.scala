@@ -5,15 +5,15 @@ import scala.meta.pc.PresentationCompilerConfig
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class CompletionCaseSuite extends BaseCompletionSuite:
 
   def paramHint: Option[String] = Some("param-hint")
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       _parameterHintsCommand = paramHint
     )
 
@@ -678,7 +678,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|case Animal.Cat =>
          |case Animal.Dog =>
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-alias-sealed-trait-case` =
@@ -701,7 +701,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|case Cat() => test.O.Animal
          |case Dog => test.O.Animal
-         |""".stripMargin,
+         |""".stripMargin
     )
   @Test def `for-comp` =
     check(
@@ -713,7 +713,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |
          |}
          |""".stripMargin,
-      "",
+      ""
     )
 
   @Test def `lambda-case-tuple` =
@@ -725,7 +725,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |  }
          |}
          |""".stripMargin,
-      "case (Int, Int) => scala",
+      "case (Int, Int) => scala"
     )
 
   @Test def `keyword-only` =
@@ -738,12 +738,12 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |  }
         |}
         |""".stripMargin,
-      "case",
+      "case"
     )
 
   @Test def `union-type` =
     check(
-     """
+      """
        |case class Foo(a: Int)
        |case class Bar(b: Int)
        |
@@ -751,12 +751,11 @@ class CompletionCaseSuite extends BaseCompletionSuite:
        |  val x: Foo | Bar = ???
        |  val y  = List(x).map{ ca@@ }
        |}""".stripMargin,
-     """|case Bar(b) => test
+      """|case Bar(b) => test
         |case Foo(a) => test
         |case (exhaustive) Foo | Bar (2 cases)
         |""".stripMargin
     )
-
 
   @Test def `union-type-edit` =
     checkEdit(
@@ -814,4 +813,3 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |""".stripMargin,
       ""
     )
-

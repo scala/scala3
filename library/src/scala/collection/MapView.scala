@@ -41,17 +41,17 @@ trait MapView[K, +V]
   override def values: Iterable[V]^{this} = new MapView.Values(this)
 
   /** Filters this map by retaining only keys satisfying a predicate.
-    *  @param  p   the predicate used to test keys
-    *  @return an immutable map consisting only of those key value pairs of this map where the key satisfies
-    *          the predicate `p`. The resulting map wraps the original map without copying any elements.
-    */
+   *  @param  p   the predicate used to test keys
+   *  @return an immutable map consisting only of those key value pairs of this map where the key satisfies
+   *          the predicate `p`. The resulting map wraps the original map without copying any elements.
+   */
   override def filterKeys(p: K => Boolean): MapView[K, V]^{this, p} = new MapView.FilterKeys(this, p)
 
   /** Transforms this map by applying a function to every retrieved value.
-    *  @param  f   the function used to transform values of this map.
-    *  @return a map view which maps every key of this map
-    *          to `f(this(key))`. The resulting map wraps the original map without copying any elements.
-    */
+   *  @param  f   the function used to transform values of this map.
+   *  @return a map view which maps every key of this map
+   *          to `f(this(key))`. The resulting map wraps the original map without copying any elements.
+   */
   override def mapValues[W](f: V => W): MapView[K, W]^{this, f} = new MapView.MapValues(this, f)
 
   override def filter(pred: ((K, V)) => Boolean): MapView[K, V]^{this, pred} = new MapView.Filter(this, isFlipped = false, pred)
@@ -76,9 +76,9 @@ trait MapView[K, +V]
 
 object MapView extends MapViewFactory {
 
-  /** An `IterableOps` whose collection type and collection type constructor are unknown */
+  /** An `IterableOps` whose collection type and collection type constructor are unknown. */
   type SomeIterableConstr[X, Y] = IterableOps[?, AnyConstr, ?]
-  /** A `MapOps` whose collection type and collection type constructor are (mostly) unknown */
+  /** A `MapOps` whose collection type and collection type constructor are (mostly) unknown. */
   type SomeMapOps[K, +V] = MapOps[K, V, SomeIterableConstr, ?]
 
   @SerialVersionUID(3L)

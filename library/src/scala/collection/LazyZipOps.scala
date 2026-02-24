@@ -17,22 +17,22 @@ import scala.language.implicitConversions
 import language.experimental.captureChecking
 
 /** Decorator representing lazily zipped pairs.
-  *
-  * @define coll pair
-  * @define willNotTerminateInf
-  *
-  *              Note: will not terminate for infinite-sized collections.
-  */
+ *
+ *  @define coll pair
+ *  @define willNotTerminateInf
+ *
+ *              Note: will not terminate for infinite-sized collections.
+ */
 final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterable[El1]^, coll2: Iterable[El2]^) {
 
   /** Zips `that` iterable collection with an existing `LazyZip2`. The elements in each collection are
-    * not consumed until a strict operation is invoked on the returned `LazyZip3` decorator.
-    *
-    * @param that the iterable providing the third element of each eventual triple
-    * @tparam B the type of the third element in each eventual triple
-    * @return a decorator `LazyZip3` that allows strict operations to be performed on the lazily evaluated tuples or
-    *         chained calls to `lazyZip`. Implicit conversion to `Iterable[(El1, El2, B)]` is also supported.
-    */
+   *  not consumed until a strict operation is invoked on the returned `LazyZip3` decorator.
+   *
+   *  @tparam B the type of the third element in each eventual triple
+   *  @param that the iterable providing the third element of each eventual triple
+   *  @return a decorator `LazyZip3` that allows strict operations to be performed on the lazily evaluated tuples or
+   *         chained calls to `lazyZip`. Implicit conversion to `Iterable[(El1, El2, B)]` is also supported.
+   */
   def lazyZip[B](that: Iterable[B]^): LazyZip3[El1, El2, B, C1]^{this, that} = new LazyZip3(src, coll1, coll2, that)
 
   def map[B, C](f: (El1, El2) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
@@ -142,25 +142,25 @@ object LazyZip2 {
 
 
 /** Decorator representing lazily zipped triples.
-  *
-  * @define coll triple
-  * @define willNotTerminateInf
-  *
-  *              Note: will not terminate for infinite-sized collections.
-  */
+ *
+ *  @define coll triple
+ *  @define willNotTerminateInf
+ *
+ *              Note: will not terminate for infinite-sized collections.
+ */
 final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
                                                                coll1: Iterable[El1]^,
                                                                coll2: Iterable[El2]^,
                                                                coll3: Iterable[El3]^) {
 
   /** Zips `that` iterable collection with an existing `LazyZip3`. The elements in each collection are
-    * not consumed until a strict operation is invoked on the returned `LazyZip4` decorator.
-    *
-    * @param that the iterable providing the fourth element of each eventual 4-tuple
-    * @tparam B the type of the fourth element in each eventual 4-tuple
-    * @return a decorator `LazyZip4` that allows strict operations to be performed on the lazily evaluated tuples.
-    *         Implicit conversion to `Iterable[(El1, El2, El3, B)]` is also supported.
-    */
+   *  not consumed until a strict operation is invoked on the returned `LazyZip4` decorator.
+   *
+   *  @tparam B the type of the fourth element in each eventual 4-tuple
+   *  @param that the iterable providing the fourth element of each eventual 4-tuple
+   *  @return a decorator `LazyZip4` that allows strict operations to be performed on the lazily evaluated tuples.
+   *         Implicit conversion to `Iterable[(El1, El2, El3, B)]` is also supported.
+   */
   def lazyZip[B](that: Iterable[B]^): LazyZip4[El1, El2, El3, B, C1]^{this, that} = new LazyZip4(src, coll1, coll2, coll3, that)
 
   def map[B, C](f: (El1, El2, El3) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
@@ -283,12 +283,12 @@ object LazyZip3 {
 
 
 /** Decorator representing lazily zipped 4-tuples.
-  *
-  * @define coll tuple
-  * @define willNotTerminateInf
-  *
-  *              Note: will not terminate for infinite-sized collections.
-  */
+ *
+ *  @define coll tuple
+ *  @define willNotTerminateInf
+ *
+ *              Note: will not terminate for infinite-sized collections.
+ */
 final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
                                                                      coll1: Iterable[El1]^,
                                                                      coll2: Iterable[El2]^,

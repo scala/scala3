@@ -22,7 +22,7 @@ import scala.annotation.tailrec
   *
   *  $concurrentmapinfo
   *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#concurrent_maps "Scala's Collection Library overview"]]
+  *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#concurrent_maps)
   *  section on `Concurrent Maps` for more information.
   *
   *  @tparam K  the key type of the map
@@ -141,7 +141,7 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
   private[collection] def replaceRefEq(k: K, oldValue: V, newValue: V): Boolean = replace(k, oldValue, newValue)
 
   /**
-   * Update a mapping for the specified key and its current optionally mapped value
+   * Updates a mapping for the specified key and its current optionally mapped value
    * (`Some` if there is current mapping, `None` if not).
    *
    * If the remapping function returns `Some(v)`, the mapping is updated with the new value `v`.
@@ -151,7 +151,7 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
    * If the map is updated by another concurrent access, the remapping function will be retried until successfully updated.
    *
    * @param key the key value
-   * @param remappingFunction a function that receives current optionally mapped value and return a new mapping
+   * @param remappingFunction a function that receives current optionally mapped value and returns a new mapping
    * @return the new value associated with the specified key
    */
   override def updateWith(key: K)(remappingFunction: Option[V] => Option[V]): Option[V] = updateWithAux(key)(remappingFunction)

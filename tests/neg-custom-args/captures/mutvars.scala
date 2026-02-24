@@ -11,7 +11,7 @@ class Ref[T](init: T) extends caps.Mutable:
 
     val self3 = () => this
     self3().fld = x  // error
-    val self4: () => Ref[T]^ = () => this // error
+    val self4: () => Ref[T]^ = () => this // error // error separation
     self4().fld = x
 
     def self5() = this

@@ -39,22 +39,21 @@ object ScalaRunTime {
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
-  /** Return the class object representing an array with element class `clazz`.
-   */
+  /** Returns the class object representing an array with element class `clazz`. */
   def arrayClass(clazz: jClass[_]): jClass[_] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
   }
 
-  /** Return the class object representing an unboxed value type,
+  /** Returns the class object representing an unboxed value type,
    *  e.g., classOf[int], not classOf[java.lang.Integer].  The compiler
    *  rewrites expressions like 5.getClass to come here.
    */
   def anyValClass[T <: AnyVal : ClassTag](value: T): jClass[T] =
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
-  /** Retrieve generic array element */
+  /** Retrieves generic array element. */
   def array_apply(xs: AnyRef, idx: Int): Any = {
     xs match {
       case x: Array[AnyRef]  => x(idx).asInstanceOf[Any]
@@ -70,7 +69,7 @@ object ScalaRunTime {
     }
   }
 
-  /** update generic array element */
+  /** Updates generic array element. */
   def array_update(xs: AnyRef, idx: Int, value: Any): Unit = {
     xs match {
       case x: Array[AnyRef]  => x(idx) = value.asInstanceOf[AnyRef]
@@ -86,7 +85,7 @@ object ScalaRunTime {
     }
   }
 
-  /** Get generic array length */
+  /** Gets generic array length. */
   @inline def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
@@ -104,7 +103,7 @@ object ScalaRunTime {
     case null => throw new NullPointerException
   }
 
-  /** Convert an array to an object array.
+  /** Converts an array to an object array.
    *  Needed to deal with vararg arguments of primitive types that are passed
    *  to a generic Java vararg parameter T ...
    */
@@ -153,15 +152,15 @@ object ScalaRunTime {
 
   /** Given any Scala value, convert it to a String.
    *
-   * The primary motivation for this method is to provide a means for
-   * correctly obtaining a String representation of a value, while
-   * avoiding the pitfalls of naively calling toString on said value.
-   * In particular, it addresses the fact that (a) toString cannot be
-   * called on null and (b) depending on the apparent type of an
-   * array, toString may or may not print it in a human-readable form.
+   *  The primary motivation for this method is to provide a means for
+   *  correctly obtaining a String representation of a value, while
+   *  avoiding the pitfalls of naively calling toString on said value.
+   *  In particular, it addresses the fact that (a) toString cannot be
+   *  called on null and (b) depending on the apparent type of an
+   *  array, toString may or may not print it in a human-readable form.
    *
-   * @param   arg   the value to stringify
-   * @return        a string representation of arg.
+   *  @param   arg   the value to stringify
+   *  @return        a string representation of arg.
    */
   def stringOf(arg: Any): String = stringOf(arg, scala.Int.MaxValue)
   def stringOf(arg: Any, maxElements: Int): String = {

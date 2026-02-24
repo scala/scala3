@@ -22,15 +22,15 @@ import scala.collection.generic.DefaultSerializationProxy
 import scala.util.hashing.MurmurHash3
 
 /** This class implements mutable sets using a hashtable.
-  *
-  * @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables "Scala's Collection Library overview"]]
-  * section on `Hash Tables` for more information.
-  *
-  * @define Coll `mutable.HashSet`
-  * @define coll mutable hash set
-  * @define mayNotTerminateInf
-  * @define willNotTerminateInf
-  */
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables)
+ *  section on `Hash Tables` for more information.
+ *
+ *  @define Coll `mutable.HashSet`
+ *  @define coll mutable hash set
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   extends AbstractSet[A]
     with SetOps[A, HashSet, HashSet[A]]
@@ -42,7 +42,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   import HashSet.Node
 
-  /* The Hashset class holds the following invariant:
+  /* The `HashSet` class holds the following invariant:
    * - For each i between  0 and table.length, the bucket at table(i) only contains elements whose hash-index is i.
    * - Every bucket is sorted in ascendent hash order
    * - The sum of the lengths of all buckets is equal to contentSize.
@@ -57,7 +57,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   override def size: Int = contentSize
 
-  /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash*/
+  /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash. */
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
   /** Computes the improved hash of an original (`any.##`) hash. */
@@ -68,7 +68,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     originalHash ^ (originalHash >>> 16)
   }
 
-  /** Computes the improved hash of this element */
+  /** Computes the improved hash of this element. */
   @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
@@ -95,7 +95,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   override def addAll(xs: IterableOnce[A]^): this.type = {
     sizeHint(xs, delta = 0)
-    xs match {
+    (xs: @unchecked) match {
       case hs: immutable.HashSet[A] =>
         hs.foreachWithHash((k, h) => addElem(k, improveHash(h)))
         this
@@ -122,7 +122,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
       return this
     }
 
-    xs match {
+    (xs: @unchecked) match {
       case hs: immutable.HashSet[A] =>
         hs.foreachWithHashWhile { (k, h) =>
           remove(k, improveHash(h))
@@ -149,10 +149,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  /** Adds an element to this set
-    * @param elem element to add
-    * @param hash the **improved** hash of `elem` (see computeHash)
-    */
+  /** Adds an element to this set.
+   *  @param elem element to add
+   *  @param hash the **improved** hash of `elem` (see computeHash)
+   */
   private def addElem(elem: A, hash: Int) : Boolean = {
     val idx = index(hash)
     table(idx) match {
@@ -235,7 +235,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     override protected def extract(nd: Node[A]): A = nd.key
   }
 
-  /** Returns an iterator over the nodes stored in this HashSet */
+  /** Returns an iterator over the nodes stored in this HashSet. */
   private[collection] def nodeIterator: Iterator[Node[A]] = new HashSetIterator[Node[A]] {
     override protected def extract(nd: Node[A]): Node[A] = nd
   }
@@ -401,11 +401,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   }
 }
 
-/**
-  * $factoryInfo
-  * @define Coll `mutable.HashSet`
-  * @define coll mutable hash set
-  */
+/** $factoryInfo
+ *  @define Coll `mutable.HashSet`
+ *  @define coll mutable hash set
+ */
 @SerialVersionUID(3L)
 object HashSet extends IterableFactory[HashSet] {
 
@@ -424,10 +423,10 @@ object HashSet extends IterableFactory[HashSet] {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
 
-  /** The default load factor for the hash table */
+  /** The default load factor for the hash table. */
   final def defaultLoadFactor: Double = 0.75
 
-  /** The default initial capacity for the hash table */
+  /** The default initial capacity for the hash table. */
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)

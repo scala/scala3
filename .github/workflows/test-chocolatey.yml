@@ -35,7 +35,7 @@ jobs:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
       - name: Download the 'nupkg' from GitHub Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: scala.nupkg
           path: ${{ env.CHOCOLATEY-REPOSITORY }}

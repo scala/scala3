@@ -29,12 +29,12 @@ realising the full potential of these ideas. Its main objectives are to
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 16th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/contributing/procedures/release.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/contributing/procedures/release.html).
 
 # What’s new in the 0.16.0-RC3 technology preview?
 
@@ -68,7 +68,7 @@ the future we pick `?` as a replacement syntax for wildcard types, since it
 aligns with Java's syntax.
 
 For more information please read our documentation on
-[Wildcards](https://dotty.epfl.ch/docs/reference/changed-features/wildcards.html).
+[Wildcards](https://nightly.scala-lang.org/docs/reference/changed-features/wildcards.html).
 
 ## Syntax Change: Contextual Abstractions
 
@@ -136,7 +136,7 @@ consistent with Scala 2. The old behavior of non-volatile lazy vals can be
 recovered by using the newly-introduced `@threadUnsafe`.
 
 For more information please read our documentation on the
-[threadUnsafe annotation](https://dotty.epfl.ch/docs/reference/other-new-features/threadUnsafe-annotation.html).
+[threadUnsafe annotation](https://nightly.scala-lang.org/docs/reference/other-new-features/threadUnsafe-annotation.html).
 
 ## Add support for Java-compatible enums
 
@@ -244,7 +244,7 @@ According to `git shortlog -sn --no-merges 0.15.0-RC1..0.16.0-RC3` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

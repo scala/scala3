@@ -1,3 +1,5 @@
+import caps.fresh
+
 class File:
   def write(): Unit = ???
 
@@ -5,10 +7,10 @@ def usingFile[T](f: File^ => T): T = ???
 
 type Proc = () => Unit
 
-class Ref[T](init: T):
+class Ref[T](init: T) extends caps.Stateful:
   private var x: T = init
   def get: T = x
-  def set(y: T) = { x = y }
+  update def set(y: T) = { x = y }
 
 def runAll0[C^](xs: List[() ->{C} Unit]): Unit =
   var cur: List[() ->{C} Unit] = xs
@@ -17,8 +19,8 @@ def runAll0[C^](xs: List[() ->{C} Unit]): Unit =
     next()
     cur = cur.tail: List[() ->{C} Unit]
 
-  usingFile: f => // error
-    cur = (() => f.write()) :: Nil
+  usingFile: f =>
+    cur = (() => f.write()) :: Nil  // error
 
 def runAll1[C^](xs: List[() ->{C} Unit]): Unit =
   val cur = Ref[List[() ->{C} Unit]](xs)  // OK, by revised VAR
@@ -27,9 +29,9 @@ def runAll1[C^](xs: List[() ->{C} Unit]): Unit =
     next()
     cur.set(cur.get.tail: List[() ->{C} Unit])
 
-  usingFile: f => // error
+  usingFile: f =>
     cur.set:
-      (() => f.write()) :: Nil
+      (() => f.write()) :: Nil // error
 
 def runAll2(consume xs: List[Proc]): Unit =
   var cur: List[Proc] = xs
@@ -57,12 +59,13 @@ def attack2 =
   val id: File^ -> File^ = x => x // error
     // val id: File^ -> File^{fresh}
 
-  val leaked = usingFile[File^{id*}]: f => // error: separation
+  val leaked = usingFile[File^{id*}]: f =>
     val f1: File^{id*} = id(f)
     f1
 
 def attack3 =
-  val id: (x: File^) -> File^ = x => x // was error, now OK
+  val id: (x: File^) -> File^{fresh} = x => x // was error, now OK
+  val id2: File^ -> File^{fresh} = x => x // now also OK
 
   val leaked = usingFile[File^{id*}]: f =>
     val f1: File^{id*} = id(f)   // error
@@ -82,7 +85,7 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error
+  ps.map((x, y) => compose1(x, y)) // error // error // error
 
 def mapCompose2[A, C^](ps: List[(A ->{C} A, A ->{C} A)]): List[A ->{C} A] =
   ps.map((x, y) => compose1(x, y)) // error

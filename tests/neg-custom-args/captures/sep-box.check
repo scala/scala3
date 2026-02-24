@@ -13,4 +13,4 @@
    |  Footprint set of second argument      : {xs*}
    |  The two sets overlap at               : {xs*}
    |
-   |where:    ^ refers to a fresh root capability classified as Unscoped created in method test when checking argument to parameter x of method par
+   |where:    ^ refers to a root capability classified as Unscoped created in method test when checking argument to parameter x of method par

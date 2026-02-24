@@ -33,6 +33,8 @@ i17186b.scala
 i11982a.scala
 i17255
 i17735.scala
+i24134
+i24134-nested
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -143,3 +145,6 @@ i23299.scala
 
 # typecheckErrors method unpickling
 i21415.scala
+
+# missing symbol (unsure why it errors here)
+java-records

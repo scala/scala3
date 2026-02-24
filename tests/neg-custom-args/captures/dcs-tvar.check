@@ -1,22 +1,22 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/dcs-tvar.scala:6:2 ---------------------------------------
 6 |  () => runOps(xs) // error
   |  ^^^^^^^^^^^^^^^^
-  |  Found:    () => Unit
+  |  Found:    () ->{any} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability cap is not included in capture set {}.
+  |  Note that capability `any` cannot flow into capture set {}.
   |
-  |  where:    => and cap refer to a fresh root capability in the type of type T
+  |  where:    any is a root capability in the type of type T
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/dcs-tvar.scala:9:2 ---------------------------------------
 9 |  () => runOps(xs) // error
   |  ^^^^^^^^^^^^^^^^
-  |  Found:    () => Unit
+  |  Found:    () ->{any} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability cap is not included in capture set {}.
+  |  Note that capability `any` cannot flow into capture set {}.
   |
-  |  where:    => and cap refer to a fresh root capability in the type of type U
+  |  where:    any is a root capability in the type of type U
   |
   | longer explanation available when compiling with `-explain`

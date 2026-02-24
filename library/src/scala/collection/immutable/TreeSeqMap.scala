@@ -306,7 +306,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
   }.asInstanceOf[TreeSeqMap[K, V]]
 
   def from[K, V](it: collection.IterableOnce[(K, V)]^): TreeSeqMap[K, V] =
-    it match {
+    (it: @unchecked) match {
       case om: TreeSeqMap[K, V] => om
       case _ => (newBuilder[K, V] ++= it).result()
     }
@@ -427,7 +427,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       // careful handling.
       override def equals(that : Any): Boolean = that match {
         case _: this.type => true
-        case _: Ordering[_] => false // The only empty Orderings are eq Nil
+        case _: Ordering[?] => false // The only empty Orderings are eq Nil
         case _ => super.equals(that)
       }
       protected def format(sb: StringBuilder, prefix: String, subPrefix: String): Unit = sb ++= s"${prefix}Ø"

@@ -4,7 +4,7 @@
    |                           Found:    () ->{console} String
    |                           Required: () -> String
    |
-   |                           Note that capability console is not included in capture set {}.
+   |                           Note that capability `console` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals.scala:16:30 -------------------------------------
@@ -13,10 +13,10 @@
    |                              Found:    () ->{console} String
    |                              Required: () ->{x} String
    |
-   |                              Note that capability console is not included in capture set {x}.
+   |                              Note that capability `console` cannot flow into capture set {x}.
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/lazyvals.scala:16:18 ----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/lazyvals.scala:16:12 ----------------------------------------------------------
 16 |  val fun3: () ->{x} String = () => x() // error // error
-   |                  ^
-   |                  (x : () -> String) cannot be tracked since its capture set is empty
+   |            ^^^^^^^^^^^^^^^
+   |            (x : () -> String) cannot be tracked since its capture set is empty

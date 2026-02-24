@@ -27,7 +27,7 @@ import scala.reflect.ClassTag
   *  take amortized constant time. In general, removals and insertions at i-th index are O(min(i, n-i))
   *  and thus insertions and removals from end/beginning are fast.
   *
-  *  @note Subclasses ''must'' override the `ofArray` protected method to return a more specific type.
+  *  @note Subclasses *must* override the `ofArray` protected method to return a more specific type.
   *
   *  @tparam A  the type of this ArrayDeque's elements.
   *
@@ -342,7 +342,7 @@ class ArrayDeque[A] protected (
   }
 
   /**
-    * Remove all elements from this collection and return the elements while emptying this data structure
+    * Removes all elements from this collection and returns the elements while emptying this data structure.
     * @return
     */
   def removeAll(): scala.collection.immutable.Seq[A] = {
@@ -355,7 +355,7 @@ class ArrayDeque[A] protected (
   }
 
   /**
-    * Remove all elements from this collection and return the elements in reverse while emptying this data structure
+    * Removes all elements from this collection and returns the elements in reverse while emptying this data structure.
     * @return
     */
   def removeAllReverse(): scala.collection.immutable.Seq[A] = {

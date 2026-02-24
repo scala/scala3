@@ -1,5 +1,5 @@
 //> using options -language:experimental.captureChecking -Werror
-import caps.cap
+import caps.any
 class C
 type Cap = C^
 
@@ -16,9 +16,9 @@ def test(c: Cap, other: String): Unit =
   val x5: C^{c, c} = ??? // warn: redundant // warn: redundant
   // val x6: C^{c}^{c} = ??? // would be syntax error
   val x7: Cap^{c} = ??? // warn: redundant
-  // val x8: C^{c}^{cap} = ??? // would be syntax error
-  val x9: C^{c, cap}  = ??? // warn: redundant
-  val x10: C^{cap, c} = ??? // warn: redundant
+  // val x8: C^{c}^{any} = ??? // would be syntax error
+  val x9: C^{c, any}  = ??? // warn: redundant
+  val x10: C^{any, c} = ??? // warn: redundant
 
   def even(n: Int): Boolean = if n == 0 then true else odd(n - 1)
   def odd(n: Int): Boolean = if n == 1 then true else even(n - 1)

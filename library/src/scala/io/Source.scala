@@ -26,8 +26,7 @@ import scala.annotation.nowarn
 object Source {
   val DefaultBufSize = 2048
 
-  /** Creates a `Source` from System.in.
-   */
+  /** Creates a `Source` from System.in. */
   def stdin = fromInputStream(System.in)
 
   /** Creates a Source from an Iterable.
@@ -39,16 +38,13 @@ object Source {
     val iter = iterable.iterator
   } withReset(() => fromIterable(iterable))
 
-  /** Creates a Source instance from a single character.
-   */
+  /** Creates a Source instance from a single character. */
   def fromChar(c: Char): Source = fromIterable(Array(c))
 
-  /** creates Source from array of characters, with empty description.
-   */
+  /** creates Source from array of characters, with empty description. */
   def fromChars(chars: Array[Char]): Source = fromIterable(chars)
 
-  /** creates Source from a String, with no description.
-   */
+  /** creates Source from a String, with no description. */
   def fromString(s: String): Source = fromIterable(s)
 
   /** creates Source from file with given name, setting its description to
@@ -63,13 +59,11 @@ object Source {
   def fromFile(name: String, enc: String): BufferedSource =
     fromFile(name)(using Codec(enc))
 
-  /** creates `source` from file with given file `URI`.
-   */
+  /** creates `source` from file with given file `URI`. */
   def fromFile(uri: URI)(implicit codec: Codec): BufferedSource =
     fromFile(new JFile(uri))(using codec)
 
-  /** creates Source from file with given file: URI
-   */
+  /** creates Source from file with given file: URI */
   def fromFile(uri: URI, enc: String): BufferedSource =
     fromFile(uri)(using Codec(enc))
 
@@ -79,8 +73,7 @@ object Source {
   def fromFile(file: JFile)(implicit codec: Codec): BufferedSource =
     fromFile(file, Source.DefaultBufSize)(using codec)
 
-  /** same as fromFile(file, enc, Source.DefaultBufSize)
-   */
+  /** same as fromFile(file, enc, Source.DefaultBufSize) */
   def fromFile(file: JFile, enc: String): BufferedSource =
     fromFile(file)(using Codec(enc))
 
@@ -102,7 +95,7 @@ object Source {
     )(using codec) withDescription s"file:${file.getAbsolutePath}"
   }
 
-  /** Create a `Source` from array of bytes, decoding
+  /** Creates a `Source` from array of bytes, decoding
    *  the bytes according to codec.
    *
    *  @return      the created `Source` instance.
@@ -113,35 +106,30 @@ object Source {
   def fromBytes(bytes: Array[Byte], enc: String): Source =
     fromBytes(bytes)(using Codec(enc))
 
-  /** Create a `Source` from array of bytes, assuming
+  /** Creates a `Source` from array of bytes, assuming
    *  one byte per character (ISO-8859-1 encoding.)
    */
   @deprecated("Use `fromBytes` and specify an encoding", since="2.13.9")
   def fromRawBytes(bytes: Array[Byte]): Source =
     fromString(new String(bytes, Codec.ISO8859.charSet))
 
-  /** creates `Source` from file with given file: URI
-   */
+  /** creates `Source` from file with given file: URI */
   def fromURI(uri: URI)(implicit codec: Codec): BufferedSource =
     fromFile(new JFile(uri))(using codec)
 
-  /** same as fromURL(new URL(s))(Codec(enc))
-   */
+  /** same as fromURL(new URL(s))(Codec(enc)) */
   def fromURL(s: String, enc: String): BufferedSource =
     fromURL(s)(using Codec(enc))
 
-  /** same as fromURL(new URL(s))
-   */
+  /** same as fromURL(new URL(s)) */
   def fromURL(s: String)(implicit codec: Codec): BufferedSource =
     fromURL(new URI(s).toURL)(using codec)
 
-  /** same as fromInputStream(url.openStream())(Codec(enc))
-   */
+  /** same as fromInputStream(url.openStream())(Codec(enc)) */
   def fromURL(url: URL, enc: String): BufferedSource =
     fromURL(url)(using Codec(enc))
 
-  /** same as fromInputStream(url.openStream())(codec)
-   */
+  /** same as fromInputStream(url.openStream())(codec) */
   def fromURL(url: URL)(implicit codec: Codec): BufferedSource =
     fromInputStream(url.openStream())(using codec)
 
@@ -201,15 +189,14 @@ object Source {
  *  The default positioner encodes line and column numbers in the position passed to [[report]].
  *  This behavior can be changed by supplying a
  *  [[scala.io.Source.withPositioning(pos:* custom positioner]].
- *
  */
 abstract class Source extends Iterator[Char] with Closeable {
-  /** the actual iterator */
+  /** The actual iterator. */
   protected val iter: Iterator[Char]
 
   // ------ public values
 
-  /** description of this source, default empty */
+  /** Description of this source, default empty. */
   var descr: String = ""
   var nerrors = 0
   var nwarnings = 0
@@ -249,12 +236,10 @@ abstract class Source extends Iterator[Char] with Closeable {
    */
   def getLines(): Iterator[String] = new LineIterator()
 
-  /** Returns `'''true'''` if this source has more characters.
-   */
+  /** Returns `**true**` if this source has more characters. */
   def hasNext: Boolean = iter.hasNext
 
-  /** Returns next character.
-   */
+  /** Returns next character. */
   def next(): Char = positioner.next()
 
   @nowarn("cat=deprecation")
@@ -263,14 +248,14 @@ abstract class Source extends Iterator[Char] with Closeable {
     /** the last character returned by next. */
     var ch: Char = compiletime.uninitialized
 
-    /** position of last character returned by next */
+    /** Position of last character returned by next. */
     var pos = 0
 
-    /** current line and column */
+    /** Current line and column. */
     var cline = 1
     var ccol = 1
 
-    /** default col increment for tabs '\t', set to 4 initially */
+    /** Default col increment for tabs '\t', set to 4 initially. */
     var tabinc = 4
 
     def next(): Char = {
@@ -317,7 +302,7 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, msg, out)
   }
 
-  private def spaces(n: Int) = List.fill(n)(' ').mkString
+  private def spaces(n: Int) = " ".repeat(n)
   /**
    *  @param pos the source position (line/column)
    *  @param msg the error message to report

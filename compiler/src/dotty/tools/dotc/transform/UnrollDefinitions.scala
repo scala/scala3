@@ -14,15 +14,12 @@ import DenotTransformers.IdentityDenotTransformer
 import Names.*
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
-import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix, NoType}
+import dotty.tools.dotc.core.Types.{NoPrefix, NoType}
 
 import dotty.tools.dotc.printing.Formatting.hl
 
-import scala.collection.mutable
-import scala.util.boundary, boundary.break
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.unreachable
-import dotty.tools.dotc.util.Spans.Span
 
 /**Implementation of SIP-61.
  * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions

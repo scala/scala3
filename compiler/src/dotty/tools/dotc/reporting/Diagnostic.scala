@@ -25,6 +25,9 @@ object Diagnostic:
   ) extends Diagnostic(msg, pos, ERROR):
     def this(str: => String, pos: SourcePosition) = this(str.toMessage, pos)
 
+  def Error(msg: Message, pos: SourcePosition): Error = new Error(msg, pos)
+  def Error(str: => String, pos: SourcePosition): Error = new Error(str, pos)
+
   /** A sticky error is an error that should not be hidden by backtracking and
    *  trying some alternative path. Typically, errors issued after catching
    *  a TypeError exception are sticky.
@@ -52,8 +55,8 @@ object Diagnostic:
     msg: Message,
     pos: SourcePosition
   ) extends Diagnostic(msg, pos, WARNING) {
-    def toError: Error = new Error(msg, pos).tap(e => if isVerbose then e.setVerbose())
-    def toInfo: Info = new Info(msg, pos).tap(e => if isVerbose then e.setVerbose())
+    def toError: Error = Error(msg, pos).tap(e => if isVerbose then e.setVerbose())
+    def toInfo: Info = Info(msg, pos).tap(e => if isVerbose then e.setVerbose())
     def isSummarizedConditional(using Context): Boolean = false
   }
 

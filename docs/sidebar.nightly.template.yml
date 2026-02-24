@@ -30,6 +30,7 @@ subsection:
         subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
+          - page: contributing/procedures/contributing-to-stdlib.md
       - title: High Level Architecture
         directory: architecture
         index: contributing/architecture/index.md
@@ -59,5 +60,6 @@ subsection:
       - page: internals/gadts.md
       - page: internals/coverage.md
       - page: internals/best-effort-compilation.md
+      - page: internals/syntax-3.1.md
   - page: release-notes-0.1.2.md  # Referenced from https://www.scala-lang.org/blog/2017/05/31/first-dotty-milestone-release.html
     hidden: true

@@ -31,27 +31,26 @@ import annotation.nowarn
  *  the undefined position is 0:   `encode(0,0) == 0`
  *  encodings are non-negative :   `encode(line,column) >= 0`
  *  position order is preserved:
- *  {{{
+ *  ```
  *  (line1 <= line2) || (line1 == line2 && column1 <= column2)
- *  }}}
+ *  ```
  *  implies
- *  {{{
+ *  ```
  *  encode(line1,column1) <= encode(line2,column2)
- *  }}}
+ *  ```
  */
 @deprecated("this class will be removed", "2.10.0")
 private[scala] abstract class Position {
-  /** Definable behavior for overflow conditions.
-   */
+  /** Definable behavior for overflow conditions. */
   def checkInput(line: Int, column: Int): Unit
 
-  /** Number of bits used to encode the line number */
+  /** Number of bits used to encode the line number. */
   final val LINE_BITS   = 20
-  /** Number of bits used to encode the column number */
+  /** Number of bits used to encode the column number. */
   final val COLUMN_BITS = 31 - LINE_BITS // no negatives => 31
-  /** Mask to decode the line number */
+  /** Mask to decode the line number. */
   final val LINE_MASK   = (1 << LINE_BITS) - 1
-  /** Mask to decode the column number */
+  /** Mask to decode the column number. */
   final val COLUMN_MASK = (1 << COLUMN_BITS) - 1
 
   /** Encodes a position into a single integer. */

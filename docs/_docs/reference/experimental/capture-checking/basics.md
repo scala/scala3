@@ -7,7 +7,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 ## Introduction
 
 Capture checking can be enabled by the language import
-```scala
+```scala sc:nocompile
 import language.experimental.captureChecking
 ```
 At present, capture checking is still highly experimental and unstable, and it evolves quickly.
@@ -15,6 +15,9 @@ Before trying it out, make sure you have the latest version of Scala.
 
 To get an idea what capture checking can do, let's start with a small example:
 ```scala
+//{
+import java.io.FileOutputStream
+//}
 def usingLogFile[T](op: FileOutputStream => T): T =
   val logFile = FileOutputStream("log")
   val result = op(logFile)
@@ -27,7 +30,7 @@ operation's result is returned. This is a typical _try-with-resources_ pattern, 
 The problem is that `usingLogFile`'s implementation is not entirely safe. One can
 undermine it by passing an operation that performs the logging at some later point
 after it has terminated. For instance:
-```scala
+```scala sc:nocompile
 val later = usingLogFile { file => () => file.write(0) }
 later() // crash
 ```
@@ -36,7 +39,7 @@ results in an uncaught `IOException`.
 
 Capture checking gives us the mechanism to prevent such errors _statically_. To
 prevent unsafe usages of `usingLogFile`, we can declare it like this:
-```scala
+```scala sc:nocompile
 def usingLogFile[T](op: FileOutputStream^ => T): T =
   // same body as before
 ```
@@ -54,19 +57,20 @@ If we now try to define the problematic value `later`, we get a static error:
 ```
 In this case, it was easy to see that the `logFile` capability escapes in the closure passed to `usingLogFile`. But capture checking also works for more complex cases.
 For instance, capture checking is able to distinguish between the following safe code:
-```scala
+```scala sc:nocompile
 val xs = usingLogFile { f =>
   List(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
 and the following unsafe one:
-```scala
+```scala sc:nocompile
 val xs = usingLogFile { f =>
   LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
 An error would be issued in the second case, but not the first one (this assumes a capture-aware
-formulation `LzyList` of lazily evaluated lists, which we will present later in this page).
+formulation `LzyList` of lazily evaluated lists, which we will present later in the chapter
+on [capture checking classes](classes.md)).
 
 It turns out that capture checking has very broad applications. Besides the various
 try-with-resources patterns, it can also be a key part to the solutions of many other long standing problems in programming languages. Among them:
@@ -95,11 +99,11 @@ must be a capturing type with a non-empty capture set. We also say that
 variables that are capabilities are _tracked_.
 
 In a sense, every
-capability gets its authority from some other, more sweeping capability which it captures. The recursion stops with a _universal capability_,  written `cap`, from which all other capabilities are ultimately derived.
-If `T` is a type, then `T^` is a shorthand for `T^{cap}`, meaning `T` can capture arbitrary capabilities.
+capability gets its authority from some other, more sweeping capability which it captures. The recursion stops with a _universal capability_,  written `any`, from which all other capabilities are ultimately derived.
+If `T` is a type, then `T^` is a shorthand for `T^{any}`, meaning `T` can capture arbitrary capabilities.
 
 Here is an example:
-```scala
+```scala sc:nocompile
 class FileSystem
 
 class Logger(fs: FileSystem^):
@@ -138,7 +142,7 @@ One can add a capture set after the arrow of an otherwise pure function.
 For instance, `A ->{c, d} B` would be a function that can capture capabilities `c` and `d`, but no others.
 This type is a shorthand for `(A -> B)^{c, d}`, i.e. the function type `A -> B` with possible captures `{c, d}`.
 
-The impure function type `A => B` is treated as an alias for `A ->{cap} B`. That is, impure functions are functions that can capture anything.
+The impure function type `A => B` is treated as an alias for `A ->{any} B`. That is, impure functions are functions that can capture anything.
 
 A capture annotation `^` binds more strongly than a function arrow. So
 `A -> B^{c}` is read as `A -> (B^{c})` and `A -> B^` is read as `A -> (B^)`.
@@ -154,20 +158,20 @@ capabilities in a method are instead counted in the capture set of the enclosing
 ## By-Name Parameter Types
 
 A convention analogous to function types also extends to by-name parameters. In
-```scala
+```scala sc:nocompile
 def f(x: => Int): Int
 ```
 the actual argument can refer to arbitrary capabilities. So the following would be OK:
-```scala
+```scala sc:nocompile
 f(if p(y) then throw Ex() else 1)
 ```
 On the other hand, if `f` was defined like this
-```scala
+```scala sc:nocompile
 def f(x: -> Int): Int
 ```
 the actual argument to `f` could not refer to any capabilities, so the call above would be rejected.
 One can also allow specific capabilities like this:
-```scala
+```scala sc:nocompile
 def f(x: ->{c} Int): Int
 ```
 Here, the actual argument to `f` is allowed to use the `c` capability but no others.
@@ -183,7 +187,7 @@ Lazy vals receive special treatment under capture checking, similar to parameter
 
 When a lazy val is declared, its initializer is checked in its own environment (like a method body). The initializer can capture capabilities, and these are tracked separately:
 
-```scala
+```scala sc:nocompile
 def example(console: Console^) =
   lazy val x: () -> String =
     console.println("Computing x")  // console captured by initializer
@@ -201,7 +205,7 @@ The type system tracks that accessing `x` requires the `console` capability, eve
 
 When accessing a lazy val member through a qualifier, the qualifier is charged to the current capture set, just like calling a parameterless method:
 
-```scala
+```scala sc:nocompile
 trait Container:
   lazy val lazyMember: String
 
@@ -216,7 +220,7 @@ Accessing `c.lazyMember` can trigger initialization, which may use capabilities 
 
 For capture checking purposes, lazy vals behave identically to parameterless methods:
 
-```scala
+```scala sc:nocompile
 trait T:
   def methodMember: String
   lazy val lazyMember: String
@@ -249,19 +253,19 @@ A subcapturing relation `C₁ <: C₂` holds if `C₂` _accounts for_ every elem
 
 
 **Example 1.** Given
-```scala
+```scala sc:nocompile
 fs: FileSystem^
 ct: CanThrow[Exception]^
 l : Logger^{fs}
 ```
 we have
 ```
-{l}  <: {fs}     <: {cap}
-{fs} <: {fs, ct} <: {cap}
-{ct} <: {fs, ct} <: {cap}
+{l}  <: {fs}     <: {any}
+{fs} <: {fs, ct} <: {any}
+{ct} <: {fs, ct} <: {any}
 ```
-The set consisting of the root capability `{cap}` covers every other capture set. This is
-a consequence of the fact that, ultimately, every capability is created from `cap`.
+The set consisting of the root capability `{any}` covers every other capture set. This is
+a consequence of the fact that, ultimately, every capability is created from `any`.
 
 **Example 2.** Consider again the FileSystem/Logger example from before. `LzyList[Int]` is a proper subtype of `LzyList[Int]^{l}`. So if the `test` method in that example
 was declared with a result type `LzyList[Int]`, we'd get a type error. Here is the error message:
@@ -278,11 +282,11 @@ This widening is called _avoidance_; it is not specific to capture checking but 
 
 Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `SharedCapability` class defined in object `caps`.
 
-A type extending `SharedCapability` always comes with a capture set. If no capture set is given explicitly, we assume the capture set is `{cap}`.
+A type extending `SharedCapability` always comes with a capture set. If no capture set is given explicitly, we assume the capture set is `{any}`.
 
 This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
 
-```scala
+```scala sc:nocompile
 import caps.SharedCapability
 
 class FileSystem extends SharedCapability
@@ -306,7 +310,7 @@ can contain only capabilities that are visible at the point where the set is def
 
 We now reconstruct how this principle produced the error in the introductory example, where
 `usingLogFile` was declared like this:
-```scala
+```scala sc:nocompile
 def usingLogFile[T](op: FileOutputStream^ => T): T = ...
 ```
 The error message was:
@@ -336,7 +340,7 @@ An analogous restriction applies to the type of a mutable variable.
 Another way one could try to undermine capture checking would be to
 assign a closure with a local capability to a global variable. Maybe
 like this:
-```scala
+```scala sc:nocompile
 var loophole: () => Unit = () => ()
 usingLogFile { f =>
   loophole = () => f.write(0)
@@ -345,6 +349,8 @@ loophole()
 ```
 But this will not compile either, since the capture set of the mutable variable `loophole` cannot refer to variable `f`, which is not visible
 where `loophole` is defined.
+
+### Monotonicity Rule
 
 Looking at object graphs, we observe a monotonicity property: The capture set of an object `x` covers the capture sets of all objects reachable through `x`. This property is reflected in the type system by the following _monotonicity rule_:
 

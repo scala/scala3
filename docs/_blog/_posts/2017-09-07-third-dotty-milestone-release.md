@@ -15,11 +15,11 @@ technologies for Scala. The focus is mainly on simplification. We remove extrane
 (e.g. no XML literals), and try to boil down Scala’s types into a smaller set of more fundamental
 constructs. The theory behind these constructs is researched in
 [DOT](https://infoscience.epfl.ch/record/215280), a calculus for dependent object types.
-You can learn more about Dotty on our [website](http://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
-This is our third scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+This is our third scheduled release according to our [6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 The [previous technology preview](/_blog/_posts/2017-07-12-second-dotty-milestone-release.html) improved
 stability and reliability:
 
@@ -120,7 +120,7 @@ According to `git shortlog -sn --no-merges 0.2.0-RC1..0.3.0-RC2` these are:
 ```
 
 If you want to get your hands dirty with any of this, now is a good moment to get involved!
-You can have a look at our [Getting Started page](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+You can have a look at our [Getting Started page](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 our [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html) or some of
 the simple [Dotty issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.

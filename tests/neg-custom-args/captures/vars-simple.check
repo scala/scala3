@@ -1,12 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:15:9 -----------------------------------
 15 |    a = (g: String => String)      // error
    |         ^^^^^^^^^^^^^^^^^^^
-   |         Found:    String => String
+   |         Found:    String ->{any} String
    |         Required: String ->{cap1, cap2} String
    |
-   |         Note that capability cap is not included in capture set {cap1, cap2}.
+   |         Note that capability `any` cannot flow into capture set {cap1, cap2}.
    |
-   |         where:    => and cap refer to a fresh root capability created in method scope
+   |         where:    any is a root capability created in method scope
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:16:8 -----------------------------------
@@ -15,7 +15,7 @@
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1, cap2} String
    |
-   |        Note that capability cap3 is not included in capture set {cap1, cap2}.
+   |        Note that capability `cap3` cannot flow into capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:17:12 ----------------------------------
@@ -24,6 +24,6 @@
    |        Found:    List[String ->{cap3} String]
    |        Required: List[String ->{cap1, cap2} String]
    |
-   |        Note that capability cap3 is not included in capture set {cap1, cap2}.
+   |        Note that capability `cap3` cannot flow into capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`

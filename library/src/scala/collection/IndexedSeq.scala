@@ -21,7 +21,7 @@ import scala.collection.Searching.{Found, InsertionPoint, SearchResult}
 import scala.collection.Stepper.EfficientSplit
 import scala.math.Ordering
 
-/** Base trait for indexed sequences that have efficient `apply` and `length` */
+/** Base trait for indexed sequences that have efficient `apply` and `length`. */
 trait IndexedSeq[+A] extends Seq[A]
   with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
   with IterableFactoryDefaults[A, IndexedSeq] {
@@ -34,7 +34,7 @@ trait IndexedSeq[+A] extends Seq[A]
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](immutable.IndexedSeq)
 
-/** Base trait for indexed Seq operations */
+/** Base trait for indexed Seq operations. */
 transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self: IndexedSeqOps[A, CC, C]^ =>
 
   def iterator: Iterator[A]^{this} = view.iterator
@@ -104,7 +104,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
     if (!isEmpty) apply(0)
     else throw new NoSuchElementException(s"head of empty ${
       self match {
-        case self: IndexedSeq[_] => self.collectionClassName
+        case self: IndexedSeq[?] => self.collectionClassName
         case _ => toString
       }
     }")
@@ -115,7 +115,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
     if (!isEmpty) apply(length - 1)
     else throw new NoSuchElementException(s"last of empty ${
       self match {
-        case self: IndexedSeq[_] => self.collectionClassName
+        case self: IndexedSeq[?] => self.collectionClassName
         case _ => toString
       }
     }")

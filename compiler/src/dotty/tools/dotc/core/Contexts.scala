@@ -810,11 +810,11 @@ object Contexts {
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
 
-  /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated context that has an ExploreTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
     exploreInFreshCtx(op)
 
-  /** Run `op` with a pool-allocated FreshContext that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated FreshContext that has an ExploreTyperState. */
   inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val pool = ctx.base.exploreContextPool
     val nestedCtx = pool.next()
@@ -933,7 +933,12 @@ object Contexts {
      *  This initializes the `platform` and the `definitions`.
      */
     def initialize()(using Context): Unit = {
-      _platform = newPlatform
+      // In interactive mode (REPL/IDE), preserve the existing platform if already initialized.
+      // This is important because :dep/:jar commands add JARs to the platform's classpath,
+      // and we must not lose those when a new Run is created for each input.
+      // In non-interactive mode, always create a fresh platform to preserve original behavior.
+      if _platform == null || !ctx.mode.is(Mode.Interactive) then
+        _platform = newPlatform
       definitions.init()
     }
 

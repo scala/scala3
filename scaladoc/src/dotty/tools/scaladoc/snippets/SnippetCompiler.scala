@@ -5,6 +5,7 @@ import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.MacroClassLoader
 import dotty.tools.dotc.config.Settings.Setting._
 import dotty.tools.dotc.interfaces.{ SourcePosition => ISourcePosition }
 import dotty.tools.dotc.ast.Trees.Tree
@@ -42,7 +43,7 @@ class SnippetCompiler(
         ctx.setSetting(setting.setting, setting.value)
       }
       res.initialize()(using res)
-      res
+      MacroClassLoader.init(res)
 
   private val scala3Compiler = new Compiler
 
@@ -86,7 +87,9 @@ class SnippetCompiler(
 
   private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, sourceFile: SourceFile, context: Context): Seq[SnippetCompilerMessage] = {
       Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
-        SnippetCompilerMessage(None, "Snippet should not compile but compiled successfully", MessageLevel.Error)
+        SnippetCompilerMessage(
+          Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
+          "Snippet should not compile but compiled successfully", MessageLevel.Error)
       ).toList
   }
 
@@ -100,12 +103,19 @@ class SnippetCompiler(
     arg: SnippetCompilerArg,
     sourceFile: SourceFile
   ): SnippetCompilationResult = {
-    val context = SnippetDriver.currentCtx.fresh
+    val baseContext = SnippetDriver.currentCtx.fresh
       .setSetting(
         SnippetDriver.currentCtx.settings.outputDir,
         target
       )
       .setReporter(new StoreReporter)
+    val context =
+      if arg.scalacOptions.isEmpty then baseContext
+      else
+        val args = arg.scalacOptions.toArray
+        SnippetDriver.setup(args, baseContext) match
+          case Some((_, ctx)) => ctx
+          case None => baseContext
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
 

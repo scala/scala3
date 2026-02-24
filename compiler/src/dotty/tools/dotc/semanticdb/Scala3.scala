@@ -257,8 +257,14 @@ object Scala3:
       /** Is symbol global? Non-global symbols get localN names */
       def isGlobal(using Context): Boolean =
         sym.exists && (
-          sym.is(Package)
-          || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
+          //packages are always global
+          sym.is(Package) ||
+          // Non-self parameters for global symbols
+            !sym.isSelfSym && (sym.is(Param) && sym.owner.isGlobal ||
+            // Topelevel class symbols are global
+            sym.owner.isClass ||
+            // Needed for refinement symbols, which are accessible in global scope
+            sym.owner.isType && !sym.owner.info.hiBound.isMatch) && sym.owner.isGlobal
         )
 
       def isLocalWithinSameName(using Context): Boolean =

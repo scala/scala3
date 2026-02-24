@@ -19,7 +19,7 @@ import language.experimental.captureChecking
 import scala.annotation.nowarn
 
 
-/** View defined in terms of indexing a range */
+/** View defined in terms of indexing a range. */
 trait IndexedSeqView[+A] extends IndexedSeqOps[A, View, View[A]] with SeqView[A] {
 
   override def view: IndexedSeqView[A]^{this} = this
@@ -120,7 +120,7 @@ object IndexedSeqView {
     }
   }
 
-  /** An `IndexedSeqOps` whose collection type and collection type constructor are unknown */
+  /** An `IndexedSeqOps` whose collection type and collection type constructor are unknown. */
   type SomeIndexedSeqOps[A] = IndexedSeqOps[A, AnyConstr, ?]
 
   @SerialVersionUID(3L)

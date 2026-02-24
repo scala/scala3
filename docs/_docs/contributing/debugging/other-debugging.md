@@ -121,7 +121,6 @@ So, the error happened in the Namer's `checkNoConflict` method (after which all 
 Printing from the `show` and `-Xprint` is done from the Printers framework (discussed in more details below). The following settings influence the output of the printers:
 
 ```scala
-val printLines        = BooleanSetting("-print-lines"        , "Show source code line numbers.") withAbbreviation "--print-lines"
 val uniqid            = BooleanSetting("-uniqid"             , "Uniquely tag all identifiers in debugging output.") withAbbreviation "--unique-id"
 val XprintInline      = BooleanSetting("-Xprint-inline"      , "Show  where inlined code comes from")
 val XprintTypes       = BooleanSetting("-Xprint-types"       , "Print tree types (debugging option).")

@@ -16,9 +16,11 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import scala.concurrent.duration._
 import TestSources.sources
+import TestSources.scoverageIgnoreExcludelisted
 import reporting.TestReporter
 import vulpix._
 import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.coverage.Serializer
 
 class CompilationTests {
   import ParallelTesting._
@@ -41,6 +43,7 @@ class CompilationTests {
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
+      compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -49,11 +52,12 @@ class CompilationTests {
       if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
       else Nil
     )
-
-    if scala.util.Properties.isJavaAtLeast("16") then
-      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Wsafe-init"))
-
-    aggregateTests(tests*).checkCompile()
+    val compilationTest = withCoverage(aggregateTests(tests*))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new PosTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Pos")
+    } else {
+      compilationTest.checkCompile()
+    }
   }
 
   @Test def rewrites: Unit = {
@@ -69,7 +73,8 @@ class CompilationTests {
       compileFile("tests/rewrites/private-this.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/alphanumeric-infix-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/filtering-fors.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
-      compileFile("tests/rewrites/refutable-pattern-bindings.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
+      compileFile("tests/rewrites/refutable-pattern-bindings-old.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
+      compileFile("tests/rewrites/refutable-pattern-bindings.scala", defaultOptions.and("-rewrite", "-source", "3.8-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite")),
@@ -158,6 +163,7 @@ class CompilationTests {
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures),
+      compileFile("tests/neg-custom-args/i20491/Test.scala", defaultOptions.withClasspath("tests/neg-custom-args/i20491/cp")),
     ).checkExpectedErrors()
   }
 
@@ -170,20 +176,30 @@ class CompilationTests {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
-    aggregateTests(
+    val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
-    ).checkRuns()
+    ))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
   }
 
   // Generic java signatures tests ---------------------------------------------
 
   @Test def genericJavaSignatures: Unit = {
     implicit val testGroup: TestGroup = TestGroup("genericJavaSignatures")
-    compileFilesInDir("tests/generic-java-signatures", defaultOptions).checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/generic-java-signatures", defaultOptions))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
   }
 
   // Pickling Tests ------------------------------------------------------------
@@ -252,10 +268,15 @@ class CompilationTests {
 
   @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
-    compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
-  }.checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions))
+    if (Properties.testsInstrumentCoverage) {
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+    } else {
+      compilationTest.checkRuns()
+    }
+  }
 
-  // initialization tests
+  // initialization tests for global objects
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
@@ -264,6 +285,20 @@ class CompilationTests {
       compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
       compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     end if
+
+    locally {
+      val group = TestGroup("checkInitGlobal/tastySource")
+      val tastSourceOptions = defaultOptions.and("-Ysafe-init-global")
+      val outDirLib = defaultOutputDir + group + "/A/tastySource/A"
+
+      // Set -sourceroot such that the source code cannot be found by the compiler
+      val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
+      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(using group).keepOutput.checkCompile()
+
+      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(using group).checkWarnings()
+
+      lib.delete()
+    }
   }
 
   // initialization tests
@@ -377,7 +412,7 @@ class CompilationTests {
   }
 }
 
-object CompilationTests extends ParallelTesting {
+object CompilationTests extends ParallelTesting with CoverageSupport {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 45.seconds
@@ -393,4 +428,5 @@ object CompilationTests extends ParallelTesting {
     super.cleanup()
     summaryReport.echoSummary()
   }
+
 }

@@ -10,6 +10,7 @@ import config.Printers.capt
 import config.Feature
 import ast.tpd.Tree
 import typer.ProtoTypes.LhsProto
+import StdNames.nme
 
 /** Handling mutability and read-only access
  */
@@ -54,11 +55,8 @@ object Mutability:
      */
     def isUpdateMethod(using Context): Boolean =
       sym.isAllOf(Mutable | Method)
-        && (if sym.isSetter then
-              sym.owner.derivesFrom(defn.Caps_Stateful)
-              && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)
-            else true
-           )
+        && (!sym.is(Accessor) || (sym.isSetter && sym.owner.derivesFrom(defn.Caps_Stateful) && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)))
+      || ccConfig.strictMutability && sym.name == nme.update && sym == defn.Array_update
 
     /** A read-only member is a lazy val or a method that is not an update method. */
     def isReadOnlyMember(using Context): Boolean =
@@ -69,9 +67,9 @@ object Mutability:
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
       else if sym.isUpdateMethod then OK
       else if sym.owner == cls then
-        if sym.isConstructor then OK
+        if sym.isConstructor || !sym.isOneOf(MethodOrLazy) then OK
         else NotInUpdateMethod(sym, cls)
-      else if sym.isStatic then OutsideClass(cls)
+      else if sym.isRoot then OutsideClass(cls)
       else sym.owner.inExclusivePartOf(cls)
 
   extension (tp: Type)
@@ -119,7 +117,7 @@ object Mutability:
         && (!tp.isStatefulType || tp.captureSet.mutability == CaptureSet.Mutability.Reader)
 
   extension (ref: TermRef | ThisType)
-    /** Map `ref` to `ref.readOnly` if its type extends Mutble, and one of the
+    /** Map `ref` to `ref.readOnly` if its type extends Mutable, and one of the
      *  following is true:
      *    - it appears in a non-exclusive context,
      *    - the expected type is a value type that is not a stateful type,

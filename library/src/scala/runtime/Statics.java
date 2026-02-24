@@ -135,7 +135,7 @@ public final class Statics {
     return x.hashCode();
   }
 
-  /** Used as a marker object to return from PartialFunctions */
+  /** Used as a marker object to return from `PartialFunction`s. */
   public static final Object pfMarker = new Object();
 
   // @ForceInline would be nice here.

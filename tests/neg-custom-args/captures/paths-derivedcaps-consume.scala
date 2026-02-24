@@ -15,7 +15,7 @@ class A2(consume val b: B^) extends Stateful:
   update def bar() = b.foo()
 class A3(consume var b: B^) extends Stateful:
   update def bar() = b.foo()
-class A4(consume val b: A2^{cap.only[Foo]}) extends Stateful: // FIXME needs to be classified as Foo, too
+class A4(consume val b: A2^{any.only[Foo]}) extends Stateful: // FIXME needs to be classified as Foo, too
   update def bar() = b.b.foo()
 
 // Test: Access nested fields (suffix paths) after consume
@@ -31,9 +31,9 @@ def testSuffixPaths =
   val b4: B^ = B(c)
   val a22 = A2(b4)
   //val a4 = A4(a22) // FIXME should work?
-  val b5: B^{cap.only[Foo]} = B(c)
+  val b5: B^{any.only[Foo]} = B(c)
   val a5 = A(b5)
-  val b6: B^{cap.only[Foo]} = B(c)
+  val b6: B^{any.only[Foo]} = B(c)
   val a222 = A2(b6)
   //val a6 = A4(a222) // FIXME should work?
 

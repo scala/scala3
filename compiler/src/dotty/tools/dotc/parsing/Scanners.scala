@@ -426,7 +426,11 @@ object Scanners {
     def isLeadingInfixOperator(nextWidth: IndentWidth = indentWidth(offset), inConditional: Boolean = true) =
       allowLeadingInfixOperators
       && isOperator
-      && (isWhitespace(ch) || ch == LF)
+      && (isWhitespace(ch) || ch == LF
+          || Feature.ccEnabled
+              && (isIdent(nme.PUREARROW) || isIdent(nme.PURECTXARROW))
+              && ch == '{'
+          )
       && !pastBlankLine
       && {
         // Is current lexeme  assumed to start an expression?
@@ -596,7 +600,7 @@ object Scanners {
           lastWidth = r.width
           newlineIsSeparating = lastWidth <= nextWidth || r.isOutermost
           indentPrefix = r.prefix
-        case _: InString => ()
+        case _: InString | _: SingleLineLambda => ()
         case r =>
           indentIsSignificant = indentSyntax
           r.proposeKnownWidth(nextWidth, lastToken)

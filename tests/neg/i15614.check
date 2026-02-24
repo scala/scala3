@@ -1,0 +1,202 @@
+-- [E040] Syntax Error: tests/neg/i15614.scala:3:20 --------------------------------------------------------------------
+3 |def f(i: Int, using j: Int) = i + j   // error
+  |                    ^
+  |                    ':' expected, but identifier found
+  |                    The soft keyword `using` was taken as an identifier in this context.
+  |                    It is a keyword only at the beginning of a parameter clause.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The soft keyword `using` has special meaning only in certain contexts.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:5:20 --------------------------------------------------------------------
+5 |def g(i: Int, using Int) = i + summon[Int]  // error  // error
+  |                    ^^^
+  |                    ':' expected, but identifier found
+  |                    The soft keyword `using` was taken as an identifier in this context.
+  |                    It is a keyword only at the beginning of a parameter clause.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The soft keyword `using` has special meaning only in certain contexts.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:7:19 --------------------------------------------------------------------
+7 |def z(i: Int, using) = i // error
+  |                   ^
+  |                   ':' expected, but ')' found
+  |                   The soft keyword `using` was taken as an identifier in this context.
+  |                   It is a keyword only at the beginning of a parameter clause.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The soft keyword `using` has special meaning only in certain contexts.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:9:26 --------------------------------------------------------------------
+9 |def erased(i: Int, erased j: Int) = i + j // error // error
+  |                          ^
+  |                          ':' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i15614.scala:11:33 -------------------------------------------------------------------
+11 |def usingAndErased(i: Int, using erased j: Int) = i + j // error // error
+   |                                 ^^^^^^
+   |                                 ':' expected, but identifier found
+   |                                 The soft keyword `using` was taken as an identifier in this context.
+   |                                 It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:13:37 -------------------------------------------------------------------
+13 |def usingAndErasedType(i: Int, using erased Int) = i + j // error // error
+   |                                     ^^^^^^
+   |                                     ':' expected, but identifier found
+   |                                     The soft keyword `using` was taken as an identifier in this context.
+   |                                     It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:15:40 -------------------------------------------------------------------
+15 |inline def usingAndInline(i: Int, using inline j: Int) = i + j // error
+   |                                        ^^^^^^
+   |                                        ':' expected, but identifier found
+   |                                        The soft keyword `using` was taken as an identifier in this context.
+   |                                        It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:17:53 -------------------------------------------------------------------
+17 |inline def usingAndInlineWithTypeError(i: Int, using inline j: Int): String = i + j // error
+   |                                                     ^^^^^^
+   |                                            ':' expected, but identifier found
+   |                                            The soft keyword `using` was taken as an identifier in this context.
+   |                                            It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:19:55 -------------------------------------------------------------------
+19 |inline def usingAndInlineReversed(i: Int, inline using j: Int) = i + j // error
+   |                                                       ^
+   |                                            ':' expected, but identifier found
+   |                                            The soft keyword `using` was taken as an identifier in this context.
+   |                                            It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:21:17 -------------------------------------------------------------------
+21 |def untoken(using: Int) = using // error // error
+   |                 ^
+   |                 an identifier expected, but ':' found
+   |                 The soft keyword `using` was taken as the soft keyword in this context.
+   |                 It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i15614.scala:23:22 -------------------------------------------------------------------
+23 |class C(i: Int, using j: Int): // error
+   |                      ^
+   |                      ':' expected, but identifier found
+   |                      The soft keyword `using` was taken as an identifier in this context.
+   |                      It is a keyword only at the beginning of a parameter clause.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The soft keyword `using` has special meaning only in certain contexts.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i15614.scala:24:25 ---------------------------------------------------------------------
+24 |  def c = i + summon[Int] // error
+   |                         ^
+   |                       No given instance of type Int was found for parameter x of method summon in object Predef
+-- [E172] Type Error: tests/neg/i15614.scala:5:42 ----------------------------------------------------------------------
+5 |def g(i: Int, using Int) = i + summon[Int]  // error  // error
+  |                                          ^
+  |                         No given instance of type Int was found for parameter x of method summon in object Predef
+-- [E006] Not Found Error: tests/neg/i15614.scala:9:40 -----------------------------------------------------------------
+9 |def erased(i: Int, erased j: Int) = i + j // error // error
+  |                                        ^
+  |                                        Not found: j
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Each identifier in Scala needs a matching declaration. There are two kinds of
+  | identifiers: type identifiers and value identifiers. Value identifiers are introduced
+  | by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
+  | `class`, `enum`, or `trait` declarations.
+  |
+  | Identifiers refer to matching declarations in their environment, or they can be
+  | imported from elsewhere.
+  |
+  | Possible reasons why no matching declaration was found:
+  |  - The declaration or the use is misspelled.
+  |  - An import is missing.
+  |  - The declaration exists but refers to a type in a context where a term is expected, or vice-versa.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/i15614.scala:11:54 ----------------------------------------------------------------
+11 |def usingAndErased(i: Int, using erased j: Int) = i + j // error // error
+   |                                                      ^
+   |                                                      Not found: j
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Each identifier in Scala needs a matching declaration. There are two kinds of
+   | identifiers: type identifiers and value identifiers. Value identifiers are introduced
+   | by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
+   | `class`, `enum`, or `trait` declarations.
+   |
+   | Identifiers refer to matching declarations in their environment, or they can be
+   | imported from elsewhere.
+   |
+   | Possible reasons why no matching declaration was found:
+   |  - The declaration or the use is misspelled.
+   |  - An import is missing.
+   |  - The declaration exists but refers to a type in a context where a term is expected, or vice-versa.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/i15614.scala:13:55 ----------------------------------------------------------------
+13 |def usingAndErasedType(i: Int, using erased Int) = i + j // error // error
+   |                                                       ^
+   |                                                       Not found: j
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Each identifier in Scala needs a matching declaration. There are two kinds of
+   | identifiers: type identifiers and value identifiers. Value identifiers are introduced
+   | by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
+   | `class`, `enum`, or `trait` declarations.
+   |
+   | Identifiers refer to matching declarations in their environment, or they can be
+   | imported from elsewhere.
+   |
+   | Possible reasons why no matching declaration was found:
+   |  - The declaration or the use is misspelled.
+   |  - An import is missing.
+   |  - The declaration exists but refers to a type in a context where a term is expected, or vice-versa.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E006] Not Found Error: tests/neg/i15614.scala:21:26 ----------------------------------------------------------------
+21 |def untoken(using: Int) = using // error // error
+   |                          ^^^^^
+   |                          Not found: using
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Each identifier in Scala needs a matching declaration. There are two kinds of
+   | identifiers: type identifiers and value identifiers. Value identifiers are introduced
+   | by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
+   | `class`, `enum`, or `trait` declarations.
+   |
+   | Identifiers refer to matching declarations in their environment, or they can be
+   | imported from elsewhere.
+   |
+   | Possible reasons why no matching declaration was found:
+   |  - The declaration or the use is misspelled.
+   |  - An import is missing.
+   |  - The declaration exists but refers to a type in a context where a term is expected, or vice-versa.
+    --------------------------------------------------------------------------------------------------------------------

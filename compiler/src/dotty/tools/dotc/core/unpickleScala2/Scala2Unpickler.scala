@@ -16,7 +16,7 @@ import util.Spans.*
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
-import printing.Texts.*
+import printing.Texts.{*, given}
 import printing.Printer
 import io.AbstractFile
 import util.common.*
@@ -128,7 +128,6 @@ object Scala2Unpickler {
 
     denot.info = tempInfo.finalized(normalizedParents)
     denot.ensureTypeParamsInCorrectOrder()
-    defn.patchStdLibClass(denot)
   }
 }
 
@@ -1002,14 +1001,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
    */
-  protected def readAnnotArg(i: Int)(using Context): untpd.Tree = untpd.TypedSplice(bytes(index(i)) match
+  protected def readAnnotArg(i: Int)(using Context): untpd.Tree = untpd.TypedSplice:
+    bytes(index(i)) match
     case TREE => at(i, () => readTree())
     case _ => at(i, () =>
       readConstant() match
         case c: Constant => Literal(c)
         case tp: TermRef => ref(tp)
     )
-  )
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
    */

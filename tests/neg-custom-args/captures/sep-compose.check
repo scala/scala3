@@ -2,7 +2,7 @@
 32 |  seq3(f)(f) // error
    |       ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq3: (x: () => Unit)(y: () ->{a, cap} Unit): Unit
+   |to method seq3: (x: () => Unit)(y: () ->{a, any} Unit): Unit
    |corresponds to capture-polymorphic formal parameter x of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the second argument with type  (f : () ->{a} Unit).
@@ -13,12 +13,12 @@
    |  Footprint set of second argument      : {f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter x of method seq3
+   |where:    => refers to a root capability created in method test when checking argument to parameter x of method seq3
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:33:10 -------------------------------------------------------
 33 |  seq4(f)(f) // error
    |          ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq4: (x: () ->{a, cap} Unit)(y: () => Unit): Unit
+   |to method seq4: (x: () ->{a, any} Unit)(y: () => Unit): Unit
    |corresponds to capture-polymorphic formal parameter y of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the first argument with type  (f : () ->{a} Unit).
@@ -29,7 +29,7 @@
    |  Footprint set of first argument       : {f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter y of method seq4
+   |where:    => refers to a root capability created in method test when checking argument to parameter y of method seq4
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:34:7 --------------------------------------------------------
 34 |  seq5(f)(f) // error
    |       ^
@@ -45,12 +45,12 @@
    |  Footprint set of second argument      : {f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter x of method seq5
+   |where:    => refers to a root capability created in method test when checking argument to parameter x of method seq5
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:35:7 --------------------------------------------------------
 35 |  seq6(f, f) // error
    |       ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq6: (x: () => Unit, y: () ->{a, cap} Unit): Unit
+   |to method seq6: (x: () => Unit, y: () ->{a, any} Unit): Unit
    |corresponds to capture-polymorphic formal parameter x of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the second argument with type  (f : () ->{a} Unit).
@@ -61,12 +61,12 @@
    |  Footprint set of second argument      : {f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter x of method seq6
+   |where:    => refers to a root capability created in method test when checking argument to parameter x of method seq6
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:36:10 -------------------------------------------------------
 36 |  seq7(f, f) // error
    |          ^
    |Separation failure: argument of type  (f : () ->{a} Unit)
-   |to method seq7: (x: () ->{a, cap} Unit, y: () => Unit): Unit
+   |to method seq7: (x: () ->{a, any} Unit, y: () => Unit): Unit
    |corresponds to capture-polymorphic formal parameter y of type  () => Unit
    |and hides capabilities  {f}.
    |Some of these overlap with the captures of the first argument with type  (f : () ->{a} Unit).
@@ -77,7 +77,7 @@
    |  Footprint set of first argument       : {f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter y of method seq7
+   |where:    => refers to a root capability created in method test when checking argument to parameter y of method seq7
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:37:7 --------------------------------------------------------
 37 |  seq8(f)(f) // error
    |       ^
@@ -93,7 +93,7 @@
    |  Footprint set of second argument      : {f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter x of method seq8
+   |where:    => refers to a root capability created in method test when checking argument to parameter x of method seq8
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:40:5 --------------------------------------------------------
 40 |  p1(f) // error
    |     ^
@@ -109,7 +109,7 @@
    |  Footprint set of function prefix      : {p1, f, a, io}
    |  The two sets overlap at               : {f, a, io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter v1 of method apply
+   |where:    => refers to a root capability created in method test when checking argument to parameter v1 of method apply
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:41:38 -------------------------------------------------------
 41 |  val p8 = (x: () ->{a} Unit) => seq8(f)(x) // error
    |                                      ^
@@ -125,4 +125,4 @@
    |  Footprint set of second argument      : {x, a, io}
    |  The two sets overlap at               : {a, io}
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (x²: () ->{a} Unit): Unit when checking argument to parameter x of method seq8
+   |where:    => refers to a root capability created in anonymous function of type (x²: () ->{a} Unit): Unit when checking argument to parameter x of method seq8

@@ -1,3 +1,4 @@
+//> using options -Yimports:scala,scala.Predef
 import language.experimental.captureChecking
 import caps.*
 

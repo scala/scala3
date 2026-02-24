@@ -13,7 +13,7 @@
    |  Footprint set of second argument      : {d, c.decr, c}
    |  The two sets overlap at               : {c.incr, c.count}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter p1 of method par
+   |where:    => refers to a root capability created in method test when checking argument to parameter p1 of method par
 -- Error: tests/neg-custom-args/captures/fresh-counter.scala:33:4 ------------------------------------------------------
 33 |    () => count.put(count.get + 1), // error: separation failure
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,4 +29,4 @@
    |  Footprint set of second argument      : {count}
    |  The two sets overlap at               : {count}
    |
-   |where:    => refers to a fresh root capability created in method mkCounter when checking argument to parameter a of constructor Pair
+   |where:    => refers to a root capability created in method mkCounter when checking argument to parameter a of constructor Pair

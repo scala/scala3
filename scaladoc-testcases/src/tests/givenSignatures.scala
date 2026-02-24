@@ -12,7 +12,7 @@ class GivenType
 
 trait Ord[T]
 
-given listOrd[T](using ord: Ord[T]): Ord[List[T]]
+given listOrd[T](using ord: Ord[T]): Ord[List[T]] //expected: given listOrd: [T] => Ord[T] => Ord[List[T]]
   = ???
 
 trait Foo[A]

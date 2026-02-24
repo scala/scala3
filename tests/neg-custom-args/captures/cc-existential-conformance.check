@@ -1,56 +1,54 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:8:24 --------------------
-8 |  val y: A -> Fun[B^] = x // error
-  |                        ^
-  |                  Found:    (x : A -> (x²: A) -> B^)
-  |                  Required: A -> A -> B^²
-  |
-  |                  Note that capability cap is not included in capture set {cap²}
-  |                  because cap is not visible from cap² in value y.
-  |
-  |                  where:    ^           refers to a root capability associated with the result type of (x²: A): B^
-  |                            ^² and cap² refer to a fresh root capability in the type of value y
-  |                            cap         is the universal root capability
-  |                            x           is a value in method test
-  |                            x²          is a reference to a value parameter
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:9:29 --------------------
-9 |  val z: A -> (x: A) -> B^ = y // error
-  |                             ^
-  |                           Found:    A -> A -> B^{y*}
-  |                           Required: A -> (x: A) -> B^
-  |
-  |                           Note that capability y* is not included in capture set {cap}.
-  |
-  |                           where:    ^   refers to a root capability associated with the result type of (x: A): B^
-  |                                     cap is the universal root capability
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
-13 |  val y: Fun[B^] = x // error
-   |                   ^
-   |                Found:    (x : (x²: A) -> B^)
-   |                Required: A -> B^²
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:10:24 -------------------
+10 |  val y: A -> Fun[B^] = x // error
+   |                        ^
+   |                      Found:    (x : A -> (x²: A) -> B^{fresh})
+   |                      Required: A -> A -> B^{any}
    |
-   |                Note that capability cap is not included in capture set {cap²}
-   |                because cap is not visible from cap² in value y.
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value y.
    |
-   |                where:    ^           refers to a root capability associated with the result type of (x²: A): B^
-   |                          ^² and cap² refer to a fresh root capability in the type of value y
-   |                          cap         is the universal root capability
-   |                          x           is a value in method test2
-   |                          x²          is a reference to a value parameter
+   |                      where:    any   is a root capability in the type of value y
+   |                                fresh is a root capability associated with the result type of (x²: A): B^{fresh}
+   |                                x     is a value in method test
+   |                                x²    is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:14:24 -------------------
-14 |  val z: (x: A) -> B^ = y // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:11:29 -------------------
+11 |  val z: A -> (x: A) -> B^ = y // error
+   |                             ^
+   |                             Found:    A -> A -> B^{y*}
+   |                             Required: A -> (x: A) -> B^
+   |
+   |                             Note that capability `y*` cannot flow into capture set {any}.
+   |
+   |                             where:    ^   refers to a root capability in the type of value z
+   |                                       any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:15:19 -------------------
+15 |  val y: Fun[B^] = x // error
+   |                   ^
+   |                   Found:    (x : (x²: A) -> B^{fresh})
+   |                   Required: A -> B^{any}
+   |
+   |                   Note that capability `fresh` cannot flow into capture set {any}
+   |                   because fresh is not visible from any in value y.
+   |
+   |                   where:    any   is a root capability in the type of value y
+   |                             fresh is a root capability associated with the result type of (x²: A): B^{fresh}
+   |                             x     is a value in method test2
+   |                             x²    is a reference to a value parameter
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:16:24 -------------------
+16 |  val z: (x: A) -> B^ = y // error
    |                        ^
    |                        Found:    A -> B^{y*}
    |                        Required: (x: A) -> B^
    |
-   |                        Note that capability y* is not included in capture set {cap}.
+   |                        Note that capability `y*` cannot flow into capture set {any}.
    |
-   |                        where:    ^   refers to a root capability associated with the result type of (x: A): B^
-   |                                  cap is the universal root capability
+   |                        where:    ^   refers to a root capability in the type of value z
+   |                                  any is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`

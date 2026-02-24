@@ -20,7 +20,7 @@ case class TastyVersion private(major: Int, minor: Int, experimental: Int) {
   def validRange: String = {
     val min = TastyVersion(major, 0, 0)
     val max = if (experimental == 0) this else TastyVersion(major, minor - 1, 0)
-    val extra = Option.when(experimental > 0)(this)
+    val extra = Option(this).filter(_ => experimental > 0)
     s"stable TASTy from ${min.show} to ${max.show}${extra.fold("")(e => s", or exactly ${e.show}")}"
   }
 }

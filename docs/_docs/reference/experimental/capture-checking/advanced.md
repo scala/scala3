@@ -8,7 +8,7 @@ Advanced use cases.
 
 ## Access Control
 Analogously to type parameters, we can lower- and upper-bound capability parameters where the bounds consist of concrete capture sets:
-```scala
+```scala sc:nocompile
 def main() =
   // We can close over anything branded by the 'trusted' capability, but nothing else
   def runSecure[C^ >: {trusted} <: {trusted}](block: () ->{C} Unit): Unit = ...
@@ -40,7 +40,7 @@ The idea is that every capability derived from the marker capability `trusted` (
 passed to `runSecure`. We can enforce this by an explicit capability parameter `C` constraining the possible captures of `block` to the interval `>: {trusted} <: {trusted}`.
 
 Note that since capabilities of function types are covariant, we could have equivalently specified `runSecure`'s signature using implicit capture polymorphism to achieve the same behavior:
-```scala
+```scala sc:nocompile
 def runSecure(block: () ->{trusted} Unit): Unit
 ```
 
@@ -48,11 +48,11 @@ def runSecure(block: () ->{trusted} Unit): Unit
 
 Capability members and paths to these members can prevent leakage
 of labels for lexically-delimited control operators:
-```scala
+```scala sc:nocompile
 trait Label extends Capability:
   type Fv^ // the capability set occurring freely in the `block` passed to `boundary` below.
 
-def boundary[T, C^](block: Label{type Fv = {C} } ->{C} T): T = ??? // ensure free caps of label and block match
+def boundary[T, C^](block: Label{type Fv = {C} } ->{C} T): T = ??? // ensure free capabilities of label and block match
 def suspend[U](label: Label)[D^ <: {label.Fv}](handler: () ->{D} U): U = ??? // may only capture the free capabilities of label
 
 def test =

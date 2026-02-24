@@ -49,12 +49,12 @@ object Unit extends AnyValCompanion {
    *  The result of successfully unboxing a value is `()`.
    *
    *  @param  x   the scala.runtime.BoxedUnit to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a scala.runtime.BoxedUnit
    *  @return     the Unit value ()
+   *  @throws     ClassCastException  if the argument is not a scala.runtime.BoxedUnit
    */
   def unbox(x: java.lang.Object): Unit = x.asInstanceOf[scala.runtime.BoxedUnit]
 
-  /** The String representation of the scala.Unit companion object. */
+  /** The `String` representation of the `scala.Unit` companion object. */
   override def toString() = "object scala.Unit"
 }
 

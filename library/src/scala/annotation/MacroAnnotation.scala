@@ -16,7 +16,7 @@ import scala.quoted.*
 @experimental
 trait MacroAnnotation extends StaticAnnotation:
 
-  /** Transform the `tree` definition and add new definitions
+  /** Transforms the `tree` definition and adds new definitions
    *
    *  This method takes as argument the annotated definition.
    *  It returns a non-empty list containing the modified version of the annotated definition.

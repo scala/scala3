@@ -15,6 +15,8 @@ import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
+import org.jline.terminal.Attributes
+import org.jline.terminal.Attributes.ControlChar
 import org.jline.utils.AttributedString
 
 class JLineTerminal extends java.io.Closeable {
@@ -22,7 +24,7 @@ class JLineTerminal extends java.io.Closeable {
   // Logger.getLogger("org.jline").setLevel(Level.FINEST)
 
   private val terminal =
-    var builder = TerminalBuilder.builder()
+    val builder = TerminalBuilder.builder()
     if System.getenv("TERM") == "dumb" then
       // Force dumb terminal if `TERM` is `"dumb"`.
       // Note: the default value for the `dumb` option is `null`, which allows
@@ -31,6 +33,18 @@ class JLineTerminal extends java.io.Closeable {
       // This option is used at https://github.com/jline/jline3/blob/894b5e72cde28a551079402add4caea7f5527806/terminal/src/main/java/org/jline/terminal/TerminalBuilder.java#L528.
       builder.dumb(true)
     builder.build()
+  
+  // Save original attributes before entering raw mode
+  private val originalAttributes = terminal.getAttributes
+
+  // Disable VINTR so Ctrl-C is not converted to SIGINT by the tty driver, then enter raw mode
+  // This disables special character processing so Ctrl-C is passed through as 0x03
+  val noIntr = new Attributes(originalAttributes)
+  noIntr.setControlChar(ControlChar.VINTR, 0)
+  terminal.setAttributes(noIntr)
+  terminal.enterRawMode()
+
+
   private val history = new DefaultHistory
 
   private def magenta(str: String)(using Context) =
@@ -78,14 +92,43 @@ class JLineTerminal extends java.io.Closeable {
       .option(DISABLE_EVENT_EXPANSION, true)    // don't process escape sequences in input
       .build()
 
+    lineReader.getKeyMaps.get(LineReader.MAIN).bind(
+      new Widget { override def apply(): Boolean = throw new UserInterruptException("") },
+      "\u0003"
+    )
     lineReader.readLine(prompt)
   }
 
-  def close(): Unit = terminal.close()
+  def close(): Unit =
+    try terminal.setAttributes(originalAttributes)
+    finally terminal.close()
 
-  /** Register a signal handler and return the previous handler */
-  def handle(signal: org.jline.terminal.Terminal.Signal, handler: org.jline.terminal.Terminal.SignalHandler): org.jline.terminal.Terminal.SignalHandler =
-    terminal.handle(signal, handler)
+  /** Execute a block while monitoring for Ctrl-C keypresses.
+   *  Calls the handler when Ctrl-C is detected during block execution.
+   */
+  def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
+    @volatile var monitoring = true
+    val terminalReader = terminal.reader()
+
+    val monitorThread = new Thread(() => {
+      while (monitoring) {
+        val ch =
+          try terminalReader.read(1) // timeout after 1ms so the loop gets a chance to check `monitoring`
+          catch { case _: Exception => -1 } // Ignore all read errors, just continue
+
+        if (ch == 3 /* Ctrl-C is ASCII 0x03 */ && monitoring) handler()
+      }
+    }, "REPL-CtrlC-Monitor")
+    monitorThread.setDaemon(true)
+    monitorThread.start()
+
+    try block
+    finally {
+      monitoring = false
+      Thread.interrupted() // clear any interrupted flag so the `join` below doesn't explode
+      monitorThread.join()
+    }
+  }
 
   /** Provide syntax highlighting */
   private class Highlighter(using Context) extends reader.Highlighter {
