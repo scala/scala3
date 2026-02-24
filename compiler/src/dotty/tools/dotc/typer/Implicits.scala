@@ -1491,13 +1491,13 @@ trait Implicits:
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
-                else if (unrecoverableDivergentImplicit(fail.reason)) {
+                else if (unrecoverableDivergentImplicit(fail.reason))
                   val div = fail.reason.asInstanceOf[DivergingImplicit]
                   val newLvl = if(cand.ref == div.ref) div.lvl + 1 else div.lvl
                   val result = fail.copy(tree = fail.tree.withType(div.copy(lvl = newLvl)))
                   val newPending = remaining.filterConserve(compareAlternatives(_, cand) < 0)
                   rank(newPending, result, rfailures)
-                } else if (fail.isAmbiguous)
+                else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
