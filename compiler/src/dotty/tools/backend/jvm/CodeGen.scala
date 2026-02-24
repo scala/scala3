@@ -29,13 +29,9 @@ import dotty.tools.dotc.util
 import dotty.tools.dotc.util.NoSourcePosition
 import DottyBackendInterface.symExtensions
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols)(using Context) {
+class CodeGen(generatedClassHandler: GeneratedClassHandler, backendUtils: BackendUtils, primitives: DottyPrimitives, frontendAccess: PostProcessorFrontendAccess, ts: CoreBTypesFromSymbols)(using Context) {
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
-
-  private def genBCode(using Context) = Phases.genBCodePhase.asInstanceOf[GenBCode]
-  private def postProcessor(using Context) = genBCode.postProcessor
-  private def generatedClassHandler(using Context) = genBCode.generatedClassHandler
 
   /**
    * Generate ASM ClassNodes for classes found in a compilation unit. The resulting classes are

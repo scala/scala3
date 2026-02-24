@@ -54,20 +54,20 @@ class GenBCode extends Phase { self =>
       _backendUtils = BackendUtils(frontendAccess, bTypes)
     _backendUtils.nn
   }
-  
-  private var _codeGen: CodeGen | Null = null
-  def codeGen(using Context): CodeGen = {
-    if _codeGen eq null then
-      val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(backendUtils, dottyPrimitives, frontendAccess, bTypes)
-    _codeGen.nn
-  }
 
   private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
       _generatedClassHandler = GeneratedClassHandler(postProcessor)
     _generatedClassHandler.nn
+  }
+
+  private var _codeGen: CodeGen | Null = null
+  def codeGen(using Context): CodeGen = {
+    if _codeGen eq null then
+      val dottyPrimitives = new DottyPrimitives(ctx)
+      _codeGen = new CodeGen(generatedClassHandler, backendUtils, dottyPrimitives, frontendAccess, bTypes)
+    _codeGen.nn
   }
 
   protected def run(using Context): Unit =
