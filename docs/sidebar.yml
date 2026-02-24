@@ -180,6 +180,7 @@ subsection:
           - page: reference/experimental/capture-checking/checked-exceptions.md
           - page: reference/experimental/capture-checking/mutability.md
           - page: reference/experimental/capture-checking/separation-checking.md
+          - page: reference/experimental/capture-checking/safe.md
           - page: reference/experimental/capture-checking/how-to-use.md
           - page: reference/experimental/capture-checking/internals.md
       - page: reference/experimental/purefuns.md

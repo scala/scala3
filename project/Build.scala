@@ -1965,6 +1965,7 @@ object Build {
               s"$ccDocs=compile|-language:experimental.captureChecking",
               s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
               s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+              s"$ccDocs/safe=compile|-language:experimental.safe",
             )))
         }
 
@@ -2906,6 +2907,7 @@ object ScaladocConfigs {
         "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
         "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
         "docs/_docs/reference/experimental/capture-checking/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+        "docs/_docs/reference/experimental/capture-checking/safe=compile|-language:experimental.safe",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
