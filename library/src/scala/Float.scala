@@ -232,7 +232,7 @@ object Float extends AnyValCompanion {
 
   /** Transforms a value type into a boxed reference type.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToFloat`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToFloat`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the Float to be boxed
    *  @return     a java.lang.Float offering `x` as its underlying value.
@@ -243,17 +243,17 @@ object Float extends AnyValCompanion {
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Float.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToFloat`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToFloat`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the java.lang.Float to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a java.lang.Float
    *  @return     the Float resulting from calling floatValue() on `x`
+   *  @throws     ClassCastException  if the argument is not a java.lang.Float
    */
   def unbox(x: java.lang.Object): Float = ???
 
-  /** The String representation of the scala.Float companion object. */
+  /** The `String` representation of the `scala.Float` companion object. */
   override def toString() = "object scala.Float"
-  /** Language mandated coercions from Float to "wider" types. */
+  /** Language mandated coercions from `Float` to "wider" types. */
   import scala.language.implicitConversions
   implicit def float2double(x: Float): Double = x.toDouble
 }

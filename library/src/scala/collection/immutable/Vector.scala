@@ -30,9 +30,9 @@ import scala.collection.mutable.ReusableBuilder
 import scala.runtime.ScalaRunTime.nullForGC
 
 /** $factoryInfo
-  * @define Coll `Vector`
-  * @define coll vector
-  */
+ *  @define Coll `Vector`
+ *  @define coll vector
+ */
 @SerialVersionUID(3L)
 object Vector extends StrictOptimizedSeqFactory[Vector] {
 
@@ -46,7 +46,7 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
         if (knownSize == 0) empty[E]
         else if (knownSize > 0 && knownSize <= WIDTH) {
           val a1: Arr1 = it match {
-            case as: ArraySeq.ofRef[_] if as.elemTag.runtimeClass == classOf[AnyRef] =>
+            case as: ArraySeq.ofRef[?] if as.elemTag.runtimeClass == classOf[AnyRef] =>
               as.unsafeArray.asInstanceOf[Arr1]
             case it: Iterable[E] =>
               val a1 = new Arr1(knownSize)
@@ -67,12 +67,12 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
   def newBuilder[A]: ReusableBuilder[A, Vector[A]] = new VectorBuilder[A]
 
-  /** Create a Vector with the same element at each index.
-    *
-    * Unlike `fill`, which takes a by-name argument for the value and can thereby
-    * compute different values for each index, this method guarantees that all
-    * elements are identical. This allows sparse allocation in O(log n) time and space.
-    */
+  /** Creates a Vector with the same element at each index.
+   *
+   *  Unlike `fill`, which takes a by-name argument for the value and can thereby
+   *  compute different values for each index, this method guarantees that all
+   *  elements are identical. This allows sparse allocation in O(log n) time and space.
+   */
   private[collection] def fillSparse[A](n: Int)(elem: A): Vector[A] = {
     //TODO Make public; this method is private for now because it is not forward binary compatible
     if(n <= 0) Vector0
@@ -96,26 +96,26 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
 
 /** Vector is a general-purpose, immutable data structure.  It provides random access and updates
-  * in O(log n) time, as well as very fast append/prepend/tail/init (amortized O(1), worst case O(log n)).
-  * Because vectors strike a good balance between fast random selections and fast random functional updates,
-  * they are currently the default implementation of immutable indexed sequences.
-  *
-  * Vectors are implemented by radix-balanced finger trees of width 32. There is a separate subclass
-  * for each level (0 to 6, with 0 being the empty vector and 6 a tree with a maximum width of 64 at the
-  * top level).
-  *
-  * Tree balancing:
-  * - Only the first dimension of an array may have a size < WIDTH
-  * - In a `data` (central) array the first dimension may be up to WIDTH-2 long, in `prefix1` and `suffix1` up
-  *   to WIDTH, and in other `prefix` and `suffix` arrays up to WIDTH-1
-  * - `prefix1` and `suffix1` are never empty
-  * - Balancing does not cross the main data array (i.e. prepending never touches the suffix and appending never touches
-  *   the prefix). The level is increased/decreased when the affected side plus main data is already full/empty
-  * - All arrays are left-aligned and truncated
-  *
-  * In addition to the data slices (`prefix1`, `prefix2`, ..., `dataN`, ..., `suffix2`, `suffix1`) we store a running
-  * count of elements after each prefix for more efficient indexing without having to dereference all prefix arrays.
-  */
+ *  in O(log n) time, as well as very fast append/prepend/tail/init (amortized O(1), worst case O(log n)).
+ *  Because vectors strike a good balance between fast random selections and fast random functional updates,
+ *  they are currently the default implementation of immutable indexed sequences.
+ *
+ *  Vectors are implemented by radix-balanced finger trees of width 32. There is a separate subclass
+ *  for each level (0 to 6, with 0 being the empty vector and 6 a tree with a maximum width of 64 at the
+ *  top level).
+ *
+ *  Tree balancing:
+ *  - Only the first dimension of an array may have a size < WIDTH
+ *  - In a `data` (central) array the first dimension may be up to WIDTH-2 long, in `prefix1` and `suffix1` up
+ *   to WIDTH, and in other `prefix` and `suffix` arrays up to WIDTH-1
+ *  - `prefix1` and `suffix1` are never empty
+ *  - Balancing does not cross the main data array (i.e. prepending never touches the suffix and appending never touches
+ *   the prefix). The level is increased/decreased when the affected side plus main data is already full/empty
+ *  - All arrays are left-aligned and truncated
+ *
+ *  In addition to the data slices (`prefix1`, `prefix2`, ..., `dataN`, ..., `suffix2`, `suffix1`) we store a running
+ *  count of elements after each prefix for more efficient indexing without having to dereference all prefix arrays.
+ */
 sealed abstract class Vector[+A] private[immutable] (private[immutable] final val prefix1: Arr1)
   extends AbstractSeq[A]
     with IndexedSeq[A]
@@ -235,7 +235,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     if (k < tinyAppendLimit) {
       var v: Vector[B] = this
       suffix match {
-        case it: Iterable[_] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
+        case it: Iterable[?] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
         case _ => suffix.iterator.foreach(x => v = v.appended(x))
       }
       v
@@ -259,14 +259,14 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   override def tail: Vector[A] = slice(1, length)
   override def init: Vector[A] = slice(0, length-1)
 
-  /** Like slice but parameters must be 0 <= lo < hi < length */
+  /** Like slice but parameters must be 0 <= lo < hi < length. */
   protected def slice0(lo: Int, hi: Int): Vector[A]
 
-  /** Number of slices */
+  /** Number of slices. */
   protected[immutable] def vectorSliceCount: Int
-  /** Slice at index */
+  /** Slices at index. */
   protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null]
-  /** Length of all slices up to and including index */
+  /** Length of all slices up to and including index. */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
@@ -317,7 +317,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
 }
 
 
-/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way */
+/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way. */
 private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_prefix1) {
 
   override final def slice(from: Int, until: Int): Vector[A] = {
@@ -330,7 +330,7 @@ private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_
 }
 
 
-/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this */
+/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this. */
 private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] val suffix1: Arr1, private[immutable] val length0: Int) extends VectorImpl[A](_prefix1) {
 
   protected[immutable] final def foreachRest[U](f: A => U): Unit = {
@@ -344,7 +344,7 @@ private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] v
 }
 
 
-/** Empty vector */
+/** Empty vector. */
 private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
 
   def apply(index: Int): Nothing = throw ioob(index)
@@ -370,7 +370,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
   override def equals(o: Any): Boolean = {
     if(this eq o.asInstanceOf[AnyRef]) true
     else o match {
-      case that: Vector[_] => false
+      case that: Vector[?] => false
       case o => super.equals(o)
     }
   }
@@ -385,7 +385,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
     new IndexOutOfBoundsException(s"$index is out of bounds (empty vector)")
 }
 
-/** Flat ArraySeq-like structure */
+/** Flat ArraySeq-like structure. */
 private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
   @inline def apply(index: Int): A = {
@@ -443,7 +443,7 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 }
 
 
-/** 2-dimensional radix-balanced finger tree */
+/** 2-dimensional radix-balanced finger tree. */
 private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val data2: Arr2,
                                  _suffix1: Arr1,
@@ -543,7 +543,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 3-dimensional radix-balanced finger tree */
+/** 3-dimensional radix-balanced finger tree. */
 private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val data3: Arr3,
@@ -666,7 +666,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 4-dimensional radix-balanced finger tree */
+/** 4-dimensional radix-balanced finger tree. */
 private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -810,7 +810,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 5-dimensional radix-balanced finger tree */
+/** 5-dimensional radix-balanced finger tree. */
 private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -975,7 +975,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 6-dimensional radix-balanced finger tree */
+/** 6-dimensional radix-balanced finger tree. */
 private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -1162,11 +1162,11 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
 
 
 /** Helper class for vector slicing. It is initialized with the validated start and end index,
-  * then the vector slices are added in succession with `consider`. No matter what the dimension
-  * of the originating vector is or where the cut is performed, this always results in a
-  * structure with the highest-dimensional data in the middle and fingers of decreasing dimension
-  * at both ends, which can be turned into a new vector with very little rebalancing.
-  */
+ *  then the vector slices are added in succession with `consider`. No matter what the dimension
+ *  of the originating vector is or where the cut is performed, this always results in a
+ *  structure with the highest-dimensional data in the middle and fingers of decreasing dimension
+ *  at both ends, which can be turned into a new vector with very little rebalancing.
+ */
 private final class VectorSliceBuilder(lo: Int, hi: Int) {
   //println(s"***** VectorSliceBuilder($lo, $hi)")
 
@@ -1348,7 +1348,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensure prefix is not empty */
+  /** Ensures prefix is not empty. */
   private def balancePrefix(n: Int): Unit = {
     if(slices(prefixIdx(n)) eq null) {
       if(n == maxDim) {
@@ -1369,7 +1369,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensure suffix is not empty */
+  /** Ensures suffix is not empty. */
   private def balanceSuffix(n: Int): Unit = {
     if(slices(suffixIdx(n)) eq null) {
       if(n == maxDim) {
@@ -1579,12 +1579,12 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       throw new UnsupportedOperationException("A non-empty VectorBuilder cannot be aligned retrospectively. Please call .reset() or use a new VectorBuilder.")
     val (prefixLength, maxPrefixLength) = bigVector match {
       case Vector0 => (0, 1)
-      case v1: Vector1[_] => (0, 1)
-      case v2: Vector2[_] => (v2.len1, WIDTH)
-      case v3: Vector3[_] => (v3.len12, WIDTH2)
-      case v4: Vector4[_] => (v4.len123, WIDTH3)
-      case v5: Vector5[_] => (v5.len1234, WIDTH4)
-      case v6: Vector6[_] => (v6.len12345, WIDTH5)
+      case v1: Vector1[?] => (0, 1)
+      case v2: Vector2[?] => (v2.len1, WIDTH)
+      case v3: Vector3[?] => (v3.len12, WIDTH2)
+      case v4: Vector4[?] => (v4.len123, WIDTH3)
+      case v5: Vector5[?] => (v5.len1234, WIDTH4)
+      case v6: Vector6[?] => (v6.len12345, WIDTH5)
     }
     if (maxPrefixLength == 1) return this // does not really make sense to align for <= 32 element-vector
     val overallPrefixLength = (before + prefixLength) % maxPrefixLength
@@ -1596,16 +1596,15 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     this
   }
 
-  /**
-   * Removes `offset` leading `null`s in the prefix.
-   * This is needed after calling `alignTo` and subsequent additions,
-   * directly before the result is used for creating a new Vector.
-   * Note that the outermost array keeps its length to keep the
-   * Builder re-usable.
+  /** Removes `offset` leading `null`s in the prefix.
+   *  This is needed after calling `alignTo` and subsequent additions,
+   *  directly before the result is used for creating a new Vector.
+   *  Note that the outermost array keeps its length to keep the
+   *  Builder re-usable.
    *
-   * example:
+   *  example:
    *     a2 = Array(null, ..., null, Array(null, .., null, 0, 1, .., x), Array(x+1, .., x+32), ...)
-   * becomes
+   *  becomes
    *     a2 = Array(Array(0, 1, .., x), Array(x+1, .., x+32), ..., ?, ..., ?)
    */
   private def leftAlignPrefix(): Unit = {
@@ -1821,7 +1820,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
   }
 
   override def addAll(xs: IterableOnce[A]^): this.type = xs match {
-    case v: Vector[_] =>
+    case v: Vector[?] =>
       if(len1 == 0 && lenRest == 0 && !prefixIsRightAligned) initFrom(v)
       else addVector(v.asInstanceOf[Vector[A]])
     case _ =>
@@ -2016,7 +2015,7 @@ private[immutable] object VectorInline {
   type Arr5 = Array[Array[Array[Array[Array[AnyRef]]]]]
   type Arr6 = Array[Array[Array[Array[Array[Array[AnyRef]]]]]]
 
-  /** Dimension of the slice at index */
+  /** Dimension of the slice at index. */
   @inline def vectorSliceDim(count: Int, idx: Int): Int = {
     val c = count/2
     c+1-abs(idx-c)
@@ -2190,7 +2189,7 @@ private object VectorStatics {
   }
 
   final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[?]^): Arr1 | Null = xs match {
-    case it: Iterable[_] =>
+    case it: Iterable[?] =>
       if(it.sizeCompare(WIDTH-prefix1.length) <= 0) {
         it.size match {
           case 0 => null
@@ -2215,7 +2214,7 @@ private object VectorStatics {
   }
 
   final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[?]^): Arr1 | Null = xs match {
-    case it: Iterable[_] =>
+    case it: Iterable[?] =>
       if(it.sizeCompare(WIDTH-suffix1.length) <= 0) {
         it.size match {
           case 0 => null

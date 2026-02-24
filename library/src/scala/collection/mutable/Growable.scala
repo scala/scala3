@@ -18,14 +18,14 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 
 /** This trait forms part of collections that can be augmented
-  * using a `+=` operator and that can be cleared of all elements using
-  * a `clear` method.
-  *
-  * @define coll growable collection
-  * @define Coll `Growable`
-  * @define add add
-  * @define Add Add
-  */
+ *  using a `+=` operator and that can be cleared of all elements using
+ *  a `clear` method.
+ *
+ *  @define coll growable collection
+ *  @define Coll `Growable`
+ *  @define add add
+ *  @define Add Add
+ */
 trait Growable[-A] extends Clearable {
 
   /** ${Add}s a single element to this $coll.
@@ -35,7 +35,7 @@ trait Growable[-A] extends Clearable {
    */
   def addOne(elem: A): this.type
 
-  /** Alias for `addOne` */
+  /** Alias for `addOne`. */
   @inline final def += (elem: A): this.type = addOne(elem)
 
   //TODO This causes a conflict in StringBuilder; looks like a compiler bug
@@ -68,7 +68,7 @@ trait Growable[-A] extends Clearable {
     this
   }
 
-  /** Alias for `addAll` */
+  /** Alias for `addAll`. */
   @inline final def ++= (@deprecatedName("xs") elems: IterableOnce[A]^): this.type = addAll(elems)
 
   /** The number of elements in the collection under construction, if it can be cheaply computed, -1 otherwise.
@@ -80,25 +80,24 @@ trait Growable[-A] extends Clearable {
 
 object Growable {
 
-  /**
-    * Fills a `Growable` instance with the elements of a given iterable
-    * @param empty Instance to fill
-    * @param it Elements to add
-    * @tparam A Element type
-    * @return The filled instance
-    */
+  /** Fills a `Growable` instance with the elements of a given iterable.
+   *  @tparam A Element type
+   *  @param empty Instance to fill
+   *  @param it Elements to add
+   *  @return The filled instance
+   */
   def from[A](empty: Growable[A], it: collection.IterableOnce[A]^): empty.type = empty ++= it
 
 }
 
 /** This trait forms part of collections that can be cleared
-  *  with a clear() call.
-  *
-  *  @define coll collection
-  */
+ *  with a clear() call.
+ *
+ *  @define coll collection
+ */
 trait Clearable {
   /** Clears the $coll's contents. After this operation, the
-    *  $coll is empty.
-    */
+   *  $coll is empty.
+   */
   def clear(): Unit
 }

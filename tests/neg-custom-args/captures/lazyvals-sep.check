@@ -27,24 +27,24 @@
 72 |    Wrapper(r)  // error
    |            ^
    |Found:    Ref^{TestClass.this.r.rd}
-   |Required: Ref^
+   |Required: Ref^{any}
    |
-   |Note that {cap} is an exclusive capture set of the stateful type Ref^,
+   |Note that {any} is an exclusive capture set of the stateful type Ref^{any},
    |it cannot subsume a read-only capture set of the stateful type Ref^{TestClass.this.r.rd}.
    |
-   |where:    ^ and cap refer to a fresh root capability classified as Unscoped created in lazy value lazyVal8 when checking argument to parameter ref of constructor Wrapper
+   |where:    any is a root capability classified as Unscoped created in lazy value lazyVal8 when checking argument to parameter ref of constructor Wrapper
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals-sep.scala:77:12 ---------------------------------
 77 |    Wrapper(r) // error
    |            ^
    |Found:    Ref^{TestClass.this.r.rd}
-   |Required: Ref^
+   |Required: Ref^{any}
    |
-   |Note that {cap} is an exclusive capture set of the stateful type Ref^,
+   |Note that {any} is an exclusive capture set of the stateful type Ref^{any},
    |it cannot subsume a read-only capture set of the stateful type Ref^{TestClass.this.r.rd}.
    |
-   |where:    ^ and cap refer to a fresh root capability classified as Unscoped created in lazy value lazyVal9 when checking argument to parameter ref of constructor Wrapper
+   |where:    any is a root capability classified as Unscoped created in lazy value lazyVal9 when checking argument to parameter ref of constructor Wrapper
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/lazyvals-sep.scala:82:8 -------------------------------------------------------

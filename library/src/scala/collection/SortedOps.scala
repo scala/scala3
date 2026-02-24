@@ -15,7 +15,7 @@ package scala.collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/** Base trait for sorted collections */
+/** Base trait for sorted collections. */
 transparent trait SortedOps[A, +C] {
 
   def ordering: Ordering[A]
@@ -32,31 +32,31 @@ transparent trait SortedOps[A, +C] {
   @inline def compare(k0: A, k1: A): Int = ordering.compare(k0, k1)
 
   /** Creates a ranged projection of this collection. Any mutations in the
-    *  ranged projection will update this collection and vice versa.
-    *
-    *  Note: keys are not guaranteed to be consistent between this collection
-    *  and the projection. This is the case for buffers where indexing is
-    *  relative to the projection.
-    *
-    *  @param from  The lower-bound (inclusive) of the ranged projection.
-    *               `None` if there is no lower bound.
-    *  @param until The upper-bound (exclusive) of the ranged projection.
-    *               `None` if there is no upper bound.
-    */
+   *  ranged projection will update this collection and vice versa.
+   *
+   *  Note: keys are not guaranteed to be consistent between this collection
+   *  and the projection. This is the case for buffers where indexing is
+   *  relative to the projection.
+   *
+   *  @param from  The lower-bound (inclusive) of the ranged projection.
+   *               `None` if there is no lower bound.
+   *  @param until The upper-bound (exclusive) of the ranged projection.
+   *               `None` if there is no upper bound.
+   */
   def rangeImpl(from: Option[A], until: Option[A]): C
 
   /** Creates a ranged projection of this collection with both a lower-bound
-    *  and an upper-bound.
-    *
-    *  @param from The lower-bound (inclusive) of the ranged projection.
-    *  @param until The upper-bound (exclusive) of the ranged projection.
-    */
+   *  and an upper-bound.
+   *
+   *  @param from The lower-bound (inclusive) of the ranged projection.
+   *  @param until The upper-bound (exclusive) of the ranged projection.
+   */
   def range(from: A, until: A): C = rangeImpl(Some(from), Some(until))
 
   /** Creates a ranged projection of this collection with no upper-bound.
-    *
-    *  @param from The lower-bound (inclusive) of the ranged projection.
-    */
+   *
+   *  @param from The lower-bound (inclusive) of the ranged projection.
+   */
   @deprecated("Use rangeFrom", "2.13.0")
   final def from(from: A): C = rangeFrom(from)
 
@@ -67,9 +67,9 @@ transparent trait SortedOps[A, +C] {
   def rangeFrom(from: A): C = rangeImpl(Some(from), None)
 
   /** Creates a ranged projection of this collection with no lower-bound.
-    *
-    *  @param until The upper-bound (exclusive) of the ranged projection.
-    */
+   *
+   *  @param until The upper-bound (exclusive) of the ranged projection.
+   */
   @deprecated("Use rangeUntil", "2.13.0")
   final def until(until: A): C = rangeUntil(until)
 
@@ -79,14 +79,14 @@ transparent trait SortedOps[A, +C] {
    */
   def rangeUntil(until: A): C = rangeImpl(None, Some(until))
 
-  /** Create a range projection of this collection with no lower-bound.
-    *  @param to The upper-bound (inclusive) of the ranged projection.
-    */
+  /** Creates a range projection of this collection with no lower-bound.
+   *  @param to The upper-bound (inclusive) of the ranged projection.
+   */
   @deprecated("Use rangeTo", "2.13.0")
   final def to(to: A): C = rangeTo(to)
 
-  /** Create a range projection of this collection with no lower-bound.
-    *  @param to The upper-bound (inclusive) of the ranged projection.
-    */
+  /** Creates a range projection of this collection with no lower-bound.
+   *  @param to The upper-bound (inclusive) of the ranged projection.
+   */
   def rangeTo(to: A): C
 }

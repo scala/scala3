@@ -2,5 +2,6 @@
 4 |  type MT[X] = X match { // warn
   |               ^
   |               Match type upper bound inferred as String, where previously it was defaulted to Any
+  |
 5 |    case Int => String
 6 |  }

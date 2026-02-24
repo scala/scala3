@@ -1,5 +1,5 @@
 import caps.Mutable
-import caps.cap
+import caps.any
 
 abstract class LIST[+T]:
   def isEmpty: Boolean

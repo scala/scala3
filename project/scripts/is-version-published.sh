@@ -30,7 +30,7 @@ binaryVersion="${ver%%.*}"
 artifactId="scala3-compiler_$binaryVersion"
 pom="$artifactId-$ver.pom"
 
-maven_url=https://repo1.maven.org/maven2/org/scala-lang/$artifactId/$ver/$pom
+maven_url=https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/$artifactId/$ver/$pom
 
 echo "Checking whether $ver is published"
 echo "at $maven_url"

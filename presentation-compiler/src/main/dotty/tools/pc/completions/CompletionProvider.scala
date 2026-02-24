@@ -3,22 +3,23 @@ package completions
 
 import java.nio.file.Path
 
-import scala.jdk.CollectionConverters._
-import scala.meta.pc.reports.ReportContext
+import scala.jdk.CollectionConverters.*
+import scala.meta.pc.CompletionItemPriority
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.DerivedName
-import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.interactive.Completion
+import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.profile.Profiler
@@ -37,7 +38,6 @@ import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
-import scala.meta.pc.CompletionItemPriority
 
 object CompletionProvider:
   val allKeywords =
@@ -61,12 +61,15 @@ class CompletionProvider(
     val (wasCursorApplied, code) = applyCompletionCursor(params)
     val sourceFile = SourceFile.virtual(uri, code)
 
-    /** Creating a new fresh driver is way slower than reusing existing one,
-     *  but runnig a compilation has side effects that modifies the state of the driver.
-     *  We don't want to affect cachingDriver state with compilation including "CURSOR" suffix.
+    /** Creating a new fresh driver is way slower than reusing existing one, but
+     *  runnig a compilation has side effects that modifies the state of the
+     *  driver. We don't want to affect cachingDriver state with compilation
+     *  including "CURSOR" suffix.
      *
-     *  We could in theory save this fresh driver for reuse, but it is a choice between extra memory usage and speed.
-     *  The scenario in which "CURSOR" is applied (empty query or query equal to any keyword) has a slim chance of happening.
+     *  We could in theory save this fresh driver for reuse, but it is a choice
+     *  between extra memory usage and speed. The scenario in which "CURSOR" is
+     *  applied (empty query or query equal to any keyword) has a slim chance of
+     *  happening.
      */
 
     val driver = if wasCursorApplied then freshDriver() else cachingDriver
@@ -85,26 +88,32 @@ class CompletionProvider(
 
         val tpdPath = tpdPath0 match
           case Select(qual, name) :: tail
-            /** If for any reason we end up in param after lifting, we want to inline the synthetic val:
-             *  List(1).iterator.sliding@@ will be transformed into:
-             *
-             *  1| val $1$: Iterator[Int] = List.apply[Int]([1 : Int]*).iterator
-             *  2| {
-             *  3|   def $anonfun(size: Int, step: Int): $1$.GroupedIterator[Int] =
-             *  4|     $1$.sliding[Int](size, step)
-             *  5|   closure($anonfun)
-             *  6| }:((Int, Int) => Iterator[Int]#GroupedIterator[Int])
-             *
-             *  With completion being run at line 4 at @@:
-             *  4|     $1$.sliding@@[Int](size, step)
-             *
-             */
-            if qual.symbol.is(Flags.Synthetic) && qual.span.isZeroExtent && qual.symbol.name.isInstanceOf[DerivedName] =>
-              qual.symbol.defTree match
-                case valdef: ValDef if !valdef.rhs.isEmpty => Select(valdef.rhs, name) :: tail
-                case _ => tpdPath0
+              /** If for any reason we end up in param after lifting, we want to
+               *  inline the synthetic val:
+               *  ```
+               *  List(1).iterator.sliding@@
+               *  ```
+               *  will be transformed into:
+               *  ```
+               *  1| val $1$: Iterator[Int] = List.apply[Int]([1 : Int]*).iterator
+               *  2| {
+               *  3|   def $anonfun(size: Int, step: Int): $1$.GroupedIterator[Int] =
+               *  4|     $1$.sliding[Int](size, step)
+               *  5|   closure($anonfun)
+               *  6| }:((Int, Int) => Iterator[Int]#GroupedIterator[Int])
+               *  ```
+               *  With completion being run at line 4 at @@:
+               *  ```
+               *  4| $1$.sliding@@[Int](size, step)
+               *  ```
+               */
+              if qual.symbol.is(
+                Flags.Synthetic
+              ) && qual.span.isZeroExtent && qual.symbol.name.isInstanceOf[DerivedName] =>
+            qual.symbol.defTree match
+              case valdef: ValDef if !valdef.rhs.isEmpty => Select(valdef.rhs, name) :: tail
+              case _ => tpdPath0
           case _ => tpdPath0
-
 
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(pos)(using locatedCtx)
@@ -160,17 +169,16 @@ class CompletionProvider(
     )
   end completions
 
-  /**
-   * In case if completion comes from empty line like:
-   * {{{
-   * class Foo:
-   *   val a = 1
-   *   @@
-   * }}}
-   * it's required to modify actual code by additional Ident.
+  /** In case if completion comes from empty line like:
+   *  {{{
+   *  class Foo:
+   *    val a = 1
+   *    @@
+   *  }}}
+   *  it's required to modify actual code by additional Ident.
    *
-   * Otherwise, completion poisition doesn't point at any tree
-   * because scala parser trim end position to the last statement pos.
+   *  Otherwise, completion poisition doesn't point at any tree because scala
+   *  parser trim end position to the last statement pos.
    */
   private def applyCompletionCursor(params: OffsetParams): (Boolean, String) =
     val text = params.text().nn
@@ -188,8 +196,7 @@ class CompletionProvider(
           case '*' =>
             text.charAt(i - 2) == '*' &&
             text.charAt(i - 3) == '/'
-          case _ => false
-        )
+          case _ => false)
       true -> (
         if isStartMultilineComment then
           // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
@@ -197,7 +204,6 @@ class CompletionProvider(
         else
           text.substring(0, offset).nn + Cursor.value + text.substring(offset)
       )
-  end applyCompletionCursor
 
   private def completionItems(
       completion: CompletionValue,
@@ -248,15 +254,14 @@ class CompletionProvider(
         range: Option[LspRange] = None
     ): CompletionItem =
       val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
-      val trimmedNewText = {
+      val trimmedNewText =
         var nt = newText
-        if (completionPos.hasLeadingBacktick) nt = nt.stripPrefix("`")
-        if (completionPos.hasTrailingBacktick) nt = nt.stripSuffix("`")
+        if completionPos.hasLeadingBacktick then nt = nt.stripPrefix("`")
+        if completionPos.hasTrailingBacktick then nt = nt.stripSuffix("`")
         nt
-      }
 
       val editRange = if trimmedNewText.startsWith(oldText) then completionPos.stripSuffixEditRange
-        else completionPos.toEditRange
+      else completionPos.toEditRange
 
       val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(trimmedNewText))
 
@@ -307,7 +312,9 @@ class CompletionProvider(
                   mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
                 case _ =>
                   mkItem(
-                    v.insertText.getOrElse(completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix),
+                    v.insertText.getOrElse(
+                      completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix
+                    ),
                     edits.edits,
                     range = v.range
                   )
@@ -319,7 +326,7 @@ class CompletionProvider(
                     v.insertText.getOrElse(
                       completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix
                     ),
-                    range = v.range,
+                    range = v.range
                   )
                 // Special case when symbol is out of scope, and there is no auto import.
                 // It means that it will use fully qualified path
@@ -340,10 +347,7 @@ class CompletionProvider(
                     ) + completionTextSuffix,
                     range = v.range
                   )
-              end match
           end match
-      end match
-    end mkItemWithImports
 
     underlyingCompletion match
       case v: (CompletionValue.Workspace | CompletionValue.Extension | CompletionValue.ImplicitClass) =>
@@ -354,7 +358,5 @@ class CompletionProvider(
         val nameText = underlyingCompletion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
         val nameWithAffixes = completionTextPrefix + nameText + completionTextSuffix
         mkItem(nameWithAffixes, range = underlyingCompletion.range)
-
-    end match
   end completionItems
 end CompletionProvider

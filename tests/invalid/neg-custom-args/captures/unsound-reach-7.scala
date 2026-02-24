@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.{cap, use}
+import caps.{any, use}
 
 trait IO
 trait Async

@@ -2,7 +2,7 @@ package scala.quoted.runtime
 
 import language.experimental.captureChecking
 
-/** Throwable used to abort the expansion of a macro after an error was reported */
+/** Throwable used to abort the expansion of a macro after an error was reported. */
 class StopMacroExpansion extends Throwable:
 
   // Do not fill the stacktrace for performance.

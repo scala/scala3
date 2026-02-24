@@ -28,18 +28,18 @@ import scala.annotation.meta._
  *  Library authors should prepend the name of their library to the version number to help
  *  developers distinguish deprecations coming from different libraries:
  *
- *  {{{
+ *  ```
  *  @deprecatedInheritance("this class will be made final", "FooLib 12.0")
  *  class Foo
- *  }}}
+ *  ```
  *
- *  {{{
+ *  ```
  *  val foo = new Foo     // no deprecation warning
  *  class Bar extends Foo
  *  // warning: inheritance from class Foo is deprecated (since FooLib 12.0): this class will be made final
  *  // class Bar extends Foo
  *  //                   ^
- *  }}}
+ *  ```
  *
  *  @param  message the message to print during compilation if the class was sub-classed
  *  @param  since   a string identifying the first version in which inheritance was deprecated

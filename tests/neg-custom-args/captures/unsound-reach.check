@@ -2,32 +2,32 @@
 9 |class Bar extends Foo[File^]: // error
   |                  ^^^^^^^^^^
   |                  Type variable X of trait Foo cannot be instantiated to File^ since
-  |                  that type captures the root capability `cap`.
+  |                  that type captures the root capability `any`.
   |
-  |                  where:    ^ refers to the universal root capability
+  |                  where:    ^ refers to the root capability caps.any
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:18:31 --------------------------------
 18 |    val backdoor: Foo[File^] = new Bar   // error
    |                               ^^^^^^^
-   |                             Found:    Bar
-   |                             Required: Foo[File^]
+   |                               Found:    Bar^'s1
+   |                               Required: Foo[File^{any}]
    |
-   |                             Note that capability cap is not included in capture set {cap²}
-   |                             because cap in class Bar is not visible from cap² in value backdoor.
+   |                               Note that capability `any²` cannot flow into capture set {any}
+   |                               because any² in class Bar is not visible from any in value backdoor.
    |
-   |                             where:    ^ and cap² refer to a fresh root capability in the type of value backdoor
-   |                                       cap        is a fresh root capability created in class Bar
+   |                               where:    any  is a root capability in the type of value backdoor
+   |                                         any² is a root capability created in class Bar
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:27:32 --------------------------------
 27 |    val backdoor: Foo2[File^] = new Bar2   // error
    |                                ^^^^^^^^
-   |                             Found:    Bar2
-   |                             Required: Foo2[File^]
+   |                                Found:    Bar2^'s2
+   |                                Required: Foo2[File^{any}]
    |
-   |                             Note that capability cap is not included in capture set {cap²}
-   |                             because cap in class Bar2 is not visible from cap² in value backdoor.
+   |                                Note that capability `any²` cannot flow into capture set {any}
+   |                                because any² in class Bar2 is not visible from any in value backdoor.
    |
-   |                             where:    ^ and cap² refer to a fresh root capability in the type of value backdoor
-   |                                       cap        is a fresh root capability created in class Bar2
+   |                                where:    any  is a root capability in the type of value backdoor
+   |                                          any² is a root capability created in class Bar2
    |
    | longer explanation available when compiling with `-explain`

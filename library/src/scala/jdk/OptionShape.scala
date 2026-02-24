@@ -19,16 +19,16 @@ import scala.language.`2.13`
 import scala.annotation.implicitNotFound
 
 /** A type class implementing conversions from a generic Scala `Option` or Java `Optional` to
-  * a specialized Java variant (for `Double`, `Int` and `Long`).
-  *
-  * @tparam A the primitive type wrapped in an option
-  * @tparam O the specialized Java `Optional` wrapping an element of type `A`
-  */
+ *  a specialized Java variant (for `Double`, `Int` and `Long`).
+ *
+ *  @tparam A the primitive type wrapped in an option
+ *  @tparam O the specialized Java `Optional` wrapping an element of type `A`
+ */
 @implicitNotFound("No specialized Optional type exists for elements of type ${A}")
 sealed abstract class OptionShape[A, O] {
-  /** Converts from `Optional` to the specialized variant `O` */
+  /** Converts from `Optional` to the specialized variant `O`. */
   def fromJava(o: Optional[A]): O
-  /** Converts from `Option` to the specialized variant `O` */
+  /** Converts from `Option` to the specialized variant `O`. */
   def fromScala(o: Option[A]): O
 }
 

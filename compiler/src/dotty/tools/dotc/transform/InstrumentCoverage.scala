@@ -2,14 +2,17 @@ package dotty.tools.dotc
 package transform
 
 import java.io.File
+import java.nio.file.{Files, Path}
 
 import ast.tpd.*
 import collection.mutable
+import core.Comments.Comment
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
 import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
+import core.NameKinds.DefaultGetterName
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
@@ -40,32 +43,85 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
   private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
   private var coverageExcludeFilePatterns: List[Pattern] = Nil
+  private val coverageLocalExclusions: mutable.Map[String, List[Span]] = mutable.Map.empty
 
-  override def run(using ctx: Context): Unit =
+  override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
     val outputPath = ctx.settings.coverageOutputDir.value
 
-    // Ensure the dir exists
+    // Ensure the dir exists (once per batch, not per unit)
     val dataDir = File(outputPath)
     val newlyCreated = dataDir.mkdirs()
 
     if !newlyCreated then
-      // If the directory existed before, let's clean it up.
-      dataDir.listFiles
-        .filter(_.getName.startsWith("scoverage"))
-        .foreach(_.delete())
+      // If the directory existed before, clean measurement files.
+      val files = dataDir.listFiles
+      if files != null then
+        files
+          .filter(_.getName.startsWith("scoverage.measurements."))
+          .foreach(_.delete())
     end if
 
-    // Initialise a coverage object if it does not exist yet
-    if ctx.base.coverage == null then
-      ctx.base.coverage = Coverage()
+    // Deserialize previous coverage once at the start
+    val coverageFilePath = Serializer.coverageFilePath(outputPath)
+    val previousCoverage =
+      if Files.exists(coverageFilePath) then
+        Serializer.deserialize(coverageFilePath, ctx.settings.sourceroot.value)
+      else Coverage()
 
+    // Initialize coverage patterns once
     coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
     coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
 
-    ctx.base.coverage.nn.removeStatementsFromFile(ctx.compilationUnit.source.file.absolute.jpath)
-    super.run
+    // Initialize coverage object
+    ctx.base.coverage = Coverage()
+    ctx.base.coverage.nn.setNextStatementId(previousCoverage.nextStatementId())
 
-    Serializer.serialize(ctx.base.coverage.nn, outputPath, ctx.settings.sourceroot.value)
+    // Process each unit to extract local coverage exclusions from comments
+    units.foreach { unit =>
+      val excludedSpans = mutable.ListBuffer[Span]()
+      var currentStartingComment: Option[Comment] = None
+
+      unit.comments.foreach {
+        case comment if InstrumentCoverage.scoverageLocalOff.matches(comment.raw) && currentStartingComment.isEmpty =>
+          currentStartingComment = Some(comment)
+        case comment if InstrumentCoverage.scoverageLocalOn.matches(comment.raw) =>
+          currentStartingComment.foreach { start =>
+            currentStartingComment = None
+            excludedSpans += start.span.withEnd(comment.span.end)
+          }
+        case _ =>
+      }
+
+      currentStartingComment.headOption.foreach { start =>
+        excludedSpans += start.span.withEnd(unit.source.length - 1)
+      }
+
+      if excludedSpans.nonEmpty then
+        coverageLocalExclusions(unit.source.file.path) = excludedSpans.toList
+    }
+
+    // Run the transformation on all units
+    val result = super.runOn(units)
+
+    // Serialize once at the end with merged coverage
+    val mergedCoverage = Coverage()
+    val currentFiles = units.map(_.source.file.absolute.jpath)
+
+    // Add statements from previous coverage that aren't from recompiled files
+    // and whose source files still exist
+    previousCoverage.statements
+      .filterNot(stmt =>
+        val source = stmt.location.sourcePath
+        currentFiles.contains(source) || !Files.exists(source)
+      )
+      .foreach(mergedCoverage.addStatement)
+
+    // Add all new statements from this compilation
+    ctx.base.coverage.nn.statements.foreach(mergedCoverage.addStatement)
+
+    Serializer.serialize(mergedCoverage, outputPath, ctx.settings.sourceroot.value)
+
+    result
 
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
     val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
@@ -78,6 +134,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
       _.matcher(normalizedPath).matches
     )
+
+  private def isTreeExcluded(tree: Tree)(using Context): Boolean =
+    val sourceFile = ctx.source.file.path
+    coverageLocalExclusions.get(sourceFile).exists: excludedSpans =>
+      excludedSpans.exists(_.contains(tree.span))
 
   override protected def newTransformer(using Context) =
     CoverageTransformer(ctx.settings.coverageOutputDir.value)
@@ -123,7 +184,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName,
-        branch
+        branch,
+        ignored = isTreeExcluded(tree)
       )
       ctx.base.coverage.nn.addStatement(statement)
       id
@@ -554,6 +616,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
       && !(sym.isClassConstructor && isSecondaryCtorDelegateCall)
+      && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
           /* If the last expression in a block is a context function, we'll try to
@@ -590,6 +653,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       && sym.info.isParameterless
       && !isCompilerIntrinsicMethod(sym)
       && !sym.info.typeSymbol.name.isContextFunction // exclude context functions like in canInstrumentApply
+      && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
 
     /** Does sym refer to a "compiler intrinsic" method, which only exist during compilation,
       * like Any.isInstanceOf?
@@ -606,6 +670,8 @@ object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
   val ExcludeMethodFlags: FlagSet = Artifact | Erased
+  val scoverageLocalOn: Regex = """^\s*//\s*\$COVERAGE-ON\$""".r
+  val scoverageLocalOff: Regex = """^\s*//\s*\$COVERAGE-OFF\$""".r
 
   /**
    * An instrumented Tree, in 3 parts.

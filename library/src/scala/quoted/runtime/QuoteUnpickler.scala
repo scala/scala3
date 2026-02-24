@@ -4,7 +4,7 @@ import language.experimental.captureChecking
 
 import scala.quoted.{Quotes, Expr, Type}
 
-/** Part of the Quotes interface that needs to be implemented by the compiler but is not visible to users */
+/** Part of the `Quotes` interface that needs to be implemented by the compiler but is not visible to users. */
 trait QuoteUnpickler:
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,

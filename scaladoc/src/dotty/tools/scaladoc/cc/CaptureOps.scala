@@ -15,7 +15,9 @@ object CaptureDefs:
   def CapsModule(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredPackage("scala.caps")
   def captureRoot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredPackage("scala.caps.cap")
+    qctx.reflect.Symbol.requiredPackage("scala.caps." + captureRootName)
+  def freshCap(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredPackage("scala.caps." + freshCapName)
   def Caps_Capability(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.Capability")
   def Caps_CapSet(using qctx: Quotes) =
@@ -57,6 +59,8 @@ object CaptureDefs:
   val useAnnotFullName: String = "scala.caps.use.<init>"
   val consumeAnnotFullName: String = "scala.caps.consume.<init>"
   val ccImportSelector = "captureChecking"
+  val captureRootName = "any"
+  val freshCapName = "fresh"
 end CaptureDefs
 
 extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
@@ -82,9 +86,20 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
   def isCaptureRoot: Boolean =
     import qctx.reflect.*
     tpe match
-      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), "cap") => true
-      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), "cap") => true
-      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), "cap") => true
+      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), CaptureDefs.captureRootName) => true
+      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), CaptureDefs.captureRootName) => true
+      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), CaptureDefs.captureRootName) => true
+      case _ => false
+
+  // Recognizes `caps.fresh` — the existentially-bound capability for function type
+  // results (see scoped-capabilities.md). Analogous to `isCaptureRoot` for `caps.cap`.
+  // Matches all prefix variants the compiler may produce in TASTY.
+  def isFreshCap: Boolean =
+    import qctx.reflect.*
+    tpe match
+      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), CaptureDefs.freshCapName) => true
+      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), CaptureDefs.freshCapName) => true
+      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), CaptureDefs.freshCapName) => true
       case _ => false
 
   // NOTE: There's something horribly broken with Symbols, and we can't rely on tests like .isContextFunctionType either,
@@ -104,6 +119,9 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
   def isAnyFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.Function")
 
   def isAnyContextFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.ContextFunction")
+
+  def isAnyFunctionType: Boolean =
+    tpe.isAnyFunction || tpe.isAnyContextFunction || tpe.isAnyImpureFunction || tpe.isAnyImpureContextFunction
 
   def isCapSet: Boolean = tpe.typeSymbol == CaptureDefs.Caps_CapSet
 
@@ -210,16 +228,20 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
 end decomposeCaptureRefs
 
 object CaptureSetType:
-  def unapply(using qctx: Quotes)(tt: qctx.reflect.TypeTree): Option[List[qctx.reflect.TypeRepr]] = decomposeCaptureRefs(tt.tpe)
+  def unapply(using qctx: Quotes)(tt: qctx.reflect.TypeRepr): Option[List[qctx.reflect.TypeRepr]] = decomposeCaptureRefs(tt)
 end CaptureSetType
 
 object CapturingType:
   def unapply(using qctx: Quotes)(typ: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, List[qctx.reflect.TypeRepr])] =
     import qctx.reflect._
     typ match
-      case AnnotatedType(base, Apply(TypeApply(Select(New(annot), _), List(CaptureSetType(refs))), Nil)) if annot.symbol.isRetainsLike =>
-        Some((base, refs))
-      case AnnotatedType(base, Apply(Select(New(annot), _), Nil)) if annot.symbol == CaptureDefs.retainsCap =>
+      case AnnotatedType(base, annot) if annot.symbol == CaptureDefs.retainsCap =>
         Some((base, List(CaptureDefs.captureRoot.termRef)))
+      case AnnotatedType(base, annot) if annot.tpe.typeSymbol.isRetainsLike =>
+        annot.tpe.match
+          case AppliedType(_, List(CaptureSetType(refs))) =>
+            Some((base, refs))
+          case _ =>
+            None
       case _ => None
 end CapturingType

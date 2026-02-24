@@ -6,7 +6,6 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols.defn
 
 import ast.Trees.*
 import ast.tpd
@@ -16,7 +15,7 @@ import core.Flags
 import core.Names.*
 import core.NameKinds
 import core.Types.*
-import core.Symbols.{NoSymbol, isLocalToBlock}
+import core.Symbols.isLocalToBlock
 import interactive.Interactive
 import util.Spans.Span
 import reporting.*
@@ -107,7 +106,7 @@ object Signatures {
 
   def isEnclosingApply(tree: tpd.Tree, span: Span)(using Context): Boolean =
     tree match
-      case apply @ Apply(fun, _) => !fun.span.contains(span) && isValid(apply)
+      case apply @ Apply(fun, _) => !fun.span.contains(span) && !fun.span.isZeroExtent && isValid(apply)
       case unapply @ UnApply(fun, _, _) =>
         !fun.span.contains(span) && !ctx.definitions.isFunctionNType(tree.tpe) // we want to show tuples in unapply
       case typeTree @ AppliedTypeTree(fun, _) => !fun.span.contains(span) && isValid(typeTree)
@@ -162,7 +161,9 @@ object Signatures {
     val typeName = fun.symbol.name.show
     val typeParams = fun.symbol.typeRef.typeParams.map(_.paramName.show).map(TypeParam.apply(_))
     val denot = fun.denot.asSingleDenotation
-    val activeParameter = findCurrentParamIndex(types, span, typeParams.length - 1)
+    val activeParameter =
+      val index = findCurrentParamIndex(types, span, typeParams.length - 1)
+      if index == -1 then 0 else index
 
     val signature = Signature(typeName, List(typeParams), Some(typeName) , None, Some(denot))
     (activeParameter, 0, List(signature))
@@ -225,7 +226,7 @@ object Signatures {
         val alternativeIndex = bestAlternative(alternatives, params, paramssListIndex)
         (alternativeIndex, alternatives)
 
-    if alternativeIndex < alternatives.length then
+    if alternativeIndex < alternatives.length && alternatives(alternativeIndex).symbol.paramSymss.nonEmpty then
       val alternativeSymbol = alternatives(alternativeIndex).symbol
       val safeParamssListIndex = paramssListIndex min (alternativeSymbol.paramSymss.length - 1)
       val previousArgs = alternativeSymbol.paramSymss.take(safeParamssListIndex).foldLeft(0)(_ + _.length)
@@ -244,13 +245,18 @@ object Signatures {
         findCurrentParamIndex(untpdArgs, span, alternativeSymbol.paramSymss(safeParamssListIndex).length - 1)
 
       val pre = treeQualifier(fun)
-      val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe.widenTermRefExpr))
+      val alternativesWithTypes = alternatives.map(_.asSeenFrom(pre.tpe))
       val alternativeSignatures = alternativesWithTypes
         .flatMap(toApplySignature(_, findOutermostCurriedApply(untpdPath), safeParamssListIndex))
 
+      val totalParamCount = alternativeSymbol.paramSymss.foldLeft(0)(_ + _.length)
       val finalParamIndex =
-        if currentParamsIndex == -1 then -1
-        else previousArgs + currentParamsIndex
+        val index = if currentParamsIndex == -1 then previousArgs
+                    else previousArgs + currentParamsIndex
+        // Ensure activeParameter is non-negative (LSP requirement)
+        // For empty parameter lists, allow index to equal totalParamCount
+        // so presentation compiler can skip highlighting
+        index max 0
       (finalParamIndex, alternativeIndex, alternativeSignatures)
     else
       (0, 0, Nil)
@@ -317,7 +323,9 @@ object Signatures {
     val paramTypes = extractParamTypess(resultType, denot, patterns.size).flatten.map(stripAllAnnots)
     val paramNames = extractParamNamess(resultType, denot).flatten
 
-    val activeParameter = findCurrentParamIndex(patterns, span, paramTypes.length - 1)
+    val activeParameter =
+      val index = findCurrentParamIndex(patterns, span, paramTypes.length - 1)
+      if index == -1 then 0 else index
     val unapplySignature = toUnapplySignature(denot.asSingleDenotation, paramNames, paramTypes).toList
 
     (activeParameter, 0, unapplySignature)
@@ -379,7 +387,7 @@ object Signatures {
     case other => other.stripAnnots
 
   /**
-   * Checks if tree is valid for signatureHelp. Skipped trees are either tuple or function applies
+   * Checks if tree is valid for signatureHelp. Skips tuple apply trees
    *
    * @param tree tree to validate
    */
@@ -389,12 +397,7 @@ object Signatures {
         && tree.symbol.exists
         && ctx.definitions.isTupleClass(tree.symbol.owner.companionClass)
 
-    val isFunctionNApply =
-      tree.symbol.name == nme.apply
-        && tree.symbol.exists
-        && ctx.definitions.isFunctionSymbol(tree.symbol.owner)
-
-    !isTupleApply && !isFunctionNApply
+    !isTupleApply
 
   /**
    * Get unapply method result type omiting unknown types and another method calls.

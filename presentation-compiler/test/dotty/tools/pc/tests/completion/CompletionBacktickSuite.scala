@@ -81,7 +81,7 @@ class CompletionBacktickSuite extends BaseCompletionSuite:
       filter = _.contains("`type`")
     )
 
-  // https://dotty.epfl.ch/docs/internals/syntax.html#soft-keywords
+  // https://nightly.scala-lang.org/docs/internals/syntax.html#soft-keywords
   @Test def `soft-keywords-check` =
     List(
       "infix",

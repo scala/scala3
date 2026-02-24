@@ -15,14 +15,13 @@ package scala.sys.process
 import scala.language.`2.13`
 import scala.annotation.tailrec
 
-/** A simple enough command line parser using shell quote conventions.
- */
+/** A simple enough command line parser using shell quote conventions. */
 private[scala] object Parser {
   private final val DQ = '"'
   private final val SQ = '\''
   private final val EOF = -1
 
-  /** Split the line into tokens separated by whitespace or quotes.
+  /** Splits the line into tokens separated by whitespace or quotes.
    *
    *  @return either an error message or reverse list of tokens
    */

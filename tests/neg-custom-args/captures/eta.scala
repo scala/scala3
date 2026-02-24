@@ -3,5 +3,5 @@
        def bar[A <: Proc^{f}](g: () -> A): () -> Proc^{f} =
          g  // error
        val stowaway: () -> Proc^{f} =
-         bar( () => f )  // was error now OK
+         bar( () => f )  // error, was ok before
        () => { stowaway.apply().apply() }

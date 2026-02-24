@@ -152,7 +152,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |
          |scala> import util.Try
          |scala> new Try
-         |val res0: util.Try = you've gotta try!
+         |val res0: Try = you've gotta try!
          |""".stripMargin.linesIterator.toList
     )
 end ShadowingTests

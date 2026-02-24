@@ -8,9 +8,10 @@ def test(cap1: Cap, cap2: Cap) =
   var x = f
   val y = x
   val z = () => if x("") == "" then "a" else "b"
-  val zc: () ->{cap1} String = z
+  val _: () ->{} String = z  // error
+  val zc: () ->{cap1, x.rd} String = z
   val z2 = () => { x = identity }
-  val z2c: () -> Unit = z2
+  val z2c: () -> Unit = z2 // error
   var a = f
 
   var b: List[String ->{cap1, cap2} String] = Nil
@@ -39,7 +40,7 @@ def test(cap1: Cap, cap2: Cap) =
   }
 
   class Ref:
-    var elem: String ->{cap1} String = null
+    @caps.unsafe.untrackedCaptures var elem: String ->{cap1} String = null
 
   val r = Ref()
   r.elem = f

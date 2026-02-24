@@ -1,15 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923a.scala:7:21 ---------------------------------------
 7 |  val leak = withCap(lcap => () => mkId(lcap)) // error
   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
-  |Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
+  |Capability `lcap` outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
   |The leakage occurred when trying to match the following types:
   |
-  |Found:    (lcap: Cap^'s2) ->'s3 () ->'s4 Id[Cap^'s5]^'s6
-  |Required: (lcap: Cap^) => () =>² Id[Cap^'s1]^'s7
+  |Found:    (lcap: Cap^) ->'s2 () ->'s3 Id[Cap^{lcap}]^'s4
+  |Required: (lcap: Cap^) => () =>² Id[Cap^'s1]^'s5
   |
-  |where:    =>  refers to a fresh root capability created in value leak when checking argument to parameter op of method withCap
-  |          =>² refers to a root capability associated with the result type of (lcap: Cap^): () =>² Id[Cap^'s1]^'s7
-  |          ^   refers to the universal root capability
-  |          cap is a root capability associated with the result type of (): Id[Cap^'s5]^'s6
+  |where:    =>  refers to a root capability created in value leak when checking argument to parameter op of method withCap
+  |          =>² refers to a root capability created in value leak when checking argument to parameter op of method withCap
+  |          ^   refers to the root capability caps.any
   |
   | longer explanation available when compiling with `-explain`

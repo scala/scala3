@@ -1,0 +1,45 @@
+-- Error: tests/neg-custom-args/captures/fresh-outside-result.scala:6:13 -----------------------------------------------
+6 |  def foo(x: A^{fresh}) // error
+  |             ^^^^^^^^^
+  |             `fresh` occurs outside function result in A^{fresh}.
+  |
+  |             The `fresh` capability may only be used in the result of a function type,
+  |             following a function arrow such as `=>` or `->`.
+  |
+  |             where:    fresh is the root capability caps.fresh
+-- Error: tests/neg-custom-args/captures/fresh-outside-result.scala:7:6 ------------------------------------------------
+7 |    : A^{fresh}  // error
+  |      ^^^^^^^^^
+  |      `fresh` occurs outside function result in A^{fresh}.
+  |
+  |      The `fresh` capability may only be used in the result of a function type,
+  |      following a function arrow such as `=>` or `->`.
+  |
+  |      where:    fresh is the root capability caps.fresh
+-- Error: tests/neg-custom-args/captures/fresh-outside-result.scala:9:9 ------------------------------------------------
+9 |  val a: A^{fresh} = ??? // error
+  |         ^^^^^^^^^
+  |         `fresh` occurs outside function result in A^{fresh}.
+  |
+  |         The `fresh` capability may only be used in the result of a function type,
+  |         following a function arrow such as `=>` or `->`.
+  |
+  |         where:    fresh is the root capability caps.fresh
+-- Error: tests/neg-custom-args/captures/fresh-outside-result.scala:11:11 ----------------------------------------------
+11 |  type Y = List[A^{fresh}] // error
+   |           ^^^^^^^^^^^^^^^
+   |           `fresh` occurs outside function result in List[A^{fresh}].
+   |
+   |           The `fresh` capability may only be used in the result of a function type,
+   |           following a function arrow such as `=>` or `->`.
+   |
+   |           where:    fresh is the root capability caps.fresh
+-- Error: tests/neg-custom-args/captures/fresh-outside-result.scala:14:15 ----------------------------------------------
+14 |  val b = bar[{fresh}]  // error
+   |               ^^^^^
+   |               `fresh` occurs outside function result in scala.caps.CapSet^{fresh}.
+   |
+   |               The `fresh` capability may only be used in the result of a function type,
+   |               following a function arrow such as `=>` or `->`.
+   |
+   |               where:    fresh is the root capability caps.fresh

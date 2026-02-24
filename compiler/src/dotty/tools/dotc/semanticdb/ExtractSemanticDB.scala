@@ -12,7 +12,8 @@ import Contexts.*
 import Symbols.*
 import Flags.*
 import Names.Name
-import StdNames.nme
+import Types._
+import StdNames.{nme, tpnme}
 import NameOps.*
 import Denotations.StaleSymbol
 import util.Spans.Span
@@ -379,6 +380,11 @@ object ExtractSemanticDB:
             traverseAnnotsOfDefinition(ctorSym)
             ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
+        case ReflectiveSelectableApply(qual, memberName, sel) =>
+          traverse(sel.qualifier)
+          val qualTpe = qual.symbol.info
+          val member = extractRefinement(qualTpe, memberName)
+          member.foreach(sym => registerUse(sym.symbolName, sel.nameSpan, tree.source))
         case tree: Apply if tree.fun.symbol.exists =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
@@ -466,6 +472,33 @@ object ExtractSemanticDB:
         case _ =>
 
     end traverse
+
+    private def extractRefinement(site: Type, memberName: String)(using Context): Option[Symbol] =
+      def loop(site: Type, owner: Symbol): Option[Symbol] =
+        site match
+          case RefinedType(_, name, info) if name.toString() == memberName =>
+            val flags = info match
+              case _: (ExprType | MethodOrPoly) => Method
+              case _ => EmptyFlags
+            Some(newSymbol(owner, name, flags, info))
+          case RefinedType(parent, _, _) => loop(parent, owner)
+          case tp: ExprType => loop(tp.superType, owner)
+          case tp: TypeProxy =>
+            loop(tp.superType, tp.typeSymbol)
+          case _ =>
+            None
+      loop(site, NoSymbol)
+
+    private object ReflectiveSelectableApply:
+      def unapply(tree: Tree)(using Context): Option[(Tree, String, Select)] = tree match
+        case Apply(
+            sel @ Select(Apply(Ident(reflSelectable), List(qual)), fun),
+            Literal(Constants.Constant(memberName: String)) :: args
+          ) if reflSelectable == nme.reflectiveSelectable &&
+              (fun == nme.selectDynamic || fun == nme.applyDynamic) =>
+            Some(qual, memberName, sel)
+        case _ => None
+    end ReflectiveSelectableApply
 
     private object PatternValDef:
 

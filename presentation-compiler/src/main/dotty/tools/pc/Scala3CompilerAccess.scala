@@ -3,12 +3,12 @@ package dotty.tools.pc
 import java.util.concurrent.ScheduledExecutorService
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.CompilerAccess
 import scala.meta.pc.PresentationCompilerConfig
+import scala.meta.pc.reports.ReportContext
 
-import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.reporting.StoreReporter
 
 class Scala3CompilerAccess(
     config: PresentationCompilerConfig,
@@ -27,10 +27,9 @@ class Scala3CompilerAccess(
 
   def newReporter = new StoreReporter(null)
 
-  /**
-   * Handle the exception in order to make sure that
-   * we retry immediately. Otherwise, we will wait until
-   * the end of the timeout, which is 20s by default.
+  /** Handle the exception in order to make sure that we retry immediately.
+   *  Otherwise, we will wait until the end of the timeout, which is 20s by
+   *  default.
    */
   protected def handleSharedCompilerException(
       t: Throwable

@@ -29,16 +29,16 @@ import scala.annotation.meta._
  *  Library authors should prepend the name of their library to the version number to help
  *  developers distinguish deprecations coming from different libraries:
  *
- *  {{{
+ *  ```
  *  def inc(x: Int, @deprecatedName("y", "FooLib 12.0") n: Int): Int = x + n
  *  inc(1, y = 2)
- *  }}}
+ *  ```
  *  will produce the following warning:
- *  {{{
+ *  ```
  *  warning: the parameter name y is deprecated (since FooLib 12.0): use n instead
  *  inc(1, y = 2)
  *           ^
- *  }}}
+ *  ```
  *
  *  @see    [[scala.deprecated]]
  *  @see    [[scala.deprecatedInheritance]]

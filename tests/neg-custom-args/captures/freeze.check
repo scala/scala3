@@ -2,6 +2,6 @@
 11 |  val b = freeze((a, a)) // error
    |                 ^^^^^^
    |                 Found:    (Arr[String], Arr[String])
-   |                 Required: scala.caps.Mutable
+   |                 Required: scala.caps.Mutable | Array[?]
    |
    | longer explanation available when compiling with `-explain`

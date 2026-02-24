@@ -10,7 +10,7 @@ import caps.use
   class Listener
 
   class Source[X^]:
-    private var listeners: Set[Listener^{X}] = Set.empty
+    @caps.unsafe.untrackedCaptures private var listeners: Set[Listener^{X}] = Set.empty
     def register(x: Listener^{X}): Unit =
       listeners += x
 

@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType}
+import cc.{CaptureSet, RetainingAnnotation}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -107,7 +107,7 @@ class Definitions {
    *      }
    *  ImpureXYZFunctionN follow this template:
    *
-   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {cap} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = XYZFunctionN[T0,...,T{N-1}, R]^{any}
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")
@@ -122,8 +122,9 @@ class Definitions {
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
-              tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      captureRoot.termRef)
+              tl => AnnotatedType(
+                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -717,6 +718,12 @@ class Definitions {
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
   @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
+  @tu lazy val JavaUtilObjectsClass: ClassSymbol = requiredModule("java.util.Objects").moduleClass.asClass
+  def Objects_hashCode(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
+  def Objects_equals(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.equals_).suchThat(_.info.firstParamTypes.length == 2).symbol
+
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
     // jl.Enum has a single constructor protected(name: String, ordinal: Int).
@@ -1006,7 +1013,9 @@ class Definitions {
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
 
   @tu lazy val CapsModule: Symbol = requiredPackage("scala.caps")
-    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
+    @tu lazy val Caps_any: TermSymbol = CapsModule.requiredValue("any")
+    @tu lazy val Caps_cap: TermSymbol = CapsModule.requiredValue("cap") // TODO drop once we bootstrap with caps.any
+    @tu lazy val Caps_fresh: TermSymbol = CapsModule.requiredValue("fresh")
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_Classifier: ClassSymbol = requiredClass("scala.caps.Classifier")
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
@@ -1026,9 +1035,11 @@ class Definitions {
     @tu lazy val Caps_unsafeDiscardUses: Symbol = CapsUnsafeModule.requiredMethod("unsafeDiscardUses")
     @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
+    @tu lazy val Caps_Shared: TypeSymbol = CapsModule.requiredType("Shared")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_freeze: TermSymbol = CapsModule.requiredMethod("freeze")
+    @tu lazy val Caps_Var: ClassSymbol = requiredClass("scala.caps.internal.Var")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
@@ -1081,6 +1092,7 @@ class Definitions {
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
+  @tu lazy val UncheckedOverrideAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedOverride")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
@@ -1104,6 +1116,7 @@ class Definitions {
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
   @tu lazy val RootCapabilityAnnot = requiredClass("scala.caps.internal.rootCapability")
+  @tu lazy val InferredAnnot = requiredClass("scala.caps.internal.inferred")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
   @tu lazy val OnlyCapabilityAnnot = requiredClass("scala.annotation.internal.onlyCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
@@ -1131,24 +1144,30 @@ class Definitions {
 
   // Set of annotations that are not printed in types except under -Yprint-debug
   @tu lazy val SilentAnnots: Set[Symbol] =
-    Set(InlineParamAnnot, ErasedParamAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot)
+    Set(InlineParamAnnot, ErasedParamAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot, InferredAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
   // improve the precision of type nullification.
   // We don't require that any of these annotations be present in the class path, but we want to
   // create Symbols for the ones that are present, so they can be checked during nullification.
+  // The annotation from jspecify is designed to be used on types only; however, it is common to use it
+  // on fields and method parameters required by some frameworks, so we need to recognize annotations
+  // form `AnnotatedType` as well as from `Symbol`.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "javax.validation.constraints.NotNull" ::
-    "androidx.annotation.NonNull" ::
+    "jakarta.annotation.Nonnull" ::
     "android.support.annotation.NonNull" ::
     "android.annotation.NonNull" ::
+    "androidx.annotation.NonNull" ::
+    "androidx.annotation.RecentlyNonNull" ::
     "com.android.annotations.NonNull" ::
     "org.eclipse.jdt.annotation.NonNull" ::
     "edu.umd.cs.findbugs.annotations.NonNull" ::
     "org.checkerframework.checker.nullness.qual.NonNull" ::
     "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NonNullType" ::
     "org.jetbrains.annotations.NotNull" ::
     "org.springframework.lang.NonNull" ::
     "org.springframework.lang.NonNullApi" ::
@@ -1157,7 +1176,31 @@ class Definitions {
     "reactor.util.annotation.NonNull" ::
     "reactor.util.annotation.NonNullApi" ::
     "io.reactivex.annotations.NonNull" ::
+    "io.reactivex.rxjava3.annotations.NonNull" ::
     "org.jspecify.annotations.NonNull" :: Nil)
+
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is explicitly nullable.
+  @tu lazy val NullableAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "javax.annotation.Nullable" ::
+    "javax.annotation.CheckForNull" ::
+    "jakarta.annotation.Nullable" ::
+    "android.support.annotation.Nullable" ::
+    "android.annotation.Nullable" ::
+    "androidx.annotation.Nullable" ::
+    "androidx.annotation.RecentlyNullable" ::
+    "com.android.annotations.Nullable" ::
+    "org.eclipse.jdt.annotation.Nullable" ::
+    "edu.umd.cs.findbugs.annotations.Nullable" ::
+    "org.checkerframework.checker.nullness.qual.Nullable" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableType" ::
+    "org.jetbrains.annotations.Nullable" ::
+    "org.springframework.lang.Nullable" ::
+    "reactor.util.annotation.Nullable" ::
+    "io.reactivex.annotations.Nullable" ::
+    "io.reactivex.rxjava3.annotations.Nullable" ::
+    "org.jspecify.annotations.Nullable" :: Nil)
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -1347,8 +1390,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refSet)
+      case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
+        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
@@ -1765,7 +1808,7 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
+  def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
 
@@ -1774,7 +1817,12 @@ class Definitions {
     && tp.isRef(
         FunctionType(arity, sym.name.isContextFunction).typeSymbol,
         skipRefined = false)
-  end isNonRefinedFunction
+  }
+
+  /** Is a dependent function type represented as a RefinedType?
+   */
+  def isRefinedFunction(tp: Type)(using Context): Boolean =
+    tp.dropDependentRefinement ne tp
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
@@ -1986,10 +2034,10 @@ class Definitions {
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
     Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
-    RequiresCapabilityAnnot,
-    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
+    Caps_Shared, RequiresCapabilityAnnot,
+    Caps_any, Caps_cap, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
-    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
@@ -2019,9 +2067,11 @@ class Definitions {
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
+  @tu private lazy val ScalaValueTypesNoUnit: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
+  val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
     Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)

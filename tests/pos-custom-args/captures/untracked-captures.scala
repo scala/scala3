@@ -16,7 +16,7 @@ object LL:
 
   def filterImpl[A](ll: LL[A]^, p: A => Boolean): LL[A]^{ll, p} =
       // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-      var restRef: LL[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+      @untrackedCaptures var restRef: LL[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
 
       val cl = () =>
         var elem: A = null.asInstanceOf[A]

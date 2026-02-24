@@ -63,14 +63,17 @@ sealed trait CommunityProject:
 
 end CommunityProject
 
-final case class MillCommunityProject(
+sealed case class MillCommunityProject(
     project: String,
     baseCommand: String,
     ignoreDocs: Boolean = false,
-    sourcecodeTestCommand: Boolean = false,
-    ) extends CommunityProject:
+    executeTests: Boolean = true,
+  ) extends CommunityProject:
   override val binaryName: String = "./mill"
-  override val testCommand = if sourcecodeTestCommand then s"$baseCommand.test.run" else s"$baseCommand.test"
+  override val testCommand = {
+     if executeTests then s"$baseCommand.test"
+     else s"$baseCommand.test.compile"
+  }
   override val publishCommand = s"$baseCommand.publishLocal"
   override val docCommand = null
     // uncomment once mill is released
@@ -145,12 +148,13 @@ object projects:
     ignoreDocs = true
   )
 
-  lazy val sourcecode = MillCommunityProject(
+  lazy val sourcecode = new MillCommunityProject(
     project = "sourcecode",
     baseCommand = s"sourcecode.jvm[$compilerVersion]",
     ignoreDocs = true,
-    sourcecodeTestCommand = true,
-  )
+  ) {
+    override val testCommand = s"$baseCommand.test.run"
+  }
 
   lazy val oslib = MillCommunityProject(
     project = "os-lib",
@@ -208,6 +212,7 @@ object projects:
   lazy val requests = MillCommunityProject(
     project = "requests",
     baseCommand = s"requests.jvm[$compilerVersion]",
+    executeTests = false, // TODO: fix this to pass consistently
   )
 
   lazy val cask = MillCommunityProject(

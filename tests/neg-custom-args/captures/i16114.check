@@ -4,10 +4,10 @@
    |                                Found:    (x: Unit) ->{io, fs} Unit
    |                                Required: Unit ->{io} Unit
    |
-   |                                Note that capability fs is not included in capture set {io}.
+   |                                Note that capability `fs` cannot flow into capture set {io}.
+   |
 18 |      expect[Cap^] {
-19 |        io.use()
-20 |        fs
+19 |...
 21 |      }
    |
    | longer explanation available when compiling with `-explain`
@@ -17,10 +17,10 @@
    |                                Found:    (x: Unit) ->{fs, io} Unit
    |                                Required: Unit ->{fs} Unit
    |
-   |                                Note that capability io is not included in capture set {fs}.
+   |                                Note that capability `io` cannot flow into capture set {fs}.
+   |
 24 |      expect[Cap^] {
-25 |        fs.use()
-26 |        io
+25 |...
 27 |      }
    |
    | longer explanation available when compiling with `-explain`
@@ -30,7 +30,8 @@
    |                              Found:    (x: Unit) ->{io} Unit
    |                              Required: Unit -> Unit
    |
-   |                              Note that capability io is not included in capture set {}.
+   |                              Note that capability `io` cannot flow into capture set {}.
+   |
 36 |      expect[Cap^](io)
    |
    | longer explanation available when compiling with `-explain`
@@ -40,10 +41,10 @@
    |                           Found:    (x: Unit) ->{io} Unit
    |                           Required: Unit -> Unit
    |
-   |                           Note that capability io is not included in capture set {}.
+   |                           Note that capability `io` cannot flow into capture set {}.
+   |
 39 |      expect[Cap^] {
-40 |        io.use()
-41 |        io
+40 |...
 42 |      }
    |
    | longer explanation available when compiling with `-explain`

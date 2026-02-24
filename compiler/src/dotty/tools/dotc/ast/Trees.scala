@@ -1149,7 +1149,7 @@ object Trees {
 
   end WithLazyFields
 
-  // ----- Generic Tree Instances, inherited from `tpt` and `untpd`.
+  // ----- Generic Tree Instances, inherited from `tpd` and `untpd`.
 
   abstract class Instance[T <: Untyped] { inst =>
 
@@ -1259,7 +1259,7 @@ object Trees {
       protected def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
       protected def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
-      /** Soucre of the copied tree */
+      /** Source of the copied tree */
       protected def sourceFile(tree: Tree): SourceFile = tree.source
 
       protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =

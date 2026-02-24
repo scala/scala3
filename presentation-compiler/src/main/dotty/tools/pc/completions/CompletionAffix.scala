@@ -3,16 +3,15 @@ package dotty.tools.pc.completions
 import org.eclipse.lsp4j.Position
 import org.eclipse.lsp4j.Range
 
-/**
- * @param suffixes which we should insert
- * @param prefixes which we should insert
- * @param snippet which suffix should we insert the snippet $0
+/** @param suffixes which we should insert
+ *  @param prefixes which we should insert
+ *  @param snippet which suffix should we insert the snippet $0
  */
 case class CompletionAffix(
     suffixes: Set[Suffix],
     prefixes: Set[Prefix],
     snippet: Suffix,
-    currentPrefix: Option[String],
+    currentPrefix: Option[String]
 ):
   def addLabelSnippet = suffixes.exists(_.kind == SuffixKind.Bracket)
   def hasSnippet = snippet.kind != SuffixKind.NoSuffix
@@ -39,7 +38,6 @@ case class CompletionAffix(
     val edit = toSuffix
     if edit.nonEmpty then Some(edit) else None
 
-
   given Ordering[Position] = Ordering.by(elem => (elem.getLine, elem.getCharacter))
 
   def toInsertRange: Option[Range] =
@@ -59,14 +57,12 @@ case class CompletionAffix(
       case PrefixKind.Using :: tail => "using " + loopPrefix(tail)
       case _ => ""
 
-  /**
-   * We need to insert previous prefix, but we don't want to display it in the label i.e.
-   * ```scala
-   * scala.util.Tr@@
-   * ````
-   * should return `new Try[T]: Try[T]`
-   * but insert `new scala.util.Try`
-   *
+  /** We need to insert previous prefix, but we don't want to display it in the
+   *  label i.e.
+   *  ```scala
+   *  scala.util.Tr @@
+   *  ```
+   *  should return `new Try[T]: Try[T]` but insert `new scala.util.Try`
    */
   def toInsertPrefix: String =
     loopPrefix(prefixes.toList.map(_.kind)) + currentPrefix.getOrElse("")
@@ -81,7 +77,7 @@ object CompletionAffix:
     suffixes = Set.empty,
     prefixes = Set.empty,
     snippet = Affix(SuffixKind.NoSuffix),
-    currentPrefix = None,
+    currentPrefix = None
   )
 
 enum SuffixKind:

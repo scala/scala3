@@ -516,14 +516,14 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   /** An extractor for trees of the form `id` or `id: T` */
   object IdPattern {
     def unapply(tree: Tree)(using Context): Option[VarInfo] = tree match {
-      case id: Ident if id.name != nme.WILDCARD => Some(id, TypeTree())
+      case id: Ident if id.name != nme.WILDCARD => Some((id, TypeTree()))
       case Typed(id: Ident, tpt) => Some((id, tpt))
       case _ => None
     }
   }
 
-  /** Under pureFunctions: A builder and extractor for `=> T`, which is an alias for `->{cap} T`.
-   *  Only trees of the form `=> T` are matched; trees written directly as `->{cap} T`
+  /** Under pureFunctions: A builder and extractor for `=> T`, which is an alias for `->{any} T`.
+   *  Only trees of the form `=> T` are matched; trees written directly as `->{any} T`
    *  are ignored by the extractor.
    */
   object ImpureByNameTypeTree:
@@ -535,7 +535,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
     def unapply(tp: Tree)(using Context): Option[Tree] = tp match
       case untpd.ByNameTypeTree(
-        untpd.CapturesAndResult(id @ Select(_, nme.CAPTURE_ROOT) :: Nil, result))
+        untpd.CapturesAndResult(id @ Select(_, nme.any) :: Nil, result))
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
@@ -778,6 +778,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Inlined(call, _, _) => isExtMethodApply(call)
     case tree @ Select(qual, nme.apply) => tree.symbol.is(ExtensionMethod) || isExtMethodApply(qual)
     case tree => tree.symbol.is(ExtensionMethod)
+
+  /** Is `fn()` as spurious type application? This is the case if `fn` is a parameterless function,
+   *  the list of arguents `args` is empty, and `fn` overrides a Java method (which would
+   *  be a zero-parameter method). We accept such applications when unpickling and when
+   *  retyping during inlining.
+   */
+  def isSpuriousApply(fn: Tree, args: List[Trees.Tree[?]])(using Context): Boolean =
+    fn.tpe.widenSingleton.isInstanceOf[ExprType]
+    && args.isEmpty
+    && fn.symbol.allOverriddenSymbols.exists: sym =>
+        sym.is(JavaDefined)
+        || sym.owner == defn.AnyClass  // include Any_toString and Any_hashCode
 
   /** Is symbol potentially a getter of a mutable variable?
    */

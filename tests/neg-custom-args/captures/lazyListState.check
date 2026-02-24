@@ -1,10 +1,10 @@
 -- [E164] Declaration Error: tests/neg-custom-args/captures/lazyListState.scala:12:39 ----------------------------------
 12 |  final class Cons[A](val head: A, val tail: LazyListIterable[A]^) extends State[A] // error
    |                                       ^
-   |                 error overriding method tail in trait State of type -> LazyListIterable[A]^{cap};
-   |                   value tail of type LazyListIterable[A]^ has incompatible type
+   |               error overriding method tail in trait State of type -> LazyListIterable[A]^{fresh};
+   |                 value tail of type LazyListIterable[A]^ has incompatible type
    |
-   |                 where:    ^   refers to a fresh root capability in the type of value tail
-   |                           cap is a root capability associated with the result type of -> LazyListIterable[A²]^²
+   |               where:    ^     refers to a root capability in the type of value tail
+   |                         fresh is a root capability associated with the result type of -> LazyListIterable[A²]^²
    |
    | longer explanation available when compiling with `-explain`

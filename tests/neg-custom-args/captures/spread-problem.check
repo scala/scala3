@@ -7,6 +7,8 @@
 11 |  race(src1, src2) // error
    |       ^^^^^^^^^^
    |       Found:    (Source[T]^, Source[T]^)
-   |       Required: Seq[Source[T]^]
+   |       Required: Seq[Source[T]^{C}]
+   |
+   |       where:    C is a type variable with constraint >: scala.caps.CapSet and <: scala.caps.CapSet^
    |
    | longer explanation available when compiling with `-explain`

@@ -237,7 +237,7 @@ final class DoubleAccumulator
     r
   }
 
-  /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]` */
+  /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]`. */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Double] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -259,7 +259,7 @@ final class DoubleAccumulator
     a
   }
 
-  /** Copies the elements in this `DoubleAccumulator` to a `List` */
+  /** Copies the elements in this `DoubleAccumulator` to a `List`. */
   override def toList: List[Double] = {
     var ans: List[Double] = Nil
     var i = index - 1
@@ -280,10 +280,9 @@ final class DoubleAccumulator
     ans
   }
 
-  /**
-   * Copy the elements in this `DoubleAccumulator` to a specified collection.
-   * Note that the target collection is not specialized.
-   * Usage example: `acc.to(Vector)`
+  /** Copies the elements in this `DoubleAccumulator` to a specified collection.
+   *  Note that the target collection is not specialized.
+   *  Usage example: `acc.to(Vector)`
    */
   override def to[C1](factory: Factory[Double, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

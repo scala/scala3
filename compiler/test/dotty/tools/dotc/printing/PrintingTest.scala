@@ -78,4 +78,10 @@ class PrintingTest {
 
   @Test
   def transformedPrinting: Unit = testIn("tests/printing/transformed", "repeatableAnnotations")
+
+  @Test
+  def getters: Unit = testIn("tests/printing/getters", "getters")
+
+  @Test
+  def inlining: Unit = testIn("tests/printing/inlining", "inlining")
 }

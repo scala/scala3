@@ -230,7 +230,8 @@ trait ParallelTesting extends RunnerOrchestration:
       Array(dir.getPath)
   }
 
-  protected def shouldSkipTestSource(testSource: TestSource): Boolean = false
+  protected def shouldSkipTestSource(testSource: TestSource): Boolean =
+    testSource.sourceFiles.length == 0
 
   protected def shouldReRun(testSource: TestSource): Boolean =
     failedTests.forall(rerun => testSource match {
@@ -947,7 +948,12 @@ trait ParallelTesting extends RunnerOrchestration:
 
       Option {
         if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
-        else if expectedErrors == 0 then s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error"
+        else if expectedErrors == 0 then
+          s"""|No expected errors marked in $testSource -- use // error or // nopos-error
+              |actual error count: $actualErrors
+              |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
+              |$showErrors
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if expectedErrors != actualErrors then
           s"""|Wrong number of errors encountered when compiling $testSource
               |expected: $expectedErrors, actual: $actualErrors
@@ -955,7 +961,12 @@ trait ParallelTesting extends RunnerOrchestration:
               |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
               |$showErrors
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
-        else if hasMissingAnnotations then s"\nErrors found on incorrect row numbers when compiling $testSource\n$showErrors"
+        else if hasMissingAnnotations then
+          s"""|Errors found on incorrect row numbers when compiling $testSource
+              |$showErrors
+              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
+              |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if !errorMap.isEmpty then s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"
         else null
       }

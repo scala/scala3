@@ -1,7 +1,5 @@
 package dotty.tools.pc
 
-import dotty.tools.pc.PcSymbolSearch.*
-
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.tpd
@@ -18,6 +16,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 trait PcSymbolSearch:
@@ -59,34 +58,44 @@ trait PcSymbolSearch:
           if id.symbol
             .is(Flags.Param) && id.symbol.owner.is(Flags.ExtensionMethod) =>
         Some(findAllExtensionParamSymbols(id.sourcePos, id.name, id.symbol))
-      /**
-       * Workaround for missing symbol in:
-       * class A[T](a: T)
-       * val x = new <<A>>(1)
+
+      /** Workaround for missing symbol in:
+       *  ```
+       *  class A[T](a: T)
+       *  val x = new <<A>>(1)
+       *  ```
        */
       case t :: (n: New) :: (sel: Select) :: _
           if t.symbol == NoSymbol && sel.symbol.isConstructor =>
         Some(symbolAlternatives(sel.symbol.owner), namePos(t))
-      /**
-       * Workaround for missing symbol in:
-       * class A[T](a: T)
-       * val x = <<A>>[Int](1)
+
+      /** Workaround for missing symbol in:
+       *  ```
+       *  class A[T](a: T)
+       *  val x = <<A>>[Int](1)
+       *  ```
        */
       case (sel @ Select(New(t), _)) :: (_: TypeApply) :: _
           if sel.symbol.isConstructor =>
         Some(symbolAlternatives(sel.symbol.owner), namePos(t))
       /* simple identifier:
-       * val a = val@@ue + value
+       *  ```
+       *  val a = val@@ue + value
+       *  ```
        */
       case (id: Ident) :: _ =>
         Some(symbolAlternatives(id.symbol), id.sourcePos)
       /* simple selector:
-       * object.val@@ue
+       *  ```
+       *  object.val@@ue
+       *  ```
        */
       case (sel: Select) :: _ if selectNameSpan(sel).contains(pos.span) =>
         Some(symbolAlternatives(sel.symbol), pos.withSpan(sel.nameSpan))
       /* named argument:
-       * foo(nam@@e = "123")
+       *  ```
+       *  foo(nam@@e = "123")
+       *  ```
        */
       case (arg: NamedArg) :: (appl: Apply) :: _ =>
         val realName = arg.name.stripModuleClassSuffix.lastPart
@@ -109,31 +118,37 @@ trait PcSymbolSearch:
                   s.owner.owner.info.member(s.name).symbol
                 )
                   .filter(_ != NoSymbol),
-                pos,
+                pos
               )
             else (Set(s), pos)
           }
         else None
-        end if
       /* all definitions:
-       * def fo@@o = ???
-       * class Fo@@o = ???
+       *  ```
+       *  def fo@@o = ???
+       *  class Fo@@o = ???
+       *  ```
        * etc.
        */
       case (df: NamedDefTree) :: _
           if df.nameSpan.contains(pos.span) && !isGeneratedGiven(df, sourceText) =>
         Some(symbolAlternatives(df.symbol), pos.withSpan(df.nameSpan))
       /* enum cases with params
-       * enum Foo:
-       *  case B@@ar[A](i: A)
+       *  ```
+       *  enum Foo:
+       *   case B@@ar[A](i: A)
+       *  ```
        */
       case (df: NamedDefTree) :: Template(_, _, self, _) :: _
           if (df.name == nme.apply || df.name == nme.unapply) && df.nameSpan.isZeroExtent =>
         Some(symbolAlternatives(self.tpt.symbol), self.sourcePos)
-      /**
-       * For traversing annotations:
-       * @JsonNo@@tification("")
-       * def params() = ???
+
+      /** For traversing annotations:
+       *
+       *  ```
+       *  @JsonNo@@tification("")
+       *  def params() = ???
+       *  ```
        */
       case (df: MemberDef) :: _ if df.span.contains(pos.span) =>
         val annotTree = df.mods.annotations.find { t =>
@@ -146,7 +161,7 @@ trait PcSymbolSearch:
         }.headOption
 
       /* Import selectors:
-       * import scala.util.Tr@@y
+       * `import scala.util.Tr@@y`
        */
       case (imp: ImportOrExport) :: _ if imp.span.contains(pos.span) =>
         imp
@@ -166,9 +181,7 @@ trait PcSymbolSearch:
         extMethods: ExtMethods
     ): Option[ExtensionParamOccurence] =
       NavigateAST
-        .pathTo(pos.span, extMethods.paramss.flatten)(using
-          compilatonUnitContext
-        )
+        .pathTo(pos.span, extMethods.paramss.flatten)(using compilatonUnitContext)
         .collectFirst {
           case v: untpd.ValOrTypeDef =>
             ExtensionParamOccurence(
@@ -188,17 +201,16 @@ trait PcSymbolSearch:
 
     for
       extensionMethodScope <- extensionMethods
-      occurrence <- collectParams(extensionMethodScope)
-      symbols <- collectAllExtensionParamSymbols(
+      occurrence           <- collectParams(extensionMethodScope)
+      symbols              <- collectAllExtensionParamSymbols(
         path.headOption.getOrElse(unit.tpdTree),
         occurrence
       )
     yield symbols
-  end seekInExtensionParameters
 
   private def collectAllExtensionParamSymbols(
       tree: tpd.Tree,
-      occurrence: ExtensionParamOccurence,
+      occurrence: ExtensionParamOccurence
   ): Option[(Set[Symbol], SourcePosition)] =
     occurrence match
       case ExtensionParamOccurence(_, namePos, symbol, _)
@@ -227,18 +239,17 @@ trait PcSymbolSearch:
   private def findAllExtensionParamSymbols(
       pos: SourcePosition,
       name: Name,
-      sym: Symbol,
+      sym: Symbol
   ) =
     val symbols =
       for
         methods <- extensionMethods.map(_.methods)
         symbols <- collectAllExtensionParamSymbols(
           unit.tpdTree,
-          ExtensionParamOccurence(name, pos, sym, methods),
+          ExtensionParamOccurence(name, pos, sym, methods)
         )
       yield symbols
     symbols.getOrElse((symbolAlternatives(sym), pos))
-  end findAllExtensionParamSymbols
 end PcSymbolSearch
 
 object PcSymbolSearch:
@@ -268,8 +279,7 @@ object PcSymbolSearch:
     val nameSpan = df.nameSpan
     df.symbol.is(Flags.Given) && sourceText.substring(
       nameSpan.start,
-      nameSpan.end,
+      nameSpan.end
     ) != df.name.toString()
 
 end PcSymbolSearch
-

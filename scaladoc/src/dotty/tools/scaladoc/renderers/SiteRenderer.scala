@@ -68,7 +68,7 @@ trait SiteRenderer(using DocContext) extends Locations:
           .orElse(tryAsDriPlain(escapeFilename(str)))
 
       /* Link resolving checks performs multiple strategies with following priority:
-        1. We check if the link is a valid URL e.g. http://dotty.epfl.ch
+        1. We check if the link is a valid URL e.g. https://nightly.scala-lang.org
         2. We check if the link leads to other static site or API pages, example: [[exemple.scala.Foo]] || [Foo](../exemple/scala/Foo.html)
         3. We check if the link leads to existing asset e.g. images/logo.svg -> <static-site-root>/_assets/images/logo.svg
       */

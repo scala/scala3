@@ -4,7 +4,7 @@ import compiletime.uninitialized
 def foo(x: Int => Int) = ()
 
 
-object Test:
+object Test extends caps.Mutable:
   def test(x: Object) =
     foo(x.asInstanceOf[Int => Int])
 

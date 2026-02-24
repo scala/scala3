@@ -22,11 +22,11 @@ import scala.runtime.ScalaRunTime.nullForGC
 import caps.unsafe.unsafeAssumePure
 
 /** Views are collections whose transformation operations are non strict: the resulting elements
-  * are evaluated only when the view is effectively traversed (e.g. using `foreach` or `foldLeft`),
-  * or when the view is converted to a strict collection type (using the `to` operation).
-  * @define coll view
-  * @define Coll `View`
-  */
+ *  are evaluated only when the view is effectively traversed (e.g. using `foreach` or `foldLeft`),
+ *  or when the view is converted to a strict collection type (using the `to` operation).
+ *  @define coll view
+ *  @define Coll `View`
+ */
 trait View[+A] extends Iterable[A] with IterableOps[A, View, View[A]] with IterableFactoryDefaults[A, View] with Serializable {
 
   override def view: View[A]^{this} = this
@@ -45,33 +45,33 @@ trait View[+A] extends Iterable[A] with IterableOps[A, View, View[A]] with Itera
 }
 
 /** This object reifies operations on views as case classes
-  *
-  * @define Coll View
-  * @define coll view
-  */
+ *
+ *  @define Coll View
+ *  @define coll view
+ */
 @SerialVersionUID(3L)
 object View extends IterableFactory[View] {
 
   /**
-    * @return A `View[A]` whose underlying iterator is provided by the `it` parameter-less function.
-    *
-    * @param it Function creating the iterator to be used by the view. This function must always return
-    *           a fresh `Iterator`, otherwise the resulting view will be effectively iterable only once.
-    *
-    * @tparam A View element type
-    */
+   *  @tparam A View element type
+   *
+   *  @param it Function creating the iterator to be used by the view. This function must always return
+   *           a fresh `Iterator`, otherwise the resulting view will be effectively iterable only once.
+   *
+   *  @return A `View[A]` whose underlying iterator is provided by the `it` parameter-less function.
+   */
   def fromIteratorProvider[A](it: () => Iterator[A]^): View[A]^{it} = new AbstractView[A] {
     def iterator = it()
   }
 
   /**
-    * @return A view iterating over the given `Iterable`
-    *
-    * @param it The `IterableOnce` to view. A proper `Iterable` is used directly. If it is really only
-    *           `IterableOnce` it gets memoized on the first traversal.
-    *
-    * @tparam E View element type
-    */
+   *  @tparam E View element type
+   *
+   *  @param it The `IterableOnce` to view. A proper `Iterable` is used directly. If it is really only
+   *           `IterableOnce` it gets memoized on the first traversal.
+   *
+   *  @return A view iterating over the given `Iterable`
+   */
   def from[E](it: IterableOnce[E]^): View[E]^{it} = it match {
     case it: (View[E]^{it})     => it
     case it: (Iterable[E]^{it}) => View.fromIteratorProvider(() => it.iterator)
@@ -84,7 +84,7 @@ object View extends IterableFactory[View] {
 
   override def apply[A](xs: A*): View[A] = new Elems(xs*)
 
-  /** The empty view */
+  /** The empty view. */
   @SerialVersionUID(3L)
   case object Empty extends AbstractView[Nothing] {
     def iterator = Iterator.empty
@@ -92,7 +92,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = true
   }
 
-  /** A view with exactly one element */
+  /** A view with exactly one element. */
   @SerialVersionUID(3L)
   class Single[A](a: A) extends AbstractView[A] {
     def iterator: Iterator[A] = Iterator.single(a)
@@ -100,7 +100,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = false
   }
 
-  /** A view with given elements */
+  /** A view with given elements. */
   @SerialVersionUID(3L)
   class Elems[A](xs: A*) extends AbstractView[A] {
     def iterator = xs.iterator
@@ -124,7 +124,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = n <= 0
   }
 
-  /** A view containing repeated applications of a function to a start value */
+  /** A view containing repeated applications of a function to a start value. */
   @SerialVersionUID(3L)
   class Iterate[A](start: A, len: Int)(f: A => A) extends AbstractView[A] {
     def iterator: Iterator[A]^{f} = Iterator.iterate(start)(f).take(len)
@@ -133,14 +133,14 @@ object View extends IterableFactory[View] {
   }
 
   /** A view that uses a function `f` to produce elements of type `A` and update
-    * an internal state `S`.
-    */
+   *  an internal state `S`.
+   */
   @SerialVersionUID(3L)
   class Unfold[A, S](initial: S)(f: S => Option[(A, S)]) extends AbstractView[A] {
     def iterator: Iterator[A]^{f} = Iterator.unfold(initial)(f)
   }
 
-  /** An `IterableOps` whose collection type and collection type constructor are unknown */
+  /** An `IterableOps` whose collection type and collection type constructor are unknown. */
   type SomeIterableOps[A] = IterableOps[A, AnyConstr, ?]
 
   /** A view that filters an underlying collection. */
@@ -163,7 +163,7 @@ object View extends IterableFactory[View] {
       }
   }
 
-  /** A view that removes the duplicated elements as determined by the transformation function `f` */
+  /** A view that removes the duplicated elements as determined by the transformation function `f`. */
   @SerialVersionUID(3L)
   class DistinctBy[A, B](underlying: SomeIterableOps[A]^, f: A -> B) extends AbstractView[A] {
     def iterator: Iterator[A]^{underlying} = underlying.iterator.distinctBy(f)
@@ -338,8 +338,8 @@ object View extends IterableFactory[View] {
   }
 
   /** A view that zips elements of the underlying collection with the elements
-    *  of another collection.
-    */
+   *  of another collection.
+   */
   @SerialVersionUID(3L)
   class Zip[A, B](underlying: SomeIterableOps[A]^, other: Iterable[B]^) extends AbstractView[(A, B)] {
     def iterator = underlying.iterator.zip(other)
@@ -354,9 +354,9 @@ object View extends IterableFactory[View] {
   }
 
   /** A view that zips elements of the underlying collection with the elements
-    *  of another collection. If one of the two collections is shorter than the other,
-    *  placeholder elements are used to extend the shorter collection to the length of the longer.
-    */
+   *  of another collection. If one of the two collections is shorter than the other,
+   *  placeholder elements are used to extend the shorter collection to the length of the longer.
+   */
   @SerialVersionUID(3L)
   class ZipAll[A, B](underlying: SomeIterableOps[A]^, other: Iterable[B]^, thisElem: A, thatElem: B) extends AbstractView[(A, B)] {
     def iterator = underlying.iterator.zipAll(other, thisElem, thatElem)
@@ -370,7 +370,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = underlying.isEmpty && other.isEmpty
   }
 
-  /** A view that appends an element to its elements */
+  /** A view that appends an element to its elements. */
   @SerialVersionUID(3L)
   class Appended[+A](underlying: SomeIterableOps[A]^, elem: A) extends AbstractView[A] {
     def iterator = new Concat(underlying, new View.Single(elem)).iterator
@@ -381,7 +381,7 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = false
   }
 
-  /** A view that prepends an element to its elements */
+  /** A view that prepends an element to its elements. */
   @SerialVersionUID(3L)
   class Prepended[+A](elem: A, underlying: SomeIterableOps[A]^) extends AbstractView[A] {
     def iterator = new Concat(new View.Single(elem), underlying).iterator

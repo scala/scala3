@@ -219,10 +219,28 @@ trait TypesSupport:
           case other => noSupported(s"Not supported type in refinement $info")
         }
 
+        // Check whether a type contains `fresh` anywhere in its structure.
+        // This is used to force dependent rendering for function types like
+        // `(x: AnyRef^) -> AnyRef^{fresh}` where the result is not syntactically
+        // dependent on params but the `fresh` existential is semantically scoped
+        // by the function type (see scoped-capabilities.md). We recurse through
+        // CapturingType (to look past capture annotations) and AppliedType (to find
+        // fresh inside type arguments, e.g. `() -> AnyRef^{fresh}` stored as
+        // `Function0[AnyRef^{fresh}]`).
+        def resultHasFresh(tp: TypeRepr): Boolean = tp match
+          case CapturingType(parent, refs) => refs.exists(_.isFreshCap) || resultHasFresh(parent)
+          case AppliedType(_, args) => args.exists(resultHasFresh)
+          case _ => false
+
         def parseDependentFunctionType(info: TypeRepr): SSignature = info match {
           case m: MethodType =>
             val isCtx = isContextualMethod(m)
-            if isDependentMethod(m) then
+            // Use dependent rendering (preserving named params and precise arrow) when either:
+            // 1. The method is syntactically dependent (result references a param), or
+            // 2. CC is enabled and the result contains `fresh`, because `fresh` in a
+            //    function result is existentially bound by the function type, making the
+            //    dependent form semantically significant (see scoped-capabilities.md).
+            if isDependentMethod(m) || (ccEnabled && resultHasFresh(m.resType)) then
               val paramList = getParamList(m)
               val arrPrefix = if isCtx then "?" else ""
               val arrow =
@@ -236,7 +254,14 @@ trait TypesSupport:
               paramList ++ (plain(" ") :: arrow) ++ (plain(" ") :: resType)
             else
               val sym = defn.FunctionClass(m.paramTypes.length, isCtx)
-              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)
+              val inCC = inCC0 match
+                case None if ccEnabled =>
+                  // For CC, we assume an impure function and hence force the capture set to `^`.
+                  // Otherwise, the function will be rendered as pure. We hit this case here when
+                  // dealing with polymorphic function types, e.g., the A => Int part of [A] => A => Int.
+                  Some(List(CaptureDefs.captureRoot.termRef))
+                case other => other
+              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = inCC)
           case other => noSupported("Dependent function type without MethodType refinement")
         }
 
@@ -276,10 +301,10 @@ trait TypesSupport:
         ++ inParens(inner(rhs, skipThisTypePrefix), shouldWrapInParens(rhs, t, false))
 
       case t @ AppliedType(tpe, args) if t.isFunctionType =>
-        val dealiased = t.dealiasKeepOpaques
-        if t == dealiased then
+        lazy val dealiased = t.dealiasKeepOpaques
+        if tpe.isAnyFunctionType || t == dealiased then
           functionType(tpe, args, skipThisTypePrefix)
-        else
+        else // i23456
           val AppliedType(tpe, args) = dealiased.asInstanceOf[AppliedType]
           functionType(tpe, args, skipThisTypePrefix)
 
@@ -536,15 +561,21 @@ trait TypesSupport:
           case other => other.reduce((r, e) => r ++ (List(Plain(", ")) ++ e))
         Plain("{") :: (res1 ++ List(Plain("}")))
 
-  // Within the context of `elideThis`, some capabilities can actually be pure.
+  // Determines whether a capture set reference should be rendered in the current context.
+  // Some capabilities (like `this` in a pure class) are elided. We need to handle all
+  // capability wrappers (reach `c*`, read-only `c.rd`, classifier `.only[C]`) by
+  // recursing into the underlying capability, and always render root capabilities
+  // (`cap`/`any`) and `fresh`.
   private def isCapturedInContext(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): Boolean =
     import reflect._
     ref match
-      case t if t.isCaptureRoot  => true
-      case ReachCapability(c)    => isCapturedInContext(c)
-      case ReadOnlyCapability(c) => isCapturedInContext(c)
-      case ThisType(tr)          => !elideThis.symbol.typeRef.isPureClass(elideThis) /* is the current class pure? */
-      case t                     => !t.isPureClass(elideThis)
+      case t if t.isCaptureRoot   => true
+      case t if t.isFreshCap      => true
+      case ReachCapability(c)     => isCapturedInContext(c)
+      case ReadOnlyCapability(c)  => isCapturedInContext(c)
+      case OnlyCapability(c, _)   => isCapturedInContext(c)
+      case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
+      case t                      => !t.isPureClass(elideThis)
 
   private def emitCapturing(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._

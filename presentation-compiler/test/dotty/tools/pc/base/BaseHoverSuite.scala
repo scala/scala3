@@ -2,11 +2,11 @@ package dotty.tools.pc.base
 
 import java.nio.file.Paths
 
-import scala.meta.internal.metals.{CompilerOffsetParams, CompilerRangeParams}
 import scala.language.unsafeNulls
+import scala.meta.internal.metals.{CompilerOffsetParams, CompilerRangeParams}
 
-import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.utils.{RangeReplace, TestHovers}
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 abstract class BaseHoverSuite
     extends BasePCSuite
@@ -23,9 +23,9 @@ abstract class BaseHoverSuite
       .replace("<<", "")
       .replace(">>", "")
     val (code, so, eo) = hoverParams(codeOriginal, filename)
-    val pcParams = if (so == eo) {
+    val pcParams = if so == eo then
       CompilerOffsetParams(Paths.get(filename).toUri(), code, so)
-    } else
+    else
       CompilerRangeParams(Paths.get(filename).toUri(), code, so, eo)
     val hover = presentationCompiler
       .hover(pcParams)
@@ -36,10 +36,10 @@ abstract class BaseHoverSuite
 
     assertNoDiff(expected, obtained)
 
-    for {
-      h <- hover
+    for
+      h     <- hover
       range <- Option(h.getRange)
-    } {
+    do
       val base =
         codeOriginal.replace("@@", "").replace("%<%", "").replace("%>%", "")
       val withRange = replaceInRange(base, range)
@@ -49,5 +49,3 @@ abstract class BaseHoverSuite
         .replace("%>%", "")
 
       assertNoDiff(expected, withRange)
-
-    }

@@ -28,16 +28,15 @@ trait Seq[+A] extends Iterable[A]
 }
 
 /**
-  * @define coll immutable sequence
-  * @define Coll `immutable.Seq`
-  */
+ *  @define coll immutable sequence
+ *  @define Coll `immutable.Seq`
+ */
 transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collection.SeqOps[A, CC, C] with caps.Pure
 
-/**
-  * $factoryInfo
-  * @define coll immutable sequence
-  * @define Coll `immutable.Seq`
-  */
+/** $factoryInfo
+ *  @define coll immutable sequence
+ *  @define Coll `immutable.Seq`
+ */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](List) {
   override def from[E](it: IterableOnce[E]^): Seq[E] = it match {
@@ -46,7 +45,7 @@ object Seq extends SeqFactory.Delegate[Seq](List) {
   }
 }
 
-/** Base trait for immutable indexed sequences that have efficient `apply` and `length` */
+/** Base trait for immutable indexed sequences that have efficient `apply` and `length`. */
 trait IndexedSeq[+A] extends Seq[A]
                         with collection.IndexedSeq[A]
                         with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
@@ -55,13 +54,13 @@ trait IndexedSeq[+A] extends Seq[A]
   final override def toIndexedSeq: IndexedSeq[A] = this
 
   override def canEqual(that: Any): Boolean = that match {
-    case otherIndexedSeq: IndexedSeq[_] => length == otherIndexedSeq.length && super.canEqual(that)
+    case otherIndexedSeq: IndexedSeq[?] => length == otherIndexedSeq.length && super.canEqual(that)
     case _ => super.canEqual(that)
   }
 
 
   override def sameElements[B >: A](o: IterableOnce[B]^): Boolean = o match {
-    case that: IndexedSeq[_] =>
+    case that: IndexedSeq[?] =>
       (this eq that) || {
         val length = this.length
         var equal = length == that.length
@@ -93,10 +92,10 @@ trait IndexedSeq[+A] extends Seq[A]
   }
 
   /** a hint to the runtime when scanning values
-    * [[apply]] is preferred for scan with a max index less than this value
-    * [[iterator]] is preferred for scans above this range
-    * @return a hint about when to use [[apply]] or [[iterator]]
-    */
+   *  [[apply]] is preferred for scan with a max index less than this value
+   *  [[iterator]] is preferred for scans above this range
+   *  @return a hint about when to use [[apply]] or [[iterator]]
+   */
   protected def applyPreferredMaxLength: Int = IndexedSeqDefaults.defaultApplyPreferredMaxLength
 
   override def iterableFactory: SeqFactory[IndexedSeq] = IndexedSeq
@@ -119,7 +118,7 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
   }
 }
 
-/** Base trait for immutable indexed Seq operations */
+/** Base trait for immutable indexed `Seq` operations. */
 transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]
     with collection.IndexedSeqOps[A, CC, C] {
@@ -132,7 +131,7 @@ transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
 
 }
 
-/** Base trait for immutable linear sequences that have efficient `head` and `tail` */
+/** Base trait for immutable linear sequences that have efficient `head` and `tail`. */
 trait LinearSeq[+A]
   extends Seq[A]
     with collection.LinearSeq[A]

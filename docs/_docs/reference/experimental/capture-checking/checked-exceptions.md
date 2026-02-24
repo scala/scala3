@@ -10,7 +10,7 @@ Scala enables checked exceptions through a language import. Here is an example,
 taken from the [safer exceptions page](../canthrow.md), and also described in a
 [paper](https://infoscience.epfl.ch/record/290885) presented at the
  2021 Scala Symposium.
-```scala
+```scala sc:nocompile
 import language.experimental.saferExceptions
 
 class LimitExceeded extends Exception
@@ -22,11 +22,11 @@ def f(x: Double): Double throws LimitExceeded =
 The new `throws` clause expands into an implicit parameter that provides
 a `CanThrow` capability. Hence, function `f` could equivalently be written
 like this:
-```scala
+```scala sc:nocompile
 def f(x: Double)(using CanThrow[LimitExceeded]): Double = ...
 ```
 If the implicit parameter is missing, an error is reported. For instance, the  function definition
-```scala
+```scala sc:nocompile
 def g(x: Double): Double =
   if x < limit then x * x else throw LimitExceeded()
 ```
@@ -42,12 +42,12 @@ is rejected with this error message:
 ```
 `CanThrow` capabilities are required by `throw` expressions and are created
 by `try` expressions. For instance, the expression
-```scala
+```scala sc:nocompile
 try xs.map(f).sum
 catch case ex: LimitExceeded => -1
 ```
 would be expanded by the compiler to something like the following:
-```scala
+```scala sc:nocompile
 try
   erased given ctl: CanThrow[LimitExceeded] = compiletime.erasedValue
   xs.map(f).sum
@@ -58,7 +58,7 @@ erased.)
 
 As with other capability based schemes, one needs to guard against capabilities
 that are captured in results. For instance, here is a problematic use case:
-```scala
+```scala sc:nocompile
 def escaped(xs: Double*): (() => Double) throws LimitExceeded =
   try () => xs.map(f).sum
   catch case ex: LimitExceeded => () => -1
@@ -74,7 +74,7 @@ Under the language import `language.experimental.captureChecking`, the code is i
 ```
 14 |  try () => xs.map(f).sum
    |  ^
-   |The expression's type () => Double is not allowed to capture the root capability `cap`.
+   |The expression's type () => Double is not allowed to capture the root capability `any`.
    |This usually means that a capability persists longer than its allowed lifetime.
 15 |  catch case ex: LimitExceeded => () => -1
 ```

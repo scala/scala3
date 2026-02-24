@@ -121,11 +121,22 @@ class ScalaSignatureProvider:
   private def extensionSignature(extension: Member, fun: Kind.Def): MemberSignature =
     methodLikeSignature(extension, fun, Some(extension.signature))()
 
-  private def givenMethodSignature(method: Member, body: Kind.Def): MemberSignature = method.kind match
-    case Kind.Given(_, iOpt @ Some(instance), _) =>
-      methodLikeSignature(method, body, iOpt)(method.kind)
-    case _ =>
-      methodLikeSignature(method, body)(method.kind)
+  private def givenMethodSignature(method: Member, body: Kind.Def): MemberSignature =
+    val instance = method.kind match
+      case Kind.Given(_, iOpt, _) => iOpt
+      case _ => None
+
+    MemberSignature(
+      builder.modifiersAndVisibility(method),
+      builder.kind(method.kind),
+      builder.name(method.name, method.dri),
+      builder
+        .plain(": ")
+        .givenFunctionParameters(body.paramLists)
+        .pipe { builder =>
+          instance.fold(builder)(i => builder.keyword(" => ").signature(i))
+        }
+    )
 
   private def fieldLikeSignature(member: Member, kind: Kind, instance: Option[Signature] = None): MemberSignature =
     MemberSignature(

@@ -12,12 +12,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.SCALA_APP_ID }}
+          private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}
+          owner: scala
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: coursier/cache-action@v7
-      - uses: VirtusLab/scala-cli-setup@v1.11.0
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.12.2
       - run: scala-cli ./project/scripts/addToBackportingProject.scala -- ${{ github.sha }}
         env:
-          GRAPHQL_API_TOKEN: ${{ secrets.GRAPHQL_API_TOKEN }}
+          GRAPHQL_API_TOKEN: ${{ steps.app-token.outputs.token }}
 

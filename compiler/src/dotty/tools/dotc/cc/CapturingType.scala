@@ -37,6 +37,9 @@ object CapturingType:
     if refs.isAlwaysEmpty && !refs.keepAlways && !parent.derivesFromCapability then
       parent
     else parent match
+      case parent @ CapturingType(parent1, refs1) if refs == CaptureSet.Fluid =>
+        // <fluid> displaces existing capture sets whether boxed or not
+        apply(parent1, refs, boxed)
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
@@ -60,7 +63,7 @@ object CapturingType:
     case AnnotatedType(parent, ann: CaptureAnnotation)
     if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
-    case AnnotatedType(parent, ann) if ann.symbol.isRetains && alsoRetains =>
+    case AnnotatedType(parent, ann: RetainingAnnotation) if ann.isStrict && alsoRetains =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets
@@ -75,7 +78,7 @@ object CapturingType:
       //
       // TODO In other situations we expect that the type is already transformed to a
       // CapturingType and we should crash if this not the case.
-      try Some((parent, ann.tree.toCaptureSet))
+      try Some((parent, ann.toCaptureSet))
       catch case ex: IllegalCaptureRef => None
     case _ =>
       None

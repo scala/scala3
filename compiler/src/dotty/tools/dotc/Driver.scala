@@ -9,7 +9,6 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
-import config.Feature
 import util.chaining.*
 
 import scala.util.control.NonFatal

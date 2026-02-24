@@ -1,22 +1,22 @@
 package dotty.tools.pc.tests
 
-import scala.language.unsafeNulls
-
-import dotty.tools.pc.base.BasePCSuite
-import dotty.tools.pc.utils.RangeReplace
-
 import java.net.URI
-import org.eclipse.lsp4j.jsonrpc.messages.{Either => JEither}
+
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.internal.pc.PcReferencesRequest
 
+import dotty.tools.pc.base.BasePCSuite
+import dotty.tools.pc.utils.RangeReplace
+
+import org.eclipse.lsp4j.jsonrpc.messages.Either as JEither
 import org.junit.Test
 
 class PcReferencesSuite extends BasePCSuite with RangeReplace {
   def check(
-    original: String,
+      original: String
   ): Unit =
     val edit = original.replaceAll("(<<|>>)", "")
     val expected = original.replaceAll("@@", "")
