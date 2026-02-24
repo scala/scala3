@@ -3,6 +3,7 @@
    |^
    |Inferred implementation of the deferred given instance myc in trait CompanionEssentials is self-recursive.
    |An implementing given needs to be written explicitly.
+   |
 14 |  given String = "hw"
 15 |  given myc(using String): MyCodec[Person] = new MyCodec[Person] {}
 16 |  override def toString = ""

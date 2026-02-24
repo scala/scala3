@@ -3405,14 +3405,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 super.transform(tree)
 
           rhs.tpe match
-          case tp: NamedType if tp.prefix.typeSymbol == cls && tp.name == mbr.name && !tp.typeSymbol.is(Method) =>
-            report.error(
-              em"""Inferred implementation of the deferred ${dcl.showLocated} is self-recursive.
-                  |An implementing given needs to be written explicitly.""",
-              cdef.srcPos)
-            EmptyTree
-          case _ =>
-            ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
+            case tp: NamedType
+              if tp.prefix.typeSymbol == cls
+              && tp.name == mbr.name
+              && !tp.typeSymbol.is(Method)
+            =>
+              report.error(
+                em"""Inferred implementation of the deferred ${dcl.showLocated} is self-recursive.
+                    |An implementing given needs to be written explicitly.""",
+                cdef.srcPos)
+              EmptyTree
+            case _ =>
+              ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
         end givenImpl
 
         val givenImpls =
