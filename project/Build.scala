@@ -2340,10 +2340,15 @@ object Build {
 
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
+        val b = List.newBuilder[File]
+
         if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
-          Seq(baseDirectory.value / "test-require-multi-modules")
-        else
-          Nil
+          b += baseDirectory.value / "test-require-multi-modules"
+
+        if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
+          b += baseDirectory.value / "test-require-async-await"
+
+        b.result()
       },
 
       (Compile / managedSources) ++= {
