@@ -1526,8 +1526,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       prefix.info match
         case mt: MethodType if mt.paramInfos.isEmpty && mt.resultType.typeSymbol.is(Module) =>
           ref(mt.resultType.typeSymbol.sourceModule)
-        //case tref @ TypeRef(_: ThisType, _) if tref.symbol.is(ModuleClass) =>
-        //  This(tref.symbol.asClass)
         case _ =>
           ref(prefix)
     case TermRef(prefix: ThisType, _) =>
