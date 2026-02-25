@@ -27,8 +27,10 @@ assignees: ''
   (extensively/moderately/minimally/not at all)
 -->
 
-Refer to our [LLM usage policy](../LLM_POLICY.md) for rules and guidelines
-regarding usage of LLM-based tools in contributions.
+<!--
+  Refer to our [LLM usage policy](https://github.com/scala/scala3/blob/main/LLM_POLICY.md) for rules and guidelines
+  regarding usage of LLM-based tools in contributions.
+-->
 
 ## How was the solution tested?
 
@@ -41,6 +43,8 @@ regarding usage of LLM-based tools in contributions.
 
 <!-- Placeholder for any extra context regarding this contribution. -->
 
-For support regarding contributions to a particular component of the compiler, feel free to tag the maintainers
-as listed in the [relevant doc](../MAINTENANCE.md).
-When in doubt, refer to [our contribution guide](../CONTRIBUTING.md).
+<!--
+  For support regarding contributions to a particular component of the compiler, feel free to tag the maintainers
+  as listed in the [relevant doc](https://github.com/scala/scala3/blob/main/MAINTENANCE.md).
+  When in doubt, refer to [our contribution guide](https://github.com/scala/scala3/blob/main/CONTRIBUTING.md).
+-->
