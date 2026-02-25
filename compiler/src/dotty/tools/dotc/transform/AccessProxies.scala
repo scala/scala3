@@ -43,11 +43,13 @@ abstract class AccessProxies {
         }
         val (targs, argss) = splitArgs(prefss)
         val (accessRef, forwardedTpts, forwardedArgss) =
-          if (passReceiverAsArg(accessor.name))
-            (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
+          if passReceiverAsArg(accessor.name) then
+            if accessed.owner.is(Package, butNot = Module) then
+              (ref(accessed), targs.takeRight(numTypeParams), argss.tail)
+            else
+              (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
           else
-            (if (accessed.isStatic) ref(accessed) else ref(TermRef(accessor.owner.thisType, accessed)),
-             targs, argss)
+            (if (accessed.isStatic) ref(accessed) else ref(TermRef(accessor.owner.thisType, accessed)), targs, argss)
         val rhs =
           if (accessor.name.isSetterName &&
               forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
