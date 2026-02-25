@@ -116,7 +116,7 @@ class BootstrappedOnlyCompilationTests {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
     if (Properties.testsInstrumentCoverage) {
-      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput))
     } else {
       compilationTest.checkRuns()
     }
@@ -135,7 +135,7 @@ class BootstrappedOnlyCompilationTests {
 
     val compilationTest = withCoverage(aggregateTests(tests*))
     if (Properties.testsInstrumentCoverage) {
-      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput))
     } else {
       compilationTest.checkRuns()
     }
@@ -157,7 +157,7 @@ class BootstrappedOnlyCompilationTests {
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
     ))
     if (Properties.testsInstrumentCoverage) {
-      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput), "Run")
+      compilationTest.checkPass(new RunTestWithCoverage(compilationTest.targets, compilationTest.times, compilationTest.threadLimit, compilationTest.shouldFail || compilationTest.shouldSuppressOutput))
     } else {
       compilationTest.checkRuns()
     }
