@@ -8,7 +8,7 @@ object ChildJVMMain:
   val MessageStart = "##THIS IS THE START FOR ME, HELLO##"
   val MessageEnd = "##THIS IS THE END FOR ME, GOODBYE##"
 
-  def runMain(dir: String): Unit =
+  def runMain(dir: String): Unit = {
     def meth =
       val jcp = System.getProperty("java.class.path")
       val sep = File.pathSeparator
@@ -34,8 +34,9 @@ object ChildJVMMain:
         throw t
     System.out.println(MessageStart)
     m.invoke(null, Array.empty[String])
+  }
 
-  def main(args: Array[String]): Unit =
+  def main(args: Array[String]): Unit = {
     inline def savingSystem[T](inline body: => T): T =
       val savedIn  = System.in
       val savedOut = System.out
@@ -50,3 +51,4 @@ object ChildJVMMain:
       savingSystem:
         runMain(stdin.readLine())
       println(MessageEnd)
+  }

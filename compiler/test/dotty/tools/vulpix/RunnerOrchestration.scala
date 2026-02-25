@@ -93,19 +93,19 @@ trait RunnerOrchestration:
 
       def readLine(): String =
         stdout.readLine() match
-        case s"Listening for transport dt_socket at address: $port" =>
-          throw IOException(
-            "Unexpected transport dt_socket message." +
-            " The port is going to be lost and no debugger will be able to connect."
-          )
-        case line => line
+          case s"Listening for transport dt_socket at address: $port" =>
+            throw IOException(
+              "Unexpected transport dt_socket message." +
+              " The port is going to be lost and no debugger will be able to connect."
+            )
+          case line => line
 
       def printLine(line: String): Unit = stdin.println(line)
 
       def getJdiPort(): Int =
         stdout.readLine() match
-        case s"Listening for transport dt_socket at address: $port" => port.toInt
-        case line => throw IOException(s"Failed getting JDI port of child JVM: got $line")
+          case s"Listening for transport dt_socket at address: $port" => port.toInt
+          case line => throw IOException(s"Failed getting JDI port of child JVM: got $line")
 
       def isAlive: Boolean = p.isAlive // export p.isAlive sans parens
 
@@ -135,7 +135,7 @@ trait RunnerOrchestration:
         catch case e: Throwable => Failure("Bad debug")
       end debugMain
 
-      private def startMain(classPath: String): Future[Status] =
+      private def startMain(classPath: String): Future[Status] = {
         // pass classpath to running process
         process.printLine(classPath)
 
@@ -167,7 +167,7 @@ trait RunnerOrchestration:
           else
             Failure(sb.toString)
         Future(readChildOutput)
-      end startMain
+      }
 
       // wait status of the main class execution
       private def awaitStatus(future: Future[Status]): Status =

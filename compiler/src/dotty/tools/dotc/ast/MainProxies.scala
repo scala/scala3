@@ -42,7 +42,7 @@ object MainProxies:
         Nil
     mainMethods(stats).flatMap(mainProxy)
 
-  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] =
+  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
     def error(msg: Message) = report.error(msg, mainFun.sourcePos)
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     val argsRef = Ident(nme.args)
@@ -57,27 +57,27 @@ object MainProxies:
           argsRef :: Literal(Constant(idx + n)) :: Nil)
         if formal.isRepeatedParam then repeated(arg) else arg
       mt.resType match
-      case _ if mt.isImplicitMethod =>
-        error(em"@main method cannot have implicit parameters")
-        call
-      case restpe: MethodType =>
-        if mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam then
-          error(em"varargs parameter of @main method must come last")
-        addArgs(Apply(call, args), restpe, idx + args.length)
-      case _ =>
-        Apply(call, args)
+        case _ if mt.isImplicitMethod =>
+          error(em"@main method cannot have implicit parameters")
+          call
+        case restpe: MethodType =>
+          if mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam then
+            error(em"varargs parameter of @main method must come last")
+          addArgs(Apply(call, args), restpe, idx + args.length)
+        case _ =>
+          Apply(call, args)
 
     var call = ref(mainFun.termRef)
     mainFun.info match
-    case _ if !mainFun.owner.isStaticOwner =>
-      error(em"@main method is not statically accessible")
-    case _: ExprType =>
-    case mt: MethodType =>
-      call = addArgs(call, mt, 0)
-    case _: PolyType =>
-      error(em"@main method cannot have type parameters")
-    case _ =>
-      error(em"@main can only annotate a method")
+      case _ if !mainFun.owner.isStaticOwner =>
+        error(em"@main method is not statically accessible")
+      case _: ExprType =>
+      case mt: MethodType =>
+        call = addArgs(call, mt, 0)
+      case _: PolyType =>
+        error(em"@main method cannot have type parameters")
+      case _ =>
+        error(em"@main can only annotate a method")
 
     if !ctx.reporter.hasErrors then
       val errVar = Ident(nme.error)
@@ -107,4 +107,4 @@ object MainProxies:
         .withFlags(Final | Invisible)
       mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
     else Nil
-  end mainProxy
+  }

@@ -923,19 +923,19 @@ trait ParallelTesting extends RunnerOrchestration:
       if Properties.testsNoRun then addNoRunWarning()
       else
         runMain(runClassPath, allToolArgs) match
-        case Success(output) =>
-          for file <- checkFile if file.exists do
-            diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
-        case Failure("") =>
-          echo(s"Test '$title' failed with no output")
-          failTestSource(testSource)
-        case Failure(output) =>
-          echo(s"Test '$title' failed with output:")
-          echo(output)
-          failTestSource(testSource)
-        case Timeout =>
-          echo(s"failed because test '$title' timed out")
-          failTestSource(testSource, TimeoutFailure(title))
+          case Success(output) =>
+            for file <- checkFile if file.exists do
+              diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
+          case Failure("") =>
+            echo(s"Test '$title' failed with no output")
+            failTestSource(testSource)
+          case Failure(output) =>
+            echo(s"Test '$title' failed with output:")
+            echo(output)
+            failTestSource(testSource)
+          case Timeout =>
+            echo(s"failed because test '$title' timed out")
+            failTestSource(testSource, TimeoutFailure(title))
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
