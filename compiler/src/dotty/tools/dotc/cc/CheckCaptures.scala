@@ -1504,6 +1504,18 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ =>
 
         SafeRefs.checkSafeAnnots(cls)
+        if cls.derivesFrom(defn.Caps_Classifier) then
+          for fld <- cls.capturesImpliedByFields(cls.appliedRef).fields
+              cl <- fld.classifiersOfLocalCapsInType do
+            if !fld.name.is(WildcardParamName) && !cl.derivesFrom(cls.classifier) then
+              def fldClassifier =
+                if cl == defn.AnyClass then i"of unclassified type ${fld.info}"
+                else i"classified as ${cl.typeRef}"
+              report.error(
+                em"""$cls is classied as ${cls.classifier.typeRef} but has a field ${fld.name}
+                    |$fldClassifier
+                    |Field classifiers have to conform to the classifier of the containing class.""",
+                cls.srcPos)
 
         super.recheckClassDef(tree, impl, cls)
       finally

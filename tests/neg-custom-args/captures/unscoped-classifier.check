@@ -4,12 +4,24 @@
   |        Reference `A.this.a` is not included in the allowed capture set {any} of the self type of class A.
   |
   |        where:    any is a root capability classified as Unscoped in the type of class A
+-- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:7:6 -------------------------------------------------
+7 |class B extends caps.Unscoped: // error
+  |      ^
+  |      class B is classied as scala.caps.Unscoped but has a field a
+  |      classified as scala.caps.Control
+  |      Field classifiers have to conform to the classifier of the containing class.
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/unscoped-classifier.scala:10:8 -------------------------
 10 |class C(f: () => Unit) extends caps.Unscoped // error but msg could be better
    |        ^
    |        Reference `C.this.f` is not included in the allowed capture set {any} of the self type of class C.
    |
    |        where:    any is a root capability classified as Unscoped in the type of class C
+-- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:12:6 ------------------------------------------------
+12 |class D extends caps.Unscoped: // error
+   |      ^
+   |      class D is classied as scala.caps.Unscoped but has a field f
+   |      of unclassified type () => Unit
+   |      Field classifiers have to conform to the classifier of the containing class.
 -- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:17:15 -----------------------------------------------
 17 |    def gg() = g()     // error but msg could be better
    |               ^
