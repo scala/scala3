@@ -588,6 +588,8 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           if BCodeUtils.checkConstantStringLength(const.stringValue) then
             mnode.visitLdcInsn(const.stringValue) // `stringValue` special-cases null, but not for a const with StringTag
           else
+            // Emit a fake constant anyway so the resulting bytecode is valid, even if wrong (e.g., if the optimizer consumes it)
+            mnode.visitLdcInsn("<string too long>")
             report.error("String constant is too long for the JVM", pos)
 
         case NullTag    => emit(asm.Opcodes.ACONST_NULL)
@@ -607,6 +609,8 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
             if BCodeUtils.checkConstantStringLength(toASM.getInternalName) then
               mnode.visitLdcInsn(toASM)
             else
+              // Emit a fake constant anyway so the resulting bytecode is valid, even if wrong (e.g., if the optimizer consumes it)
+              mnode.visitLdcInsn("<type name too long>")
               report.error("Type name is too long for the JVM", pos)
 
         case _ => abort(s"Unknown constant value: $const")
