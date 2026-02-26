@@ -45,6 +45,7 @@ object Feature:
   val dedentedStringLiterals = experimental("dedentedStringLiterals")
   val magic = experimental("magic")
   val inlineTraits = experimental("inlineTraits")
+  val specializedTraits = experimental("specializedTraits")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -71,6 +72,7 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
+    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
@@ -83,7 +85,8 @@ object Feature:
     (safe, "Require safe mode"),
     (dedentedStringLiterals, "Enable experimental dedented string literals"),
     (magic, "Enable extensions for working with coding agents"),
-    (inlineTraits, "Allow inline traits")
+    (inlineTraits, "Allow inline traits"),
+    (specializedTraits, "Allow specialized traits"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -186,6 +189,7 @@ object Feature:
   
   def inlineTraitsEnabled(using Context) = 
     enabledBySetting(inlineTraits)
+    || enabledBySetting(specializedTraits)
     || ctx.compilationUnit.knowsInlineTraits
   
   /** Is pureFunctions enabled for this compilation unit? */
@@ -223,6 +227,7 @@ object Feature:
   /** Are inline traits enabled for this compilation unit */
   def inlineTraitsEnabledSomewhere(using Context) =
     enabledBySetting(inlineTraits)
+    || enabledBySetting(specializedTraits)
     || ctx.run != null && ctx.run.nn.inlineTraitsImportEncountered
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */

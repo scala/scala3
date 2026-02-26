@@ -35,7 +35,7 @@ class PruneInlinedMethods extends MiniPhase with InfoTransformer { thisTransform
     }))
 
   private def isDeletable(sym: Symbol)(using Context): Boolean = 
-    !sym.is(Flags.JavaDefined) && sym.isAllOf(InlineMethod) && sym.owner.isInlineTrait
+    Specialization.isSpecializedMethod(sym)
 }
 
 object PruneInlinedMethods {
