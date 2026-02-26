@@ -4320,14 +4320,12 @@ object Parsers {
 
     /** ClassDef ::= id ClassConstr TemplateOpt
      */
-    def classDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      classDefRest(start, mods, ident().toTypeName)
-    }
-
-    def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
-      val constr = classConstr(if mods.is(Case) then ParamOwner.CaseClass else ParamOwner.Class)
-      val templ = templateOpt(constr)
-      finalizeDef(TypeDef(name, templ), mods, start)
+    def classDef(start: Offset, mods: Modifiers): TypeDef =
+      atSpan(start, nameStart):
+        val name = ident().toTypeName
+        val constr = classConstr(if mods.is(Case) then ParamOwner.CaseClass else ParamOwner.Class)
+        val templ = templateOpt(constr)
+        finalizeDef(TypeDef(name, templ), mods, start)
 
     /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsTermParamClauses
      */
