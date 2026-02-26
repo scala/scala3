@@ -128,7 +128,14 @@ sealed class ListMap[K, +V]
  */
 @SerialVersionUID(3L)
 object ListMap extends MapFactory[ListMap] {
-  /** Represents an entry in the `ListMap`. */
+  /** Represents an entry in the `ListMap`.
+   *
+   *  @tparam K the type of the keys in this map entry
+   *  @tparam V the type of the values in this map entry
+   *  @param private[immutable] val key the key for this map entry
+   *  @param private[immutable] var _value the value associated with the key
+   *  @param private[immutable] var _init the rest of the list map (tail), or `null` during construction
+   */
   private[immutable] final class Node[K, V](
     override private[immutable] val key: K,
     private[immutable] var _value: V,
@@ -271,6 +278,7 @@ object ListMap extends MapFactory[ListMap] {
    *
    *  @tparam K the map key type
    *  @tparam V the map value type
+   *  @return a new `ReusableBuilder` for creating `ListMap` instances
    */
   def newBuilder[K, V]: ReusableBuilder[(K, V), ListMap[K, V]] = new ListMapBuilder[K, V]
 
@@ -282,6 +290,9 @@ object ListMap extends MapFactory[ListMap] {
 
 /** Builder for ListMap.
  *  $multipleResults
+ *
+ *  @tparam K the type of the keys in the list map being built
+ *  @tparam V the type of the values in the list map being built
  */
 private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuilder[(K, V), ListMap[K, V]] {
   private var isAliased: Boolean = false

@@ -274,7 +274,10 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   override def foreachEntry[U](f: (K, V) => U): Unit = rootNode.foreachEntry(f)
 
-  /** Applies a function to each key, value, and **original** hash value in this Map. */
+  /** Applies a function to each key, value, and **original** hash value in this Map.
+   *
+   *  @param f the function to apply to each key, value, and original hash triple
+   */
   @inline private[collection] def foreachWithHash(f: (K, V, Int) => Unit): Unit = rootNode.foreachWithHash(f)
 
   override def equals(that: Any): Boolean =
@@ -336,6 +339,8 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
    *           // HashMap(2 -> 1) is returned, but it could also have returned HashMap(2 -> 3)
    *       ```
    *
+   *
+   *  @tparam V1 the value type of the resulting HashMap, a supertype of `V`
    */
   def merged[V1 >: V](that: HashMap[K, V1])(mergef: ((K, V), (K, V1)) => (K, V1)): HashMap[K, V1] =
     if (mergef == null) {
@@ -555,9 +560,10 @@ private[immutable] sealed abstract class MapNode[K, +V] extends Node[MapNode[K, 
 
   /** Returns a MapNode with the passed key-value assignment added
    *
+   *  @tparam V1 the value type of the returned node, a supertype of `V`
    *  @param key the key to add to the MapNode
    *  @param value the value to associate with `key`
-   *  @param originalHash the original hash of `key`
+   *  @param originalHash the original hash code of `key` (via `key.##`)
    *  @param hash the improved hash of `key`
    *  @param shift the shift of the node (distanceFromRoot * BitPartitionSize)
    *  @param replaceValue if true, then the value currently associated to `key` will be replaced with the passed value
@@ -565,6 +571,7 @@ private[immutable] sealed abstract class MapNode[K, +V] extends Node[MapNode[K, 
    *                     if false, then the key will be inserted if not already present, however if the key is present
    *                     then the passed value will not replace the current value. That is, if `false`, then this
    *                     method has `update if not exists` semantics.
+   *  @return a new `MapNode` containing the updated key-value mapping
    */
   def updated[V1 >: V](key: K, value: V1, originalHash: Int, hash: Int, shift: Int, replaceValue: Boolean): MapNode[K, V1]
 
@@ -606,17 +613,30 @@ private[immutable] sealed abstract class MapNode[K, +V] extends Node[MapNode[K, 
    *
    *  `this` should be a node from `left` hashmap in `left.merged(right)(mergef)`
    *
+   *  @tparam V1 the value type of the merged result, a supertype of `V`
    *  @param that node from the "right" HashMap. Must also be at the same "path" or "position" within the right tree,
    *             as `this` is, within the left tree
+   *  @param builder the builder used to accumulate the merged key-value pairs
+   *  @param shift the bit-level offset into the hash code, equal to `depth * BitPartitionSize`
+   *  @param mergef the function used to resolve collisions between keys present in both nodes
    */
   def mergeInto[V1 >: V](that: MapNode[K, V1], builder: HashMapBuilder[K, V1], shift: Int)(mergef: ((K, V), (K, V1)) => (K, V1)): Unit
 
   /** Returns the exact (equal by reference) key, and value, associated to a given key.
    *  If the key is not bound to a value, then an exception is thrown
+   *
+   *  @param key the key to look up
+   *  @param originalHash the original hash code of `key` (via `key.##`)
+   *  @param hash the improved hash of `key`
+   *  @param shift the bit-level offset into the hash code, equal to `depth * BitPartitionSize`
    */
   def getTuple(key: K, originalHash: Int, hash: Int, shift: Int): (K, V)
 
-  /** Adds all key-value pairs to a builder. */
+  /** Adds all key-value pairs to a builder.
+   *
+   *  @tparam V1 the value type of the target builder, a supertype of `V`
+   *  @param builder the builder to add the key-value pairs to
+   */
   def buildTo[V1 >: V](builder: HashMapBuilder[K, V1]): Unit
 }
 
@@ -784,13 +804,15 @@ private final class BitmapIndexedMapNode[K, +V](
    *  If instead this method may not mutate the child node in which the to-be-updated key-value pair belongs, then
    *  that child will be updated immutably, but the result will be mutably re-inserted as a child of this node.
    *
+   *  @tparam V1 the value type of the updated node, a supertype of `V`
    *  @param key the key to update
    *  @param value the value to set `key` to
    *  @param originalHash key.##
    *  @param keyHash the improved hash
+   *
    *  @param shallowlyMutableNodeMap bitmap of child nodes of this node, which can be shallowly mutated
    *                                during the call to this method
-   *
+   *  @param shift the bit-level offset into the hash code, equal to `depth * BitPartitionSize`
    *  @return Int which is the bitwise OR of shallowlyMutableNodeMap and any freshly created nodes, which will be
    *         available for mutations in subsequent calls.
    */
@@ -1023,6 +1045,7 @@ private final class BitmapIndexedMapNode[K, +V](
 
   /** Variant of `copyAndMigrateFromInlineToNode` which mutates `this` rather than returning a new node.
    *
+   *  @tparam V1 the value type of the child node, a supertype of `V`
    *  @param bitpos the bit position of the data to migrate to node
    *  @param keyHash the improved hash of the key currently at `bitpos`
    *  @param node the node to place at `bitpos` beneath `this`
@@ -2171,9 +2194,17 @@ private final class MapKeyValueTupleHashIterator[K, V](rootNode: MapNode[K, V])
   }
 }
 
-/** Used in HashMap[K, V]#removeAll(HashSet[K]). */
+/** Used in HashMap[K, V]#removeAll(HashSet[K]).
+ *
+ *  @tparam K the key type
+ *  @param rootSetNode the root node of the `HashSet` whose keys are to be removed
+ */
 private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) extends ChampBaseIterator[K, SetNode[K]](rootSetNode) {
-  /** Returns the result of immutably removing all keys in `rootSetNode` from `rootMapNode`. */
+  /** Returns the result of immutably removing all keys in `rootSetNode` from `rootMapNode`.
+   *
+   *  @tparam V the value type of the map node
+   *  @param rootMapNode the root node of the map from which keys will be removed
+   */
   def removeAll[V](rootMapNode: BitmapIndexedMapNode[K, V]): BitmapIndexedMapNode[K, V] = {
     var curr = rootMapNode
     while (curr.size > 0 && hasNext) {
@@ -2214,6 +2245,9 @@ object HashMap extends MapFactory[HashMap] {
 
   /** Creates a new Builder which can be reused after calling `result()` without an
    *  intermediate call to `clear()` in order to build multiple related results.
+   *
+   *  @tparam K the key type of the HashMap
+   *  @tparam V the value type of the HashMap
    */
   def newBuilder[K, V]: ReusableBuilder[(K, V), HashMap[K, V]] = new HashMapBuilder[K, V]
 }
@@ -2221,6 +2255,9 @@ object HashMap extends MapFactory[HashMap] {
 
 /** A `Builder` for a `HashMap`.
  *  $multipleResults
+ *
+ *  @tparam K the key type of the HashMap being built
+ *  @tparam V the value type of the HashMap being built
  */
 private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, V), HashMap[K, V]] {
   import MapNode._
@@ -2247,7 +2284,12 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
       rootNode.getOrElse(key, originalHash, improve(originalHash), 0, value)
     }
 
-  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems. */
+  /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems.
+   *
+   *  @param as the source array to insert into
+   *  @param ix the zero-based index at which to insert `elem`
+   *  @param elem the element to insert
+   */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
     if (ix < 0) throw new ArrayIndexOutOfBoundsException
     if (ix > as.length) throw new ArrayIndexOutOfBoundsException
@@ -2258,7 +2300,16 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     result
   }
 
-  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair. */
+  /** Inserts key-value into the bitmapIndexMapNode. Requires that this is a new key-value pair.
+   *
+   *  @tparam V1 the value type being inserted, a supertype of `V`
+   *  @param bm the bitmap-indexed map node to mutate
+   *  @param bitpos the bit position in the bitmap where the key-value pair should be inserted
+   *  @param key the key to insert
+   *  @param originalHash the original hash code of `key` (via `key.##`)
+   *  @param keyHash the improved hash of `key`
+   *  @param value the value to associate with `key`
+   */
   private def insertValue[V1 >: V](bm: BitmapIndexedMapNode[K, V],bitpos: Int, key: K, originalHash: Int, keyHash: Int, value: V1): Unit = {
     val dataIx = bm.dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -2281,7 +2332,15 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     bm.cachedJavaKeySetHashCode += keyHash
   }
 
-  /** Upserts a key/value pair into mapNode, mutably. */
+  /** Upserts a key/value pair into mapNode, mutably.
+   *
+   *  @param mapNode the map node to update in place
+   *  @param key the key to insert or update
+   *  @param value the value to associate with `key`
+   *  @param originalHash the original hash code of `key` (via `key.##`)
+   *  @param keyHash the improved hash of `key`
+   *  @param shift the bit-level offset into the hash code, equal to `depth * BitPartitionSize`
+   */
   private[immutable] def update(mapNode: MapNode[K, V], key: K, value: V, originalHash: Int, keyHash: Int, shift: Int): Unit = {
     mapNode match {
       case bm: BitmapIndexedMapNode[K, V] =>

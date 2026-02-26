@@ -30,6 +30,9 @@ trait Seq[+A] extends Iterable[A]
 /**
  *  @define coll immutable sequence
  *  @define Coll `immutable.Seq`
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor for the collection type, constrained to be pure
  */
 transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collection.SeqOps[A, CC, C] with caps.Pure
 
@@ -45,7 +48,10 @@ object Seq extends SeqFactory.Delegate[Seq](List) {
   }
 }
 
-/** Base trait for immutable indexed sequences that have efficient `apply` and `length`. */
+/** Base trait for immutable indexed sequences that have efficient `apply` and `length`.
+ *
+ *  @tparam A the element type of the indexed sequence
+ */
 trait IndexedSeq[+A] extends Seq[A]
                         with collection.IndexedSeq[A]
                         with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
@@ -94,7 +100,7 @@ trait IndexedSeq[+A] extends Seq[A]
   /** a hint to the runtime when scanning values
    *  [[apply]] is preferred for scan with a max index less than this value
    *  [[iterator]] is preferred for scans above this range
-   *  @return a hint about when to use [[apply]] or [[iterator]]
+   *  @return the maximum length below which [[apply]] is preferred over [[iterator]] for element access
    */
   protected def applyPreferredMaxLength: Int = IndexedSeqDefaults.defaultApplyPreferredMaxLength
 
@@ -118,7 +124,11 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
   }
 }
 
-/** Base trait for immutable indexed `Seq` operations. */
+/** Base trait for immutable indexed `Seq` operations.
+ *
+ *  @tparam A the element type of the indexed sequence
+ *  @tparam CC the type constructor for the collection type, constrained to be pure
+ */
 transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]
     with collection.IndexedSeqOps[A, CC, C] {
@@ -131,7 +141,10 @@ transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
 
 }
 
-/** Base trait for immutable linear sequences that have efficient `head` and `tail`. */
+/** Base trait for immutable linear sequences that have efficient `head` and `tail`.
+ *
+ *  @tparam A the element type of the linear sequence
+ */
 trait LinearSeq[+A]
   extends Seq[A]
     with collection.LinearSeq[A]
@@ -153,5 +166,8 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & 
   extends Any with SeqOps[A, CC, C]
     with collection.LinearSeqOps[A, CC, C]
 
-/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the sequence
+ */
 abstract class AbstractSeq[+A] extends scala.collection.AbstractSeq[A] with Seq[A]

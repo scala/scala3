@@ -123,7 +123,10 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
   }
   push(it)
 
-  /** What value do we assign to a tip? */
+  /** What value do we assign to a tip?
+   *
+   *  @param tip the leaf node to extract a value from
+   */
   def valueOf(tip: LongMap.Tip[V]): T
 
   def hasNext = index != 0
@@ -204,7 +207,11 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case _ => new LongMapEntryIterator(this)
   }
 
-  /** Loops over the key, value pairs of the map in unsigned order of the keys. */
+  /** Loops over the key, value pairs of the map in unsigned order of the keys.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f the function applied to each key-value pair in the map
+   */
   override final def foreach[U](f: ((Long, T)) => U): Unit = this match {
     case LongMap.Bin(_, _, left, right) => { left.foreach(f); right.foreach(f) }
     case LongMap.Tip(key, value) => f((key, value))
@@ -225,6 +232,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   /** Loop over the keys of the map. The same as keys.foreach(f), but may
    *  be more efficient.
    *
+   *  @tparam U the return type of the function `f`, used only for side effects
    *  @param f The loop body
    */
   final def foreachKey[U](f: Long => U): Unit = this match {
@@ -241,6 +249,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   /** Loop over the values of the map. The same as values.foreach(f), but may
    *  be more efficient.
    *
+   *  @tparam U the return type of the function `f`, used only for side effects
    *  @param f The loop body
    */
   final def foreachValue[U](f: T => U): Unit = this match {

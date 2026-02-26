@@ -69,6 +69,7 @@ trait SortedMap[K, +V]
    *
    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
    *
+   *  @tparam V1 the type of the values in the resulting map, a supertype of `V`
    *  @param d     the function mapping keys to values, used for non-present keys
    *  @return      a wrapper of the map with a default value
    */
@@ -80,6 +81,7 @@ trait SortedMap[K, +V]
    *
    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
    *
+   *  @tparam V1 the type of the values in the resulting map, a supertype of `V`
    *  @param d     default value used for non-present keys
    *  @return      a wrapper of the map with a default value
    */

@@ -126,7 +126,10 @@ private[immutable] abstract class IntMapIterator[V, T](it: IntMap[V]) extends Ab
   }
   push(it)
 
-  /** What value do we assign to a tip? */
+  /** What value do we assign to a tip?
+   *
+   *  @param tip the leaf node to extract a value from
+   */
   def valueOf(tip: IntMap.Tip[V]): T
 
   def hasNext = index != 0
@@ -210,7 +213,11 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case _ => new IntMapEntryIterator(this)
   }
 
-  /** Loops over the key, value pairs of the map in unsigned order of the keys. */
+  /** Loops over the key, value pairs of the map in unsigned order of the keys.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f the function applied to each key-value pair in the map
+   */
   override final def foreach[U](f: ((Int, T)) => U): Unit = this match {
     case IntMap.Bin(_, _, left, right) => { left.foreach(f); right.foreach(f) }
     case IntMap.Tip(key, value) => f((key, value))
@@ -231,6 +238,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   /** Loop over the keys of the map. The same as `keys.foreach(f)`, but may
    *  be more efficient.
    *
+   *  @tparam U the return type of the function `f`, used only for side effects
    *  @param f The loop body
    */
   final def foreachKey[U](f: Int => U): Unit = this match {
@@ -247,6 +255,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   /** Loop over the values of the map. The same as `values.foreach(f)`, but may
    *  be more efficient.
    *
+   *  @tparam U the return type of the function `f`, used only for side effects
    *  @param f The loop body
    */
   final def foreachValue[U](f: T => U): Unit = this match {
@@ -340,7 +349,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
    *   }
    *  ```
    *
-   *  @tparam S     The supertype of values in this `LongMap`.
+   *  @tparam S     the supertype of values in this `IntMap`.
    *  @param key    The key to update
    *  @param value  The value to use if there is no conflict
    *  @param f      The function used to resolve conflicts.
@@ -372,7 +381,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
    *  for each `(key, value)` mapping in this map, if `f(key, value) == None`
    *  the map contains no mapping for key, and if `f(key, value)`.
    *
-   *  @tparam S  The type of the values in the resulting `LongMap`.
+   *  @tparam S  the type of the values in the resulting `IntMap`.
    *  @param f   The transforming function.
    *  @return    The modified map.
    */
@@ -427,7 +436,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
    *  values produced from the original mappings by combining them with `f`.
    *
    *  @tparam S      The type of values in `that`.
-   *  @tparam R      The type of values in the resulting `LongMap`.
+   *  @tparam R      the type of values in the resulting `IntMap`.
    *  @param that    The map to intersect with.
    *  @param f       The combining function.
    *  @return        Intersection of `this` and `that`, with values for identical keys produced by function `f`.
