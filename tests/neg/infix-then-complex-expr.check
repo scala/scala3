@@ -1,0 +1,17 @@
+-- Error: tests/neg/infix-then-complex-expr.scala:3:2 ------------------------------------------------------------------
+3 |  && // error
+  |  ^^
+  |end of statement expected but identifier found - did you intend to apply an infix operator? If so, wrap the right operand in parentheses or in a block.
+-- [E002] Syntax Warning: tests/neg/infix-then-complex-expr.scala:4:2 --------------------------------------------------
+4 |  try java.lang.Boolean.valueOf("true")
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  A try without catch or finally is equivalent to putting
+  |  its body in a block; no exceptions are handled.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/infix-then-complex-expr.scala:2:2 -----------------------------------------
+2 |  true
+  |  ^^^^
+  |  A pure expression does nothing in statement position
+  |
+  | longer explanation available when compiling with `-explain`

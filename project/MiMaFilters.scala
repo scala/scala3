@@ -14,8 +14,9 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.jdk.Accumulator$AccumulatorFactoryShape$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
-      ),
-    )
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.safe"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$")
+    ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // In general we should never have backwards incompatible changes in the library.
@@ -73,7 +74,9 @@ object MiMaFilters {
   object TastyCore {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core
-      Build.mimaPreviousDottyVersion -> Seq.empty,
+      Build.mimaPreviousDottyVersion -> Seq(
+         ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.SAFEMODEattr"),
+      )
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

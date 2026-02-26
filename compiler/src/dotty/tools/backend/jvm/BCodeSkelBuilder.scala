@@ -796,7 +796,10 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
             .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
           treeMap = {
-            case tree: This if tree.symbol == enclosingClass => selfParamRef
+            case tree: This if tree.symbol == enclosingClass =>
+              // Since we want the positions to be accurate in the bytecode, we preserve
+              // the original span of the `this` node when we `statify` it.
+              selfParamRef.withSpan(tree.span)
             case tree => tree
           },
           oldOwners = origSym :: Nil,

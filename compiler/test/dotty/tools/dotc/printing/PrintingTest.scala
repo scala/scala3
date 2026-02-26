@@ -81,4 +81,7 @@ class PrintingTest {
 
   @Test
   def getters: Unit = testIn("tests/printing/getters", "getters")
+
+  @Test
+  def inlining: Unit = testIn("tests/printing/inlining", "inlining")
 }

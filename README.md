@@ -25,6 +25,7 @@ How to Contribute
 =================
 * [Getting Started as Contributor](https://docs.scala-lang.org/scala3/guides/contribution/contribution-intro.html)
 * [Issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+* [Policy regarding usage of LLM-based tools in contributions to the Scala project](LLM_POLICY.md)
 
 License
 =======

@@ -859,7 +859,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) ||
+      classSym.is(Case) || tpw.isNamedTupleType ||
       (tpw.isInstanceOf[TypeRef] && {
         val tref = tpw.asInstanceOf[TypeRef]
         tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)

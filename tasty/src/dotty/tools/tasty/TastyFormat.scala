@@ -287,6 +287,7 @@ Standard Section: "Attributes" Attribute*
                   WITHPUREFUNSattr
                   JAVAattr
                   OUTLINEattr
+                  SAFEMODEattr
                   SOURCEFILEattr Utf8Ref
 ```
 Attribute tags cannot be repeated in an attribute section. Attributes are ordered by the tag ordinal.
@@ -642,6 +643,7 @@ object TastyFormat {
   final val WITHPUREFUNSattr = 4
   final val JAVAattr = 5
   final val OUTLINEattr = 6
+  final val SAFEMODEattr = 7
 
   // Attribute Category 2 (tags 33-128): unassigned
 
@@ -884,6 +886,7 @@ object TastyFormat {
     case WITHPUREFUNSattr => "WITHPUREFUNSattr"
     case JAVAattr => "JAVAattr"
     case OUTLINEattr => "OUTLINEattr"
+    case SAFEMODEattr => "SAFEMODEattr"
     case SOURCEFILEattr => "SOURCEFILEattr"
   }
 

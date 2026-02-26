@@ -353,22 +353,29 @@ class InlineReducer(inliner: Inliner)(using Context):
       }
     }
 
-    /** The initial scrutinee binding: `val $scrutineeN = <scrutinee>` */
-    val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
-    val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
-
-    // If scrutinee has embedded references to `compiletime.erasedValue` or to
-    // other erased values, mark scrutineeSym as Erased. In addition, if scrutinee
-    // is not a pure expression, mark scrutineeSym as unusable. The reason is that
-    // scrutinee would then fail the tests in erasure that demand that the RHS of
-    // an erased val is a pure expression. At the end of the inline match reduction
-    // we throw out all unusable vals and check that the remaining code does not refer
-    // to unusable symbols.
-    // Note that compiletime.erasedValue is treated as erased but not pure, so scrutinees
-    // containing references to it becomes unusable.
-    if scrutinee.existsSubTree(_.symbol.isErased) then
-      scrutineeSym.setFlag(Erased)
-      if !tpd.isPureExpr(scrutinee) then unusable += scrutineeSym
+    // Reference to and binding of `val $scrutineeN = <scrutinee>`, or just
+    // `<scrutinee>` if it is pure and its type is already a bare local
+    // `TermRef` (no prefix). We restrict to `NoPrefix` to avoid duplicating
+    // pointer indirections from stable paths like `obj.field`.
+    val (scrutineeRef: TermRef, scrutineeBinding: Option[MemberDef]) = scrutinee.tpe match
+      case ref: TermRef if !isImplicit && ref.prefix == NoPrefix && tpd.isPureExpr(scrutinee) =>
+        (ref, None)
+      case _ =>
+        val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
+        // If scrutinee has embedded references to `compiletime.erasedValue` or to
+        // other erased values, mark scrutineeSym as Erased. In addition, if scrutinee
+        // is not a pure expression, mark scrutineeSym as unusable. The reason is that
+        // scrutinee would then fail the tests in erasure that demand that the RHS of
+        // an erased val is a pure expression. At the end of the inline match reduction
+        // we throw out all unusable vals and check that the remaining code does not refer
+        // to unusable symbols.
+        // Note that compiletime.erasedValue is treated as erased but not pure, so scrutinees
+        // containing references to it becomes unusable.
+        if scrutinee.existsSubTree(_.symbol.isErased) then
+          scrutineeSym.setFlag(Erased)
+          if !tpd.isPureExpr(scrutinee) then unusable += scrutineeSym
+        val binding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
+        (scrutineeSym.termRef, Some(binding))
 
     def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
       val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
@@ -379,9 +386,9 @@ class InlineReducer(inliner: Inliner)(using Context):
         val substituted = bindings.map { case (sym, bnd) => bnd.subst(from, to) }
         (substituted, from, to)
 
-      if (!isImplicit) caseBindingMap += ((NoSymbol, scrutineeBinding))
+      for binding <- scrutineeBinding do caseBindingMap += ((NoSymbol, binding))
       val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
-      if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(using gadtCtx)) {
+      if (reducePattern(caseBindingMap, scrutineeRef, cdef.pat)(using gadtCtx)) {
         val (caseBindings, from, to) = substBindings(caseBindingMap.toList)
         val (guardOK, canReduceGuard) =
           if cdef.guard.isEmpty then (true, true)

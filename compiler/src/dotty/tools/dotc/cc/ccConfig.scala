@@ -65,6 +65,6 @@ object ccConfig:
    *  Enabled under separation checking
    */
   def strictMutability(using Context): Boolean =
-    Feature.enabled(Feature.separationChecking)
+    Feature.enabled(Feature.separationChecking) || Feature.enabled(Feature.safe)
 
 end ccConfig

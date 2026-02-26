@@ -208,8 +208,12 @@ object Console {
 }
 ```
 Here, `in`, and `out` are of type `File`, so `Console.in`, and `Console.out` are global capabilities. A function `() => Console.out.println("hi")` would have type
-`() ->{Console.out} Unit`. It could not be passed into a context expecting a pure function.
-
+`() ->{Console.out} Unit`. It could not be passed into a context expecting a pure function. A global object that refers to `Console` needs to declare that dependency in a `uses` clause.
+```scala sc:nocompile
+object SimpleLogger uses Console {
+  def log(str: String) = Console.out.println(str)
+}
+```
 Allowing global capabilities like `Console.out` is quite useful since it means that we don't need to fundamentally change a system's architecture to make it capability-safe. In traditional capability systems all capabilities provided by the host system have to be passed as parameters into the main entry point and from there to all functions that need access. This usually requires a global refactoring of the code base and can lead to more complex code.
 
 ### Summary

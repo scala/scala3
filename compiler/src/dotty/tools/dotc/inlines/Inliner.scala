@@ -980,13 +980,17 @@ class Inliner(val call: tpd.Tree)(using Context):
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
         super.typedMatchFinish(tree, sel, wideSelType, cases, pt)
       else {
-        def selTyped(sel: Tree): Type = sel match {
+        def selTyped(sel: Tree): Tree = sel match {
           case Typed(sel2, _) => selTyped(sel2)
-          case Block(Nil, sel2) => selTyped(sel2)
-          case Inlined(_, Nil, sel2) => selTyped(sel2)
-          case _ => sel.tpe
+          case block @ Block(Nil, sel2) => tpd.cpy.Block(block)(Nil, selTyped(sel2))
+          case inlined @ Inlined(_, Nil, sel2) => tpd.cpy.Inlined(inlined)(inlined.call, inlined.bindings, selTyped(sel2))
+          case _ => sel
         }
-        val selType = if (sel.isEmpty) wideSelType else selTyped(sel)
+        val (retypedSel, selType) =
+          if (sel.isEmpty) (sel, wideSelType)
+          else
+            val retypedSel = selTyped(sel)
+            (retypedSel, retypedSel.tpe)
 
         /** Make an Inlined that has no bindings. */
         def flattenInlineBlock(tree: Tree): Tree = {
@@ -1051,7 +1055,7 @@ class Inliner(val call: tpd.Tree)(using Context):
                         | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
                 errorTree(tree, msg)
             }
-        reduceInlineMatchExpr(sel)
+        reduceInlineMatchExpr(retypedSel)
       }
 
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)

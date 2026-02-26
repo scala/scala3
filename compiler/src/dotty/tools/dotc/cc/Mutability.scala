@@ -257,7 +257,7 @@ object Mutability:
   def freeze(tp: Type, pos: SrcPos)(using Context): Type = tp.widen match
     case tpw @ CapturingType(parent, refs)
     if parent.derivesFromMutable && !tpw.isBoxed =>
-      if !Feature.enabled(Feature.separationChecking) then
+      if !Feature.sepChecksEnabled then
         report.warning(
           em"""freeze is safe only if separation checking is enabled.
               |You can enable separation checking with the language import

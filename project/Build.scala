@@ -2062,6 +2062,7 @@ object Build {
               s"$ccDocs=compile|-language:experimental.captureChecking",
               s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
               s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+              s"$ccDocs/safe=compile|-language:experimental.safe",
             )))
         }
 
@@ -2340,10 +2341,15 @@ object Build {
 
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
+        val b = List.newBuilder[File]
+
         if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
-          Seq(baseDirectory.value / "test-require-multi-modules")
-        else
-          Nil
+          b += baseDirectory.value / "test-require-multi-modules"
+
+        if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
+          b += baseDirectory.value / "test-require-async-await"
+
+        b.result()
       },
 
       (Compile / managedSources) ++= {
@@ -3003,6 +3009,7 @@ object ScaladocConfigs {
         "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
         "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
         "docs/_docs/reference/experimental/capture-checking/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
+        "docs/_docs/reference/experimental/capture-checking/safe=compile|-language:experimental.safe",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
