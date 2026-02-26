@@ -1355,7 +1355,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      See comment on Setup.fieldsWithExplicitTypes. So we have to make sure
      *      that fields with inferred types would not change that capset.
      */
-    def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
+    def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type = {
       val sym = tree.symbol
 
       def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
@@ -1413,7 +1413,43 @@ class CheckCaptures extends Recheck, SymTransformer:
             }
         case _ =>
       tp
-    end checkInferredResult
+    }
+
+    /** Check that capture sets of fields are compatibe with declared extensions of
+     *  the class. This means:
+     *   1. If `cls` extends a Classifier class, check that all any-classifiers in fields
+     *      conform to the classifier of the class.
+     *   2. If `cls` is externally visible and has fields with `any` types, it must
+     *      extend Capability.
+     */
+    def checkFieldCaptures(cls: ClassSymbol)(using Context): Unit = {
+      lazy val capFields = cls.capturesImpliedByFields(cls.appliedRef).fields
+      // (1)
+      if cls.derivesFrom(defn.Caps_Classifier) then
+        for fld <- capFields; cl <- fld.classifiersOfLocalCapsInType do
+          if !fld.name.is(WildcardParamName) && !cl.derivesFrom(cls.classifier) then
+            def fldClassifier =
+              if cl == defn.AnyClass then i"of unclassified type ${fld.info}"
+              else i"classified as ${cl.typeRef}"
+            report.error(
+              em"""$cls is classied as ${cls.classifier.typeRef} but has a field ${fld.name}
+                  |$fldClassifier
+                  |Field classifiers have to conform to the classifier of the containing class.""",
+              cls.srcPos)
+      // (2)
+      if !isExemptFromExplicitChecks(cls)
+          && !cls.derivesFrom(defn.Caps_Capability)
+          && capFields.nonEmpty
+      then
+        val fields =
+          if capFields.length == 1
+          then i"a field `${capFields.head.name}` with `any` in its type"
+          else i"fields `${capFields.map(_.name).mkString("`, `")}` with `any` in their types"
+        if cls.isPackageObject then
+          report.error(em"$fields need to be put in an object that extends Capability", capFields.head.srcPos)
+        else
+          report.error(em"$cls needs to extend Capability since it has $fields.", cls.srcPos)
+    }
 
     /** The normal rechecking if `sym` was already completed before */
     override def skipRecheck(sym: Symbol)(using Context): Boolean =
@@ -1459,6 +1495,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      type arguments. Charge deep capture sets of type arguments to non-reserved typevars
      *      to the environment. Other generic parents are represented as TypeApplys, where the
      *      same check is already done in the TypeApply.
+     *   6. Check that capture sets of fields are compatibe with declared extensions of
+     *      the class.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       val localSet = cls.useSet
@@ -1506,30 +1544,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ =>
 
         SafeRefs.checkSafeAnnots(cls)
-        lazy val capFields = cls.capturesImpliedByFields(cls.appliedRef).fields
-        if cls.derivesFrom(defn.Caps_Classifier) then
-          for fld <- capFields; cl <- fld.classifiersOfLocalCapsInType do
-            if !fld.name.is(WildcardParamName) && !cl.derivesFrom(cls.classifier) then
-              def fldClassifier =
-                if cl == defn.AnyClass then i"of unclassified type ${fld.info}"
-                else i"classified as ${cl.typeRef}"
-              report.error(
-                em"""$cls is classied as ${cls.classifier.typeRef} but has a field ${fld.name}
-                    |$fldClassifier
-                    |Field classifiers have to conform to the classifier of the containing class.""",
-                cls.srcPos)
-        if !isExemptFromExplicitChecks(cls)
-            && !cls.derivesFrom(defn.Caps_Capability)
-            && capFields.nonEmpty
-        then
-          val fields =
-            if capFields.length == 1
-            then i"a field `${capFields.head.name}` with `any` in its type"
-            else i"fields `${capFields.map(_.name).mkString("`, `")}` with `any` in their types"
-          if cls.isPackageObject then
-            report.error(em"$fields need to be put in an object that extends Capability", capFields.head.srcPos)
-          else
-            report.error(em"$cls needs to extend Capability since it has $fields.", cls.srcPos)
+        checkFieldCaptures(cls)
 
         super.recheckClassDef(tree, impl, cls)
       finally
