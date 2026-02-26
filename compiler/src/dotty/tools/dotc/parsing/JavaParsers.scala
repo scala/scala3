@@ -110,6 +110,9 @@ object JavaParsers {
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
 
+    def classOf(tpt: Tree): Tree =
+      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), List(tpt))
+
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def UnitTpt(): Tree = TypeTree(defn.UnitType)
 
@@ -373,18 +376,13 @@ object JavaParsers {
       * but instead we skip entire annotation silently.
       */
     def annotation(): Option[Tree] = {
-      def classOrId(): Tree =
-        val id = qualId()
+      def classOrId(tree: RefTree | TypedSplice): Tree =
         if in.token == DOT && in.lookaheadToken == CLASS then
-          accept(DOT)
-          accept(CLASS)
-          TypeApply(
-            Select(
-              scalaDot(nme.Predef),
-              nme.classOf),
-            convertToTypeId(id) :: Nil
-          )
-        else id
+          accept(DOT) ; accept(CLASS)
+          tree match
+            case id: RefTree => classOf(convertToTypeId(tree))
+            case tree: TypedSplice => classOf(tree)
+        else tree
 
       def array(): Option[Tree] =
         accept(LBRACE)
@@ -406,8 +404,24 @@ object JavaParsers {
             case AT =>
               in.nextToken()
               annotation()
-            case IDENTIFIER => Some(classOrId())
             case LBRACE => array()
+            case IDENTIFIER => Some(classOrId(qualId()))
+            case BYTE    =>
+              accept(BYTE); Some(classOrId(TypeTree(ByteType)))
+            case SHORT   =>
+              accept(SHORT); Some(classOrId(TypeTree(ShortType)))
+            case CHAR    =>
+              accept(CHAR); Some(classOrId(TypeTree(CharType)))
+            case INT     =>
+              accept(INT); Some(classOrId(TypeTree(IntType)))
+            case LONG    =>
+              accept(LONG); Some(classOrId(TypeTree(LongType)))
+            case FLOAT   =>
+              accept(FLOAT); Some(classOrId(TypeTree(FloatType)))
+            case DOUBLE  =>
+              accept(DOUBLE); Some(classOrId(TypeTree(DoubleType)))
+            case BOOLEAN =>
+              accept(BOOLEAN); Some(classOrId(TypeTree(BooleanType)))
             case _ => None
           }
         }
