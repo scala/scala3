@@ -8,7 +8,7 @@ package <empty> {
     val a: Int =
       1:Int @RuntimeChecked match
         {
-          case a @ _ => a:Int
+          case a @ _ => a:(1 : Int)
         }
     private[<empty>] val $1$: (Int, Int) = Tuple2.apply[Int, Int](2, 3)
     val b: Int = $1$._1
