@@ -37,6 +37,8 @@ trait StreamExtensions {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this collection. If the
      *  collection contains primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the element type `A`
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S =
       s.fromStepper(cc.stepper, par = false)
@@ -51,6 +53,8 @@ trait StreamExtensions {
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for this collection. If the
      *  collection contains primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the element type `A`
      */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[A, S, St],
@@ -66,6 +70,8 @@ trait StreamExtensions {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for the keys of this map. If
      *  the keys are primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the key type `K`
      */
     def asJavaSeqKeyStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[K, S, St], st: StepperShape[K, St]): S =
       s.fromStepper(cc.keyStepper, par = false)
@@ -73,6 +79,8 @@ trait StreamExtensions {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for the values of this map. If
      *  the values are primitives, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the value type `V`
      */
     def asJavaSeqValueStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[V, S, St], st: StepperShape[V, St]): S =
       s.fromStepper(cc.valueStepper, par = false)
@@ -80,6 +88,8 @@ trait StreamExtensions {
     // The asJavaSeqStream extension method for IterableOnce doesn't apply because its `CC` takes a single type parameter, whereas the one here takes two
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for the `(key, value)` pairs of
      *  this map.
+     *
+     *  @tparam S the type of Java Stream to create, determined by the pair type `(K, V)`
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[(K, V), S, St], st: StepperShape[(K, V), St]): S =
       s.fromStepper(cc.stepper, par = false)
@@ -94,6 +104,8 @@ trait StreamExtensions {
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for the keys of this map. If
      *  the keys are primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the key type `K`
      */
     def asJavaParKeyStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[K, S, St],
@@ -105,6 +117,8 @@ trait StreamExtensions {
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for the values of this map. If
      *  the values are primitives, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the value type `V`
      */
     def asJavaParValueStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[V, S, St],
@@ -116,6 +130,8 @@ trait StreamExtensions {
     // The asJavaParStream extension method for IterableOnce doesn't apply because its `CC` takes a single type parameter, whereas the one here takes two
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for the `(key, value)` pairs of
      *  this map.
+     *
+     *  @tparam S the type of Java Stream to create, determined by the pair type `(K, V)`
      */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[(K, V), S, St],
@@ -131,6 +147,8 @@ trait StreamExtensions {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this stepper. If the
      *  stepper yields primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the element type `A`
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S = {
       val sStepper = stepper match {
@@ -145,6 +163,8 @@ trait StreamExtensions {
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for this stepper. If the
      *  stepper yields primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
+     *
+     *  @tparam S the type of Java Stream to create, determined by the element type `A`
      */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S = {
       val sStepper = (stepper: @unchecked) match {
@@ -260,6 +280,11 @@ trait StreamExtensions {
      *
      *  Sequential streams are directly converted to the target collection. If the target collection
      *  is lazy, the conversion is lazy as well.
+     *
+     *  @tparam C1 the type of the target Scala collection
+     *  @param factory the factory used to build the target collection
+     *  @param info implicit evidence connecting the element type to a specialized `Accumulator`, or a generic fallback (resolved automatically)
+     *  @return the elements of this stream collected into a Scala collection of type `C1`
      */
     def toScala[C1](factory: collection.Factory[A, C1])(implicit info: AccumulatorFactoryInfo[A, C1]): C1 = {
 
@@ -274,6 +299,9 @@ trait StreamExtensions {
 
     /** Converts a generic Java Stream wrapping a primitive type to a corresponding primitive
      *  Stream.
+     *
+     *  @tparam S the resulting primitive stream type (e.g., `IntStream`, `LongStream`, `DoubleStream`)
+     *  @param unboxer implicit conversion from boxed `Stream[A]` to primitive stream `S`
      */
     def asJavaPrimitiveStream[S](implicit unboxer: StreamUnboxer[A, S]): S = unboxer(stream)
   }
@@ -294,6 +322,11 @@ trait StreamExtensions {
      *
      *  Sequential streams are directly converted to the target collection. If the target collection
      *  is lazy, the conversion is lazy as well.
+     *
+     *  @tparam C1 the type of the target Scala collection
+     *  @param factory the factory used to build the target collection
+     *  @param info implicit evidence connecting `Int` to a specialized `IntAccumulator`, or a generic fallback
+     *  @return the elements of this stream collected into a Scala collection of type `C1`
      */
     def toScala[C1](factory: collection.Factory[Int, C1])(implicit info: AccumulatorFactoryInfo[Int, C1]): C1 = {
       def intAcc = stream.collect(IntAccumulator.supplier, IntAccumulator.adder, IntAccumulator.merger)
@@ -320,6 +353,11 @@ trait StreamExtensions {
      *
      *  Sequential streams are directly converted to the target collection. If the target collection
      *  is lazy, the conversion is lazy as well.
+     *
+     *  @tparam C1 the type of the target Scala collection
+     *  @param factory the factory used to build the target collection
+     *  @param info implicit evidence connecting `Long` to a specialized `LongAccumulator`, or a generic fallback
+     *  @return the elements of this stream collected into a Scala collection of type `C1`
      */
     def toScala[C1](factory: collection.Factory[Long, C1])(implicit info: AccumulatorFactoryInfo[Long, C1]): C1 = {
       def longAcc = stream.collect(LongAccumulator.supplier, LongAccumulator.adder, LongAccumulator.merger)
@@ -346,6 +384,11 @@ trait StreamExtensions {
      *
      *  Sequential streams are directly converted to the target collection. If the target collection
      *  is lazy, the conversion is lazy as well.
+     *
+     *  @tparam C1 the type of the target Scala collection
+     *  @param factory the factory used to build the target collection
+     *  @param info implicit evidence connecting `Double` to a specialized `DoubleAccumulator`, or a generic fallback
+     *  @return the elements of this stream collected into a Scala collection of type `C1`
      */
     def toScala[C1](factory: collection.Factory[Double, C1])(implicit info: AccumulatorFactoryInfo[Double, C1]): C1 = {
       def doubleAcc = stream.collect(DoubleAccumulator.supplier, DoubleAccumulator.adder, DoubleAccumulator.merger)
@@ -361,6 +404,10 @@ object StreamExtensions {
   /** An implicit StreamShape instance connects element types with the corresponding specialized
    *  Stream and Stepper types. This is used in `asJavaStream` extension methods to create
    *  generic or primitive streams according to the element type.
+   *
+   *  @tparam T the element type of the collection
+   *  @tparam S the type of Java Stream (e.g., `Stream[T]`, `IntStream`, `LongStream`, `DoubleStream`)
+   *  @tparam St the type of `Stepper` used to traverse elements
    */
   sealed trait StreamShape[T, S <: BaseStream[?, ?], St <: Stepper[?]] {
     final def fromStepper(st: St, par: Boolean): S = mkStream(st, par)
@@ -413,6 +460,9 @@ object StreamExtensions {
 
   /** Connects a stream element type `A` to the corresponding, potentially specialized, Stream type.
    *  Used in the `stream.asJavaPrimitiveStream` extension method.
+   *
+   *  @tparam A the boxed element type of the stream
+   *  @tparam S the target primitive stream type (e.g., `IntStream`, `LongStream`, `DoubleStream`)
    */
   sealed trait StreamUnboxer[A, S] {
     def apply(s: Stream[A]): S
@@ -442,6 +492,9 @@ object StreamExtensions {
    *
    *  When converting to a collection other than `Accumulator`, the generic
    *  `noAccumulatorFactoryInfo` is passed.
+   *
+   *  @tparam A the element type of the stream
+   *  @tparam C the target collection type, potentially a specialized `Accumulator`
    */
   trait AccumulatorFactoryInfo[A, C] {
     val companion: AnyRef | Null

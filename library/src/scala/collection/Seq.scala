@@ -84,6 +84,8 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Gets the element at the specified index. This operation is provided for convenience in `Seq`. It should
    *  not be assumed to be efficient unless you have an `IndexedSeq`.
+   *
+   *  @param i the index of the element to retrieve, zero-based
    */
   @throws[IndexOutOfBoundsException]
   def apply(i: Int): A
@@ -105,7 +107,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @tparam B      the element type of the returned $coll.
    *  @param  elem   the prepended element
    *
-   *  @return a new $coll consisting of `value` followed
+   *  @return a new $coll consisting of `elem` followed
    *            by all elements of this $coll.
    */
   def prepended[B >: A](elem: B): CC[B]^{this} = iterableFactory.from(new View.Prepended(elem, this))
@@ -114,6 +116,8 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *
    *  Note that :-ending operators are right associative (see example).
    *  A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
+   *
+   *  @return a new $coll consisting of `elem` followed by all elements of this $coll
    */
   @`inline` final def +: [B >: A](elem: B): CC[B]^{this} = prepended(elem)
 
@@ -130,7 +134,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @tparam B      the element type of the returned $coll.
    *  @param  elem   the appended element
    *  @return a new $coll consisting of
-   *         all elements of this $coll followed by `value`.
+   *         all elements of this $coll followed by `elem`.
    */
   def appended[B >: A](elem: B): CC[B]^{this} = iterableFactory.from(new View.Appended(this, elem))
 
@@ -231,6 +235,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  **Note**: If the both the receiver object `this` and the argument
    *  `that` are infinite sequences this method may not terminate.
    *
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param  that    the sequence to test
    *  @param  offset  the index where the sequence is searched.
    *  @return `true` if the sequence `that` is contained in this $coll at
@@ -248,6 +253,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Tests whether this $coll ends with the given sequence.
    *  $willNotTerminateInf
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param  that    the sequence to test
    *  @return `true` if this $coll has `that` as a suffix, `false` otherwise.
    */
@@ -384,6 +390,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  $willNotTerminateInf
    *
    *  @param   p     the predicate used to test elements.
+   *  @param end the maximum index to consider (inclusive)
    *  @return  the index `<= end` of the last element of this $coll that satisfies the predicate `p`,
    *           or `-1`, if none exists.
    */
@@ -412,6 +419,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Finds first index after or at a start index where this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param  that    the sequence to test
    *  @param  from    the start index
    *  @return  the first index `>= from` such that the elements of this $coll starting at this index
@@ -457,6 +465,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *
    *  $willNotTerminateInf
    *
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param  that    the sequence to test
    *  @param  end     the end index
    *  @return  the last index `<= end` such that the elements of this $coll starting at this index
@@ -503,6 +512,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Tests whether this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param  that    the sequence to test
    *  @return  `true` if this $coll contains a slice with the same elements
    *           as `that`, otherwise `false`.
@@ -512,6 +522,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   /** Tests whether this $coll contains a given value as an element.
    *  $mayNotTerminateInf
    *
+   *  @tparam A1 the type of the element to test (a supertype of `A`)
    *  @param elem  the element to test.
    *  @return     `true` if this $coll has an element that is equal (as
    *              determined by `==`) to `elem`, `false` otherwise.
@@ -562,6 +573,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *
    *  $willForceEvaluation
    *
+   *  @param n the number of elements in each combination
    *  @return   An Iterator which traverses the n-element combinations of this $coll.
    *  @example ```scala sc:compile
    *    Seq('a', 'b', 'b', 'b', 'c').combinations(2).foreach(println)
@@ -705,6 +717,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *
    *  $willForceEvaluation
    *
+   *  @tparam B the element type used for ordering (a supertype of `A`)
    *  @param  ord the ordering to be used to compare elements.
    *  @return     a $coll consisting of the elements of this $coll
    *              sorted according to the ordering `ord`.
@@ -831,6 +844,8 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  this.lengthIs >= len    // this.lengthCompare(len) >= 0
    *  this.lengthIs > len     // this.lengthCompare(len) > 0
    *  ```
+   *
+   *  @return an object providing `<`, `<=`, `==`, `!=`, `>=`, and `>` operations for comparing the length
    */
   @inline final def lengthIs: IterableOps.SizeCompareOps^{this} = new IterableOps.SizeCompareOps(caps.unsafe.unsafeAssumePure(this) /* see comment in SizeCompareOps*/)
 
@@ -876,6 +891,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Computes the multiset difference between this $coll and another sequence.
    *
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param that   the sequence of elements to remove
    *  @return       a new $coll which contains all elements of this $coll
    *                except some of the occurrences of elements that also appear in `that`.
@@ -901,6 +917,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Computes the multiset intersection between this $coll and another sequence.
    *
+   *  @tparam B the element type used for comparison (a supertype of `A`)
    *  @param that   the sequence of elements to intersect with.
    *  @return       a new $coll which contains all elements of this $coll
    *                which also appear in `that`.
@@ -976,9 +993,10 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @see [[scala.math.Ordering]]
    *  @see [[scala.collection.SeqOps]], method `sorted`
    *
+   *  @tparam B the element type used for searching and ordering (a supertype of `A`)
    *  @param elem the element to find.
-   *  @param ord  the ordering to be used to compare elements.
    *
+   *  @param ord  the ordering to be used to compare elements.
    *  @return a `Found` value containing the index corresponding to the element in the
    *         sequence, or the `InsertionPoint` where the element would be inserted if
    *         the element is not in the sequence.
@@ -997,11 +1015,12 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @see [[scala.math.Ordering]]
    *  @see [[scala.collection.SeqOps]], method `sorted`
    *
+   *  @tparam B the element type used for searching and ordering (a supertype of `A`)
    *  @param elem the element to find.
    *  @param from the index where the search starts.
    *  @param to   the index following where the search ends.
-   *  @param ord  the ordering to be used to compare elements.
    *
+   *  @param ord  the ordering to be used to compare elements.
    *  @return a `Found` value containing the index corresponding to the element in the
    *         sequence, or the `InsertionPoint` where the element would be inserted if
    *         the element is not in the sequence.
@@ -1033,6 +1052,7 @@ object SeqOps {
  /** A KMP implementation, based on the undoubtedly reliable wikipedia entry.
   *  Note: I made this private to keep it from entering the API.  That can be reviewed.
   *
+  *  @tparam B the element type of the sequences being searched
   *  @param  S       Sequence that may contain target
   *  @param  m0      First index of S to consider
   *  @param  m1      Last index of S to consider (exclusive)
@@ -1120,9 +1140,11 @@ object SeqOps {
 
   /** Makes sure a target sequence has fast, correctly-ordered indexing for KMP.
    *
+   *  @tparam B the element type of the target sequence
    *  @param  W    The target sequence
    *  @param  n0   The first element in the target sequence that we should use
    *  @param  n1   The far end of the target sequence that we should use (exclusive)
+   *  @param forward `true` to index in forward order, `false` to index in reverse order
    *  @return Target packed in an IndexedSeq (taken from iterator unless W already is an IndexedSeq)
    */
   private def kmpOptimizeWord[B](W: scala.collection.Seq[B], n0: Int, n1: Int, forward: Boolean): IndexedSeqView[B] = W match {
@@ -1158,6 +1180,7 @@ object SeqOps {
 
  /** Makes a jump table for KMP search.
   *
+  *  @tparam B the element type of the target sequence
   *  @param  Wopt The target sequence
   *  @param  wlen Just in case we're only IndexedSeq and not IndexedSeqOptimized
   *  @return KMP jump table for target sequence
@@ -1186,5 +1209,8 @@ object SeqOps {
   }
 }
 
-/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the collection
+ */
 abstract class AbstractSeq[+A] extends AbstractIterable[A] with Seq[A]
