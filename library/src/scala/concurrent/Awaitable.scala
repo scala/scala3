@@ -24,6 +24,8 @@ import scala.concurrent.duration.Duration
  *  The [[Await]] object provides methods that allow accessing the result of an `Awaitable`
  *  by blocking the current thread until the `Awaitable` has been completed or a timeout has
  *  occurred.
+ *
+ *  @tparam T the type of the result value
  */
 trait Awaitable[+T] {
 

@@ -53,6 +53,10 @@ trait BlockContext {
    *  In implementations of this method it is RECOMMENDED to first check if `permission` is `null` and
    *  if it is, throw an `IllegalArgumentException`.
    *
+   *  @tparam T the result type of the blocking thunk
+   *  @param thunk the code to execute that may block the current thread
+   *  @param permission the implicit `CanAwait` permit granting permission to block
+   *  @return the result of executing `thunk`
    *  @throws IllegalArgumentException if the `permission` is `null`
    */
   def blockOn[T](thunk: => T)(implicit permission: CanAwait): T
@@ -83,7 +87,12 @@ object BlockContext {
    */
   final def current: BlockContext = prefer(contextLocal.get)
 
-  /** Installs a current `BlockContext` around executing `body`. */
+  /** Installs a current `BlockContext` around executing `body`.
+   *
+   *  @tparam T the result type of `body`
+   *  @param blockContext the `BlockContext` to install for the duration of `body`
+   *  @param body the code to execute with the given `blockContext` installed
+   */
   final def withBlockContext[T](blockContext: BlockContext)(body: => T): T = {
     val old = contextLocal.get // can be null
     if (old eq blockContext) body
@@ -94,6 +103,11 @@ object BlockContext {
   }
 
   /** Installs the BlockContext `blockContext` around the invocation to `f` and passes in the previously installed BlockContext to `f`.
+   *
+   *  @tparam I unused type parameter (kept for binary compatibility)
+   *  @tparam T the result type of `f`
+   *  @param blockContext the `BlockContext` to install for the duration of `f`
+   *  @param f the function to execute, receiving the previously installed `BlockContext` as its argument
    *  @return the value produced by applying `f`
    */
   final def usingBlockContext[I, T](blockContext: BlockContext)(f: BlockContext => T): T = {

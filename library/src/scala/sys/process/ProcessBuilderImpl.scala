@@ -74,7 +74,10 @@ private[process] trait ProcessBuilderImpl {
     }
   }
 
-  /** Represents a simple command without any redirection or combination. */
+  /** Represents a simple command without any redirection or combination.
+   *
+   *  @param p the underlying `java.lang.ProcessBuilder` used to start the external process
+   */
   private[process] class Simple(p: JProcessBuilder) extends AbstractBuilder {
     override def run(io: ProcessIO): Process = {
       import java.lang.ProcessBuilder.Redirect.{INHERIT => Inherit}
@@ -154,6 +157,8 @@ private[process] trait ProcessBuilderImpl {
      *
      *  Note: not in the public API because it's not fully baked, but I need the capability
      *  for fsc.
+     *
+     *  @return a new `ProcessBuilder` that runs this command with all I/O threads daemonized
      */
     def daemonized(): ProcessBuilder = new DaemonBuilder(this)
 

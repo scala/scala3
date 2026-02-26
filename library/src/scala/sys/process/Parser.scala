@@ -23,7 +23,9 @@ private[scala] object Parser {
 
   /** Splits the line into tokens separated by whitespace or quotes.
    *
-   *  @return either an error message or reverse list of tokens
+   *  @param line the command line string to parse
+   *  @param errorFn the error handler invoked with a message when parsing fails (e.g., unmatched quote)
+   *  @return a list of parsed tokens in order of appearance, or `Nil` after invoking `errorFn` on failure
    */
   def tokenize(line: String, errorFn: String => Unit): List[String] = {
     import Character.isWhitespace
