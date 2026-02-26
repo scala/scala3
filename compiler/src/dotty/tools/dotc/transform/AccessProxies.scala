@@ -44,7 +44,7 @@ abstract class AccessProxies {
         val (targs, argss) = splitArgs(prefss)
         val (accessRef, forwardedTpts, forwardedArgss) =
           if passReceiverAsArg(accessor.name) then
-            if accessed.owner.is(Package, butNot = Module) then
+            if accessed.owner.is(Package) then
               (ref(accessed), targs.takeRight(numTypeParams), argss.tail)
             else
               (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
