@@ -1,4 +1,4 @@
-package dotty.tools.dotc.semanticdb.internal
+package dotty.tools.dotc.semanticdb
 
 import scala.language.unsafeNulls
 
@@ -6,16 +6,19 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-object MD5 {
+private[semanticdb] object MD5 {
   def compute(string: String): String = {
     compute(ByteBuffer.wrap(string.getBytes(StandardCharsets.UTF_8)))
   }
+
   def compute(buffer: ByteBuffer): String = {
     val md = MessageDigest.getInstance("MD5")
     md.update(buffer)
     bytesToHex(md.digest())
   }
+
   private val hexArray = "0123456789ABCDEF".toCharArray
+
   def bytesToHex(bytes: Array[Byte]): String = {
     val hexChars = new Array[Char](bytes.length * 2)
     var j = 0

@@ -35,7 +35,7 @@ object Tools:
     case Some(document) =>
       val text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8)
       // Assert the SemanticDB payload is in-sync with the contents of the Scala file on disk.
-      val md5FingerprintOnDisk = internal.MD5.compute(text)
+      val md5FingerprintOnDisk = MD5.compute(text)
       if document.md5 != md5FingerprintOnDisk then
         throw new IllegalArgumentException(s"stale semanticdb: $scalaRelativePath")
       else

@@ -29,4 +29,21 @@ object Dependencies {
   )
 
   val compilerInterface = "org.scala-sbt" % "compiler-interface" % "1.10.7"
+
+  private val semanticdbScalaPBVersion = "0.11.20"
+  val semanticdbProtobufVersion = "4.33.5"
+
+  // ScalaPB scala-collection-compat_3 transitively, and
+  // cousier_2.13 pulls scala-collection-compat_2.13.
+  // In the meantime, pin _2.13 and exclude _3 until the coursier for3Use2_13 deps are removed.
+  val semanticdbCollectionCompat213 =
+    "org.scala-lang.modules" % "scala-collection-compat_2.13" % "2.13.0"
+
+  private val semanticdbScalaPBRuntimeBase =
+    ("com.thesamet.scalapb" %% "scalapb-runtime" % semanticdbScalaPBVersion)
+      .exclude("org.scala-lang.modules", "scala-collection-compat_3")
+      .exclude("com.thesamet.scalapb", "lenses_3")
+
+  val semanticdbScalaPBRuntime = semanticdbScalaPBRuntimeBase
+  val semanticdbScalaPBRuntimeProtobuf = semanticdbScalaPBRuntimeBase % "protobuf"
 }

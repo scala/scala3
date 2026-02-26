@@ -1,0 +1,457 @@
+syntax = "proto3";
+
+package dotty.tools.dotc.semanticdb;
+
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  flat_package: true
+  lenses: false
+  scala3_sources: true
+  // Required so generated ScalaPB code compiles under explicit nulls.
+  import: "scala.language.unsafeNulls"
+  preserve_unknown_fields: false
+};
+
+enum Schema {
+  LEGACY = 0;
+  SEMANTICDB3 = 3;
+  SEMANTICDB4 = 4;
+}
+
+message TextDocuments {
+  repeated TextDocument documents = 1;
+}
+
+message TextDocument {
+  reserved 4, 8, 9;
+  Schema schema = 1;
+  string uri = 2;
+  string text = 3;
+  string md5 = 11;
+  Language language = 10;
+  repeated SymbolInformation symbols = 5;
+  repeated SymbolOccurrence occurrences = 6;
+  repeated Diagnostic diagnostics = 7;
+  repeated Synthetic synthetics = 12;
+}
+
+enum Language {
+  UNKNOWN_LANGUAGE = 0;
+  SCALA = 1;
+  JAVA = 2;
+  PROTOBUF = 3;
+}
+
+message Range {
+  int32 start_line = 1;
+  int32 start_character = 2;
+  int32 end_line = 3;
+  int32 end_character = 4;
+}
+
+message Location {
+  string uri = 1;
+  Range range = 2;
+}
+
+message Scope {
+  repeated string symlinks = 1;
+  repeated SymbolInformation hardlinks = 2;
+}
+
+message Type {
+  reserved 1, 3, 4, 5, 6, 11, 12, 15, 16;
+  oneof sealed_value {
+    TypeRef type_ref = 2;
+    SingleType single_type = 20;
+    ThisType this_type = 21;
+    SuperType super_type = 22;
+    ConstantType constant_type = 23;
+    IntersectionType intersection_type = 17;
+    UnionType union_type = 18;
+    WithType with_type = 19;
+    StructuralType structural_type = 7;
+    AnnotatedType annotated_type = 8;
+    ExistentialType existential_type = 9;
+    UniversalType universal_type = 10;
+    ByNameType by_name_type = 13;
+    RepeatedType repeated_type = 14;
+    MatchType match_type = 25;
+    LambdaType lambda_type = 26;
+  }
+}
+
+message LambdaType {
+  Scope parameters = 1;
+  Type return_type = 2;
+}
+
+message TypeRef {
+  Type prefix = 1;
+  string symbol = 2;
+  repeated Type type_arguments = 3;
+}
+
+message SingleType {
+  Type prefix = 1;
+  string symbol = 2;
+}
+
+message ThisType {
+  string symbol = 1;
+}
+
+message SuperType {
+  Type prefix = 1;
+  string symbol = 2;
+}
+
+message ConstantType {
+  Constant constant = 1;
+}
+
+message IntersectionType {
+  repeated Type types = 1;
+}
+
+message UnionType {
+  repeated Type types = 1;
+}
+
+message WithType {
+  repeated Type types = 1;
+}
+
+message StructuralType {
+  reserved 1, 2, 3;
+  Type tpe = 4;
+  Scope declarations = 5;
+}
+
+message AnnotatedType {
+  reserved 2;
+  repeated Annotation annotations = 3;
+  Type tpe = 1;
+}
+
+message ExistentialType {
+  reserved 2;
+  Type tpe = 1;
+  Scope declarations = 3;
+}
+
+message UniversalType {
+  reserved 1;
+  Scope type_parameters = 3;
+  Type tpe = 2;
+}
+
+message ByNameType {
+  Type tpe = 1;
+}
+
+message RepeatedType {
+  Type tpe = 1;
+}
+
+message MatchType {
+  message CaseType {
+    Type key = 1;
+    Type body = 2;
+  }
+  Type scrutinee = 1;
+  repeated CaseType cases = 2;
+}
+
+message Constant {
+  oneof sealed_value {
+    UnitConstant unit_constant = 1;
+    BooleanConstant boolean_constant = 2;
+    ByteConstant byte_constant = 3;
+    ShortConstant short_constant = 4;
+    CharConstant char_constant = 5;
+    IntConstant int_constant = 6;
+    LongConstant long_constant = 7;
+    FloatConstant float_constant = 8;
+    DoubleConstant double_constant = 9;
+    StringConstant string_constant = 10;
+    NullConstant null_constant = 11;
+  }
+}
+
+message UnitConstant {
+}
+
+message BooleanConstant {
+  bool value = 1;
+}
+
+message ByteConstant {
+  int32 value = 1;
+}
+
+message ShortConstant {
+  int32 value = 1;
+}
+
+message CharConstant {
+  int32 value = 1;
+}
+
+message IntConstant {
+  int32 value = 1;
+}
+
+message LongConstant {
+  int64 value = 1;
+}
+
+message FloatConstant {
+  float value = 1;
+}
+
+message DoubleConstant {
+  double value = 1;
+}
+
+message StringConstant {
+  string value = 1;
+}
+
+message NullConstant {
+}
+
+message Signature {
+  oneof sealed_value {
+    ClassSignature class_signature = 1;
+    MethodSignature method_signature = 2;
+    TypeSignature type_signature = 3;
+    ValueSignature value_signature = 4;
+  }
+}
+
+message ClassSignature {
+  Scope type_parameters = 1;
+  repeated Type parents = 2;
+  Type self = 3;
+  Scope declarations = 4;
+}
+
+message MethodSignature {
+  Scope type_parameters = 1;
+  repeated Scope parameter_lists = 2;
+  Type return_type = 3;
+}
+
+message TypeSignature {
+  Scope type_parameters = 1;
+  Type lower_bound = 2;
+  Type upper_bound = 3;
+}
+
+message ValueSignature {
+  Type tpe = 1;
+}
+
+message SymbolInformation {
+  enum Kind {
+    reserved 1, 2, 4, 5, 15, 16;
+    UNKNOWN_KIND = 0;
+    LOCAL = 19;
+    FIELD = 20;
+    METHOD = 3;
+    CONSTRUCTOR = 21;
+    MACRO = 6;
+    TYPE = 7;
+    PARAMETER = 8;
+    SELF_PARAMETER = 17;
+    TYPE_PARAMETER = 9;
+    OBJECT = 10;
+    PACKAGE = 11;
+    PACKAGE_OBJECT = 12;
+    CLASS = 13;
+    TRAIT = 14;
+    INTERFACE = 18;
+
+    // Protobuf-specific kinds
+    MESSAGE = 22;
+    // IMPORTANT! Java enums are classes with *enum* property, see
+    // https://scalameta.org/docs/semanticdb/specification.html#symbolinformation-2
+    PROTOBUF_ENUM = 23;
+    PROTOBUF_ENUM_VALUE = 24;
+    SERVICE = 25;
+    RPC = 26;
+    ONEOF = 27;
+    FILE = 28;
+  }
+  enum Property {
+    UNKNOWN_PROPERTY = 0;
+    reserved 0x1;
+    reserved 0x2;
+    ABSTRACT = 0x4;
+    FINAL = 0x8;
+    SEALED = 0x10;
+    IMPLICIT = 0x20;
+    LAZY = 0x40;
+    CASE = 0x80;
+    COVARIANT = 0x100;
+    CONTRAVARIANT = 0x200;
+    VAL = 0x400;
+    VAR = 0x800;
+    STATIC = 0x1000;
+    PRIMARY = 0x2000;
+    ENUM = 0x4000;
+    DEFAULT = 0x8000;
+    GIVEN = 0x10000;
+    INLINE = 0x20000;
+    OPEN = 0x40000;
+    TRANSPARENT = 0x80000;
+    INFIX = 0x100000;
+    OPAQUE = 0x200000;
+
+    // Intentionally no Protobuf-specific properties for now.
+  }
+  reserved 2, 6, 7, 8, 9, 10, 11, 12, 14, 15;
+  string symbol = 1;
+  Language language = 16;
+  Kind kind = 3;
+  int32 properties = 4;
+  string display_name = 5;
+  Signature signature = 17;
+  repeated Annotation annotations = 13;
+  Access access = 18;
+  repeated string overridden_symbols = 19;
+  Documentation documentation = 20;
+}
+
+message Documentation {
+  enum Format {
+    HTML = 0;
+    MARKDOWN = 1;
+    JAVADOC = 2;
+    SCALADOC = 3;
+    KDOC = 4;
+  }
+  string message = 1;
+  Format format = 2;
+}
+
+message Annotation {
+  Type tpe = 1;
+}
+
+message Access {
+  oneof sealed_value {
+    PrivateAccess private_access = 1;
+    PrivateThisAccess private_this_access = 2;
+    PrivateWithinAccess private_within_access = 3;
+    ProtectedAccess protected_access = 4;
+    ProtectedThisAccess protected_this_access = 5;
+    ProtectedWithinAccess protected_within_access = 6;
+    PublicAccess public_access = 7;
+  }
+}
+
+message PrivateAccess {
+}
+
+message PrivateThisAccess {
+}
+
+message PrivateWithinAccess {
+  string symbol = 1;
+}
+
+message ProtectedAccess {
+}
+
+message ProtectedThisAccess {
+}
+
+message ProtectedWithinAccess {
+  string symbol = 1;
+}
+
+message PublicAccess {
+}
+
+message SymbolOccurrence {
+  enum Role {
+    UNKNOWN_ROLE = 0;
+    REFERENCE = 1;
+    DEFINITION = 2;
+  }
+  Range range = 1;
+  string symbol = 2;
+  Role role = 3;
+}
+
+message Diagnostic {
+  enum Severity {
+    UNKNOWN_SEVERITY = 0;
+    ERROR = 1;
+    WARNING = 2;
+    INFORMATION = 3;
+    HINT = 4;
+  }
+  Range range = 1;
+  Severity severity = 2;
+  string message = 3;
+}
+
+message Synthetic {
+  Range range = 1;
+  Tree tree = 2;
+}
+
+message Tree {
+  oneof sealed_value {
+    ApplyTree apply_tree = 1;
+    FunctionTree function_tree = 2;
+    IdTree id_tree = 3;
+    LiteralTree literal_tree = 4;
+    MacroExpansionTree macro_expansion_tree = 5;
+    OriginalTree original_tree = 6;
+    SelectTree select_tree = 7;
+    TypeApplyTree type_apply_tree = 8;
+  }
+}
+
+message ApplyTree {
+  Tree function = 1;
+  repeated Tree arguments = 2;
+  int32 properties = 3; // bitmask of SymbolInformation.Property
+}
+
+message FunctionTree {
+  repeated IdTree parameters = 1;
+  Tree body = 2;
+}
+
+message IdTree {
+  string symbol = 1;
+}
+
+message LiteralTree {
+  Constant constant = 1;
+}
+
+message MacroExpansionTree {
+  Tree before_expansion = 1;
+  Type tpe = 2;
+}
+
+message OriginalTree {
+  Range range = 1;
+}
+
+message SelectTree {
+  Tree qualifier = 1;
+  IdTree id = 2;
+}
+
+message TypeApplyTree {
+  Tree function = 1;
+  repeated Type type_arguments = 2;
+}
