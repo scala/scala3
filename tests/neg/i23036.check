@@ -1,0 +1,40 @@
+-- Error: tests/neg/i23036.scala:2:2 -----------------------------------------------------------------------------------
+2 |  import self.*             // error
+  |  ^^^^^^
+  |  imports are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:3:14 ----------------------------------------------------------------------------------
+3 |  opaque type Maybe[+A] = A // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  types are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:4:7 -----------------------------------------------------------------------------------
+4 |  type B = self.type        // error
+  |  ^^^^^^^^^^^^^^^^^^
+  |  types are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:5:6 -----------------------------------------------------------------------------------
+5 |  val x: Int = self         // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  values are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:6:6 -----------------------------------------------------------------------------------
+6 |  var z: Int = self         // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  values are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:10:2 ----------------------------------------------------------------------------------
+10 |  import self.*             // error
+   |  ^^^^^^
+   |  imports are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:11:14 ---------------------------------------------------------------------------------
+11 |  opaque type X[+A] = A     // error
+   |  ^^^^^^^^^^^^^^^^^^^^^
+   |  types are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:12:7 ----------------------------------------------------------------------------------
+12 |  type Y = self.type        // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  types are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:13:6 ----------------------------------------------------------------------------------
+13 |  val x: Int = self         // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  values are not allowed inside extensions
+-- Error: tests/neg/i23036.scala:14:6 ----------------------------------------------------------------------------------
+14 |  var z: Int = self         // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  values are not allowed inside extensions

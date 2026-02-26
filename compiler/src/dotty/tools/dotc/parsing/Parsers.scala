@@ -4649,13 +4649,31 @@ object Parsers {
       val meths = new ListBuffer[Tree]
       while
         val start = in.offset
-        if in.token == EXPORT then
-          meths ++= exportClause()
-        else
-          val mods = defAnnotsMods(modifierTokens)
-          if in.token != EOF then
+        val mods = defAnnotsMods(modifierTokens)
+        in.token match
+          case IMPORT =>
+            syntaxError(em"imports are not allowed inside extensions")
+            meths ++= importClause()
+          case EXPORT =>
+            meths ++= exportClause()
+          case VAL =>
+            accept(VAL)
+            val tree = patDefOrDcl(start, mods)
+            meths += tree
+            syntaxError(em"values are not allowed inside extensions", tree.span)
+          case VAR =>
+            accept(VAR)
+            val tree = patDefOrDcl(start, mods) // we don't set the Var modifier here (we don't care)
+            meths += tree
+            syntaxError(em"values are not allowed inside extensions", tree.span)
+          case DEF =>
             accept(DEF)
             meths += defDefOrDcl(start, mods, numLeadParams)
+          case TYPE =>
+            val tree = typeDefOrDcl(start, in.skipToken(mods))
+            meths += tree
+            syntaxError(em"types are not allowed inside extensions", tree.span)
+          case _ =>
         in.token != EOF && statSepOrEnd(meths, what = "extension method")
       do ()
       if meths.isEmpty then syntaxErrorOrIncomplete(em"`def` expected")

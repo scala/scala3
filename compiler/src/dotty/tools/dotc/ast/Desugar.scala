@@ -1261,10 +1261,10 @@ object desugar {
 
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
-    ext.methods map {
+    ext.methods.map:
       case exp: Export => exp
       case mdef: DefDef => defDef(extMethod(mdef, ext.paramss))
-    }
+      case _ => EmptyTree // we ignore all the other trees. Error was reported during parsing.
   }
   /** Transforms
    *
