@@ -21,7 +21,17 @@ object Product8 {
     Some(x)
 }
 
-/** Product8 is a Cartesian product of 8 components. */
+/** Product8 is a Cartesian product of 8 components.
+ *
+ *  @tparam T1 the type of the 1st element
+ *  @tparam T2 the type of the 2nd element
+ *  @tparam T3 the type of the 3rd element
+ *  @tparam T4 the type of the 4th element
+ *  @tparam T5 the type of the 5th element
+ *  @tparam T6 the type of the 6th element
+ *  @tparam T7 the type of the 7th element
+ *  @tparam T8 the type of the 8th element
+ */
 trait Product8[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8] extends Any with Product {
   /** The arity of this product.
    *  @return 8

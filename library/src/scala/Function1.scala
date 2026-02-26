@@ -38,6 +38,8 @@ object Function1 {
      *              println("Not matched")
      *          }
      *          ```
+     *
+     *  @return a `PartialFunction` that is defined where `f` returns `Some` and undefined where `f` returns `None`
      */
     def unlift: PartialFunction[A, B] = Function.unlift(f)
   }
@@ -65,6 +67,8 @@ object Function1 {
 @annotation.implicitNotFound(msg = "No implicit view available from ${T1} => ${R}.")
 trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends AnyRef {
   /** Applies the body of this function to the argument.
+   *
+   *  @param v1 the function argument
    *  @return   the result of function application.
    */
   def apply(v1: T1): R
