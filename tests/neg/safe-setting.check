@@ -1,4 +1,4 @@
--- Error: tests/neg-custom-args/captures/safe-setting.scala:3:13 -------------------------------------------------------
+-- Error: tests/neg/safe-setting.scala:3:13 ----------------------------------------------------------------------------
 3 |def main() = println("hello") // error
   |             ^^^^^^^
   |             Cannot refer to method println from safe code since it is tagged @rejectSafe
