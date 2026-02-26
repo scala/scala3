@@ -1449,7 +1449,8 @@ object desugar {
         ids.map(expand(_, false))
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-      pats1 map (makePatDef(_, rhs, pdef.span, givenPatternsAllowed = false, overrideMods = Some(mods)))
+      pats1.map: pat =>
+        makePatDef(pat, rhs, pdef.span, givenPatternsAllowed = false, overrideMods = Some(mods))
     }
   }
 
@@ -1470,15 +1471,15 @@ object desugar {
        | IrrefutableGenFrom => sel.withAttachment(CheckIrrefutable, checkMode)
       // TODO: use `pushAttachment` and investigate duplicate attachment
 
-  /**
-   * Desugars `pat = rhs` where `pat` is a pattern,
-   * given the `span` the overall pattern def occurs at, whether `given` patterns are allowed
-   * (they are if `rhs` comes from a `GenAlias` but not a `PatDef`),
-   * and optionally the modifiers that should apply to the result, if they can't be taken from `pat` itself.
+  /** Desugars `pat = rhs` where `pat` is a pattern,
+   *  given the `span` the overall pattern def occurs at, whether `given` patterns are allowed
+   *  (they are if `rhs` comes from a `GenAlias` but not a `PatDef`),
+   *  and optionally the modifiers that should apply to the result, if they can't be taken from `pat` itself.
    *
-   * Outputs simpler desugaring if possible, e.g., `(a, b) = (x, y)` does not need the full generalizability of `(a, _, c) = foo()`.
+   *  Outputs simpler desugaring if possible, e.g.,
+   *  `(a, b) = (x, y)` does not need the full generalizability of `(a, _, c) = foo()`.
    */
-  def makePatDef(pat: Tree, rhs: Tree, span: Span, givenPatternsAllowed: Boolean, overrideMods: Option[Modifiers] = None)(using Context): Tree =
+  def makePatDef(pat: Tree, rhs: Tree, span: Span, givenPatternsAllowed: Boolean, overrideMods: Option[Modifiers] = None)(using Context): Tree = {
     // First, get the modifiers from the tree, or none if the tree doesn't have any
     val mods = overrideMods.getOrElse(pat match
       case defTree: DefTree => defTree.mods
@@ -1624,6 +1625,8 @@ object desugar {
                     )
             flatTree(firstDef :: restDefs)
     }
+  }
+  end makePatDef
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(using Context): Bind = {
@@ -2278,6 +2281,9 @@ object desugar {
         then
           aply.putAttachment(TrailingForMap, ())
 
+      extension (trees: List[Tree]) inline def spanOfGenAlias() =
+        trees.span(_.isInstanceOf[GenAlias]).asInstanceOf[(List[GenAlias], List[Tree])]
+
       enums match {
         case Nil if sourceVersion.enablesBetterFors => body
         case (gen: GenFrom) :: Nil =>
@@ -2287,12 +2293,12 @@ object desugar {
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
-          val (valeqs, suffix) = rest.span(_.isInstanceOf[GenAlias])
+          val (valeqs, suffix) = rest.spanOfGenAlias()
           // possible aliases followed by a generator or end of for, when betterFors.
           // exclude value definitions with a given pattern (given T = x)
           val better = sourceVersion.enablesBetterFors
             && suffix.headOption.forall(_.isInstanceOf[GenFrom])
-            && !valeqs.exists(a => isNestedGivenPattern(a.asInstanceOf[GenAlias].pat))
+            && !valeqs.exists(a => isNestedGivenPattern(a.pat))
           if better then
             val cont = makeFor(mapName, flatMapName, enums = rest, body)
             val selectName =
@@ -2302,12 +2308,11 @@ object desugar {
             if valeqs.lengthIs > 1 then app.withAttachment(TuplingMigrationForMap, ())
             else app
           else
-            val pats = valeqs map { case GenAlias(pat, _) => pat }
+            val pats = valeqs.map(_.pat)
             val (defpat0, id0) = makeIdPat(gen.pat)
-            val (defpats, ids) = (pats map makeIdPat).unzip
-            val pdefs = valeqs.lazyZip(defpats).map { case (valeq@GenAlias(_, rhs), defpat) =>
-              makePatDef(defpat, rhs, valeq.span, givenPatternsAllowed = true)
-            }
+            val (defpats, ids) = pats.map(makeIdPat).unzip
+            val pdefs = valeqs.lazyZip(defpats).map: (valeq, defpat) =>
+              makePatDef(defpat, valeq.expr, valeq.span, givenPatternsAllowed = true)
             val rhs1 =
               val enums = GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil
               val body = Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ()))
@@ -2328,10 +2333,10 @@ object desugar {
             GenFrom(gen.pat, filtered, mode)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case enums @ GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
-          val (valeqs, suffix) = enums.span(_.isInstanceOf[GenAlias])
-          val pdefs = valeqs.map { case valeq @ GenAlias(pat, rhs) =>
-            makePatDef(makeIdPat(pat)._1, rhs, valeq.span, givenPatternsAllowed = true)
-          }
+          val (valeqs, suffix) = enums.spanOfGenAlias()
+          val pdefs = valeqs.map: valeq =>
+            val (defpat, _) = makeIdPat(valeq.pat)
+            makePatDef(defpat, valeq.expr, valeq.span, givenPatternsAllowed = true)
           Block(pdefs, makeFor(mapName, flatMapName, enums = suffix, body))
         case _ =>
           EmptyTree //may happen for erroneous input
