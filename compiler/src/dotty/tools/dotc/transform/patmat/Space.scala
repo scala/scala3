@@ -48,7 +48,7 @@ import SpaceEngine.*
  *
  */
 
-/** A key to be used in a context property that caches the unpickled trees */
+/** A key to be used in a context property that caches the results of isSubspace checks */
 private val IsSubspaceCacheKey = new Property.Key[mutable.HashMap[(Space, Space), Boolean]]
 
 /** space definition */
