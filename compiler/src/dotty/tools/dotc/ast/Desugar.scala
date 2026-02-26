@@ -1478,6 +1478,21 @@ object desugar {
    *
    *  Outputs simpler desugaring if possible, e.g.,
    *  `(a, b) = (x, y)` does not need the full generalizability of `(a, _, c) = foo()`.
+   *
+   *  If `pat` is a variable pattern,
+   *
+   *    val/var/lazy val p = e
+   *
+   *  Otherwise, in case there is exactly one variable x_1 in pattern
+   *   val/var/lazy val p = e  ==>  val/var/lazy val x_1 = (e: @unchecked) match (case p => (x_1))
+   *
+   *   in case there are zero or more than one variables in pattern
+   *   val/var/lazy p = e  ==>  private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
+   *                   val/var/def x_1 = t$._1
+   *                   ...
+   *                   val/var/def x_N = t$._N
+   *  If the original pattern variable carries a type annotation, so does the corresponding
+   *  ValDef or DefDef.
    */
   def makePatDef(pat: Tree, rhs: Tree, span: Span, givenPatternsAllowed: Boolean, overrideMods: Option[Modifiers] = None)(using Context): Tree = {
     // First, get the modifiers from the tree, or none if the tree doesn't have any
@@ -1505,18 +1520,19 @@ object desugar {
                              |please bind to an identifier and use an alias given.""", b)
             false
         )
-        // We can optimize the lowering depending on the pattern and RHS (for some numbers see https://github.com/scala/scala3/pull/23373#issuecomment-3024341826):
+        // We can optimize the lowering depending on the pattern and RHS
         enum Optimization:
           // "Simple tuple" optimization:
           // If we have a tuple LHS with a one-to-one mapping from LHS to RHS tuple elements,
           // possibly including wildcards, we can use the RHS as-is with `._1` etc. without using `match`.
           // For instance, `val (a, b, _) = (1, 2, 3)`. (but patterns like `Extract(x = y)` or `(a, (b, _))` don't work)
-          // Exception: This optimization doesn't work in the presence of things that can be deconstructed as tuples but aren't,
-          //            such as named tuples, since we would need to know the item names to access them later,
-          //            and we haven't run the typer yet so all we can do is syntactically check if the RHS is a non-named tuple,
-          //            e.g., `if x then (1, 2) else (3, 4)` is OK.
-          //            In this case, `variables` may contain wildcard names, which we'll ignore when destructuring.
-          //            (Future work: We could obtain field names for named tuple literals and use them)
+          // Exception:
+          // This optimization doesn't work in the presence of things that can be deconstructed as tuples but aren't,
+          // such as named tuples, since we would need to know the item names to access them later,
+          // and we haven't run the typer yet so all we can do is syntactically check if the RHS is a non-named tuple,
+          // e.g., `if x then (1, 2) else (3, 4)` is OK.
+          // In this case, `variables` may contain wildcard names, which we'll ignore when destructuring.
+          // (Future work: We could obtain field names for named tuple literals and use them)
           case SimpleTuple
           // "Matchable tuple" optimization:
           // Otherwise, we decompose the RHS to have just the parts we care about.
@@ -1525,10 +1541,12 @@ object desugar {
           // If we know the RHS can be matched with a tuple pattern, even if it's a named tuple,
           // we can simplify the match we emit to not have any variable patterns and just use the type directly.
           // In this case too, `variables` may contain wildcard names.
-          // Exception: This optimization cannot be used in the presence of the `@unchecked` annotation,
-          //            since given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
-          //            but `val x: List[B @unchecked] = a: @unchecked` is not.
-          //            So we cannot desugar the first one into `(a, 1) match { $1 @ (_: List[B @unchecked], _) => $1 }` because that loses track of the unchecked-ness.
+          // Exception:
+          // This optimization cannot be used in the presence of the `@unchecked` annotation,
+          // since given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
+          // but `val x: List[B @unchecked] = a: @unchecked` is not.
+          // So we cannot desugar the first one into `(a, 1) match { $1 @ (_: List[B @unchecked], _) => $1 }`
+          // because that loses track of the unchecked-ness.
           case MatchableTuple
           // If neither optimization applies, we do the fully general `match`.
           // (Future work: We could try to find an "extractor" for each variable in the LHS&RHS,
@@ -1555,19 +1573,21 @@ object desugar {
           case _ => (Optimization.None, generalGetVariables)
         }
         // Now that we have necessary info, define the actual RHS of the resulting assignment.
-        // We attach `ForArtifact` to tuples we create so our lowered code plays nice with "unused code" warnings later in the pipeline
+        // We attach `ForArtifact` to tupling so that linting doesn't take it as a usage of variables.
         val loweredRhs = opt match
           // In the simple tuple case, we use the RHS as-is.
           case Optimization.SimpleTuple =>
             rhs
-          // In the matchable tuple case, we use a pattern but replace all names in it with wildcards, name the overall pattern, and use that name.
+          // In the matchable tuple case, we use a pattern but replace all names in it with wildcards,
+          // name the overall pattern, and use that name.
           case Optimization.MatchableTuple =>
             val patAsWildcard = pat match
               case TuplePattern(pats, _) =>
                 val wildcardPats = pats.map(p => Ident(nme.WILDCARD).withSpan(p.span))
                 Tuple(wildcardPats).withSpan(pat.span)
             val tmpTuple = UniqueName.fresh()
-            val caseDef = CaseDef(Bind(tmpTuple, patAsWildcard), EmptyTree, Ident(tmpTuple).withAttachment(ForArtifact, ()))
+            val tupled = Ident(tmpTuple).withAttachment(ForArtifact, ())
+            val caseDef = CaseDef(Bind(tmpTuple, patAsWildcard), EmptyTree, tupled)
             Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
           // In the general case, we must name each individual item we want to extract.
           case Optimization.None =>
@@ -1577,8 +1597,10 @@ object desugar {
         // Finally, we can return the lowered pat def.
         variables match
           // If there are no items at all in the LHS, we don't need any assignment, unless the LHS is lazy.
-          // (e.g., if we have `val (_, _) = foo()` we can lower to `foo()`, but `lazy val (_, _) = foo()` cannot do that)
-          // (we could special case "lazy with only wildcards" to lower to nothing, but that does not seem like a common thing to do, since it's entirely pointless)
+          // (e.g., if we have `val (_, _) = foo()` we can lower to `foo()`,
+          // but `lazy val (_, _) = foo()` cannot do that)
+          // (we could special case "lazy with only wildcards" to lower to nothing,
+          // but that does not seem like a common thing to do, since it's entirely pointless)
           case Nil if !mods.is(Lazy) =>
             loweredRhs
           // If there's a single non-wildcard variable in the LHS, lower to a single assignment.
@@ -1586,12 +1608,14 @@ object desugar {
             derivedValDef(span, named, tpt, loweredRhs, mods)
           // With more than one item, we need the more general case:
           // lower to one assignment for the tuple of items, and one assignment per item to extract the value.
-          // e.g., for `val (a, (b, _)) = foo()` we'll get `val $0 = foo() match { case (a, (b, _)) => (a, b) }; val a = $0._1; val b = $0._2`.
+          // e.g., for `val (a, (b, _)) = foo()` we'll get
+          // `val $0 = foo() match { case (a, (b, _)) => (a, b) }; val a = $0._1; val b = $0._2`.
           case _ =>
             // Start with the assignment to the tuple:
             // create a fresh name,
             val tmpName = UniqueName.fresh()
-            // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }` does not leak into the API,
+            // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }`
+            // does not leak into the API,
             val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
             // use the type of the tuple as declared if there is one so we don't lose information,
             val tupType = pat match
@@ -1609,20 +1633,20 @@ object desugar {
               else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
             // and translating to a `def` or `val` as needed depending on laziness.
             val restDefs =
-                for (((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD)
-                yield
-                  if mods.is(Lazy) then
-                    DefDef(named.name.asTermName, Nil, tpt, selector(idx))
-                      .withMods(mods &~ Lazy)
+              for ((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD
+              yield
+                if mods.is(Lazy) then
+                  DefDef(named.name.asTermName, Nil, tpt, selector(idx))
+                    .withMods(mods &~ Lazy)
+                    .withSpan(named.span)
+                    .withAttachment(PatternVar, ())
+                else
+                  valDef(
+                    ValDef(named.name.asTermName, tpt, selector(idx))
+                      .withMods(mods)
                       .withSpan(named.span)
                       .withAttachment(PatternVar, ())
-                  else
-                    valDef(
-                      ValDef(named.name.asTermName, tpt, selector(idx))
-                        .withMods(mods)
-                        .withSpan(named.span)
-                        .withAttachment(PatternVar, ())
-                    )
+                  )
             flatTree(firstDef :: restDefs)
     }
   }
