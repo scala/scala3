@@ -10,9 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT.
-// genprod generated these sources at: 2025-08-11T16:44:44.712777821Z
-
 package scala
 
 import scala.language.`2.13`
