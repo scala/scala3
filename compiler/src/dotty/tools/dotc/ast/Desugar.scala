@@ -1450,7 +1450,7 @@ object desugar {
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
       pats1.map: pat =>
-        makePatDef(pat, rhs, pdef.span, givenPatternsAllowed = false, overrideMods = Some(mods))
+        makePatDef(pdef, pat, rhs)
     }
   }
 
@@ -1494,12 +1494,17 @@ object desugar {
    *  If the original pattern variable carries a type annotation, so does the corresponding
    *  ValDef or DefDef.
    */
-  def makePatDef(pat: Tree, rhs: Tree, span: Span, givenPatternsAllowed: Boolean, overrideMods: Option[Modifiers] = None)(using Context): Tree = {
+  def makePatDef(original: PatDef | GenAlias, pat: Tree, rhs: Tree)(using Context): Tree = {
     // First, get the modifiers from the tree, or none if the tree doesn't have any
-    val mods = overrideMods.getOrElse(pat match
-      case defTree: DefTree => defTree.mods
-      case _ => Modifiers()
-    )
+    val mods =
+      original match
+        case patDef: PatDef => patDef.mods
+        case genAlias =>
+          pat match
+            case defTree: DefTree => defTree.mods
+            case _ => Modifiers()
+    val span = original.span
+    val givenPatternsAllowed = original.isInstanceOf[GenAlias]
     // Then, check the simplest case: a single identifier bound to the RHS,
     pat match {
       case IdPattern(id, tpt) =>
@@ -2336,7 +2341,7 @@ object desugar {
             val (defpat0, id0) = makeIdPat(gen.pat)
             val (defpats, ids) = pats.map(makeIdPat).unzip
             val pdefs = valeqs.lazyZip(defpats).map: (valeq, defpat) =>
-              makePatDef(defpat, valeq.expr, valeq.span, givenPatternsAllowed = true)
+              makePatDef(valeq, defpat, valeq.expr)
             val rhs1 =
               val enums = GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil
               val body = Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ()))
@@ -2360,7 +2365,7 @@ object desugar {
           val (valeqs, suffix) = enums.spanOfGenAlias()
           val pdefs = valeqs.map: valeq =>
             val (defpat, _) = makeIdPat(valeq.pat)
-            makePatDef(defpat, valeq.expr, valeq.span, givenPatternsAllowed = true)
+            makePatDef(valeq, defpat, valeq.expr)
           Block(pdefs, makeFor(mapName, flatMapName, enums = suffix, body))
         case _ =>
           EmptyTree //may happen for erroneous input
@@ -2416,9 +2421,9 @@ object desugar {
         makeFor(nme.foreach, nme.foreach, enums, body) `orElse` tree
       case ForYield(enums, body) =>
         makeFor(nme.map, nme.flatMap, enums, body) `orElse` tree
-      case PatDef(mods, pats, tpt, rhs) =>
+      case tree @ PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-        flatTree(pats1 map (makePatDef(_, rhs, tree.span, givenPatternsAllowed = false, overrideMods = Some(mods))))
+        flatTree(pats1.map(makePatDef(tree, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams =>
