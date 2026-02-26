@@ -241,7 +241,7 @@ end ReplCompiler
 class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source, CompilationUnitInfo(source.file)):
   override def isSuspendable: Boolean = false
 
-/** A placeholder phase that receives parse trees..
+/** A placeholder phase that receives parse trees.
  *
  *  It is called "parser" for the convenience of collective muscle memory.
  *
@@ -249,7 +249,7 @@ class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source, Co
  */
 class Parser extends Phase:
   def phaseName: String = "parser"
-  def run(using Context): Unit = ()
+  protected def run(using Context): Unit = ()
 end Parser
 
 /** A phase that assembles wrapped parse trees from user input.
@@ -261,7 +261,7 @@ end Parser
 class ReplPhase extends Phase:
   def phaseName: String = "repl"
 
-  def run(using Context): Unit =
+  protected def run(using Context): Unit =
     ctx.compilationUnit.untpdTree match
     case pkg @ PackageDef(_, stats) =>
       pkg.getAttachment(ReplCompiler.ReplState).foreach {

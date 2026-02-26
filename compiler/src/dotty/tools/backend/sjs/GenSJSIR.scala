@@ -17,7 +17,7 @@ class GenSJSIR extends Phase {
   override def isRunnable(using Context): Boolean =
     super.isRunnable && !ctx.usedBestEffortTasty
 
-  def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     new JSCodeGen().run()
 }
 

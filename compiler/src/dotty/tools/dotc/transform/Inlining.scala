@@ -46,7 +46,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   override def changesMembers: Boolean = true
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     val unit = ctx.compilationUnit
     val rec = ctx.compilationUnit.depRecorder
     if unit.needsInlining || unit.hasMacroAnnotations then

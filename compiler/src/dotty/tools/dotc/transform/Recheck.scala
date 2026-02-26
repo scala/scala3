@@ -148,7 +148,7 @@ abstract class Recheck extends Phase, SymTransformer:
     then atPhase(firstPrepPhase)(sym.denot.copySymDenotation())
     else symd
 
-  def run(using Context): Unit =
+  protected def run(using Context): Unit =
     ctx.base.recordRecheckPhase(this)
     val rechecker = newRechecker()
     rechecker.checkUnit(ctx.compilationUnit)

@@ -121,7 +121,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
       yield unitCtx.compilationUnit
   }
 
-  def run(using Context): Unit = unsupported("run")
+  override protected def run(using Context): Unit = unsupported("run")
 end ExtractSemanticDB
 
 private[semanticdb] object ExtractSemanticDB:

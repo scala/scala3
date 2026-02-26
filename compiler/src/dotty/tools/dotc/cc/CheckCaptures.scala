@@ -270,7 +270,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       SafeRefs.init()(using ctx.withPhase(thisPhase))
     super.runOn(units)
 
-  override def run(using Context): Unit =
+  protected override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
 

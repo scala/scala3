@@ -139,7 +139,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |}
         |""".stripMargin
 
-  override def run(using Context): Unit =
+  protected def run(using Context): Unit =
     val inserter = Inserter(parseExpression, parseExpressionClass)
     ctx.compilationUnit.untpdTree = inserter.transform(ctx.compilationUnit.untpdTree)
 

@@ -124,7 +124,7 @@ class ExtractAPI extends Phase {
       registerProductNames(fullClassName, binaryClassName.stripSuffix(str.MODULE_SUFFIX))
   end recordNonLocalClass
 
-  override def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val sourceFile = unit.source
     ctx.withIncCallback: cb =>
