@@ -985,7 +985,7 @@ object Symbols extends SymUtils {
         if copied.retainsDefTree then
           copied.defTree = original.defTree
       }
-      
+
       // Update Child annotations of classes encountered previously to new values
       // if some child is among the mapped symbols
       for orig <- ttmap1.substFrom do

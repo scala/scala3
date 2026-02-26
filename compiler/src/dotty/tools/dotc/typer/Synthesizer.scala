@@ -80,7 +80,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             if defn.SpecialClassTagClasses.contains(sym) then
               classTagModul.select(sym.name.toTermName).withSpan(span)
             else
-              val ctype = escapeJavaArray(erasure(tp.normalizedTupleType))
+              val normalTupleType = tp.normalizedTupleType
+              val specializedType = 
+                if tp.typeSymbol.denot.isSpecializedTrait then normalTupleType 
+                else erasure(normalTupleType)
+              val ctype = escapeJavaArray(specializedType)
               if ctype.exists then
                 classTagModul.select(nme.apply)
                   .appliedToType(tp)
@@ -681,6 +685,16 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedMirror: SpecialHandler = (formal, span) =>
     orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
 
+  val synthesizedSpecialized: SpecialHandler = (formal, span) => formal match {
+    case AppliedType(tycon, arg :: Nil) if tycon =:= defn.SpecializedClass.typeRef => 
+      withNoErrors(TypeApply(ref(defn.SpecializedModule_apply), TypeTree(arg) :: Nil))
+    case _ => EmptyTreeNoError
+  }
+
+  private def escapeJavaArray(tp: Type)(using Context): Type = tp match
+    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
+    case _                     => tp
+
   private enum ManifestKind:
     case Full, Opt, Clss
 
@@ -804,6 +818,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.OptManifestClass     -> synthesizedOptManifest,
     defn.SingletonClass       -> synthesizedSingleton,
     defn.PreciseClass         -> synthesizedPrecise,
+    defn.SpecializedClass     -> synthesizedSpecialized
   )
 
   def tryAll(formal: Type, span: Span)(using Context): TreeWithErrors =

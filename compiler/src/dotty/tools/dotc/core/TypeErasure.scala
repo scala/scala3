@@ -7,12 +7,15 @@ import Flags.JavaDefined
 import Uniques.unique
 import backend.sjs.JSDefinitions
 import transform.ExplicitOuter.*
+import transform.Specialization
 import transform.ValueClasses.*
 import transform.ContextFunctionResults.*
 import unpickleScala2.Scala2Erasure
 import Decorators.*
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
+import dotty.tools.dotc.transform.DesugarSpecializedTraits
+import dotty.tools.dotc.util.Property
 
 /** The language in which the definition being erased was written. */
 enum SourceLanguage:
@@ -76,8 +79,10 @@ end SourceLanguage
  */
 object TypeErasure:
 
+  private val DisallowSpecialized = Property.Key[Unit] 
+
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass
+    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass || sym.isSpecializedTrait
 
   /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
    *
@@ -205,6 +210,14 @@ object TypeErasure:
   /** The current context with a phase no later than erasure */
   def preErasureCtx(using Context) =
     if (ctx.erasedTypes) ctx.withPhase(erasurePhase) else ctx
+
+  /** The current context but with Foo[Int] erasing to Foo instead of
+   *  Foo$sp$Int when Foo is a specialized trait. */
+  def disallowSpecializedCtx(using Context) = ctx.fresh.setProperty(DisallowSpecialized, ())
+  
+  /** The current context but with Foo[Int] erasing to Foo$sp$Int instead of
+   *  Foo when Foo is a specialized trait. */
+  def allowSpecializedCtx(using Context) = ctx.fresh.dropProperty(DisallowSpecialized)
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
    *
@@ -776,6 +789,16 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until 
+                                                                                   // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
+                                                                                   // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
+                                                                                   // the signatures don't change before erasure which is required (meta-ordering
+                                                                                   // constraint in Compiler.scala)
+                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
+        val specName = DesugarSpecializedTraits.newSpecializedTraitName(spec) // TODO: Maybe we should make this a method on Specialization (spec) in this case
+        val interfaceSymbol = spec.traitSymbol.owner.enclosingPackageClass.info.decls.lookup(specName)
+        assert(interfaceSymbol.exists && interfaceSymbol.isClass)
+        this(interfaceSymbol.typeRef.appliedTo(spec.unspecializedTypeArgs.map(_.tpe)))
       case tp: AppliedType =>
         val tycon = tp.tycon
         if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
@@ -866,19 +889,36 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp @ ClassInfo(pre, cls, parents, decls, _) =>
         if (cls.is(Package)) tp
         else {
-          def eraseParent(tp: Type) = tp.dealias match { // note: can't be opaque, since it's a class parent
+          def eraseParent(tp: Type)(using Context) = tp.dealias match { // note: can't be opaque, since it's a class parent
             case tp: AppliedType if tp.tycon.isRef(defn.PairClass) => defn.ObjectType
             case _ => apply(tp)
           }
           val erasedParents: List[Type] =
             if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
-            else parents.mapConserve(eraseParent) match {
-              case tr :: trs1 =>
-                assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
-                val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
-                tr1 :: trs1.filterNot(_.isAnyRef)
-              case nil => nil
-            }
+            else
+              // Match corresponding tree erasure in Erasure::typedClassDef
+              val parents1 = 
+                if cls.isSpecializedTraitInterface then // {source: inline trait Bar[T: Specialized] extends Foo[T] both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
+                  val (obj :: originalTrait :: inheritedParents) = parents : @unchecked
+                  eraseParent(obj) :: apply(originalTrait)(using disallowSpecializedCtx) :: inheritedParents.mapConserve(eraseParent(_)(using allowSpecializedCtx))
+                else if cls.isSpecializedTraitImplementationClass && !cls.isRawSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
+                  val (objectParent :: traitSpParent :: originalTraitSpecializedParent :: Nil) = parents : @unchecked
+                  eraseParent(objectParent) :: eraseParent(traitSpParent)(using allowSpecializedCtx) :: apply(originalTraitSpecializedParent)(using disallowSpecializedCtx) :: Nil
+                else
+                  val originalSpecializedTraits = parents.filter(p => p.typeSymbol.isSpecializedTrait).map(eraseParent(_)(using allowSpecializedCtx))
+
+                // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
+                // class Bar extends Object, Foo(10), Baz(10), Foo$sp$Int, Baz$sp$Int
+                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then 
+                                             apply(p)(using disallowSpecializedCtx)
+                                           else eraseParent(p)) ::: originalSpecializedTraits
+              parents1 match {
+                case tr :: trs1 =>
+                  assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
+                  val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
+                  tr1 :: trs1.filterNot(_.isAnyRef)
+                case nil => nil
+              }
           val erasedDecls = decls.filteredScope(
               keep = sym => !sym.isType || sym.isClass,
               rename = sym =>

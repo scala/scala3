@@ -96,7 +96,8 @@ object Inlines:
       && (
         ctx.phase == Phases.inliningPhase
         || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
-        || (ctx.inlineTraitState.inlineTraitsPhase == InlineTraitState.InlineContext.InlineTraits && !tree.symbol.is(Macro))
+        || (ctx.inlineTraitState.inlineTraitsPhase == InlineTraitState.InlineContext.InlineTraits && !tree.symbol.is(Macro) && !(tree.symbol.isSpecializedTraitImplementationClass || tree.symbol.isSpecializedTraitInterface))
+        || (ctx.inlineTraitState.inlineTraitsPhase == InlineTraitState.InlineContext.SpecializedTraits && !tree.symbol.is(Macro) && (tree.symbol.isSpecializedTraitImplementationClass || tree.symbol.isSpecializedTraitInterface) )
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
@@ -116,6 +117,9 @@ object Inlines:
             case Apply(fn, _) => rec(fn)
             case _ => false
           tree.symbol.name.isUnapplyName && rec(tree)
+        // We don't inline inline method calls into inline traits because we can inline them into the children and this gets around the issue of
+        // needing to apply the symbol replacement map to those calls (which is tricky because we don't apply any inline maps beyond Inlined() calls)
+        // See tests/pos/i11866.scala and tests/run/specialized-trait-vector-dot-product.scala
         isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx && !(ctx.owner.ownersIterator.exists(_.isInlineTrait)) && !ctx.mode.is(Mode.NoInline) && !isUnapplyExpressionWithDummy
 
   private[dotc] def symbolFromParent(parent: Tree)(using Context): Symbol =
@@ -135,6 +139,7 @@ object Inlines:
             && !(cls.symbol.asClass.ownersIterator.toList.tail.exists(p => p.isInlineTrait)) // We can skip anything that would be inlined into a class that lives somewhere inside an inline trait
                                                                                              // because it must be on the RHS of a member definition in the inline trait and so pruned out later                                                                                            
         )
+
       ancestors.flatMap(ancestor =>
         def baseTree =
           cls.tpe.baseType(ancestor) match
@@ -146,7 +151,16 @@ object Inlines:
               report.error(s"unknown base type ${baseTpe.show} for ancestor ${ancestor.show} of ${cls.symbol.show}")
               None
         parentTrees.get(ancestor).orElse(baseTree.map(_.withSpan(cls.span)))
-      )
+      ).flatMap { tree => 
+        tree.tpe match {
+          case Specialization(spec) if spec.hasSpecializedParams && !spec.isFullySpecialized => None // these can only exist in cases where we don't want to inline because:
+                                                                                                   // 1) they will be pruned out later anyway and if we inline them we will create a loop (as in tests/pos/specialized-trait-inlining-causes-implementation-required-loop-bad.scala)
+                                                                                                   // 2) they are covered by another specialized type parameter in inlining and therefore we will specialize later when the inline function is called
+                                                                                                   //    tests/run/specialized-trait-inline-specialized-instance-with-specialization
+                                                                                                   // 3) we already dealt with them in desugarSpecializedTraits
+          case other => Some(tree)
+        }
+      }
     case _ =>
       Nil
   }
@@ -351,6 +365,11 @@ object Inlines:
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val ancestors = inlineTraitAncestors(cls)
+
+        if cls.symbol.isAnonymousClass && ancestors.exists(tree => Specialization.unapply(tree.tpe).exists(anc => anc.isSpecialized || anc.isFullySpecializedToTopClassesOrNothing)) then
+          // No need to inline into specialized trait anonymous class instances; these will later be replaced by $impl$ classes.
+          return cls
+          
         val cycleFound = ancestors.exists { parent =>
           val parentSym = symbolFromParent(parent)
           val errorPos = 
@@ -368,6 +387,7 @@ object Inlines:
           errorPos.foreach(pos =>
             report.error(s"Inlining of inline traits looped. Tried to inline ${parentSym} into its own body.", pos)
           )
+          
           errorPos.nonEmpty
         }
 
@@ -1115,7 +1135,7 @@ object Inlines:
 
   object InlineTraitState:
     enum InlineContext:
-      case InlineTraits, None
+      case InlineTraits, SpecializedTraits, None
 
   class InlineTraitState(
     // For a class symbol created during inlining of an inline trait,
