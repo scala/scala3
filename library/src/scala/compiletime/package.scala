@@ -24,6 +24,8 @@ import annotation.{compileTimeOnly, experimental}
  *  This value can only be used in an inline match and the value cannot be used in
  *  the branches.
  *  @syntax markdown
+ *
+ *  @tparam T the type to match against in an inline match expression
  */
 def erasedValue[T]: T = erasedValue[T]
 
@@ -68,6 +70,9 @@ def deferred: Nothing = ???
  *    error("My error of this code: " + codeOf(x))
  *  ```
  *  @syntax markdown
+ *
+ *  @param msg the error message to display at compile time
+ *  @return this method never returns; it always produces a compile-time error
  */
 inline def error(inline msg: String): Nothing = ???
 
@@ -88,6 +93,9 @@ inline def error(inline msg: String): Nothing = ???
  *        Other values may display unintutively.
  *
  *  @syntax markdown
+ *
+ *  @param arg the expression whose source code representation is returned
+ *  @return the string representation of the argument's source code
  */
 transparent inline def codeOf(arg: Any): String =
   // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
@@ -107,6 +115,8 @@ transparent inline def codeOf(arg: Any): String =
  *  twice(m) // error: expected a constant value but found: m
  *  ```
  *  @syntax markdown
+ *
+ *  @param x the value that must be a compile-time constant after inlining
  */
 inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -115,6 +125,8 @@ inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | 
 /** Same as `constValue` but returns a `None` if a constant value
  *  cannot be constructed from the provided type. Otherwise returns
  *  that value wrapped in `Some`.
+ *
+ *  @tparam T the constant singleton type to attempt to convert to a value
  */
 transparent inline def constValueOpt[T]: Option[T] =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -122,6 +134,8 @@ transparent inline def constValueOpt[T]: Option[T] =
 
 /** Given a constant, singleton type `T`, convert it to a value
  *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
+ *
+ *  @tparam T the constant singleton type to convert to a value
  */
 transparent inline def constValue[T]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -129,6 +143,8 @@ transparent inline def constValue[T]: T =
 
 /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
  *  `(constValue[X1], ..., constValue[Xn])`.
+ *
+ *  @tparam T the tuple type whose element types are constant singleton types
  */
 inline def constValueTuple[T <: Tuple]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -158,6 +174,10 @@ inline def constValueTuple[T <: Tuple]: T =
  *  ```
  *  the returned value would be `2`.
  *  @syntax markdown
+ *
+ *  @tparam T the result type of the match expression
+ *  @param f a match block with cases that summon givens of specified types
+ *  @return the result of the first matching case
  */
 transparent inline def summonFrom[T](f: Nothing => T): T =
   error("Compiler bug: `summonFrom` was not evaluated by the compiler")
@@ -175,13 +195,17 @@ transparent inline def summonInline[T]: T =
  *  a Tuple.
  *
  *  @tparam T the tuple containing the types of the values to be summoned
- *  @return the given values typed as elements of the tuple
+ *  @return a tuple of the summoned given instances corresponding to the element types of `T`
  */
 inline def summonAll[T <: Tuple]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
   error("Compiler bug: `summonAll` was not evaluated by the compiler")
 
-/** Assertion that an argument is by-name. Used for nullability checking. */
+/** Assertion that an argument is by-name. Used for nullability checking.
+ *
+ *  @tparam T the result type of the by-name argument
+ *  @param x the by-name argument to evaluate
+ */
 def byName[T](x: => T): T = x
 
 /** Casts a value to be `Matchable`. This is needed if the value's type is an unconstrained

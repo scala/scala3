@@ -27,6 +27,10 @@ object Varargs {
    *  }
    *  //}
    *  ```
+   *
+   *  @tparam T the element type of the expressions in the sequence
+   *  @param xs the sequence of individual expressions to lift into a single expression
+   *  @return an expression representing the sequence `Seq(xs(0), xs(1), ...)` as an `Expr[Seq[T]]`
    */
   def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {
     import quotes.reflect.*
@@ -41,7 +45,11 @@ object Varargs {
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
    *    case Varargs(argVarargs) => ???
    *      // argVarargs: Seq[Expr[Int]]
+   *  ```
    *
+   *  @tparam T the element type of the varargs sequence
+   *  @param expr the expression of a sequence to destructure into individual expressions
+   *  @return `Some` containing the individual element expressions, or `None` if the expression is not a literal sequence
    */
   def unapply[T](expr: Expr[Seq[T]])(using Quotes): Option[Seq[Expr[T]]] = {
     import quotes.reflect.*
