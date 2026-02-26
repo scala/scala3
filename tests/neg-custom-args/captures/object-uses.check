@@ -1,3 +1,7 @@
+-- Error: tests/neg-custom-args/captures/object-uses.scala:5:6 ---------------------------------------------------------
+5 |class A { // error
+  |      ^
+  |      class A needs to extend Capability since it has fields `f`, `g` with `any` in their types.
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/object-uses.scala:12:22 --------------------------------
 12 |      Console.println(g.toString) // error
    |                      ^

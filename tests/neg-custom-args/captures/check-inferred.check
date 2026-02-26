@@ -1,3 +1,17 @@
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:35:6 -----------------------------------------------------
+35 |class A: // error
+   |      ^
+   |      class A needs to extend Capability since it has a field `x` with `any` in its type.
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:39:6 -----------------------------------------------------
+39 |class B extends caps.Control: // error
+   |      ^
+   |      class B is classied as scala.caps.Control but has a field x
+   |      of unclassified type test.A^
+   |      Field classifiers have to conform to the classifier of the containing class.
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:43:6 -----------------------------------------------------
+43 |class C: // error
+   |      ^
+   |      class C needs to extend Capability since it has a field `x` with `any` in its type.
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:18:13 ----------------------------------------------------
 18 |  val incr = () => // error
    |             ^
@@ -37,22 +51,21 @@
    |
    |           where:    ^ refers to a root capability in the type of value count
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:45:15 ----------------------------------------------------
-45 |  private val y = ??? : A^    // error
+45 |  private val y = ??? : A^ // error
    |               ^
    |           value y needs an explicit type because it captures a root capability in its type test.A^.
    |           Fields capturing a root capability need to be given an explicit type unless the capability is already
    |           subsumed by the computed capability of the enclosing class.
    |
    |           where:    ^ refers to a root capability in the type of value y
--- Error: tests/neg-custom-args/captures/check-inferred.scala:49:15 ----------------------------------------------------
-49 |  private val y = ??? : (() => A^{any.only[caps.Unscoped]})  // error
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:52:15 ----------------------------------------------------
+52 |  private val y = ??? : A^ // error
    |               ^
-   |value y needs an explicit type because it captures a root capability in its type () => test.A^{any.only[Unscoped]}.
-   |Fields capturing a root capability need to be given an explicit type unless the capability is already
-   |subsumed by the computed capability of the enclosing class.
+   |           value y needs an explicit type because it captures a root capability in its type test.A^.
+   |           Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |           subsumed by the computed capability of the enclosing class.
    |
-   |where:    =>  refers to a root capability in the type of value y
-   |          any is a root capability created in value y
+   |           where:    ^ refers to a root capability in the type of value y
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:29:21 ----------------------------------------------------
 29 |    private val count = Ref() // error
    |                     ^

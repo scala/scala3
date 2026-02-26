@@ -16,3 +16,21 @@
   |    External uses should be declared explicitly with a uses clause in object Test:
   |
   |        uses test.Console
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/console-use-2/Test_2.scala:15:8 ------------------------
+15 |val _ = Console.println("hello") // error
+   |        ^^^^^^^
+   |        Reference `test.Console` is not included in the allowed capture set {}
+   |        of the enclosing top-level definitions in package test.
+   |
+   |        The top-level definitions should be wrapped in an object with a uses_init clause:
+   |
+   |            uses_init test.Console
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/console-use-2/Test_2.scala:17:8 ------------------------
+17 |def f = Console.println("hello") // error
+   |        ^^^^^^^
+   |        Reference `test.Console` is not included in the allowed capture set {}
+   |        of the enclosing top-level definitions in package test.
+   |
+   |        The top-level definitions should be wrapped in an object with a uses clause:
+   |
+   |            uses test.Console

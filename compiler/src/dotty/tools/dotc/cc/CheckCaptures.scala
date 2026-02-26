@@ -483,7 +483,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** A description where this environment comes from */
     private def provenance(env: Env)(using Context): String =
-      val owner = env.owner
+      var owner = env.owner
+      if owner.isConstructor && owner.owner.isPackageObject then
+        owner = owner.owner
       if owner.isAnonymousFunction then
         val expected = openClosures
           .find(_._1 == owner)
@@ -1504,9 +1506,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ =>
 
         SafeRefs.checkSafeAnnots(cls)
+        lazy val capFields = cls.capturesImpliedByFields(cls.appliedRef).fields
         if cls.derivesFrom(defn.Caps_Classifier) then
-          for fld <- cls.capturesImpliedByFields(cls.appliedRef).fields
-              cl <- fld.classifiersOfLocalCapsInType do
+          for fld <- capFields; cl <- fld.classifiersOfLocalCapsInType do
             if !fld.name.is(WildcardParamName) && !cl.derivesFrom(cls.classifier) then
               def fldClassifier =
                 if cl == defn.AnyClass then i"of unclassified type ${fld.info}"
@@ -1516,6 +1518,18 @@ class CheckCaptures extends Recheck, SymTransformer:
                     |$fldClassifier
                     |Field classifiers have to conform to the classifier of the containing class.""",
                 cls.srcPos)
+        if !isExemptFromExplicitChecks(cls)
+            && !cls.derivesFrom(defn.Caps_Capability)
+            && capFields.nonEmpty
+        then
+          val fields =
+            if capFields.length == 1
+            then i"a field `${capFields.head.name}` with `any` in its type"
+            else i"fields `${capFields.map(_.name).mkString("`, `")}` with `any` in their types"
+          if cls.isPackageObject then
+            report.error(em"$fields need to be put in an object that extends Capability", capFields.head.srcPos)
+          else
+            report.error(em"$cls needs to extend Capability since it has $fields.", cls.srcPos)
 
         super.recheckClassDef(tree, impl, cls)
       finally

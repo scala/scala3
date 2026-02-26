@@ -1,13 +1,13 @@
 package test
 
-import caps.SharedCapability
+import caps.{SharedCapability, ExclusiveCapability}
 
 class File
 
 object Console extends SharedCapability:
   def println(s: String) = Predef.println(s)
 
-class A uses Console {
+class A extends ExclusiveCapability uses Console {
   val f: File^ = File()
   val g: File^ = File()
 
