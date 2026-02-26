@@ -1380,8 +1380,11 @@ trait Checking {
           if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
             () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
           else if decl.is(Synthetic) then doubleDefError(other, decl)
-          else if decl.info.finalResultType =:= other.info.finalResultType then
-            doubleDefError(decl, other)
+          else
+            val x = decl.info.finalResultType
+            val y = other.info.finalResultType
+            if TypeComparer.isSubType(x, y) || TypeComparer.isSubType(y, x) then
+              doubleDefError(decl, other)
         if decl.hasDefaultParams && other.hasDefaultParams then
           report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
           decl.resetFlag(HasDefaultParams)
