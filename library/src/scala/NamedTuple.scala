@@ -22,6 +22,8 @@ object NamedTuple:
 
   /** A named tuple expression will desugar to a call to `build`. For instance,
    *  `(name = "Lyra", age = 23)` will desugar to `build[("name", "age")]()(("Lyra", 23))`.
+   *
+   *  @tparam N the tuple of literal string types representing the field names
    */
   inline def build[N <: Tuple]()[V <: Tuple](x: V): NamedTuple[N, V] = x
 
@@ -141,7 +143,10 @@ end NamedTuple
 object NamedTupleDecomposition:
   import NamedTuple.*
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
-      /** The value (without the name) at index `n` of this tuple. */
+    /** The value (without the name) at index `n` of this tuple.
+     *
+     *  @param n the zero-based index of the element to retrieve
+     */
     inline def apply(n: Int): Elem[NamedTuple[N, V], n.type] =
       x.toTuple.apply(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
 
@@ -163,19 +168,30 @@ object NamedTupleDecomposition:
 
     /** The tuple consisting of the first `n` elements of this tuple, or all
      *  elements if `n` exceeds `size`.
+     *
+     *  @param n the number of elements to take from this tuple
      */
     inline def take(n: Int): Take[NamedTuple[N, V], n.type] = x.toTuple.take(n)
 
     /** The tuple consisting of all elements of this tuple except the first `n` ones,
      *  or no elements if `n` exceeds `size`.
+     *
+     *  @param n the number of elements to drop from the beginning of this tuple
      */
     inline def drop(n: Int): Drop[NamedTuple[N, V], n.type] = x.toTuple.drop(n)
 
-    /** The tuple `(x.take(n), x.drop(n))`. */
+    /** The tuple `(x.take(n), x.drop(n))`.
+     *
+     *  @param n the index at which to split this tuple
+     */
     inline def splitAt(n: Int): Split[NamedTuple[N, V], n.type] = x.toTuple.splitAt(n)
 
     /** The tuple consisting of all elements of this tuple followed by all elements
      *  of tuple `that`. The names of the two tuples must be disjoint.
+     *
+     *  @tparam N2 the tuple of name types of the other named tuple
+     *  @tparam V2 the tuple of value types of the other named tuple
+     *  @param that the named tuple to append to this one
      */
     inline def ++ [N2 <: Tuple, V2 <: Tuple](that: NamedTuple[N2, V2])(using Tuple.Disjoint[N, N2] =:= true)
       : Concat[NamedTuple[N, V], NamedTuple[N2, V2]]
@@ -184,6 +200,8 @@ object NamedTupleDecomposition:
     /** The named tuple consisting of all element values of this tuple mapped by
      *  the polymorphic mapping function `f`. The names of elements are preserved.
      *  If `x = (n1 = v1, ..., ni = vi)` then `x.map(f) = `(n1 = f(v1), ..., ni = f(vi))`.
+     *
+     *  @tparam F the type constructor applied to each element value type
      */
     inline def map[F[_]](f: [t] => t => F[t]): Map[NamedTuple[N, V], F] =
       x.toTuple.map[F](f)
@@ -197,6 +215,9 @@ object NamedTupleDecomposition:
      *  the extra elements of the larger tuple will be disregarded.
      *  The names of `x` and `that` at the same index must be the same.
      *  The result tuple keeps the same names as the operand tuples.
+     *
+     *  @tparam V2 the tuple of value types of the other named tuple
+     *  @param that the named tuple to zip with this one
      */
     inline def zip[V2 <: Tuple](that: NamedTuple[N, V2]): Zip[NamedTuple[N, V], NamedTuple[N, V2]] =
       x.toTuple.zip(that.toTuple)
