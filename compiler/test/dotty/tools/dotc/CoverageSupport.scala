@@ -44,6 +44,29 @@ trait CoverageSupport { this: ParallelTesting =>
     }
   }
 
+  trait CoverageTestSupport[A <: Test]:
+    def build(using SummaryReporting): (List[TestSource], Int, Option[Int], Boolean) => Test
+    def fallback(test: CompilationTest)(using SummaryReporting): Unit
+
+  def runWithCoverageOrFallback[A <: Test](test: CompilationTest, desc: String)(using CoverageTestSupport[A], SummaryReporting): Unit =
+    val tc = summon[CoverageTestSupport[A]]
+    if Properties.testsInstrumentCoverage then
+      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput), desc)
+    else
+      tc.fallback(test)
+
+  given CoverageTestSupport[PosTestWithCoverage] with
+    def build(using SummaryReporting) = (t, ti, tl, s) => new PosTestWithCoverage(t, ti, tl, s)
+    def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkCompile()
+
+  given CoverageTestSupport[WarnTestWithCoverage] with
+    def build(using SummaryReporting) = (t, ti, tl, s) => new WarnTestWithCoverage(t, ti, tl, s)
+    def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkWarnings()
+
+  given CoverageTestSupport[RunTestWithCoverage] with
+    def build(using SummaryReporting) = (t, ti, tl, s) => new RunTestWithCoverage(t, ti, tl, s)
+    def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkRuns()
+
   /** Wraps a CompilationTest to add coverage flags to all targets.
    *  Each target gets its own unique temporary coverage directory.
    *  Filters out test sources that match the scoverage ignore excludelist.
@@ -103,6 +126,33 @@ trait CoverageSupport { this: ParallelTesting =>
   )(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = {
+      verifyCoverageFile(testSource)
+    }
+  }
+
+  final class RewriteTestWithCoverage(
+    testSources: List[TestSource],
+    checkFiles: Map[java.io.File, java.io.File],
+    times: Int,
+    threadLimit: Option[Int],
+    suppressAllOutput: Boolean
+  )(implicit summaryReport: SummaryReporting)
+  extends RewriteTest(testSources, checkFiles, times, threadLimit, suppressAllOutput) {
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = {
+      super.onSuccess(testSource, reporters, logger)
+      verifyCoverageFile(testSource)
+    }
+  }
+
+  final class WarnTestWithCoverage(
+    testSources: List[TestSource],
+    times: Int,
+    threadLimit: Option[Int],
+    suppressAllOutput: Boolean
+  )(implicit summaryReport: SummaryReporting)
+  extends WarnTest(testSources, times, threadLimit, suppressAllOutput) {
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit = {
+      super.onSuccess(testSource, reporters, logger)
       verifyCoverageFile(testSource)
     }
   }
