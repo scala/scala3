@@ -12,7 +12,7 @@ object Macros {
     val modSym: Symbol = Symbol.newModule(
       Symbol.spliceOwner,
       name,
-      Flags.Implicit,
+      Flags.Given,
       Flags.EmptyFlags,
       _ => List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
       _ => Nil,
