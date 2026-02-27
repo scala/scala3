@@ -34,7 +34,7 @@ Refer to our [LLM policy](LLM_POLICY.md) for rules and guidelines regarding usag
 - *Don't* open pull requests you cannot explain even if they pass tests, such as "don't call this method on those inputs because it crashes"
   (it is easy to accidentally introduce unsoundness this way, and special cases are generally not the way to go)
 - *Don't* try to fix `TODO`s or `FIXME`s in the codebase without a deep understanding of their context
-  (remember, if they took 5 minutes to fix, the person writing them would most likely had fixed them instead of adding a comment)
+  (remember, if they took 5 minutes to fix, the person writing them would most likely have fixed them instead of adding a comment)
 - *Don't* ask general questions such as "how does a compiler work" or "what is JVM bytecode", these are better answered by existing resources
 - *Don't* expect maintainers to respond immediately every time you have a question
 - *Don't* break our LLM policy linked above, especially in the form of "vibe coded" PRs that you don't understand yourself
