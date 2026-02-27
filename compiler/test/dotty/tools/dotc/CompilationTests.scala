@@ -96,7 +96,7 @@ class CompilationTests {
 
   @Test def posTwice: Unit = {
     implicit val testGroup: TestGroup = TestGroup("posTwice")
-    val compilationTest = aggregateTests(
+    aggregateTests(
       compileFilesInDir("tests/pos-java-interop", defaultOptions),
       compileFilesInDir("tests/pos-java-interop-separate", defaultOptions),
       compileFile("tests/pos/t2168.scala", defaultOptions),
@@ -132,8 +132,7 @@ class CompilationTests {
       compileFile("tests/pos/extmethods.scala", defaultOptions),
       compileFile("tests/pos/companions.scala", defaultOptions),
       compileFile("tests/pos/main.scala", defaultOptions)
-    )
-    compilationTest.times(2).checkCompile()
+    ).times(2).checkCompile()
   }
 
   // Warning tests ------------------------------------------------------------
