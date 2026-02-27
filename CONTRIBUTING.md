@@ -6,9 +6,9 @@ and generally make the Scala 3 experience better.
 
 Look at this repo's issues to find useful areas for contributions.
 You can of course open your own if you've spotted a bug or have an idea for improvement.
-We will generally not accept pull requests without a corresponding issue, unless they are extremely simple such as fixing typos.
+We will generally not accept pull requests without a corresponding issue, unless they are short and self-contained such as fixing typos.
 
-Please understand that _we have limited time_ and _the low-hanging fruit in a compiler isn't hanging that low_.
+A typical compiler contributor knows Scala already and is familiar with compiler concepts such as abstract syntax trees.
 If you're a Scala beginner, we recommend you start by contributing to other Scala projects that are less complex than the compiler.
 Scaladex has [a list of Scala projects looking for contributions](https://index.scala-lang.org/search?q=&contributingSearch=true)
 
@@ -20,27 +20,28 @@ head to the [Scala 3 Contributing Guide](https://nightly.scala-lang.org/docs/con
 
 Refer to our [LLM policy](LLM_POLICY.md) for rules and guidelines regarding usage of LLM-based tools in your contributions.
 
-## Dos
+## Encouraged
 
-- *Do* let us know you'd like to work on an issue by posting a comment, so we can keep track of work and avoid duplicate work
-- *Do* discuss a sketch of your solution on an issue if it's nontrivial so we can give you feedback
-- *Do* open a draft pull request if you have a solution that mostly works but need help on specific sub-problems
-- *Do* ask questions if there are specific things you can't find in the documentation or in the code
-- *Do* make sure you understand what the code you touch is doing and why your solution works
-- *Do* keep in mind general software engineering practices, such as encapsulation, code sharing, and keeping code style consistent
-- *Do* ping maintainers if you think you've done everything on your side and aren't getting a response after a few weeks
+- Do let us know you'd like to work on an issue by posting a comment, so we can keep track of work and avoid duplicate work
+- Do discuss a sketch of your solution on an issue so we can give you feedback
+- Do open a draft pull request if you have a solution that mostly works but need help on specific sub-problems
+- Do ask questions if there are specific things you can't find in the documentation or in the code
+- Do make sure you understand what the code you touch is doing and why your solution works
+- Do keep in mind general software engineering practices, such as encapsulation and code sharing
+- Do ping maintainers if you think you've done everything on your side and aren't getting a response after a few weeks
 
-## Don'ts
+## Discouraged
 
-- *Don't* open large pull requests with no prior discussion
-- *Don't* make stylistic changes based on your personal taste that make pull requests harder to review
-- *Don't* open pull requests you cannot explain even if they pass tests, such as "don't call this method on those inputs because it crashes"
-  (it is easy to accidentally introduce unsoundness this way, and special cases are generally not the way to go)
-- *Don't* try to fix `TODO`s or `FIXME`s in the codebase without a deep understanding of their context
+- Don't open large pull requests with no prior discussion
+- Don't make stylistic changes based on your personal taste that make pull requests harder to review
+- Don't open pull requests you cannot explain even if they pass tests, such as "don't call this method on those inputs because it crashes"
+  (one can accidentally introduce unsoundness this way, and special cases are generally not the way to go)
+- Don't try to fix `TODO`s or `FIXME`s in the codebase without a deep understanding of their context
   (remember, if they took 5 minutes to fix, the person writing them would most likely have fixed them instead of adding a comment)
-- *Don't* ask general questions such as "how does a compiler work" or "what is JVM bytecode", these are better answered by existing resources
-- *Don't* expect maintainers to respond immediately every time you have a question
-- *Don't* break our LLM policy linked above, especially in the form of "vibe coded" PRs that you don't understand yourself
+- Don't ask general questions such as "how does a compiler work" or "what is JVM bytecode", these are better answered by existing resources
+- Don't expect maintainers to respond immediately every time you have a question
+  (most maintainers do this part time, so we cannot commit to as short a turnaround time as we would ideally like)
+- Don't break our LLM policy linked above, especially in the form of "vibe coded" PRs that you don't understand yourself
 
 ## Maintainers
 
