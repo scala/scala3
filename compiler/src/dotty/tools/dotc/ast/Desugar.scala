@@ -1629,7 +1629,8 @@ object desugar {
                 // Start with the assignment to the tuple:
                 // create a fresh name,
                 val tmpName = UniqueName.fresh()
-                // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }` does not leak into the API,
+                // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }`
+                // does not leak into the API,
                 val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
                 // use the type of the tuple as declared if there is one so we don't lose information,
                 val tupType = pat match
