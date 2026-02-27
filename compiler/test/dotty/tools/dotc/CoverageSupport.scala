@@ -5,7 +5,6 @@ package dotc
 import scala.language.unsafeNulls
 
 import java.nio.file.{Files, Paths}
-import java.nio.charset.StandardCharsets
 import scala.util.Try
 import scala.util.control.NonFatal
 import dotty.tools.dotc.coverage.Serializer

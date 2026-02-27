@@ -96,7 +96,7 @@ class CompilationTests {
 
   @Test def posTwice: Unit = {
     implicit val testGroup: TestGroup = TestGroup("posTwice")
-    val compilationTest = withCoverage(aggregateTests(
+    val compilationTest = aggregateTests(
       compileFilesInDir("tests/pos-java-interop", defaultOptions),
       compileFilesInDir("tests/pos-java-interop-separate", defaultOptions),
       compileFile("tests/pos/t2168.scala", defaultOptions),
@@ -132,9 +132,8 @@ class CompilationTests {
       compileFile("tests/pos/extmethods.scala", defaultOptions),
       compileFile("tests/pos/companions.scala", defaultOptions),
       compileFile("tests/pos/main.scala", defaultOptions)
-    ))
-    val compilationTest2 = compilationTest.times(2)
-    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest2, "Pos")
+    )
+    compilationTest.times(2).checkCompile()
   }
 
   // Warning tests ------------------------------------------------------------
@@ -197,11 +196,10 @@ class CompilationTests {
 
   @Test def pickling: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPickling")
-    val compilationTest = withCoverage(aggregateTests(
+    aggregateTests(
       compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingExcludelisted)),
       compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted))
-    ))
-    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
+    ).checkCompile()
   }
 
   //@Test disabled in favor of posWithCompilerCC to save time.
@@ -388,7 +386,7 @@ class CompilationTests {
     def parCompileDir(directory: String) = compileDir(directory, options)
 
     // Compilation units containing more than 1 source file
-    val parPosTest = withCoverage(aggregateTests(
+    aggregateTests(
       parCompileDir("tests/pos/i10477"),
       parCompileDir("tests/pos/i4758"),
       parCompileDir("tests/pos/scala2traits"),
@@ -396,19 +394,17 @@ class CompilationTests {
       parCompileDir("tests/pos/tailcall"),
       parCompileDir("tests/pos/reference"),
       parCompileDir("tests/pos/pos_valueclasses")
-    ))
-    runWithCoverageOrFallback[PosTestWithCoverage](parPosTest, "Pos")
+    ).checkCompile()
 
     aggregateTests(
       parCompileDir("tests/neg/package-implicit"),
       parCompileDir("tests/neg/package-export")
     ).checkExpectedErrors()
 
-    val parRunTest = withCoverage(aggregateTests(
+    aggregateTests(
       parCompileDir("tests/run/decorators"),
       parCompileDir("tests/run/generic")
-    ))
-    runWithCoverageOrFallback[RunTestWithCoverage](parRunTest, "Run")
+    ).checkRuns()
 
   }
 }
