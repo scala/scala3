@@ -1396,7 +1396,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
           // Test point (2) of doc comment above
+          def isToplevelDefsInEmptyPackage(cls: Symbol) =
+            cls.isPackageObject && cls.enclosingPackageClass.isEmptyPackage
           if sym.owner.isClass
+              && !isToplevelDefsInEmptyPackage(sym.owner)
               && contributesLocalCapToClass(sym)
               && !CaptureSet.isAssumedPure(sym)
           then
