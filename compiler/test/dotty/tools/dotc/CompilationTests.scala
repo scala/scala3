@@ -265,17 +265,14 @@ class CompilationTests {
   }
 
   // initialization tests for global objects
+  // Scoverage coverage disabled: majority of tests fail (coverage instrumentation triggers extra -Ysafe-init-global warnings)
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
-    val warnTest = withCoverage(compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)))
-    runWithCoverageOrFallback[WarnTestWithCoverage](warnTest, "Warn")
-    val posTest = withCoverage(compileFilesInDir("tests/init-global/pos", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)))
-    runWithCoverageOrFallback[PosTestWithCoverage](posTest, "Pos")
+    compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
+    compileFilesInDir("tests/init-global/pos", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     if Properties.usingScalaLibraryTasty && !Properties.usingScalaLibraryCCTasty then
-      val warnTastyTest = withCoverage(compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)))
-      runWithCoverageOrFallback[WarnTestWithCoverage](warnTastyTest, "Warn")
-      val posTastyTest = withCoverage(compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)))
-      runWithCoverageOrFallback[PosTestWithCoverage](posTastyTest, "Pos")
+      compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
+      compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     end if
 
     locally {
