@@ -3,8 +3,10 @@ package dotc
 package reporting
 
 import core.Contexts.*
-import java.io.{ BufferedReader, PrintWriter }
+
+import java.io.{BufferedReader, PrintWriter}
 import Diagnostic.*
+import dotty.tools.dotc.core.Decorators.containsPhase
 import dotty.tools.dotc.interfaces.Diagnostic.INFO
 
 /**
@@ -39,7 +41,8 @@ object ConsoleReporter {
 
     /** Print the message with the given position indication. */
     def doReport(dia: Diagnostic)(using Context): Unit =
-      if dia.level == INFO then echoMessage(messageAndPos(dia))
+      // Report even info-level diagnostics if they've been explicitly enabled by -Ylog
+      if dia.level == INFO && !ctx.settings.Ylog.value.containsPhase(ctx.phase) then echoMessage(messageAndPos(dia))
       else printMessage(messageAndPos(dia))
   }
 }

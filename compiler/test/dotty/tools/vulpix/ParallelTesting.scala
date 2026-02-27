@@ -27,7 +27,7 @@ import dotc.{Compiler, Driver}
 import dotc.core.Contexts.*
 import dotc.decompiler
 import dotc.report
-import dotc.interfaces.Diagnostic.ERROR
+import dotc.interfaces.Diagnostic.{ERROR, WARNING}
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.config.Config
@@ -802,8 +802,8 @@ trait ParallelTesting extends RunnerOrchestration:
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
       lazy val (expected, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
-      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator)
       lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line))
+      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator.filter(_.level >= WARNING))
       lazy val messages = diagnostics.map(d => s" at ${d.pos.line + 1}: ${d.message}")
       def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else lines.mkString(s"$title\n", "\n", "")
       def hasMissingAnnotations = unfulfilled.nonEmpty || unexpected.nonEmpty

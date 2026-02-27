@@ -76,7 +76,8 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
       case _ => ""
     }
 
-    if dia.level >= WARNING then
+    // Report even info-level diagnostics if they've been explicitly enabled by -Ylog
+    if dia.level >= WARNING || ctx.settings.Ylog.value.containsPhase(ctx.phase) then
       _consoleReporter.doReport(dia)
       _diagnosticBuf.append(dia)
     printMessageAndPos(dia, extra)
