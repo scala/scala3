@@ -35,7 +35,8 @@ class Compiler {
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
     List(new WInferUnion,           // Check for type arguments inferred as union types
          CheckUnused.PostTyper(),   // Check for unused
-         CheckShadowing()) ::       // Check for shadowed elements
+         CheckShadowing(),          // Check for shadowed elements
+         CheckTermination()) ::     // Check if annotated functions terminate.
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticInfo) :: // Extract info into .semanticdb files
