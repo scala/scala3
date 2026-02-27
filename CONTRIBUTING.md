@@ -8,17 +8,23 @@ Look at this repo's issues to find useful areas for contributions.
 You can of course open your own if you've spotted a bug or have an idea for improvement.
 We will generally not accept pull requests without a corresponding issue, unless they are short and self-contained such as fixing typos.
 
+This repo contains the compiler and some related components, you may also want to contribute to
+[scala-cli](https://github.com/VirtusLab/scala-cli), [scala-native](https://github.com/scala-native/scala-native), [metals](https://github.com/scalameta/metals),
+and [docs.scala-lang](https://github.com/scala/docs.scala-lang).
+
+Refer to our [LLM policy](LLM_POLICY.md) for rules and guidelines regarding usage of LLM-based tools in your contributions.
+
+## Getting started
+
 A typical compiler contributor knows Scala already and is familiar with compiler concepts such as abstract syntax trees.
 If you're a Scala beginner, we recommend you start by contributing to other Scala projects that are less complex than the compiler.
-Scaladex has [a list of Scala projects looking for contributions](https://index.scala-lang.org/search?q=&contributingSearch=true)
+Scaladex has [a list of Scala projects looking for contributions](https://index.scala-lang.org/search?q=&contributingSearch=true).
 
 One good way to get started is to participate in the [Scala Compiler Spree](https://airtable.com/app94nwzow5R6W1O6/pagvjIzxYnqTTlhwY/form)!
 You'll be assigned to a team and work with experienced contributors to fix an issue.
 
 To learn how to set up your local environment, how the compiler works, how to reproduce issues, and so on,
 head to the [Scala 3 Contributing Guide](https://nightly.scala-lang.org/docs/contributing/index.html).
-
-Refer to our [LLM policy](LLM_POLICY.md) for rules and guidelines regarding usage of LLM-based tools in your contributions.
 
 ## Encouraged
 
