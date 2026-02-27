@@ -26,6 +26,8 @@ You'll be assigned to a team and work with experienced contributors to fix an is
 To learn how to set up your local environment, how the compiler works, how to reproduce issues, and so on,
 head to the [Scala 3 Contributing Guide](https://nightly.scala-lang.org/docs/contributing/index.html).
 
+You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0OgqE54-KEvYDg4LRhKQ) videos useful to learn more about specific parts of the compiler.
+
 ## Encouraged
 
 - Do let us know you'd like to work on an issue by posting a comment, so we can keep track of work and avoid duplicate work
