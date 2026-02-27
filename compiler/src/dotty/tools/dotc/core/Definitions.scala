@@ -1083,6 +1083,7 @@ class Definitions {
   @tu lazy val SerialVersionUIDAnnot: ClassSymbol = requiredClass("scala.SerialVersionUID")
   @tu lazy val SilentIntoAnnot: ClassSymbol = requiredClass("scala.annotation.internal.$into")
   @tu lazy val TailrecAnnot: ClassSymbol = requiredClass("scala.annotation.tailrec")
+  @tu lazy val TerminationAnnot: ClassSymbol = requiredClass("scala.annotation.terminates")
   @tu lazy val ThreadUnsafeAnnot: ClassSymbol = requiredClass("scala.annotation.threadUnsafe")
   @tu lazy val ConstructorOnlyAnnot: ClassSymbol = requiredClass("scala.annotation.constructorOnly")
   @tu lazy val CompileTimeOnlyAnnot: ClassSymbol = requiredClass("scala.annotation.compileTimeOnly")
