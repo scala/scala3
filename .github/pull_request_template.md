@@ -1,15 +1,7 @@
----
-name: "\U0001F527 Fix issue"
-about: Open a new pull request for the Scala 3 Compiler that fixes an issue from the issue tracker
-title: 'Fix #XYZ: A SHORT FIX DESCRIPTION'
-assignees: ''
-
----
-
 <!-- Fixes #XYZ (where XYZ is the issue number from the issue tracker) -->
 
 <!-- TODO description of the change -->
-<!-- Ideally should have a title like "Fix #XYZ: A SHORT FIX DESCRIPTION" -->
+<!-- Ideally should have a title like "Fix #XYZ: Short fix description" -->
 
 <!--
   TODO first sign the CLA
@@ -44,7 +36,7 @@ assignees: ''
 <!-- Placeholder for any extra context regarding this contribution. -->
 
 <!--
-  For support regarding contributions to a particular component of the compiler, feel free to tag the maintainers
-  as listed in the [relevant doc](https://github.com/scala/scala3/blob/main/MAINTENANCE.md).
-  When in doubt, refer to [our contribution guide](https://github.com/scala/scala3/blob/main/CONTRIBUTING.md).
+  When in doubt, and for support regarding contributions to a particular component of the compiler, 
+  refer to [our contribution guide](https://github.com/scala/scala3/blob/main/CONTRIBUTING.md),
+  and feel free to tag the maintainers listed there for the area(s) you are modifying.
 -->
