@@ -20,11 +20,11 @@ The explicit-nulls flag is currently disabled by default. It can be enabled via 
 
 ## Type Hierarchy
 
-We change the type hierarchy so that `Null` is only a subtype of `Any` by:
+We change the type hierarchy so that `Null` is only a subtype of `AnyVal` by:
 
 - modifying the notion of what is a nullable class (`isNullableClass`) in `SymDenotations`
-  to include _only_ `Null` and `Any`, which is used by `TypeComparer`
-- changing the parent of `Null` in `Definitions` to point to `Any` and not `AnyRef`
+  to include _only_ `Null` and its superclasses, which is used by `TypeComparer`
+- changing the parent of `Null` in `Definitions` to point to `AnyVal` and not `AnyRef`
 - changing `isBottomType` and `isBottomClass` in `Definitions`
 
 ## Working with Nullable Unions
