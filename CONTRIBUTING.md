@@ -99,3 +99,9 @@ Principal areas of the compiler and internal team members responsible for their 
 - Vulpix:
 - Benchmarks: @mbovel
 - Releases: @WojciechMazur (Scala 3 Next), @tgodzik (Scala 3.3 LTS)
+
+**Misc**
+- Issue tracker: @Gedochao
+- Coordination with the Scala ecosystem: @tgodzik, @SethTisue, (@Gedochao)
+- Roadmap: @Gedochao
+- SLC: @tgodzik 
