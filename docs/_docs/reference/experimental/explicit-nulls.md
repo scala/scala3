@@ -35,13 +35,16 @@ Originally, `Null` is a subtype of all reference types.
 
 !["Original Type Hierarchy"](images/explicit-nulls/scalaHierarchyWithMatchable.png)
 
-When explicit nulls is enabled, the type hierarchy changes so that `Null` is only
-a subtype of `Any` and `Matchable`, as opposed to every reference type,
+When explicit nulls is enabled, the type hierarchy changes so that `Null` is not
+a subtype of every reference type anymore,
 which means `null` is no longer a value of `AnyRef` and its subtypes.
+Instead, it is a regular class that extends `AnyVal`.
 
 This is the new type hierarchy:
 
 !["Type Hierarchy for Explicit Nulls"](images/explicit-nulls/scalaHierarchyWithMatchableAndSafeNull.png)
+
+TODO Adjust this image. Where is its source?
 
 After erasure, `Null` remains a subtype of all reference types (as forced by the JVM).
 
