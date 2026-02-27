@@ -26,6 +26,10 @@ i11247.scala
 i11556.scala
 i11685
 i12739.scala
+i13011.scala
+i13392.scala
+i13542.scala
+i13691.scala
 i14164.scala
 i15165.scala
 i15385
@@ -36,6 +40,7 @@ i15980
 i18263.orig.scala
 i18263.scala
 i18589
+i19505.scala
 i19637.scala
 i19955a.scala
 i19955b.scala
@@ -46,7 +51,11 @@ i21313.scala
 i2146.scala
 i2250.scala
 i23179.scala
+i23277.scala
+i23305.scala
 i23489.scala
+i23541.scala
+i23693.scala
 i2397.scala
 i24039.scala
 i24553.scala
@@ -60,6 +69,7 @@ i8900a3.scala
 i8955.scala
 i8963.scala
 i9228.scala
+i9880.scala
 infersingle.scala
 interop-unsound-src
 large2.scala
@@ -76,6 +86,7 @@ precise-ctx-bound.scala
 quote-function-applied-to.scala
 skolems2.scala
 spurious-overload.scala
+sub-cases-exhaustivity.scala
 t10594.scala
 tailrec.scala
 traitParams.scala
