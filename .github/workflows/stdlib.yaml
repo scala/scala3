@@ -533,7 +533,7 @@ jobs:
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
 
-  test-scala3-bootstrapped-pos-coverage:
+  test-scala3-bootstrapped-compilation-coverage:
     runs-on: ubuntu-latest
     needs: [scala3-compiler-bootstrapped, tasty-core-bootstrapped, scala-library-bootstrapped, scala3-staging, scala3-tasty-inspector]
     steps:
