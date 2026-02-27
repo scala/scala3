@@ -30,7 +30,7 @@ You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0
 
 ## Encouraged
 
-- Do let us know you'd like to work on an issue by posting a comment, so we can keep track of work and avoid duplicate work
+- Do let us know you'd like to work on an issue by posting a comment, so we can assign it, keep track of work and avoid duplicate work
 - Do discuss a sketch of your solution on an issue so we can give you feedback
 - Do open a draft pull request if you have a solution that mostly works but need help on specific sub-problems
 - Do ask questions if there are specific things you can't find in the documentation or in the code
