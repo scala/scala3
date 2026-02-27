@@ -12,6 +12,9 @@ Please understand that _we have limited time_ and _the low-hanging fruit in a co
 If you're a Scala beginner, we recommend you start by contributing to other Scala projects that are less complex than the compiler.
 Scaladex has [a list of Scala projects looking for contributions](https://index.scala-lang.org/search?q=&contributingSearch=true)
 
+One good way to get started is to participate in the [Scala Compiler Spree](https://airtable.com/app94nwzow5R6W1O6/pagvjIzxYnqTTlhwY/form)!
+You'll be assigned to a team and work with experienced contributors to fix an issue.
+
 To learn how to set up your local environment, how the compiler works, how to reproduce issues, and so on,
 head to the [Scala 3 Contributing Guide](https://nightly.scala-lang.org/docs/contributing/index.html).
 
