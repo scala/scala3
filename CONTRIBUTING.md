@@ -49,7 +49,7 @@ You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0
 - Don't ask general questions such as "how does a compiler work" or "what is JVM bytecode", these are better answered by existing resources
 - Don't expect maintainers to respond immediately every time you have a question
   (most maintainers do this part time, so we cannot commit to as short a turnaround time as we would ideally like)
-- Don't break our LLM policy linked above, especially in the form of "vibe coded" PRs that you don't understand yourself
+- Don't break our LLM policy linked above, especially in the form of PRs "vibe-coded" without proper understanding of the contributed change
 
 ## Maintainers
 
