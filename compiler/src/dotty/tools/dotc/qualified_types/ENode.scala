@@ -486,6 +486,12 @@ object ENode:
             funNode <- fromTree(fun, paramSyms, paramTps)
             argsNodes <- args.map(fromTree(_, paramSyms, paramTps)).sequence
           yield ENode.Apply(funNode, argsNodes)
+        // Strip asInstanceOf/$asInstanceOf casts: they don't change the
+        // runtime value, and encoding them would introduce types that are
+        // not properly hash-consed, breaking EGraph identity invariants.
+        case tpd.TypeApply(tpd.Select(qual, _), _)
+            if tree.symbol == defn.Any_asInstanceOf || tree.symbol == defn.Any_typeCast =>
+          fromTree(qual, paramSyms, paramTps)
         case tpd.TypeApply(fun, args) =>
           for funNode <- fromTree(fun, paramSyms, paramTps)
           yield ENode.TypeApply(funNode, args.map(tp => substParamRefs(tp.tpe, paramSyms, paramTps)))
