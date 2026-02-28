@@ -213,7 +213,7 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
     if aRepr eq bRepr then return
 
     if checksEnabled then
-      assert(aRepr != bRepr, s"$aRepr and $bRepr are `equals` but not `eq`")
+      assert(aRepr != bRepr, s"${show(aRepr)} and ${show(bRepr)} are `equals` but not `eq`")
 
     // Update representantOf and usedBy maps
     val (newRepr, oldRepr) = order(aRepr, bRepr)
