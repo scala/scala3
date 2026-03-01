@@ -60,6 +60,13 @@ jobs:
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
+      - name: Upload scaladoc output
+        uses: actions/upload-artifact@v4
+        with:
+          name: scaladoc-output
+          path: |
+            scaladoc/output/scala3
+
   validate-docs:
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +78,43 @@ jobs:
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
+
+  validate-generated-docs:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Download scaladoc output
+        uses: actions/download-artifact@v4
+        with:
+          name: scaladoc-output
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install html-proofer
+        run: gem install html-proofer
+
+     # Full tree except /api/scala/** (we check for top-level classes, but not sudirectories, eg. collections)
+     # api/scala has 2k+ files with lots of references and links (more than 60k references) taking too long to validate
+      - name: Validate documentation links
+        run: |
+          htmlproofer scaladoc-output/scala3 \
+            --checks "Links" \
+            --allow-hash-href \
+            --allow-missing-href \
+            --disable-external \
+            --no-check-external-hash \
+            --no-check-internal-hash \
+            --no-enforce-https \
+            --ignore-urls '/^http:\/\/localhost:8080\//' \
+            --ignore-urls '/^https:\/\/github\.com\/scala\/scala3\//' \
+            --ignore-files '/api\/scala\/[^/]+\//'
+
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
