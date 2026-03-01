@@ -566,6 +566,20 @@ object ReplCompilerTests:
 
 end ReplCompilerTests
 
+// i16250: these need separate classes because they require custom -language: options.
+// See also i16250a and i16250b above which test the error case (no flag).
+class ReplCaptureCheckingTests extends ReplTest(ReplTest.defaultOptions :+ "-language:experimental.captureChecking"):
+  @Test def `i16250 cc import with flag` = initially {
+    run("import language.experimental.captureChecking")
+    assertEquals("", storedOutput().trim)
+  }
+
+class ReplPureFunctionsTests extends ReplTest(ReplTest.defaultOptions :+ "-language:experimental.pureFunctions"):
+  @Test def `i16250 pureFunctions import with flag` = initially {
+    run("import language.experimental.pureFunctions")
+    assertEquals("", storedOutput().trim)
+  }
+
 class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Vprint:typer"):
   @Test def i9111 = initially {
     run("""|enum E {
@@ -646,3 +660,4 @@ class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-experime
         s"Output: '$output' did not contain expected definition: ${defn}",
         normalizedOutput.contains(normalizedDefn)
       )
+

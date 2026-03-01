@@ -3936,7 +3936,9 @@ object Parsers {
         case Some(prefix) =>
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
-            if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
+            if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost
+              && !Feature.enabledBySetting(QualifiedName(prefix, imported.asTermName))
+            then
               val desc =
                 if ctx.mode.is(Mode.Interactive) then
                   "not allowed in the REPL"
@@ -3944,7 +3946,8 @@ object Parsers {
               val hint =
                 if ctx.mode.is(Mode.Interactive) then
                   f"\nTo use this language feature, include the flag `-language:$prefix.$imported` when starting the REPL"
-                else ""
+                else
+                  f"\nTo use this language feature in a nested scope, compile with `-language:$prefix.$imported`"
               syntaxError(em"this language import is $desc$hint", id.span)
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
