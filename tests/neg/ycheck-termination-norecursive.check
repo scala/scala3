@@ -1,8 +1,0 @@
--- Error: tests/neg/ycheck-termination-norecursive.scala:8:8 -----------------------------------------------------------
-8 |    loop(0 :: l) // error
-  |    ^^^^^^^^^^^^
-  |    Recursive call to loop
--- Error: tests/neg/ycheck-termination-norecursive.scala:15:15 ---------------------------------------------------------
-15 |        x + sum(xs) // error
-   |            ^^^^^^^
-   |            Recursive call to sum

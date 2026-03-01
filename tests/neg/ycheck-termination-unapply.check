@@ -1,0 +1,4 @@
+-- Error: tests/neg/ycheck-termination-unapply.scala:13:6 --------------------------------------------------------------
+13 |  def caseLoop(n: Node): Int = // error
+   |      ^
+   |      caseLoop has an argument with a type that is mutable or has overridden unapply

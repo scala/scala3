@@ -1,0 +1,8 @@
+-- Error: tests/neg/ycheck-termination-class.scala:9:6 -----------------------------------------------------------------
+9 |  def classLoop(r: ClassNode): Int = // error
+  |      ^
+  |      classLoop has an argument with a type that is mutable or has overridden unapply
+-- Error: tests/neg/ycheck-termination-class.scala:13:6 ----------------------------------------------------------------
+13 |  def sumStd(l: List[Int]): Int = // error
+   |      ^
+   |      sumStd has an argument with a type that is mutable or has overridden unapply
