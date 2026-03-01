@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -8,25 +8,20 @@ Dotty is the Scala 3 compiler (`dotc`). It compiles Scala source code into JVM b
 
 ## Build Commands
 
-Use `sbtn` (sbt with native thin client) to run commands. This keeps an sbt server running for faster subsequent invocations.
+Use `sbt --client` (sbt with native thin client) to run commands. This keeps an sbt server running for faster subsequent invocations.
 
 ### Compilation
-- `sbtn scalac <file>` - Compile a file with the current compiler changes
-- `sbtn scala <class>` - Run a compiled class
+- `sbt --client scalac <file>` - Compile a file with the current compiler changes
+- `sbt --client scala <class>` - Run a compiled class
 
 Use the `local/` directory for temporary test files (gitignored).
 
 ### Testing
-- `sbtn testCompilation` - Run the whole compilation test suite.
-- `sbtn testCompilation <name>` - Run compilation tests matching `<name>` (e.g., `sbtn testCompilation i12345`)
-- `sbtn scala3-bootstrapped/test` - Run all tests (slow, CI-level)
-- `sbtn "testCompilation --update-checkfiles"` - Update `.check` files with actual output
+- `sbt --client testCompilation` - Run the whole compilation test suite.
+- `sbt --client testCompilation <name>` - Run compilation tests matching `<name>` (e.g., `sbt --client testCompilation i12345`)
+- `sbt --client scala3-bootstrapped/test` - Run all tests (slow, CI-level)
+- `sbt --client "testCompilation --update-checkfiles"` - Update `.check` files with actual output
 
-
-### REPL and Tools
-- `sbtn repl` - Start the Scala 3 REPL
-- `sbtn scala3-bootstrapped/publishLocal` - Build compiler locally for testing in other projects
-- `sbtn dist/Universal/packageBin` - Build a distribution (output in `dist/target/`)
 
 ## Test Directory Structure
 
@@ -52,52 +47,6 @@ Test annotations (magic comments):
 - `// nopos-error` - Expect an error with no position (can be anywhere in file)
 - `// anypos-error` - Expect an error with position that can't be annotated
 - `// scalajs: --skip` - Skip this test for Scala.js
-
-## Compiler Architecture
-
-### Source Layout
-```
-compiler/src/dotty/tools/
-├── dotc/           # Main compiler
-│   ├── ast/        # Abstract syntax trees
-│   ├── core/       # Core data structures (Types, Symbols, Contexts, etc.)
-│   ├── parsing/    # Scanner and parser
-│   ├── typer/      # Type checking (namer, typer)
-│   ├── transform/  # Tree transformation phases
-│   ├── reporting/  # Error messages and diagnostics
-│   └── cc/         # Capture checking (experimental)
-├── backend/        # JVM and JS code generation
-└── io/             # File and classpath handling
-```
-
-### Compiler Phases
-
-Phases are grouped into: `frontendPhases` → `picklerPhases` → `transformPhases` → `backendPhases`
-
-Key phases:
-1. **Parser** - Source to untyped AST
-2. **TyperPhase** - Type checking, produces typed AST
-3. **PostTyper** - Additional checks after typing
-4. **Pickler** - Generates TASTY (serialized typed AST)
-5. **Inlining** - Inline expansion and macro execution
-6. **Erasure** - Erases types to JVM model
-7. **GenBCode** - JVM bytecode generation
-
-### Core Data Structures
-
-Located in `compiler/src/dotty/tools/dotc/core/`:
-- **Types.scala** - Type representation hierarchy (`TypeRef`, `TermRef`, `MethodType`, etc.)
-- **Symbols.scala** - Symbol table entries
-- **Contexts.scala** - Compiler context (implicit parameter threading state through compilation)
-- **Denotations.scala** - Symbol meanings at specific phases
-- **Flags.scala** - Symbol flags (abstract, final, private, etc.)
-- **Names.scala** - Interned name representation
-
-### Key Conventions
-
-- Almost all methods take an implicit `Context` parameter named `ctx`
-- Phases are "miniphases" fused into single tree traversals for efficiency
-- Types use proxy pattern: `TypeProxy` wraps another type via `underlying`
 
 ## Bootstrapping
 
