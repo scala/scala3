@@ -58,35 +58,36 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   // 3. It is accessed on an object other than `this`
   // 4. It is a mutable parameter accessor
   // 5. It has a wildcard initializer `_`
-  private def markUsedPrivateSymbols(tree: RefTree)(using Context): Unit =
+  private def markUsedPrivateSymbols(tree: RefTree)(using Context): Unit = {
 
     val sym = tree.symbol
     def retain() = retainedPrivateVals.add(sym)
 
     if sym.exists && sym.owner.isClass && sym.mightBeDropped then
       tree match
-      case Ident(_) | Select(This(_), _) =>
-        val method = ctx.owner.enclosingMethod
-        // template exprs are moved (below) to constructor, where lifted anonfun will take its captured env as an arg
-        inline def methodOwnerIsLocalDummyOrSibling =
-          val owner = method.owner
-          owner.isLocalDummy || owner.owner == sym.owner && !owner.isOneOf(MethodOrLazy)
-        inline def inAnonFunInCtor =
-             method.isAnonymousFunction
-          && methodOwnerIsLocalDummyOrSibling
-          && !sym.owner.is(Module) // lambdalift doesn't transform correctly (to do)
-        val inConstructor =
-             (method.isPrimaryConstructor || inAnonFunInCtor)
-          && ctx.owner.enclosingClass == sym.owner
-        val noField =
-             inConstructor
-          && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))
-          // used inside constructor, accessed on this,
-          // could use constructor argument instead, no need to retain field
-        if !noField then
+        case Ident(_) | Select(This(_), _) =>
+          val method = ctx.owner.enclosingMethod
+          // template exprs are moved (below) to constructor, where lifted anonfun will take its captured env as an arg
+          inline def methodOwnerIsLocalDummyOrSibling =
+            val owner = method.owner
+            owner.isLocalDummy || owner.owner == sym.owner && !owner.isOneOf(MethodOrLazy)
+          inline def inAnonFunInCtor =
+               method.isAnonymousFunction
+            && methodOwnerIsLocalDummyOrSibling
+            && !sym.owner.is(Module) // lambdalift doesn't transform correctly (to do)
+          val inConstructor =
+               (method.isPrimaryConstructor || inAnonFunInCtor)
+            && ctx.owner.enclosingClass == sym.owner
+          val noField =
+               inConstructor
+            && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))
+            // used inside constructor, accessed on this,
+            // could use constructor argument instead, no need to retain field
+          if !noField then
+            retain()
+        case _ =>
           retain()
-      case _ =>
-        retain()
+  }
 
   override def transformIdent(tree: tpd.Ident)(using Context): tpd.Tree = {
     markUsedPrivateSymbols(tree)
@@ -219,7 +220,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
-    def splitStats(stats: List[Tree]): Unit = stats match
+    def splitStats(stats: List[Tree]): Unit = stats match {
       case stat :: stats =>
         val sym = stat.symbol
         stat match {
@@ -234,7 +235,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               if !stat.rhs.isEmpty then
                 sym.copySymDenotation(
                   initFlags = sym.flags &~ Private,
-                  owner = constr.symbol).installAfter(thisPhase)
+                  owner = constr.symbol
+                ).installAfter(thisPhase)
                 constrStats += intoConstr(stat, sym)
           case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) =>
             assert(isRetained(sym), sym)
@@ -277,6 +279,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         }
         splitStats(stats)
       case Nil =>
+    }
     end splitStats
 
     /** Check that we do not have both a private field with name `x` and a private field
