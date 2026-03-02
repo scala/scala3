@@ -112,7 +112,7 @@ package <empty> {
             val y$6: Array[String] =
               Array.apply[String](["World" : String]*)(
                 scala.reflect.ClassTag.apply[String](classOf[String]))
-            f3(x = 1, y = y$6)
+            f3(x = 1, y = y$6).$asInstanceOf[Any @annot(x = x, y = y)]
           }
         ()
       }
