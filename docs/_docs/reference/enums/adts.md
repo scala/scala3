@@ -41,7 +41,7 @@ unless the definitions are "pulled out" with an import:
 
 ```scala sc-compile-with:option
 val option = Option.Some("hello")
-// some: Option[String] = Some(hello)
+// option: Option[String] = Some(hello)
 
 val none = Option.None
 // none: Option[Nothing] = None
@@ -51,9 +51,9 @@ Note that the type of the expressions above is always `Option`. Generally, the t
 
 ```scala sc-compile-with:option
 val some0 = new Option.Some(2)
-// some: Option.Some[Int] = Some(2)
+// some0: Option.Some[Int] = Some(2)
 val some1: Option.Some[Int] = Option.Some(3)
-// opt: Option.Some[Int] = Some(3)
+// some1: Option.Some[Int] = Some(3)
 ```
 
 As all other enums, ADTs can define methods. For instance, here is `Option` again, with an
