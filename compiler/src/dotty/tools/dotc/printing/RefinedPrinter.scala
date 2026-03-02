@@ -259,15 +259,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => false
     }
 
-    def toTextInfixType(opName: Name, l: Type, r: Type)(op: => Text): Text = {
-      val isRightAssoc = opName.endsWith(":")
+    def toTextInfixType(opName: Name, l: Type, r: Type, knownAssociative: Boolean = false)(op: => Text): Text = {
       val opPrec = parsing.precedence(opName)
 
       changePrec(opPrec) {
-        val leftPrec = if (isRightAssoc || checkAssocMismatch(l, isRightAssoc)) opPrec + 1 else opPrec
-        val rightPrec = if (!isRightAssoc || checkAssocMismatch(r, isRightAssoc)) opPrec + 1 else opPrec
-
-        atPrec(leftPrec) { argText(l) }  ~ " " ~ op ~ " " ~ atPrec(rightPrec) { argText(r) }
+        val opText = op
+        // If we're printing an associative operator whose operand is that same operator, don't add parentheses
+        if knownAssociative && opText == toText(opName) then
+          argText(l) ~ " " ~ opText ~ " " ~ argText(r)
+        else
+          val isRightAssoc = opName.endsWith(":")
+          val leftPrec = if (isRightAssoc || checkAssocMismatch(l, isRightAssoc)) opPrec + 1 else opPrec
+          val rightPrec = if (!isRightAssoc || checkAssocMismatch(r, isRightAssoc)) opPrec + 1 else opPrec
+          atPrec(leftPrec) { argText(l) }  ~ " " ~ opText ~ " " ~ atPrec(rightPrec) { argText(r) }
       }
     }
 
@@ -303,9 +307,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       // Since RefinedPrinter, unlike PlainPrinter, can output right-associative type-operators, we must override handling
       // of AndType and OrType to account for associativity
       case AndType(tp1, tp2) =>
-        toTextInfixType(tpnme.raw.AMP, tp1, tp2) { toText(tpnme.raw.AMP) }
+        toTextInfixType(tpnme.raw.AMP, tp1, tp2, knownAssociative = true) { toText(tpnme.raw.AMP) }
       case tp @ OrType(tp1, tp2) =>
-        toTextInfixType(tpnme.raw.BAR, tp1, tp2) {
+        toTextInfixType(tpnme.raw.BAR, tp1, tp2, knownAssociative = true) {
           if tp.isSoft && printDebug then toText(tpnme.ZOR) else toText(tpnme.raw.BAR)
         }
       case tp @ EtaExpansion(tycon)
