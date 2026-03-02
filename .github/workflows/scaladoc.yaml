@@ -14,8 +14,6 @@ permissions:
 
 jobs:
   build:
-    env:
-      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     runs-on: ubuntu-latest
     if: "github.event_name == 'merge_group'
          || (    github.event_name == 'pull_request'
