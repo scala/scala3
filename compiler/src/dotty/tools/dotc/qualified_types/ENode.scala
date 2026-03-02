@@ -328,6 +328,7 @@ enum ENode extends Showable:
         case Atom(tp) =>
           mapType(tp) match
             case tp1: TermParamRef => untpd.Ident(tp1.paramName).withType(tp1)
+            case tp: SkolemType => tpd.ref(defn.Predef_undefined).withType(tp)
             case tp1 => tpd.singleton(tp1)
         case Constructor(sym) =>
           val tycon = sym.owner.asClass.classDenot.classInfo.selfType
