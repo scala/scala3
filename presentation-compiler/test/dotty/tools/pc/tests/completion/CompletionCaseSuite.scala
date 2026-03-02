@@ -600,7 +600,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
           |    cas@@
           |
           |""".stripMargin,
-      """|case Cleaning =>Activity & Physical & Chore
+      """|case Cleaning =>Activity & (Physical & Chore)
          |case DishWashing(amount) => test.Activity
          |case Sports(time, intensity) => test.Activity""".stripMargin
     )
@@ -629,7 +629,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
           |    cas@@
           |
           |""".stripMargin,
-      """|case Cleaning =>Activity & Physical & Chore
+      """|case Cleaning =>Activity & (Physical & Chore)
          |case Sports(time, intensity) => test.Activity""".stripMargin
     )
 
@@ -657,7 +657,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
           |    cas@@
           |
           |""".stripMargin,
-      """|case Cleaning =>Activity & Physical & Chore
+      """|case Cleaning =>Activity & (Physical & Chore)
          |case Reading(book, author) => test.Activity
          |case Singing(song) => test.Activity
          |case Sports(time, intensity) => test.Activity""".stripMargin
