@@ -124,6 +124,7 @@ object SbtCommunityProject:
     "-Xcheck-macros",
     "-Wsafe-init",
     "-Yexplicit-nulls",
+    "-language:unsafeNulls",
   )
 
 object projects:
@@ -572,7 +573,6 @@ object projects:
       ).flatten.mkString("; "),
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
   )
 
   lazy val izumiReflect = SbtCommunityProject(
