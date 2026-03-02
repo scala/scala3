@@ -1,4 +1,7 @@
--- Error: tests/neg/i16842.scala:24:7 ----------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i16842.scala:24:8 -------------------------------------------------------------
 24 |  Liter(SemanticArray[SemanticInt.type], x) // error
-   |       ^
-   |invalid new prefix (dim: Int): SemanticArray[SemanticInt.type] cannot replace (ty : SemanticArray[SemanticType]) in type ty.T
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Found:    Int => SemanticArray[SemanticInt.type]
+   |        Required: SemanticArray[SemanticType]
+   |
+   | longer explanation available when compiling with `-explain`
