@@ -1624,7 +1624,7 @@ object desugar {
                                                    && elems.size == variables.size
                                                    && !pat.isInstanceOf[Typed]
                                                    && variables.forall((n, _) => n.name != nme.WILDCARD) =>
-                (Nil, Left(elems))
+                (Nil, elems)
               case _ =>
                 // Start with the assignment to the tuple:
                 // create a fresh name,
@@ -1641,13 +1641,13 @@ object desugar {
                   ValDef(tmpName, tupType, loweredRhs)
                     .withSpan(pat.span.union(rhs.span))
                     .withMods(patMods)
-                (List(firstDef), Right(tmpName))
+                (List(firstDef), tmpName)
               // Then, write each assignment, keeping in mind we need special selection if we exceed the max tuple arity,
               val useSelectors = variables.length <= Definitions.MaxTupleArity
               def selector(idx: Int) = splitRhs match
-                case Left(elems) => elems(idx)
-                case Right(tmpName) if useSelectors => Select(Ident(tmpName), nme.selectorName(idx))
-                case Right(tmpName) => Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
+                case elems: List[Tree] => elems(idx)
+                case tmpName: TermName if useSelectors => Select(Ident(tmpName), nme.selectorName(idx))
+                case tmpName: TermName => Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
               // and translating to a `def` or `val` as needed depending on laziness.
               val restDefs =
                 for ((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD
