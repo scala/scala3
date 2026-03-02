@@ -6,6 +6,10 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 ## Introduction
 
+```scala sc-hidden sc-name:cc-context
+import caps.*
+```
+
 Capture checking can be enabled by the language import
 ```scala sc:nocompile
 import language.experimental.captureChecking
@@ -46,6 +50,15 @@ def usingLogFile[T](op: FileOutputStream^ => T): T =
 The only thing that's changed is that the `FileOutputStream` parameter of `op` is now
 followed by `^`. We'll see that this turns the parameter into a _capability_ whose lifetime is tracked.
 
+```scala sc-hidden sc-compile-with:cc-context sc-name:logfile-checked
+import java.io.FileOutputStream
+def usingLogFile[T](op: FileOutputStream^ => T): T =
+  val logFile = FileOutputStream("log")
+  val result = op(logFile)
+  logFile.close()
+  result
+```
+
 If we now try to define the problematic value `later`, we get a static error:
 ```
    |  val later = usingLogFile { f => () => f.write(0) }
@@ -57,13 +70,20 @@ If we now try to define the problematic value `later`, we get a static error:
 ```
 In this case, it was easy to see that the `logFile` capability escapes in the closure passed to `usingLogFile`. But capture checking also works for more complex cases.
 For instance, capture checking is able to distinguish between the following safe code:
-```scala sc:nocompile
+```scala sc-compile-with:logfile-checked
 val xs = usingLogFile { f =>
   List(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
 and the following unsafe one:
-```scala sc:nocompile
+```scala sc-compile-with:logfile-checked sc:fail
+//{
+trait LzyList[+A]:
+  def map[B](f: A => B): LzyList[B]^{this, f}
+
+object LzyList:
+  def apply[T](xs: T*): LzyList[T] = ???
+//}
 val xs = usingLogFile { f =>
   LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
