@@ -40,20 +40,9 @@ class BasicAnalyzer(methodNode: MethodNode, classInternalName: String) extends A
  */
 object AsmAnalyzer {
   // jvm limit is 65535 for both number of instructions and number of locals
-
-  private def size(method: MethodNode) = {
-    val ml = BackendUtils.maxLocals(method)
-    method.instructions.size.toLong * ml * ml
-  }
-
-  // with the limits below, analysis should not take more than one second
-
-  private val nullnessSizeLimit    = 5000L * 600L  * 600L    // 5000 insns, 600 locals
-  private val basicValueSizeLimit  = 9000L * 1000L * 1000L
-  private val sourceValueSizeLimit = 8000L * 950L  * 950L
-
-  def sizeOKForAliasing(method: MethodNode): Boolean = size(method) < nullnessSizeLimit
-  def sizeOKForNullness(method: MethodNode): Boolean = size(method) < nullnessSizeLimit
-  def sizeOKForBasicValue(method: MethodNode): Boolean = size(method) < basicValueSizeLimit
-  def sizeOKForSourceValue(method: MethodNode): Boolean = size(method) < sourceValueSizeLimit
+  // these numbers are set empirically... for instance, one method with 150 locals and a little over 3k instrs can take ~30s to optimize on a laptop
+  def sizeOKForAliasing(method: MethodNode): Boolean = BackendUtils.maxLocals(method) < 300 && method.instructions.size < 3000
+  def sizeOKForNullness(method: MethodNode): Boolean = BackendUtils.maxLocals(method) < 300 && method.instructions.size < 3000
+  def sizeOKForBasicValue(method: MethodNode): Boolean = BackendUtils.maxLocals(method) < 600 && method.instructions.size < 3000
+  def sizeOKForSourceValue(method: MethodNode): Boolean = BackendUtils.maxLocals(method) < 500 && method.instructions.size < 2500
 }
