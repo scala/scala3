@@ -55,7 +55,7 @@ abstract class Lifter {
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
-  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private[typer] def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
@@ -191,6 +191,10 @@ class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
 }
 object LiftComplex extends LiftComplex
+
+object LiftUnstable extends Lifter:
+  def noLift(expr: tpd.Tree)(using Context): Boolean = expr.tpe.isStable
+
 
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {
