@@ -165,7 +165,7 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: scala.msi
           path: .
