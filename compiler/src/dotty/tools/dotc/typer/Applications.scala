@@ -546,7 +546,8 @@ trait Applications extends Compatibility {
      */
     protected def normalizedFun: Tree
 
-    protected def typeOfArg(arg: Arg): Type
+    /** The type of the given typed argument. */
+    protected def typeOfArg(arg: TypedArg): Type
 
     /** If constructing trees, pull out all parts of the function
      *  which are not idempotent into separate prefix definitions
@@ -748,14 +749,15 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            addArg(typedArg(arg, formal), formal)
+            val argTyped = typedArg(arg, formal)
+            addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
                   // formal parameters in makeVarArg. These are not de-aliased, so they might contain
                   // stray parameter references. Test case is i23266.scala.
-                && typeOfArg(arg).exists
+                && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
             else formals1
 
           def missingArg(n: Int): Unit =
@@ -1026,6 +1028,8 @@ trait Applications extends Compatibility {
     private var myNormalizedFun: Tree = fun
     init()
 
+    def typeOfArg(arg: tpd.Tree): Type = arg.tpe
+
     def addArg(arg: Tree, formal: Type): Unit =
       val typedArg = adapt(arg, formal.widenExpr)
       typedArgBuf += typedArg
@@ -1179,7 +1183,6 @@ trait Applications extends Compatibility {
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
-    def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
@@ -1189,7 +1192,6 @@ trait Applications extends Compatibility {
   extends TypedApply(app, fun, methRef, args, resultType, applyKind) {
     def typedArg(arg: Tree, formal: Type): TypedArg = arg
     def treeToArg(arg: Tree): Tree = arg
-    def typeOfArg(arg: Tree): Type = arg.tpe
   }
 
   /** If `app` is a `this(...)` constructor call, the this-call argument context,
