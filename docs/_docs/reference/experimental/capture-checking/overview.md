@@ -14,7 +14,7 @@ For a more systematic description of all the details we refer you to the followi
  - [Capture Checking Basics](./basics.md): Getting started with capture checking.
  - [Capture Checking of Classes](./classes.md): Rules for capture checking classes and objects.
  - [Capability Polymorphism](./polymorphism.md): Subtyping of capturing types and capture set variables.
- - [Scoping of Capabilities](./scoped-caps.md): Scoping of `any` and `fresh` capabilities.
+ - [Scoping of Capabilities](./scoped-capabilities.md): Scoping of `any` and `fresh` capabilities.
  - [Capability Classifiers](./classifiers.md): Classifiers for capabilities and projection with the `.only[...]` operator.
  - [Checked Exceptions](./checked-exceptions.md): `CanThrow` capabilities and `throws` clauses.
  - [Stateful Capabilities](./mutability.md): Capabilities for mutable data structures.
