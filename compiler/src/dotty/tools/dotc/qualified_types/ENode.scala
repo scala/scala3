@@ -580,10 +580,17 @@ object ENode:
         case _ => Nil
 
   private def typeAssumptions(rootTp: SingletonType)(using Context): List[ENode] =
+    def selfify(tp: SingletonType): List[ENode] =
+      if tp frozen_=:= rootTp then Nil
+      else List(OpApply(ENode.Op.Equal, List(Atom(tp), Atom(rootTp))))
+    def recPrefix(tp: SingletonType): List[ENode] =
+      tp match
+        case TermRef(prefix: SingletonType, _) => termAssumptions(tp) ::: typeAssumptions(prefix)
+        case _ => Nil
     def rec(tp: Type): List[ENode] =
       tp match
         case QualifiedType(parent, qualifier) => qualifier.body.substEParamRefs(0, List(rootTp)) :: assumptions(qualifier.body) ::: rec(parent)
-        case tp: SingletonType if tp ne rootTp => List(OpApply(ENode.Op.Equal, List(Atom(tp), Atom(rootTp))))
+        case tp: SingletonType => selfify(tp) ::: recPrefix(tp) ::: rec(tp.underlying)
         case tp: TypeProxy => rec(tp.underlying)
         case AndType(tp1, tp2) => rec(tp1) ++ rec(tp2)
         case _ => Nil
