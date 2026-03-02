@@ -5,7 +5,7 @@ package tasty
 import java.util.regex.Pattern
 
 import scala.util.{Try, Success, Failure}
-import scala.tasty.inspector.{TastyInspector, Inspector, Tasty}
+import scala.tasty.inspector.{ScaladocInternalTastyInspector, Inspector, Tasty}
 import scala.quoted._
 
 import dotty.tools.dotc
@@ -135,14 +135,15 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends Inspector:
   def mergeAnyRefAliasAndObject(parser: TastyParser) =
     import parser.qctx.reflect._
     val javaLangObjectDef = defn.ObjectClass.tree.asInstanceOf[ClassDef]
-    val objectMembers = parser.extractPatchedMembers(javaLangObjectDef)
+    val objectMembers = javaLangObjectDef.extractMembers
     val aM = parser.parseTypeDef(
       defn.AnyRefClass.tree.asInstanceOf[TypeDef],
       defn.AnyClass.tree.asInstanceOf[ClassDef],
     )
     "scala" -> aM.copy(
       kind = Kind.Class(Nil, Nil),
-      members = objectMembers
+      members = objectMembers,
+      modifiers = defn.ObjectClass.getExtraModifiers()
     )
 
 object ScaladocTastyInspector:
@@ -160,7 +161,7 @@ object ScaladocTastyInspector:
       report.error("File extension is not `tasty` or `jar`: " + invalidPath)
 
     if tastyPaths.nonEmpty then
-      TastyInspector.inspectAllTastyFiles(tastyPaths, jarPaths, classpath)(inspector)
+      ScaladocInternalTastyInspector.inspectAllTastyFilesInContext(tastyPaths, jarPaths, classpath)(inspector)(using ctx.compilerContext)
 
     val all = inspector.topLevels.result()
     all.groupBy(_._1).map { case (pckName, members) =>
@@ -169,7 +170,12 @@ object ScaladocTastyInspector:
         val withNewMembers = p1.withNewMembers(p2.members)
         if withNewMembers.docs.isEmpty then withNewMembers.withDocs(p2.docs) else withNewMembers
       )
-      basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
+      // Deduplicate members coming from different parser instances by a stable key:
+      // (location, member fullName, kind name).
+      val combined = basePck.members ++ rest
+      val keyed = combined.groupBy(m => (m.dri.location, m.fullName, m.kind.name))
+      val uniqueMembers = keyed.values.map(g => g.find(_.docs.nonEmpty).getOrElse(g.head)).toList.sortBy(_.name)
+      basePck.withMembers(uniqueMembers)
     }.toList -> inspector.rootDoc
 
 end ScaladocTastyInspector
@@ -187,11 +193,13 @@ case class TastyParser(
 
   private given qctx.type = qctx
 
+  protected var ccFlag: Boolean = false
+  def ccEnabled: Boolean = !ctx.args.suppressCC && ccFlag
+
   val intrinsicClassDefs = Set(
     defn.AnyClass,
     defn.MatchableClass,
     defn.ScalaPackage.typeMember("AnyKind"),
-    defn.AnyValClass,
     defn.NullClass,
     defn.NothingClass,
     defn.ScalaPackage.typeMember("Singleton"),

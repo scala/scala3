@@ -5,8 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.RandomAccessFile
 import java.nio.file.*
 import java.net.{URI, URL}
@@ -33,17 +31,20 @@ import scala.util.Random.alphanumeric
  */
 object Path {
   def isExtensionJarOrZip(jpath: JPath): Boolean = isExtensionJarOrZip(jpath.getFileName.toString)
-  def isExtensionJarOrZip(name: String): Boolean = {
-    val ext = extension(name)
-    ext == "jar" || ext == "zip"
+  def isExtensionJarOrZip(name: String): Boolean = fileExtension(name).isJarOrZip
+  def fileExtension(name: String): FileExtension = {
+    val i = name.lastIndexOf('.')
+    if (i < 0) FileExtension.Empty
+    else FileExtension.from(name.substring(i + 1))
   }
-  def extension(name: String): String = {
-    var i = name.length - 1
-    while (i >= 0 && name.charAt(i) != '.')
-      i -= 1
+  @deprecated("use fileExtension instead.")
+  def extension(name: String): String = fileExtension(name).toLowerCase
 
-    if (i < 0) ""
-    else name.substring(i + 1).toLowerCase
+  /** strip anything after and including trailing the extension */
+  def fileName(name: String): String = {
+    val i = name.lastIndexOf('.')
+    if (i < 0) name
+    else name.substring(0, i)
   }
 
   def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
@@ -104,8 +105,8 @@ class Path private[io] (val jpath: JPath) {
    *  Iterator, and all sub-subdirectories are recursively evaluated
    */
   def walkFilter(cond: Path => Boolean): Iterator[Path] =
-    if (isFile) toFile walkFilter cond
-    else if (isDirectory) toDirectory.walkFilter(cond)
+    if isFile then toFile.walkFilter(cond)
+    else if isDirectory then toDirectory.walkFilter(cond)
     else Iterator.empty
 
   /** Equivalent to walkFilter(_ => true).
@@ -132,7 +133,7 @@ class Path private[io] (val jpath: JPath) {
     // We don't call JPath#normalize here because it may result in resolving
     // to a different path than intended, such as when the given path contains
     // a `..` component and the preceding name is a symbolic link.
-    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#normalize--
+    // https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Path.html#normalize()
     //
     // Paths ending with `..` or `.` are handled specially here as
     // JPath#getParent wants to simply strip away that last element.
@@ -158,24 +159,38 @@ class Path private[io] (val jpath: JPath) {
   }
   def parents: List[Directory] = {
     val p = parent
-    if (p isSame this) Nil else p :: p.parents
+    if p.isSame(this) then Nil else p :: p.parents
   }
+
+  def ext: FileExtension = Path.fileExtension(name)
+
   // if name ends with an extension (e.g. "foo.jpg") returns the extension ("jpg"), otherwise ""
-  def extension: String = Path.extension(name)
+  @deprecated("use ext instead.")
+  def extension: String = ext.toLowerCase
+
   // compares against extensions in a CASE INSENSITIVE way.
+  @deprecated("consider using queries on ext instead.")
   def hasExtension(ext: String, exts: String*): Boolean = {
-    val lower = extension.toLowerCase
-    ext.toLowerCase == lower || exts.exists(_.toLowerCase == lower)
+    val lower = ext.toLowerCase
+    lower.equalsIgnoreCase(ext) || exts.exists(lower.equalsIgnoreCase)
   }
   // returns the filename without the extension.
-  def stripExtension: String = name stripSuffix ("." + extension)
+  def stripExtension: String = Path.fileName(name)
   // returns the Path with the extension.
   def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + ext))
+
+  // changes the existing extension out for a new one, or adds it
+  // if the current path has none.
+  def changeExtension(ext: FileExtension): Path =
+    changeExtension(ext.toLowerCase)
+
   // changes the existing extension out for a new one, or adds it
   // if the current path has none.
   def changeExtension(ext: String): Path =
-    if (extension == "") addExtension(ext)
-    else new Path(jpath.resolveSibling(stripExtension + "." + ext))
+    val name0 = name
+    val dropExtension = Path.fileName(name0)
+    if dropExtension eq name0 then addExtension(ext)
+    else new Path(jpath.resolveSibling(dropExtension + "." + ext))
 
   // conditionally execute
   def ifFile[T](f: File => T): Option[T] = if (isFile) Some(f(toFile)) else None
@@ -230,12 +245,12 @@ class Path private[io] (val jpath: JPath) {
     if (!exists) false
     else {
       Files.walkFileTree(jpath, new SimpleFileVisitor[JPath]() {
-        override def visitFile(file: JPath, attrs: BasicFileAttributes) = {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes): FileVisitResult = {
           Files.delete(file)
           FileVisitResult.CONTINUE
         }
 
-        override def postVisitDirectory(dir: JPath, exc: IOException) = {
+        override def postVisitDirectory(dir: JPath, exc: IOException): FileVisitResult = {
           Files.delete(dir)
           FileVisitResult.CONTINUE
         }
@@ -247,7 +262,7 @@ class Path private[io] (val jpath: JPath) {
   def truncate(): Boolean =
     isFile && {
       val raf = new RandomAccessFile(jpath.toFile, "rw")
-      raf setLength 0
+      raf.setLength(0)
       raf.close()
       length == 0
     }

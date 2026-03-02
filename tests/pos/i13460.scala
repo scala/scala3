@@ -5,7 +5,7 @@ class Lazy[A](obj: => A) {
   lazy val value: A = obj
 }
 object Lazy {
-  given [A](using obj: => A ): Lazy[A] = new Lazy(obj)
+  given [A] => (obj: => A) => Lazy[A] = new Lazy(obj)
 }
 
 trait MyTypeClass[A] {
@@ -13,10 +13,10 @@ trait MyTypeClass[A] {
 }
 object MyTypeClass {
 
-  given IntTypeClass: MyTypeClass[Int] with
+  given IntTypeClass: MyTypeClass[Int]:
     def makeString(a: Int): String = a.toString
 
-  inline given derived[A](using m: Mirror.Of[A]): MyTypeClass[A] =
+  inline given derived: [A] => (m: Mirror.Of[A]) => MyTypeClass[A] =
     inline m match
       case p: Mirror.ProductOf[A] => productConverter(p)
 

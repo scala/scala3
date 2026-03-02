@@ -21,7 +21,7 @@ class InitPlugin extends StandardPlugin {
   val name: String = "initPlugin"
   override val description: String = "checks that under -Yretain-trees we may get tree for all symbols"
 
-  def init(options: List[String]): List[PluginPhase] =
+  override def initialize(options: List[String])(using Context): List[PluginPhase] =
     (new SetDefTree) :: (new InitChecker) :: Nil
 }
 

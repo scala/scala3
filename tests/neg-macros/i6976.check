@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/i6976/Test_2.scala:5:44 ---------------------------------------------------------------------
 5 |  def main(args: Array[String]): Unit = mcr { 2 } // error
   |                                        ^^^^^^^^^

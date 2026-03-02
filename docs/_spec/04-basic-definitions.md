@@ -220,6 +220,7 @@ TypeDcl         ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
 Def             ::=  ‘type’ {nl} TypeDef
                   |  ‘opaque‘ ‘type‘ {nl} OpaqueTypeDef
 TypeDef         ::=  id [TypeParamClause] ‘=’ Type
+                  |  id [TypeParamClause] ‘<:’ Type ‘=’ MatchType
 OpaqueTypeDef   ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type] ‘=’ Type
 ```
 
@@ -229,6 +230,7 @@ A possibly parameterized _abstract type member_ definition `type ´t´[´\mathit
 If omitted, ´L´ and ´H´ are implied to be `Nothing` and `scala.Any`, respectively.
 
 A possibly parameterized _type alias_ definition `type ´t´[´\mathit{tps}\,´] = ´T´` defines ´t´ to be a concrete type member.
+The alternative `type ´t´[´\mathit{tps}\,´] <: ´H´ = ´T´ match { ´Cs´ }` desugars to `type ´t´[´\mathit{tps}\,´] = (´T´ match { ´Cs´ } <: ´H´)`, i.e., a match type with an upper bound, which cannot otherwise be expressed in the concrete syntax.
 
 A possibly parameterized _opaque type alias_ definition `opaque type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
 
@@ -709,6 +711,22 @@ class C extends I {
 ```
 
 Here, it is OK to leave out the result type of `factorial` in `C`, even though the method is recursive.
+
+### Tail-Recursive Call Elimination
+
+Method definitions which contain self-recursive invocations in tail position are optimized for stack safety.
+Self-invocations which are the last operation before returning from the method are replaced with jumps to the beginning of the method, much as in a while loop.
+Sibling-invocations, in which a method calls itself but with a different instance as receiver, are also optimized.
+
+This transform is performed automatically by the compiler whenever possible.
+A method definition bearing the annotation, `scala.annotation.tailrec`, will fail to compile if the transform is not possible.
+(The annotation is intended for cases where deoptimization would likely result in a stack overflow.)
+
+```scala
+@annotation.tailrec
+def sum(xs: List[Int], acc: Int): Int =
+  xs match { case h :: t => sum(t, acc + h) case _ => acc }
+```
 
 <!-- ## Overloaded Definitions
 \label{sec:overloaded-defs}

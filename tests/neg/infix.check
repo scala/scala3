@@ -1,0 +1,30 @@
+-- Error: tests/neg/infix.scala:26:4 -----------------------------------------------------------------------------------
+26 |  c mop 2     // error: should not be used as infix operator
+   |    ^^^
+   |    Alphanumeric method mop is not declared infix; it should not be used as infix operator.
+   |    Instead, use method syntax .mop(...) or backticked identifier `mop`.
+   |    The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+-- Error: tests/neg/infix.scala:27:4 -----------------------------------------------------------------------------------
+27 |  c meth 2    // error: should not be used as infix operator
+   |    ^^^^
+   |    Alphanumeric method meth is not declared infix; it should not be used as infix operator.
+   |    Instead, use method syntax .meth(...) or backticked identifier `meth`.
+   |    The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+-- Error: tests/neg/infix.scala:45:14 ----------------------------------------------------------------------------------
+45 |  val x1: Int Map String = ???     // error
+   |              ^^^
+   |              Alphanumeric type Map is not declared infix; it should not be used as infix operator.
+   |              Instead, use prefix syntax Map[...] or backticked identifier `Map`.
+   |              The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+-- Error: tests/neg/infix.scala:47:14 ----------------------------------------------------------------------------------
+47 |  val x3: Int AndC String = ???    // error
+   |              ^^^^
+   |              Alphanumeric type AndC is not declared infix; it should not be used as infix operator.
+   |              Instead, use prefix syntax AndC[...] or backticked identifier `AndC`.
+   |              The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+-- Error: tests/neg/infix.scala:61:8 -----------------------------------------------------------------------------------
+61 |  val _ Pair _ = p   // error
+   |        ^^^^
+   |        Alphanumeric extractor Pair is not declared infix; it should not be used as infix operator.
+   |        Instead, use prefix syntax Pair(...) or backticked identifier `Pair`.
+   |        The latter can be rewritten automatically under -rewrite -source 3.4-migration.

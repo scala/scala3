@@ -229,10 +229,18 @@ object Config {
   inline val reuseSymDenotations = true
 
   /** If `checkLevelsOnConstraints` is true, check levels of type variables
-   *  and create fresh ones as needed when bounds are first entered intot he constraint.
+   *  and create fresh ones as needed when bounds are first entered into the constraint.
    *  If `checkLevelsOnInstantiation` is true, allow level-incorrect constraints but
    *  fix levels on type variable instantiation.
    */
   inline val checkLevelsOnConstraints = false
   inline val checkLevelsOnInstantiation = true
+
+  /** Under x.modularity:
+   *  If a type parameter `X` has a single context bound `X: C`, should the
+   *  witness parameter be named `X`? This would prevent the creation of a
+   *  context bound companion.
+   */
+  inline val nameSingleContextBounds = false
 }
+

@@ -42,6 +42,23 @@ C
 Class
 covtest.C
 b
+60
+66
+5
+<none>
+Literal
+false
+0
+false
+return
+
+2
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+b
 46
 51
 5
@@ -52,7 +69,24 @@ false
 false
 def b
 
-2
+3
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+c
+83
+85
+6
+<none>
+Literal
+false
+0
+false
+()
+
+4
 SimpleMethods.scala
 covtest
 C
@@ -69,7 +103,24 @@ false
 false
 def c
 
-3
+5
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+d
+101
+103
+7
+<none>
+Literal
+false
+0
+false
+12
+
+6
 SimpleMethods.scala
 covtest
 C
@@ -86,7 +137,24 @@ false
 false
 def d
 
-4
+7
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+e
+120
+124
+8
+<none>
+Literal
+false
+0
+false
+null
+
+8
 SimpleMethods.scala
 covtest
 C
@@ -103,7 +171,41 @@ false
 false
 def e
 
-5
+9
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+block
+149
+158
+11
+<none>
+Literal
+false
+0
+false
+"literal"
+
+10
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+block
+163
+164
+12
+<none>
+Literal
+false
+0
+false
+0
+
+11
 SimpleMethods.scala
 covtest
 C
@@ -120,7 +222,41 @@ false
 false
 def block
 
-6
+12
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+cond
+195
+200
+15
+<none>
+Literal
+false
+0
+false
+false
+
+13
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+cond
+206
+210
+15
+<none>
+Literal
+false
+0
+false
+true
+
+14
 SimpleMethods.scala
 covtest
 C
@@ -137,7 +273,24 @@ true
 false
 true
 
-7
+15
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+cond
+220
+225
+16
+<none>
+Literal
+false
+0
+false
+false
+
+16
 SimpleMethods.scala
 covtest
 C
@@ -154,7 +307,7 @@ true
 false
 false
 
-8
+17
 SimpleMethods.scala
 covtest
 C
@@ -171,7 +324,41 @@ false
 false
 def cond
 
-9
+18
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+260
+265
+19
+<none>
+Literal
+false
+0
+false
+false
+
+19
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+271
+273
+19
+<none>
+Literal
+false
+0
+false
+()
+
+20
 SimpleMethods.scala
 covtest
 C
@@ -188,7 +375,7 @@ true
 false
 ()
 
-10
+21
 SimpleMethods.scala
 covtest
 C
@@ -205,7 +392,7 @@ true
 false
 
 
-11
+22
 SimpleMethods.scala
 covtest
 C
@@ -222,7 +409,24 @@ false
 false
 def partialCond
 
-12
+23
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+new1
+291
+297
+21
+<init>
+Apply
+false
+0
+false
+new {}
+
+24
 SimpleMethods.scala
 covtest
 C
@@ -239,7 +443,24 @@ false
 false
 def new1
 
-13
+25
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+tryCatch
+330
+332
+24
+<none>
+Literal
+false
+0
+false
+()
+
+26
 SimpleMethods.scala
 covtest
 C
@@ -256,7 +477,24 @@ true
 false
 ()
 
-14
+27
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+tryCatch
+370
+371
+26
+<none>
+Literal
+false
+0
+false
+1
+
+28
 SimpleMethods.scala
 covtest
 C
@@ -273,7 +511,7 @@ true
 false
 => 1
 
-15
+29
 SimpleMethods.scala
 covtest
 C

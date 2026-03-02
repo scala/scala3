@@ -1,12 +1,12 @@
 -- Error: tests/neg/i16407.scala:2:2 -----------------------------------------------------------------------------------
 2 |  f(g()) // error // error
   |  ^
-  |  cannot resolve reference to type (X.this : Y & X).A
-  |  the classfile defining the type might be missing from the classpath
-  |  or the self type of (X.this : Y & X) might not contain all transitive dependencies
+  |  Cannot resolve reference to type (X.this : Y & X).A.
+  |  The classfile defining the type might be missing from the classpath
+  |  or the self type of (X.this : Y & X) might not contain all transitive dependencies.
 -- Error: tests/neg/i16407.scala:2:4 -----------------------------------------------------------------------------------
 2 |  f(g()) // error // error
   |    ^
-  |    cannot resolve reference to type (X.this : Y & X).A
-  |    the classfile defining the type might be missing from the classpath
-  |    or the self type of (X.this : Y & X) might not contain all transitive dependencies
+  |    Cannot resolve reference to type (X.this : Y & X).A.
+  |    The classfile defining the type might be missing from the classpath
+  |    or the self type of (X.this : Y & X) might not contain all transitive dependencies.

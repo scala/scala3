@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import scala.language.unsafeNulls
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
@@ -23,7 +22,7 @@ import dotty.tools.dotc.quoted.Interpreter
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
@@ -47,7 +46,8 @@ object Splicer {
   def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quote(quotedTree, Nil) => quotedTree
     case _ =>
-      val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
+      val owner = ctx.owner
+      val macroOwner = newSymbol(owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
         val sliceContext = SpliceScope.contextWithNewSpliceScope(splicePos.sourcePos).withOwner(macroOwner)
         inContext(sliceContext) {
@@ -72,7 +72,7 @@ object Splicer {
           if !ctx.reporter.hasErrors then
             report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", splicePos)
           // errors have been emitted
-          EmptyTree
+          ref(defn.Predef_undefined).withType(ErrorType(em"macro expansion was stopped"))
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))

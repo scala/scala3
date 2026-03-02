@@ -19,7 +19,7 @@ import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
-object Scala3:
+private[semanticdb] object Scala3:
   import Symbols.*
   import core.NameOps.*
 
@@ -257,8 +257,14 @@ object Scala3:
       /** Is symbol global? Non-global symbols get localN names */
       def isGlobal(using Context): Boolean =
         sym.exists && (
-          sym.is(Package)
-          || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
+          //packages are always global
+          sym.is(Package) ||
+          // Non-self parameters for global symbols
+            !sym.isSelfSym && (sym.is(Param) && sym.owner.isGlobal ||
+            // Topelevel class symbols are global
+            sym.owner.isClass ||
+            // Needed for refinement symbols, which are accessible in global scope
+            sym.owner.isType && !sym.owner.info.hiBound.isMatch) && sym.owner.isGlobal
         )
 
       def isLocalWithinSameName(using Context): Boolean =
@@ -382,7 +388,7 @@ object Scala3:
   object LocalSymbol:
 
     def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
-      case locals(ints) =>
+      case locals(ints: String) =>
         val bi = BigInt(ints)
         if bi.isValidInt then
           Some(bi.toInt)
@@ -406,9 +412,9 @@ object Scala3:
 
       def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.isGlobalTerminal
       def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.isGlobalTerminal
-      def isMulti: Boolean = symbol startsWith ";"
+      def isMulti: Boolean = symbol.startsWith(";")
 
-      def isConstructor: Boolean = ctor matches symbol
+      def isConstructor: Boolean = ctor.matches(symbol)
       def isPackage: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '/'
       def isTerm: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '.'
       def isType: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '#'
@@ -420,7 +426,7 @@ object Scala3:
         else Descriptor.None
 
       def unescapeUnicode =
-        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar).nn)
+        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
 
       def isJavaIdent =
         symbol.nonEmpty && isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
@@ -484,7 +490,7 @@ object Scala3:
   /** Sort symbol occurrences by their start position. */
   given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
-  given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+  given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(using IdentifierOrdering())
 
   given Ordering[Diagnostic] = (x, y) => compareRange(x.range, y.range)
 

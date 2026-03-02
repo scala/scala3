@@ -1,0 +1,66 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:32:41 ------------------------------------
+32 |  val v0:  () -> () ->{io} String      = () => t.memberLazy     // error
+   |                                         ^^^^^^^^^^^^^^^^^^
+   |                                         Found:    () ->{t} () ->{io} String
+   |                                         Required: () -> () ->{io} String
+   |
+   |                                         Note that capability `t` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:34:41 ------------------------------------
+34 |  val v1:  () -> String                = () => t.memberLazy()   // error
+   |                                         ^^^^^^^^^^^^^^^^^^^^
+   |                                         Found:    () ->{t} String
+   |                                         Required: () -> String
+   |
+   |                                         Note that capability `t` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:36:41 ------------------------------------
+36 |  val v3: (() -> String)^{c.console}   = () => c.memberLazy()   // error (but should this be allowed?)
+   |                                         ^^^^^^^^^^^^^^^^^^^^
+   |                                         Found:    () ->{c} String
+   |                                         Required: () ->{c.console} String
+   |
+   |                                         Note that capability `c` cannot flow into capture set {c.console}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:37:41 ------------------------------------
+37 |  val v4:  () -> String                = () => t.memberMethod() // error
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^
+   |                                         Found:    () ->{t} String
+   |                                         Required: () -> String
+   |
+   |                                         Note that capability `t` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:40:28 ------------------------------------
+40 |  val v6: () ->{c} String = () => funky // error
+   |                            ^^^^^^^^^^^
+   |                            Found:    () ->{t, c} String
+   |                            Required: () ->{c} String
+   |
+   |                            Note that capability `t` cannot flow into capture set {c}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:41:30 ------------------------------------
+41 |  val v6_1: () ->{t} String = () => funky // error
+   |                              ^^^^^^^^^^^
+   |                              Found:    () ->{t, c} String
+   |                              Required: () ->{t} String
+   |
+   |                              Note that capability `c` cannot flow into capture set {t}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:61:55 ------------------------------------
+61 |  val v9: () ->{c2.memberLazy, t2.memberLazy} String = () => funky2 // error (but should this be allowed?)
+   |                                                       ^^^^^^^^^^^^
+   |                         Found:    () ->{t2, c2} String
+   |                         Required: () ->{c2.memberLazy, t2.memberLazy²} String
+   |
+   |                         Note that capability `t2` cannot flow into capture set {c2.memberLazy, t2.memberLazy²}.
+   |
+   |                         where:    memberLazy  is a lazy value in class Clazz2
+   |                                   memberLazy² is a lazy value in trait Trait2
+   |
+   | longer explanation available when compiling with `-explain`

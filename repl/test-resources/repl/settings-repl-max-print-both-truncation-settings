@@ -1,0 +1,10 @@
+scala> Seq(1,2,3)
+val res0: Seq[Int] = List(1, 2, 3)
+
+scala>:settings -Vrepl-max-print-elements:2
+
+scala>:settings -Vrepl-max-print-characters:50
+
+scala> Seq(1,2,3)
+val res1: Seq[Int] = List(1, 2, 3)
+

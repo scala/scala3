@@ -15,9 +15,9 @@ object Test:
 
   def usingLogger[T](f: OutputStream^)(op: Logger^{f} => T): T = ???
 
-  usingFile( // error
+  usingFile(
     "foo",
-    file => {
+    file => { // error
       usingLogger(file)(l => () => l.log("test"))
     }
   )

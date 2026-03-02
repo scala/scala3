@@ -25,6 +25,23 @@ T1
 Trait
 <empty>.T1
 x
+20
+21
+2
+<none>
+Literal
+false
+0
+false
+0
+
+1
+trait/test.scala
+<empty>
+T1
+Trait
+<empty>.T1
+x
 12
 17
 2
@@ -35,7 +52,7 @@ false
 false
 def x
 
-1
+2
 trait/test.scala
 <empty>
 Impl3
@@ -52,12 +69,12 @@ false
 false
 Impl2()
 
-2
+3
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 170
 188
@@ -69,12 +86,12 @@ false
 false
 println(Impl1().x)
 
-3
+4
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 178
 185
@@ -86,12 +103,12 @@ false
 false
 Impl1()
 
-4
+5
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 178
 187
@@ -103,12 +120,12 @@ false
 false
 Impl1().x
 
-5
+6
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 196
 214
@@ -120,12 +137,12 @@ false
 false
 println(Impl2().p)
 
-6
+7
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 204
 211
@@ -137,12 +154,12 @@ false
 false
 Impl2()
 
-7
+8
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 225
 243
@@ -154,12 +171,12 @@ false
 false
 println(Impl3().p)
 
-8
+9
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 233
 240
@@ -171,12 +188,12 @@ false
 false
 Impl3()
 
-9
+10
 trait/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 145
 159

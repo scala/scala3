@@ -1,0 +1,9 @@
+-- [E040] Syntax Error: tests/neg/i23815.scala:7:10 --------------------------------------------------------------------
+7 |package t2 // error
+  |          ^
+  |  ':' or '{' expected, but 'end of statement' found
+  |  Nested package statements that are not at the beginning of the file require braces or ':' with an indented body.
+-- [E040] Syntax Error: tests/neg/i23815.scala:9:8 ---------------------------------------------------------------------
+9 |// error
+  |        ^
+  |        '}' expected, but eof found

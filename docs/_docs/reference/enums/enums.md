@@ -34,7 +34,7 @@ explicit extends clause.
 The values of an enum correspond to unique integers. The integer
 associated with an enum value is returned by its `ordinal` method:
 
-```scala
+```scala sc:nocompile
 scala> val red = Color.Red
 val red: Color = Red
 scala> red.ordinal
@@ -47,7 +47,7 @@ by its name. The `values` method returns all enum values
 defined in an enumeration in an `Array`. The `fromOrdinal`
 method obtains an enum value from its ordinal (`Int`) value.
 
-```scala
+```scala sc:nocompile
 scala> Color.valueOf("Blue")
 val res0: Color = Blue
 scala> Color.values
@@ -80,7 +80,7 @@ end Planet
 ## User-defined companion object of enums
 It is also possible to define an explicit companion object for an enum:
 
-```scala
+```scala sc:nocompile
 object Planet:
   def main(args: Array[String]) =
     val earthWeight = args(0).toDouble
@@ -100,7 +100,7 @@ enum class.
 Similarly, enum case declarations may not directly reference members of the enum's companion object,
 even if they are imported (directly, or by renaming). For example:
 
-```scala
+```scala sc:nocompile
 import Planet.*
 enum Planet(mass: Double, radius: Double):
   private final val (mercuryMass, mercuryRadius) = (3.303e+23, 2.4397e6)
@@ -116,6 +116,22 @@ end Planet
 The fields referenced by `Mercury` are not visible, and the fields referenced by `Venus` may not
 be referenced directly (using `import Planet.*`). You must use an indirect reference,
 such as demonstrated with `Earth`.
+
+Note that it is not possible to write a companion object for an enum case,
+either in the enum class template or the enum class companion object.
+
+```scala
+enum Planet(mass: Double, radius: Double):
+  case Earth extends Planet(5.976e+24, 6.37814e6)
+  object Earth:
+    // a near-Earth object, but not a companion and not an enum value
+    assert(this ne Planet.Earth)
+    def report = assert(Planet.this.Earth eq Planet.Earth, s"I thought $this was Earth!")
+end Planet
+```
+
+Enum cases accept only access modifiers.
+Enum classes accept only access modifiers and `into` or `infix`.
 
 ## Deprecation of Enum Cases
 
@@ -146,17 +162,14 @@ We now want to deprecate the `Pluto` case. First we add the `scala.deprecated` a
 
 Outside the lexical scopes of `enum Planet` or `object Planet`, references to `Planet.Pluto` will produce a deprecation warning, but within those scopes we can still reference it to implement introspection over the deprecated cases:
 
-```scala
-trait Deprecations[T <: reflect.Enum] {
+```scala sc:nocompile
+trait Deprecations[T <: reflect.Enum]:
   extension (t: T) def isDeprecatedCase: Boolean
-}
 
-object Planet {
-  given Deprecations[Planet] with {
+object Planet:
+  given Deprecations[Planet]:
     extension (p: Planet)
       def isDeprecatedCase = p == Pluto
-  }
-}
 ```
 
 We could imagine that a library may use [type class derivation](../contextual/derivation.md) to automatically provide an instance for `Deprecations`.
@@ -166,28 +179,29 @@ We could imagine that a library may use [type class derivation](../contextual/de
 If you want to use the Scala-defined enums as [Java enums](https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html), you can do so by extending
 the class `java.lang.Enum`, which is imported by default, as follows:
 
-```scala
-enum Color extends Enum[Color] { case Red, Green, Blue }
+```scala sc:nocompile
+enum Color extends Enum[Color]:
+  case Red, Green, Blue
 ```
 
-The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.
+The type parameter comes from the Java enum [definition](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Enum.html) and should be the same as the type of the enum.
 There is no need to provide constructor arguments (as defined in the Java API docs) to `java.lang.Enum` when extending it – the compiler will generate them automatically.
 
 After defining `Color` like that, you can use it like you would a Java enum:
 
-```scala
+```scala sc:nocompile
 scala> Color.Red.compareTo(Color.Green)
 val res15: Int = -1
 ```
 
-For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
+For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/scala/scala3/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
 
 ## Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
 This trait defines a single public method, `ordinal`:
 
-```scala
+```scala sc:nocompile
 package scala.reflect
 
 /** A base trait of all Scala enum definitions */
@@ -200,7 +214,7 @@ transparent trait Enum extends Any, Product, Serializable:
 Enum values with `extends` clauses get expanded to anonymous class instances.
 For instance, the `Venus` value above would be defined like this:
 
-```scala
+```scala sc:nocompile
 val Venus: Planet = new Planet(4.869E24, 6051800.0):
   def ordinal: Int = 1
   override def productPrefix: String = "Venus"
@@ -212,11 +226,11 @@ that can be instantiated using a private method that takes a tag and a name as a
 For instance, the first
 definition of value `Color.Red` above would expand to:
 
-```scala
+```scala sc:nocompile
 val Red: Color = $new(0, "Red")
 ```
 
 ## Reference
 
-For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970) and
-[PR #4003](https://github.com/lampepfl/dotty/pull/4003).
+For more information, see [Issue #1970](https://github.com/scala/scala3/issues/1970) and
+[PR #4003](https://github.com/scala/scala3/pull/4003).

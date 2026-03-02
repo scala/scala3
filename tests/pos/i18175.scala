@@ -10,8 +10,8 @@ object Regex:
   abstract class Sanitizer[T]
   object Sanitizer:
     given Sanitizer[EmptyTuple] = ???
-    given stringcase[T <: Tuple: Sanitizer]: Sanitizer[String *: T] = ???
-    given optioncase[T <: Tuple: Sanitizer]: Sanitizer[Option[String] *: T] = ???
+    given stringcase: [T <: Tuple: Sanitizer] => Sanitizer[String *: T] = ???
+    given optioncase: [T <: Tuple: Sanitizer] => Sanitizer[Option[String] *: T] = ???
     given Sanitizer[String] = ???
     given Sanitizer[Option[String]] = ???
 

@@ -119,14 +119,31 @@ trait QuotesAndSplices {
             EmptyTree
         }
       }
-      for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
+      val typedTypeargs = tree.typeargs.map {
+        case typearg: untpd.Ident =>
+          val typedTypearg = typedType(typearg)
+          val bounds = ctx.gadt.fullBounds(typedTypearg.symbol)
+          if bounds != null && bounds != TypeBounds.empty then
+            report.error("Implementation restriction: Type arguments to Open pattern are expected to have no bounds", typearg.srcPos)
+          typedTypearg
+        case arg =>
+          report.error("Open pattern expected an identifier", arg.srcPos)
+          EmptyTree
+      }
+      for arg <- typedArgs if arg.symbol.isMutableVarOrAccessor do // TODO support these patterns. Possibly using scala.quoted.util.Var
         report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val patType = if tree.args.isEmpty then pt else defn.FunctionNOf(argTypes, pt)
+      val patType = (tree.typeargs.isEmpty, tree.args.isEmpty) match
+        case (true, true) => pt
+        case (true, false)  =>
+          defn.FunctionNOf(argTypes, pt)
+        case (false,  _) =>
+          PolyFunctionOf(typedTypeargs.tpes, argTypes, pt)
+
       val pat = typedPattern(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patType))(using quotePatternSpliceContext)
       val baseType = pat.tpe.baseType(defn.QuotedExprClass)
       val argType = if baseType.exists then baseType.argTypesHi.head else defn.NothingType
-      untpd.cpy.SplicePattern(tree)(pat, typedArgs).withType(pt)
+      untpd.cpy.SplicePattern(tree)(pat, typedTypeargs, typedArgs).withType(pt)
     else
       errorTree(tree, em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.body.srcPos)
   }
@@ -153,7 +170,34 @@ trait QuotesAndSplices {
     else // $x(...) higher-order quasipattern
       if args.isEmpty then
          report.error("Missing arguments for open pattern", tree.srcPos)
-      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, args), pt)
+      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, Nil, args), pt)
+  }
+
+  /** Types a splice applied to some type arguments and arguments
+   *   `$f[targs1, ..., targsn](arg1, ..., argn)` in a quote pattern.
+   *
+   * Refer to: typedAppliedSplice
+   */
+  def typedAppliedSpliceWithTypes(tree: untpd.Apply, pt: Type)(using Context): Tree = {
+    assert(ctx.mode.isQuotedPattern)
+    val untpd.Apply(typeApplyTree @ untpd.TypeApply(splice: untpd.SplicePattern, typeargs), args) = tree: @unchecked
+    def isInBraces: Boolean = splice.span.end != splice.body.span.end
+    if isInBraces then // ${x}[...](...) match an application
+      val typedTypeargs = typeargs.map(arg => typedType(arg))
+      val typedArgs = args.map(arg => typedExpr(arg))
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val splice1 = typedSplicePattern(splice, ProtoTypes.PolyProto(typedArgs, defn.FunctionOf(argTypes, pt)))
+      val typedTypeApply = untpd.cpy.TypeApply(typeApplyTree)(splice1.select(nme.apply), typedTypeargs)
+      untpd.cpy.Apply(tree)(typedTypeApply, typedArgs).withType(pt)
+    else // $x[...](...) higher-order quasipattern
+      // Empty args is allowed
+      if typeargs.isEmpty then
+         report.error("Missing type arguments for open pattern", tree.srcPos)
+      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, typeargs, args), pt)
+  }
+
+  def typedTypeAppliedSplice(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
+    typedAppliedSpliceWithTypes(untpd.Apply(tree, Nil), pt)
   }
 
   /** Type check a type binding reference in a quoted pattern.
@@ -178,7 +222,7 @@ trait QuotesAndSplices {
         if ctx.mode.is(Mode.InPatternAlternative) then
           report.error(IllegalVariableInPatternAlternative(tree.name), tree.srcPos)
         val typeSym = inContext(quotePatternOuterContext(ctx)) {
-          newSymbol(ctx.owner, tree.name.toTypeName, Case, typeSymInfo, NoSymbol, tree.span)
+          newSymbol(ctx.owner, tree.name.toTypeName, Synthetic | Case, typeSymInfo, NoSymbol, tree.span)
         }
         addQuotedPatternTypeVariable(typeSym)
         Bind(typeSym, untpd.Ident(nme.WILDCARD).withType(typeSymInfo)).withSpan(tree.span)
@@ -214,10 +258,17 @@ trait QuotesAndSplices {
     }
     val (untpdTypeVariables, quoted0) = desugar.quotedPatternTypeVariables(desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt))))
 
-    for tdef @ untpd.TypeDef(_, rhs) <- untpdTypeVariables do rhs match
-      case _: TypeBoundsTree => // ok
-      case LambdaTypeTree(_, body: TypeBoundsTree) => // ok
-      case _ => report.error("Quote type variable definition cannot be an alias", tdef.srcPos)
+    val checkedUntpdTypeVariables = untpdTypeVariables.filter { tdef =>
+      tdef.rhs match
+        case _: TypeBoundsTree => true // ok
+        case LambdaTypeTree(_, body: TypeBoundsTree) => true // ok
+        case _: untpd.ContextBounds =>
+          report.error("Quote type variable definition cannot have context bounds", tdef.srcPos)
+          false // we filter this out to avoid crashes
+        case _ =>
+          report.error("Quote type variable definition cannot be an alias", tdef.srcPos)
+          true
+    }
 
     if ctx.mode.is(Mode.InPatternAlternative) then
       for tpVar <- untpdTypeVariables do
@@ -225,8 +276,8 @@ trait QuotesAndSplices {
 
     val (typeTypeVariables, patternBlockCtx) =
       val quoteCtx = quotePatternContext(quoted.isType)
-      if untpdTypeVariables.isEmpty then (Nil, quoteCtx)
-      else typedBlockStats(untpdTypeVariables)(using quoteCtx)
+      if checkedUntpdTypeVariables.isEmpty then (Nil, quoteCtx)
+      else typedBlockStats(checkedUntpdTypeVariables)(using quoteCtx)
     val patternCtx = patternBlockCtx.addMode(if quoted.isType then Mode.QuotedTypePattern else Mode.QuotedExprPattern)
 
     val allTypeBindings = List.newBuilder[Bind]
@@ -322,4 +373,22 @@ object QuotesAndSplices {
         case _ =>
           super.transform(tree)
     end TreeMapWithVariance
+
+  object PolyFunctionOf {
+    /**
+      * Return a poly-type + method type [$typeargs] => ($args) => ($resultType)
+      * where typeargs occur in args and resulttype
+      */
+    def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
+      val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
+
+      val bounds = typeargs map (_ => TypeBounds.empty)
+      val resultTypeExp = (pt: PolyType) => {
+        val fromSymbols = typeargs map (_.typeSymbol)
+        val args1 = args map (_.subst(fromSymbols, pt.paramRefs))
+        val resultType1 = resultType.subst(fromSymbols, pt.paramRefs)
+        MethodType(args1, resultType1)
+      }
+      defn.PolyFunctionOf(PolyType(typeargs1)(_ => bounds, resultTypeExp))
+  }
 }

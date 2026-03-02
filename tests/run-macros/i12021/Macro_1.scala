@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 
 inline def inspect[A]: String =

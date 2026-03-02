@@ -5,11 +5,13 @@ package reporting
 import core.*
 import Contexts.*, Decorators.*, Symbols.*, Types.*, Flags.*
 import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
-import printing.Texts.Text
+import printing.Texts.{Text, Str}
 import printing.Formatting.hl
 import config.SourceVersion
+import util.SimpleIdentitySet
+import cc.CaptureSet
+import cc.Capabilities.*
 
-import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
 
 /** ## Tips for error message generation
@@ -40,7 +42,43 @@ object Message:
       i"\n$what can be rewritten automatically under -rewrite $optionStr."
     else ""
 
-  private type Recorded = Symbol | ParamRef | SkolemType
+  /** A note can produce an added string for an error message */
+  abstract class Note {
+
+  	/** Should the note be shown before the actual message or after?
+  	 *  Default is after.
+  	 */
+    def showAsPrefix(using Context): Boolean = false
+
+    /** The note rendered as part of an error message */
+    def render(using Context): String
+
+    /** If note N1 covers note N2 then N1 and N2 won't be shown together in
+     *  an error message. Instead we show the note that's strictly better in terms
+     *  of the "covers" partial ordering, or, if there's no strict wionner, the first
+     *  added note.
+     */
+    def covers(other: Note)(using Context): Boolean = false
+
+    def mentions: SimpleIdentitySet[Capability] = SimpleIdentitySet.empty
+  }
+
+  object Note:
+    def apply(msg: Context ?=> String) = new Note:
+      def render(using Context) = msg
+
+  enum Disambiguation:
+    case All
+    case AllExcept(strs: List[String])
+    case None
+
+    def recordOK(str: String): Boolean = this match
+      case All => true
+      case AllExcept(strs) => !strs.contains(str)
+      case None => false
+  end Disambiguation
+
+  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -48,26 +86,21 @@ object Message:
    *  adds superscripts for disambiguations, and can explain recorded symbols
    *  in ` where` clause
    */
-  private class Seen(disambiguate: Boolean):
-
-    /** The set of lambdas that were opened at some point during printing. */
-    private val openedLambdas = new collection.mutable.HashSet[LambdaType]
-
-    /** Register that `tp` was opened during printing. */
-    def openLambda(tp: LambdaType): Unit =
-      openedLambdas += tp
+  private class Seen(disambiguate: Disambiguation):
 
     val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
 
     var nonSensical = false
 
     /** If false, stop all recordings */
-    private var recordOK = disambiguate
+    private var disambi = disambiguate
+
+    def isActive = disambi != Disambiguation.None
 
     /** Clear all entries and stop further entries to be added */
     def disable() =
       seen.clear()
-      recordOK = false
+      disambi = Disambiguation.None
 
     /** Record an entry `entry` with given String representation `str` and a
      *  type/term namespace identified by `isType`.
@@ -76,63 +109,66 @@ object Message:
      *  and following recordings get consecutive superscripts starting with 2.
      *  @return  The possibly superscripted version of `str`.
      */
-    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String = if !recordOK then str else
-      //println(s"recording $str, $isType, $entry")
+    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String =
+      if disambi.recordOK(str) then
+        //println(s"recording $str, $isType, $entry")
 
-      /** If `e1` is an alias of another class of the same name, return the other
-       *  class symbol instead. This normalization avoids recording e.g. scala.List
-       *  and scala.collection.immutable.List as two different types
-       */
-      def followAlias(e1: Recorded): Recorded = e1 match {
-        case e1: Symbol if e1.isAliasType =>
-          val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
-          if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
-        case _ => e1
-      }
-      val key = SeenKey(str, isType)
-      val existing = seen(key)
-      lazy val dealiased = followAlias(entry)
+        /** If `e1` is an alias of another class of the same name, return the other
+         *  class symbol instead. This normalization avoids recording e.g. scala.List
+         *  and scala.collection.immutable.List as two different types
+         */
+        def followAlias(e1: Recorded): Recorded = e1 match {
+          case e1: Symbol if e1.isAliasType =>
+            val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
+            if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
+          case _ => e1
+        }
+        val key = SeenKey(str, isType)
+        val existing = seen(key)
+        lazy val dealiased = followAlias(entry)
 
-      /** All lambda parameters with the same name are given the same superscript as
-       *  long as their corresponding binder has been printed.
-       *  See tests/neg/lambda-rename.scala for test cases.
-       */
-      def sameSuperscript(cur: Recorded, existing: Recorded) =
-        (cur eq existing) ||
-        (cur, existing).match
-          case (cur: ParamRef, existing: ParamRef) =>
-            (cur.paramName eq existing.paramName) &&
-            openedLambdas.contains(cur.binder) &&
-            openedLambdas.contains(existing.binder)
-          case _ =>
-            false
+        /** All lambda parameters with the same name are given the same superscript as
+         *  long as their corresponding binders have the same parameter name lists.
+         *  This avoids spurious distinctions between parameters of mapped lambdas at
+         *  the risk that sometimes we cannot distinguish parameters of distinct functions
+         *  that have the same parameter names. See tests/neg/lambda-rename.scala for test cases.
+         */
+        def sameSuperscript(cur: Recorded, existing: Recorded) =
+          (cur eq existing) ||
+          (cur, existing).match
+            case (cur: ParamRef, existing: ParamRef) =>
+              (cur.paramName eq existing.paramName)
+              && cur.binder.paramNames == existing.binder.paramNames
+            case _ =>
+              false
 
-      // The length of alts corresponds to the number of superscripts we need to print.
-      var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
-      if alts.isEmpty then
-        alts = entry :: existing
-        seen(key) = alts
+        // The length of alts corresponds to the number of superscripts we need to print.
+        var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
+        if alts.isEmpty then
+          alts = entry :: existing
+          seen(key) = alts
 
-      val suffix = alts.length match {
-        case 1 => ""
-        case n => n.toString.toCharArray.map {
-          case '0' => '⁰'
-          case '1' => '¹'
-          case '2' => '²'
-          case '3' => '³'
-          case '4' => '⁴'
-          case '5' => '⁵'
-          case '6' => '⁶'
-          case '7' => '⁷'
-          case '8' => '⁸'
-          case '9' => '⁹'
-        }.mkString
-      }
-      str + suffix
+        val suffix = alts.length match {
+          case 1 => ""
+          case n => n.toString.toCharArray.map {
+            case '0' => '⁰'
+            case '1' => '¹'
+            case '2' => '²'
+            case '3' => '³'
+            case '4' => '⁴'
+            case '5' => '⁵'
+            case '6' => '⁶'
+            case '7' => '⁷'
+            case '8' => '⁸'
+            case '9' => '⁹'
+          }.mkString
+        }
+        str + suffix
+      else str
     end record
 
     /** Create explanation for single `Recorded` type or symbol */
-    private def explanation(entry: AnyRef)(using Context): String =
+    private def explanation(entry: AnyRef, keys: List[String])(using Context): String =
       def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
         if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -152,7 +188,7 @@ object Message:
           ""
       }
 
-      entry match {
+      entry match
         case param: TypeParamRef =>
           s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
         case param: TermParamRef =>
@@ -160,13 +196,18 @@ object Message:
         case sym: Symbol =>
           val info =
             if (ctx.gadt.contains(sym))
-              sym.info & ctx.gadt.fullBounds(sym)
+              sym.info & ctx.gadt.fullBounds(sym).nn
             else
               sym.info
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-      }
+        case ref: RootCapability =>
+          val relation =
+            if keys.length > 1 then "refer to"
+            else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
+            else "is"
+          s"$relation ${ref.descr}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -177,6 +218,7 @@ object Message:
         case param: ParamRef     => false
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
+        case ref: Capability     => ref.isTerminalCapability
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -192,23 +234,27 @@ object Message:
         res // help the inferencer out
       }.sortBy(_._1)
 
-      def columnar(parts: List[(String, String)]): List[String] = {
+      def columnar(parts: List[(String, String)]): List[String] =
         lazy val maxLen = parts.map(_._1.length).max
-        parts.map {
-          case (leader, trailer) =>
-            val variable = hl(leader)
-            s"""$variable${" " * (maxLen - leader.length)} $trailer"""
-        }
-      }
+        parts.map: (leader, trailer) =>
+          val variable = hl(leader)
+          s"""$variable${" " * (maxLen - leader.length)} $trailer"""
 
-      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
+      // Group keys with the same Recorded entry together. We can't use groupBy here
+      // since we want to maintain the order in which entries first appear in the
+      //  original list.
+      val toExplainGrouped: List[(Recorded, List[String])] =
+        for entry <- toExplain.map(_._2).distinct
+        yield (entry, for (key, e) <- toExplain if e == entry yield key)
+      val explainParts = toExplainGrouped.map:
+        (entry, keys) => (keys.mkString(" and "), explanation(entry, keys))
       val explainLines = columnar(explainParts)
       if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
     end explanations
   end Seen
 
   /** Printer to be used when formatting messages */
-  private class Printer(val seen: Seen, _ctx: Context) extends RefinedPrinter(_ctx):
+  private class Printer(val seen: Seen, msg: Message, _ctx: Context) extends RefinedPrinter(_ctx):
 
     /** True if printer should a show source module instead of its module class */
     private def useSourceModule(sym: Symbol): Boolean =
@@ -225,20 +271,42 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
-    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text): Text =
-      info match
-        case info: LambdaType =>
-          seen.openLambda(info)
+    override def toTextCapability(c: Capability): Text =
+      (c, super.toTextCapability(c)) match
+        case (c: RootCapability, Str(s)) if seen.isActive =>
+          seen.record(s, isType = false, c)
+        case (_, txt) =>
+          txt
+
+    override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
+      case refs: CaptureSet
+      if isElidableUniversal(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
+        boxText
+        ~ toTextLocal(parent)
+        ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
+      case refs: CaptureSet.Var if refs.isIgnored =>
+        toText(parent)
+      case _ =>
+        super.toTextCapturing(parent, refs, boxText)
+
+    override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
+      refs match
+        case refs: CaptureSet if isElidableUniversal(refs) && seen.isActive =>
+          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
         case _ =>
-      super.toTextMethodAsFunction(info, isPure, refs)
+          super.funMiddleText(isContextual, isPure, refs)
+
+    override def isElidableUniversal(refs: GeneralCaptureSet): Boolean =
+      super.isElidableUniversal(refs) && (refs, msg).match
+        case (refs: CaptureSet, msg: TypeMismatch) =>
+          msg.notes.forall: note =>
+            (refs.elems ** note.mentions).isEmpty
+        case _ => true
 
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true
       tp match
         case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
-        case tp: LambdaType =>
-          seen.openLambda(tp)
-          super.toText(tp)
         case _ => super.toText(tp)
 
     override def toText(sym: Symbol): Text =
@@ -248,7 +316,7 @@ object Message:
       super.toText(sym)
   end Printer
 
-end Message
+end Message 
 
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
@@ -348,20 +416,22 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
    */
   def isNonSensical: Boolean = { message; myIsNonSensical }
 
-  private var disambiguate: Boolean = true
+  private var disambiguate: Disambiguation = Disambiguation.All
 
-  def withoutDisambiguation(): this.type =
-    disambiguate = false
+  def withDisambiguation(disambi: Disambiguation): this.type =
+    disambiguate = disambi
     this
 
-  private def inMessageContext(disambiguate: Boolean)(op: Context ?=> String): String =
+  def withoutDisambiguation(): this.type = withDisambiguation(Disambiguation.None)
+
+  private def inMessageContext(disambiguate: Disambiguation)(op: Context ?=> String): String =
     if ctx eq NoContext then op
     else
       val msgContext = ctx.printer match
         case _: Message.Printer => ctx
         case _ =>
           val seen = Seen(disambiguate)
-          val ctx1 = ctx.fresh.setPrinterFn(Message.Printer(seen, _))
+          val ctx1 = ctx.fresh.setPrinterFn(Message.Printer(seen, this, _))
           if !ctx1.property(MessageLimiter).isDefined then
             ctx1.setProperty(MessageLimiter, ErrorMessageLimiter())
           ctx1
@@ -373,7 +443,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
 
   /** The explanation to report. <nonsensical> tags are filtered out */
   @threadUnsafe lazy val explanation: String =
-    inMessageContext(disambiguate = false)(explain)
+    inMessageContext(disambiguate = Disambiguation.None)(explain)
 
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message,
@@ -395,12 +465,14 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   def mapMsg(f: String => String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = f(self.msg)
+    override def msgPostscript(using Context) = self.msgPostscript
     def explain(using Context) = self.explain
     override def canExplain = self.canExplain
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
     val kind = self.kind
     def msg(using Context) = self.msg
+    override def msgPostscript(using Context) = self.msgPostscript
     def explain(using Context) = self.explain ++ suffix
     override def canExplain = true
 
@@ -424,12 +496,17 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?=> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?=> String, actions: List[CodeAction] = List.empty)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind
 
+  override def actions(using Context): List[CodeAction] = actions
+
   override def toString(): String = msg
+
+  def withActions(actions: CodeAction*): NoExplanation =
+    new NoExplanation(msgFn, actions.toList)
 }
 
 /** The extractor for `NoExplanation` can be used to check whether any error
@@ -440,3 +517,15 @@ object NoExplanation {
     if (m.explanation == "") Some(m)
     else None
 }
+
+final class InferUnionWarning(tp: Type)(using Context)
+  extends Message(ErrorMessageID.InferUnionWarningID):
+
+  def kind: MessageKind = MessageKind.Type
+
+  def msg(using Context): String =
+    i"""A type argument was inferred to be union type $tp
+       |This may indicate a programming error.
+       |"""
+
+  def explain(using Context): String = ""

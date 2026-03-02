@@ -1,0 +1,26 @@
+trait Effect[F[_]]
+class Countdown[F[_]: Effect]
+class Countdown1[F[_]: Effect](howMany: Int)
+class Countdown2[F[_]: Effect, F2[_]: Effect]
+
+def foo[F[_]: Effect]() =
+  "foo"
+
+@main def Test = {
+  val a = new Countdown[Option](using ???)
+  Countdown[Option](using ???)
+  val b = Countdown[Option](using ???)
+  new Countdown[Option](using ???)
+  val c = Countdown[List](using ???)
+  new Countdown2[List, Option](using ???, ???)
+  new Countdown2[List, Option]    (using ???, ???)
+  Countdown2[List, Option](using ???, ???)
+  Countdown2[List, Option] (using ???, ???)
+  new Countdown1[Option](10)(using ???)
+  new Array[Int](10)
+  new scala.collection.immutable.HashSet[Int]
+  new scala.collection.immutable.HashSet[Int]()
+  new scala.collection.immutable.HashSet[Int] ()
+  foo()(using ???)
+  foo() (using ???)
+}

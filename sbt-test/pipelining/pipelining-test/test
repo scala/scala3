@@ -1,0 +1,12 @@
+# run the tests on a project with pipelining
+# exercises the fact that -Xjava-tasty and -Xpickle-write
+# flags are set twice.
+# steps:
+# - Compile scope is compiled with flags `-Xjava-tasty -Xpickle-write early/a-early-7423784.jar`
+# - sbt copies `early/a-early-7423784.jar` to `early/a-early.jar`
+# - Test scope is compiled with flags `-Xjava-tasty -Xpickle-write early-test/a-early-963232.jar -Xjava-tasty -Xpickle-write early/a-early.jar -classpath early/a-early.jar`
+# e.g. for some reason the classpath has the same `a-early.jar` that
+# is passed with `Xpickle-write`.
+# Therefore we MUST avoid even reading the second `-Xpickle-write` setting,
+# otherwise we will zero-out `a-early.jar`, causing type errors because its contents are blank.
+> a/test

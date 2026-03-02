@@ -203,11 +203,19 @@ class CrossStageSafety extends TreeMapWithStages {
 
   /** Check level consistency of terms references */
   private def checkLevelConsistency(tree: Ident | This)(using Context): Unit =
+    def isStatic(pre: Type)(using Context): Boolean = pre match
+      case pre: NamedType =>
+        val sym = pre.currentSymbol
+        sym.is(Package) || sym.isStaticOwner && isStatic(pre.prefix)
+      case pre: ThisType => isStatic(pre.tref)
+      case _ => true
     new TypeTraverser {
       def traverse(tp: Type): Unit =
         tp match
           case tp @ TermRef(NoPrefix, _) if !tp.symbol.isStatic && level != levelOf(tp.symbol) =>
             levelError(tp.symbol, tp, tree.srcPos)
+          case tp: ThisType if isStatic(tp) =>
+            // static object (OK)
           case tp: ThisType if level != -1 && level != levelOf(tp.cls) =>
             levelError(tp.cls, tp, tree.srcPos)
           case tp: AnnotatedType =>
@@ -215,7 +223,7 @@ class CrossStageSafety extends TreeMapWithStages {
           case _ if tp.typeSymbol.is(Package) =>
             // OK
           case _ =>
-             traverseChildren(tp)
+            traverseChildren(tp)
     }.traverse(tree.tpe)
 
   private def levelError(sym: Symbol, tp: Type, pos: SrcPos)(using Context): tp.type = {

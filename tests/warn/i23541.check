@@ -1,0 +1,18 @@
+-- [E220] Type Warning: tests/warn/i23541.scala:29:13 ------------------------------------------------------------------
+29 |    println(f(using s = "ab")) // warn uses default instead of given // prints "ab"
+   |            ^^^^^^^^^^^^^^^^^
+   |            Argument for implicit parameter i was supplied using a default argument.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E221] Type Warning: tests/warn/i23541.scala:5:17 -------------------------------------------------------------------
+5 |  else fun(x - 1)(using p = p + x) // warn recurse uses default (instead of given passed down the stack)
+  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |       Recursive call used a default argument for parameter q.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E221] Type Warning: tests/warn/i23541.scala:9:17 -------------------------------------------------------------------
+9 |  else gun(x - 1)(p = p + x) // warn recurse uses default (value not passed down the stack)
+  |       ^^^^^^^^^^^^^^^^^^^^^
+  |       Recursive call used a default argument for parameter q.
+  |
+  | longer explanation available when compiling with `-explain`

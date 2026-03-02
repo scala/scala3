@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/captures/capset-members2.scala:5:10 ----------------------------------------------------
+5 |  type C^[T] // error
+  |          ^
+  |          `C` cannot have type parameters, because it ranges over capture sets
+-- Error: tests/neg-custom-args/captures/capset-members2.scala:7:13 ----------------------------------------------------
+7 |  def foo[C^[_]]: Int // error
+  |             ^
+  |             `C` cannot have type parameters, because it ranges over capture sets
+-- Error: tests/neg-custom-args/captures/capset-members2.scala:9:20 ----------------------------------------------------
+9 |  def bar [M[_], C^ <: M]: Int // error
+  |                    ^^^^
+  |                    Illegal type bounds: >: scala.caps.CapSet <: M. C^ can only have capture sets as bounds

@@ -2,7 +2,7 @@ import annotation.retains
 import language.experimental.erasedDefinitions
 
 class CT[E <: Exception]
-type CanThrow[E <: Exception] = CT[E] @retains(caps.cap)
+type CanThrow[E <: Exception] = CT[E] @retains[caps.any.type]
 
 infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?-> R
 
@@ -14,7 +14,7 @@ def foo(x: Boolean): Int throws Fail =
   if x then 1 else raise(Fail())
 
 def handle[E <: Exception, R](op: (erased CanThrow[E]) -> R)(handler: E -> R): R =
-  erased val x: CanThrow[E] = ??? : CanThrow[E]
+  erased val x = caps.unsafe.unsafeErasedValue[CanThrow[E]]
   try op(x)
   catch case ex: E => handler(ex)
 

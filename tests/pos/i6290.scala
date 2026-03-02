@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature -source:3.3
+//> using options -Werror -deprecation -feature -source:3.3
 
 class TC { type T }
 

@@ -25,7 +25,7 @@ class BeanProperties(thisPhase: DenotTransformer):
 
   def generateAccessors(valDef: ValDef)(using Context): List[Tree] =
     def generateGetter(valDef: ValDef, annot: Annotation)(using Context) : Tree =
-      val prefix = if annot matches defn.BooleanBeanPropertyAnnot then "is" else "get"
+      val prefix = if annot.matches(defn.BooleanBeanPropertyAnnot) then "is" else "get"
       val meth = newSymbol(
         owner = ctx.owner,
         name = prefixedName(prefix, valDef.name),

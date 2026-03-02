@@ -1,4 +1,4 @@
-
+//> using options -source 3.4
 
 import scala.language.implicitConversions
 

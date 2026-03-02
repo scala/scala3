@@ -1,0 +1,27 @@
+break Test$ 4
+eval a1
+result A
+eval a2(new A)
+result a2
+eval a1.a3
+result a3
+eval (new A).a3("foo")
+result a3(foo)
+eval new test.B
+result B
+eval test.b2(test.b1)
+result b2
+eval test.b1.b3
+result b3
+eval (new test.B).b3("foo")
+result b3(foo)
+
+break Test 17
+eval new B
+result B
+eval b2(new this.B)
+result b2
+eval (new B).b3
+result b3
+eval b1.b3("foo")
+result b3(foo)

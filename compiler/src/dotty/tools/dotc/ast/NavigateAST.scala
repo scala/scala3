@@ -3,8 +3,9 @@ package ast
 
 import core.Contexts.*
 import core.Decorators.*
+import core.StdNames
 import util.Spans.*
-import Trees.{MemberDef, DefTree, WithLazyFields}
+import Trees.{Closure, MemberDef, DefTree, WithLazyFields}
 import dotty.tools.dotc.core.Types.AnnotatedType
 import dotty.tools.dotc.core.Types.ImportType
 import dotty.tools.dotc.core.Types.Type
@@ -74,21 +75,62 @@ object NavigateAST {
   def pathTo(span: Span, from: List[Positioned], skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       var bestFit: List[Positioned] = path
-      while (it.hasNext) {
-        val path1 = it.next() match {
-          case p: Positioned => singlePath(p, path)
+      while (it.hasNext) do
+        val path1 = it.next() match
+          case sel: untpd.Select if isRecoveryTree(sel) => path
+          case sel: untpd.Ident  if isPatternRecoveryTree(sel) => path
+          case p: Positioned if !p.isInstanceOf[Closure[?]] => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
           case xs: List[?] => childPath(xs.iterator, path)
           case _ => path
-        }
-        if ((path1 ne path) &&
-            ((bestFit eq path) ||
-             bestFit.head.span != path1.head.span &&
-             bestFit.head.span.contains(path1.head.span)))
+
+        if (path1 ne path) && ((bestFit eq path) || isBetterFit(bestFit, path1)) then
           bestFit = path1
-      }
+
       bestFit
     }
+
+    /**
+      * When choosing better fit we compare spans. If candidate span has starting or ending point inside (exclusive)
+      * current best fit it is selected as new best fit. This means that same spans are failing the first predicate.
+      *
+      * In case when spans start and end at same offsets we prefer non synthethic one,
+      * and then one with better point (see isBetterPoint below).
+      */
+    def isBetterFit(currentBest: List[Positioned], candidate: List[Positioned]): Boolean =
+      if currentBest.isEmpty && candidate.nonEmpty then true
+      else if currentBest.nonEmpty && candidate.nonEmpty then
+        val bestSpan = currentBest.head.span
+        val candidateSpan = candidate.head.span
+
+        def isBetterPoint =
+          // Given two spans with same end points,
+          // we compare their points in relation to the point we are looking for (span.point)
+          // The candidate (candidateSpan.point) is better than what we have so far (bestSpan.point), when:
+          // 1) candidate is closer to target from the right
+          span.point <= candidateSpan.point && candidateSpan.point < bestSpan.point
+          // 2) candidate is closer to target from the left
+          || bestSpan.point < candidateSpan.point && candidateSpan.point <= span.point
+          // 3) candidate is to on the left side of target, and best so far is on the right
+          || candidateSpan.point <= span.point && span.point < bestSpan.point
+
+        bestSpan != candidateSpan && envelops(bestSpan, candidateSpan)
+        || bestSpan.contains(candidateSpan) && bestSpan.isSynthetic && !candidateSpan.isSynthetic
+        || candidateSpan.start == bestSpan.start && candidateSpan.end == bestSpan.end && isBetterPoint
+      else false
+
+    def isRecoveryTree(sel: untpd.Select): Boolean =
+      sel.span.isSynthetic
+        && (sel.name == StdNames.nme.??? && sel.qualifier.symbol.name == StdNames.nme.Predef)
+
+    def isPatternRecoveryTree(ident: untpd.Ident): Boolean =
+      ident.span.isSynthetic && StdNames.nme.WILDCARD == ident.name
+
+    def envelops(a: Span, b: Span): Boolean =
+      !b.exists || a.exists && (
+        (a.start < b.start && a.end >= b.end ) || (a.start <= b.start && a.end > b.end)
+      )
+
     /*
      * Annotations trees are located in the Type
      */
@@ -111,7 +153,9 @@ object NavigateAST {
           case _ =>
         val iterator = p match
           case defdef: DefTree[?] =>
-            p.productIterator ++ defdef.mods.productIterator
+            val mods = defdef.mods
+            val annotations = defdef.symbol.annotations.filter(_.tree.span.contains(span)).map(_.tree)
+            p.productIterator ++ annotations ++ mods.productIterator
           case _ =>
             p.productIterator
         childPath(iterator, p :: path)

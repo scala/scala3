@@ -11,10 +11,8 @@ object Test {
     def get(t: TT): C
   }
 
-  given [T <: Tuple, C, EV <: TupleTypeIndex[T, C]]: TupleExtractor[T, C] with {
+  given [T <: Tuple, C, EV <: TupleTypeIndex[T, C]] => TupleExtractor[T, C]:
     def get(t: T): C = t.toArray.apply(toIntC[TupleTypeIndex[T, C]]).asInstanceOf[C] // error
-  }
-
 
   transparent inline def toIntC[N <: Int]: Int =
     inline constValue[N] match

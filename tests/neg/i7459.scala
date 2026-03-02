@@ -22,7 +22,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] with {
+  given Eq[Int] {
     def eqv(x: Int, y: Int) = x == y
   }
 

@@ -43,6 +43,7 @@ class EtaReduce extends MiniPhase:
               arg.isInstanceOf[Ident] && arg.symbol == param.symbol)
           && isPurePath(fn)
           && fn.tpe <:< tree.tpe
+          && !(fn.symbol.is(Flags.Param) && fn.symbol.owner == mdef.symbol) // Do not eta-educe `(..., f: T => R, ...) => f.apply(..)` into `f`
           && defn.isFunctionClass(fn.tpe.widen.typeSymbol) =>
         report.log(i"eta reducing $tree --> $fn")
         fn

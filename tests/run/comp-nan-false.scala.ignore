@@ -1,0 +1,19 @@
+object Test {
+  def main(args: Array[String]): Unit = {
+    val dn = Double.NaN
+    def dne(x: Double, y: Double) = x != y
+    val dfs: List[(Double, Double) => Boolean] = List(_ < _, _ <= _, _ > _, _ >= _,  _ == _, (x, y) => !ne(x, y))
+    val dvs = List[Double](n, 1, -1, 0)
+    val dresult = for (f <- dfs; v <- dvs; (x, y) <- List((n, v), (v, n))) yield f(x, y)
+    for dr <- dresult if dr do
+      println("FAIL")
+
+    val fn = Float.NaN
+    def fne(x: Float, y: Float) = x != y
+    val ffs: List[(Float, Float) => Boolean] = List(_ < _, _ <= _, _ > _, _ >= _,  _ == _, (x, y) => !ne(x, y))
+    val fvs = List[Float](n, 1, -1, 0)
+    val fresult = for (f <- ffs; v <- fvs; (x, y) <- List((n, v), (v, n))) yield f(x, y)
+    for fr <- fresult if fr do
+      println("FAIL")
+  }
+}

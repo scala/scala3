@@ -1,0 +1,6 @@
+-- [E103] Syntax Error: tests/neg/i21786.scala:1:0 ---------------------------------------------------------------------
+1 |into class X // error
+  |^^^^
+  |Illegal start of toplevel definition
+  |
+  | longer explanation available when compiling with `-explain`

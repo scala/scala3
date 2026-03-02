@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/i24373b.scala:3:18 ------------------------------------------------------------
+3 |trait Bar extends Foo, caps.Mutable // error
+  |                  ^^^
+  |                  illegal inheritance: trait Bar which extends `Mutable` is not allowed to also extend trait Foo
+  |                  since trait Foo retains exclusive capabilities but does not extend `Mutable`.

@@ -5,10 +5,10 @@ import scala.language.unsafeNulls
 
 import java.io.File
 import java.nio.file.Path
-import java.util.{Arrays, EnumSet}
+import java.util.EnumSet
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{isTasty, hasClassExtension, hasTastyExtension}
+import dotty.tools.dotc.classpath.FileUtils.{hasClassExtension, hasTastyExtension}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Types.*
 
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
@@ -46,7 +46,6 @@ import scala.compiletime.uninitialized
  *
  *  The following flags affect this phase:
  *   -Yforce-sbt-phases
- *   -Ydump-sbt-inc
  *
  *  @see ExtractAPI
  */
@@ -64,7 +63,7 @@ class ExtractDependencies extends Phase {
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
 
-  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  // when `-Xjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
 
   // This phase should be run directly after `Frontend`, if it is run after
@@ -72,32 +71,11 @@ class ExtractDependencies extends Phase {
   // See the scripted test `constants` for an example where this matters.
   // TODO: Add a `Phase#runsBefore` method ?
 
-  override def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val rec = unit.depRecorder
     val collector = ExtractDependenciesCollector(rec)
     collector.traverse(unit.tpdTree)
-
-    if (ctx.settings.YdumpSbtInc.value) {
-      val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
-      val names = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
-      Arrays.sort(deps)
-      Arrays.sort(names)
-
-      val pw = io.File(unit.source.file.jpath).changeExtension("inc").toFile.printWriter()
-      // val pw = Console.out
-      try {
-        pw.println("Used Names:")
-        pw.println("===========")
-        names.foreach(pw.println)
-        pw.println()
-        pw.println("Dependencies:")
-        pw.println("=============")
-        deps.foreach(pw.println)
-      } finally pw.close()
-    }
-
-    rec.sendToZinc()
   }
 }
 
@@ -105,13 +83,70 @@ object ExtractDependencies {
   val name: String = "sbt-deps"
   val description: String = "sends information on classes' dependencies to sbt"
 
+  /** Construct String name for the given sym.
+   * See https://github.com/sbt/zinc/blob/v1.9.6/internal/zinc-apiinfo/src/main/scala/sbt/internal/inc/ClassToAPI.scala#L86-L99
+   *
+   * For a Java nested class M of a class C returns C's canonical name + "." + M's simple name.
+   */
   def classNameAsString(sym: Symbol)(using Context): String =
-    sym.fullName.stripModuleClassSuffix.toString
+    def isJava(sym: Symbol)(using Context): Boolean =
+      Option(sym.source) match
+        case Some(src) => src.toString.endsWith(".java")
+        case None      => false
+    def classNameAsString0(sym: Symbol)(using Context): String =
+      sym.fullName.stripModuleClassSuffix.toString
+    def javaClassNameAsString(sym: Symbol)(using Context): String =
+      if sym.owner.isClass && !sym.owner.isRoot then
+        javaClassNameAsString(sym.owner) + "." + sym.name.stripModuleClassSuffix.toString
+      else classNameAsString0(sym)
+    if isJava(sym) then javaClassNameAsString(sym)
+    else classNameAsString0(sym)
 
   /** Report an internal error in incremental compilation. */
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     report.error(em"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
+
+/** Extract the dependency information of a compilation unit.
+ *
+ *  This extracts the symbol dependencies in the written code.
+ *  There are further extractions performed in the Inlining phase later.
+ *
+ *  To understand why we track the used names see the section "Name hashing
+ *  algorithm" in http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html
+ *  To understand why we need to track dependencies introduced by inheritance
+ *  specially, see the subsection "Dependencies introduced by member reference and
+ *  inheritance" in the "Name hashing algorithm" section.
+ */
+private class ExtractDependenciesCollector(rec: DependencyRecorder) extends AbstractExtractDependenciesCollector(rec):
+  import tpd.*
+
+  /** Traverse the tree of a source file and record the dependencies and used names which
+   *  can be retrieved using DependencyRecorder.
+   */
+  override def traverse(tree: Tree)(using Context): Unit =
+    try
+      recordTree(tree)
+      tree match
+        case tree: Inlined if !tree.inlinedFromOuterScope =>
+          // The inlined call is normally ignored by TreeTraverser but we need to
+          // record it as a dependency
+          traverse(tree.call)
+          // traverseChildren(tree)
+        case vd: ValDef if vd.symbol.is(ModuleVal) =>
+          // Don't visit module val
+        case t: Template if t.symbol.owner.is(ModuleClass) =>
+          // Don't visit self type of module class
+          traverse(t.constr)
+          t.parents.foreach(traverse)
+          t.body.foreach(traverse)
+        case _ =>
+          traverseChildren(tree)
+    catch
+      case ex: AssertionError =>
+        println(i"asserted failed while traversing $tree")
+        throw ex
+end ExtractDependenciesCollector
 
 /** Extract the dependency information of a compilation unit.
  *
@@ -121,7 +156,7 @@ object ExtractDependencies {
  *  specially, see the subsection "Dependencies introduced by member reference and
  *  inheritance" in the "Name hashing algorithm" section.
  */
-private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.TreeTraverser { thisTreeTraverser =>
+trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd.*
 
   private def addMemberRefDependency(sym: Symbol)(using Context): Unit =
@@ -165,12 +200,8 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
       // can happen for constructor proxies. Test case is pos-macros/i13532.
       true
 
-
-  /** Traverse the tree of a source file and record the dependencies and used names which
-   *  can be retrieved using `foundDeps`.
-   */
-  override def traverse(tree: Tree)(using Context): Unit = try {
-    tree match {
+  protected def recordTree(tree: Tree)(using Context): Unit =
+    tree match
       case Match(selector, _) =>
         addPatMatDependency(selector.tpe)
       case Import(expr, selectors) =>
@@ -207,29 +238,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
-      case _ =>
-    }
-
-    tree match {
-      case tree: Inlined if !tree.inlinedFromOuterScope =>
-        // The inlined call is normally ignored by TreeTraverser but we need to
-        // record it as a dependency
-        traverse(tree.call)
-      case vd: ValDef if vd.symbol.is(ModuleVal) =>
-        // Don't visit module val
-      case t: Template if t.symbol.owner.is(ModuleClass) =>
-        // Don't visit self type of module class
-        traverse(t.constr)
-        t.parents.foreach(traverse)
-        t.body.foreach(traverse)
-      case _ =>
-        traverseChildren(tree)
-    }
-  } catch {
-    case ex: AssertionError =>
-      println(i"asserted failed while traversing $tree")
-      throw ex
-  }
+      case _ => ()
 
   /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
    * Avoid cycles by remembering both the types (testcase:
@@ -495,7 +504,7 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTasty = depFile.hasTastyExtension
+      val isTastyOrSig = depFile.hasTastyExtension
 
       def processExternalDependency() = {
         val binaryClassName = depClass.binaryClassName
@@ -506,13 +515,13 @@ class DependencyRecorder {
                 binaryDependency(zip.jpath, binaryClassName)
               case _ =>
           case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-            binaryDependency(if isTasty then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
+            binaryDependency(if isTastyOrSig then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
           case _ =>
             internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", fromClass.srcPos)
         }
       }
 
-      if isTasty || depFile.hasClassExtension then
+      if isTastyOrSig || depFile.hasClassExtension then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
@@ -561,7 +570,7 @@ class DependencyRecorder {
     clazz
   }
 
-  private var _responsibleForImports: Symbol = uninitialized
+  private[dotc] var _responsibleForImports: Symbol | Null = null
 
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.

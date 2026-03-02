@@ -1,6 +1,7 @@
 package covtest
 
 // Checks that we use the new positions of the inlined code properly
+// NOTE (12.08.2025): After recent changes, the inlined nodes will not be tagged in coverage
 def testInlined(): Unit =
   val l = 1
   assert(l == 1)

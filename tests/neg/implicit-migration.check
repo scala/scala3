@@ -1,0 +1,64 @@
+-- Error: tests/neg/implicit-migration.scala:16:21 ---------------------------------------------------------------------
+16 |  implicit def ol[T](implicit x: Ord[T]): Ord[List[T]] = new Ord[List[T]]() // error // error
+   |                     ^
+   |                     `implicit` parameters are no longer supported, use a `using` clause instead
+   |                     This construct can be rewritten automatically under -rewrite -source future-migration.
+-- Error: tests/neg/implicit-migration.scala:9:15 ----------------------------------------------------------------------
+9 |  implicit def convert(x: String): Int = x.length // error
+  |               ^
+  |               `implicit` conversion methods are no longer supported. They can usually be
+  |               replaced by given instances of class `Conversion`. Example:
+  |
+  |                   given Conversion[String, Int] = x => ...
+  |
+-- Error: tests/neg/implicit-migration.scala:11:15 ---------------------------------------------------------------------
+11 |  implicit val ob: Ord[Boolean] = Ord[Boolean]() // error
+   |               ^
+   |               `implicit` vals are no longer supported, use a `given` clause instead. Example:
+   |
+   |                  given ob: Ord[Boolean] = ...
+   |
+   |               Note: given clauses are evaluated lazily unless the right hand side is
+   |               a simple reference.  If eager evaluation of the value's right hand side
+   |               is important, you can define a regular val and a given instance like this:
+   |
+   |                   val ob = ...
+   |                   given Ord[Boolean] = ob
+   |
+-- Error: tests/neg/implicit-migration.scala:12:20 ---------------------------------------------------------------------
+12 |  lazy implicit val oi: Ord[Int] = Ord[Int]() // error
+   |                    ^
+   |                    `implicit` vals are no longer supported, use a `given` clause instead. Example:
+   |
+   |                       given oi: Ord[Int] = ...
+   |
+-- Error: tests/neg/implicit-migration.scala:14:15 ---------------------------------------------------------------------
+14 |  implicit def of: Ord[Float] = Ord[Float]() // error
+   |               ^
+   |               `implicit` defs are no longer supported, use a `given` clause instead. Example:
+   |
+   |                  given of: () => Ord[Float] = ...
+   |
+-- Error: tests/neg/implicit-migration.scala:16:15 ---------------------------------------------------------------------
+16 |  implicit def ol[T](implicit x: Ord[T]): Ord[List[T]] = new Ord[List[T]]() // error // error
+   |               ^
+   |               `implicit` defs are no longer supported, use a `given` clause instead. Example:
+   |
+   |                  given ol: [T] => (x: Ord[T]) => Ord[List[T]] = ...
+   |
+-- Error: tests/neg/implicit-migration.scala:3:15 ----------------------------------------------------------------------
+3 |implicit class C(x: String): // error
+  |               ^
+  |               `implicit` classes are no longer supported. They can usually be replaced
+  |               by extension methods. Example:
+  |
+  |                   extension (x: String)
+  |                     // class methods go here, replace `this` by `x`
+  |
+  |               Alternatively, convert to a regular class and define
+  |               a given `Conversion` instance into that class. Example:
+  |
+  |                   class C ...
+  |                   given Conversion[String, C] = C(x)
+  |
+there was 1 feature warning; re-run with -feature for details

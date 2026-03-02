@@ -17,7 +17,7 @@ object CollectionStrawMan {
 
     def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
 
-    protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray(elemTag))
+    protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray(using elemTag))
   }
 }
 

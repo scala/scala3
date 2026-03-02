@@ -1,0 +1,241 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+f
+82
+87
+5
++
+Apply
+false
+0
+true
+x + 1
+
+1
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+f
+61
+66
+5
+f
+DefDef
+false
+0
+true
+def f
+
+2
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+g
+107
+114
+7
+<none>
+Literal
+false
+0
+true
+"hello"
+
+3
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+g
+91
+96
+7
+g
+DefDef
+false
+0
+true
+def g
+
+4
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+h
+149
+154
+10
+>
+Apply
+false
+0
+true
+x > 0
+
+5
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+h
+160
+170
+10
+<none>
+Literal
+false
+0
+true
+"positive"
+
+6
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+h
+160
+170
+10
+<none>
+Literal
+true
+0
+true
+"positive"
+
+7
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+h
+180
+190
+11
+<none>
+Literal
+false
+0
+true
+"negative"
+
+8
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+h
+180
+190
+11
+<none>
+Literal
+true
+0
+true
+"negative"
+
+9
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnored
+Class
+covtest.WholeFileIgnored
+h
+118
+123
+9
+h
+DefDef
+false
+0
+true
+def h
+
+10
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnoredObj
+Object
+covtest.WholeFileIgnoredObj
+<init>
+230
+232
+14
+<none>
+Literal
+false
+0
+true
+42
+
+11
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnoredObj
+Object
+covtest.WholeFileIgnoredObj
+compute
+270
+275
+15
++
+Apply
+false
+0
+true
+a + b
+
+12
+WholeFileIgnoredLocally.scala
+covtest
+WholeFileIgnoredObj
+Object
+covtest.WholeFileIgnoredObj
+compute
+235
+246
+15
+compute
+DefDef
+false
+0
+true
+def compute
+

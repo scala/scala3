@@ -1,0 +1,10 @@
+-- Warning: tests/init-global/warn/TypeCast.scala:7:17 -----------------------------------------------------------------
+7 |  def g(): Int = f // warn
+  |                 ^
+  |                 Access uninitialized field value f. Calling trace:
+  |                 ├── object B {	[ TypeCast.scala:5 ]
+  |                 │   ^
+  |                 ├── val f: Int = g()	[ TypeCast.scala:6 ]
+  |                 │                ^^^
+  |                 └── def g(): Int = f // warn	[ TypeCast.scala:7 ]
+  |                                    ^

@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/classified-inheritance.scala:5:6 ----------------------------------------------
+5 |class C2 extends caps.Control, caps.Unscoped // error
+  |      ^
+  |      class C2 inherits two unrelated classifier traits: trait Unscoped and trait Control
+-- Error: tests/neg-custom-args/captures/classified-inheritance.scala:10:6 ---------------------------------------------
+10 |class C3 extends Matrix, Async // error
+   |      ^
+   |      class C3 inherits two unrelated classifier traits: trait Control and trait Unscoped

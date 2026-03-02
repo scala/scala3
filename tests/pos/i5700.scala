@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/5700
+// https://github.com/scala/scala3/issues/5700
 object noRecursionLimit:
   type M = { type T[+A]; type Ev >: T[Any] <: T[Nothing] }
   val M: M = ().asInstanceOf[M]

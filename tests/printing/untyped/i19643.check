@@ -1,0 +1,31 @@
+[[syntax trees at end of                    parser]] // tests/printing/untyped/i19643.java
+package i19643 {
+  object MyAnnot() {}
+  trait MyAnnot private[this](x$1: scala.Unit) extends Object, _root_.java.lang.
+    annotation.Annotation {
+    def <init>(reify: Class[? <: Object],
+      args: _root_.scala.Array[Class[? <: Object]])
+    @_root_.scala.annotation.internal.AnnotationDefault def reify():
+      Class[? <: Object] = _root_.scala.Predef.???
+    @_root_.scala.annotation.internal.AnnotationDefault def args():
+      _root_.scala.Array[Class[? <: Object]] = _root_.scala.Predef.???
+  }
+  object MyAnnotated() {
+    @MyAnnot(reify = _root_.scala.Predef.classOf[String]) <static> def method1()
+      : scala.Int = _root_.scala.Predef.???
+    @MyAnnot(reify = _root_.scala.Predef.classOf[scala.Int]) <static> def
+      method2(): scala.Int = _root_.scala.Predef.???
+    @MyAnnot(reify = _root_.scala.Predef.classOf[scala.Long]) <static> def
+      method3(): scala.Int = _root_.scala.Predef.???
+    @MyAnnot(args = _root_.scala.Array(_root_.scala.Predef.classOf[String]))
+      <static> def method4(): scala.Int = _root_.scala.Predef.???
+    @MyAnnot(args = _root_.scala.Array(_root_.scala.Predef.classOf[scala.Int]))
+      <static> def method5(): scala.Int = _root_.scala.Predef.???
+    @MyAnnot(args = _root_.scala.Array(_root_.scala.Predef.classOf[scala.Long]))
+       <static> def method6(): scala.Int = _root_.scala.Predef.???
+  }
+  class MyAnnotated private[this](x$1: scala.Unit) extends Object {
+    def <init>() = _root_.scala.Predef.???
+  }
+}
+

@@ -8,7 +8,7 @@ trait TokenParser[Token, R]
 package p1 {
 
   object TextParser {
-    given TP: TokenParser[Char, Position[CharSequence]] with {}
+    given TP: TokenParser[Char, Position[CharSequence]]()
 
     def f
       (using TokenParser[Char, Position[CharSequence]]) = ???
@@ -85,9 +85,9 @@ package p3 {
 package p4 {
   class TC
 
-  given A: TC with {}
+  given A: TC()
 
-  given B[X[_], Y]: TC with {}
+  given B: [X[_], Y] => TC()
 
-  given C(using TC): TC with {}
+  given C: TC => TC()
 }

@@ -146,7 +146,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
         }
 
       case Assign(lhs, rhs) =>
-        log("<interpretAssing>", tree)(localValue(lhs.symbol).update(eval(rhs)))
+        log("<interpretAssign>", tree)(localValue(lhs.symbol).update(eval(rhs)))
 
       case If(cond, thenp, elsep) => log("interpretIf", tree)(interpretIf(cond, thenp, elsep))
       case While(cond, body)      => log("interpretWhile", tree)(interpretWhile(cond, body))

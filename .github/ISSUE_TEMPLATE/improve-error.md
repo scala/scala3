@@ -19,7 +19,7 @@ This code should be self-contained, reproducible (i.e. produces the expected err
 
 Ideally, we should be able to just copy this code in a file and run `scalac` (and maybe `scala`) to reproduce the issue.
 
-For a good example, see https://github.com/lampepfl/dotty/issues/18657
+For a good example, see https://github.com/scala/scala3/issues/18657
 -->
 
 ```Scala
@@ -44,12 +44,12 @@ for example:
 
 ## Why this Error/Warning was not helpful
 
-<!-- For a good example, see https://github.com/lampepfl/dotty/issues/18657 -->
+<!-- For a good example, see https://github.com/scala/scala3/issues/18657 -->
 
 The message was unhelpful because...
 
 ## Suggested improvement
 
-<!-- For a good example, see https://github.com/lampepfl/dotty/issues/18657 -->
+<!-- For a good example, see https://github.com/scala/scala3/issues/18657 -->
 
 It could be made more helpful by...

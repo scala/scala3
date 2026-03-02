@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:20 ---------------------------------------
+12 |  val leak = withCap(cap => mkId(cap)) // error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 of value leak.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    Id[Cap^{any}]^'s2
+   |Required: Id[Cap^'s1]^'s3
+   |
+   |where:    any is a root capability created in anonymous function of type (using lcap: scala.caps.Capability^): Cap^{lcap} ->'s4 Id[Cap^{any}]^'s5 of parameter parameter lcap² of method $anonfun
+   |
+   | longer explanation available when compiling with `-explain`

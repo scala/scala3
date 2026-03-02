@@ -39,8 +39,11 @@ The precise rules are as follows:
     - the class has a companion object (which might have been generated in step 1), and
     - that companion object does not already define a member named `apply`.
 
-    Each generated `apply` method forwards to one constructor of the class. It has the
-    same type and value parameters as the constructor.
+    Each generated `apply` method forwards to one constructor of the class.
+    It has the same type and value parameters as the constructor,
+    as well as the same access restriction as the class.
+    If the class is `protected`, then either the companion object must be `protected`
+    or the `apply` method will be made `protected`.
 
 Constructor proxy companions cannot be used as values by themselves. A proxy companion object must
 be selected with `apply` (or be applied to arguments, in which case the `apply` is implicitly

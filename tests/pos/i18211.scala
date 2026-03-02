@@ -21,7 +21,7 @@ object Indexes {
       next: Indexes[A, Tuple.Drop[T, S[IndexOf[A, T]]]]
   ): Indexes[A, T] = ???
 
-  given empty[A, T <: Tuple](using IndexOf[A, T] =:= -1): Indexes[A, T] = ???
+  given empty: [A, T <: Tuple] => (IndexOf[A, T] =:= -1) => Indexes[A, T] = ???
 }
 
 class GetAll[A]:

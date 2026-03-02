@@ -3,8 +3,6 @@
 package dotty.tools
 package dotc.config
 
-import scala.language.unsafeNulls
-
 import scala.annotation.internal.sharable
 import scala.util.{Try, Success, Failure}
 
@@ -82,20 +80,20 @@ case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBu
        "The minor and revision parts are optional."
     ))
 
-    def toInt(s: String) = s match {
+    def toInt(s: String | Null) = s match {
       case null | "" => 0
-      case _ => s.toInt
+      case _ => s.nn.toInt
     }
 
     def isInt(s: String) = Try(toInt(s)).isSuccess
 
     import ScalaBuild.*
 
-    def toBuild(s: String) = s match {
+    def toBuild(s: String | Null) = s match {
       case null | "FINAL" => Final
       case s if (s.toUpperCase.startsWith("RC") && isInt(s.substring(2))) => RC(toInt(s.substring(2)))
       case s if (s.toUpperCase.startsWith("M") && isInt(s.substring(1))) => Milestone(toInt(s.substring(1)))
-      case _ => Development(s)
+      case _ => Development(s.nn)
     }
 
     try versionString match {

@@ -11,10 +11,13 @@ class GenSJSIR extends Phase {
 
   override def description: String = GenSJSIR.description
 
-  override def isRunnable(using Context): Boolean =
-    super.isRunnable && ctx.settings.scalajs.value
+  override def isEnabled(using Context): Boolean =
+    ctx.settings.scalajs.value
 
-  def run(using Context): Unit =
+  override def isRunnable(using Context): Boolean =
+    super.isRunnable && !ctx.usedBestEffortTasty
+
+  override protected def run(using Context): Unit =
     new JSCodeGen().run()
 }
 

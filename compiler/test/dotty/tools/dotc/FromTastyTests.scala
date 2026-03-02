@@ -23,7 +23,7 @@ class FromTastyTests {
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
-      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted)
+      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyExcludelisted)
     ).checkCompile()
   }
 
@@ -35,7 +35,7 @@ class FromTastyTests {
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
-      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyBlacklisted)
+      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyExcludelisted)
     ).checkRuns()
   }
 }
@@ -44,7 +44,7 @@ object FromTastyTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 30.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

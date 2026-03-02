@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/7653
+// https://github.com/scala/scala3/issues/7653
 
 object options2 {
   type Option[T] = {

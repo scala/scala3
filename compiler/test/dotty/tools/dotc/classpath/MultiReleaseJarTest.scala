@@ -19,7 +19,6 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
   @Test
   def mrJar(): Unit = {
-    if (!Properties.isJavaAtLeast("9")) { println("skipping mrJar() on old JDK"); return }
 
     // The test fails if the same jar file gets reused. This might be a caching problem in our classpath implementation
 
@@ -38,7 +37,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
     def apiMethods(jarPath: Path, release: String): Set[String] = {
       given ctx: Context = initCtx.fresh
-      ctx.settings.usejavacp.update(true)
+      ctx.settings.Yusejavacp.update(true)
       ctx.settings.classpath.update(jarPath.toAbsolutePath.toString)
       ctx.settings.javaOutputVersion.update(release)
       ctx.initialize()
@@ -61,8 +60,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
       assertEquals(Set("foo1", "bar1"), apiMethods(jar1, "8"))
       assertEquals(Set("foo1", "foo2", "bar1"), apiMethods(jar2, "9"))
 
-      if Properties.isJavaAtLeast("10") then
-        assertEquals(Set("foo1", "foo2", "bar1", "bar2"), apiMethods(jar3, "10"))
+      assertEquals(Set("foo1", "foo2", "bar1", "bar2"), apiMethods(jar3, "10"))
     } finally
       List(jar1, jar2, jar3).forall(path =>
         try Files.deleteIfExists(path)
@@ -72,11 +70,10 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
   @Test
   def ctSymTest(): Unit = {
-    if (!Properties.isJavaAtLeast("9")) { println("skipping mrJar() on old JDK"); return }
 
     def classExists(className: String, release: String): Boolean = {
       given ctx: Context = initCtx.fresh
-      ctx.settings.usejavacp.update(true)
+      ctx.settings.Yusejavacp.update(true)
       ctx.settings.javaOutputVersion.update(release)
       ctx.initialize()
       val classFile = ctx.platform.classPath.findClassFile(className)

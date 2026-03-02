@@ -1,0 +1,10 @@
+-- [E171] Type Error: tests/neg/i22792.scala:8:30 ----------------------------------------------------------------------
+8 |@main def Test = new Foo().run() // error
+  |                 ^^^^^^^^^^^^^^^
+  |                 missing argument for parameter ev of method run in class Foo: (implicit ev: Permit): Unit
+  |                 This code can be rewritten automatically under -rewrite -source 3.7-migration.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Old-style implicit argument lists may be omitted but not empty; this syntax was corrected in 3.7.
+   ---------------------------------------------------------------------------------------------------------------------

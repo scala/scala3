@@ -2,12 +2,12 @@ import scala.quoted.*
 
 object MacrosMD_ToExpr {
 
-  given ToExpr[Boolean] with {
+  given ToExpr[Boolean] {
     def apply(b: Boolean)(using Quotes) =
       if (b) '{ true } else '{ false }
   }
 
-  given ToExpr[Int] with {
+  given ToExpr[Int] {
     def apply(n: Int)(using Quotes) = n match {
       case Int.MinValue    => '{ Int.MinValue }
       case _ if n < 0      => '{ - ${ apply(-n) } }
@@ -17,7 +17,7 @@ object MacrosMD_ToExpr {
     }
   }
 
-  given [T: ToExpr : Type]: ToExpr[List[T]] with {
+  given [T: ToExpr : Type] => ToExpr[List[T]] {
     def apply(xs: List[T])(using Quotes) = xs match {
       case head :: tail => '{ ${ Expr(head) } :: ${ apply(tail) } }
       case Nil => '{ Nil: List[T] }

@@ -1,0 +1,5 @@
+-- Warning: tests/warn/abstract-givens-new.scala:7:22 ------------------------------------------------------------------
+7 |  given intC: Int is C // warn
+  |                      ^
+  |                     This defines an abstract given, which is no longer supported. Use a `deferred` given instead.
+  |                     Or, if you intend to define a concrete given, follow the type with `()` arguments.

@@ -15,12 +15,12 @@ import StdNames.*
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
-import org.scalajs.ir
-import org.scalajs.ir.{Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
-import org.scalajs.ir.OriginalName
-import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.UTF8String
+import dotty.tools.sjs.ir
+import dotty.tools.sjs.ir.{Trees => js, Types => jstpe, WellKnownNames => jswkn}
+import dotty.tools.sjs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
+import dotty.tools.sjs.ir.OriginalName
+import dotty.tools.sjs.ir.OriginalName.NoOriginalName
+import dotty.tools.sjs.ir.UTF8String
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -135,16 +135,13 @@ object JSEncoding {
     def freshLabelName(base: String): LabelName =
       freshLabelName(LabelName(base))
 
-    def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
-      js.LabelIdent(freshLabelName(base))
-
     def labelSymbolName(sym: Symbol)(using Context): LabelName =
       labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.javaSimpleName))
 
-    def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
+    def getEnclosingReturnLabel(): LabelName = {
       if (returnLabelName.isEmpty)
         returnLabelName = Some(freshLabelName("_return"))
-      js.LabelIdent(returnLabelName.get)
+      returnLabelName.get
     }
 
     /* If this `LocalNameGenerator` has a `returnLabelName` (often added in the
@@ -155,7 +152,7 @@ object JSEncoding {
         case None =>
           body
         case Some(labelName) =>
-          js.Labeled(js.LabelIdent(labelName), tpe, body)
+          js.Labeled(labelName, tpe, body)
       }
     }
   }
@@ -166,14 +163,13 @@ object JSEncoding {
 
   // Encoding methods ----------------------------------------------------------
 
-  def encodeLabelSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LabelIdent = {
+  def encodeLabelSym(sym: Symbol)(implicit ctx: Context, localNames: LocalNameGenerator): LabelName = {
     require(sym.is(Flags.Label), "encodeLabelSym called with non-label symbol: " + sym)
-    js.LabelIdent(localNames.labelSymbolName(sym))
+    localNames.labelSymbolName(sym)
   }
 
   def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
-    js.FieldIdent(FieldName(encodeFieldSymAsString(sym)))
+    js.FieldIdent(FieldName(encodeClassName(sym.owner), SimpleFieldName(encodeFieldSymAsString(sym))))
 
   def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.StringLiteral =
     js.StringLiteral(encodeFieldSymAsString(sym))
@@ -239,7 +235,7 @@ object JSEncoding {
 
   def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent = {
     val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.info))
-    val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
+    val resultTypeRef = jstpe.ClassRef(jswkn.ObjectClass)
     val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
     js.MethodIdent(methodName)
   }
@@ -248,11 +244,13 @@ object JSEncoding {
   private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef =
     toParamOrResultTypeRef(toTypeRef(tpe))
 
-  def encodeLocalSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LocalIdent = {
+  def encodeLocalSym(sym: Symbol)(using Context, ir.Position, LocalNameGenerator): js.LocalIdent =
+    js.LocalIdent(encodeLocalSymName(sym))
+
+  def encodeLocalSymName(sym: Symbol)(using ctx: Context, localNames: LocalNameGenerator): LocalName = {
     require(!sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.LocalIdent(localNames.localSymbolName(sym))
+    localNames.localSymbolName(sym)
   }
 
   def encodeClassType(sym: Symbol)(using Context): jstpe.Type = {
@@ -261,7 +259,7 @@ object JSEncoding {
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
-      jstpe.ClassType(encodeClassName(sym))
+      jstpe.ClassType(encodeClassName(sym), nullable = true)
     }
   }
 
@@ -284,7 +282,7 @@ object JSEncoding {
      * - scala.Null to scala.runtime.Null$.
      */
     if (sym1 == defn.BoxedUnitClass)
-      ir.Names.BoxedUnitClass
+      jswkn.BoxedUnitClass
     else if (sym1 == defn.NothingClass)
       ScalaRuntimeNothingClassName
     else if (sym1 == defn.NullClass)
@@ -324,10 +322,13 @@ object JSEncoding {
         else if (sym == defn.NullClass)
           jstpe.NullType
         else
-          jstpe.ClassType(typeRef.className)
+          jstpe.ClassType(typeRef.className, nullable = true)
 
       case typeRef: jstpe.ArrayTypeRef =>
-        jstpe.ArrayType(typeRef)
+        jstpe.ArrayType(typeRef, nullable = true)
+
+      case typeRef: jstpe.TransientTypeRef =>
+        throw AssertionError(s"Unexpected transient type ref $typeRef for ${typeRefInternal._2}")
     }
   }
 
@@ -361,7 +362,7 @@ object JSEncoding {
      */
     def nonClassTypeRefToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
       //assert(sym.isType && isCompilingArray, sym)
-      (jstpe.ClassRef(ir.Names.ObjectClass), defn.ObjectClass)
+      (jstpe.ClassRef(jswkn.ObjectClass), defn.ObjectClass)
     }
 
     tp.widenDealias match {

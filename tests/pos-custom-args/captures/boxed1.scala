@@ -1,6 +1,6 @@
 class Box[T](val x: T)
 
-@annotation.capability class Cap
+class Cap extends caps.SharedCapability
 
 def foo(x: => Int): Unit = ()
 

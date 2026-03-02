@@ -1,0 +1,5 @@
+-- Error: tests/neg/i20265-1.scala:4:6 ---------------------------------------------------------------------------------
+4 |  def apply(args: Tuple.Map[m.MirroredElemTypes, Expr]): Expr[T] = ??? // error
+  |      ^
+  |      non-private method apply in trait Ops refers to private given instance m
+  |      in its type signature (args: Tuple.Map[Ops.this.m.MirroredElemTypes, Expr]): Expr[T]

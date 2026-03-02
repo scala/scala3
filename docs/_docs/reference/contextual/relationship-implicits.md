@@ -15,7 +15,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  1. Given instances without parameters are mapped to implicit objects. For instance,
 
     ```scala
-    given intOrd: Ord[Int] with { ... }
+    given intOrd: Ord[Int] { ... }
     ```
 
     maps to
@@ -27,7 +27,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  2. Parameterized givens are mapped to combinations of classes and implicit methods. For instance,
 
     ```scala
-    given listOrd[T](using ord: Ord[T]): Ord[List[T]] with { ... }
+    given listOrd: [T] => (ord: Ord[T]) => Ord[List[T]] { ... }
     ```
 
     maps to
@@ -63,8 +63,8 @@ final implicit def given_Context = ctx
 Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` givens above were left out, the following names would be synthesized instead:
 
 ```scala
-given given_Ord_Int: Ord[Int] with { ... }
-given given_Ord_List[T](using ord: Ord[T]): Ord[List[T]] with { ... }
+given given_Ord_Int: Ord[Int] { ... }
+given given_Ord_List: [T] => (ord: Ord[T]) => Ord[List[T]] { ... }
 ```
 
 The synthesized type names are formed from
@@ -153,7 +153,7 @@ implicit def stringToToken(str: String): Token = new Keyword(str)
 one can write
 
 ```scala
-given stringToToken: Conversion[String, Token] with
+given stringToToken: Conversion[String, Token]:
   def apply(str: String): Token = KeyWord(str)
 ```
 

@@ -55,6 +55,7 @@ cp tests/neg-macros/i6371/A_1.scala $OUT/A.scala
 cp tests/neg-macros/i6371/B_2.scala $OUT/B.scala
 "$SBT" "scalac $OUT/A.scala -d $OUT1"
 rm $OUT/A.scala
+# this command is expected to fail
 "$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
 # cat "$tmp" # for debugging
 grep -qe "B.scala:2:7" "$tmp"

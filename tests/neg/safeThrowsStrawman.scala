@@ -3,7 +3,7 @@ import annotation.implicitNotFound
 
 object scalax:
   @implicitNotFound("The capability to throw exception ${E} is missing.\nThe capability can be provided by one of the following:\n - A using clause `(using CanThrow[${E}])`\n - A raises clause in a result type such as `X raises ${E}`\n - an enclosing `try` that catches ${E}")
-  erased class CanThrow[-E <: Exception]
+  class CanThrow[-E <: Exception] extends compiletime.Erased
 
   infix type raises[R, +E <: Exception] = CanThrow[E] ?=> R
 

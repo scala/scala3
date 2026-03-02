@@ -1,0 +1,9 @@
+//> using options source `future-migration` -rewrite
+
+class Ord[T]
+
+object Test:
+
+  implicit def ol[T](using x: Ord[T]): Ord[List[T]] = foo[T] // error // error
+
+  def foo[T](using x: Ord[T]): Ord[List[T]] = new Ord[List[T]]()

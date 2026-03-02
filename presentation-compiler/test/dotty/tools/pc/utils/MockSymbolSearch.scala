@@ -6,15 +6,10 @@ import java.util as ju
 
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
-import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
-import scala.meta.pc.SymbolSearch.Result
-import scala.meta.pc.{
-  ParentSymbols,
-  SymbolDocumentation,
-  SymbolSearch,
-  SymbolSearchVisitor
-}
 import scala.language.unsafeNulls
+import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
+import scala.meta.pc.{ParentSymbols, SymbolDocumentation, SymbolSearch, SymbolSearchVisitor}
+import scala.meta.pc.ContentType
 
 import org.eclipse.lsp4j.Location
 
@@ -23,8 +18,8 @@ import org.eclipse.lsp4j.Location
  * their definition location or documentation based on semanticdb symbol.
  *
  * This mock has to be provided to test presentation compiler implementations,
- * which consumes returned symbols from symbol search. The main functinalities that rely on it
- * are completion enrichements, go to definition and type definition, hover and signature help.
+ * which consumes returned symbols from symbol search. The main functionalities that rely on it
+ * are completion enrichments, go to definition and type definition, hover and signature help.
  *
  * @param workspace is used to search for Symbols in the workspace
  * @param classpathSearch is used to search for Symbols in the classpath
@@ -66,6 +61,12 @@ class MockSymbolSearch(
   override def documentation(
       symbol: String,
       parents: ParentSymbols
+  ): Optional[SymbolDocumentation] = documentation(symbol, parents, ContentType.MARKDOWN)
+
+  override def documentation(
+      symbol: String,
+      parents: ParentSymbols,
+      contentType: ContentType
   ): Optional[SymbolDocumentation] =
     (symbol +: parents.parents().asScala).iterator
       .map(symbol => mockEntries.documentations.find(_.symbol == symbol))

@@ -62,7 +62,7 @@ class A { topLevel =>
   new AA
 
   object AB {
-    val nestedOnce = this // self alias cannot be used uniformly here: https://github.com/lampepfl/dotty/issues/11648
+    val nestedOnce = this // self alias cannot be used uniformly here: https://github.com/scala/scala3/issues/11648
 
     checkMember(this, topLevel)
 

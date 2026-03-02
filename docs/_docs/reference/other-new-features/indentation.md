@@ -189,7 +189,7 @@ Define for an arbitrary sequence of tokens or non-terminals `TS`:
 
 ```ebnf
 :<<< TS >>>   ::=   ‘{’ TS ‘}’
-                |   <colon> <indent" TS <outdent>
+                |   <colon> <indent> TS <outdent>
 ```
 Then the grammar changes as follows:
 ```ebnf

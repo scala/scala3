@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import scala.language.unsafeNulls
-
 import scala.util.control.NonFatal
 
 import dotty.tools.io.Directory
@@ -40,7 +38,7 @@ object Debug {
 
     val tastyFiles =
       Directory(fromSourcesOut).walk
-        .filter(x => x.isFile && "tasty".equalsIgnoreCase(x.extension))
+        .filter(x => x.isFile && x.ext.isTasty)
         .map(_.toString)
         .toList
 

@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 class A[-T]
 class B[T] extends A[T]

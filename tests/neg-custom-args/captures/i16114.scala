@@ -1,3 +1,5 @@
+
+
 trait Cap { def use(): Int; def close(): Unit }
 def mkCap(): Cap^ = ???
 
@@ -12,31 +14,31 @@ def withCap[T](op: Cap^ => T): T = {
 
 def main(fs: Cap^): Unit = {
   def badOp(io: Cap^): Unit ->{} Unit = {
-    val op1: Unit ->{io} Unit = (x: Unit) =>
-      expect[Cap^] {  // error
+    val op1: Unit ->{io} Unit = (x: Unit) => // error
+      expect[Cap^] {
         io.use()
-        fs  // error (limitation)
+        fs
       }
 
-    val op2: Unit ->{fs} Unit = (x: Unit) =>
-      expect[Cap^] { // error
+    val op2: Unit ->{fs} Unit = (x: Unit) => // error
+      expect[Cap^] {
         fs.use()
-        io  // error (limitation)
+        io
       }
 
-    val op3: Unit ->{io} Unit = (x: Unit) =>
-      expect[Cap^] {  // error
+    val op3: Unit ->{io} Unit = (x: Unit) => // ok
+      expect[Cap^] {
         io.use()
         io
       }
 
-    val op4: Unit ->{} Unit = (x: Unit) =>  // o k
-      expect[Cap^](io) // error
+    val op4: Unit ->{} Unit = (x: Unit) =>  // error
+      expect[Cap^](io)
 
-    val op: Unit -> Unit = (x: Unit) =>
-      expect[Cap^] { // error
-        io.use()    // error
-        io          // error
+    val op: Unit -> Unit = (x: Unit) => // error
+      expect[Cap^] {
+        io.use()
+        io
       }
     op
   }

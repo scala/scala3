@@ -10,6 +10,6 @@ object Test:
 	object Test2:
 
 	    if true then
-	      1
+	      ()
 	  else 2 // error
 

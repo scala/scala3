@@ -1,3 +1,5 @@
+//> using options -experimental
+
 @newUnusedSymbol
 class Foo
 

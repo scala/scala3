@@ -1,0 +1,19 @@
+[[syntax trees at end of                     typer]] // tests/printing/annot-19846b.scala
+package <empty> {
+  class lambdaAnnot(g: () => Int) extends scala.annotation.Annotation(),
+    annotation.StaticAnnotation {
+    private[this] val g: () => Int
+  }
+  final lazy module val Test: Test = new Test()
+  final module class Test() extends Object() { this: Test.type =>
+    val y: Int = ???
+    val z: Int @lambdaAnnot(() => Test.y) = f(Test.y)
+  }
+  final lazy module val annot-19846b$package: annot-19846b$package =
+    new annot-19846b$package()
+  final module class annot-19846b$package() extends Object() {
+    this: annot-19846b$package.type =>
+    def f(x: Int): Int @lambdaAnnot(() => x) = x
+  }
+}
+

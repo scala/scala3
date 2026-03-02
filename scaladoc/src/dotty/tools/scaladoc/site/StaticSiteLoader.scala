@@ -55,11 +55,8 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
           .map(relativizeIfNeeded)
           .map(_.toFile)
           .filter(_.exists)
-          .map(loadTemplateFile(_))
-        val title = (
-          optionTitle.map(TemplateName.SidebarDefined(_)) ++
-          indexPageOpt.map(_.title)
-        ).headOption.getOrElse {
+          .map(loadTemplateFile(_, optionTitle.map(TemplateName.SidebarDefined(_))))
+        val title = indexPageOpt.map(_.title).getOrElse {
           report.error(s"Title for subsection needs to be set in YAML config or in index file")
           TemplateName.FilenameDefined("unnamed_section")
         }
@@ -138,7 +135,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
       val indexDest = ctx.docsPath.resolve(defaultDirectory).resolve("index.html")
       val regex = raw"(\d*)-(\d*)-(\d*)-(.*)".r
       def splitDateName(tf: TemplateFile): (Date, String) = tf.file.getName match
-          case regex(year, month, day, name) => ((year, month, day), name)
+          case regex(year: String, month: String, day: String, name: String) => ((year, month, day), name)
           case name =>
             report.warn("Incorrect file name for blog post. Post file name should be in format <year>-<month>-<day>-<name>", tf.file)
             (("1900","01","01"), name)

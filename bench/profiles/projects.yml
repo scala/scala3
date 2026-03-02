@@ -41,4 +41,4 @@ scripts:
         - source $PROG_HOME/dotty/bench/scripts/stdlib213
 
 config:
-    pr_base_url: "https://github.com/lampepfl/dotty/pull/"
+    pr_base_url: "https://github.com/scala/scala3/pull/"

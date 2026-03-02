@@ -1,0 +1,14 @@
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-b_wrapper.scala:3:13 --------------------------------------
+3 |def x: Int = true  // error
+  |             ^^^^
+  |             Found:    (true : Boolean)
+  |             Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-b.scala:2:13 ----------------------------------------------
+2 |def y: Int = false  // error
+  |             ^^^^^
+  |             Found:    (false : Boolean)
+  |             Required: Int
+  |
+  | longer explanation available when compiling with `-explain`

@@ -1,4 +1,4 @@
-//> using options -Ykind-projector:underscores
+//> using options -Xkind-projector:underscores
 
 package kind_projector_neg
 

@@ -1,27 +1,25 @@
 package dotty.tools.dotc.semanticdb
 
 import scala.language.unsafeNulls
-
 import java.net.URLClassLoader
 import java.util.regex.Pattern
-import java.io.File
-import java.nio.file._
+import java.io.{ByteArrayOutputStream, File}
+import java.nio.file.*
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 import java.util.Comparator
 import scala.util.control.NonFatal
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-
+import scala.jdk.CollectionConverters.*
 import javax.tools.ToolProvider
-
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.experimental.categories.Category
-
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
+import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.Scala3.given
+import dotty.tools.dotc.semanticdb.internal.SemanticdbOutputStream
 import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =
@@ -33,7 +31,7 @@ import dotty.tools.dotc.util.SourceFile
  *  only 1 semanticdb file should be present
  *  @param source the single source file producing the semanticdb
  */
-@main def metac(root: String, source: String) =
+@main def metac(root: String, source: String): Unit =
   val rootSrc = Paths.get(root)
   val sourceSrc = Paths.get(source)
   val semanticFile = FileSystems.getDefault.getPathMatcher("glob:**.semanticdb")
@@ -53,13 +51,13 @@ import dotty.tools.dotc.util.SourceFile
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
-  val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
-  val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
-  val expectSrc = rootSrc.resolve("expect")
-  val javaRoot = rootSrc.resolve("javacp")
-  val metacExpectFile = rootSrc.resolve("metac.expect")
+  val javaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.java")
+  val scalaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
+  val expectFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
+  val rootSrc: Path = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
+  val expectSrc: Path = rootSrc.resolve("expect")
+  val javaRoot: Path = rootSrc.resolve("javacp")
+  val metacExpectFile: Path = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
@@ -138,12 +136,13 @@ class SemanticdbTests:
       "-feature",
       "-deprecation",
       // "-Ydebug-flags",
-      // "-Xprint:extractSemanticDB",
+      // "-Vprint:extractSemanticDB",
       "-sourceroot", expectSrc.toString,
       "-classpath", target.toString,
       "-Xignore-scala2-macros",
       "-usejavacp",
-      "-Wunused:all"
+      "-Wunused:all",
+      "-Yreporter:dotty.tools.dotc.reporting.Reporter$SilentReporter",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
@@ -152,41 +151,11 @@ class SemanticdbTests:
 end SemanticdbTests
 
 object SemanticdbTests:
-  /** Prettyprint a text document with symbol occurrences next to each resolved identifier.
-   *
-   * Useful for testing purposes to ensure that SymbolOccurrence values make sense and are correct.
-   * Example output (NOTE, slightly modified to avoid "unclosed comment" errors):
-   * {{{
-   *   class Example *example/Example#*  {
-   *     val a *example/Example#a.* : String *scala/Predef.String#* = "1"
-   *   }
-   * }}}
-   **/
   def printTextDocument(doc: TextDocument): String =
-    val symtab = doc.symbols.iterator.map(info => info.symbol -> info).toMap
-    val sb = StringBuilder(1000)
-    val sourceFile = SourceFile.virtual(doc.uri, doc.text)
-    var offset = 0
-    for occ <- doc.occurrences.sorted do
-      val range = occ.range.get
-      val end = math.max(
-        offset,
-        sourceFile.lineToOffset(range.endLine) + range.endCharacter
-      )
-      val isPrimaryConstructor =
-        symtab.get(occ.symbol).exists(_.isPrimary)
-      if !occ.symbol.isPackage && !isPrimaryConstructor then
-        assert(end <= doc.text.length,
-          s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.name}")
-        sb.append(doc.text.substring(offset, end))
-        sb.append("/*")
-          .append(if (occ.role.isDefinition) "<-" else "->")
-          .append(occ.symbol.replace("/", "::"))
-          .append("*/")
-        offset = end
-    assert(offset <= doc.text.length, s"absurd offset = $offset when doc is length ${doc.text.length}")
-    sb.append(doc.text.substring(offset))
-    sb.toString
+    val byteStream = new ByteArrayOutputStream()
+    val out = SemanticdbOutputStream.newInstance(byteStream)
+    doc.writeTo(out)
+    out.flush()
+    DocumentPrinter.textDocumentPrettyPrint(byteStream.toByteArray.nn)
   end printTextDocument
-
 end SemanticdbTests

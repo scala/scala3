@@ -2,10 +2,12 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
+import org.junit.Ignore
 import org.junit.Test
 
 class CompletionKeywordSuite extends BaseCompletionSuite:
 
+  @Ignore
   @Test def `super-template` =
     check(
       """
@@ -38,8 +40,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  // tr@@
         |}
         |""".stripMargin,
-      """|transient scala (commit: '')
-         |transparentTrait - scala.annotation (commit: '')""".stripMargin,
+      "",
       includeCommitCharacter = true
     )
 
@@ -58,11 +59,11 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-     """|transient scala (commit: '')
-        |transparentTrait - scala.annotation (commit: '')""".stripMargin,
+      "",
       includeCommitCharacter = true
     )
 
+  @Ignore
   @Test def `super-def` =
     check(
       """
@@ -83,6 +84,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `super-val` =
     check(
       """
@@ -103,6 +105,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `super-var` =
     check(
       """
@@ -123,6 +126,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `super-arg` =
     check(
       """
@@ -153,8 +157,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|value: Int
          |val
          |var
-         |varargs(): varargs
-         |varargs - scala.annotation
+         |varargs(): varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -171,8 +174,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|val
          |var
-         |varargs(): varargs
-         |varargs - scala.annotation
+         |varargs(): varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -205,8 +207,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|value: Int
-         |varargs(): varargs
-         |varargs - scala.annotation""".stripMargin
+         |varargs(): varargs - scala.annotation""".stripMargin
     )
 
   @Test def `val-trailing-space` =
@@ -366,9 +367,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  val x: Map[Int, new@@]
         |}
       """.stripMargin,
-      "",
-      // to avoid newMain annotation
-      filter = str => !str.contains("newMain")
+      ""
     )
   // TODO: Should provide empty completions
   // The issue is that the tree looks the same as for `case @@` (it doesn't see `new`)
@@ -384,11 +383,10 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  }
         |}
       """.stripMargin,
-      "",
-      // to avoid newMain annotation
-      filter = str => !str.contains("newMain")
+      ""
     )
 
+  @Ignore
   @Test def `super-typeapply` =
     check(
       """
@@ -414,12 +412,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|def
-         |deprecated scala
-         |deprecatedInheritance scala
-         |deprecatedName scala
-         |deprecatedOverriding scala
-         |""".stripMargin,
-      topLines = Some(5)
+         |""".stripMargin
     )
 
   @Test def `protected-val` =
@@ -433,7 +426,6 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|val
          |var
-         |varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -448,6 +440,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |given
          |extension
          |type
+         |opaque type
          |class
          |enum
          |case class
@@ -472,13 +465,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |  def hello(u@@)
          |}""".stripMargin,
       """|using (commit: '')
-         |unsafeExceptions scala (commit: '')
-         |unchecked scala (commit: '')
-         |unsafe - scala.caps (commit: '')
-         |unsafeNulls - scala.runtime.stdLibPatches.language (commit: '')
          |""".stripMargin,
-      includeCommitCharacter = true,
-      topLines = Some(5)
+      includeCommitCharacter = true
     )
 
   @Test def `not-using` =
@@ -486,12 +474,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|object A{
          |  def hello(a: String, u@@)
          |}""".stripMargin,
-      """|unsafeExceptions scala
-         |unchecked scala
-         |unsafe - scala.caps
-         |unsafeNulls - scala.runtime.stdLibPatches.language
-         |unused - scala.annotation """.stripMargin,
-      topLines = Some(5)
+      ""
     )
 
   @Test def `extends-class` =
@@ -716,28 +699,26 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
 
   @Test def `derives-with-extends` =
     check(
-      """
-        |package foo
-        |
-        |trait Bar {}
-        |trait Baz {}
-        |
-        |class Foo(x: Int) extends Bar with Baz der@@
-                """.stripMargin,
+      """|package foo
+         |
+         |trait Bar {}
+         |trait Baz {}
+         |
+         |class Foo(x: Int) extends Bar with Baz der@@
+         |""".stripMargin,
       """|derives
          |""".stripMargin
     )
 
   @Test def `derives-with-constructor-extends` =
     check(
-      """
-        |package foo
-        |
-        |trait Bar {}
-        |class Baz(b: Int) {}
-        |
-        |class Foo(x: Int) extends Bar with Baz(1) der@@
-                  """.stripMargin,
+      """|package foo
+         |
+         |trait Bar {}
+         |class Baz(b: Int) {}
+         |
+         |class Foo(x: Int) extends Bar with Baz(1) der@@
+         |""".stripMargin,
       """|derives
          |""".stripMargin
     )

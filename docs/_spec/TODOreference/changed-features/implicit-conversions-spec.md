@@ -114,4 +114,4 @@ changes to implicit resolution, refer to the [Changes in Implicit Resolution](im
 ## Reference
 
 For more information about implicit resolution, see [Changes in Implicit Resolution](implicit-resolution.md).
-Other details are available in [PR #2065](https://github.com/lampepfl/dotty/pull/2065).
+Other details are available in [PR #2065](https://github.com/scala/scala3/pull/2065).

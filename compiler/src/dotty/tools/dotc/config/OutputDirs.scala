@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-import scala.language.unsafeNulls
 
 import io.*
 
@@ -30,10 +29,10 @@ class OutputDirs {
 
   /** Check that dir is exists and is a directory. */
   private def checkDir(dir: AbstractFile, name: String, allowJar: Boolean = false): AbstractFile = (
-    if (dir != null && dir.isDirectory)
+    if ((dir ne null) && dir.isDirectory)
       dir
     // was:      else if (allowJar && dir == null && Path.isJarOrZip(name, false))
-    else if (allowJar && dir == null && Jar.isJarOrZip(File(name), false))
+    else if (allowJar && (dir eq null) && Jar.isJarOrZip(File(name), false))
       new PlainFile(Path(name))
     else
       throw new FatalError(name + " does not exist or is not a directory"))
@@ -71,12 +70,11 @@ class OutputDirs {
     singleOutDir match {
       case Some(d) => d
       case None =>
-        (outputs find (isBelow _).tupled) match {
+        outputs.find(isBelow(_, _)) match
           case Some((_, d)) => d
           case _ =>
-            throw new FatalError("Could not find an output directory for "
-              + src.path + " in " + outputs)
-        }
+            throw new FatalError(
+              s"Could not find an output directory for ${src.path} in $outputs")
     }
   }
 
@@ -108,7 +106,7 @@ class OutputDirs {
           case _ => List(d.lookupPathUnchecked(srcPath, false))
         }
       case None =>
-        (outputs filter (isBelow _).tupled) match {
+        outputs.filter(isBelow(_, _)) match {
           case Nil => Nil
           case matches => matches.map(_._1.lookupPathUnchecked(srcPath, false))
         }

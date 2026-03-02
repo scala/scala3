@@ -611,7 +611,7 @@ class DottyLanguageServer extends LanguageServer
   private def inProjectsSeeing(baseDriver: InteractiveDriver,
                                definitions: List[SourceTree],
                                symbols: List[Symbol]): List[(InteractiveDriver, Context, List[Symbol])] = {
-    val projects = projectsSeeing(definitions)(baseDriver.currentCtx)
+    val projects = projectsSeeing(definitions)(using baseDriver.currentCtx)
     projects.toList.map { config =>
       val remoteDriver = drivers(config)
       val ctx = remoteDriver.currentCtx
@@ -753,7 +753,7 @@ object DottyLanguageServer {
 
   /** Does this sourcefile represent a worksheet? */
   private def isWorksheet(sourcefile: SourceFile): Boolean =
-    sourcefile.file.extension == "sc"
+    sourcefile.file.ext.isScalaScript
 
   /** Wrap the source of a worksheet inside an `object`. */
   private def wrapWorksheet(source: String): String =

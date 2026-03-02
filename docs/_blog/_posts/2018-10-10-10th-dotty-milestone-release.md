@@ -21,12 +21,12 @@ be a big step towards realising the full potential of these ideas. Its main obje
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 10th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 ## What’s new in the 0.10.0-RC1 technology preview?
 
@@ -61,7 +61,7 @@ Elem[Nil]          =:=  Nothing
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
 This feature is still experimental and subject to changes. For more information, visit the
-[Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) section of our documentation.
+[Match Types](https://nightly.scala-lang.org/docs/reference/new-types/match-types.html) section of our documentation.
 
 ### Documentation in the REPL
 
@@ -99,7 +99,7 @@ or the enclosing class did not change at call site. E.g.
 
 This restriction has now been removed. We also  improve upon `scalac` which is not able to optimise
 methods that change the type of `this` on a polymorphic recursive call.
-[Examples](https://github.com/lampepfl/dotty/blob/7a45a4a386d33180e5b7b21aa74271a77cce4707/tests/neg-tailcall/tailrec.scala#L43-L44)
+[Examples](https://github.com/scala/scala3/blob/7a45a4a386d33180e5b7b21aa74271a77cce4707/tests/neg-tailcall/tailrec.scala#L43-L44)
 can be found in our test suite.
 
 ### Experimental support for generic Tuples
@@ -125,7 +125,7 @@ val t2: (Int, String, Long, Int, String, Long) = (1,2,3,1,2,3)
 
 ### And much more!
 
-Please read our [release notes](https://github.com/lampepfl/dotty/releases/tag/0.10.0-RC1)
+Please read our [release notes](https://github.com/scala/scala3/releases/tag/0.10.0-RC1)
 for more details!
 
 ## Breaking changes
@@ -160,7 +160,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 For macOS users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
 running:
@@ -179,7 +179,7 @@ brew upgrade dotty
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -221,8 +221,8 @@ According to `git shortlog -sn --no-merges 0.9.0..0.10.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

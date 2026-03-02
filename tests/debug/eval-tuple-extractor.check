@@ -1,0 +1,9 @@
+break Test$ 4
+eval t(0)
+result 1
+eval t._2
+result 2
+eval
+  val (x, y) = t
+  y
+result 2

@@ -373,10 +373,10 @@ object MarkupParsers {
           while {
             xSpaceOpt()
             nextch()
-            ts.append(element)
+            content_LT(ts)
             charComingAfter(xSpaceOpt()) == '<'
           } do ()
-          handle.makeXMLseq(Span(start, curOffset, start), ts)
+          handle.makeXMLseq(Span(start, curOffset, start), ts, toVector = false)
         }
         else {
           assert(ts.length == 1, "Require one tree")

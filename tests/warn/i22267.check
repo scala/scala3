@@ -1,0 +1,14 @@
+-- [E194] Potential Issue Warning: tests/warn/i22267.scala:13:26 -------------------------------------------------------
+13 |  extension (self: C) def m(n: Double): Unit = println(2->n) // warn
+   |                          ^
+   |                          Extension method m will never be selected from type C
+   |                          because C already has a member with the same name and compatible parameter types.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Although extensions can be overloaded, they do not overload existing member methods.
+   | An extension method can be invoked as a regular method, but if that is the intended usage,
+   | it should not be defined as an extension.
+   |
+   | The extension may be invoked as though selected from an arbitrary type if conversions are in play.
+    --------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,16 @@
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/flow-match.scala:6:9 -------------------------------
+6 |    case null => "other" // warn
+  |         ^^^^
+  |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/flow-match.scala:7:9 -------------------------------
+7 |    case s3 => s3 // warn
+  |         ^^
+  |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/flow-match.scala:12:9 ------------------------------
+12 |    case null => "other" // warn
+   |         ^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/flow-match.scala:14:9 ------------------------------
+14 |    case s4 => s4 // warn
+   |         ^^
+   |         Unreachable case

@@ -67,17 +67,15 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
     else refMap(defn.ObjectClass)
   }
 
-  override def prepareForValDef(vdef: ValDef)(using Context): Context = {
+  override def prepareForValDef(vdef: ValDef)(using Context): Context =
     val sym = atPhase(thisPhase)(vdef.symbol)
-    if (captured contains sym) {
+    if captured.contains(sym) then
       val newd = atPhase(thisPhase)(sym.denot).copySymDenotation(
         info = refClass(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
         initFlags = sym.flags &~ Mutable)
       newd.removeAnnotation(defn.VolatileAnnot)
       newd.installAfter(thisPhase)
-    }
     ctx
-  }
 
   override def transformValDef(vdef: ValDef)(using Context): Tree = {
     val vble = vdef.symbol
@@ -120,7 +118,7 @@ object CapturedVars:
     def traverse(tree: Tree)(using Context) = tree match
       case id: Ident =>
         val sym = id.symbol
-        if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
+        if sym.isMutableVar && sym.owner.isTerm then
           val enclMeth = ctx.owner.enclosingMethod
           if sym.enclosingMethod != enclMeth then
             report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")

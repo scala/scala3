@@ -42,6 +42,40 @@ Givens
 Class
 covtest.Givens
 test
+182
+190
+11
+==
+Apply
+false
+0
+false
+3 == "3"
+
+2
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test
+182
+183
+11
+<none>
+Literal
+false
+0
+false
+3
+
+3
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test
 196
 213
 12
@@ -52,7 +86,41 @@ false
 false
 println(3 == 5.1)
 
-2
+4
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test
+204
+212
+12
+==
+Apply
+false
+0
+false
+3 == 5.1
+
+5
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test
+204
+205
+12
+<none>
+Literal
+false
+0
+false
+3
+
+6
 Givens.scala
 covtest
 Givens
@@ -69,7 +137,7 @@ false
 false
 def test
 
-3
+7
 Givens.scala
 covtest
 Givens
@@ -86,7 +154,7 @@ false
 false
 println(msg)
 
-4
+8
 Givens.scala
 covtest
 Givens
@@ -103,7 +171,7 @@ false
 false
 println(ctx.id)
 
-5
+9
 Givens.scala
 covtest
 Givens
@@ -120,7 +188,24 @@ false
 false
 def printContext
 
-6
+10
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+getMessage
+348
+358
+18
+toString
+Apply
+false
+0
+false
+i.toString
+
+11
 Givens.scala
 covtest
 Givens
@@ -137,7 +222,7 @@ false
 false
 def getMessage
 
-7
+12
 Givens.scala
 covtest
 Givens
@@ -154,7 +239,7 @@ false
 false
 Context(0)
 
-8
+13
 Givens.scala
 covtest
 Givens
@@ -171,7 +256,7 @@ false
 false
 printContext("test")(using c)
 
-9
+14
 Givens.scala
 covtest
 Givens
@@ -188,7 +273,7 @@ false
 false
 printContext(getMessage(123))
 
-10
+15
 Givens.scala
 covtest
 Givens
@@ -205,7 +290,7 @@ false
 false
 getMessage(123)
 
-11
+16
 Givens.scala
 covtest
 Givens

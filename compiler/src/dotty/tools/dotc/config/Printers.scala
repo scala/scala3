@@ -5,7 +5,7 @@ import core.Contexts.{Context, ctx}
 object Printers {
 
   class Printer {
-    def println(msg: => String): Unit = System.out.nn.println(msg)
+    def println(msg: => String): Unit = System.out.println(msg)
   }
 
   object noPrinter extends Printer {

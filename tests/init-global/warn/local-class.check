@@ -1,0 +1,22 @@
+-- Warning: tests/init-global/warn/local-class.scala:2:14 --------------------------------------------------------------
+2 |  def m() = O.f2 // warn
+  |            ^^^^
+  |            Access uninitialized field value f2. Calling trace:
+  |            ├── object O {	[ local-class.scala:5 ]
+  |            │   ^
+  |            ├── val f1 = foo()	[ local-class.scala:19 ]
+  |            │            ^^^^^
+  |            ├── def foo(): Int = {	[ local-class.scala:6 ]
+  |            │   ^
+  |            ├── val d = new D	[ local-class.scala:15 ]
+  |            │           ^^^^^
+  |            ├── class D {	[ local-class.scala:8 ]
+  |            │   ^
+  |            ├── val f = bar()	[ local-class.scala:13 ]
+  |            │           ^^^^^
+  |            ├── def bar() = {	[ local-class.scala:9 ]
+  |            │   ^
+  |            ├── c.m()	[ local-class.scala:10 ]
+  |            │   ^^^^^
+  |            └── def m() = O.f2 // warn	[ local-class.scala:2 ]
+  |                          ^^^^

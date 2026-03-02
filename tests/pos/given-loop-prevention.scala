@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror -source 3.4
 
 class Foo
 

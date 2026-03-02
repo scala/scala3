@@ -37,7 +37,12 @@ final def print(bits: BitMap): Unit = printUnit.print(bits)
 final type PrinterType              = printUnit.PrinterType
 ```
 
-They can be accessed inside `Copier` as well as from outside:
+With the experimental `modularity` language import, only exported methods and values are final, whereas the generated `PrinterType` would be a simple type alias
+```scala
+      type PrinterType              = printUnit.PrinterType
+```
+
+These aliases can be accessed inside `Copier` as well as from outside:
 
 ```scala
 val copier = new Copier
@@ -90,12 +95,17 @@ export O.*
 ```
 
 Export aliases copy the type and value parameters of the members they refer to.
-Export aliases are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). Aliases of extensions are again defined as extensions. Aliases of inline methods or values are again defined `inline`. There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
+Export aliases of term members are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). Aliases of extensions are again defined as extensions. Aliases of inline methods or values are again defined `inline`. There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
 
- - Export aliases cannot be overridden, since they are final.
+ - Export aliases of methods or fields cannot be overridden, since they are final.
  - Export aliases cannot override concrete members in base classes, since they are
    not marked `override`.
  - However, export aliases can implement deferred members of base classes.
+ - Export type aliases are normally also final, except when the experimental
+   language import `modularity` is present. The general
+   rules for type aliases ensure in any case that if there are several type aliases in a class,
+   they must agree on their right hand sides, or the class could not be instantiated.
+   So dropping the `final` for export type aliases is safe.
 
 Export aliases for public value definitions that are accessed without
 referring to private values in the qualifier path
@@ -129,6 +139,10 @@ def f: c.T = ...
     are not supported yet. They would run afoul of the restriction that the
     exported `a` cannot be already a member of the object containing the export.
     This restriction might be lifted in the future.
+
+ 1. Export aliases of nullary Java methods (which may be invoked from Scala with or without empty parentheses)
+    are nullary methods in Scala and require parentheses in application. By contrast, since member types are
+    preserved, an export alias will have a flexible type if that was inferred for the Java method.
 
 <a id="note_class"></a>
 (\*) **Note:** Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.

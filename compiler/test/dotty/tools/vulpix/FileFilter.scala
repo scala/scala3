@@ -11,13 +11,13 @@ object FileFilter {
     exclude(file :: files.toList)
 
   def exclude(files: List[String]): FileFilter = new FileFilter {
-    private val blackList = files.toSet
-    def accept(file: String): Boolean = !blackList.contains(file)
+    private val excluded = files.toSet
+    def accept(file: String): Boolean = !excluded.contains(file)
   }
 
   def include(files: List[String]): FileFilter = new FileFilter {
-    private val whiteList = files.toSet
-    def accept(file: String): Boolean = whiteList.contains(file)
+    private val included = files.toSet
+    def accept(file: String): Boolean = included.contains(file)
   }
 
   object NoFilter extends FileFilter {

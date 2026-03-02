@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 case class A(a: Int)
 case class B(b: Int)
@@ -14,3 +14,4 @@ val b = (A(1): A | B) match {
   case B(_) => "OK"
   case C(_) => "NOT OK" // error
 }
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

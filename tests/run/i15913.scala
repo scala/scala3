@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/15913
+// https://github.com/lampepfl/scala/scala3/15913
 
 class injector[F]
 

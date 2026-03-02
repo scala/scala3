@@ -140,9 +140,9 @@ override def print
 7
 Select.scala
 covtest
-Select$package$
+Select$package
 Object
-covtest.Select$package$
+covtest.Select$package
 test
 237
 240
@@ -157,9 +157,9 @@ A()
 8
 Select.scala
 covtest
-Select$package$
+Select$package
 Object
-covtest.Select$package$
+covtest.Select$package
 test
 254
 259
@@ -174,9 +174,9 @@ new A
 9
 Select.scala
 covtest
-Select$package$
+Select$package
 Object
-covtest.Select$package$
+covtest.Select$package
 test
 263
 281
@@ -191,26 +191,9 @@ a.instance.print()
 10
 Select.scala
 covtest
-Select$package$
+Select$package
 Object
-covtest.Select$package$
-test
-263
-273
-19
-instance
-Select
-false
-0
-false
-a.instance
-
-11
-Select.scala
-covtest
-Select$package$
-Object
-covtest.Select$package$
+covtest.Select$package
 test
 345
 354
@@ -222,12 +205,12 @@ false
 false
 a.print()
 
-12
+11
 Select.scala
 covtest
-Select$package$
+Select$package
 Object
-covtest.Select$package$
+covtest.Select$package
 test
 208
 216

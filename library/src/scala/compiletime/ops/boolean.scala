@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object boolean:
 
   /** Negation of a `Boolean` singleton type.
@@ -25,7 +27,7 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type ^[X <: Boolean, Y <: Boolean] <: Boolean
+  infix type ^[X <: Boolean, Y <: Boolean] <: Boolean
 
   /** Conjunction of two `Boolean` singleton types.
    *  ```scala
@@ -37,7 +39,7 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type &&[X <: Boolean, Y <: Boolean] <: Boolean
+  infix type &&[X <: Boolean, Y <: Boolean] <: Boolean
 
   /** Disjunction of two `Boolean` singleton types.
    *  ```scala
@@ -49,4 +51,4 @@ object boolean:
    *  ```
    *  @syntax markdown
    */
-  type ||[X <: Boolean, Y <: Boolean] <: Boolean
+  infix type ||[X <: Boolean, Y <: Boolean] <: Boolean

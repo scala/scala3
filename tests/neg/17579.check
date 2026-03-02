@@ -1,0 +1,30 @@
+-- [E200] Syntax Error: tests/neg/17579.scala:5:10 ---------------------------------------------------------------------
+5 |    final val v1 = 42 // error: final modifier is not allowed on local definitions
+  |          ^^^
+  |          The final modifier is not allowed on local definitions
+-- [E200] Syntax Error: tests/neg/17579.scala:6:15 ---------------------------------------------------------------------
+6 |    final lazy val v2 = 42 // error:  final modifier is not allowed on local definitions
+  |               ^^^
+  |               The final modifier is not allowed on local definitions
+-- [E200] Syntax Error: tests/neg/17579.scala:7:10 ---------------------------------------------------------------------
+7 |    final def v4 = 42 // error: final modifier is not allowed on local definitions
+  |          ^^^
+  |          The final modifier is not allowed on local definitions
+-- [E200] Syntax Error: tests/neg/17579.scala:8:10 ---------------------------------------------------------------------
+8 |    final var v5 = 42 // error: final modifier is not allowed on local definitions
+  |          ^^^
+  |          The final modifier is not allowed on local definitions
+-- [E200] Syntax Error: tests/neg/17579.scala:9:10 ---------------------------------------------------------------------
+9 |    final type Foo = String // error: final modifier is not allowed on local definitions
+  |          ^^^^
+  |          The final modifier is not allowed on local definitions
+-- [E088] Syntax Error: tests/neg/17579.scala:14:10 --------------------------------------------------------------------
+14 |    final private val v3 = 42 // error: expected start of definition
+   |          ^^^^^^^
+   |          Expected start of definition
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E147] Syntax Warning: tests/neg/17579.scala:19:6 -------------------------------------------------------------------
+19 |      final given Object() // warning: modifier `final` is redundant for this definition
+   |      ^^^^^
+   |      Modifier final is redundant for this definition

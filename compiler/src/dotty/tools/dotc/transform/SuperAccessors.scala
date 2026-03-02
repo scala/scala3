@@ -155,8 +155,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
     val needAccessor =
       name.isTermName                // Types don't need super accessors
-      && !sym.isEffectivelyErased    // Erased and concrete inline methods are not called at runtime
-      && !sym.isInlineMethod         //   so they don't need superaccessors.
+      && !sym.isInlineMethod         // Inline methods are not called at runtime so they don't need superaccessors.
       && (clazz != currentClass || !validCurrentClass || mix.name.isEmpty && clazz.is(Trait))
 
     if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel, mix.name))
@@ -195,7 +194,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
          * Otherwise, we need to go through an accessor,
          * which the implementing class will provide an implementation for.
          */
-        if ctx.owner.enclosingClass.derivesFrom(sym.owner) then
+        if ProtectedAccessors.needsAccessorIsSubclass(sym) then
           if sym.is(JavaDefined) then
             report.error(em"${ctx.owner} accesses protected $sym inside a concrete trait method: use super.${sel.name} instead", sel.srcPos)
           sel

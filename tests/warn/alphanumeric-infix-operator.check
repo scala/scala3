@@ -1,0 +1,6 @@
+-- Warning: tests/warn/alphanumeric-infix-operator.scala:6:6 -----------------------------------------------------------
+6 |  foo x 1 // warn (because it was compiled with 3.4+)
+  |      ^
+  |      Alphanumeric method x is not declared infix; it should not be used as infix operator.
+  |      Instead, use method syntax .x(...) or backticked identifier `x`.
+  |      The latter can be rewritten automatically under -rewrite -source 3.4-migration.

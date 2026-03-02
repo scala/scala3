@@ -1,0 +1,6 @@
+-- [E083] Type Error: tests/neg/i23637.scala:6:9 -----------------------------------------------------------------------
+6 |  export foo.pin.* // error: (because we need reflection to get at foo.pin)
+  |         ^^^^^^^
+  |         (Test.foo.pin : Object) is not a valid export prefix, since it is not an immutable path
+  |
+  | longer explanation available when compiling with `-explain`

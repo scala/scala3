@@ -9,8 +9,4 @@
     case p: P =>
       new Foo // error
   }
-
-  class UpBndAndB extends UpBnd[Bar] with P
-  // ClassCastException: Foo cannot be cast to Bar
-  val x = pmatch(new UpBndAndB)
 }

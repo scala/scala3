@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 class A
 class B
@@ -16,7 +16,9 @@ object Test {
   }
 
   def baz(x: A) = x match {
-    case x: (B | C) => x // error
+    case x: (B | C) => x // warn
     case _          =>
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

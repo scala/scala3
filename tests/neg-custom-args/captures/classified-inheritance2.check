@@ -1,0 +1,15 @@
+-- Error: tests/neg-custom-args/captures/classified-inheritance2.scala:4:6 ---------------------------------------------
+4 |class Logger extends SharedCapability, Stateful:  // error (1) does this make sense?
+  |      ^
+  |      class Logger cannot inherit from both SharedCapability and Stateful
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/classified-inheritance2.scala:12:27 ----------------------
+12 |  val t: Logger^{} = Logger()  // error
+   |                     ^^^^^^^^
+   |Found:    Logger^{any.rd}
+   |Required: Logger^{}
+   |
+   |Note that capability `any.rd` cannot flow into capture set {}.
+   |
+   |where:    any is a root capability classified as SharedCapability created in value t when constructing instance Logger
+   |
+   | longer explanation available when compiling with `-explain`

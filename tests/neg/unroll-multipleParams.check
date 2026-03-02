@@ -1,0 +1,4 @@
+-- Error: tests/neg/unroll-multipleParams.scala:6:12 -------------------------------------------------------------------
+6 |  final def foo(x: Int, @unroll y: Int = 0)(@unroll z: Int = 0) = x + y + z // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Cannot have multiple parameter lists containing `@unroll` annotation

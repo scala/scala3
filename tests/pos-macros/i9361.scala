@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/9361
+// https://github.com/scala/scala3/issues/9361
 
 import scala.quoted._
 

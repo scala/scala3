@@ -3,10 +3,10 @@ import scala.deriving.*
 trait Functor[F[_]]
 
 object Functor:
-  given [C]: Functor[[T] =>> C]()
+  given [C] => Functor[[T] =>> C]()
   given Functor[[T] =>> Tuple1[T]]()
-  given t2 [T]: Functor[[U] =>> (T, U)]()
-  given t3 [T, U]: Functor[[V] =>> (T, U, V)]()
+  given t2: [T] => Functor[[U] =>> (T, U)]()
+  given t3: [T, U] => Functor[[V] =>> (T, U, V)]()
 
   def derived[F[_]](using m: Mirror { type MirroredType[X] = F[X] ; type MirroredElemTypes[_] }, r: Functor[m.MirroredElemTypes]): Functor[F] = new Functor[F] {}
 

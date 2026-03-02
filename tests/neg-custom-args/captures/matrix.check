@@ -1,0 +1,32 @@
+-- Error: tests/neg-custom-args/captures/matrix.scala:27:10 ------------------------------------------------------------
+27 |  mul(m1, m2, m2) // error: will fail separation checking
+   |          ^^
+   |Separation failure: argument of type  Matrix^{m2.rd}
+   |to method mul: (x: Matrix^{any.rd}, y: Matrix^{any.rd}, z: Matrix^): Unit
+   |corresponds to capture-polymorphic formal parameter y of type  Matrix^{any.rd}
+   |and hides capabilities  {m2.rd}.
+   |Some of these overlap with the captures of the third argument with type  (m2 : Matrix^).
+   |
+   |  Hidden set of current argument        : {m2.rd}
+   |  Hidden footprint of current argument  : {m2.rd}
+   |  Capture set of third argument         : {m2}
+   |  Footprint set of third argument       : {m2}
+   |  The two sets overlap at               : {m2}
+   |
+   |where:    any is a root capability classified as Unscoped created in method Test when checking argument to parameter y of method mul
+-- Error: tests/neg-custom-args/captures/matrix.scala:30:11 ------------------------------------------------------------
+30 |  mul1(m1, m2, m2) // error: will fail separation checking
+   |           ^^
+   |Separation failure: argument of type  Matrix^{m2.rd}
+   |to method mul1: (x: Matrix^{any.rd}, y: Matrix^{any.rd}, z: Matrix^): Unit
+   |corresponds to capture-polymorphic formal parameter y of type  Matrix^{any.rd}
+   |and hides capabilities  {m2.rd}.
+   |Some of these overlap with the captures of the third argument with type  (m2 : Matrix^).
+   |
+   |  Hidden set of current argument        : {m2.rd}
+   |  Hidden footprint of current argument  : {m2.rd}
+   |  Capture set of third argument         : {m2}
+   |  Footprint set of third argument       : {m2}
+   |  The two sets overlap at               : {m2}
+   |
+   |where:    any is a root capability classified as Unscoped created in method Test when checking argument to parameter y of method mul1

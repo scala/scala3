@@ -160,7 +160,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
          new LetOverApply,            // Lift blocks from receivers of applications
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-    List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
+    List(new ElimErasedValueType,    // Expand erased value types to their underlying implementation types
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
@@ -235,10 +235,10 @@ Phases fall into four categories:
 * Code generators: These map the transformed trees to Java classfiles or
   .sjsir files.
 
-[dotty.tools]: https://github.com/lampepfl/dotty/tree/main/compiler/src/dotty/tools
-[dotc]: https://github.com/lampepfl/dotty/tree/main/compiler/src/dotty/tools/dotc
-[Main]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Main.scala
-[Driver]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Driver.scala
-[Compiler]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Compiler.scala
-[Run]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Run.scala
-[Context]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/Contexts.scala
+[dotty.tools]: https://github.com/scala/scala3/tree/main/compiler/src/dotty/tools
+[dotc]: https://github.com/scala/scala3/tree/main/compiler/src/dotty/tools/dotc
+[Main]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/Main.scala
+[Driver]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/Driver.scala
+[Compiler]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/Compiler.scala
+[Run]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/Run.scala
+[Context]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/core/Contexts.scala

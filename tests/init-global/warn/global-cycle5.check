@@ -1,0 +1,9 @@
+-- Warning: tests/init-global/warn/global-cycle5.scala:10:17 -----------------------------------------------------------
+10 |  val b: Int = A.a.foo() // warn
+   |               ^^^
+   |Reading mutable state of object A during initialization of object B.
+   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+   |├── object B {	[ global-cycle5.scala:9 ]
+   |│   ^
+   |└── val b: Int = A.a.foo() // warn	[ global-cycle5.scala:10 ]
+   |                 ^^^

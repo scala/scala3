@@ -57,7 +57,7 @@ class TestScripts {
       s"bin/scalac script did not run properly. Output:$lineSep$dotcOutput"
     )
 
-    val (retDotr, dotrOutput) = executeScript("./bin/scala HelloWorld")
+    val (retDotr, dotrOutput) = executeScript("./bin/scala -M HelloWorld")
     assert(
       retDotr == 0 && dotrOutput == "hello world\n",
       s"Running hello world exited with status: $retDotr and output: $dotrOutput"

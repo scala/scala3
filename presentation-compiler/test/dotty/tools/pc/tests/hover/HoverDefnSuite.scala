@@ -163,7 +163,7 @@ class HoverDefnSuite extends BaseHoverSuite:
       """package b.p@@kg
         |object Main
         |""".stripMargin,
-      "package b.pkg".hover,
+      "package b.pkg".hover
     )
 
   @Test def `pat-bind` =
@@ -223,13 +223,8 @@ class HoverDefnSuite extends BaseHoverSuite:
          |  <<val @@x = Derived.f(42)>>
          |}
          |""".stripMargin,
-      """|**Expression type**:
-         |```scala
-         |Option[Int]
-         |```
-         |**Symbol signature**:
-         |```scala
-         |val x: Option[T]
+      """|```scala
+         |val x: Option[Int]
          |```
          |""".stripMargin.hover
     )
@@ -242,4 +237,113 @@ class HoverDefnSuite extends BaseHoverSuite:
          |}
          |""".stripMargin,
       "val foo: Int".hover
+    )
+
+  @Test def `i22335` =
+    check(
+      """|def fromInt[T: Numeric as n@@um](t: Int): T = num.fromInt(t)
+         |""".stripMargin,
+      """|num: Numeric[T]
+         |""".stripMargin.hover
+    )
+
+  @Test def `i22335-2` =
+    check(
+      """|def showMax[X : {Numeric as nu@@m, Ordered as ord}](x: X, y: X): String = ???
+         |""".stripMargin,
+      """|num: Numeric[X]
+          |""".stripMargin.hover
+    )
+
+  @Test def `i22335-3` =
+    check(
+      """|def showMax[X : {Nu@@meric as num, Ordered as ord}](x: X, y: X): String = ???
+         |""".stripMargin,
+      """|type Numeric: Numeric
+         |""".stripMargin.hover
+    )
+
+  @Test def i7256 =
+    check(
+      """|object Test:
+         |  def methodA: Unit = ???
+         |export Test.me@@thodA
+         |""".stripMargin,
+      """|**Expression type**:
+         |```scala
+         |=> Unit
+         |```
+         |**Symbol signature**:
+         |```scala
+         |def methodA: Unit
+         |```
+         |""".stripMargin
+    )
+
+  @Test def `annotation` =
+    check(
+      """|
+         |@ma@@in
+         |def example() =
+         |    println("test")
+         |""".stripMargin,
+      """|```scala
+         |def this(): main
+         |```""".stripMargin.hover
+    )
+
+  @Test def `annotation-2` =
+    check(
+      """|
+          |@ma@@in
+          |def example() =
+          |    List("test")
+          |""".stripMargin,
+      """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+    )
+
+  @Test def `annotation-3` =
+    check(
+      """|
+          |@ma@@in
+          |def example() =
+          |    Array("test")
+          |""".stripMargin,
+      """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+    )
+
+  @Test def `annotation-4` =
+    check(
+      """|
+          |@ma@@in
+          |def example() =
+          |    Array(1, 2)
+          |""".stripMargin,
+      """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+    )
+
+  @Test def `opaque-type-method` =
+    check(
+      """|object History {
+           |  opaque type Builder[A] = String
+           |  def <<bui@@ld>>(b: Builder[Unit]): Int = ???
+           |}
+           |""".stripMargin,
+      """|def build(b: Builder[Unit]): Int
+           |""".stripMargin.hover
+    )
+
+  @Test def `backticked` =
+    check(
+      """|object A {
+         |  <<val `foo @@ bar` = 123>>
+         |}
+         |""".stripMargin,
+      "val `foo  bar`: Int".hover
     )

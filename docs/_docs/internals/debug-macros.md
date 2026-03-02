@@ -34,7 +34,7 @@ the stack trace, we will be able to figure out where the tree is created.
 If the position is in the compiler, then either report a compiler bug or
 fix the problem with `.withSpan(tree.span)`. The following fix is an example:
 
-- https://github.com/lampepfl/dotty/pull/6581
+- https://github.com/scala/scala3/pull/6581
 
 ## unresolved symbols in pickling
 

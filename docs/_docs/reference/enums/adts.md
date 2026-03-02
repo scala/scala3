@@ -39,7 +39,7 @@ As for normal enum values, the cases of an `enum` are all defined in
 the `enum`s companion object. So it's `Option.Some` and `Option.None`
 unless the definitions are "pulled out" with an import:
 
-```scala
+```scala sc:nocompile
 scala> Option.Some("hello")
 val res1: t2.Option[String] = Some(hello)
 
@@ -49,7 +49,7 @@ val res2: t2.Option[Nothing] = None
 
 Note that the type of the expressions above is always `Option`. Generally, the type of a enum case constructor application will be widened to the underlying enum type, unless a more specific type is expected. This is a subtle difference with respect to normal case classes. The classes making up the cases do exist, and can be unveiled, either by constructing them directly with a `new`, or by explicitly providing an expected type.
 
-```scala
+```scala sc:nocompile
 scala> new Option.Some(2)
 val res3: Option.Some[Int] = Some(2)
 scala> val x: Option.Some[Int] = Option.Some(3)
@@ -100,7 +100,7 @@ below:
 The following `View` enum has a contravariant type parameter `T` and a single case `Refl`, representing a function
 mapping a type `T` to itself:
 
-```scala
+```scala sc:nocompile
 enum View[-T]:
   case Refl(f: T => T)
 ```
@@ -108,7 +108,7 @@ enum View[-T]:
 The definition of `Refl` is incorrect, as it uses contravariant type `T` in the covariant result position of a
 function type, leading to the following error:
 
-```scala
+```scala sc:nocompile
 -- Error: View.scala:2:12 --------
 2 |   case Refl(f: T => T)
   |             ^^^^^^^^^
@@ -118,7 +118,7 @@ function type, leading to the following error:
 
 Because `Refl` does not declare explicit parameters, it looks to the compiler like the following:
 
-```scala
+```scala sc:nocompile
 enum View[-T]:
   case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
 ```
@@ -170,4 +170,4 @@ The changes are specified below as deltas with respect to the Scala syntax given
 
 ## Reference
 
-For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).
+For more information, see [Issue #1970](https://github.com/scala/scala3/issues/1970).

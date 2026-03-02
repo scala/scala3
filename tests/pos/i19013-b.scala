@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 case class CustomException(x: Any) extends Exception("")
 

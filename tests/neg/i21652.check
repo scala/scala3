@@ -1,0 +1,4 @@
+-- Error: tests/neg/i21652.scala:1:8 -----------------------------------------------------------------------------------
+1 |def k: [A] => (=> A) => A = // error
+  |        ^^^^^^^^^^^^^^^^^
+  |Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.

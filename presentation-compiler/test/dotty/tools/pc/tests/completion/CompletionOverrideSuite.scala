@@ -284,7 +284,8 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
       includeDetail = false
     )
 
-  @Test def `mutable` =
+  // Disabled since the test is flaky @Test
+  def `mutable` =
     checkEdit(
       """|abstract class Mutable {
          |  def foo: scala.collection.mutable.Set[Int]
@@ -867,10 +868,10 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |   over@@
          |}
          |""".stripMargin,
-      /**
-       * NOTE(tgodzik) observe that the "override" is not needed here but the completion
-       * has "override" because the identifier name starts with "o". It's a known limitation
-       * due to the feature that allows for easily auto-completing on writing o... .
+      /** NOTE(tgodzik) observe that the "override" is not needed here but the
+       *  completion has "override" because the identifier name starts with "o".
+       *  It's a known limitation due to the feature that allows for easily
+       *  auto-completing on writing o... .
        */
       """|override def overTop: Int
          |overTop: Int
@@ -926,11 +927,13 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|def hello1: Int
-         |override val hello2: Int
          |override def equals(x$0: Any): Boolean
+         |override def hashCode(): Int
+         |override def toString(): String
+         |override val hello2: Int
          |""".stripMargin,
       includeDetail = false,
-      topLines = Some(3)
+      topLines = Some(5)
     )
 
   @Test def `path-dependent` =

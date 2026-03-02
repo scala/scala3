@@ -1,0 +1,28 @@
+-- Warning: tests/init-global/warn/t9312.scala:18:11 -------------------------------------------------------------------
+18 |    object Child1 extends Child // warn
+   |           ^
+   |           Cyclic initialization: object Child1 -> object Parent -> object Child1. Calling trace:
+   |           ├── object Child1 extends Child // warn	[ t9312.scala:18 ]
+   |           │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ├── trait Child {	[ t9312.scala:12 ]
+   |           │   ^
+   |           ├── val parent = Parent	[ t9312.scala:14 ]
+   |           │                ^^^^^^
+   |           ├── object Parent { // warn	[ t9312.scala:11 ]
+   |           │   ^
+   |           └── final val children = Set(Child1, Child2)	[ t9312.scala:21 ]
+   |                                        ^^^^^^
+-- Warning: tests/init-global/warn/t9312.scala:11:9 --------------------------------------------------------------------
+11 |  object Parent { // warn
+   |         ^
+   |         Cyclic initialization: object Parent -> object Child2 -> object Parent. Calling trace:
+   |         ├── object Parent { // warn	[ t9312.scala:11 ]
+   |         │   ^
+   |         ├── final val children = Set(Child1, Child2)	[ t9312.scala:21 ]
+   |         │                                    ^^^^^^
+   |         ├── object Child2 extends Child	[ t9312.scala:19 ]
+   |         │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ├── trait Child {	[ t9312.scala:12 ]
+   |         │   ^
+   |         └── val parent = Parent	[ t9312.scala:14 ]
+   |                          ^^^^^^

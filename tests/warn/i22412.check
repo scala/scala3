@@ -1,0 +1,10 @@
+-- [E002] Syntax Warning: tests/warn/i22412.scala:3:34 -----------------------------------------------------------------
+3 |  @annotation.nowarn("v") def f = try 1 // warn
+  |                                  ^^^^^
+  |                                  A try without catch or finally is equivalent to putting
+  |                                  its body in a block; no exceptions are handled.
+  |Matching filters for @nowarn or -Wconf:
+  |  - id=E2
+  |  - name=EmptyCatchAndFinallyBlock
+  |
+  | longer explanation available when compiling with `-explain`

@@ -10,6 +10,9 @@ import util.{SrcPos, NoSourcePosition}
 import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
+import Annotations.ExperimentalAnnotation
+import Annotations.PreviewAnnotation
+import Settings.Setting.ChoiceWithHelp
 
 object Feature:
 
@@ -25,15 +28,70 @@ object Feature:
 
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
+  val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
   val symbolLiterals = deprecated("symbolLiterals")
-  val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
-  val clauseInterleaving = experimental("clauseInterleaving")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val separationChecking = experimental("separationChecking")
   val into = experimental("into")
+  val modularity = experimental("modularity")
+  val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
+  val packageObjectValues = experimental("packageObjectValues")
+  val multiSpreads = experimental("multiSpreads")
+  val subCases = experimental("subCases")
+  val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
+  val safe = experimental("safe")
 
-  val globalOnlyImports: Set[TermName] = Set(pureFunctions, captureChecking)
+  val nonViralExperimentalFeatures: Set[TermName] =
+    Set(captureChecking, separationChecking, safe)
+
+  /** Experimental language imports that imply that the importing unit
+   *  is experimental.
+   */
+  def experimentalAutoEnableFeatures(using Context): List[TermName] =
+    defn.languageExperimentalFeatures
+      .map(sym => experimental(sym.name))
+      .filterNot(nonViralExperimentalFeatures.contains(_))
+
+  val values = List(
+    (nme.help, "Display all available features"),
+    (nme.noAutoTupling, "Disable automatic tupling"),
+    (nme.dynamics, "Allow direct or indirect subclasses of scala.Dynamic"),
+    (nme.unsafeNulls, "Enable unsafe nulls for explicit nulls"),
+    (nme.postfixOps, "Allow postfix operators (not recommended)"),
+    (nme.strictEquality, "Enable strict equality (disable canEqualAny)"),
+    (nme.implicitConversions, "Allow implicit conversions without warnings"),
+    (nme.adhocExtensions, "Allow ad-hoc extension methods"),
+    (namedTypeArguments, "Allow named type arguments"),
+    (genericNumberLiterals, "Allow generic number literals"),
+    (scala2macros, "Allow Scala 2 macros"),
+    (dependent, "Allow dependent method types"),
+    (erasedDefinitions, "Allow erased definitions"),
+    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
+    (symbolLiterals, "Allow symbol literals"),
+    (saferExceptions, "Enable safer exceptions"),
+    (pureFunctions, "Enable pure functions for capture checking"),
+    (captureChecking, "Enable experimental capture checking"),
+    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
+    (into, "Allow into modifier on parameter types"),
+    (modularity, "Enable experimental modularity features"),
+    (packageObjectValues, "Enable experimental package objects as values"),
+    (multiSpreads, "Enable experimental varargs with multi-spreads"),
+    (subCases, "Enable experimental match expressions with sub-cases"),
+    (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
+    (safe, "Require safe mode"),
+  )
+
+  // legacy language features from Scala 2 that are no longer supported.
+  val legacyFeatures = List(
+    "higherKinds",
+    "existentials",
+    "reflectiveCalls"
+  )
+
+  private def enabledLanguageFeaturesBySetting(using Context): List[String] =
+    ctx.settings.language.value.asInstanceOf
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -43,7 +101,7 @@ object Feature:
    *  but subtracting the prefix `scala.language.` at the front.
    */
   def enabledBySetting(feature: TermName)(using Context): Boolean =
-    ctx.base.settings.language.value.contains(feature.toString)
+    enabledLanguageFeaturesBySetting.contains(feature.toString)
 
   /** Is `feature` enabled by by an import? This is the case if the feature
    *  is imported by a named import
@@ -77,11 +135,12 @@ object Feature:
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
-  def clauseInterleavingEnabled(using Context) = enabled(clauseInterleaving)
-
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
+
+  def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
+    enabled(quotedPatternsWithPolymorphicFunctions)
 
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
@@ -89,10 +148,26 @@ object Feature:
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
-  /** Is captureChecking enabled for this compilation unit? */
-  def ccEnabled(using Context) =
+  /** Is capture checking enabled by a command-line setting? */
+  def ccEnabledBySetting(using Context): Boolean =
     enabledBySetting(captureChecking)
-    || ctx.compilationUnit.needsCaptureChecking
+    || enabledBySetting(separationChecking)
+    || enabledBySetting(safe)
+
+  /** Is capture checking enabled for this compilation unit? */
+  def ccEnabled(using Context) =
+    ccEnabledBySetting
+    || ctx.originalCompilationUnit.needsCaptureChecking
+
+  /** Is separation checking enabled for this compilation unit? */
+  def sepChecksEnabled(using Context) =
+    enabledBySetting(separationChecking)
+    || ctx.originalCompilationUnit.needsSeparationChecking
+
+  /** Is safe mode set for this compilation unit? */
+  def safeEnabled(using Context) =
+    enabledBySetting(safe)
+    || ctx.originalCompilationUnit.safeMode
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -103,7 +178,7 @@ object Feature:
   /** Is captureChecking enabled for any of the currently compiled compilation units? */
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
-    else enabledBySetting(captureChecking)
+    else ccEnabled
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -113,11 +188,12 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
+  /* Should we behave as scala 2?*/
+  def shouldBehaveAsScala2(using Context): Boolean =
+    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
+
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`
-
-  def fewerBracesEnabled(using Context) =
-    sourceVersion.isAtLeast(`3.3`) || enabled(fewerBraces)
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
@@ -133,37 +209,44 @@ object Feature:
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
-      report.error(
-        em"""Experimental $which may only be used under experimental mode:
-            |  1. In a definition marked as @experimental
-            |  2. Compiling with the -experimental compiler flag
-            |  3. With a nightly or snapshot version of the compiler$note
-          """, srcPos)
+      report.error(experimentalUseSite(which) + note, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
     ccEnabled && defn.ccExperimental.contains(sym)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
-    if !isExperimentalEnabled then
-      val experimentalSym =
-        if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
-        else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
-        else NoSymbol
-      if !ccException(experimentalSym) then
-        val symMsg =
-          if experimentalSym.exists
-          then i"$experimentalSym is marked @experimental"
-          else i"$sym inherits @experimental"
-        report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
+    val experimentalSym =
+      if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
+      else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
+      else NoSymbol
+    if !isExperimentalEnabled && !ccException(experimentalSym) then
+      val msg =
+        experimentalSym.getAnnotation(defn.ExperimentalAnnot).map {
+          case ExperimentalAnnotation(msg) if msg.nonEmpty => s": $msg"
+          case _ => ""
+        }.getOrElse("")
+      val markedExperimental =
+        if experimentalSym.exists
+        then i"$experimentalSym is marked @experimental$msg"
+        else i"$sym inherits @experimental$msg"
+      report.error(markedExperimental + "\n\n" + experimentalUseSite("definition"), srcPos)
 
-  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
-  def checkExperimentalSettings(using Context): Unit =
-    for setting <- ctx.settings.language.value
-        if setting.startsWith("experimental.") && setting != "experimental.macros"
-    do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
+  private def experimentalUseSite(which: String): String =
+    s"""Experimental $which may only be used under experimental mode:
+       |  1. in a definition marked as @experimental, or
+       |  2. an experimental feature is imported at the package level, or
+       |  3. compiling with the -experimental compiler flag.
+       |""".stripMargin
 
   def isExperimentalEnabled(using Context): Boolean =
-    (Properties.experimental || ctx.settings.experimental.value) && !ctx.settings.YnoExperimental.value
+    ctx.settings.experimental.value ||
+    experimentalAutoEnableFeatures.exists(enabled)
+
+  def experimentalEnabledByLanguageSetting(using Context): Option[TermName] =
+    experimentalAutoEnableFeatures.find(enabledBySetting)
+
+  def isExperimentalEnabledByImport(using Context): Boolean =
+    experimentalAutoEnableFeatures.exists(enabledByImport)
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case
@@ -171,15 +254,50 @@ object Feature:
    *  @return true iff import that was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
-    val fullFeatureName = QualifiedName(prefix, imported.asTermName)
-    if fullFeatureName == pureFunctions then
-      ctx.compilationUnit.knowsPureFuns = true
-      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
-      true
-    else if fullFeatureName == captureChecking then
-      ctx.compilationUnit.needsCaptureChecking = true
-      if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
-      true
-    else
-      false
+    QualifiedName(prefix, imported.asTermName) match
+      case `pureFunctions` =>
+        ctx.compilationUnit.knowsPureFuns = true
+        if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+        true
+      case `captureChecking` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `separationChecking` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        ctx.compilationUnit.needsSeparationChecking = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `safe` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        ctx.compilationUnit.safeMode = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case _ =>
+        false
+
+  def isPreviewEnabled(using Context): Boolean =
+    ctx.settings.preview.value
+
+  def checkPreviewFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
+    if !isPreviewEnabled then
+      report.error(previewUseSite(which) + note, srcPos)
+
+  def checkPreviewDef(sym: Symbol, srcPos: SrcPos)(using Context) = if !isPreviewEnabled then
+    val previewSym =
+      if sym.hasAnnotation(defn.PreviewAnnot) then sym
+      else if sym.owner.hasAnnotation(defn.PreviewAnnot) then sym.owner
+      else NoSymbol
+    val msg =
+      previewSym.getAnnotation(defn.PreviewAnnot).collectFirst {
+        case PreviewAnnotation(msg) if msg.nonEmpty => s": $msg"
+      }.getOrElse("")
+    val markedPreview =
+      if previewSym.exists
+      then i"$previewSym is marked @preview$msg"
+      else i"$sym inherits @preview$msg"
+    report.error(i"${markedPreview}\n\n${previewUseSite("definition")}", srcPos)
+
+  private def previewUseSite(which: String): String =
+    s"Preview $which may only be used when compiling with the `-preview` compiler flag"
 end Feature

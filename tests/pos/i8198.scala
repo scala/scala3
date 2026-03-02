@@ -6,6 +6,6 @@ trait Eq[A] {
 
 case class Id[T](id: T)
 
-given idEq[A](using eqA: Eq[A]): Eq[Id[A]] = new {
+given idEq: [A] => (eqA: Eq[A]) => Eq[Id[A]] = new {
   extension (i1: Id[A]) def === (i2: Id[A]) = !(i1.id /== i2.id)
 }

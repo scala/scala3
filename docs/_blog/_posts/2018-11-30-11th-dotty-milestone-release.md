@@ -21,12 +21,12 @@ be a big step towards realising the full potential of these ideas. Its main obje
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 11th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 ## What’s new in the 0.11.0-RC1 technology preview?
 
@@ -95,7 +95,7 @@ interactive errors-as-you-type, etc.
 ![]({{ site.baseurl }}/images/worksheets/worksheet-demo.gif "Run worksheet")
 
 For more information about the worksheets, see [Worksheet mode with Dotty
-IDE](https://dotty.epfl.ch/docs/usage/worksheet-mode.html)
+IDE](https://nightly.scala-lang.org/docs/usage/worksheet-mode.html)
 
 ### Various IDE improvements
 
@@ -115,7 +115,7 @@ information from the Scaladoc comment, then format it before we display it in th
 
 ### And much more!
 
-Please read our [release notes](https://github.com/lampepfl/dotty/releases/tag/0.11.0-RC1)
+Please read our [release notes](https://github.com/scala/scala3/releases/tag/0.11.0-RC1)
 for more details!
 
 ## Trying out Dotty
@@ -146,7 +146,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 For macOS users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
 running:
@@ -165,7 +165,7 @@ brew upgrade dotty
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -200,8 +200,8 @@ According to `git shortlog -sn --no-merges 0.10.0..0.11.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
