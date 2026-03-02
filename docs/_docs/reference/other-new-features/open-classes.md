@@ -31,7 +31,7 @@ Classes that are not open can still be extended, but only if at least one of two
 
  - The extending class is in the same source file as the extended class. In this case, the extension is usually an internal implementation matter.
 
- - The language feature [`adhocExtensions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$adhocExtensions$.html) is enabled for the extending class. This is typically enabled by an import clause in the source file of the extension:
+ - The language feature [`adhocExtensions`](https://scala-lang.org/api/3.x/scala/language$$adhocExtensions$.html) is enabled for the extending class. This is typically enabled by an import clause in the source file of the extension:
    ```scala
    import scala.language.adhocExtensions
    ```
@@ -73,7 +73,7 @@ to mock classes in tests, or to apply temporary patches that add features or fix
 
 ## Relationship with `sealed`
 
-A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same source file. The difference is what happens if an extension of the class is attempted in another source file. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the [`adhocExtensions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$adhocExtensions$.html) feature is enabled, and it gives a warning otherwise.
+A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same source file. The difference is what happens if an extension of the class is attempted in another source file. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the [`adhocExtensions`](https://scala-lang.org/api/3.x/scala/language$$adhocExtensions$.html) feature is enabled, and it gives a warning otherwise.
 
 ## Migration
 

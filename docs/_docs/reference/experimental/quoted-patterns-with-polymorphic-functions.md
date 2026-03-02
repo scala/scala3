@@ -1,10 +1,10 @@
 ---
 layout: doc-page
 title: "Quoted Patterns with Polymorphic Functions"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/quoted-patterns-with-polymorphic-functions.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/quoted-patterns-with-polymorphic-functions.html
 ---
 
-This feature extends the capability of quoted patterns with regard to polymorphic functions. It is not yet part of the Scala language standard. To use this feature, turn on the language feature [`experimental.quotedPatternsWithPolymorphicFunctions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$quotedPatternsWithPolymorphicFunctions$.html). This can be done with a language import
+This feature extends the capability of quoted patterns with regard to polymorphic functions. It is not yet part of the Scala language standard. To use this feature, turn on the language feature [`experimental.quotedPatternsWithPolymorphicFunctions`](https://scala-lang.org/api/3.x/scala/language$$experimental$$quotedPatternsWithPolymorphicFunctions$.html). This can be done with a language import
 ```scala
 import scala.language.experimental.quotedPatternsWithPolymorphicFunctions
 ```

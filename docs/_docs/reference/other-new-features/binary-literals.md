@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Binary Integer Literals"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/binary-integer-literals.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/binary-literals.html
 ---
 
 A new syntax for integer literals has been added, it is now possible to do the following:

@@ -77,8 +77,9 @@
 ./experimental/capture-checking/index.html
 ./experimental/capture-checking/internals.html
 ./experimental/capture-checking/mutability.html
+./experimental/capture-checking/overview.html
 ./experimental/capture-checking/polymorphism.html
-./experimental/capture-checking/scoped-caps.html
+./experimental/capture-checking/scoped-capabilities.html
 ./experimental/capture-checking/separation-checking.html
 ./experimental/erased-defs-spec.html
 ./experimental/erased-defs.html
