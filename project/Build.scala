@@ -11,8 +11,6 @@ import sbt.nio.Keys.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
-import com.gradle.develocity.agent.sbt.DevelocityPlugin.autoImport._
-import com.gradle.develocity.agent.sbt.api.experimental.buildcache
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.MappingsHelper.directory
 import com.typesafe.sbt.packager.universal.UniversalPlugin
@@ -173,8 +171,6 @@ object Build {
 
   val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
-  val extraDevelocityCacheInputFiles = taskKey[Seq[Path]]("Extra input files for caching")
-
   lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
@@ -213,54 +209,6 @@ object Build {
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
-
-    // Configuration to publish build scans to develocity.scala-lang.org
-    develocityConfiguration := {
-      val isInsideCI = insideCI.value
-      val config = develocityConfiguration.value
-      val buildScan = config.buildScan
-      val buildCache = config.buildCache
-      // disable test retry on compilation test classes
-      val noRetryTestClasses = Set(
-        "dotty.tools.dotc.BestEffortOptionsTests",
-        "dotty.tools.dotc.CompilationTests",
-        "dotty.tools.dotc.FromTastyTests",
-        "dotty.tools.dotc.IdempotencyTests",
-        "dotty.tools.dotc.ScalaJSCompilationTests",
-        "dotty.tools.dotc.TastyBootstrapTests",
-        "dotty.tools.dotc.coverage.CoverageTests",
-        "dotty.tools.dotc.transform.PatmatExhaustivityTest",
-        "dotty.tools.repl.ScriptedTests"
-      )
-      config
-        .withProjectId(ProjectId("scala3"))
-        .withServer(config.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
-        .withBuildScan({
-          val scan = buildScan
-            .withPublishing(Publishing.onlyIf(_.authenticated))
-            .withBackgroundUpload(!isInsideCI)
-            .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
-          if (isNightly) scan.withTag("NIGHTLY") else scan
-        })
-        .withBuildCache(
-          buildCache
-            .withLocal(buildCache.local.withEnabled(false).withStoreEnabled(false))
-            .withRemote(buildCache.remote.withEnabled(false).withStoreEnabled(false))
-            .withRequireClean(!isInsideCI)
-        )
-        .withTestRetry(
-          config.testRetry
-            .withFlakyTestPolicy(FlakyTestPolicy.Fail)
-            .withMaxRetries(if (isInsideCI) 1 else 0)
-            .withMaxFailures(10)
-            .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
-        )
-    },
-    // Deactivate Develocity's test caching because it caches all tests or nothing.
-    // Also at the moment, it does not take compilation files as inputs.
-    Test / develocityBuildCacheClient := None,
-    extraDevelocityCacheInputFiles := Seq.empty,
-    extraDevelocityCacheInputFiles / outputFileStamper := FileStamper.Hash,
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -332,16 +280,6 @@ object Build {
       Package.ManifestAttributes(
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
       ),
-
-    // add extraDevelocityCacheInputFiles in cache key components
-    Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
-      (Compile / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
-    Test / test / buildcache.develocityTaskCacheKeyComponents +=
-      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
-    Test / testOnly / buildcache.develocityInputTaskCacheKeyComponents +=
-      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
-    Test / testQuick / buildcache.develocityInputTaskCacheKeyComponents +=
-      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue
   )
 
   // Settings used for projects compiled only with Java
@@ -582,9 +520,6 @@ object Build {
         scalaInstanceTopLoader.value
       )
     },
-    // force recompilation of bootstrapped modules when the compiler changes
-    Compile / extraDevelocityCacheInputFiles ++=
-      (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
   ) ++ scaladocDerivedInstanceSettings
 
   /*lazy val commonBenchmarkSettings = Seq(

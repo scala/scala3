@@ -34,7 +34,6 @@ concurrency:
 
 env:
   DOTTY_CI_RUN: true
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 # In this file, we set `--cpu-shares 4096` on every job. This might seem useless
 # since it means that every container has the same weight which should be
@@ -279,5 +278,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.2
+      - uses: VirtusLab/scala-cli-setup@v1.12.3
       - run: scala-cli format --check
