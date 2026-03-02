@@ -94,9 +94,8 @@ object FlexmarkSnippetProcessor:
           report.warning("Snippet with sc-hidden should also have sc-name: to be useful as a preamble for other snippets")
 
         val extendedNode = ExtendedFencedCodeBlock(id, node, snippetCompilationResult)
-        node.insertBefore(extendedNode)
+        if !isHidden then node.insertBefore(extendedNode)
         node.unlink()
-        if isHidden then extendedNode.unlink()
 
         id.fold(snippetMap)(id =>
           val snippetAsImport = s"""|//{i:$id
