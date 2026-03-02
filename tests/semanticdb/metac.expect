@@ -4318,10 +4318,10 @@ Language => Scala
 Symbols => 22 entries
 Occurrences => 45 entries
 Diagnostics => 3 entries
-Synthetics => 21 entries
+Synthetics => 17 entries
 
 Symbols:
-example/ValPattern# => class ValPattern extends Object { self: ValPattern => +14 decls }
+example/ValPattern# => class ValPattern extends Object { self: ValPattern => +12 decls }
 example/ValPattern#`<init>`(). => primary ctor <init> (): ValPattern
 example/ValPattern#`leftVar_=`(). => var method leftVar_= (param x$1: Int): Unit
 example/ValPattern#`leftVar_=`().(x$1) => param x$1: Int
@@ -4397,13 +4397,11 @@ Diagnostics:
 [31:15..31:25): [warning] unset local variable, consider using an immutable val instead
 
 Synthetics:
-[4:22..4:28):(1, 2) => Tuple2.apply[Int, Int](*)
 [5:6..5:10):Some => *.unapply[Int]
 [6:4..6:8):Some => *.apply[Int]
 [6:4..6:11):Some(1) => Some.apply[Int](*)
 [8:6..8:10):List => *.unapplySeq[Nothing]
 [8:11..8:15):Some => *.unapply[Nothing]
-[10:28..10:34):(1, 2) => Tuple2.apply[Int, Int](*)
 [11:6..11:10):Some => *.unapply[Int]
 [12:4..12:8):Some => *.apply[Int]
 [12:4..12:11):Some(1) => Some.apply[Int](*)
@@ -4416,11 +4414,9 @@ Synthetics:
         rightVar
       ) => Tuple6.apply[Int, Int, Int, Int, Int, Int](*)
 [25:4..25:11):locally => *[Unit]
-[26:26..26:32):(1, 2) => Tuple2.apply[Int, Int](*)
 [27:10..27:14):Some => *.unapply[Int]
 [28:8..28:12):Some => *.apply[Int]
 [28:8..28:15):Some(1) => Some.apply[Int](*)
-[30:32..30:38):(1, 2) => Tuple2.apply[Int, Int](*)
 [31:10..31:14):Some => *.unapply[Int]
 [32:8..32:12):Some => *.apply[Int]
 [32:8..32:15):Some(1) => Some.apply[Int](*)
