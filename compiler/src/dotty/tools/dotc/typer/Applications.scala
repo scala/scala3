@@ -333,7 +333,14 @@ object Applications {
   end UnapplyArgs
 
   def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
-    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
+    if (defs != null && defs.nonEmpty)
+      val stats = defs.toList
+      val avoided = TypeOps.avoid(tree.tpe, stats.map(_.symbol))
+      val expr =
+        if (avoided ne tree.tpe) && avoided.isValueType then tree.cast(TypeTree(avoided, inferred = true))
+        else tree
+      tpd.Block(stats, expr)
+    else tree
 
   /** Optionally, if `sym` is a symbol created by `resolveMapped`, i.e. representing
    *  a mapped alternative, the original prefix of the alternative and the number of
@@ -1095,7 +1102,7 @@ trait Applications extends Compatibility {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
+    protected var liftedDefs: mutable.ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun
     init()
 
@@ -1252,8 +1259,29 @@ trait Applications extends Compatibility {
     app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
     resultType: Type)(using Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
+
+    import qualified_types.QualifiedTypes.containsQualifier
+
+    /** Whether this method has qualified-type dependencies requiring
+     *  unstable arguments to be lifted to val defs.
+     */
+    private lazy val liftQualifiedArgs: Boolean = methType match
+      case mt: MethodType =>
+        (mt.isResultDependent || mt.looksParamDependent)
+        && (containsQualifier(mt.resultType)
+            || mt.paramInfos.exists(containsQualifier))
+      case _ => false
+
+    /** Type an argument, lifting it to a val def if its type is not stable
+     *  and the method has qualified-type dependencies. */
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg =
+      val typed = proto.typedArg(arg, formal)
+      if liftQualifiedArgs && !typed.tpe.isStable then
+        if liftedDefs == null then liftedDefs = new mutable.ListBuffer[Tree]
+        LiftUnstable.lift(liftedDefs.nn, typed)
+      else
+        typed
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */

@@ -5,4 +5,4 @@ def getInt(): Int =
   42
 
 @main def Test =
-  val res = foo(getInt(), 2.runtimeChecked) // error
+  val res = foo(getInt(), 2.runtimeChecked)
