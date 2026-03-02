@@ -21,6 +21,14 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
   )
 )
 
+class JavadocStaticFieldExternalLocationProviderReproTest extends ExternalLocationProviderIntegrationTest(
+  "externalJavadoc",
+  List(".*java.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"),
+  List(
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Double.html#MIN_VALUE"
+  )
+)
+
 class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc2",
   List(

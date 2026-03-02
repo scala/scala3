@@ -223,12 +223,15 @@ class SymOpsWithLinkCache:
       val extension = ".html"
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
-        val l = "\\$+".r.replaceAllIn(location.mkString("/"), _ => ".")
+        val l = "\\$+".r.replaceAllIn(location.mkString("/").stripSuffix("$"), ".")
         val javadocAnchor = if anchor.isDefined then {
-          val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
-            case v: ValDef => v.tpt.tpe
-          }.map(getJavadocType)
-          "#" + sym.name + paramSigs.mkString("-","-","-")
+          if sym.isDefDef then
+            val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
+              case v: ValDef => v.tpt.tpe
+            }.map(getJavadocType)
+            "#" + sym.name + paramSigs.mkString("-","-","-")
+          else
+            "#" + sym.name
         } else ""
         docURL + l + extension + javadocAnchor
 
