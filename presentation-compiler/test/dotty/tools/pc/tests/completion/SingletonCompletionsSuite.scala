@@ -172,9 +172,9 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
       """|type Color = "red" | "green" | "blue"
          |val i: List[Color] = List("@@")
          |""".stripMargin,
-      """|"red": "red" | "green" | "blue"
-         |"green": "red" | "green" | "blue"
-         |"blue": "red" | "green" | "blue"
+      """|"red": "red" | ("green" | "blue")
+         |"green": "red" | ("green" | "blue")
+         |"blue": "red" | ("green" | "blue")
          |""".stripMargin
     )
 
@@ -183,9 +183,9 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
       """|type Color = "red" | "green" | "blue"
          |val i: Option[Color] = Some("@@")
          |""".stripMargin,
-      """|"red": "red" | "green" | "blue"
-         |"green": "red" | "green" | "blue"
-         |"blue": "red" | "green" | "blue"
+      """|"red": "red" | ("green" | "blue")
+         |"green": "red" | ("green" | "blue")
+         |"blue": "red" | ("green" | "blue")
          |""".stripMargin
     )
 
@@ -195,9 +195,9 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
          |val i: Option[Int] = Some(1)
          |val g: Option[Color] = i.map { _ => "@@" }
          |""".stripMargin,
-      """|"red": "red" | "green" | "blue"
-         |"green": "red" | "green" | "blue"
-         |"blue": "red" | "green" | "blue"
+      """|"red": "red" | ("green" | "blue")
+         |"green": "red" | ("green" | "blue")
+         |"blue": "red" | ("green" | "blue")
          |""".stripMargin
     )
 
@@ -210,9 +210,9 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
          |    _ <- i
          |  yield "@@"
          |""".stripMargin,
-      """|"red": "red" | "green" | "blue"
-         |"green": "red" | "green" | "blue"
-         |"blue": "red" | "green" | "blue"
+      """|"red": "red" | ("green" | "blue")
+         |"green": "red" | ("green" | "blue")
+         |"blue": "red" | ("green" | "blue")
          |""".stripMargin
     )
 
@@ -227,9 +227,9 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
          |    if i > 2
          |  yield "@@"
          |""".stripMargin,
-      """|"red": "red" | "green" | "blue"
-         |"green": "red" | "green" | "blue"
-         |"blue": "red" | "green" | "blue"
+      """|"red": "red" | ("green" | "blue")
+         |"green": "red" | ("green" | "blue")
+         |"blue": "red" | ("green" | "blue")
          |""".stripMargin
     )
 
