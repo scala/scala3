@@ -60,11 +60,11 @@ All definition symbols will contain a `SymDenotation`. The denotation, in turn, 
 A class symbol will instead be associated with a `ClassDenotation`, which extends `SymDenotation`
 with some additional fields specific for classes.
 
-[Signature1]: https://github.com/lampepfl/dotty/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Signature.scala#L9-L33
-[Symbols]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Symbols.scala
-[flatten]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/Flatten.scala
-[lambdaLift]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/LambdaLift.scala
-[CompilationUnit]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/CompilationUnit.scala
-[Denotations]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Denotations.scala
-[SymDenotations]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/SymDenotations.scala
-[flags]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Flags.scala
+[Signature1]: https://github.com/scala/scala3/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Signature.scala#L9-L33
+[Symbols]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Symbols.scala
+[flatten]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/transform/Flatten.scala
+[lambdaLift]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/transform/LambdaLift.scala
+[CompilationUnit]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/CompilationUnit.scala
+[Denotations]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Denotations.scala
+[SymDenotations]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/SymDenotations.scala
+[flags]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Flags.scala

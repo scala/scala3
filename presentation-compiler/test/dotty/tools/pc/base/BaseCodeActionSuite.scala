@@ -4,9 +4,9 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
 import scala.collection.immutable
+import scala.language.unsafeNulls
 import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.pc.CancelToken
-import scala.language.unsafeNulls
 
 abstract class BaseCodeActionSuite extends BasePCSuite:
 

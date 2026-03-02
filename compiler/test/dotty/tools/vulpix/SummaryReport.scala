@@ -30,9 +30,6 @@ trait SummaryReporting {
   /** Add a message that will be issued in the beginning of the summary */
   def addStartingMessage(msg: String): Unit
 
-  /** Add a cleanup hook to be run upon completion */
-  def addCleanup(f: () => Unit): Unit
-
   /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
 
@@ -51,7 +48,6 @@ final class NoSummaryReport extends SummaryReporting {
   def addFailedTest(msg: FailedTestInfo): Unit = ()
   def addReproduceInstruction(instr: String): Unit = ()
   def addStartingMessage(msg: String): Unit = ()
-  def addCleanup(f: () => Unit): Unit = ()
   def echoSummary(): Unit = ()
   def echoToLog(msg: String): Unit = ()
   def echoToLog(it: Iterator[String]): Unit = ()
@@ -67,7 +63,6 @@ final class SummaryReport extends SummaryReporting {
   private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
   private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[FailedTestInfo]
   private val reproduceInstructions = new java.util.concurrent.ConcurrentLinkedDeque[String]
-  private val cleanUps = new java.util.concurrent.ConcurrentLinkedDeque[() => Unit]
 
   private var passed = 0
   private var failed = 0
@@ -86,9 +81,6 @@ final class SummaryReport extends SummaryReporting {
 
   def addStartingMessage(msg: String): Unit =
     startingMessages.add(msg)
-
-  def addCleanup(f: () => Unit): Unit =
-    cleanUps.add(f)
 
   /** Both echoes the summary to stdout and prints to file */
   def echoSummary(): Unit = {
@@ -131,9 +123,6 @@ final class SummaryReport extends SummaryReporting {
     if (!isInteractive) println(rep.toString)
 
     TestReporter.logPrintln(rep.toString)
-
-    // Perform cleanup callback:
-    if (!cleanUps.isEmpty()) cleanUps.asScala.foreach(_.apply())
   }
 
   private def removeColors(msg: String): String =

@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 class Test {
   val x: Any = ???

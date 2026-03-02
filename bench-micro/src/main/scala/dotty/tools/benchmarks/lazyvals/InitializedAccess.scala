@@ -1,5 +1,6 @@
 package dotty.tools.benchmarks.lazyvals
 
+import compiletime.uninitialized
 import org.openjdk.jmh.annotations._
 import LazyVals.LazyHolder
 import org.openjdk.jmh.infra.Blackhole
@@ -14,7 +15,7 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Benchmark)
 class InitializedAccess {
 
-  var holder: LazyHolder = _
+  var holder: LazyHolder = uninitialized
 
   @Setup
   def prepare: Unit = {

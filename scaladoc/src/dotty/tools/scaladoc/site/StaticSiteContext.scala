@@ -7,9 +7,8 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import scala.util.Try
 import scala.jdk.CollectionConverters._
-import scala.annotation.static
+import scala.util.control.NonFatal
 
 class StaticSiteContext(
   val root: File,
@@ -20,8 +19,8 @@ class StaticSiteContext(
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  val docsPath = root.toPath.resolve("_docs")
-  val blogPath = root.toPath.resolve("_blog")
+  val docsPath: Path = root.toPath.resolve("_docs")
+  val blogPath: Path = root.toPath.resolve("_blog")
 
   def resolveNewBlogPath(stringPath: String): Path =
     if stringPath.nonEmpty then root.toPath.resolve(stringPath)
@@ -75,10 +74,13 @@ class StaticSiteContext(
       val templateSourceLocation = staticSiteRoot.reverseSiteMappings.get(templateDestLocation)
 
       // Check if link is relative or absolute
-      if link.startsWith("/")
-      then Seq(root.toPath.resolve(link.drop(1)))
-      else Seq(templateDestLocation.getParent.resolve(link).normalize) ++
-        templateSourceLocation.map(_.getParent.resolve(link).normalize)
+      try
+        if link.startsWith("/")
+        then Seq(root.toPath.resolve(link.drop(1)))
+        else Seq(templateDestLocation.getParent.resolve(link).normalize) ++
+          templateSourceLocation.map(_.getParent.resolve(link).normalize)
+      catch
+        case NonFatal(_) => Seq.empty
 
     // Try to strip site extension and create all possible file paths
     val fileNames = if siteExtensions.exists(link.endsWith(_))
@@ -112,7 +114,7 @@ class StaticSiteContext(
 
     DRI.forPath(relativePath)
 
-  def pathFromRoot(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
+  def pathFromRoot(myTemplate: LoadedTemplate): Path = root.toPath.relativize(myTemplate.file.toPath)
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++

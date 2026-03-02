@@ -23,12 +23,12 @@ realising the full potential of these ideas. Its main objectives are to
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 14th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 # What’s new in the 0.14.0-RC1 technology preview?
 
@@ -68,11 +68,11 @@ The motivation for this change is to promote composition over inheritance. In OO
 
 With the `export` feature, making the `Copier` behave as the `Printer` and the `Scanner` became much more ergonomic. Also, note the fine-grained control over which methods are exposed in cases of the possible method collision, as shown with the `status` method example.
 
-For more information, please read more in the [documentation](https://dotty.epfl.ch/docs/reference/other-new-features/export.html).
+For more information, please read more in the [documentation](https://nightly.scala-lang.org/docs/reference/other-new-features/export.html).
 
 
 ## An immutable array type
-A new type, `scala.IArray[T]`, is added, which is an immutable version of the `Array` type. Its implementation deserves a special attention, as it uses the new Dotty features in an elegant way (the below is an abstract from the corresponding [commit](https://github.com/lampepfl/dotty/commit/af2a0e66eb4b1204eac5dcb1d979486b92ef93d7#diff-156dc405d9f228bbc0fe406dfba63f65):
+A new type, `scala.IArray[T]`, is added, which is an immutable version of the `Array` type. Its implementation deserves a special attention, as it uses the new Dotty features in an elegant way (the below is an abstract from the corresponding [commit](https://github.com/scala/scala3/commit/af2a0e66eb4b1204eac5dcb1d979486b92ef93d7#diff-156dc405d9f228bbc0fe406dfba63f65):
 
 ```scala
 opaque type IArray[T] = Array[T]
@@ -118,20 +118,20 @@ Given a function call `f(args)`,
 
  - otherwise, if `f` is syntactically a stable identifier, and `new f` where `f` is interpreted as a type identifier is applicable to `args`, continue with `new f(args)`.
 
-For more information, please see the [documentation](https://dotty.epfl.ch/docs/reference/other-new-features/creator-applications.html).
+For more information, please see the [documentation](https://nightly.scala-lang.org/docs/reference/other-new-features/creator-applications.html).
 
 ## Other changes
 
 Some of the other changes include:
 
-- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](https://dotty.epfl.ch/docs/reference/contextual/given-clauses.html#querying-implied-instances) for more details.
-- The syntax of quoting and splicing was changed. Now the quoting is expressed via `'{ ... }` and `'[...]` and splicing – via `${...}` and `$id`. Please see the [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/macros.html) for more details on these features.
+- `infer` method renamed to `the`, the semantics of which is now the same as that of the `the` method of Shapeless. Namely, the implicits are resolved more precisely – see this [gist](https://gist.github.com/milessabin/8833a1dbf7e8245b30f8) for an example in Shapeless, and the Dotty [documentation](https://nightly.scala-lang.org/docs/reference/contextual/given-clauses.html#querying-implied-instances) for more details.
+- The syntax of quoting and splicing was changed. Now the quoting is expressed via `'{ ... }` and `'[...]` and splicing – via `${...}` and `$id`. Please see the [documentation](https://nightly.scala-lang.org/docs/reference/metaprogramming/macros.html) for more details on these features.
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -170,8 +170,8 @@ According to `git shortlog -sn --no-merges 0.13.0-RC1..0.14.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

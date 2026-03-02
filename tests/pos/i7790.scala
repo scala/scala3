@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/7790
+// https://github.com/scala/scala3/issues/7790
 trait Foo:
   given Int = 10
   def map(f: Int ?=> Int) = f

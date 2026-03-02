@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/i7294.scala:7:18 --------------------------------------------------------------
+7 |  case x: T => x.g(10) // error
+  |               ^^^^^^^
+  |               Found:    Any
+  |               Required: T
+  |
+  |               where:    T is a type in given instance f with bounds <: foo.Foo
+  |
+  | longer explanation available when compiling with `-explain`

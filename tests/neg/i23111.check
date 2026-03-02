@@ -1,0 +1,12 @@
+-- [E086] Syntax Error: tests/neg/i23111.scala:2:47 --------------------------------------------------------------------
+2 |  def bar: (a: Int, b: Int) => A.this.type = x => ??? // error
+  |                                             ^^^^^^^^
+  |                                             Wrong number of parameters, expected: 2
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E086] Syntax Error: tests/neg/i23111.scala:3:45 --------------------------------------------------------------------
+3 |  def baz: (a: Int, b: Int) => this.type = x => ???   // error
+  |                                           ^^^^^^^^
+  |                                           Wrong number of parameters, expected: 2
+  |
+  | longer explanation available when compiling with `-explain`

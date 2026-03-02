@@ -1,0 +1,14 @@
+trait T
+class C[A]
+
+def f(x: C[? <: T]) = ()
+
+def g(x: C[? >: T]) = ()
+
+def h(x: C[? <: T]) = ()
+
+def k(x: C[? >: T]) = ()
+
+def m(x: C[? >: Nothing <: T]) = ()
+
+def n(x: C[    ? >: Nothing <: T   ]) = ()

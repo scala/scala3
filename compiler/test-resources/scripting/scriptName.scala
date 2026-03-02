@@ -1,4 +1,4 @@
-#!/usr/bin/env scala
+// this file is intended to be ran as an argument to the dotty.tools.scripting.ScriptingDriver class
 
   def main(args: Array[String]): Unit =
     val name = Option(sys.props("script.name")) match {

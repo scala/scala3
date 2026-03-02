@@ -637,7 +637,11 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   private def maybeWrapSuperCallWithContextualJSClassValue(tree: Tree)(using Context): Tree = {
     methPart(tree) match {
       case Select(sup: Super, _) if isInnerOrLocalJSClass(sup.symbol.asClass.superClass) =>
-        wrapWithContextualJSClassValue(sup.symbol.asClass.superClass.typeRef)(tree)
+        val superClass = sup.symbol.asClass.superClass
+        val jsClassTypeInSuperClass = superClass.typeRef
+        // scala-js#4801 Rebase the super class type on the current class' this type
+        val jsClassTypeAsSeenFromThis = jsClassTypeInSuperClass.asSeenFrom(currentClass.thisType, superClass)
+        wrapWithContextualJSClassValue(jsClassTypeAsSeenFromThis)(tree)
       case _ =>
         tree
     }

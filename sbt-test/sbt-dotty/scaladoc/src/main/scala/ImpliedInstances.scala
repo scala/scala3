@@ -4,7 +4,7 @@ import scala.util.{Success, Try}
 
 /**
   * Implied Instances:
-  * - https://dotty.epfl.ch/docs/reference/contextual/instance-defs.html
+  * - https://nightly.scala-lang.org/docs/reference/contextual/instance-defs.html
   */
 object ImpliedInstances {
 

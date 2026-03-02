@@ -1,0 +1,7 @@
+-- Error: tests/neg-custom-args/captures/unscoped-extrude.scala:13:4 ---------------------------------------------------
+13 |    r      // error
+   |    ^
+   |    Separation failure: Illegal access to (r : Ref[String]^), which was consumed in an assignment to variable x
+   |    on line 12 and therefore is no longer available.
+   |
+   |    where:    ^ refers to a root capability classified as Unscoped in the type of value r

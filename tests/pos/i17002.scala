@@ -7,4 +7,4 @@ class Test
 object Test:
 
   @methOnly
-  given test2[T]: Test with {}
+  given test2: [T] => Test()

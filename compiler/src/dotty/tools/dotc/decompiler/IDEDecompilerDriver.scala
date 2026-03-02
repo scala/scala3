@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package decompiler
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.*
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter
@@ -19,7 +17,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.Interactive | Mode.ReadPositions)
-    rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.fromTasty, true)
     val ctx = setup(settings.toArray :+ "dummy.scala", rootCtx).get._2

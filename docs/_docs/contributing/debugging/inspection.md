@@ -61,9 +61,9 @@ Sometimes you may want to stop the compiler after a certain phase, for example t
 knock-on errors from occurring from a bug in an earlier phase. Use the flag
 `-Ystop-after:<phase-name>` to prevent any phases executing afterwards.
 
-> e.g. `-Xprint:<phase>` where `phase` is a miniphase, will print after
+> e.g. `-Vprint:<phase>` where `phase` is a miniphase, will print after
 > the whole phase group is complete, which may be several miniphases after `phase`.
-> Instead you can use `-Ystop-after:<phase> -Xprint:<phase>` to stop
+> Instead you can use `-Ystop-after:<phase> -Vprint:<phase>` to stop
 > immediately after the miniphase and see the trees that you intended.
 
 ## Printing TASTy of a Class
@@ -181,6 +181,6 @@ class StealBox:
         assert(empty.name.toString == "<empty>")
 ```
 
-[DottyTypeStealer]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/DottyTypeStealer.scala
-[ScalaSettings]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
-[symbols]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/SymDenotations.scala
+[DottyTypeStealer]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/DottyTypeStealer.scala
+[ScalaSettings]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
+[symbols]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/SymDenotations.scala

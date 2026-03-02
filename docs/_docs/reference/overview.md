@@ -46,7 +46,7 @@ These constructs replace existing constructs with the aim of making the language
   replace implicit classes with a clearer and simpler mechanism.
 - [Opaque type aliases](other-new-features/opaques.md)
   replace most uses of value classes while guaranteeing the absence of boxing.
-- [Top-level definitions](dropped-features/package-objects.md)
+- [Top-level definitions](other-new-features/toplevel-definitions.md)
   replace package objects, dropping syntactic boilerplate.
 - [Export clauses](other-new-features/export.md)
   provide a simple and general way to express aggregation, which can replace
@@ -91,7 +91,7 @@ These constructs are proposed to be dropped without a new construct replacing th
 - [Auto application](dropped-features/auto-apply.md),
 - [Weak conformance](dropped-features/weak-conformance.md),
 - Compound types (replaced by [Intersection types](new-types/intersection-types.md)),
-- [Auto tupling](https://github.com/lampepfl/dotty/pull/4311) (implemented, but not merged).
+- [Auto tupling](https://github.com/scala/scala3/pull/4311) (implemented, but not merged).
 
 The date when these constructs are dropped varies. The current status is:
 

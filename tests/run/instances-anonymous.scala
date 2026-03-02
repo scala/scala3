@@ -16,7 +16,7 @@ object Test extends App {
 
   println(circle.circumference)
 
-  given AnyRef with {
+  given AnyRef {
     extension (xs: Seq[String]) def longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -45,7 +45,7 @@ object Test extends App {
     def unit: T
   }
 
-  given Monoid[String] with {
+  given Monoid[String] {
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -63,13 +63,13 @@ object Test extends App {
     val minimum: T
   }
 
-  given Ord[Int] with {
+  given Ord[Int] {
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  given [T: Ord]: Ord[List[T]] with {
+  given [T: Ord] => Ord[List[T]] {
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -101,14 +101,14 @@ object Test extends App {
     def pure[A](x: A): F[A]
   }
 
-  given Monad[List] with {
+  given Monad[List] {
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  given [Ctx]: Monad[[X] =>> Ctx => X] with {
+  given [Ctx] => Monad[[X] =>> Ctx => X] {
     extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

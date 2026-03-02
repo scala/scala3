@@ -1,4 +1,4 @@
-//> using options -Xmax-inlines:33
+//> using options -Xmax-inlines:35
 
 import scala.deriving.Mirror
 import scala.compiletime._
@@ -36,7 +36,7 @@ trait SchemaDerivation {
         }
     }
 
-  inline given gen[A]: Schema[A] = derived
+  inline given gen: [A] => Schema[A] = derived
 }
 
 case class H(i: Int)

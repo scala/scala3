@@ -1,6 +1,7 @@
 package scala.annotation
 
-/** An annotation that indicates capture of an enclosing by-name type
- */
-@experimental class retainsByName(xs: Any*) extends annotation.StaticAnnotation
+import language.experimental.captureChecking
+
+/** An annotation that indicates capture of an enclosing by-name type */
+@experimental class retainsByName[Elems] extends annotation.StaticAnnotation
 

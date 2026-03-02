@@ -61,43 +61,11 @@ class StringConcatTest extends DottyBytecodeTest {
       }
 
       assertEquals(List(
-        "<init>(I)V",
-        "toString()Ljava/lang/String;",
-        "append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
-        "append(Z)Ljava/lang/StringBuilder;",
-        "append(C)Ljava/lang/StringBuilder;",
-        "append(I)Ljava/lang/StringBuilder;",
-        "append(I)Ljava/lang/StringBuilder;",
-        "append(I)Ljava/lang/StringBuilder;",
-        "append(F)Ljava/lang/StringBuilder;",
-        "append(J)Ljava/lang/StringBuilder;",
-        "append(D)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/StringBuffer;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/CharSequence;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/Object;)Ljava/lang/StringBuilder;", // test that we're not using the [C overload
         "toString()Ljava/lang/String;"),
         invokeNameDesc("t1")
       )
 
       assertEquals(List(
-        "<init>(I)V",
-        "toString()Ljava/lang/String;",
-        "append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
-        "append(Z)Ljava/lang/StringBuilder;",
-        "append(C)Ljava/lang/StringBuilder;",
-        "append(I)Ljava/lang/StringBuilder;",
-        "append(I)Ljava/lang/StringBuilder;",
-        "append(I)Ljava/lang/StringBuilder;",
-        "append(F)Ljava/lang/StringBuilder;",
-        "append(J)Ljava/lang/StringBuilder;",
-        "append(D)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/StringBuffer;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/CharSequence;)Ljava/lang/StringBuilder;",
-        "append(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
         "toString()Ljava/lang/String;"),
         invokeNameDesc("t2")
       )
@@ -122,7 +90,7 @@ class StringConcatTest extends DottyBytecodeTest {
            chsq: java.lang.CharSequence,
            chrs: Array[Char]) = {
       val s1 = str + obj + v + z + c + b + s + i + f + l + d + sbuf + chsq + chrs
-      val s2 = String.valueOf(obj).nn + str + v + z + c + b + s + i + f + l + d + sbuf + chsq + chrs
+      val s2 = String.valueOf(obj) + str + v + z + c + b + s + i + f + l + d + sbuf + chsq + chrs
       s1 + "//" + s2
     }
     def sbuf = { val r = new java.lang.StringBuffer(); r.append("sbuf"); r }

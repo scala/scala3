@@ -12,6 +12,7 @@ import Symbols.*
 import Scopes.*
 import Uniques.*
 import ast.Trees.*
+import Flags.ParamAccessor
 import ast.untpd
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
@@ -40,6 +41,8 @@ import util.Store
 import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
+import dotty.tools.dotc.coverage.Coverage
+import scala.annotation.tailrec
 
 object Contexts {
 
@@ -95,14 +98,14 @@ object Contexts {
   inline def atPhaseNoEarlier[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
     op(using if !limit.exists || limit <= ctx.phase then ctx else ctx.withPhase(limit))
 
-  inline def inMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
+  inline def withModeBits[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
     op(using if mode != ctx.mode then ctx.fresh.setMode(mode) else ctx)
 
   inline def withMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
-    inMode(ctx.mode | mode)(op)
+    withModeBits(ctx.mode | mode)(op)
 
   inline def withoutMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
-    inMode(ctx.mode &~ mode)(op)
+    withModeBits(ctx.mode &~ mode)(op)
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
@@ -120,7 +123,7 @@ object Contexts {
    *      risk of capturing complete trees.
    *    - To make sure these rules are kept, it would be good to do a sanity
    *      check using bytecode inspection with javap or scalap: Keep track
-   *      of all class fields of type context; allow them only in whitelisted
+   *      of all class fields of type context; allow them only in allowlisted
    *      classes (which should be short-lived).
    */
   abstract class Context(val base: ContextBase) { thiscontext =>
@@ -133,7 +136,7 @@ object Contexts {
     def outersIterator: Iterator[Context] = new Iterator[Context] {
       var current = thiscontext
       def hasNext = current != NoContext
-      def next = { val c = current; current = current.outer; c }
+      def next() = { val c = current; current = current.outer; c }
     }
 
     def period: Period
@@ -178,7 +181,7 @@ object Contexts {
       val local = incCallback
       local != null && local.enabled || forceRun
 
-    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    /** The Zinc compile progress callback implementation if we are run from Zinc or used by presentation compiler, null otherwise */
     def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
 
     /** Run `op` if there exists a Zinc progress callback */
@@ -231,7 +234,7 @@ object Contexts {
             else Nil
           val outerImplicits =
             if (isImportContext && importInfo.nn.unimported.exists)
-              outer.implicits exclude importInfo.nn.unimported
+              outer.implicits.exclude(importInfo.nn.unimported)
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -264,7 +267,7 @@ object Contexts {
     /** SourceFile with given path, memoized */
     def getSource(path: String): SourceFile = getSource(path.toTermName)
 
-    /** AbstraFile with given path name, memoized */
+    /** AbstractFile with given path name, memoized */
     def getFile(name: TermName): AbstractFile = base.files.get(name) match
       case Some(file) =>
         file
@@ -364,6 +367,7 @@ object Contexts {
 
     /** Is current phase after TyperPhase? */
     final def isAfterTyper = base.isAfterTyper(phase)
+    final def isAfterInlining = base.isAfterInlining(phase)
     final def isTyper = base.isTyper(phase)
 
     /** Is this a context for the members of a class definition? */
@@ -374,7 +378,7 @@ object Contexts {
     def isImportContext: Boolean =
       (this ne NoContext)
       && (outer ne NoContext)
-      && (this.importInfo nen outer.importInfo)
+      && (this.importInfo ne outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -399,7 +403,8 @@ object Contexts {
      *
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
-     *  - as scope: The parameter accessors in the class context
+     *  - as scope: type parameters, the parameter accessors,
+     *    the dummy capture parameters and the context bound companions in the class context,
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -413,10 +418,11 @@ object Contexts {
      *    context see the constructor parameters instead, but then we'd need a final substitution step
      *    from constructor parameters to class parameter accessors.
      */
-    def superCallContext: Context = {
-      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors*)
-      superOrThisCallContext(owner.primaryConstructor, locals)
-    }
+    def superCallContext: Context =
+      val locals = owner.typeParams
+          ++ owner.asClass.unforcedDecls.filter: sym =>
+              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
+      superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.
      *  The context is computed from the local auxiliary constructor context.
@@ -437,7 +443,7 @@ object Contexts {
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
-      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
+      val classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
       classCtx.outer.fresh.setOwner(owner)
         .setScope(locals)
         .setMode(classCtx.mode)
@@ -471,6 +477,27 @@ object Contexts {
 
     /** Is the explicit nulls option set? */
     def explicitNulls: Boolean = base.settings.YexplicitNulls.value
+
+    /** Is the flexible types option set? */
+    def flexibleTypes: Boolean = base.settings.YexplicitNulls.value && !base.settings.YnoFlexibleTypes.value
+
+    /** Is the flexify tasty option set? */
+    def flexifyTasty: Boolean = base.settings.YexplicitNulls.value && base.settings.YflexifyTasty.value
+
+    /** Is the best-effort option set? */
+    def isBestEffort: Boolean = base.settings.YbestEffort.value
+
+    /** Is the with-best-effort-tasty option set? */
+    def withBestEffortTasty: Boolean = base.settings.YwithBestEffortTasty.value
+
+    /** Were any best effort tasty dependencies used during compilation? */
+    def usedBestEffortTasty: Boolean = base.usedBestEffortTasty
+
+    /** Confirm that a best effort tasty dependency was used during compilation. */
+    def setUsedBestEffortTasty(): Unit = base.usedBestEffortTasty = true
+
+    /** Is either the best-effort option set or .betasty files were used during compilation? */
+    def tolerateErrorsForBestEffort = isBestEffort || usedBestEffortTasty
 
     /** A fresh clone of this context embedded in this context. */
     def fresh: FreshContext = freshOver(this)
@@ -682,6 +709,7 @@ object Contexts {
       updateStore(compilationUnitLoc, compilationUnit)
     }
 
+
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
     def setProgressCallback(callback: ProgressCallback): this.type = updateStore(progressCallbackLoc, callback)
@@ -747,43 +775,47 @@ object Contexts {
           .updated(settingsStateLoc, settingsGroup.defaultState)
           .updated(notNullInfosLoc, Nil)
           .updated(compilationUnitLoc, NoCompilationUnit)
+          .updated(profilerLoc, Profiler.NoOp)
       c._searchHistory = new SearchRoot
       c._gadtState = GadtState(GadtConstraint.empty)
       c
   end FreshContext
 
+  extension (ctx: Context)
+    /** Get the original compilation unit, ignoring any highlighting wrappers. */
+    @tailrec
+    def originalCompilationUnit: CompilationUnit =
+      val cu = ctx.compilationUnit
+      if cu.source.name == SyntaxHighlighting.VirtualSourceName then ctx.outer.originalCompilationUnit
+      else cu
+
   extension (c: Context)
     def addNotNullInfo(info: NotNullInfo) =
-      c.withNotNullInfos(c.notNullInfos.extendWith(info))
+      if c.explicitNulls then c.withNotNullInfos(c.notNullInfos.extendWith(info)) else c
 
     def addNotNullRefs(refs: Set[TermRef]) =
-      c.addNotNullInfo(NotNullInfo(refs, Set()))
+      if c.explicitNulls then c.addNotNullInfo(NotNullInfo(refs, Set())) else c
 
     def withNotNullInfos(infos: List[NotNullInfo]): Context =
-      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
-
-    def relaxedOverrideContext: Context =
-      c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
+      if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
-  extension (c: Context) {
+  extension (c: Context)
     final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
     final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
-  }
 
-  extension (c: FreshContext) {
+  extension (c: FreshContext)
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
-  }
 
-  /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated context that has an ExploreTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
     exploreInFreshCtx(op)
 
-  /** Run `op` with a pool-allocated FreshContext that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated FreshContext that has an ExploreTyperState. */
   inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val pool = ctx.base.exploreContextPool
     val nestedCtx = pool.next()
@@ -842,6 +874,13 @@ object Contexts {
       result.init(ctx)
       result
 
+  def currentComparer(using Context): TypeComparer =
+    val base = ctx.base
+    if base.comparersInUse > 0 then
+      base.comparers(base.comparersInUse - 1)
+    else
+      comparer
+
   inline def comparing[T](inline op: TypeComparer => T)(using Context): T =
     util.Stats.record("comparing")
     val saved = ctx.base.comparersInUse
@@ -861,8 +900,7 @@ object Contexts {
                        with Phases.PhasesBase
                        with Plugins {
 
-    /** The applicable settings */
-    val settings: ScalaSettings = new ScalaSettings
+    val settings: ScalaSettings = ScalaSettings
 
     /** The initial context */
     val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)
@@ -890,13 +928,18 @@ object Contexts {
     val definitions: Definitions = new Definitions
 
     // Set up some phases to get started */
-    usePhases(List(SomePhase))
+    usePhases(List(SomePhase), FreshContext(this))
 
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */
     def initialize()(using Context): Unit = {
-      _platform = newPlatform
+      // In interactive mode (REPL/IDE), preserve the existing platform if already initialized.
+      // This is important because :dep/:jar commands add JARs to the platform's classpath,
+      // and we must not lose those when a new Run is created for each input.
+      // In non-interactive mode, always create a fresh platform to preserve original behavior.
+      if _platform == null || !ctx.mode.is(Mode.Interactive) then
+        _platform = newPlatform
       definitions.init()
     }
 
@@ -956,6 +999,14 @@ object Contexts {
     /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
+
+    /** Was best effort file used during compilation? */
+    private[core] var usedBestEffortTasty = false
+
+    /** If coverage option is used, it stores all instrumented statements (for InstrumentCoverage).
+     * We need this information to be persisted across different runs, so it's stored here.
+     */
+    private[dotc] var coverage: Coverage | Null = null
 
     // Types state
     /** A table for hash consing unique types */

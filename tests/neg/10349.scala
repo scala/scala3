@@ -4,7 +4,7 @@ object Firsts:
     case Map[_, v] => First[Option[v]]
 
   def first[X](x: X): First[X] = x match
-    case x: Map[_, _] => first(x.values.headOption) // error
+    case x: Map[_, _] => first(x.values.headOption)
 
   @main
   def runFirsts2(): Unit =

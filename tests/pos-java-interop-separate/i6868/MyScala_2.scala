@@ -1,4 +1,4 @@
-@MyJava_1("MyScala1", typeA = MyJava_1.MyClassTypeA.B)
+@MyJava_1(value = "MyScala1", typeA = MyJava_1.MyClassTypeA.B)
 object MyScala {
   def a(mj: MyJava_1): Unit = {
     println("MyJava")

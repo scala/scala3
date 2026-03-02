@@ -2,4 +2,4 @@
 
 For information on the community build check out the [Community Build section of
 the Contributing
-Docs](https://dotty.epfl.ch/docs/contributing/community-build.html).
+Docs](https://nightly.scala-lang.org/docs/contributing/community-build.html).

@@ -1,0 +1,411 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+methodWithDefaults
+254
+276
+8
+methodWithDefaults
+DefDef
+false
+0
+false
+def methodWithDefaults
+
+1
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+methodWithDefaults$default$2
+306
+307
+10
+<none>
+Literal
+false
+0
+false
+0
+
+2
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+methodWithDefaults$default$2
+306
+324
+10
+methodWithDefaults$default$2
+DefDef
+false
+0
+false
+0,\n    c: Boolean 
+
+3
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+methodWithDefaults$default$3
+326
+330
+11
+<none>
+Literal
+false
+0
+false
+true
+
+4
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+methodWithDefaults$default$3
+326
+344
+11
+methodWithDefaults$default$3
+DefDef
+false
+0
+false
+true\n  ): String =
+
+5
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+caller
+445
+471
+17
+methodWithDefaults
+Apply
+false
+0
+false
+methodWithDefaults("test")
+
+6
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+caller
+464
+470
+17
+<none>
+Literal
+false
+0
+false
+"test"
+
+7
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+caller
+366
+376
+15
+caller
+DefDef
+false
+0
+false
+def caller
+
+8
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+callerPartial
+559
+589
+21
+methodWithDefaults
+Apply
+false
+0
+false
+methodWithDefaults("test", 42)
+
+9
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+callerPartial
+578
+584
+21
+<none>
+Literal
+false
+0
+false
+"test"
+
+10
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+callerPartial
+586
+588
+21
+<none>
+Literal
+false
+0
+false
+42
+
+11
+DefaultArgs.scala
+covtest
+DefaultArgs
+Class
+covtest.DefaultArgs
+callerPartial
+475
+492
+19
+callerPartial
+DefDef
+false
+0
+false
+def callerPartial
+
+12
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticMethod
+667
+672
+25
++
+Apply
+false
+0
+false
+x + y
+
+13
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticMethod
+613
+629
+24
+staticMethod
+DefDef
+false
+0
+false
+def staticMethod
+
+14
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticMethod$default$1
+639
+641
+24
+<none>
+Literal
+false
+0
+false
+10
+
+15
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticMethod$default$1
+639
+651
+24
+staticMethod$default$1
+DefDef
+false
+0
+false
+10, y: Int =
+
+16
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticMethod$default$2
+652
+654
+24
+<none>
+Literal
+false
+0
+false
+20
+
+17
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticMethod$default$2
+652
+664
+24
+staticMethod$default$2
+DefDef
+false
+0
+false
+20): Int =\n 
+
+18
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
+706
+760
+28
++
+Apply
+false
+0
+false
+staticMethod() + staticMethod(5) + staticMethod(5, 15)
+
+19
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
+723
+738
+28
+staticMethod
+Apply
+false
+0
+false
+staticMethod(5)
+
+20
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
+736
+737
+28
+<none>
+Literal
+false
+0
+false
+5
+
+21
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
+741
+760
+28
+staticMethod
+Apply
+false
+0
+false
+staticMethod(5, 15)
+
+22
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
+676
+692
+27
+staticCaller
+DefDef
+false
+0
+false
+def staticCaller
+

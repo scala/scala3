@@ -11,7 +11,7 @@ sealed abstract class ZManaged[-R, +E, +A]
 type RManaged[-R, +A] = ZManaged[R, Throwable, A]
 
 type ForZManaged[R, E] = [X] =>> ZManaged[R, E, X]
-given zManagedCpsMonad[R, E]: CpsMonadInstanceContext[ForZManaged[R, E]] = ???
+given zManagedCpsMonad: [R, E] => CpsMonadInstanceContext[ForZManaged[R, E]] = ???
 
 // Usage
 def failing[R, E](using

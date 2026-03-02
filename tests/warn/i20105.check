@@ -1,0 +1,6 @@
+-- [E199] Syntax Warning: tests/warn/i20105.scala:6:9 ------------------------------------------------------------------
+6 |      foo() // warn
+  |      ^^^^^
+  |      The tail recursive def foo contains a recursive call inside the non-inlined inner def bar
+  |
+  | longer explanation available when compiling with `-explain`

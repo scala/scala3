@@ -393,7 +393,6 @@ object JavaScanners {
                '5' | '6' | '7' | '8' | '9' =>
             putChar(ch)
             nextChar()
-
           case '_' =>
             putChar(ch)
             nextChar()
@@ -667,7 +666,7 @@ object JavaScanners {
       val limit: Double =
         if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
       try {
-        val value: Double = java.lang.Double.valueOf(strVal.toString).nn.doubleValue()
+        val value: Double = java.lang.Double.valueOf(strVal.toString).doubleValue()
         if (value > limit)
           error(em"floating point number too large")
         if (negated) -value else value

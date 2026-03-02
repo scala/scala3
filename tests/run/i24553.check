@@ -1,0 +1,11 @@
+public boolean java.lang.Object.equals(java.lang.Object)
+public final native java.lang.Class<?> java.lang.Object.getClass()
+public native int java.lang.Object.hashCode()
+public int Foo.hello()
+public final native void java.lang.Object.notify()
+public final native void java.lang.Object.notifyAll()
+public java.lang.String java.lang.Object.toString()
+public final void java.lang.Object.wait(long,int) throws java.lang.InterruptedException
+public final void java.lang.Object.wait() throws java.lang.InterruptedException
+public final native void java.lang.Object.wait(long) throws java.lang.InterruptedException
+public int Foo.x()

@@ -4,7 +4,7 @@ trait DFSInt[W <: Int]
 trait Candidate[R]:
   type OutW <: Int
 object Candidate:
-  given [W <: Int, R <: DFSInt[W]]: Candidate[R] with
+  given [W <: Int, R <: DFSInt[W]] => Candidate[R]:
     type OutW = W
 
 def foo[R](rhs: R)(using icR: Candidate[R]): DFSInt[Max[8, icR.OutW]] = ???

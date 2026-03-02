@@ -24,16 +24,16 @@
 19 |  f[X = Int, String](1, "") // error // error
    |                   ^
    |                   '=' expected, but ']' found
--- Error: tests/neg/namedTypeParams.scala:6:8 --------------------------------------------------------------------------
+-- Error: tests/neg/namedTypeParams.scala:6:4 --------------------------------------------------------------------------
 6 |  f[X = Int, Y = Int](1, 2) // error: experimental // error: experimental
-  |        ^^^
-  |        Named type arguments are experimental,
-  |        they must be enabled with a `experimental.namedTypeArguments` language import or setting
--- Error: tests/neg/namedTypeParams.scala:6:17 -------------------------------------------------------------------------
+  |    ^^^^^^^
+  |    Named type arguments are experimental,
+  |    they must be enabled with a `experimental.namedTypeArguments` language import or setting
+-- Error: tests/neg/namedTypeParams.scala:6:13 -------------------------------------------------------------------------
 6 |  f[X = Int, Y = Int](1, 2) // error: experimental // error: experimental
-  |                 ^^^
-  |                 Named type arguments are experimental,
-  |                 they must be enabled with a `experimental.namedTypeArguments` language import or setting
+  |             ^^^^^^^
+  |             Named type arguments are experimental,
+  |             they must be enabled with a `experimental.namedTypeArguments` language import or setting
 -- [E006] Not Found Error: tests/neg/namedTypeParams.scala:11:11 -------------------------------------------------------
 11 |  val x: C[T = Int] = // error:  ']' expected, but `=` found // error
    |           ^
@@ -92,11 +92,11 @@
    |  illegal repeated type application
    |  You might have meant something like:
    |  Test.f[Y = String, Int]
--- [E102] Syntax Error: tests/neg/namedTypeParams.scala:33:9 -----------------------------------------------------------
-33 |  f2[Y = String][X = Int](1, "") // error: Y is undefined
+-- [E102] Syntax Error: tests/neg/namedTypeParams.scala:32:9 -----------------------------------------------------------
+32 |  f2[Y = String][X = Int](1, "") // error: Y is undefined
    |         ^^^^^^
    |         Type parameter Y is undefined. Expected one of X.
--- [E102] Syntax Error: tests/neg/namedTypeParams.scala:34:9 -----------------------------------------------------------
-34 |  f2[Y = String](1, "") // error: Y is undefined
+-- [E102] Syntax Error: tests/neg/namedTypeParams.scala:33:9 -----------------------------------------------------------
+33 |  f2[Y = String](1, "") // error: Y is undefined
    |         ^^^^^^
    |         Type parameter Y is undefined. Expected one of X.

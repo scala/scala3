@@ -20,6 +20,8 @@ productions map to AST nodes.
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
+Informal descriptions are typeset as `“some comment”`.
+
 ## Lexical Syntax
 
 The lexical syntax of Scala is given by the following grammar in EBNF form:
@@ -57,9 +59,10 @@ idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
 spliceId         ::=  ‘$’ alphaid ;
 
-integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
+integerLiteral   ::=  (decimalNumeral | hexNumeral | binaryNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
 hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
+binaryNumeral    ::=  ‘0’ (‘b’ | ‘B’) binaryDigit [{binaryDigit | ‘_’} binaryDigit]
 
 floatingPointLiteral
                  ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
@@ -99,7 +102,10 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Optional Braces
 
-The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md)
+The principle of optional braces is that any keyword that can be followed by `{` can also be followed by an indented block, without needing an intervening `:`.
+(Allowing an optional `:` would be counterproductive since it would introduce several ways to do the same thing.)
+
+The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md).
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
@@ -135,7 +141,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  opaque  open  throws transparent  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  inline  opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -171,12 +177,14 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ### Types
 ```ebnf
 Type              ::=  FunType
-                    |  HkTypeParamClause ‘=>>’ Type                             LambdaTypeTree(ps, t)
+                    |  TypTypeParamClause ‘=>>’ Type                            LambdaTypeTree(ps, t)
                     |  FunParamClause ‘=>>’ Type                                TermLambdaTypeTree(ps, t)
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods, erasedParams)
-                    |  HKTypeParamClause '=>' Type                              PolyFunction(ps, t)
+                    |  FunTypeArgs (‘->’ | ‘?->’) [CaptureSet] Type             -- under pureFunctions and captureChecking
+                    |  TypTypeParamClause ‘=>’ Type                             PolyFunction(ps, t)
+                    |  TypTypeParamClause ‘->’ [CaptureSet] Type                -- under pureFunctions and captureChecking
 FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
@@ -184,16 +192,19 @@ FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  [`erased`] id ‘:’ Type
 MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
+                    |  RefinedType ‘^’                                          -- under captureChecking
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
+                    |  AnnotType {[nl] Refinement} ‘^’ CaptureSet               -- under captureChecking
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
+AnnotType1        ::=  SimpleType1 {Annotation}                                 Annotated(t, annot)
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ TypeBounds
-                    |  SimpleType1
+                    |  SimpleType1 {ParArgumentExprs}
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
-                    |  ‘(’ Types ‘)’                                            Tuple(ts)
+                    |  ‘(’ [Types | NamesAndTypes] ‘)’                          Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  TypeSplice                                               -- deprecated syntax
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
@@ -201,29 +212,44 @@ SimpleType1       ::=  id                                                       
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
-FunArgType        ::=  [`erased`] Type
-                    |  [`erased`] ‘=>’ Type                                     PrefixOp(=>, t)
+FunArgType        ::=  Type
+                    |  ‘=>’ Type                                                PrefixOp(=>, t)
+                    |  ‘->’ [CaptureSet] Type                                   -- under captureChecking
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
-ParamValueType    ::=  [‘into’] ExactParamType                                  Into(t)
-ExactParamType    ::=  ParamValueType [‘*’]                                     PostfixOp(t, "*")
-TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  :<<< [RefineDef] {semi [RefineDef]} >>>                  ds
-TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
-TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
+                    |  ‘->’ [CaptureSet] ParamValueType                         -- under captureChecking
+ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
+TypeArgs          ::=  ‘[’ TypeArg {‘,’ TypeArg} ‘]’                            ts
+Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
+TypeBounds        ::=  [‘>:’ TypeBound] [‘<:’ TypeBound]                        TypeBoundsTree(lo, hi)
+TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]                           ContextBounds(typeBounds, tps)
+ContextBounds     ::=  ContextBound
+                    |  ContextBound `:` ContextBounds                           -- to be deprecated
+                    |  '{' ContextBound {',' ContextBound} '}'
+ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
+TypeArg           ::=  Type
+                    |  CaptureSet                                               -- under captureChecking
+TypeBound         ::=  Type
+                    |  CaptureSet                                               -- under captureChecking
+NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
+NameAndType       ::=  id ':' Type
+CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
+CaptureRef        ::=  { SimpleRef '.' } SimpleRef ['*'] [CapFilter] ['.' 'rd'] -- under captureChecking
+CapFilter         ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
 ```
 
 ### Expressions
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
-                    |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
+                    |  TypTypeParamClause ‘=>’ Expr                             PolyFunction(ts, expr)
+                    |  ExprCaseClause
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
-                    |  HkTypeParamClause ‘=>’ Block
+                    |  TypTypeParamClause ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
-                    |  [`erased`] id
+                    |  id
                     |  ‘_’
 Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr] If(Parens(cond), thenp, elsep?)
                     |  [‘inline’] ‘if’  Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
@@ -236,6 +262,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  PrefixOperator SimpleExpr ‘=’ Expr                       Assign(expr, expr)
+                    |  InfixExpr id [nl] `=' Expr                               Assign(expr, expr) -- only if language.postfixOps is enabled
                     |  SimpleExpr ArgumentExprs ‘=’ Expr                        Assign(expr, expr)
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause
@@ -267,12 +294,15 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr							-- to be dropped
-ColonArgument     ::=  colon [LambdaStart]
+ColonArgument     ::=  colon {LambdaStart}
                        indent (CaseClauses | Block) outdent
+                    |  colon LambdaStart {LambdaStart} expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
+                                                                                -- does not apply if enclosed in parens
+                    |  colon ExprCaseClause
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
-                    |  HkTypeParamClause ‘=>’
+                    |  TypTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
-                    |  ‘'’ ‘[’ Type ‘]’
+                    |  ‘'’ ‘[’ TypeBlock ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
@@ -280,8 +310,10 @@ TypeSplice        ::= spliceId                                                  
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted type pattern -- deprecated syntax
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted type pattern -- deprecated syntax
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
+                    |  NamedExprInParens {‘,’ NamedExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
+NamedExprInParens ::=  id '=' ExprInParens
 ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’                          exprs
                     |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’              exprs :+ Typed(expr, Ident(wildcardStar))
@@ -294,6 +326,8 @@ BlockStat         ::=  Import
                     |  Extension
                     |  Expr1
                     |  EndMarker
+TypeBlock         ::=  {TypeBlockStat semi} Type
+TypeBlockStat     ::=  ‘type’ {nl} TypeDef
 
 ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | ‘yield’] Expr     ForYield(enums, expr) / ForDo(enums, expr)
                     |  ‘for’ ‘{’ Enumerators0 ‘}’ {nl} [‘do‘ | ‘yield’] Expr
@@ -331,53 +365,61 @@ SimplePattern1    ::=  SimpleRef
 PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
+                    |  NamedPattern {‘,’ NamedPattern}
+NamedPattern      ::=  id '=' Pattern
+
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
-                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns]‘)’
 ```
 
 ### Type and Value Parameters
 ```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                 TypeDef(Modifiers, name, tparams, bounds)
-                       id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
+                       id [HkTypeParamClause] TypeAndCtxBounds                  Bound(below, above, context)
+                    |  {Annotation} [‘+’ | ‘-’] id `^` TypeAndCtxBounds         -- under captureChecking
+
+DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
+DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
+                    |  {Annotation} id `^` TypeAndCtxBounds                     -- under captureChecking
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
+TypTypeParam      ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
+                    |  {Annotation} id `^` TypeAndCtxBounds                     -- under captureChecking
 
 HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
-HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] | ‘_’)
+HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id  | ‘_’) [HkTypeParamClause]
                        TypeBounds
+                    |  {Annotation} [‘+’ | ‘-’] id `^` TypeBounds               -- under captureChecking
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
+                       [{Modifier} (‘val’ | ‘var’)] Param
 
 DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
 DefParamClause    ::=  DefTypeParamClause
                     |  DefTermParamClause
                     |  UsingParamClause
-TypelessClauses   ::=  TypelessClause {TypelessClause}
-TypelessClause    ::=  DefTermParamClause
+ConstrParamClauses::=  ConstrParamClause {ConstrParamClause}
+ConstrParamClause ::=  DefTermParamClause
                     |  UsingParamClause
-
-DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
 DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
 UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
 
 DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
-DefTermParam      ::= {Annotation} [`erased`] [‘inline’] Param                    ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefTermParam      ::= {Annotation} TermParamMods Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’[`erased`] [Binding {‘,’ [`erased`] Binding}] ‘)’
-Binding           ::=  (id | ‘_’) [‘:’ Type]                                    ValDef(_, id, tpe, EmptyTree)
+Bindings          ::=  ‘(’ [Binding {‘,’ Binding}] ‘)’
+Binding           ::=  [`erased`] (id | ‘_’) [‘:’ Type]                           ValDef(_, id, tpe, EmptyTree)
 
 Modifier          ::=  LocalModifier
                     |  AccessModifier
@@ -390,6 +432,13 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘implicit’
                     |  ‘lazy’
                     |  ‘inline’
+                    |  ‘transparent’
+                    |  ‘infix’
+                    |  ‘erased’
+                    |  ‘tracked’
+                    |  ‘update’                                                      -- under captureChecking
+                    |  ‘consume’
+
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
@@ -414,9 +463,12 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 
 ### Definitions
 ```ebnf
-RefineDef         ::=  ‘val’ ValDef
-                    |  ‘def’ DefDef
+RefineDcl         ::=  ‘val’ ValDcl
+                    |  ‘var’ ValDcl
+                    |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDef
+ValDcl            ::=  ids ‘:’ Type
+DefDcl            ::=  DefSig ‘:’ Type
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
@@ -426,30 +478,50 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
                     |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
 DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                             DefDef(_, name, paramss, tpe, expr)
-                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr     DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
+                    |  ‘this’ ConstrParamClauses [DefImplicitClause] ‘=’ ConstrExpr     DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
 DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
-TypeDef           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
-                       [‘=’ Type]
+TypeDef           ::=  id [HkTypeParamClause] {FunParamClause} TypeAndCtxBounds   TypeDefTree(_, name, tparams, bound
+                       [‘=’ TypeDefRHS]
+                    | id `^` TypeAndCtxBounds [‘=’ TypeDefRHS]                  -- under captureChecking
+TypeDefRHS        ::= Type
+                    | CaptureSet                                                -- under captureChecking
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘given’ GivenDef
+                    |  ‘given’ (GivenDef | OldGivenDef)
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
+
+GivenDef          ::=  [id ':'] GivenSig
+GivenSig          ::=  GivenImpl
+                    |  '(' ')' '=>' GivenImpl
+                    |  GivenConditional '=>' GivenSig
+GivenImpl         ::=  GivenType ([‘=’ Expr] | TemplateBody)
+                    |  ConstrApps TemplateBody
+GivenConditional  ::=  DefTypeParamClause
+                    |  DefTermParamClause
+                    |  '(' FunArgTypes ')'
+                    |  GivenType
+GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
+
+OldGivenDef       ::=  [OldGivenSig] (AnnotType [‘=’ Expr] | StructuralInstance) -- syntax up to Scala 3.5, to be deprecated in the future
+OldGivenSig       ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’          -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
+
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
                     |  Export
 Template          ::=  InheritClauses [TemplateBody]
-InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+InheritClauses    ::=  [‘extends’ ConstrApps]
+                       [‘derives’ QualId {‘,’ QualId}]
+                       [‘uses’ CaptureRef {‘,’ CaptureRef}]
+                       [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
@@ -461,7 +533,6 @@ TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
-                    |  {Annotation [nl]} {Modifier} Dcl
                     |  Extension
                     |  Expr1
                     |  EndMarker

@@ -1,0 +1,23 @@
+break Test$ 9
+eval x = A(2)
+result ()
+eval y = x + A(1); y
+result 3
+eval z += A(2); z
+result 3
+eval xx()
+result 3
+eval (new B).yy()
+result 4
+
+break Test$ 12
+eval x += A(1); x
+result 5
+eval xx()
+result 6
+
+break Test$B$1 16
+eval y += A(1); y
+result 6
+eval (new B).yy()
+result 7

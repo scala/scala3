@@ -1,0 +1,36 @@
+break example.A$ 8
+eval a1("foo")
+result a1: foo
+eval this.a2("foo")
+result a2: foo
+eval B.b1
+result b1
+eval B.b1("foo")
+result b1: foo
+eval B.b2("foo")
+result b2: foo
+eval B.b3("foo")
+error method b3 cannot be accessed
+eval C.c1("foo")
+result c1: foo
+eval C.c2("foo")
+result c2: foo
+
+// access static methods from private object
+break example.A$B$ 16
+eval a1("foo")
+result a1: foo
+eval A.this.a2("foo")
+result a2: foo
+eval B.b1
+result b1
+eval B.b1("foo")
+result b1: foo
+eval B.b2("foo")
+result b2: foo
+eval B.b3("foo")
+result b3: foo
+eval C.c1("foo")
+result c1: foo
+eval C.c2("foo")
+result c2: foo

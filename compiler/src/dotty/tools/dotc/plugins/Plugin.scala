@@ -13,6 +13,7 @@ import java.io.InputStream
 import java.util.Properties
 
 import scala.util.{ Try, Success, Failure }
+import scala.annotation.nowarn
 
 trait PluginPhase extends MiniPhase {
   def runsBefore: Set[String] = Set.empty
@@ -50,7 +51,20 @@ trait StandardPlugin extends Plugin {
    *  @param options commandline options to the plugin.
    *  @return a list of phases to be added to the phase plan
    */
-  def init(options: List[String]): List[PluginPhase]
+  @deprecatedOverriding("Method 'init' does not allow to access 'Context', use 'initialize' instead.", since = "Scala 3.5.0")
+  @deprecated("Use 'initialize' instead.", since = "Scala 3.5.0")
+  def init(options: List[String]): List[PluginPhase] = Nil
+
+  /** Non-research plugins should override this method to return the phases
+   *
+   *  The phases returned must be freshly constructed (not reused
+   *  and returned again on subsequent calls).
+   *
+   *  @param options commandline options to the plugin.
+   *  @return a list of phases to be added to the phase plan
+   */
+  @nowarn("cat=deprecation")
+  def initialize(options: List[String])(using Context): List[PluginPhase] = init(options)
 }
 
 /** A research plugin may customize the compilation pipeline freely
@@ -91,7 +105,7 @@ object Plugin {
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
     import scala.util.control.NonFatal
     try
-      Success[AnyClass](loader loadClass classname)
+      Success[AnyClass](loader.loadClass(classname))
     catch {
       case NonFatal(e) =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
@@ -140,7 +154,10 @@ object Plugin {
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
-      d.files.toList sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
+      d.files.toList
+        .sortBy(_.name)
+        .filter(Jar.isJarOrZip(_))
+        .map(j => (j, loadDescriptionFromJar(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]
 
@@ -157,8 +174,8 @@ object Plugin {
       def loop(qs: List[Path]): Try[String] = qs match {
         case Nil       => Failure(new MissingPluginException(ps))
         case p :: rest =>
-          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) orElse loop(rest)
-          else if (p.isFile) loadDescriptionFromJar(p.toFile) orElse loop(rest)
+          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) `orElse` loop(rest)
+          else if (p.isFile) loadDescriptionFromJar(p.toFile) `orElse` loop(rest)
           else loop(rest)
       }
       loop(ps)

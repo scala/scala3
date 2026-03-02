@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/7414
+// https://github.com/scala/scala3/issues/7414
 
 object DepTest {
   trait Trait {

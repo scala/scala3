@@ -4,10 +4,36 @@ package core
 
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
+import ContextOps.enter
+import config.Feature
+import reporting.AlreadyDefined
 import TypeApplications.EtaExpansion
+import collection.mutable
+import config.Printers.typr
+import rewrites.Rewrites.patch
+import util.Spans.Span
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
+
+  /** A completer supporting cleanup actions.
+   *  Needed to break the loop between completion of class and companion object.
+   *  If we try to complete the class first, and completion needs the companion
+   *  object (for instance for processing an import) then the companion object
+   *  completion would consult the companion class info for constructor that
+   *  need a constructor proxy in the object. This can lead to a cyclic reference.
+   *  We break the cycle by delaying adding constructor proxies to be a cleanuo
+   *  action instead.
+   */
+  trait CompleterWithCleanup extends LazyType:
+    private var cleanupActions: List[() => Unit] = Nil
+    def addCleanupAction(op: () => Unit): Unit =
+      cleanupActions = op :: cleanupActions
+    def cleanup(): Unit =
+      if cleanupActions.nonEmpty then
+        cleanupActions.reverse.foreach(_())
+        cleanupActions = Nil
+  end CompleterWithCleanup
 
   /** The type of the constructed instance is returned
    *
@@ -15,19 +41,60 @@ object NamerOps:
    */
   def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
     paramss match
-      case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
-      case _ => ctor.owner.typeRef
+      case TypeSymbols(tparams) :: rest =>
+        addParamRefinements(ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef)), rest)
+      case _ =>
+        addParamRefinements(ctor.owner.typeRef, paramss)
+
+  /** Given a method with tracked term-parameters `p1, ..., pn`, and result type `R`, add the
+   *  refinements R { p1 = p1' } ... { pn = pn' }, where pi' is the TermParamRef
+   *  of the parameter and pi is its name. This matters only under experimental.modularity,
+   *  since without it there are no tracked parameters. Parameter refinements are added for
+   *  constructors and given companion methods.
+   */
+  def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
+    paramss.flatten.foldLeft(resType): (rt, param) =>
+      if param.is(Tracked) then RefinedType.precise(rt, param.name, param.termRef)
+      else rt
+
+  /** Split dependent class refinements off parent type. Add them to `refinements`,
+   *  unless it is null.
+   */
+  extension (tp: Type)
+    def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null)(using Context): Type =
+      tp match
+        case RefinedType(tp1, rname, rinfo) =>
+          try tp1.separateRefinements(cls, refinements)
+          finally
+            if refinements != null then
+              val rinfo1 = rinfo.widenSkolems
+              refinements(rname) = refinements.get(rname) match
+                case Some(tp) => tp & rinfo1
+                case None => rinfo1
+        case tp @ AnnotatedType(tp1, ann) =>
+          tp.derivedAnnotatedType(tp1.separateRefinements(cls, refinements), ann)
+        case tp: RecType =>
+          tp.parent.substRecThis(tp, cls.thisType).separateRefinements(cls, refinements)
+        case tp =>
+          tp
 
   /** If isConstructor, make sure it has at least one non-implicit parameter list
    *  This is done by adding a () in front of a leading old style implicit parameter,
    *  or by adding a () as last -- or only -- parameter list if the constructor has
    *  only using clauses as parameters.
+   *
+   * implicitRewritePosition, if included, will point to where `()` should be added if rewriting
+   * with -Yimplicit-to-given
    */
-  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
+  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): List[List[Symbol]] =
     if !isConstructor then paramss
     else paramss match
-      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) =>
+        implicitRewritePosition match
+          case Some(position) if ctx.settings.YimplicitToGiven.value => patch(position, "()")
+          case _ => ()
+        Nil :: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
@@ -77,10 +144,10 @@ object NamerOps:
   private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
 
   /** The flags of a constructor companion */
-  private val ConstructorCompanionFlags = Synthetic | ConstructorProxy
+  private val ConstructorCompanionFlags = Synthetic | PhantomSymbol
 
   /** The flags of an `apply` method that serves as a constructor proxy */
-  val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
+  val ApplyProxyFlags = Synthetic | PhantomSymbol | Inline | Method
 
   /** If this is a reference to a class and the reference has a stable prefix, the reference
    *  otherwise NoType
@@ -110,14 +177,22 @@ object NamerOps:
    */
   def addConstructorApplies(scope: MutableScope, cls: ClassSymbol, modcls: ClassSymbol)(using Context): scope.type =
     def proxy(constr: Symbol): Symbol =
+      var flags = ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags)
+      if cls.is(Protected) && !modcls.is(Protected) then flags |= Protected
       newSymbol(
         modcls, nme.apply,
-        ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
+        flags,
         ApplyProxyCompleter(constr),
         cls.privateWithin,
         constr.coord)
-    for dcl <- cls.info.decls do
+    def doAdd() = for dcl <- cls.info.decls do
       if dcl.isConstructor then scope.enter(proxy(dcl))
+    cls.infoOrCompleter match
+      case completer: CompleterWithCleanup if cls.is(Touched) =>
+        // Taking the info would lead to a cyclic reference here - delay instead until cleanup of `cls`
+        completer.addCleanupAction(doAdd)
+      case _ =>
+        doAdd()
     scope
   end addConstructorApplies
 
@@ -136,19 +211,23 @@ object NamerOps:
 
   /** A new symbol that is the constructor companion for class `cls` */
   def classConstructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
+    var flags = ConstructorCompanionFlags
+    if cls.is(Protected) then flags |= Protected
     val companion = newModuleSymbol(
         cls.owner, cls.name.toTermName,
-        ConstructorCompanionFlags, ConstructorCompanionFlags,
+        flags, flags,
         constructorCompanionCompleter(cls),
-        coord = cls.coord,
-        compUnitInfo = cls.compUnitInfo)
+        cls.privateWithin,
+        cls.coord,
+        cls.compUnitInfo)
     companion.moduleClass.registerCompanion(cls)
     cls.registerCompanion(companion.moduleClass)
     companion
 
   def typeConstructorCompanion(tsym: Symbol, prefix: Type, proxy: Symbol)(using Context): TermSymbol =
-    newSymbol(tsym.owner, tsym.name.toTermName,
-        ConstructorCompanionFlags | StableRealizable | Method, ExprType(prefix.select(proxy)), coord = tsym.coord)
+    inline def core = ConstructorCompanionFlags | StableRealizable | Method
+    inline def flags = if tsym.is(Exported) then core | Exported else core
+    newSymbol(tsym.owner, tsym.name.toTermName, flags, ExprType(prefix.select(proxy)), coord = tsym.coord)
 
   /** Add all necessary constructor proxy symbols for members of class `cls`. This means:
    *
@@ -175,7 +254,7 @@ object NamerOps:
             underlyingStableClassRef(mbr.info.loBound): @unchecked match
               case ref: TypeRef =>
                 val proxy = ref.symbol.registeredCompanion
-                if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then
+                if proxy.is(PhantomSymbol) && !memberExists(cls, mbr.name.toTermName) then
                   typeConstructorCompanion(mbr, ref.prefix, proxy).entered
 
     if cls.is(Module)
@@ -221,5 +300,80 @@ object NamerOps:
       rhsCtx.gadtState.addBound(psym, tr, isUpper = false)
       rhsCtx.gadtState.addBound(psym, tr, isUpper = true)
     }
+
+  /** Create a context-bound companion for type symbol `tsym`, which has a context
+   *  bound that defines a set of witnesses with names `witnessNames`.
+   *
+   *  @param params  If `tsym` is a type parameter, a list of parameter symbols
+   *                 that includes all witnesses, otherwise the empty list.
+   *
+   *  The context-bound companion has as name the name of `tsym` translated to
+   *  a term name. We create a synthetic val of the form
+   *
+   *    val A: `<context-bound-companion>`[witnessRef1] & ... & `<context-bound-companion>`[witnessRefN]
+   *
+   *  where
+   *
+   *      <context-bound-companion> is the CBCompanion type created in Definitions
+   *      withnessRefK is a reference to the K'th witness.
+   *
+   *  The companion has the same access flags as the original type.
+   */
+  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: List[Symbol])(using Context): Unit =
+    val prefix = ctx.owner.thisType
+    val companionName = tsym.name.toTermName
+    val witnessRefs =
+      if params.nonEmpty then
+        witnessNames.map: witnessName =>
+            prefix.select(params.find(_.name == witnessName).get)
+      else
+        witnessNames.map(TermRef(prefix, _))
+    val cbtype = witnessRefs.map(defn.CBCompanion.typeRef.appliedTo).reduce(AndType.apply)
+    val cbc = newSymbol(
+        ctx.owner, companionName,
+        (tsym.flagsUNSAFE & (AccessFlags)).toTermFlags | Synthetic,
+        cbtype)
+    typr.println(s"context bound companion created $cbc for $witnessNames in ${ctx.owner}")
+    ctx.enter(cbc)
+  end addContextBoundCompanionFor
+
+  /** Add context bound companions to all context-bound types declared in
+   *  this class. This assumes that these types already have their
+   *  WitnessNames annotation set even before they are completed. This is
+   *  the case for unpickling but currently not for Namer. So the method
+   *  is only called during unpickling.
+   */
+  def addContextBoundCompanions(cls: ClassSymbol)(using Context): Unit =
+    for sym <- cls.info.decls do
+      if sym.isType && !sym.isClass then
+        for ann <- sym.annotationsUNSAFE do
+          if ann.symbol == defn.WitnessNamesAnnot then
+            ann.tree match
+              case ast.tpd.WitnessNamesAnnot(witnessNames) =>
+                addContextBoundCompanionFor(sym, witnessNames, Nil)
+
+  /** Add a dummy term symbol for a type def that has capture parameter flag.
+   *  The dummy symbol has the same name as the original type symbol and is stable.
+   *  The underlying info stores the corresponding type reference.
+   *
+   *  @param param the original type symbol of the capture parameter
+   */
+  def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
+    val name = param.name.toTermName
+    val preExisting = ctx.effectiveScope.lookup(name)
+    if preExisting.exists then
+      report.error(AlreadyDefined(name, param.owner, preExisting, addingCaptureSet = true), param.srcPos)
+    else
+      val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
+      val dummy = newSymbol(param.owner, name, flags, param.typeRef)
+      typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
+      ctx.enter(dummy)
+
+  /** if `sym` is a term parameter or parameter accessor, map all occurrences of
+   *  `into[T]` in its type to `T @$into`.
+   */
+  extension (tp: Type)
+    def suppressIntoIfParam(sym: Symbol)(using Context): Type =
+      if sym.isOneOf(TermParamOrAccessor) then TypeOps.suppressInto(tp) else tp
 
 end NamerOps

@@ -1,0 +1,22 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23823.scala:9:27 ----------------------------------------
+9 |  val b: BoxIO[IO^] = BoxIO(io) // error
+  |                      ^^^^^^^^^
+  |                      Found:    BoxIO[IO^{io}]{val value: IO^{io}; val value: IO^{io}}^{io}
+  |                      Required: BoxIO[IO^]
+  |
+  |                      Note that capability `io` cannot flow into capture set {}.
+  |
+  |                      where:    ^ refers to a root capability in the type of value b
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23823.scala:10:23 ---------------------------------------
+10 |  val b2: BoxIO[IO^] = new BoxIO(io) // error
+   |                       ^^^^^^^^^^^^^
+   |                       Found:    BoxIO[IO^{io}]{val value: IO^{io}}^{io}
+   |                       Required: BoxIO[IO^]
+   |
+   |                       Note that capability `io` cannot flow into capture set {}.
+   |
+   |                       where:    ^ refers to a root capability in the type of value b2
+   |
+   | longer explanation available when compiling with `-explain`

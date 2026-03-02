@@ -59,8 +59,8 @@ be changed in the future. For example by not widening unions that have been
 explicitly written down by the user and not inferred, or by not widening a type
 argument when the corresponding type parameter is covariant.
 
-See [PR #2330](https://github.com/lampepfl/dotty/pull/2330) and
-[Issue #4867](https://github.com/lampepfl/dotty/issues/4867) for further discussions.
+See [PR #2330](https://github.com/scala/scala3/pull/2330) and
+[Issue #4867](https://github.com/scala/scala3/issues/4867) for further discussions.
 
 ### Example
 

@@ -74,4 +74,4 @@ cannot subvert untupling.
 For more information see:
 
 * [More details](./parameter-untupling-spec.md)
-* [Issue #897](https://github.com/lampepfl/dotty/issues/897).
+* [Issue #897](https://github.com/scala/scala3/issues/897).

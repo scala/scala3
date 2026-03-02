@@ -1,7 +1,6 @@
-import annotation.capability
 import language.experimental.saferExceptions
 
-@capability class FileSystem
+class FileSystem extends caps.SharedCapability
 
 class Logger(using fs: FileSystem):
   def log(s: String): Unit = ???

@@ -1,0 +1,4 @@
+-- Error: tests/neg/i22941.scala:4:6 -----------------------------------------------------------------------------------
+4 |class Baz extends Foo: // error
+  |      ^^^
+  |      class Baz needs to be abstract, since def bar: String in trait Foo is not defined 

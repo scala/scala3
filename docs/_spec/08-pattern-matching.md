@@ -616,7 +616,7 @@ new scala.PartialFunction[´S´, ´T´] {
   def apply(´x´: ´S´): ´T´ = x match {
     case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´
   }
-  def isDefinedAt(´x´: ´S´): Boolean = {
+  def isDefinedAt(´x´: ´S´): Boolean = x match {
     case ´p_1´ => true ... case ´p_n´ => true
     case _ => false
   }
@@ -625,6 +625,22 @@ new scala.PartialFunction[´S´, ´T´] {
 
 Here, ´x´ is a fresh name and ´T´ is the least upper bound of the types of all ´b_i´.
 The final default case in the `isDefinedAt` method is omitted if one of the patterns ´p_1, ..., p_n´ is already a variable or wildcard pattern.
+
+As a convenience, the partial function may be written using function literal notation:
+
+```scala
+(´x: S´) => e(´x´) match {
+  case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´
+}
+```
+where the selector expression is used for matches in the expansion.
+The body of the function must consist solely of the match expression.
+
+This syntax permits annotating the selector:
+
+```scala
+(´x: S´) => (e(´x´): @unchecked) match { ... }
+```
 
 ###### Example
 Here's an example which uses `foldLeft` to compute the scalar product of two vectors:

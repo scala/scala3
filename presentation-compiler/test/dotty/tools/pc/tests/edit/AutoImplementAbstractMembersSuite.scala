@@ -2,9 +2,9 @@ package dotty.tools.pc.tests.edit
 
 import java.net.URI
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -75,39 +75,59 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `no-new-line` =
+    checkEdit(
+      """|package a
+          |
+          |trait X:
+          |  def foo: Unit
+          |
+          |class <<Y>> extends X""".stripMargin,
+      """|package a
+         |
+         |trait X:
+         |  def foo: Unit
+         |
+         |class Y extends X {
+         |
+         |  override def foo: Unit = ???
+         |
+         |}""".stripMargin
+    )
+
   @Test def `empty-lines-between-members` =
     checkEdit(
       """|package a
-         |
-         |object A {
-         |  trait Base {
-         |    def foo(x: Int): Int
-         |    def bar(x: String): String
-         |  }
-         |  class <<Concrete>> extends Base {
-         |
-         |    def bar(x: String): String = ???
-         |
-         |  }
-         |}
-         |""".stripMargin,
+        |
+        |object A {
+        |  trait Base {
+        |    def foo(x: Int): Int
+        |    def bar(x: String): String
+        |  }
+        |  class <<Concrete>> extends Base {
+        |
+        |    def bar(x: String): String = ???
+        |
+        |  }
+        |}
+        |""".stripMargin,
       """|package a
-         |
-         |object A {
-         |  trait Base {
-         |    def foo(x: Int): Int
-         |    def bar(x: String): String
-         |  }
-         |  class Concrete extends Base {
-         |
-         |
-         |    override def foo(x: Int): Int = ???
-         |
-         |    def bar(x: String): String = ???
-         |
-         |  }
-         |}
-         |""".stripMargin
+        |
+        |object A {
+        |  trait Base {
+        |    def foo(x: Int): Int
+        |    def bar(x: String): String
+        |  }
+        |  class Concrete extends Base {
+        |
+        |
+        |    override def foo(x: Int): Int = ???
+        |
+        |    def bar(x: String): String = ???
+        |
+        |  }
+        |}
+        |""".stripMargin
     )
 
   @Test def `objectdef` =
@@ -345,9 +365,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |object Main {
          |  class Baz extends Bar {
          |
-         |    override def foo: Int = ???
-         |
          |    override def bar: Int = ???
+         |
+         |    override def foo: Int = ???
          |
          |  }
          |}
@@ -1089,11 +1109,13 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  def foo(x: Int): Int
          |  def bar(x: String): String
          |
-         |given Foo with
+         |given Foo {
          |
          |  override def foo(x: Int): Int = ???
          |
          |  override def bar(x: String): String = ???
+         |
+         |}
          |""".stripMargin
     )
 
@@ -1234,7 +1256,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  end Concrete
          |
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `end-marker2` =
@@ -1243,7 +1265,6 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |object A {
          |  trait Base:
-         |    def foo(x: Int): Int
          |    def bar(x: String): String
          |
          |  class <<Concrete>>(x: Int, y: String) extends Base:
@@ -1256,12 +1277,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |object A {
          |  trait Base:
-         |    def foo(x: Int): Int
          |    def bar(x: String): String
          |
          |  class Concrete(x: Int, y: String) extends Base:
-         |
-         |    override def foo(x: Int): Int = ???
          |
          |    override def bar(x: String): String = ???
          |
@@ -1269,7 +1287,36 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  end Concrete
          |
          |}
+         |""".stripMargin
+    )
+
+  @Test def `braceless-case-class` =
+    checkEdit(
+      """|package a
+         |
+         |trait Base:
+         |  def foo(x: Int): Int
+         |  def bar(x: String): String
+         |
+         |case class <<Concrete>>() extends Base:
+         |  def aaa = "aaa"
+         |end Concrete
          |""".stripMargin,
+      """|package a
+         |
+         |trait Base:
+         |  def foo(x: Int): Int
+         |  def bar(x: String): String
+         |
+         |case class Concrete() extends Base:
+         |
+         |  override def foo(x: Int): Int = ???
+         |
+         |  override def bar(x: String): String = ???
+         |
+         |  def aaa = "aaa"
+         |end Concrete
+         |""".stripMargin
     )
 
   def checkEdit(

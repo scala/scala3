@@ -1,0 +1,8 @@
+-- Deprecation Warning: tests/warn/i19913.scala:13:25 ------------------------------------------------------------------
+13 |  Deprecated.inlineMethod() // warn
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  method inlineMethod in object Deprecated is deprecated: test
+-- Deprecation Warning: tests/warn/i19913.scala:12:13 ------------------------------------------------------------------
+12 |  Deprecated.method() // warn
+   |  ^^^^^^^^^^^^^^^^^
+   |  method method in object Deprecated is deprecated: test

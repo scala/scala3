@@ -13,7 +13,7 @@ object TupledEvidenceTest {
 
   def f[T : GetResult] = ""
 
-  f[(String,String)](getTuple[(String, String)])
+  f[(String,String)](using getTuple[(String, String)])
 
   f[(String,String)]
 }

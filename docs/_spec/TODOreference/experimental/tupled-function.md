@@ -34,7 +34,7 @@ The compiler will synthesize an instance of `TupledFunction[F, G]` if:
 Examples
 --------
 `TupledFunction` can be used to generalize the `Function1.tupled`, ... `Function22.tupled` methods to functions of any arities.
-The following defines `tupled` as [extension method](../contextual/extension-methods.html) ([full example](https://github.com/lampepfl/dotty/blob/main/tests/run/tupled-function-tupled.scala)).
+The following defines `tupled` as [extension method](../contextual/extension-methods.html) ([full example](https://github.com/scala/scala3/blob/main/tests/run/tupled-function-tupled.scala)).
 
 ```scala
 /** Creates a tupled version of this function: instead of N arguments,
@@ -48,7 +48,7 @@ extension [F, Args <: Tuple, R](f: F)
   def tupled(using tf: TupledFunction[F, Args => R]): Args => R = tf.tupled(f)
 ```
 
-`TupledFunction` can be used to generalize the `Function.untupled` to a function of any arities ([full example](https://github.com/lampepfl/dotty/blob/main/tests/run/tupled-function-untupled.scala))
+`TupledFunction` can be used to generalize the `Function.untupled` to a function of any arities ([full example](https://github.com/scala/scala3/blob/main/tests/run/tupled-function-untupled.scala))
 
 ```scala
 /** Creates an untupled version of this function: instead of a single argument of type [[scala.Tuple]] with N elements,
@@ -64,7 +64,7 @@ extension [F, Args <: Tuple, R](f: Args => R)
   def untupled(using tf: TupledFunction[F, Args => R]): F = tf.untupled(f)
 ```
 
-`TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/lampepfl/dotty/blob/main/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/lampepfl/dotty/blob/main/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
+`TupledFunction` can also be used to generalize the [`Tuple1.compose`](https://github.com/scala/scala3/blob/main/tests/run/tupled-function-compose.scala) and [`Tuple1.andThen`](https://github.com/scala/scala3/blob/main/tests/run/tupled-function-andThen.scala) methods to compose functions of larger arities and with functions that return tuples.
 
 ```scala
 /** Composes two instances of TupledFunction into a new TupledFunction, with this function applied last.

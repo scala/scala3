@@ -50,7 +50,7 @@ class Jar(file: File) {
   def mainClass: Option[String]     = manifest.map(_(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
   def classPathString: Option[String] =
-    for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH)) yield cp
+    for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH) if !cp.trim().isEmpty()) yield cp
   def classPathElements: List[String] = classPathString match {
     case Some(s)  => s.split("\\s+").toList
     case _        => Nil
@@ -69,10 +69,9 @@ class Jar(file: File) {
     Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).toList
   }
 
-  def getEntryStream(entry: JarEntry): java.io.InputStream = jarFile getInputStream entry match {
+  def getEntryStream(entry: JarEntry): java.io.InputStream = jarFile.getInputStream(entry) match
     case null   => errorFn("No such entry: " + entry) ; null
     case x      => x
-  }
 
   override def toString: String = "" + file
 }
@@ -86,7 +85,7 @@ class JarWriter(val file: File, val manifest: Manifest) {
    */
   def newOutputStream(path: String): DataOutputStream = {
     val entry = new JarEntry(path)
-    out putNextEntry entry
+    out.putNextEntry(entry)
     new DataOutputStream(out)
   }
 
@@ -95,7 +94,7 @@ class JarWriter(val file: File, val manifest: Manifest) {
     finally out.close()
   }
   def addStream(entry: JarEntry, in: InputStream): Unit =  {
-    out putNextEntry entry
+    out.putNextEntry(entry)
     try transfer(in, out)
     finally out.closeEntry()
   }
@@ -165,10 +164,10 @@ object Jar {
 
   def isJarOrZip(f: Path): Boolean = isJarOrZip(f, true)
   def isJarOrZip(f: Path, examineFile: Boolean): Boolean =
-    f.hasExtension("zip", "jar") || (examineFile && magicNumberIsZip(f))
+    f.ext.isJarOrZip || (examineFile && magicNumberIsZip(f))
 
   def create(file: File, sourceDir: Directory, mainClass: String): Unit =  {
     val writer = new Jar(file).jarWriter(Name.MAIN_CLASS -> mainClass)
-    writer writeAllFrom sourceDir
+    writer.writeAllFrom(sourceDir)
   }
 }

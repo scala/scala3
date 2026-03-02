@@ -1,3 +1,5 @@
+//> using options -experimental
+
 class Bar:
   @foo def bar(s: String) = s
 

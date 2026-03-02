@@ -100,7 +100,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read an uncompressed Long stored in 8 bytes in big endian format */
   def readUncompressedLong(): Long = {
     var x: Long = 0
-    for (i <- 0 to 7)
+    for (_ <- 0 to 7)
       x = (x << 8) | (readByte() & 0xff)
     x
   }

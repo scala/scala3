@@ -1,0 +1,69 @@
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:12:14 -------------------------------------------------
+12 |type EX1 = () => (c: Exists) => (C^{c}, C^{c}) // error: illegal capture ref
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:14:14 -------------------------------------------------
+14 |type EX2 = () => (c1: Exists) => (c2: Exists) => (C^{c1}, C^{c2}) // error: illegal capture ref
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Illegal capture reference: c2.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:16:14 -------------------------------------------------
+16 |type EX3 = () => (c: Exists) => (x: Object^) => C^{c} // error: illegal capture ref
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:18:14 -------------------------------------------------
+18 |type EX4 = () => (x: Object^) => (c: Exists) => C^{c} // error: illegal capture ref
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:21:11 -------------------------------------------------
+21 |  val ex1: EX1 = ??? // error: illegal capture ref
+   |           ^^^
+   |           Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:22:11 -------------------------------------------------
+22 |  val ex2: EX2 = ??? // error: illegal capture ref
+   |           ^^^
+   |           Illegal capture reference: c2.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:23:9 --------------------------------------------------
+23 |  val _: EX1 = ex1  // error: illegal capture ref
+   |         ^^^
+   |         Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:24:9 --------------------------------------------------
+24 |  val _: EX2 = ex1  // error separation // error: illegal capture ref
+   |         ^^^
+   |         Illegal capture reference: c2.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:25:9 --------------------------------------------------
+25 |  val _: EX1 = ex2  // error: illegal capture ref
+   |         ^^^
+   |         Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:27:11 -------------------------------------------------
+27 |  val ex3: EX3 = ???  // error: illegal capture ref
+   |           ^^^
+   |           Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:28:11 -------------------------------------------------
+28 |  val ex4: EX4 = ???  // error: illegal capture ref
+   |           ^^^
+   |           Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:29:9 --------------------------------------------------
+29 |  val _: EX4 = ex3 // error: illegal capture ref
+   |         ^^^
+   |         Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:30:9 --------------------------------------------------
+30 |  val _: EX4 = ex4 // error: illegal capture ref
+   |         ^^^
+   |         Illegal capture reference: c.type
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:31:9 --------------------------------------------------
+31 |  val _: EX3 = ex4 // error: type mismatch // error: illegal capture ref
+   |         ^^^
+   |         Illegal capture reference: c.type
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:31:15 ----------------------------
+31 |  val _: EX3 = ex4 // error: type mismatch // error: illegal capture ref
+   |               ^^^
+   |              Found:    () ->{ex4} (x: Object^) ->{ex4*} (ex$18: caps.Exists) -> (c: caps.Exists) ->{ex$18} C
+   |              Required: () ->{fresh} (ex$27: caps.Exists) -> (c: caps.Exists) ->{ex$27} (x: Object^) ->{fresh} C
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/cc-ex-conformance.scala:24:15 -------------------------------------------------
+24 |  val _: EX2 = ex1  // error separation // error: illegal capture ref
+   |               ^^^
+   |               Separation failure: Illegal access to {ex1} which is hidden by the previous definition
+   |               of value _$1 with type () => (ex$10: caps.Exists) -> (c: caps.Exists) ->{ex$10} (C, C).
+   |               This type hides capabilities  {ex1}

@@ -1,4 +1,4 @@
-//> using options -Yno-experimental
+
 
 import annotation.experimental
 type A[T] = Int

@@ -81,7 +81,7 @@ class CompletionBacktickSuite extends BaseCompletionSuite:
       filter = _.contains("`type`")
     )
 
-  // https://dotty.epfl.ch/docs/internals/syntax.html#soft-keywords
+  // https://nightly.scala-lang.org/docs/internals/syntax.html#soft-keywords
   @Test def `soft-keywords-check` =
     List(
       "infix",
@@ -178,4 +178,61 @@ class CompletionBacktickSuite extends BaseCompletionSuite:
          |  val b = a.`lazy`
          |}
          |""".stripMargin
+    )
+
+  @Test def `add-backticks-around-identifier` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  Foo@@
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `complete-inside-backticks` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo@@`
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `complete-inside-backticks-after-space` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo B@@a`
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `complete-inside-empty-backticks` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `@@`
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin,
+      filter = _ == "Foo Bar: Int"
     )

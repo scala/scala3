@@ -431,7 +431,7 @@ When dealing with local mutable variables, there are two questions:
      x = null
    ```
 
-See [more examples](https://github.com/lampepfl/dotty/blob/main/tests/explicit-nulls/neg/flow-varref-in-closure.scala).
+See [more examples](https://github.com/scala/scala3/blob/main/tests/explicit-nulls/neg/flow-varref-in-closure.scala).
 
 Currently, we are unable to track paths with a mutable variable prefix.
 For example, `x.a` if `x` is mutable.
@@ -540,4 +540,4 @@ Our strategy for binary compatibility with Scala binaries that predate explicit 
 and new libraries compiled without `-Yexplicit-nulls` is to leave the types unchanged
 and be compatible but unsound.
 
-[More details](https://dotty.epfl.ch/docs/internals/explicit-nulls.html)
+[More details](https://nightly.scala-lang.org/docs/internals/explicit-nulls.html)

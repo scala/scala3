@@ -11,7 +11,7 @@ import scala.compiletime.uninitialized
  *  with a different context.
  *
  *  A typical use case is a lazy val in a phase object which exists once per root context where
- *  the expression intiializing the lazy val depends only on the root context, but not any changes afterwards.
+ *  the expression initializing the lazy val depends only on the root context, but not any changes afterwards.
  */
 class CtxLazy[T](expr: Context ?=> T) {
   private var myValue: T = uninitialized

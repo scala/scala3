@@ -11,8 +11,8 @@ class CompletionPatternSuite extends BaseCompletionSuite:
 
   def paramHint: Option[String] = Some("param-hint")
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       _parameterHintsCommand = paramHint
     )
 
@@ -54,10 +54,7 @@ class CompletionPatternSuite extends BaseCompletionSuite:
         |    case ma@@
         |  }
         |}""".stripMargin,
-      """|main scala
-         |macros - scala.languageFeature.experimental
-         |macroImpl - scala.reflect.macros.internal
-         |""".stripMargin
+      ""
     )
 
   @Test def `bind2` =

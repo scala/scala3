@@ -2,7 +2,7 @@ import scala.quoted.Quotes
 import scala.quoted.quotes
 import scala.tasty.inspector as ins
 
-// Test for https://github.com/lampepfl/dotty/issues/13919
+// Test for https://github.com/scala/scala3/issues/13919
 class MyInspector extends ins.Inspector:
   def inspect(using Quotes)(tastys: List[ins.Tasty[quotes.type]]): Unit =
     import quotes.reflect._

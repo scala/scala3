@@ -1,23 +1,25 @@
-package dotty.tools
+package dotty
+package tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-import java.io.{BufferedReader, FileInputStream, FileOutputStream, FileReader, PrintStream, PrintWriter, StringReader, StringWriter, File as JFile}
+import java.io.{File as JFile, *}
+import java.nio.file.Files.readAllLines
 import java.text.SimpleDateFormat
 import java.util.Date
+
+import core.Contexts.*
 import core.Decorators.*
+import interfaces.Diagnostic.{ERROR, WARNING}
+import io.AbstractFile
+import util.SourcePosition
+import Diagnostic.*
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.*
-import util.SourcePosition
-import core.Contexts.*
-import Diagnostic.*
-import dotty.Properties
-import interfaces.Diagnostic.{ERROR, WARNING}
-
-import scala.io.Codec
 import scala.compiletime.uninitialized
+import scala.io.Codec
+import scala.jdk.CollectionConverters.*
+import scala.language.unsafeNulls
 
 class TestReporter protected (outWriter: PrintWriter, logLevel: Int)
 extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
@@ -30,12 +32,16 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   final def messages: Iterator[String] = _messageBuf.iterator
 
   protected final val _consoleBuf = new StringWriter
-  protected final val _consoleReporter = new ConsoleReporter(null, new PrintWriter(_consoleBuf))
+  protected final val _consoleReporter = new TestConsoleReporter(new PrintWriter(_consoleBuf)):
+    override protected def renderPath(file: AbstractFile): String = TestReporter.renderPath(file)
+
   final def consoleOutput: String = _consoleBuf.toString
 
   private var _skip: Boolean = false
   final def setSkip(): Unit = _skip = true
   final def skipped: Boolean = _skip
+
+  override protected def renderPath(file: AbstractFile): String = TestReporter.renderPath(file)
 
   protected final def inlineInfo(pos: SourcePosition)(using Context): String =
     if (pos.exists) {
@@ -70,11 +76,24 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
       case _ => ""
     }
 
-    if dia.level >= WARNING then
-      _diagnosticBuf.append(dia)
+    if _consoleReporter.isDiagnosticRelevant(dia) then
       _consoleReporter.doReport(dia)
+      _diagnosticBuf.append(dia)
     printMessageAndPos(dia, extra)
   }
+
+  override def printSummary()(using Context): Unit = ()
+}
+
+class TestConsoleReporter(writer: PrintWriter) extends ConsoleReporter(null, writer) {
+  // Report even info-level diagnostics if they've been explicitly enabled by -Ylog
+  def isDiagnosticRelevant(dia: Diagnostic)(using Context): Boolean =
+    dia.level >= WARNING || ctx.settings.Ylog.value.containsPhase(ctx.phase)
+
+  /** Print the message with the given position indication. */
+  override def doReport(dia: Diagnostic)(using Context): Unit =
+    if isDiagnosticRelevant(dia) then printMessage(messageAndPos(dia))
+    else echoMessage(messageAndPos(dia))
 }
 
 object TestReporter {
@@ -150,10 +169,16 @@ object TestReporter {
       Properties.rerunFailed &&
         failedTestsFile.exists() &&
         failedTestsFile.isFile
-    )(java.nio.file.Files.readAllLines(failedTestsFile.toPath).asScala.toList)
+    )(readAllLines(failedTestsFile.toPath).asScala.toList)
 
   def writeFailedTests(tests: List[String]): Unit =
     initLog()
     tests.foreach(failed => failedTestsWriter.println(failed))
     failedTestsWriter.flush()
+
+  def renderPath(file: AbstractFile): String =
+    if JFile.separatorChar == '\\' then
+      file.path.replace('\\', '/')
+    else
+      file.path
 }

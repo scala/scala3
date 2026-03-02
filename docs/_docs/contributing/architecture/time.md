@@ -61,8 +61,8 @@ method foo after typer   => (b: Box)(x: b.X): scala.collection.immutable.List[b.
 method foo after erasure => (b: Box, x: Object): scala.collection.immutable.List
 ```
 
-[runs]: https://github.com/lampepfl/dotty/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/Run.scala
-[periods]: https://github.com/lampepfl/dotty/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Periods.scala
-[Contexts]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Contexts.scala
-[typer]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/typer/TyperPhase.scala
-[erasure]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/Erasure.scala
+[runs]: https://github.com/scala/scala3/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/Run.scala
+[periods]: https://github.com/scala/scala3/blob/a527f3b1e49c0d48148ccfb2eb52e3302fc4a349/compiler/src/dotty/tools/dotc/core/Periods.scala
+[Contexts]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Contexts.scala
+[typer]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/typer/TyperPhase.scala
+[erasure]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/transform/Erasure.scala

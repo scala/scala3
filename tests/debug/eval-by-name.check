@@ -1,0 +1,33 @@
+break Test$ 11
+eval x
+result foo
+eval m
+result foofoo
+eval A().m
+result fo
+eval this.m("bar")
+result barbarba
+
+break Test$ 7
+eval x
+result foo
+eval m
+result foofoo
+eval A().m
+result fo
+
+break Test$A$1 10
+eval x
+result foo
+eval m
+result fo
+eval A().m
+result fo
+
+break A 14
+eval x
+result bar
+eval m
+result bar
+eval A("foo").m
+result foo

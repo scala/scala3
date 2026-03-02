@@ -1,4 +1,4 @@
-//> using options -Xmigration:2.9 -Xfatal-warnings
+//> using options -Xmigration:2.9 -Werror
 //
 import collection.Seq
 object Test {

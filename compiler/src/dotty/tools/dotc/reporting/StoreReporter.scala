@@ -21,7 +21,7 @@ class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState
 
   protected var infos: mutable.ListBuffer[Diagnostic] | Null = null
 
-  def doReport(dia: Diagnostic)(using Context): Unit = {
+  override def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos.uncheckedNN += dia
@@ -36,6 +36,9 @@ class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState
   override def removeBufferedMessages(using Context): List[Diagnostic] =
     if (infos != null) try infos.uncheckedNN.toList finally infos = null
     else Nil
+
+  override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
+    if infos != null then infos.uncheckedNN.mapInPlace(f)
 
   override def pendingMessages(using Context): List[Diagnostic] =
     if (infos != null) infos.uncheckedNN.toList else Nil

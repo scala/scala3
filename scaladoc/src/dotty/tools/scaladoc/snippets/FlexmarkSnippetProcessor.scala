@@ -21,7 +21,7 @@ object FlexmarkSnippetProcessor:
       val lineOffset = node.getStartLineNumber + preparsed.fold(0)(_.strippedLinesBeforeNo)
       val info = node.getInfo.toString.split(" ")
       if info.contains("scala") then {
-        val argOverride = info
+        val flagOverride = info
           .find(_.startsWith("sc:"))
           .map(_.stripPrefix("sc:"))
           .map(SCFlagsParser.parse)
@@ -34,6 +34,19 @@ object FlexmarkSnippetProcessor:
               )
               None
           })
+
+        val scalacOptions: Seq[String] = info
+          .toIndexedSeq
+          .filter(_.startsWith("sc-opts:"))
+          .flatMap(_.stripPrefix("sc-opts:").split(",").map(_.trim).toSeq)
+
+        val argOverride: Option[SnippetCompilerArg] =
+          (flagOverride, scalacOptions) match {
+            case (None, Seq()) => None
+            case (Some(flag), opts) => Some(SnippetCompilerArg(flag, opts))
+            case (None, opts) => Some(SnippetCompilerArg(SCFlags.Compile, opts))
+          }
+
         val id = info
           .find(_.startsWith("sc-name:"))
           .map(_.stripPrefix("sc-name:"))
@@ -65,7 +78,7 @@ object FlexmarkSnippetProcessor:
             content.add(s, 0)
             node.setContent(content)
 
-        val fullSnippet = Seq(snippetImports, snippet).mkString("\n").trim
+        val fullSnippet = Seq(snippetImports, snippet).mkString("\n").stripPrefix("\n")
         val snippetCompilationResult = cf(fullSnippet, lineOffset, argOverride) match {
           case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) =>
             node.setContentString(fullSnippet)

@@ -17,6 +17,10 @@ object ScalaJSLink:
     Semantics.Defaults
       .withAsInstanceOfs(CheckedBehavior.Compliant)
       .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+      .withArrayStores(CheckedBehavior.Compliant)
+      .withNegativeArraySizes(CheckedBehavior.Compliant)
+      .withNullPointers(CheckedBehavior.Compliant)
+      .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
       .withModuleInit(CheckedBehavior.Compliant)
   end compliantSemantics
 

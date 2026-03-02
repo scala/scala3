@@ -98,7 +98,8 @@ object SymOps:
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
-        Flags.Opaque -> Modifier.Opaque
+        Flags.Opaque -> Modifier.Opaque,
+        Flags.AbsOverride -> Modifier.AbsOverride,
       ).collect {
         case (flag, mod) if sym.flags.is(flag) => mod
       }
@@ -213,7 +214,7 @@ end SymOps
 class SymOpsWithLinkCache:
   import SymOps.*
 
-  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
+  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile | Null, Option[ExternalDocLink]] = MMap()
 
   extension (using Quotes)(sym: reflect.Symbol)
 

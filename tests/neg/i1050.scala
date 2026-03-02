@@ -1,4 +1,4 @@
-//> using options -source future -deprecation -Xfatal-warnings
+//> using options -source future -deprecation -Werror
 
 // i1050 checks failing at posttyper
 trait A { type L <: Nothing }

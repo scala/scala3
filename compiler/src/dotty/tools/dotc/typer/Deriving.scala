@@ -10,7 +10,7 @@ import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Fla
 import ProtoTypes.*, ContextOps.*
 import util.Spans.*
 import util.SrcPos
-import collection.mutable
+import collection.mutable.ListBuffer
 import ErrorReporting.errorTree
 
 /** A typer mixin that implements type class derivation functionality */
@@ -25,13 +25,13 @@ trait Deriving {
    */
   class Deriver(cls: ClassSymbol, codePos: SrcPos)(using Context) {
 
-    /** A buffer for synthesized symbols for type class instances */
-    private var synthetics = new mutable.ListBuffer[Symbol]
+    /** A buffer for synthesized symbols for type class instances, with what user asked to synthesize. */
+    private val synthetics = ListBuffer.empty[(tpd.Tree, Symbol)]
 
     /** A version of Type#underlyingClassRef that works also for higher-kinded types */
     private def underlyingClassRef(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.isClass => tp
-      case tp: TypeRef if tp.symbol.isAbstractType => NoType
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType => NoType
       case tp: TermRef => NoType
       case tp: TypeProxy => underlyingClassRef(tp.superType)
       case _ => NoType
@@ -41,7 +41,7 @@ trait Deriving {
      *  an instance with the same name does not exist already.
      *  @param  reportErrors  Report an error if an instance with the same name exists already
      */
-    private def addDerivedInstance(clsName: Name, info: Type, pos: SrcPos): Unit = {
+    private def addDerivedInstance(derived: tpd.Tree, clsName: Name, info: Type, pos: SrcPos): Unit = {
       val instanceName = "derived$".concat(clsName)
       if (ctx.denotNamed(instanceName).exists)
         report.error(em"duplicate type class derivation for $clsName", pos)
@@ -50,9 +50,8 @@ trait Deriving {
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
         val flags = if info.isInstanceOf[MethodOrPoly] then GivenMethod else Given | Lazy
-        synthetics +=
-          newSymbol(ctx.owner, instanceName, flags, info, coord = pos.span)
-            .entered
+        val sym = newSymbol(ctx.owner, instanceName, flags, info, coord = pos.span).entered
+        synthetics += derived -> sym
     }
 
     /** Check derived type tree `derived` for the following well-formedness conditions:
@@ -77,7 +76,8 @@ trait Deriving {
      *  that have the same name but different prefixes through selective aliasing.
      */
     private def processDerivedInstance(derived: untpd.Tree): Unit = {
-      val originalTypeClassType = typedAheadType(derived, AnyTypeConstructorProto).tpe
+      val originalTypeClassTree = typedAheadType(derived, AnyTypeConstructorProto)
+      val originalTypeClassType = originalTypeClassTree.tpe
       val underlyingClassType = underlyingClassRef(originalTypeClassType)
       val typeClassType = checkClassType(
           underlyingClassType.orElse(originalTypeClassType),
@@ -100,7 +100,7 @@ trait Deriving {
         val derivedInfo =
           if derivedParams.isEmpty then monoInfo
           else PolyType.fromParams(derivedParams, monoInfo)
-        addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
+        addDerivedInstance(originalTypeClassTree, originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
       def deriveSingleParameter: Unit = {
@@ -165,7 +165,7 @@ trait Deriving {
           // case (a) ... see description above
           val derivedParams = clsParams.dropRight(instanceArity)
           val instanceType =
-            if (instanceArity == clsArity) clsType.etaExpand(clsParams)
+            if (instanceArity == clsArity) clsType.etaExpand
             else {
               val derivedParamTypes = derivedParams.map(_.typeRef)
 
@@ -292,16 +292,27 @@ trait Deriving {
           val companion = companionRef(resultType)
           val module = untpd.ref(companion).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
-          if companion.termSymbol.exists then typed(rhs, resultType)
-          else errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
+          val derivedMember = companion.member(nme.derived)
+
+          if !companion.termSymbol.exists then 
+            errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
+          else if hasExplicitParams(derivedMember.symbol) then 
+            errorTree(rhs, em"""derived instance $resultType failed to generate:
+            |method `derived` from object ${module} takes explicit term parameters""")
+          else 
+            typed(rhs, resultType)
       end typeclassInstance
+
+      // checks whether any of the params of 'sym' is explicit
+      def hasExplicitParams(sym: Symbol) = 
+        !sym.paramSymss.flatten.forall(sym => sym.isType || sym.is(Flags.Given) || sym.is(Flags.Implicit))
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
         if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))
         else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil))
       }
 
-      synthetics.map(syntheticDef).toList
+      synthetics.map((t, s) => syntheticDef(s).withAttachment(Deriving.OriginalTypeClass, t)).toList
     }
 
     def finalize(stat: tpd.TypeDef): tpd.Tree = {
@@ -310,3 +321,8 @@ trait Deriving {
     }
   }
 }
+object Deriving:
+  import dotty.tools.dotc.util.Property
+
+  /** Attachment holding the name of a type class as written by the user. */
+  val OriginalTypeClass = Property.StickyKey[tpd.Tree]

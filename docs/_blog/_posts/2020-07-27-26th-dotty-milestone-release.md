@@ -8,7 +8,7 @@ date: 2020-07-27
 
 Hello! We are excited to announce 0.26.0-RC1 of Dotty. In this version, we have improved the extension methods – their syntax is now more uniform. We have also implemented local selectable instances and have done a bunch of improvements to the compiler and the language API. Otherwise, we are focusing our efforts on reducing the issue count on the issue tracker, boosting performance and improving the stability of the compiler in other ways.
 
-You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://dotty.epfl.ch/) and scrolling down to the "Create a Dotty Project" section.
+You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://nightly.scala-lang.org/) and scrolling down to the "Create a Dotty Project" section.
 
 Alternatively, you can try this version of Scala online via [Scastie](https://scastie.scala-lang.org/). Once you're there, click "Build Settings" and set "Target" to "Dotty".
 
@@ -35,7 +35,7 @@ extension (ss: Seq[String]):
   def longestString: String = longestStrings.head
 ```
 
-You can read more about the new syntax in the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html). For the discussion, see [PR](https://github.com/lampepfl/dotty/pull/9255).
+You can read more about the new syntax in the [documentation](https://nightly.scala-lang.org/docs/reference/contextual/extension-methods.html). For the discussion, see [PR](https://github.com/scala/scala3/pull/9255).
 
 # Local Selectable Instances
 Local and anonymous classes that extend `Selectable` get more refined types than other classes. For example:
@@ -57,7 +57,7 @@ Without the `extends reflect.Selectable`, the last line would have errored:
 i3.range: // error: range is not a member of `Vehicle`
 ```
 
-The new functionality is similar to `scala.Dynamic` but different since `Selectable` is typesafe. For more about this feature, see [documentation](https://dotty.epfl.ch/docs/reference/changed-features/structural-types.html#local-selectable-instances).
+The new functionality is similar to `scala.Dynamic` but different since `Selectable` is typesafe. For more about this feature, see [documentation](https://nightly.scala-lang.org/docs/reference/changed-features/structural-types.html#local-selectable-instances).
 
 # Tuple counterparts for `summon` and `constValue`
 Two new methods for compile-time programming were added, `summonAll` and `constValueTuple`.
@@ -78,7 +78,7 @@ val result = constValueTuple["foo" *: "bar" *: 10 *: 2.5 *: EmptyTuple]
 println(result)  // (foo,bar,10,2.5)
 ```
 
-This feature was introduced by PR [#9209](https://github.com/lampepfl/dotty/pull/9209).
+This feature was introduced by PR [#9209](https://github.com/scala/scala3/pull/9209).
 
 # Per-run time budget for import suggestions
 Import suggestions is a feature useful for debugging but potentially taxing for performance. Therefore, we have added the `-Ximport-suggestion-timeout <time-in-ms>` to allow specifying the timeout (in milliseconds) after which the suggestions mechanism should stop the lookup. The timeout budget is per-run (and not per suggestion) which ensures that the performance does not degrade in case of too many suggestions.
@@ -87,7 +87,7 @@ Import suggestions is a feature useful for debugging but potentially taxing for 
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -118,8 +118,8 @@ According to `git shortlog -sn --no-merges 0.25.0-RC2..0.26.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
@@ -128,7 +128,7 @@ We are looking forward to having you join the team of contributors.
 
 Dotty now has a set of widely-used community libraries that are built against every nightly Dotty
 snapshot. Currently, this includes shapeless, ScalaPB, algebra, scalatest, scopt and squants.
-Join our [community build](https://github.com/lampepfl/dotty/tree/main/community-build)
+Join our [community build](https://github.com/scala/scala3/tree/main/community-build)
 to make sure that our regression suite includes your library.
 
 [Scastie]: https://scastie.scala-lang.org/?target=dotty

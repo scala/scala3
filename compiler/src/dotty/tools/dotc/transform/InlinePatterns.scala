@@ -60,9 +60,11 @@ class InlinePatterns extends MiniPhase:
         template.body match
           case List(ddef @ DefDef(`name`, _, _, _)) =>
             val bindings = new ListBuffer[DefTree]()
-            val expansion1 = BetaReduce.reduceApplication(ddef, argss, bindings)
-            val bindings1 = bindings.result()
-            seq(bindings1, expansion1)
+            BetaReduce.reduceApplication(ddef, argss, bindings) match
+              case Some(expansion1) =>
+                val bindings1 = bindings.result()
+                seq(bindings1, expansion1)
+              case None => tree
           case _ => tree
       case _ => tree
 

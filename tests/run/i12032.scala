@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/12032
+// https://github.com/scala/scala3/issues/12032
 class Foo(val strings: Seq[String]) extends FooLowPriority
 
 trait FooLowPriority { self: Foo =>

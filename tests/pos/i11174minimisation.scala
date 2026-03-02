@@ -20,6 +20,6 @@ object EnumerateNames {
 class MainClass {
   enum Shape:
     case Point
-  inline given auto[T]: EnumerateNames[T] = EnumerateNames.derived[T]
+  inline given auto: [T] => EnumerateNames[T] = EnumerateNames.derived[T]
   def shapeNames: EnumerateNames[Shape] = EnumerateNames.derived[Shape]
 }

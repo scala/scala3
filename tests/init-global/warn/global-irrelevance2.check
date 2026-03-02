@@ -1,0 +1,13 @@
+-- Warning: tests/init-global/warn/global-irrelevance2.scala:5:6 -------------------------------------------------------
+5 |  A.x =  b * 2 // warn
+  |  ^^^^^^^^^^^^
+  |  Mutating object A during initialization of object B.
+  |  Mutating other static objects during the initialization of one static object is forbidden. Calling trace:
+  |  ├── object B:	[ global-irrelevance2.scala:7 ]
+  |  │   ^
+  |  ├── new B(10)	[ global-irrelevance2.scala:8 ]
+  |  │   ^^^^^^^^^
+  |  ├── class B(b: Int):	[ global-irrelevance2.scala:4 ]
+  |  │   ^
+  |  └── A.x =  b * 2 // warn	[ global-irrelevance2.scala:5 ]
+  |      ^^^^^^^^^^^^

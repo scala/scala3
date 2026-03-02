@@ -17,7 +17,7 @@ sealed trait DPair[k <: AnyKind, K[_ <: k], +V[_ <: k]]:
     case _    => None
 
 object DPair:
-  given pair [k, K[_ <: k], V[_ <: k], C <: k]: Conversion[(K[C], V[C]), DPair[k, K, V]] = tup =>
+  given pair: [k, K[_ <: k], V[_ <: k], C <: k] => Conversion[(K[C], V[C]), DPair[k, K, V]] = tup =>
     case class dpair(key: K[C], value: V[C]) extends DPair[k, K, V]:
       type A = C
     dpair(tup._1, tup._2)

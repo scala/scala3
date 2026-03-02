@@ -79,7 +79,7 @@ public class CompilerBridgeDriver extends Driver {
       underline + "\n" +
       "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
       "    This is likely a bug in incremental compilation for the Scala 3 compiler.\n" +
-      "    Please report it to the Scala 3 maintainers at https://github.com/lampepfl/dotty/issues.";
+      "    Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues.";
     reporter.reportBasicWarning(message);
   }
 
@@ -179,22 +179,17 @@ public class CompilerBridgeDriver extends Driver {
     }
 
     try {
-      return new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id()) {
-        {
-          // fill in the content
-          try (OutputStream output = output()) {
-            try (InputStream input = virtualFile.input()) {
-              Streamable.Bytes bytes = new Streamable.Bytes() {
-                @Override
-                public InputStream inputStream() {
-                  return input;
-                }
-              };
-              output.write(bytes.toByteArray());
-            }
+      dotty.tools.io.VirtualFile file = new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id());
+      try (java.io.OutputStream output = file.output(); java.io.InputStream input = virtualFile.input()) {
+        Streamable.Bytes bytes = new Streamable.Bytes() {
+          @Override
+          public InputStream inputStream() {
+            return input;
           }
-        }
-      };
+        };
+        output.write(bytes.toByteArray());
+      }
+      return file;
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }

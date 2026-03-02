@@ -1,0 +1,10 @@
+-- [E040] Syntax Error: tests/neg/i22906.scala:6:20 --------------------------------------------------------------------
+6 |    {`1`: Int  =>  5} // error // error
+  |                    ^
+  |                    end of single-line lambda expected, but '}' found
+-- [E006] Not Found Error: tests/neg/i22906.scala:6:5 ------------------------------------------------------------------
+6 |    {`1`: Int  =>  5} // error // error
+  |     ^^^
+  |     Not found: 1
+  |
+  | longer explanation available when compiling with `-explain`

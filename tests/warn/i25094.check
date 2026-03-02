@@ -1,0 +1,5 @@
+-- [E225] Type Warning: tests/warn/i25094.scala:6:19 -------------------------------------------------------------------
+6 |  def f2(x: Int) = g(if x > 0 then x else null) // warn
+  |                   ^
+  |                   A type argument was inferred to be union type Int | Null
+  |                   This may indicate a programming error.

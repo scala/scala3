@@ -115,7 +115,7 @@ Multiple `using` clauses are matched left-to-right in applications. Example:
 
 ```scala
 object global extends Universe { type Context = ... }
-given ctx : global.Context with { type Symbol = ...; type Kind = ... }
+given ctx : global.Context { type Symbol = ...; type Kind = ... }
 given sym : ctx.Symbol
 given kind: ctx.Kind
 

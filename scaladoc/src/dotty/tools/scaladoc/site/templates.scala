@@ -81,8 +81,8 @@ case class TemplateFile(
       val path = Some(Paths.get(file.getAbsolutePath))
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
       val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), scala.io.Codec.UTF8)
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
-          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
+          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
           val compilerData = SnippetCompilerData(
             "staticsitesnippet",
             SnippetCompilerData.Position(configOffset - 1, 0)
@@ -102,11 +102,9 @@ case class TemplateFile(
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}"))
     )
 
-    def asJavaElement(o: Object): Object = o match
-      case m: Map[?, ?] => m.transform {
-        case (k: String, v: Object) => asJavaElement(v)
-      }.asJava
-      case l: List[?] => l.map(x => asJavaElement(x.asInstanceOf[Object])).asJava
+    def asJavaElement(o: Any): Any = o match
+      case m: Map[?, ?] => m.transform { (k, v) => asJavaElement(v) }.asJava
+      case l: List[?] => l.map(asJavaElement).asJava
       case other => other
 
     // Library requires mutable maps..

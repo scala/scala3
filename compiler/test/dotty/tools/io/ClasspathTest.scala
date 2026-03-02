@@ -13,7 +13,9 @@ import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 
 class ClasspathTest {
 
-  def pathsep = sys.props("path.separator")
+  def pathsep: String = sys.props("path.separator").nn
+
+  def isWindows: Boolean = scala.util.Properties.isWin
 
   //
   // Cope with wildcard classpath entries, exercised with -classpath <cp>
@@ -23,7 +25,7 @@ class ClasspathTest {
   @Test def testWildcards(): Unit =
     val outDir = Files.createTempDirectory("classpath-test")
     try
-      val compilerLib = "dist/target/pack/lib"
+      val compilerLib = s"${if isWindows then "dist-win-x86_64" else "dist"}/target/pack/lib"
       val libdir = Paths.get(compilerLib).toFile
       if libdir.exists then
         val libjarFiles = libdir.listFiles.toList.take(5)

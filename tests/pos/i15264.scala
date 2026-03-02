@@ -1,3 +1,4 @@
+import language.`3.7`
 object priority:
     // lower number = higher priority
     class Prio0 extends Prio1
@@ -30,13 +31,14 @@ object repro:
     // if you import these don't import from 'context' above
     object qcontext:
         // base defs, like what you would get from cats
+        given ga: A[Int] = new B[Int] // added so that we don't get an ambiguity in test2
         given gb: B[Int] = new B[Int]
         given gc: C[Int] = new C[Int]
 
         // these seem like they should work but don't
-        given gcq[V](using p0: priority.Prio0)(using c: C[V]): C[Q[V]] = new C[Q[V]]
-        given gbq[V](using p1: priority.Prio1)(using b: B[V]): B[Q[V]] = new B[Q[V]]
-        given gaq[V](using p2: priority.Prio2)(using a: A[V]): A[Q[V]] = new A[Q[V]]
+        given gcq: [V] => priority.Prio0 => C[V] => C[Q[V]] = new C[Q[V]]
+        given gbq: [V] => priority.Prio1 => B[V] => B[Q[V]] = new B[Q[V]]
+        given gaq: [V] => priority.Prio2 => A[V] => A[Q[V]] = new A[Q[V]]
 
 object test1:
     import repro.*
@@ -45,9 +47,9 @@ object test1:
     // these will work
     val a = summon[A[Int]]
 
+
 object test2:
     import repro.*
     import repro.qcontext.given
 
-    // this one will fail as ambiguous - prios aren't having an effect
     val a = summon[A[Q[Int]]]

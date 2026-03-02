@@ -1,15 +1,13 @@
 package dotty.tools.pc.tests.signaturehelp
 
-import dotty.tools.pc.base.BaseSignatureHelpSuite
-
-import org.junit.Test
-import org.junit.Ignore
 import java.nio.file.Path
 
-class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
+import dotty.tools.pc.base.BaseSignatureHelpSuite
 
-  override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
-    List("-language:experimental.clauseInterleaving")
+import org.junit.Ignore
+import org.junit.Test
+
+class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
 
   @Test def `proper-position-1` =
     check(
@@ -23,7 +21,6 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |     ^
         |""".stripMargin
     )
-
 
   @Test def `proper-position-2` =
     check(
@@ -77,7 +74,6 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |""".stripMargin
     )
 
-
   @Test def `not-fully-applied-2` =
     check(
       """
@@ -111,7 +107,9 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |  def pair[A](a: A)[B](b: B): (A, B) = (a, b)
         |  pair[Int][@@String]
       """.stripMargin,
-      ""
+      """|apply(v1: Int): Any => (Int, Any)
+         |      ^^^^^^^
+         |""".stripMargin
     )
 
   @Test def `inferred-type-param-1` =
@@ -515,4 +513,3 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
          |                                     ^^^^
          |""".stripMargin
     )
-

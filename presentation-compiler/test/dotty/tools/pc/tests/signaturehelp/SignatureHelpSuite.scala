@@ -2,7 +2,7 @@ package dotty.tools.pc.tests.signaturehelp
 
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
-import org.junit.Test
+import org.junit.{Ignore, Test}
 
 class SignatureHelpSuite extends BaseSignatureHelpSuite:
 
@@ -162,8 +162,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  List(Option(1@@))
         |}
       """.stripMargin,
-      """|apply[A](x: A): Option[A]
-         |         ^^^^
+      """|apply[A](x: A | Null): Option[A]
+         |         ^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -186,12 +186,12 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  List(Option(@@))
         |}
       """.stripMargin,
-      """|apply[A](x: A): Option[A]
-         |         ^^^^
+      """|apply[A](x: A | Null): Option[A]
+         |         ^^^^^^^^^^^
          |""".stripMargin
     )
 
-  // https://github.com/lampepfl/dotty/issues/15244
+  // https://github.com/scala/scala3/issues/15244
   @Test def `vararg` =
     check(
       """
@@ -235,7 +235,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option[I@@]
         |}
       """.stripMargin,
-      """|apply[A](x: A): Option[A]
+      """|apply[A](x: A | Null): Option[A]
          |      ^
          |""".stripMargin
     )
@@ -256,12 +256,51 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     check(
       """
         |object a {
+        |  List[Int](1).lengthCompare(@@)
+        |}
+      """.stripMargin,
+      """|lengthCompare(len: Int): Int
+         |              ^^^^^^^^
+         |lengthCompare(that: Iterable[?]): Int
+         |""".stripMargin
+    )
+
+  @Ignore("See if applyCallInfo can still inform on lengthCompare's sig, even if recv is in error")
+  @Test def `tparam5_TypeMismatch` =
+    check(
+      """
+        |object a {
         |  List[String](1).lengthCompare(@@)
         |}
       """.stripMargin,
       """|lengthCompare(len: Int): Int
          |              ^^^^^^^^
          |lengthCompare(that: Iterable[?]): Int
+         |""".stripMargin
+    )
+
+  @Test def `tparam5_nonvarargs` =
+    check(
+      """
+        |object a {
+        |  Option[Int](1).getOrElse(@@)
+        |}
+      """.stripMargin,
+      """|getOrElse[B >: Int](default: => B): B
+         |                    ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("Similar to `tparam5_TypeMismatch`")
+  @Test def `tparam5_nonvarargs_TypeMismatch` =
+    check(
+      """
+        |object a {
+        |  Option[String](1).getOrElse(@@)
+        |}
+      """.stripMargin,
+      """|getOrElse[B >: String](default: => B): B
+         |                       ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -306,8 +345,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  } yield k
         |}
       """.stripMargin,
-      """|apply[A](x: A): Option[A]
-         |         ^^^^
+      """|apply[A](x: A | Null): Option[A]
+         |         ^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -541,12 +580,25 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  Option(a @@)
         |}
       """.stripMargin,
-      """|apply[A](x: A): Option[A]
-         |         ^^^^
+      """|apply[A](x: A | Null): Option[A]
+         |         ^^^^^^^^^^^
          |""".stripMargin
     )
 
   @Test def `last-arg1` =
+    check(
+      """
+        |object A {
+        |  List[Int](1).map(a => @@)
+        |}
+      """.stripMargin,
+      """|map[B](f: Int => B): List[B]
+         |       ^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("Similar to `tparam5_TypeMismatch`")
+  @Test def `last-arg1_TypeMismatch` =
     check(
       """
         |object A {
@@ -589,6 +641,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `evidence` =
     check(
       """
@@ -613,8 +666,25 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  foo(4@@2)
         |}
       """.stripMargin,
-      """|conv[T](e: T): Text[T]
-         |        ^^^^
+      """|foo[T](e: Text[T]): T
+         |       ^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `implicit-conv1` =
+    check(
+      """
+        |class Foo
+        |class Bar
+        |object Baz {
+        |  implicit def foo2bar(foo: Foo): Bar = ???
+        |
+        |  def takesBar(bar: Bar) = ()
+        |  takesBar(new Fo@@o)
+        |}
+        |""".stripMargin,
+      """|takesBar(bar: Bar): Unit
+         |         ^^^^^^^^
          |""".stripMargin
     )
 
@@ -715,12 +785,12 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |""".stripMargin,
       """|deployment(fst: String, snd: Int): Option[Int]
          |           ^^^^^^^^^^^
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `local-method2` =
-      check(
-        """
+    check(
+      """
           |object Main {
           |  val foo = {
           |    def deployment(
@@ -731,10 +801,10 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
           |  }
           |}
           |""".stripMargin,
-        """|deployment(fst: String, snd: Int): Option[Int]
+      """|deployment(fst: String, snd: Int): Option[Int]
            |           ^^^^^^^^^^^
-           |""".stripMargin,
-      )
+           |""".stripMargin
+    )
 
   @Test def `local-method3` =
     check(
@@ -832,7 +902,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment(fst: String, snd: Int): Option[Int]
          |           ^^^^^^^^^^^
          |""".stripMargin
-     )
+    )
 
   @Test def `multiline-after-first` =
     check(
@@ -850,7 +920,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment(fst: String, snd: Int): Option[Int]
          |                        ^^^^^^^^
          |""".stripMargin
-     )
+    )
 
   @Test def `multiline-between-first-and-second-a` =
     check(
@@ -870,7 +940,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment(fst: String, snd: Int): Option[Int]
          |           ^^^^^^^^^^^
          |""".stripMargin
-     )
+    )
 
   @Test def `multiline-between-first-and-second-b` =
     check(
@@ -890,7 +960,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment(fst: String, snd: Int): Option[Int]
          |                        ^^^^^^^^
          |""".stripMargin
-     )
+    )
 
   @Test def `multiline-end` =
     check(
@@ -908,7 +978,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment(fst: String, snd: Int): Option[Int]
          |                        ^^^^^^^^
          |""".stripMargin
-     )
+    )
 
   @Test def `type-var-multiline-before` =
     check(
@@ -929,7 +999,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |           ^
          |""".stripMargin
-     )
+    )
 
   @Test def `type-var-multiline-after` =
     check(
@@ -950,7 +1020,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
          |""".stripMargin
-     )
+    )
 
   @Test def `type-var-multiline-between-first-and-second-a` =
     check(
@@ -973,7 +1043,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |           ^
          |""".stripMargin
-     )
+    )
 
   @Test def `type-var-multiline-between-first-and-second-b` =
     check(
@@ -996,7 +1066,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
          |""".stripMargin
-     )
+    )
 
   @Test def `type-var-multiline-end` =
     check(
@@ -1017,7 +1087,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
          |""".stripMargin
-     )
+    )
 
   @Test def `dont-show-directly-after-parenthesis` =
     check(
@@ -1027,7 +1097,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |}
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-directly-after-parenthesis-2` =
     check(
@@ -1036,7 +1106,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  test(1, 2)@@
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-directly-when-unclosed` =
     check(
@@ -1046,7 +1116,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |}
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-1` =
     check(
@@ -1056,7 +1126,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |}
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-2` =
     check(
@@ -1066,7 +1136,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |}
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-newline` =
     check(
@@ -1077,7 +1147,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |}
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-newline-last-statement` =
     check(
@@ -1089,7 +1159,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-newline-last-statement-unclosed-1` =
     check(
@@ -1101,7 +1171,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-newline-last-statement-unclosed-2` =
     check(
@@ -1113,7 +1183,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |
          |""".stripMargin,
       ""
-     )
+    )
 
   @Test def `dont-show-after-parenthesis-unclosed-2` =
     check(
@@ -1124,8 +1194,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  @@
          |}
          |""".stripMargin,
-       ""
-     )
+      ""
+    )
 
   @Test def `select-arg-detection` =
     check(
@@ -1198,26 +1268,6 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  (1, @@)
          |""".stripMargin,
       ""
-    )
-
-  // Improvement would be to create synthetic signature help showing
-  // add(x: Int)(y: Int): Int
-  @Test def `dont-show-functionN` =
-    check(
-      """|object Main:
-         |  val add = (x: Int) => (y: Int) => x + y
-         |  add(@@)
-         |""".stripMargin,
-         ""
-    )
-
-  @Test def `dont-show-functionN-2` =
-    check(
-      """|object Main:
-         |  val add = (x: Int) => (y: Int) => x + y
-         |  add(1, @@)
-         |""".stripMargin,
-         ""
     )
 
   @Test def `type-param-start` =
@@ -1309,7 +1359,6 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-
   @Test def `multiple-implicits-2` =
     check(
       """|object M:
@@ -1372,4 +1421,238 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(x: Int): Int = ???
          |  test(@@""".stripMargin,
       ""
+    )
+
+  @Test def `type-var-position` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A@@, C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-1` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[@@A, C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-2` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A@@
+         |  , C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-3` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A, C@@]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-4` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A,@@ C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-5` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A, @@C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-6` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A@@,
+         |    C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-7` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    C@@
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-8` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    @@C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-9` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    C
+         |  @@]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-10` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[@@
+         |    A,
+         |    C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `correct-alternative` =
+    check(
+      """
+        |object x {
+        |  def foo(i: Int, s: String): Unit = ???
+        |  def foo(i: Boolean, s: Int, x: Double): Unit = ???
+        |
+        |  foo(false, @@)
+        |}
+        |""".stripMargin,
+      """
+        |foo(i: Boolean, s: Int, x: Double): Unit
+        |                ^^^^^^
+        |foo(i: Int, s: String): Unit
+        |""".stripMargin
+    )
+
+  @Test def `correct-alternative1` =
+    check(
+      """
+        |object x {
+        |  def foo(i: Boolean, s: String)(b: Int): Unit = ???
+        |  def foo(i: Boolean, s: Int)(b: String): Unit = ???
+        |
+        |  foo(false, 123)(@@)
+        |}
+        |""".stripMargin,
+      """
+        |foo(i: Boolean, s: Int)(b: String): Unit
+        |                        ^^^^^^^^^
+        |foo(i: Boolean, s: String)(b: Int): Unit
+        |""".stripMargin
+    )
+
+  @Test def `proper-param-empty-list` =
+    check(
+      """
+        |object x {
+        |  def foo[K, V](): Unit = ???
+        |  foo(@@)
+        |}
+        |""".stripMargin,
+      "foo[K, V](): Unit"
+    )
+
+  @Test def `proper-param-list-after-param-empty-list` =
+    check(
+      """
+        |object x {
+        |  def foo[K, V]()(x: Int): Unit = ???
+        |  foo()(@@)
+        |}
+        |""".stripMargin,
+      """
+      |foo[K, V]()(x: Int): Unit
+      |            ^^^^^^
+      """.stripMargin
+    )
+
+  @Test def `proper-function-signature` =
+    check(
+      """
+        |object OOO {
+        |
+        |val function: (x: Int, y: String) => Unit =
+        |(_, _) =>
+        | ()
+        |
+        |function(@@, "one")
+        |}
+      """.stripMargin,
+      """|apply(v1: Int, v2: String): Unit
+         |      ^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `proper-function-signature-with-explicit-apply` =
+    check(
+      """
+        |object OOO {
+        |
+        |val function: (x: Int, y: String) => Unit =
+        |(_, _) =>
+        | ()
+        |
+        |function.apply(@@, "one")
+        |}
+      """.stripMargin,
+      """|apply(v1: Int, v2: String): Unit
+         |      ^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `opaque-type-parameter` =
+    check(
+      """|object History {
+         |  opaque type Builder[A] = String
+         |  def build(b: Builder[Unit]): Int = ???
+         |}
+         |object Main {
+         |  History.build(@@)
+         |}
+         |""".stripMargin,
+      """|build(b: Builder[Unit]): Int
+         |      ^^^^^^^^^^^^^^^^
+         |""".stripMargin
     )

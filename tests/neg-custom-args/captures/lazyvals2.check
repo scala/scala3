@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals2.scala:20:31 ------------------------------------
+20 |  val fun2: () ->{io} String = () => x() // error
+   |                               ^^^^^^^^^
+   |                               Found:    () ->{console, io} String
+   |                               Required: () ->{io} String
+   |
+   |                               Note that capability `console` cannot flow into capture set {io}.
+   |
+   | longer explanation available when compiling with `-explain`

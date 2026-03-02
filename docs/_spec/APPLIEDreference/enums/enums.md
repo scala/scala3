@@ -168,7 +168,7 @@ If you want to use the Scala-defined enums as [Java enums](https://docs.oracle.c
 enum Color extends Enum[Color] { case Red, Green, Blue }
 ```
 
-The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.
+The type parameter comes from the Java enum [definition](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Enum.html) and should be the same as the type of the enum.
 There is no need to provide constructor arguments (as defined in the Java API docs) to `java.lang.Enum` when extending it – the compiler will generate them automatically.
 
 After defining `Color` like that, you can use it like you would a Java enum:
@@ -178,5 +178,5 @@ scala> Color.Red.compareTo(Color.Green)
 val res15: Int = -1
 ```
 
-For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java).
+For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/scala/scala3/tree/main/tests/run/enum-java).
 In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.

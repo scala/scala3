@@ -13,7 +13,7 @@ extension (using s: Scope)(expr: s.Expr)
 def f(using s: Scope)(x: s.Expr): (String, s.Value) =
    (x.show, x.eval)
 
-given scope: Scope with
+given scope: Scope:
    case class Expr(str: String)
    type Value = Int
    def expr(x: String) = Expr(x)

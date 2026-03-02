@@ -1,0 +1,20 @@
+-- [E209] Interpolation Warning: tests/warn/i23693.scala:11:12 ---------------------------------------------------------
+11 |    s"k == $k" // warn
+   |            ^
+   |            interpolation uses toString
+-- [E209] Interpolation Warning: tests/warn/i23693.scala:13:16 ---------------------------------------------------------
+13 |    raw"\k == \$k" // warn
+   |                ^
+   |                interpolation uses toString
+-- [E209] Interpolation Warning: tests/warn/i23693.scala:15:12 ---------------------------------------------------------
+15 |    f"k == $k" // warn
+   |            ^
+   |            interpolation uses toString
+-- [E209] Interpolation Warning: tests/warn/i23693.scala:17:14 ---------------------------------------------------------
+17 |    f"k == $k%s" // warn
+   |              ^
+   |              interpolation uses toString
+-- [E209] Interpolation Warning: tests/warn/i23693.scala:19:18 ---------------------------------------------------------
+19 |    s"show == ${k.show}" // warn
+   |                ^^^^^^
+   |                interpolated Unit value

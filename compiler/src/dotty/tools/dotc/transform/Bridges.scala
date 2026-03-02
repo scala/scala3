@@ -26,8 +26,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
       true
-      	// Never consider a bridge if there is a superclass that would contain it
-      	// See run/t2857.scala for a test that would break with a VerifyError otherwise.
+      // Never consider a bridge if there is a superclass that would contain it
+      // See run/t2857.scala for a test that would break with a VerifyError otherwise.
 
     /** Only use the superclass of `root` as a parent class. This means
      *  overriding pairs that have a common implementation in a trait parent
@@ -90,6 +90,13 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       // A bridge might introduce a classcast exception.
       // Example where this was observed: run/i12828a.scala and MapView in stdlib213
       report.log(i"suppress bridge in $root for ${member} in ${member.owner} and ${other.showLocated} since member infos ${site.memberInfo(member)} and ${site.memberInfo(other)} do not match")
+    else if !member.isPublic(using preErasureCtx) && !member.is(Protected) // opt: public or protected are obviously accessible
+        && !member.isAccessibleFrom(root.thisType)(using preErasureCtx)
+    then
+      // Don't generate a bridge that would call an inaccessible method.
+      // This can typically happen with Java package-private methods
+      // when a Scala class in a different package extends the Java class.
+      report.log(i"suppress bridge in $root for inaccessible method ${member.showLocated}")
     else if !bridgeExists then
       addBridge(member, other)
   }

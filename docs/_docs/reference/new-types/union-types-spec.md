@@ -46,6 +46,30 @@ case _: (A | B) => ...
   A & (B | C) =:= A & B | A & C
   ```
 
+When `C` is covariant, `C[A] | C[B] <: C[A | B]` can be derived:
+
+```
+    A <: A                  B <: B
+  ----------               ---------
+  A <: A | B               B <: A | B
+----------------         ----------------
+C[A] <: C[A | B]         C[B] <: C[A | B]
+-----------------------------------------
+      C[A] | C[B] <: C[A | B]
+```
+
+When `C` is contravariant, `C[A] | C[B] <: C[A & B]` can be derived:
+
+```
+    A <: A                    B <: B
+  ----------                ----------
+  A & B <: A                A & B <: B
+----------------         ----------------
+C[A] <: C[A & B]         C[B] <: C[A & B]
+-----------------------------------------
+      C[A] | C[B] <: C[A & B]
+```
+
 From these rules it follows that the _least upper bound_ (LUB) of a set of types
 is the union of these types. This replaces the
 [definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
@@ -105,7 +129,7 @@ val x = 1
 val y = "abc"
 if cond then x else y
 ```
-is the soft unon type `Int | String`. Similarly for match expressions. The type of
+is the soft union type `Int | String`. Similarly for match expressions. The type of
 ```scala
 x match
   case 1 => x

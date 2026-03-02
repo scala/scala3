@@ -3,19 +3,19 @@ import scala.math.{BigInt}
 import quoted.*
 import annotation.internal.sharable
 
+import language.experimental.captureChecking
 
-/** A type class for types that admit numeric literals.
- */
+/** A type class for types that admit numeric literals. */
 trait FromDigits[T] {
 
-  /** Convert `digits` string to value of type `T`
+  /** Converts `digits` string to value of type `T`
    *  `digits` can contain
    *  - sign `+` or `-`
    *  - sequence of digits between 0 and 9
    *
-   * @throws MalformedNumber if digit string is not legal for the given type
-   * @throws NumberTooLarge  if value of result does not fit into `T`'s range
-   * @throws NumberTooSmall  in case of numeric underflow (e.g. a non-zero
+   *  @throws FromDigits.MalformedNumber if digit string is not legal for the given type
+   *  @throws FromDigits.NumberTooLarge  if value of result does not fit into `T`'s range
+   *  @throws FromDigits.NumberTooSmall  in case of numeric underflow (e.g. a non-zero
    *                         floating point literal that produces a zero value)
    */
   def fromDigits(digits: String): T
@@ -29,7 +29,7 @@ object FromDigits {
   trait WithRadix[T] extends FromDigits[T] {
     def fromDigits(digits: String): T = fromDigits(digits, 10)
 
-    /** Convert digits string with given radix to number of type `T`.
+    /** Converts digits string with given radix to number of type `T`.
      *  E.g. if radix is 16, digits `a..f` and `A..F` are also allowed.
      */
     def fromDigits(digits: String, radix: Int): T
@@ -51,7 +51,7 @@ object FromDigits {
    */
   abstract class FromDigitsException(msg: String) extends NumberFormatException(msg)
 
-  /** Thrown if value of result does not fit into result type's range */
+  /** Thrown if value of result does not fit into result type's range. */
   class NumberTooLarge(msg: String = "number too large") extends FromDigitsException(msg)
 
   /** Thrown in case of numeric underflow (e.g. a non-zero
@@ -59,10 +59,10 @@ object FromDigits {
    */
   class NumberTooSmall(msg: String = "number too small") extends FromDigitsException(msg)
 
-  /** Thrown if digit string is not legal for the given type */
+  /** Thrown if digit string is not legal for the given type. */
   class MalformedNumber(msg: String = "malformed number literal") extends FromDigitsException(msg)
 
-  /** Convert digits and radix to integer value (either int or Long)
+  /** Converts digits and radix to integer value (either int or Long)
    *  This is tricky because of the max negative value.
    *  Note: We cannot use java.lang.Integer.valueOf or java.lang.Long.valueOf
    *  since these do not handle unsigned hex numbers greater than the maximal value
@@ -97,7 +97,7 @@ object FromDigits {
     if (negated) -value else value
   }
 
-  /** Convert digit string to Int number
+  /** Converts digit string to Int number.
    *  @param digits            The string to convert
    *  @param radix             The radix
    *  @throws NumberTooLarge   if number does not fit within Int range
@@ -108,7 +108,7 @@ object FromDigits {
   def intFromDigits(digits: String, radix: Int = 10): Int =
     integerFromDigits(digits, radix, Int.MaxValue).toInt
 
-  /** Convert digit string to Long number
+  /** Converts digit string to Long number.
    *  @param digits            The string to convert
    *  @param radix             The radix
    *  @throws NumberTooLarge   if the resulting number does not fit within Long range
@@ -121,7 +121,7 @@ object FromDigits {
 
   @sharable private val zeroFloat = raw"-?[0.]+(?:[eE][+-]?[0-9]+)?[fFdD]?".r
 
-  /** Convert digit string to Float number
+  /** Converts digit string to Float number.
    *  @param digits            The string to convert
    *  @throws NumberTooLarge   if the resulting number is infinite
    *  @throws NumberTooSmall   if the resulting number is 0.0f, yet the digits
@@ -135,16 +135,16 @@ object FromDigits {
         case ex: NumberFormatException => throw MalformedNumber()
       }
     if (x.isInfinite) throw NumberTooLarge()
-    if (x == 0.0f && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
+    if (x == 0.0f && !zeroFloat.pattern.matcher(digits).matches) throw NumberTooSmall()
     x
   }
 
-  /** Convert digit string to Double number
+  /** Converts digit string to Double number.
    *  @param digits            The string to convert
    *  @throws NumberTooLarge   if the resulting number is infinite
    *  @throws NumberTooSmall   if the resulting number is 0.0d, yet the digits
    *                           string contains non-zero digits before the exponent.
-   *  @throws MalformedNumber  if digits is not a legal digit string for floating point numbers..
+   *  @throws MalformedNumber  if digits is not a legal digit string for floating point numbers.
    */
   def doubleFromDigits(digits: String): Double = {
     val x: Double =

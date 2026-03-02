@@ -7,8 +7,9 @@ import java.nio.channels.ClosedByInterruptException
 
 import scala.util.control.NonFatal
 
-import dotty.tools.dotc.classpath.FileUtils.isTasty
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
+import dotty.tools.dotc.classpath.{ ClassPathFactory, PackageNameUtils }
+import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
+import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
@@ -24,8 +25,8 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig, TastyVersion}
-import dotty.tools.dotc.core.tasty.TastyUnpickler
+import dotty.tools.tasty.UnpickleException
+import dotty.tools.tasty.besteffort.BestEffortTastyHeaderUnpickler
 
 object SymbolLoaders {
   import ast.untpd.*
@@ -50,8 +51,9 @@ object SymbolLoaders {
    */
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, compUnitInfo = completer.compilationUnitInfo)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
+    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, privateWithin, compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -59,10 +61,13 @@ object SymbolLoaders {
    */
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
+      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags,
+      scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
     val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
+      privateWithin,
       compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -72,23 +77,35 @@ object SymbolLoaders {
    *  and give them `completer` as type.
    */
   def enterPackage(owner: Symbol, pname: TermName, completer: (TermSymbol, ClassSymbol) => PackageLoader)(using Context): Symbol = {
-    val preExisting = owner.info.decls lookup pname
+    val preExisting = owner.info.decls.lookup(pname)
     if (preExisting != NoSymbol)
       // Some jars (often, obfuscated ones) include a package and
       // object with the same name. Rather than render them unusable,
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
+      if (ctx.settings.XtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
         report.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
       }
-      else if (ctx.settings.YtermConflict.value == "object") {
+      else if (ctx.settings.XtermConflict.value == "object") {
         report.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
+      else if pname == nme.caps && owner == defn.ScalaPackageClass then
+        // `scala.caps`` was an object until 3.6, it is a package from 3.7. Without special handling
+        // this would cause a TypeError to be thrown below if a build has several versions of the
+        // Scala standard library on the classpath. This was the case for 29 projects in OpenCB.
+        // These projects should be updated. But until that's the case we issue a warning instead
+        // of a hard failure.
+        report.warning(
+          em"""$owner contains object and package with same name: $pname.
+             |This indicates that there are several versions of the Scala standard library on the classpath.
+             |The build should be reconfigured so that only one version of the standard library is on the classpath.""")
+        owner.info.decls.openForMutations.unlink(preExisting)
+        owner.info.decls.openForMutations.unlink(preExisting.moduleClass)
       else
         throw TypeError(
           em"""$owner contains object and package with same name: $pname
@@ -102,13 +119,16 @@ object SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Unit = {
-    val clazz = enterClass(owner, name, completer, flags, scope)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Unit = {
+    val clazz = enterClass(owner, name, completer, flags, scope, privateWithin)
     val module = enterModule(
       owner, name, completer,
       modFlags = flags.toTermFlags & RetainedModuleValFlags,
       clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
-      scope = scope)
+      scope = scope,
+      privateWithin = privateWithin,
+    )
   }
 
   /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
@@ -137,7 +157,7 @@ object SymbolLoaders {
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
-                           |But it is found in directory     ${filePath.reverse.mkString(File.separator.nn)}""",
+                           |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
               tree.srcPos.focus)
           ok
         }
@@ -189,7 +209,9 @@ object SymbolLoaders {
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
   def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(using Context): Unit =
-    ((classRep.binary, classRep.source): @unchecked) match {
+    // module-info is a special class added by JPMS (Java 9+) that cannot be parsed like a normal class
+    if classRep.name != "module-info" then
+      ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, nameOf(classRep), src)
@@ -198,7 +220,7 @@ object SymbolLoaders {
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (Some(bin), _) =>
         val completer =
-          if bin.isTasty then ctx.platform.newTastyLoader(bin)
+          if bin.hasTastyExtension || bin.hasBetastyExtension then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
         enterClassAndModule(owner, nameOf(classRep), completer)
     }
@@ -221,8 +243,8 @@ object SymbolLoaders {
     Stats.record("package scopes")
 
     /** The scope of a package. This is different from a normal scope
-  	 *  in that names of scope entries are kept in mangled form.
-  	 */
+     *  in that names of scope entries are kept in mangled form.
+     */
     final class PackageScope extends MutableScope(0) {
       override def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry =
         super.newScopeEntry(name.mangled, sym)
@@ -261,9 +283,19 @@ object SymbolLoaders {
       (idx + str.TOPLEVEL_SUFFIX.length + 1 != name.length || !name.endsWith(str.TOPLEVEL_SUFFIX))
     }
 
-    def maybeModuleClass(classRep: ClassRepresentation): Boolean = classRep.name.last == '$'
+    def maybeModuleClass(classRep: ClassRepresentation): Boolean =
+      classRep.name.nonEmpty && classRep.name.last == '$'
 
-    private def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
+    /** Enter classes from the classpath into the given package.
+      *
+      * @param root The package denotation to enter classes into
+      * @param packageName The name of the package
+      * @param flat Whether to enter flat names (nested classes with $ in name)
+      * @param forceAbsentCheck If true, always check isAbsent to avoid re-entering existing classes.
+      *                         This is needed when merging entries from a new JAR (REPL :jar/:dep).
+      *                         If false, only check isAbsent for flat names (original behavior).
+      */
+    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean, forceAbsentCheck: Boolean = false)(using Context) = {
       def isAbsent(classRep: ClassRepresentation) =
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
@@ -272,7 +304,7 @@ object SymbolLoaders {
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
-            (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
+            ((!forceAbsentCheck && !flat) || isAbsent(classRep))) // Check isAbsent: always if forceAbsentCheck, or on 2nd enter of flat names
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classReps)
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -282,9 +314,9 @@ object SymbolLoaders {
     }
 
     def doComplete(root: SymDenotation)(using Context): Unit = {
-      assert(root is PackageClass, root)
+      assert(root.is(PackageClass), root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre.select(sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 
@@ -307,6 +339,44 @@ object SymbolLoaders {
         }
     }
   }
+
+  def mergeNewEntries(
+    packageClass: ClassSymbol, fullPackageName: String,
+    jarClasspath: ClassPath, fullClasspath: ClassPath,
+  )(using Context): Unit =
+    val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
+    val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
+
+    if hasClasses then
+      // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
+      val packageVal = packageClass.sourceModule.asInstanceOf[TermSymbol]
+      if packageClass.isRoot then
+        val loader = new PackageLoader(packageVal, fullClasspath)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false, forceAbsentCheck = true)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true, forceAbsentCheck = true)
+      else if fullClasspath.hasPackage(fullPackageName) then
+        // Enter new classes into the existing scope without replacing the package info
+        // (which would cause cyclic references). Use jarClasspath (not fullClasspath)
+        // to only enter new classes from the JAR.
+        // This allows libraries like scala-parallel-collections and os-lib-watch to work with :dep/:jar
+        val loader = new PackageLoader(packageVal, jarClasspath)
+        loader.enterClasses(packageClass, fullPackageName, flat = false, forceAbsentCheck = true)
+        loader.enterClasses(packageClass, fullPackageName, flat = true, forceAbsentCheck = true)
+      else
+        packageClass.owner.info.decls.openForMutations.unlink(packageVal)
+
+    // Always process sub-packages, even when hasClasses is true.
+    // This is needed when a package has BOTH classes AND sub-packages,
+    // e.g. scala-parallel-collections adds both classes to scala.collection
+    // and the new scala.collection.parallel sub-package.
+    if hasPackages then
+      for p <- jarClasspath.packages(fullPackageName) do
+        val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+        val subPackage = packageClass.info.decl(subPackageName).orElse:
+          // package does not exist in symbol table, create a new symbol
+          enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
+        mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+  end mergeNewEntries
 }
 
 /** A lazy type that completes itself by calling parameter doComplete.
@@ -331,7 +401,15 @@ abstract class SymbolLoader extends LazyType { self =>
     def description(using Context): String = s"proxy to ${self.description}"
   }
 
-  override def complete(root: SymDenotation)(using Context): Unit = {
+  private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
+    val sym = root.symbol
+    def associatedFile = root.symbol.associatedFile match
+      case file: AbstractFile => file
+      case null => NoAbstractFile
+    ctx.profiler.onCompletion(sym, associatedFile)(body)
+  }
+
+  override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
     def signalError(ex: Exception): Unit = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
@@ -416,34 +494,49 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 }
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
+  val isBestEffortTasty = tastyFile.hasBetastyExtension
 
-  private val unpickler: tasty.DottyUnpickler =
+  lazy val tastyBytes = tastyFile.toByteArray
+
+  private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
-      val tastyBytes = tastyFile.toByteArray
-      new tasty.DottyUnpickler(tastyFile, tastyBytes) // reads header and name table
+      new tasty.DottyUnpickler(tastyFile, tastyBytes, isBestEffortTasty) // reads header and name table
 
-  val compilationUnitInfo: CompilationUnitInfo | Null = unpickler.compilationUnitInfo
+  val compilationUnitInfo: CompilationUnitInfo =
+    new CompilationUnitInfo:
+      def associatedFile: AbstractFile = tastyFile
+      def tastyInfo: Option[TastyInfo] = unpickler.compilationUnitInfo.tastyInfo
 
-  def description(using Context): String = "TASTy file " + tastyFile.toString
+  def description(using Context): String =
+    if isBestEffortTasty then "Best Effort TASTy file " + tastyFile.toString
+    else "TASTy file " + tastyFile.toString
 
   override def doComplete(root: SymDenotation)(using Context): Unit =
     handleUnpicklingExceptions:
-      checkTastyUUID()
       val (classRoot, moduleRoot) = rootDenots(root.asClass)
-      unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
-      if mayLoadTreesFromTasty then
-        classRoot.classSymbol.rootTreeOrProvider = unpickler
-        moduleRoot.classSymbol.rootTreeOrProvider = unpickler
+      if (!isBestEffortTasty || ctx.withBestEffortTasty) then
+        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
+        if mayLoadTreesFromTasty || isBestEffortTasty then
+          classRoot.classSymbol.rootTreeOrProvider = unpickler
+          moduleRoot.classSymbol.rootTreeOrProvider = unpickler
+        if isBestEffortTasty then
+          checkBeTastyUUID(tastyFile, tastyBytes)
+          ctx.setUsedBestEffortTasty()
+        else
+          checkTastyUUID()
+      else
+        report.error(em"Cannot read Best Effort TASTy $tastyFile without the ${ctx.settings.YwithBestEffortTasty.name} option")
 
   private def handleUnpicklingExceptions[T](thunk: =>T): T =
     try thunk
     catch case e: RuntimeException =>
+      val tastyType = if (isBestEffortTasty) "Best Effort TASTy" else "TASTy"
       val message = e match
         case e: UnpickleException =>
-          s"""TASTy file ${tastyFile.canonicalPath} could not be read, failing with:
+          s"""$tastyType file ${tastyFile.canonicalPath} could not be read, failing with:
             |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
         case _ =>
-          s"""TASTy file ${tastyFile.canonicalPath} is broken, reading aborted with ${e.getClass}
+          s"""$tastyFile file ${tastyFile.canonicalPath} is broken, reading aborted with ${e.getClass}
             |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
       throw IOException(message, e)
 
@@ -456,8 +549,12 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val tastyUUID = unpickler.unpickler.header.uuid
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
-      // This will be the case in any of our tests that compile with `-Youtput-only-tasty`
+      // This will be the case in any of our tests that compile with `-Youtput-only-tasty`, or when
+      // tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
       report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
+
+  private def checkBeTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
+    new BestEffortTastyHeaderUnpickler(tastyBytes).readHeader()
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value

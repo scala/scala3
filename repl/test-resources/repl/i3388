@@ -1,0 +1,3 @@
+scala> val foo = "1"; foo.toInt
+val foo: String = "1"
+val res0: Int = 1

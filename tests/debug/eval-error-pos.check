@@ -1,0 +1,7 @@
+break Test$ 3
+eval foo
+error
+  <expression>:1:0
+  1 |foo
+    |^^^
+    | Not found: foo

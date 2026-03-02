@@ -7,9 +7,11 @@ RUN apt-get install -y curl \
   && apt-get install -y nodejs \
   && curl -L https://www.npmjs.com/install.sh | sh
 
-RUN gem update --system
+RUN gem install "rubygems-update:<3.5" --no-document
+RUN update_rubygems
+
 RUN gem install sass-embedded -v 1.58.0
-RUN gem install bundler:1.17.2 jekyll
+RUN gem install bundler:2.3.5
 
 WORKDIR /srv/jekyll
 

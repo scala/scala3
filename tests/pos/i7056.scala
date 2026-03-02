@@ -9,7 +9,7 @@ trait T1[T] {
   extension (t1: T) def idnt1: Any
 }
 
-given [T <: A](using PartialId[T]): T1[T] = new T1[T] {
+given [T <: A] => PartialId[T] => T1[T] = new T1[T] {
   extension (t1: T) def idnt1: Any = ???
 }
 

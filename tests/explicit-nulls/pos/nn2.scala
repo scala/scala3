@@ -1,5 +1,5 @@
 // Test that is fixed when explicit nulls are enabled.
-// https://github.com/lampepfl/dotty/issues/6247
+// https://github.com/scala/scala3/issues/6247
 
 class Foo {
   val x1: String|Null = null

@@ -16,7 +16,7 @@ import util.Spans.*
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
-import printing.Texts.*
+import printing.Texts.{*, given}
 import printing.Printer
 import io.AbstractFile
 import util.common.*
@@ -63,9 +63,15 @@ object Scala2Unpickler {
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
-  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit = {
-    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
-      val constr = newDefaultConstructor(cls)
+  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit =
+    doEnsureConstructor(cls, clsDenot, scope, fromScala2 = true)
+
+  private def doEnsureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope, fromScala2: Boolean)
+      (using Context): Unit =
+    if scope.lookup(nme.CONSTRUCTOR) == NoSymbol then
+      val constr =
+        if fromScala2 || cls.isAllOf(Trait | JavaDefined) then newDefaultConstructor(cls)
+        else newConstructor(cls, Private, paramNames = Nil, paramTypes = Nil)
       // Scala 2 traits have a constructor iff they have initialization code
       // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
       if clsDenot.flagsUNSAFE.is(Trait) then
@@ -73,8 +79,6 @@ object Scala2Unpickler {
         clsDenot.setFlag(NoInits)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
-    }
-  }
 
   def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(using Context): Unit = {
     val cls = denot.classSymbol
@@ -108,7 +112,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(cls, denot, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) doEnsureConstructor(cls, denot, decls, fromScala2)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
@@ -124,7 +128,6 @@ object Scala2Unpickler {
 
     denot.info = tempInfo.finalized(normalizedParents)
     denot.ensureTypeParamsInCorrectOrder()
-    defn.patchStdLibClass(denot)
   }
 }
 
@@ -151,7 +154,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   assert(moduleRoot.isTerm)
 
   checkVersion(using ictx)
-  checkScala2Stdlib(using ictx)
 
   private val loadingMirror = defn(using ictx) // was: mirrorThatLoaded(classRoot)
 
@@ -162,7 +164,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val entries = new Array[AnyRef](index.length)
 
   /** A map from symbols to their associated `decls` scopes */
-  private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
+  private val symScopes = mutable.HashMap[Symbol, Scope]()
 
   /** A mapping from method types to the parameters used in constructing them */
   private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
@@ -237,9 +239,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         "\n found: " + major + "." + minor +
         " in " + source)
   }
-
-  private def checkScala2Stdlib(using Context): Unit =
-    assert(!ctx.settings.YcompileScala2Library.value, "No Scala 2 libraries should be unpickled under -Ycompile-scala2-library")
 
   /** The `decls` scope associated with given symbol */
   protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope(0))
@@ -407,15 +406,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       // println(s"read ext symbol $name from ${owner.denot.debugString} in ${classRoot.debugString}")  // !!! DEBUG
 
       // (1) Try name.
-      fromName(name) orElse {
+      fromName(name) `orElse` {
         // (2) Try with expanded name.  Can happen if references to private
         // symbols are read from outside: for instance when checking the children
         // of a class.  See #1722.
-        fromName(name.toTermName.expandedName(owner)) orElse {
+        fromName(name.toTermName.expandedName(owner)) `orElse` {
           // (3) Try as a nested object symbol.
-          nestedObjectSymbol orElse {
+          nestedObjectSymbol `orElse` {
             // (4) Call the mirror's "missing" hook.
-            adjust(missingHook(owner, name)) orElse {
+            adjust(missingHook(owner, name)) `orElse` {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
@@ -449,8 +448,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
        // Scala 2 sometimes pickle the same type parameter symbol multiple times
        // (see i11173 for an example), but we should only unpickle it once.
        || tag == TYPEsym && flags.is(TypeParam) && symScope(owner).lookup(name.asTypeName).exists
-       // We discard the private val representing a case accessor. We only load the case accessor def.
-       || flags.isAllOf(CaseAccessor| PrivateLocal, butNot = Method)
     then
       // skip this member
       return NoSymbol
@@ -538,7 +535,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 // parameter unpickling and try to emulate it.
                 !completer.areParamsInitialized
               case _ =>
-                true)
+                true) &&
+            // We discard the private val representing a case accessor. We only enter the case accessor def.
+            // We do need to load these symbols to read properly unpickle the annotations on the symbol (see sbt-test/scala2-compat/i19421).
+            !flags.isAllOf(CaseAccessor | PrivateLocal, butNot = Method) &&
+            // Skip entering extension methods: they will be recreated by the ExtensionMethods phase.
+            // Same trick is used by tasty-query (see
+            //https://github.com/scalacenter/tasty-query/blob/fdefadcabb2f21d5c4b71f728b81c68f6fddcc0f/tasty-query/shared/src/main/scala/tastyquery/reader/pickles/PickleReader.scala#L261-L273
+            //)
+            // This trick is also useful when reading the Scala 2 Standard library from tasty, since
+            // the extension methods will not be present, and it avoid having to distinguish between Scala2 pickles and Scala2 tasty (stdlib)
+            !(owner.is(ModuleClass) && sym.name.endsWith("$extension"))
 
         if (canEnter)
           owner.asClass.enter(sym, symScope(owner))
@@ -571,7 +578,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef), privateWithin)
         else {
           def completer(cls: Symbol) = {
-            val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
+            val unpickler = new ClassUnpickler(infoRef).withDecls(symScope(cls))
             if (flags.is(ModuleClass))
               unpickler.withSourceModule(
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
@@ -584,7 +591,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         newSymbol(owner, name.asTermName, flags, localMemberUnpickler, privateWithin, coord = start)
       case MODULEsym =>
         if (isModuleRoot) {
-          moduleRoot setFlag flags
+          moduleRoot.setFlag(flags)
           moduleRoot.symbol
         } else newSymbol(owner, name.asTermName, flags,
           new LocalUnpickler().withModuleClass(
@@ -656,7 +663,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               assert(denot.is(ParamAccessor) || denot.symbol.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = // !!! DEBUG
                 trace.onDebug(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
-                  denot.info matches denot.owner.thisType.memberInfo(alt)
+                  denot.info.matches(denot.owner.thisType.memberInfo(alt))
                 }
               val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
               if alias.name == denot.name then denot.setFlag(SuperParamAlias)
@@ -740,7 +747,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         case _ => super.foldOver(x, tp)
 
     def removeSingleton(tp: Type): Type =
-      if (tp isRef defn.SingletonClass) defn.AnyType else tp
+      if tp.isRef(defn.SingletonClass) then defn.AnyType else tp
     def mapArg(arg: Type) = arg match {
       case arg: TypeRef if isBound(arg) => arg.symbol.info
       case _ => arg
@@ -854,7 +861,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         else if args.nonEmpty then
           tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
-        else if (sym.typeParams.nonEmpty) tycon.etaExpand(sym.typeParams)
+        else if (sym.typeParams.nonEmpty) tycon.etaExpand
         else tycon
       case TYPEBOUNDStpe =>
         val lo = readTypeRef()
@@ -994,14 +1001,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
    */
-  protected def readAnnotArg(i: Int)(using Context): untpd.Tree = untpd.TypedSplice(bytes(index(i)) match
+  protected def readAnnotArg(i: Int)(using Context): untpd.Tree = untpd.TypedSplice:
+    bytes(index(i)) match
     case TREE => at(i, () => readTree())
     case _ => at(i, () =>
       readConstant() match
         case c: Constant => Literal(c)
         case tp: TermRef => ref(tp)
     )
-  )
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
    */
@@ -1230,7 +1237,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val vparams = until(end, () => readValDefRef())
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
         val applyMeth = newSymbol(symbol.owner, nme.apply, Method, applyType)
-        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
+        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)))
 
       case ASSIGNtree =>
         val lhs = readTreeRef()

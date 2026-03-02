@@ -1,0 +1,75 @@
+[[syntax trees at end of                 posttyper]] // tests/printing/posttyper/patdef.scala
+package <empty> {
+  final lazy module val patdef$package: patdef$package = new patdef$package()
+  @SourceFile("tests/printing/posttyper/patdef.scala") final module class
+    patdef$package() extends Object() { this: patdef$package.type =>
+    private def writeReplace(): AnyRef =
+      new scala.runtime.ModuleSerializationProxy(classOf[patdef$package.type])
+    val a: Int =
+      1:Int @RuntimeChecked match
+        {
+          case a @ _ => a:(1 : Int)
+        }
+    private[<empty>] val $1$: (Int, Int) = Tuple2.apply[Int, Int](2, 3)
+    val b: Int = $1$._1
+    val c: Int = $1$._2
+    private[<empty>] val $2$: (Int, Int, Int) =
+      Tuple3.apply[Int, Int, Int](4, 5, 6)
+    val d: Int = $2$._1
+    val e: Int = $2$._3
+    val f: Int =
+      7:Int @RuntimeChecked match
+        {
+          case (f @ _):Int => f:Int
+        }
+    private[<empty>] val $3$: Tuple2[Int, Int] = Tuple2.apply[Int, Int](8, 9)
+    val g: Int = $3$._1
+    val h: Int = $3$._2
+    private[<empty>] val $4$: Tuple3[Int, Int, Int] =
+      Tuple3.apply[Int, Int, Int](10, 11, 12)
+    val i: Int = $4$._1
+    val j: Int = $4$._3
+    def foo(): Tuple2[Int, Int] = ???
+    private[<empty>] val $6$: (Int, Int) =
+      foo():(Int, Int) @RuntimeChecked match
+        {
+          case $5$ @ Tuple2.unapply[Int, Int](_, _) => $5$:(Int, Int)
+        }
+    val k: Int = $6$._1
+    val l: Int = $6$._2
+    private[<empty>] val $8$: (Int, Int) =
+      foo():(Int, Int) @RuntimeChecked match
+        {
+          case $7$ @ Tuple2.unapply[Int, Int](_, _) => $7$:(Int, Int)
+        }
+    val m: Int = $8$._1
+    private[<empty>] val $10$: Tuple2[Int, Int] =
+      foo():(Int, Int) @RuntimeChecked match
+        {
+          case $9$ @ Tuple2.unapply[Int, Int](_, _) => $9$:(Int, Int)
+        }
+    val n: Int = $10$._1
+    val o: Int = $10$._2
+    private[<empty>] val $12$: Tuple2[Int, Int] =
+      foo():(Int, Int) @RuntimeChecked match
+        {
+          case $11$ @ Tuple2.unapply[Int, Int](_, _) => $11$:(Int, Int)
+        }
+    val p: Int = $12$._1
+    private[<empty>] val $13$: (Int, Int) =
+      Tuple2.apply[Int, Int](13, 14):(Int, Int) @RuntimeChecked match
+        {
+          case Tuple2.unapply[Int, Int](q @ _, r @ _) =>
+            Tuple2.apply[Int, Int](q, r)
+        }
+    val q: Int = $13$._1
+    val r: Int = $13$._2
+    def cond(): Boolean = ???
+    private[<empty>] val $14$: (Int, Int) =
+      if cond() then Tuple2.apply[Int, Int](15, 16) else
+        Tuple2.apply[Int, Int](17, 18)
+    val s: Int = $14$._1
+    val t: Int = $14$._2
+  }
+}
+

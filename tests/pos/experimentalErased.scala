@@ -2,14 +2,9 @@ import language.experimental.erasedDefinitions
 import annotation.experimental
 
 @experimental
-erased class Foo
+class Foo extends compiletime.Erased
 
-erased class Bar
-
-@experimental
-erased def foo = 2
-
-erased def bar = 2
+class Bar extends compiletime.Erased
 
 @experimental
 erased val foo2 = 2

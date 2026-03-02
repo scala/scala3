@@ -1,0 +1,7 @@
+Inlined(None, Nil, Literal(StringConstant("hello")))
+ConstantType(StringConstant("hello"))
+
+Inlined(None, Nil, Apply(Select(Literal(StringConstant("world")), "trim"), Nil))
+FlexibleType(TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "String"))
+
+FlexibleType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "java")), "lang"), "String"))

@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object int:
   /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was:
    *
@@ -29,7 +31,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type +[X <: Int, Y <: Int] <: Int
+  infix type +[X <: Int, Y <: Int] <: Int
 
   /** Subtraction of two `Int` singleton types.
    *  ```scala
@@ -40,7 +42,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type -[X <: Int, Y <: Int] <: Int
+  infix type -[X <: Int, Y <: Int] <: Int
 
   /** Multiplication of two `Int` singleton types.
    *  ```scala
@@ -51,7 +53,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type *[X <: Int, Y <: Int] <: Int
+  infix type *[X <: Int, Y <: Int] <: Int
 
   /** Integer division of two `Int` singleton types.
    *  ```scala
@@ -62,7 +64,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type /[X <: Int, Y <: Int] <: Int
+  infix type /[X <: Int, Y <: Int] <: Int
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
@@ -73,7 +75,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type %[X <: Int, Y <: Int] <: Int
+  infix type %[X <: Int, Y <: Int] <: Int
 
   /** Binary left shift of `X` by `Y`.
    *  ```scala
@@ -84,7 +86,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type <<[X <: Int, Y <: Int] <: Int
+  infix type <<[X <: Int, Y <: Int] <: Int
 
   /** Binary right shift of `X` by `Y`.
    *  ```scala
@@ -95,7 +97,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >>[X <: Int, Y <: Int] <: Int
+  infix type >>[X <: Int, Y <: Int] <: Int
 
   /** Binary right shift of `X` by `Y`, filling the left with zeros.
    *  ```scala
@@ -106,7 +108,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >>>[X <: Int, Y <: Int] <: Int
+  infix type >>>[X <: Int, Y <: Int] <: Int
 
   /** Bitwise xor of `X` and `Y`.
    *  ```scala
@@ -117,7 +119,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type ^[X <: Int, Y <: Int] <: Int
+  infix type ^[X <: Int, Y <: Int] <: Int
 
   /** Less-than comparison of two `Int` singleton types.
    *  ```scala
@@ -129,7 +131,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type <[X <: Int, Y <: Int] <: Boolean
+  infix type <[X <: Int, Y <: Int] <: Boolean
 
   /** Greater-than comparison of two `Int` singleton types.
    *  ```scala
@@ -141,7 +143,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >[X <: Int, Y <: Int] <: Boolean
+  infix type >[X <: Int, Y <: Int] <: Boolean
 
   /** Greater-or-equal comparison of two `Int` singleton types.
    *  ```scala
@@ -153,7 +155,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >=[X <: Int, Y <: Int] <: Boolean
+  infix type >=[X <: Int, Y <: Int] <: Boolean
 
   /** Less-or-equal comparison of two `Int` singleton types.
    *  ```scala
@@ -165,7 +167,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type <=[X <: Int, Y <: Int] <: Boolean
+  infix type <=[X <: Int, Y <: Int] <: Boolean
 
   /** Bitwise and of `X` and `Y`.
    *  ```scala

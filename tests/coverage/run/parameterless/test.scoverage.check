@@ -21,9 +21,9 @@
 0
 parameterless/test.scala
 <empty>
-O$
+O
 Object
-<empty>.O$
+<empty>.O
 f
 32
 46
@@ -38,9 +38,26 @@ println("O.f")
 1
 parameterless/test.scala
 <empty>
-O$
+O
 Object
-<empty>.O$
+<empty>.O
+f
+51
+60
+4
+<none>
+Literal
+false
+0
+false
+"O.f_res"
+
+2
+parameterless/test.scala
+<empty>
+O
+Object
+<empty>.O
 f
 12
 17
@@ -52,12 +69,12 @@ false
 false
 def f
 
-2
+3
 parameterless/test.scala
 <empty>
-O$
+O
 Object
-<empty>.O$
+<empty>.O
 g
 87
 101
@@ -69,12 +86,29 @@ false
 false
 println("O.g")
 
-3
+4
 parameterless/test.scala
 <empty>
-O$
+O
 Object
-<empty>.O$
+<empty>.O
+g
+106
+115
+8
+<none>
+Literal
+false
+0
+false
+"O.g_res"
+
+5
+parameterless/test.scala
+<empty>
+O
+Object
+<empty>.O
 g
 64
 69
@@ -86,12 +120,12 @@ false
 false
 def g
 
-4
+6
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 f
 162
 174
@@ -103,12 +137,29 @@ false
 false
 println("f")
 
-5
+7
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
+f
+179
+186
+14
+<none>
+Literal
+false
+0
+false
+"f_res"
+
+8
+parameterless/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
 f
 142
 147
@@ -120,12 +171,12 @@ false
 false
 def f
 
-6
+9
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 g
 213
 225
@@ -137,12 +188,29 @@ false
 false
 println("g")
 
-7
+10
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
+g
+230
+237
+18
+<none>
+Literal
+false
+0
+false
+"g_res"
+
+11
+parameterless/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
 g
 190
 195
@@ -154,12 +222,12 @@ false
 false
 def g
 
-8
+12
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 249
 250
@@ -171,12 +239,12 @@ false
 false
 f
 
-9
+13
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 261
 262
@@ -188,12 +256,12 @@ false
 false
 g
 
-10
+14
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 265
 275
@@ -205,29 +273,12 @@ false
 false
 println(f)
 
-11
+15
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
-Test
-273
-274
-22
-f
-Ident
-false
-0
-false
-f
-
-12
-parameterless/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
+<empty>.test$package
 Test
 278
 288
@@ -239,12 +290,12 @@ false
 false
 println(g)
 
-13
+16
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 286
 287
@@ -256,12 +307,12 @@ false
 false
 g
 
-14
+17
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 291
 303
@@ -273,12 +324,12 @@ false
 false
 println(O.f)
 
-15
+18
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 299
 302
@@ -290,12 +341,12 @@ false
 false
 O.f
 
-16
+19
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 306
 318
@@ -307,12 +358,12 @@ false
 false
 println(O.g)
 
-17
+20
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 314
 317
@@ -324,12 +375,12 @@ false
 false
 O.g
 
-18
+21
 parameterless/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 117
 131

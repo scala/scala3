@@ -38,6 +38,23 @@ println("block")
 1
 inheritance/test.scala
 <empty>
+C1
+Class
+<empty>.C1
+<init>
+102
+103
+3
+<none>
+Literal
+false
+0
+false
+1
+
+2
+inheritance/test.scala
+<empty>
 C2
 Class
 <empty>.C2
@@ -52,12 +69,12 @@ false
 false
 A(2,2)
 
-2
+3
 inheritance/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 161
 176
@@ -69,12 +86,12 @@ false
 false
 println(C1().x)
 
-3
+4
 inheritance/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 169
 173
@@ -86,12 +103,12 @@ false
 false
 C1()
 
-4
+5
 inheritance/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 211
 226
@@ -103,12 +120,12 @@ false
 false
 println(C2().x)
 
-5
+6
 inheritance/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 219
 223
@@ -120,12 +137,12 @@ false
 false
 C2()
 
-6
+7
 inheritance/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 136
 150

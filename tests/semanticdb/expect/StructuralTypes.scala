@@ -6,14 +6,16 @@ object StructuralTypes:
   type User = {
     def name: String
     def age: Int
+  }
+
+  type FooUser = User {
     def foo(x: Int): Int
   }
 
-  val user = null.asInstanceOf[User]
+  val user = null.asInstanceOf[FooUser]
   user.name
   user.age
   val fooBar = user foo 123
-
   val V: Object {
     def scalameta: String
   } = new:

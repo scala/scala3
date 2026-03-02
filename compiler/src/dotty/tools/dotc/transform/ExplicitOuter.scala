@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import MegaPhase.*
+import ast.tpd.*
 import core.DenotTransformers.*
 import core.Symbols.*
 import core.Contexts.*
@@ -15,10 +16,8 @@ import core.Names.*
 import core.NameOps.*
 import core.NameKinds.SuperArgName
 
-import dotty.tools.dotc.ast.tpd
-
-import collection.mutable
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
@@ -36,7 +35,6 @@ import scala.annotation.tailrec
  */
 class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   import ExplicitOuter.*
-  import ast.tpd.*
 
   override def phaseName: String = ExplicitOuter.name
 
@@ -64,7 +62,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
    *  Furthermore, if a parent trait might have an outer accessor,
    *  provide an implementation for the outer accessor by computing the parent's
    *  outer from the parent type prefix. If the trait ends up not having an outer accessor
-   *  after all, the implementation is redundant, but does not harm.
+   *  after all, the implementation is redundant, but does no harm.
    *  The same logic is not done for non-trait parent classes because for them the outer
    *  pointer is passed in the super constructor, which will be implemented later in
    *  a separate phase which needs to run after erasure. However, we make sure here
@@ -101,7 +99,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
           val parentCls = parent.tpe.classSymbol.asClass
           parent match
             // if we are in a regular class and first parent is also a regular class,
-            // make sure we have a contructor
+            // make sure we have a constructor
             case parent: TypeTree
             if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
               New(parent.tpe, Nil).withSpan(impl.span)
@@ -111,7 +109,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     else impl
   }
 
-  override def transformClosure(tree: Closure)(using Context): tpd.Tree = {
+  override def transformClosure(tree: Closure)(using Context): Tree = {
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
@@ -122,7 +120,6 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 }
 
 object ExplicitOuter {
-  import ast.tpd.*
 
   val name: String = "explicitOuter"
   val description: String = "add accessors to outer classes from nested ones"
@@ -217,19 +214,19 @@ object ExplicitOuter {
    *  - we need to potentially pass along outer to a parent class or trait
    */
   private def needsOuterAlways(cls: ClassSymbol)(using Context): Boolean =
-    needsOuterIfReferenced(cls) &&
-    (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
-     cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
-     cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
-       needsOuterIfReferenced(parent.classSymbol.asClass)))
+       needsOuterIfReferenced(cls)
+    && (!hasOnlyLocalInstantiation(cls) // needs outer because we might not know whether outer is referenced or not
+        || cls.mixins.exists(needsOuterIfReferenced) // needs outer for parent traits
+        || cls.info.parents.exists: parent => // needs outer to potentially pass along to parent
+             needsOuterIfReferenced(parent.classSymbol.asClass)
+    )
 
   /** Class is only instantiated in the compilation unit where it is defined */
-  private def hasLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
+  private def hasOnlyLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
     // Modules are normally locally instantiated, except if they are declared in a trait,
     // in which case they will be instantiated in the classes that mix in the trait.
-    cls.owner.ownersIterator.takeWhile(!_.isStatic).exists(_.isTerm)
-    || cls.is(Private, butNot = Module)
-    || cls.is(Module) && !cls.owner.is(Trait)
+    if cls.is(Module) then !cls.owner.is(Trait)
+    else cls.isLocalToCompilationUnit
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
@@ -248,8 +245,8 @@ object ExplicitOuter {
    */
   def outerAccessor(cls: ClassSymbol)(using Context): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
-    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol orElse
-      cls.info.decls.find(_.is(OuterAccessor))
+    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol
+      `orElse` cls.info.decls.find(_.is(OuterAccessor))
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
   private def hasOuter(cls: ClassSymbol)(using Context): Boolean =
@@ -302,10 +299,15 @@ object ExplicitOuter {
         case _ => false
 
       def containsOuterRefsAnywhere(tp: Type): Boolean =
-        tp.existsPart({
+        def hasOuterRef(t: Type) =
+          { t match
             case t: SingletonType => isOuterRef(t)
             case _ => false
-          }, StopAt.Static)
+          } || {
+            val t1 = t.dealias
+            (t1 ne t) && containsOuterRefsAnywhere(t1)
+          }
+        tp.existsPart(hasOuterRef, StopAt.Static)
 
       def containsOuterRefs(t: Tree): Boolean = t match
         case _: This | _: Ident => isOuterRef(t.tpe)
@@ -323,7 +325,7 @@ object ExplicitOuter {
           containsOuterRefsAtTopLevel(app.args.head.tpe.dealias)
         case t: TypeTree if inInline =>
           // Expansions of inline methods must be able to address outer types
-          containsOuterRefsAnywhere(t.tpe.dealias)
+          containsOuterRefsAnywhere(t.tpe)
         case _ =>
           false
 
@@ -344,25 +346,12 @@ object ExplicitOuter {
   private final val HoistableFlags = Method | Lazy | Module
 
   /** The outer prefix implied by type `tpe` */
-  private def outerPrefix(tpe: Type)(using Context): Type = tpe match {
-    case tpe: TypeRef =>
-      tpe.symbol match {
-        case cls: ClassSymbol =>
-          if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
-          else tpe.prefix
-        case _ =>
-          // Need to be careful to dealias before erasure, otherwise we lose prefixes.
-          atPhaseNoLater(erasurePhase)(outerPrefix(tpe.underlying))
-          	// underlying is fine here and below since we are calling this after erasure.
-          	// However, there is some weird stuff going on with parboiled2 where an
-          	// AppliedType with a type alias as constructor is fed to outerPrefix.
-          	// For some other unknown reason this works with underlying but not with superType.
-          	// I was not able to minimize the problem and parboiled2 spits out way too much
-          	// macro generated code to be able to pinpoint the root problem.
-      }
+  private def outerPrefix(tpe: Type)(using Context): Type = tpe match
+    case tpe: TypeRef if tpe.symbol.isClass =>
+      if tpe.prefix eq NoPrefix then tpe.symbol.owner.enclosingClass.thisType
+      else tpe.prefix
     case tpe: TypeProxy =>
-      outerPrefix(tpe.underlying)
-  }
+      atPhaseNoLater(erasurePhase)(outerPrefix(tpe.superType))
 
   /** It's possible (i1755.scala gives an example) that the type
    *  given by outerPrefix contains a This-reference to a module outside
@@ -468,7 +457,7 @@ object ExplicitOuter {
             val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
             val outerAcc = atPhaseNoLater(lambdaLiftPhase) {
               // lambdalift mangles local class names, which means we cannot
-              // reliably find outer acessors anymore
+              // reliably find outer accessors anymore
               tree match
                 case tree: This if tree.symbol == enclClass && !enclClass.is(Trait) =>
                   outerParamAccessor(enclClass)

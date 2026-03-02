@@ -1,3 +1,5 @@
+//> using options -experimental
+
 @setValue("valDef", "a")
 @setValue("varDef", "b")
 @setValue("lazyVarDef", "c")

@@ -2,10 +2,10 @@ package dotty.tools.pc.base
 
 import java.nio.file.Paths
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.AutoImportsResult
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TextEdits
 
@@ -41,6 +41,18 @@ trait BaseAutoImportsSuite extends BaseCodeActionSuite:
       selection
     )
 
+  def checkWorksheetEdit(
+      original: String,
+      expected: String,
+      selection: Int = 0
+  ): Unit =
+    checkEditSelection(
+      "example.worksheet.sc",
+      original,
+      expected,
+      selection
+    )
+
   def checkEditSelection(
       filename: String,
       original: String,
@@ -48,7 +60,7 @@ trait BaseAutoImportsSuite extends BaseCodeActionSuite:
       selection: Int
   ): Unit =
     val imports = getAutoImports(original, filename)
-    if (imports.size <= selection) fail("Obtained no expected imports")
+    if imports.size <= selection then fail("Obtained no expected imports")
     val edits = imports(selection).edits().asScala.toList
     val (code, _, _) = params(original)
     val obtained = TextEdits.applyEdits(code, edits)

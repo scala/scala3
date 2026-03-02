@@ -26,11 +26,11 @@ end Common
 
 object Instances extends Common:
 
-  given intOrd: Ord[Int] with
+  given intOrd: Ord[Int]:
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T](using Ord[T]): Ord[List[T]] with
+  given listOrd: [T] => Ord[T] => Ord[List[T]]:
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -49,13 +49,13 @@ object Instances extends Common:
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
-  given listMonad: Monad[List] with
+  given listMonad: Monad[List]:
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
+  given readerMonad: [Ctx] => Monad[[X] =>> Ctx => X]:
     extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -93,7 +93,7 @@ object Instances extends Common:
 
   object TastyImpl extends TastyAPI:
     type Symbol = String
-    given symDeco: SymDeco with
+    given symDeco: SymDeco:
       extension (sym: Symbol) def name = sym
 
   class D[T]
@@ -122,7 +122,7 @@ object Instances extends Common:
   class Token(str: String)
 
   object Token:
-    given StringToToken: Conversion[String, Token] with
+    given StringToToken: Conversion[String, Token]:
       def apply(str: String): Token = new Token(str)
 
   val x: Token = "if"
@@ -140,11 +140,11 @@ object PostConditions:
 end PostConditions
 
 object AnonymousInstances extends Common:
-  given Ord[Int] with
+  given Ord[Int]:
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given [T: Ord]: Ord[List[T]] with
+  given [T: Ord] => Ord[List[T]]:
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -165,7 +165,7 @@ object AnonymousInstances extends Common:
       : Convertible[List[From], List[To]] with
     extension (x: List[From]) def convert: List[To] = x.map(c.convert)
 
-  given Monoid[String] with
+  given Monoid[String]:
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 

@@ -1,14 +1,14 @@
 import caps.unsafe.*
 import annotation.unchecked.uncheckedCaptures
 
-object Test:
+object Test extends caps.Mutable:
   type ErrorHandler = (Int, String) => Unit
 
   @uncheckedCaptures
   var defaultIncompleteHandler: ErrorHandler = ???
   @uncheckedCaptures
   var incompleteHandler: ErrorHandler = defaultIncompleteHandler
-  private val x = incompleteHandler.unsafeUnbox
+  private val x = incompleteHandler
   val _ : ErrorHandler = x
   val _ = x(1, "a")
 

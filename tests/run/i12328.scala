@@ -20,7 +20,7 @@ object Schema {
         new Schema[T] { }
   }
 
-  inline given gen[T]: Schema[T] = derived
+  inline given gen: [T] => Schema[T] = derived
 }
 
 @main def Test: Unit = {

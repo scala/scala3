@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/12663
+// https://github.com/scala/scala3/issues/12663
 
 final class HookComponentBuilder[Ctx, CtxFn[_]] {
   def asd[A](f: Ctx => A): A = ???

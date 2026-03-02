@@ -17,7 +17,7 @@ class PostInlining extends MacroTransform, IdentityDenotTransformer:
 
   override def changesMembers = true
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if ctx.compilationUnit.needsMirrorSupport then super.run
 
   lazy val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)

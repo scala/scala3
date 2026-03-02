@@ -22,6 +22,7 @@ import config.Config
 import config.Printers.overload
 import util.common.*
 import typer.ProtoTypes.NoViewsAllowed
+import reporting.Message
 import collection.mutable.ListBuffer
 
 import scala.compiletime.uninitialized
@@ -287,7 +288,7 @@ object Denotations {
      */
     inline def disambiguate(inline p: Symbol => Boolean)(using Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
-      case mdenot => suchThat(p) orElse NoQualifyingRef(alternatives)
+      case mdenot => suchThat(p) `orElse` NoQualifyingRef(alternatives)
     }
 
     /** Return symbol in this denotation that satisfies the given predicate.
@@ -477,12 +478,16 @@ object Denotations {
                 else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
-          val relaxedOverriding = ctx.explicitNulls && (sym1.is(JavaDefined) || sym2.is(JavaDefined))
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, relaxedOverriding, matchLoosely, checkClassInfo = false) then
+          val compareCtx =
+            if sym1.is(JavaDefined) && sym2.is(JavaDefined) then
+              ctx.withProperty(TypeComparer.ComparingJavaMethods, Some(()))
+            else ctx
+
+          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false)(using compareCtx) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, relaxedOverriding, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false)(using compareCtx) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
@@ -579,7 +584,7 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
-    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation
 
     final def name(using Context): Name = symbol.name
 
@@ -718,7 +723,8 @@ object Denotations {
         ctx.runId >= validFor.runId
         || ctx.settings.YtestPickler.value // mixing test pickler with debug printing can travel back in time
         || ctx.mode.is(Mode.Printing)  // no use to be picky when printing error messages
-        || symbol.isOneOf(ValidForeverFlags),
+        || symbol.isOneOf(ValidForeverFlags)
+        || ctx.tolerateErrorsForBestEffort,
         s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       while ({
@@ -740,6 +746,8 @@ object Denotations {
      *     the old version otherwise.
      *   - If the symbol did not have a denotation that was defined at the current phase
      *     return a NoDenotation instead.
+     *   - If the symbol was first defined in one of the transform phases (after pickling), it should not
+     *     be visible in new runs, so also return a NoDenotation.
      */
     private def bringForward()(using Context): SingleDenotation = {
       this match {
@@ -753,6 +761,7 @@ object Denotations {
       }
       if (!symbol.exists) return updateValidity()
       if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
+      if (coveredInterval.firstPhaseId >= Phases.firstTransformPhase.id) return NoDenotation
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
@@ -807,7 +816,7 @@ object Denotations {
         var cur = this
         // search for containing period as long as nextInRun increases.
         var next = nextInRun
-        while next.validFor.code > valid.code && !(next.validFor contains currentPeriod) do
+        while next.validFor.code > valid.code && !next.validFor.contains(currentPeriod) do
           cur = next
           next = next.nextInRun
         if next.validFor.code > valid.code then
@@ -853,7 +862,7 @@ object Denotations {
         // but to be defensive we check for infinite loop anyway
         var cur = this
         var cnt = 0
-        while !(cur.validFor contains currentPeriod) do
+        while !cur.validFor.contains(currentPeriod) do
           //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
           cur = cur.nextInRun
           // Note: One might be tempted to add a `prev` field to get to the new denotation
@@ -954,7 +963,9 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      throw new StaleSymbol(staleSymbolMsg)
+      if symbol.lastKnownDenotation.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      then throw StaleSymbolTypeError(symbol)
+      else throw StaleSymbolException(staleSymbolMsg)
 
     def staleSymbolMsg(using Context): String = {
       def ownerMsg = this match {
@@ -1065,7 +1076,9 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
-      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
+      val realExcluded =
+        if ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy) then excluded
+        else excluded | Invisible
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
@@ -1159,11 +1172,11 @@ object Denotations {
     prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
       if isRefinedMethod then
-        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+        new JointRefDenotation(s, i, currentStablePeriod, pre, isRefinedMethod)
       else
-        new UniqueRefDenotation(s, i, validFor, pre)
+        new UniqueRefDenotation(s, i, currentStablePeriod, pre)
   }
 
   class JointRefDenotation(
@@ -1174,15 +1187,15 @@ object Denotations {
     override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
-      new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
+      new JointRefDenotation(s, i, currentStablePeriod, pre, isRefinedMethod)
   }
 
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
       this
   }
 
@@ -1220,16 +1233,16 @@ object Denotations {
     def mapInherited(owndenot: PreDenotation, prevdenot: PreDenotation, pre: Type)(using Context): PreDenotation =
       derivedUnion(denot1.mapInherited(owndenot, prevdenot, pre), denot2.mapInherited(owndenot, prevdenot, pre))
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
-      derivedUnion(denot1 filterWithPredicate p, denot2 filterWithPredicate p)
+      derivedUnion(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
     def filterDisjoint(denot: PreDenotation)(using Context): PreDenotation =
-      derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
+      derivedUnion(denot1.filterDisjoint(denot), denot2.filterDisjoint(denot))
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): PreDenotation =
       derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
       g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
-      else denot1 union denot2
+      else denot1 `union` denot2
   }
 
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
@@ -1237,7 +1250,7 @@ object Denotations {
     def toDenot(pre: Type)(using Context): Denotation =
       denot1.toDenot(pre).meet(denot2.toDenot(pre), pre)
     def containsSym(sym: Symbol): Boolean =
-      (denot1 containsSym sym) || (denot2 containsSym sym)
+      denot1.containsSym(sym) || denot2.containsSym(sym)
     type AsSeenFromResult = PreDenotation
     def computeAsSeenFrom(pre: Type)(using Context): PreDenotation =
       derivedUnion(denot1.asSeenFrom(pre), denot2.asSeenFrom(pre))
@@ -1302,9 +1315,9 @@ object Denotations {
   }
 
   /** The current denotation of the static reference given by path,
-    *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
-    *  if generateStubs is set, generates stubs for missing top-level symbols
-    */
+   *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+   *  if generateStubs is set, generates stubs for missing top-level symbols
+   */
   def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)
@@ -1362,9 +1375,19 @@ object Denotations {
     else
       NoSymbol
 
+  trait StaleSymbol extends Exception
+
   /** An exception for accessing symbols that are no longer valid in current run */
-  class StaleSymbol(msg: => String) extends Exception {
+  class StaleSymbolException(msg: => String) extends Exception, StaleSymbol {
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
   }
+
+  /** An exception that is at the same type a StaleSymbol and a TypeError.
+   *  Sine it is a TypeError it can be reported as a nroaml error instead of crashing
+   *  the compiler.
+   */
+  class StaleSymbolTypeError(symbol: Symbol)(using Context) extends TypeError, StaleSymbol:
+    def toMessage(using Context) =
+      em"Cyclic macro dependency; macro refers to a toplevel symbol in ${symbol.source} from which the macro is called"
 }

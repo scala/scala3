@@ -1,0 +1,20 @@
+-- Warning: tests/init-global/warn/unsoundness.scala:12:6 --------------------------------------------------------------
+12 |    O.x       // warn
+   |    ^^^
+   |    Access uninitialized field value x. Calling trace:
+   |    ├── object O:	[ unsoundness.scala:15 ]
+   |    │   ^
+   |    ├── f(if m > 5 then Box(A(3)) else Box(B(4)))	[ unsoundness.scala:17 ]
+   |    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    ├── def f(a: Box[Base[Int]]): Unit =	[ unsoundness.scala:21 ]
+   |    │   ^
+   |    ├── h(a.value)	[ unsoundness.scala:22 ]
+   |    │   ^^^^^^^^^^
+   |    ├── def h(a: Base[Int]): Unit =	[ unsoundness.scala:24 ]
+   |    │   ^
+   |    ├── a.update(10)	[ unsoundness.scala:25 ]
+   |    │   ^^^^^^^^^^^^
+   |    ├── def update(n: T) =	[ unsoundness.scala:11 ]
+   |    │   ^
+   |    └── O.x       // warn	[ unsoundness.scala:12 ]
+   |        ^^^

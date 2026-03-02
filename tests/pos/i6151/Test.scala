@@ -1,3 +1,3 @@
 import Expect.*
-@Outcome(ExpectVal)
+@Outcome(enm = ExpectVal)
 class SimpleTest

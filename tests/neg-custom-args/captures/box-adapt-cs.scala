@@ -5,7 +5,10 @@ def test1(io: Cap^): Unit = {
 
   val x: Id[Cap^{io}] = ???
   val f: (Cap^) -> Unit = ???
-  x(f)  // ok
+  x(f)  // error
+
+  val g: (Cap^{io}) -> Unit = ???
+  x(g)  // ok
 }
 
 def test2(io: Cap^): Unit = {

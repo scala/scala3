@@ -1,6 +1,6 @@
 /* Compile with
 
-    dotc implicits2.scala -Xprint:typer -Xprint-types -verbose
+    dotc implicits2.scala -Vprint:typer -Xprint-types -verbose
 
     and verify that the inserted wrapString comes from Predef. You should see
 

@@ -8,7 +8,7 @@ object Test extends T:
   given y(using Int): String = summon[Int].toString * 22 // error
   given z[T](using T): Seq[T] = List(summon[T]) // error
 
-  given s[T](using T): Seq[T] with // error
+  given s: [T] => T => Seq[T]: // error
     def apply(x: Int) = ???
     override def length = ???
 

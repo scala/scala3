@@ -4,17 +4,7 @@ layout: main
 
 <div class="site-container">
   <div id="site-header"></div>
-  {% if page.nightlyOf %}
-  <aside class="warning">
-    <div class='icon'></div>
-    <div class='content'>
-    This is a nightly documentation. The content of this page may not be
-    consistent with the current stable version of language. Click
-    <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this
-    page.
-    </div>
-  </aside>
-  {% endif %} {{ content }}
+  {{ content }}
   <div class="divider" />
   <nav class="arrow-navigation" aria-label="Page navigation">
     {% if page.previous %}
