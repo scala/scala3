@@ -8,7 +8,7 @@ Look at this repo's issues to find useful areas for contributions.
 You can of course open your own if you've spotted a bug or have an idea for improvement.
 We will generally not accept pull requests without a corresponding issue, unless they are short and self-contained such as fixing typos.
 
-This repo contains the compiler and some related components, you may also want to contribute to
+This repo contains the compiler, standard library, and some related components, you may also want to contribute to
 [scala-cli](https://github.com/VirtusLab/scala-cli), [scala-native](https://github.com/scala-native/scala-native), [metals](https://github.com/scalameta/metals),
 and [docs.scala-lang](https://github.com/scala/docs.scala-lang).
 
