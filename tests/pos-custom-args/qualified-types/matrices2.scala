@@ -41,8 +41,8 @@ object Matrix:
 @main def Test =
   val m1 = Matrix.ofDim(2, 3)
   val m2 = Matrix.ofDim(3, 2)
-  //m1.mul(m2)
-  //
-  //val m1T = m1.transpose()
-  //m1T.mul(m1)
+  m1.mul(m2)
+
+  val m1T = m1.transpose()
+  m1T.mul(m1)
 
