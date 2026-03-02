@@ -1994,6 +1994,7 @@ object Build {
             )))
             .add(GenerateAPI(false))
             .add(SnippetCompiler(List(
+              s"${docs.getAbsolutePath}/_docs/reference/enums=compile",
               s"$ccDocs=compile|-language:experimental.captureChecking",
               s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
               s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
@@ -2916,6 +2917,13 @@ object ScaladocConfigs {
       .withTargets(tastyRoots)
   }
 
+  def snippetCompilerTargets(dottyLibSrc:String) = List(
+    s"$dottyLibSrc/scala=compile",
+    s"$dottyLibSrc/scala/quoted=compile",
+    s"$dottyLibSrc/scala/compiletime=compile",
+    s"$dottyLibSrc/scala/util=compile",
+    s"$dottyLibSrc/scala/util/control=compile",
+  )
   lazy val Scala3 = Def.task {
     val stdlib = { // relative path to the stdlib directory ('library/')
       val projectRoot = (ThisBuild/baseDirectory).value.toPath
@@ -2935,12 +2943,9 @@ object ScaladocConfigs {
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
-      .add(SnippetCompiler(List(
-        s"$stdlib/src/scala/compiletime=compile",
-        s"$stdlib/src/scala/quoted=compile",
-        s"$stdlib/src/scala/util/control=compile",
-        s"$stdlib/src/scala/util=compile",
-        s"$stdlib/src/scala=compile",
+      .add(SnippetCompiler(
+        snippetCompilerTargets(s"$stdlib/src") ++ List(
+        "docs/_docs/reference/enums=compile",
         "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
         "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
         "docs/_docs/reference/experimental/capture-checking/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
