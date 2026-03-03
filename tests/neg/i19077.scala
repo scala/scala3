@@ -1,6 +1,14 @@
 
 def f(@deprecatedName("x") x: Int, @deprecatedName y: Int, @deprecatedName("w") z: Int) = x+y+z
 
+def g(@deprecatedName("a") x: Int, a: Int) = x+a // error
+
+def h(@deprecatedName("a") x: Int, @deprecatedName("a") y: Int) = x+y // error
+
+def i(x: Int, @deprecatedName("x") y: Int) = x+y // error
+
+def j(x: Int, @deprecatedName("x") x: Int) = x // error
+
 @main def Test =
   f(1, 2, 3, x = 42) // error
   f(1, 2, 3, w = 42) // error
