@@ -160,6 +160,7 @@ sealed abstract class Range(
   /** Creates a new range with the `start` and `end` values of this range and
    *  a new `step`.
    *
+   *  @param step the new step value for the range; must be non-zero
    *  @return a new range with a different step
    */
   final def by(step: Int): Range = copy(start, end, step)
@@ -258,6 +259,9 @@ sealed abstract class Range(
   /** Creates a new range consisting of the last `n` elements of the range.
    *
    *  $doesNotUseBuilders
+   *
+   *  @param n the number of elements to take from the end of this range
+   *  @return a new range consisting of the last `n` elements, or the entire range if `n` is greater than the range length
    */
   final override def takeRight(n: Int): Range = {
     if (n <= 0) newEmptyRange(start)
@@ -274,6 +278,9 @@ sealed abstract class Range(
   /** Creates a new range consisting of the initial `length - n` elements of the range.
    *
    *  $doesNotUseBuilders
+   *
+   *  @param n the number of elements to drop from the end of this range
+   *  @return a new range consisting of all elements except the last `n`, or an empty range if `n` is greater than the range length
    */
   final override def dropRight(n: Int): Range = {
     if (n <= 0) this
@@ -536,6 +543,11 @@ object Range {
    *  precondition:  step != 0
    *  If the size of the range exceeds Int.MaxValue, the
    *  result will be negative.
+   *
+   *  @param start the first element of the range
+   *  @param end the end boundary of the range (inclusive or exclusive depending on `isInclusive`)
+   *  @param step the increment between successive elements; must be non-zero
+   *  @param isInclusive whether `end` is included in the range
    */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
@@ -565,18 +577,34 @@ object Range {
 
   /** Makes a range from `start` until `end` (exclusive) with given step value.
    *  @note step != 0
+   *
+   *  @param start the first element of the range
+   *  @param end the exclusive upper bound of the range
+   *  @param step the increment between successive elements; must be non-zero
    */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
-  /** Makes a range from `start` until `end` (exclusive) with step value 1. */
+  /** Makes a range from `start` until `end` (exclusive) with step value 1.
+   *
+   *  @param start the first element of the range
+   *  @param end the exclusive upper bound of the range
+   */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
   /** Makes an inclusive range from `start` to `end` with given step value.
    *  @note step != 0
+   *
+   *  @param start the first element of the range
+   *  @param end the inclusive upper bound of the range
+   *  @param step the increment between successive elements; must be non-zero
    */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
-  /** Makes an inclusive range from `start` to `end` with step value 1. */
+  /** Makes an inclusive range from `start` to `end` with step value 1.
+   *
+   *  @param start the first element of the range
+   *  @param end the inclusive upper bound of the range
+   */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 
   @SerialVersionUID(3L)

@@ -33,6 +33,8 @@ import scala.util.hashing.MurmurHash3
  *
  *  @define coll immutable array
  *  @define Coll `ArraySeq`
+ *
+ *  @tparam A the element type of the immutable array
  */
 sealed abstract class ArraySeq[+A]
   extends AbstractSeq[A]
@@ -90,7 +92,9 @@ sealed abstract class ArraySeq[+A]
 
   /** Fast concatenation of two [[ArraySeq]]s.
    *
-   *  @return null if optimisation not possible.
+   *  @tparam B the element type of the resulting sequence, a supertype of `A`
+   *  @param that the `ArraySeq` to append to this sequence
+   *  @return the concatenated `ArraySeq`, or `null` if optimization is not possible
    */
   private def appendedAllArraySeq[B >: A](that: ArraySeq[B]): ArraySeq[B] | Null = {
     // Optimise concatenation of two ArraySeqs
@@ -310,6 +314,10 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    *  boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
    *  `ArraySeq.unsafeWrapArray(a.asInstanceOf[Array[Int]])` does not work, it throws a
    *  `ClassCastException` at runtime.
+   *
+   *  @tparam T the element type of the array to wrap
+   *  @param x the array to wrap, which must not be modified after wrapping
+   *  @return an `ArraySeq` backed by the given array, using the appropriate primitive specialization
    */
   def unsafeWrapArray[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null

@@ -72,6 +72,11 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
    *  Unlike `fill`, which takes a by-name argument for the value and can thereby
    *  compute different values for each index, this method guarantees that all
    *  elements are identical. This allows sparse allocation in O(log n) time and space.
+   *
+   *  @tparam A the element type of the vector
+   *  @param n the number of elements in the vector
+   *  @param elem the element to fill every position with
+   *  @return a new vector of size `n` with each element set to `elem`
    */
   private[collection] def fillSparse[A](n: Int)(elem: A): Vector[A] = {
     //TODO Make public; this method is private for now because it is not forward binary compatible
@@ -115,6 +120,8 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
  *
  *  In addition to the data slices (`prefix1`, `prefix2`, ..., `dataN`, ..., `suffix2`, `suffix1`) we store a running
  *  count of elements after each prefix for more efficient indexing without having to dereference all prefix arrays.
+ *
+ *  @tparam A the element type of the vector
  */
 sealed abstract class Vector[+A] private[immutable] (private[immutable] final val prefix1: Arr1)
   extends AbstractSeq[A]
@@ -259,14 +266,24 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   override def tail: Vector[A] = slice(1, length)
   override def init: Vector[A] = slice(0, length-1)
 
-  /** Like slice but parameters must be 0 <= lo < hi < length. */
+  /** Like slice but parameters must be `0 <= lo < hi <= length`.
+   *
+   *  @param lo the lowest index to include (inclusive), must satisfy `0 <= lo < hi`
+   *  @param hi the exclusive upper bound index, must satisfy `lo < hi <= length`
+   */
   protected def slice0(lo: Int, hi: Int): Vector[A]
 
   /** Number of slices. */
   protected[immutable] def vectorSliceCount: Int
-  /** Slices at index. */
+  /** Slices at index.
+   *
+   *  @param idx the zero-based slice index
+   */
   protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null]
-  /** Length of all slices up to and including index. */
+  /** Length of all slices up to and including index.
+   *
+   *  @param idx the zero-based slice index
+   */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
@@ -317,7 +334,10 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
 }
 
 
-/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way. */
+/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way.
+ *
+ *  @tparam A the element type of the vector
+ */
 private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_prefix1) {
 
   override final def slice(from: Int, until: Int): Vector[A] = {
@@ -330,7 +350,12 @@ private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_
 }
 
 
-/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this. */
+/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this.
+ *
+ *  @tparam A the element type of the vector
+ *  @param private[immutable] val suffix1 the last data array containing the rightmost elements
+ *  @param private[immutable] val length0 the total number of elements in this vector
+ */
 private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] val suffix1: Arr1, private[immutable] val length0: Int) extends VectorImpl[A](_prefix1) {
 
   protected[immutable] final def foreachRest[U](f: A => U): Unit = {
@@ -385,7 +410,10 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
     new IndexOutOfBoundsException(s"$index is out of bounds (empty vector)")
 }
 
-/** Flat ArraySeq-like structure. */
+/** Flat ArraySeq-like structure.
+ *
+ *  @tparam A the element type of the vector
+ */
 private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
   @inline def apply(index: Int): A = {
@@ -443,7 +471,12 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 }
 
 
-/** 2-dimensional radix-balanced finger tree. */
+/** 2-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param private[immutable] val len1 the number of elements in `prefix1`
+ *  @param private[immutable] val data2 the central 2-dimensional data array
+ */
 private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val data2: Arr2,
                                  _suffix1: Arr1,
@@ -543,7 +576,15 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 3-dimensional radix-balanced finger tree. */
+/** 3-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param private[immutable] val len1 the number of elements in `prefix1`
+ *  @param private[immutable] val prefix2 the 2nd-level prefix data arrays
+ *  @param private[immutable] val len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param private[immutable] val data3 the central 3-dimensional data array
+ *  @param private[immutable] val suffix2 the 2nd-level suffix data arrays
+ */
 private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val data3: Arr3,
@@ -666,7 +707,18 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 4-dimensional radix-balanced finger tree. */
+/** 4-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param private[immutable] val len1 the number of elements in `prefix1`
+ *  @param private[immutable] val prefix2 the 2nd-level prefix data arrays
+ *  @param private[immutable] val len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param private[immutable] val prefix3 the 3rd-level prefix data arrays
+ *  @param private[immutable] val len123 the combined number of elements in `prefix1` through `prefix3`
+ *  @param private[immutable] val data4 the central 4-dimensional data array
+ *  @param private[immutable] val suffix3 the 3rd-level suffix data arrays
+ *  @param private[immutable] val suffix2 the 2nd-level suffix data arrays
+ */
 private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -810,7 +862,21 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 5-dimensional radix-balanced finger tree. */
+/** 5-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param private[immutable] val len1 the number of elements in `prefix1`
+ *  @param private[immutable] val prefix2 the 2nd-level prefix data arrays
+ *  @param private[immutable] val len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param private[immutable] val prefix3 the 3rd-level prefix data arrays
+ *  @param private[immutable] val len123 the combined number of elements in `prefix1` through `prefix3`
+ *  @param private[immutable] val prefix4 the 4th-level prefix data arrays
+ *  @param private[immutable] val len1234 the combined number of elements in `prefix1` through `prefix4`
+ *  @param private[immutable] val data5 the central 5-dimensional data array
+ *  @param private[immutable] val suffix4 the 4th-level suffix data arrays
+ *  @param private[immutable] val suffix3 the 3rd-level suffix data arrays
+ *  @param private[immutable] val suffix2 the 2nd-level suffix data arrays
+ */
 private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -975,7 +1041,24 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 6-dimensional radix-balanced finger tree. */
+/** 6-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param private[immutable] val len1 the number of elements in `prefix1`
+ *  @param private[immutable] val prefix2 the 2nd-level prefix data arrays
+ *  @param private[immutable] val len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param private[immutable] val prefix3 the 3rd-level prefix data arrays
+ *  @param private[immutable] val len123 the combined number of elements in `prefix1` through `prefix3`
+ *  @param private[immutable] val prefix4 the 4th-level prefix data arrays
+ *  @param private[immutable] val len1234 the combined number of elements in `prefix1` through `prefix4`
+ *  @param private[immutable] val prefix5 the 5th-level prefix data arrays
+ *  @param private[immutable] val len12345 the combined number of elements in `prefix1` through `prefix5`
+ *  @param private[immutable] val data6 the central 6-dimensional data array
+ *  @param private[immutable] val suffix5 the 5th-level suffix data arrays
+ *  @param private[immutable] val suffix4 the 4th-level suffix data arrays
+ *  @param private[immutable] val suffix3 the 3rd-level suffix data arrays
+ *  @param private[immutable] val suffix2 the 2nd-level suffix data arrays
+ */
 private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -1166,6 +1249,9 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
  *  of the originating vector is or where the cut is performed, this always results in a
  *  structure with the highest-dimensional data in the middle and fingers of decreasing dimension
  *  at both ends, which can be turned into a new vector with very little rebalancing.
+ *
+ *  @param lo the start index (inclusive) of the slice
+ *  @param hi the end index (exclusive) of the slice
  */
 private final class VectorSliceBuilder(lo: Int, hi: Int) {
   //println(s"***** VectorSliceBuilder($lo, $hi)")
@@ -1348,7 +1434,10 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensures prefix is not empty. */
+  /** Ensures prefix is not empty.
+   *
+   *  @param n the dimension level (1 through `maxDim`) at which to ensure the prefix is non-empty
+   */
   private def balancePrefix(n: Int): Unit = {
     if(slices(prefixIdx(n)) eq null) {
       if(n == maxDim) {
@@ -1369,7 +1458,10 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensures suffix is not empty. */
+  /** Ensures suffix is not empty.
+   *
+   *  @param n the dimension level (1 through `maxDim`) at which to ensure the suffix is non-empty
+   */
   private def balanceSuffix(n: Int): Unit = {
     if(slices(suffixIdx(n)) eq null) {
       if(n == maxDim) {
@@ -2015,7 +2107,11 @@ private[immutable] object VectorInline {
   type Arr5 = Array[Array[Array[Array[Array[AnyRef]]]]]
   type Arr6 = Array[Array[Array[Array[Array[Array[AnyRef]]]]]]
 
-  /** Dimension of the slice at index. */
+  /** Dimension of the slice at index.
+   *
+   *  @param count the total number of slices
+   *  @param idx the zero-based slice index
+   */
   @inline def vectorSliceDim(count: Int, idx: Int): Int = {
     val c = count/2
     c+1-abs(idx-c)

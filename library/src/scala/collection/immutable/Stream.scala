@@ -52,6 +52,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   /** Applies the given function `f` to each element of this linear sequence
    *  (while respecting the order of the elements).
    *
+   *  @tparam U the result type of `f`, discarded by `foreach`
    *  @param f The treatment to apply to each element.
    *  @note  Overridden here as final to trigger tail-call optimization, which
    *  replaces 'this' with 'tail' at each iteration. This is absolutely
@@ -117,6 +118,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
 
   /** The stream resulting from the concatenation of this stream with the argument stream.
    *
+   *  @tparam B the element type of the returned stream, which must be a supertype of `A`
    *  @param suffix The collection that gets appended to this stream
    *  @return The stream containing elements of this stream and the iterable object.
    */
@@ -163,7 +165,10 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     else iterableFactory.empty
   }
 
-  /** A `collection.WithFilter` which allows GC of the head of stream during processing. */
+  /** A `collection.WithFilter` which allows GC of the head of stream during processing.
+   *
+   *  @param p the predicate used to test elements
+   */
   override final def withFilter(p: A => Boolean): collection.WithFilter[A, Stream] =
     Stream.withFilter(coll, p)
 
@@ -362,12 +367,18 @@ object Stream extends SeqFactory[Stream] {
   /** An alternative way of building and matching Streams using Stream.cons(hd, tl). */
   object cons {
     /** A stream consisting of a given first element and remaining elements.
+     *
+     *  @tparam A the element type of the stream
      *  @param hd   The first element of the result stream
      *  @param tl   The remaining elements of the result stream
      */
     def apply[A](hd: A, tl: => Stream[A]): Stream[A] = new Cons(hd, tl)
 
-    /** Maps a stream to its head and tail. */
+    /** Maps a stream to its head and tail.
+     *
+     *  @tparam A the element type of the stream
+     *  @param xs the stream to decompose
+     */
     def unapply[A](xs: Stream[A]): Option[(A, Stream[A])] = #::.unapply(xs)
   }
 
@@ -487,6 +498,7 @@ object Stream extends SeqFactory[Stream] {
 
   /** An infinite Stream that repeatedly applies a given function to a start value.
    *
+   *  @tparam A the element type of the stream
    *  @param start the start value of the Stream
    *  @param f     the function that's repeatedly applied
    *  @return      the Stream returning the infinite sequence of values `start, f(start), f(f(start)), ...`
@@ -515,6 +527,7 @@ object Stream extends SeqFactory[Stream] {
   /** Creates an infinite Stream containing the given element expression (which
    *  is computed for each occurrence).
    *
+   *  @tparam A the element type of the stream
    *  @param elem the element composing the resulting Stream
    *  @return the Stream containing an infinite number of elem
    */
