@@ -41,6 +41,9 @@ IGNORE_URLS="${IGNORE_URLS},/dl.acm.org/"
 # nightlyOf links to potentially not yet existing pages
 IGNORE_URLS="${IGNORE_URLS},/docs.scala-lang.org\/scala3\/reference\//"
 
+# Status code 0 = timeouts, connection refused, DNS errors; ignore so CI does not flake
+IGNORE_STATUS_CODES="0"
+
 # Takes too much time (~30 min) to validate all subdirs in api/scala; only package scala is checked
 IGNORE_FILES='/api\/scala\/[^/]+\//'
 # Cannot guarantee stability of links for old blog posts
@@ -62,5 +65,6 @@ htmlproofer "$CHECK_PATH" \
   --no-enforce-https \
   --ignore-urls "$IGNORE_URLS" \
   --ignore-files "$IGNORE_FILES" \
-  $OPTIONAL_FLAGS \
-  --log-level :info
+  --ignore-status-codes "$IGNORE_STATUS_CODES" \
+  --log-level :debug \
+  $OPTIONAL_FLAGS
