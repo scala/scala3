@@ -45,7 +45,3 @@ class LastNElementsSet[T](keepLastCount: Short):
       else
         cache.add(element)
         None
-
-  def contains(element: T): Boolean = cache.contains(element)
-
-end LastNElementsSet
