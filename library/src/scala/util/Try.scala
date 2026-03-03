@@ -148,7 +148,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
   /** Transforms a nested `Try`, ie, a `Try` of type `Try[Try[T]]`,
    *  into an un-nested `Try`, ie, a `Try` of type `Try[T]`.
    */
-  def flatten[U](implicit ev: T <:< Try[U]): Try[U]
+  def flatten[U](implicit ev: T <:< Try[U]): Try[U]^{this}
 
   /** Inverts this `Try`. If this is a `Failure`, returns its exception wrapped in a `Success`.
    *  If this is a `Success`, returns a `Failure` containing an `UnsupportedOperationException`.
@@ -210,13 +210,13 @@ final case class Failure[+T](exception: Throwable) extends Try[T] { self: Failur
   override def getOrElse[U >: T](default: => U): U = default
   override def orElse[U >: T](default: => Try[U]^): Try[U]^{default} =
     try default catch { case NonFatal(e) => Failure(e) }
-  override def flatMap[U](f: T => Try[U]^): Try[U]^{this, f} = this.asInstanceOf[Try[U]]
-  override def flatten[U](implicit ev: T <:< Try[U]): Try[U] = this.asInstanceOf[Try[U]]
+  override def flatMap[U](f: T => Try[U]^): Try[U]^{this} = this.asTryOf[U]
+  override def flatten[U](implicit ev: T <:< Try[U]): Try[U]^{this} = this.asTryOf[U]
   override def foreach[U](f: T => U): Unit = ()
-  override def transform[U](s: T => Try[U]^, f: Throwable => Try[U]^): Try[U]^{s, f} =
+  override def transform[U](s: T => Try[U]^, f: Throwable => Try[U]^): Try[U]^{f} =
     try f(exception) catch { case NonFatal(e) => Failure(e) }
-  override def map[U](f: T => U): Try[U] = this.asInstanceOf[Try[U]]
-  override def collect[U](pf: PartialFunction[T, U]^): Try[U]^{this} = this.asInstanceOf[Try[U]]
+  override def map[U](f: T => U): Try[U]^{this} = this.asTryOf[U]
+  override def collect[U](pf: PartialFunction[T, U]^): Try[U]^{this} = this.asTryOf[U]
   override def filter(p: T => Boolean): Try[T]^{this} = this
   override def recover[U >: T](pf: PartialFunction[Throwable, U]^): Try[U]^{this, pf.only[Control]} = {
     val marker = Statics.pfMarker
@@ -228,7 +228,7 @@ final case class Failure[+T](exception: Throwable) extends Try[T] { self: Failur
   override def recoverWith[U >: T](pf: PartialFunction[Throwable, Try[U]^]^): Try[U]^{this, pf} = {
     val marker = Statics.pfMarker
     try {
-      val v = pf.applyOrElse[Throwable, Any](exception, (x: Throwable) => marker)
+      val v = pf.applyOrElse[Throwable, Any /* Should be Try[U]^{pf*} | marker.type */](exception, (x: Throwable) => marker)
       if (marker ne v.asInstanceOf[AnyRef]) v.asInstanceOf[Try[U]] else this
     } catch { case NonFatal(e) => Failure(e) }
   }
@@ -236,6 +236,8 @@ final case class Failure[+T](exception: Throwable) extends Try[T] { self: Failur
   override def toOption: Option[T] = None
   override def toEither: Either[Throwable, T] = Left(exception)
   override def fold[U](fa: Throwable => U, fb: T => U): U = fa(exception)
+
+  private inline def asTryOf[U]: Try[U]^{this} = this.asInstanceOf[Try[U]]
 }
 
 final case class Success[+T](value: T) extends Try[T] {
@@ -258,7 +260,7 @@ final case class Success[+T](value: T) extends Try[T] {
       else Failure(new NoSuchElementException("Predicate does not hold for " + value))
     } catch { case NonFatal(e) => Failure(e) }
   }
-  override def filter(p: T => Boolean): Try[T] =
+  override def filter(p: T => Boolean): Try[T]^{p.only[Control]} =
     try {
       if (p(value)) this else Failure(new NoSuchElementException("Predicate does not hold for " + value))
     } catch { case NonFatal(e) => Failure(e) }
