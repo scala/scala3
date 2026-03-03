@@ -116,9 +116,7 @@ jobs:
           fi
 
       - name: Validate documentation links
-        run: |
-          ls -l scaladoc-output/
-          ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
+        run: ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
 
 
   stdlib-sourcelinks-test:
