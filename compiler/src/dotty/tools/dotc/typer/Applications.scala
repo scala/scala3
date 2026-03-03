@@ -675,24 +675,25 @@ trait Applications extends Compatibility {
           if sym.hasAnnotation(defn.MappedAlternativeAnnot) then sym.rawParamss
           else sym.paramSymss
         paramss.find(_.exists(_.isTerm)) match
-        case Some(ps) if ps.exists(_.hasAnnotation(defn.DeprecatedNameAnnot)) =>
-          ps.flatMap: p =>
-            p.getAnnotation(defn.DeprecatedNameAnnot).map(p.name -> _)
-          .toMap
-        case _ => Map.empty
+          case Some(ps) if ps.exists(_.hasAnnotation(defn.DeprecatedNameAnnot)) =>
+            ps.flatMap: p =>
+              p.getAnnotation(defn.DeprecatedNameAnnot).map(p.name -> _)
+            .toMap
+          case _ => Map.empty
 
       extension (name: Name)
         def isMatchedBy(usage: Name): Boolean =
           name == usage
           || deprecatedNames.get(name).exists(_.deprecatedName == usage)
         def checkDeprecationOf(usage: Name, pos: SrcPos): Unit = if !ctx.isAfterTyper then
+          import report.deprecationWarning
           for dna <- deprecatedNames.get(name) do
             dna.deprecatedName match
-            case `name` | nme.NO_NAME if name == usage =>
-              report.deprecationWarning(em"naming parameter $usage is deprecated${dna.since}", pos)
-            case `usage` =>
-              report.deprecationWarning(em"the parameter name $usage is deprecated${dna.since}: use $name instead", pos)
-            case _ =>
+              case `name` | nme.NO_NAME if name == usage =>
+                deprecationWarning(em"naming parameter $usage is deprecated${dna.since}", pos)
+              case `usage` =>
+                deprecationWarning(em"the parameter name $usage is deprecated${dna.since}: use $name instead", pos)
+              case _ =>
         def alternative: Name =
           deprecatedNames.get(name).map(_.deprecatedName).getOrElse(nme.NO_NAME)
 
@@ -715,8 +716,7 @@ trait Applications extends Compatibility {
        */
       def handleNamed(pnames: List[Name], args: TreeList[T],
                       nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
-                      missingArgs: Boolean): TreeList[T] = {
-        pnames match
+                      missingArgs: Boolean): TreeList[T] = pnames match {
         case pname :: pnames if nameToArg.contains(pname) =>
           val arg = nameToArg(pname) // use the named argument for this parameter
           pname.checkDeprecationOf(pname, arg.srcPos)
