@@ -12,6 +12,10 @@ This repo contains the compiler, standard library, and some related components, 
 [scala-cli](https://github.com/VirtusLab/scala-cli), [scala-native](https://github.com/scala-native/scala-native), [metals](https://github.com/scalameta/metals),
 and [docs.scala-lang](https://github.com/scala/docs.scala-lang).
 
+For _standard library API changes_, please refer to the [Standard Library Changes process](https://nightly.scala-lang.org/docs/contributing/procedures/contributing-to-stdlib.html).
+
+For _language changes_, please refer to the [Scala Improvement Process](https://docs.scala-lang.org/sips/process-specification.html).
+
 Refer to our [LLM policy](LLM_POLICY.md) for rules and guidelines regarding usage of LLM-based tools in your contributions.
 
 ## Getting started
