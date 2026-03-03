@@ -22,7 +22,18 @@ object Macros {
     )
 
     val (modValDef: ValDef, modClassDef: ClassDef) =
-      ClassDef.module(modSym, List(TypeTree.of[Object], TypeTree.of[Serializer[T]], TypeTree.of[Foo]), Nil)
+      def bye: (ValDef, ClassDef) = ???
+      try {
+        ClassDef.module(modSym, List(TypeTree.of[Object], TypeTree.of[Serializer[T]], TypeTree.of[Foo]), Nil)
+        assert(false, "Expected AssertionError")
+      }
+      catch {
+        case ae: AssertionError
+          if ae.getMessage.contains("Parents of class symbol differs from the parents in the tree")
+        =>
+          throw RuntimeException(ae.getMessage)
+      }
+      bye
 
     Block(List(modValDef, modClassDef), Ref(modSym)).asExprOf[Serializer[T]]
   }

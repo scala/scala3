@@ -427,9 +427,11 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         case DesugaredSelect(qualifier, _) =>
           val sym = tree.symbol
           generatedType = symInfoTK(sym)
-          val qualSafeToElide = tpd.isIdempotentExpr(qualifier)
 
-          def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
+          def genLoadQualUnlessElidable(): Unit = {
+            val qualSafeToElide = tpd.isIdempotentExpr(qualifier)
+            if !qualSafeToElide then genLoadQualifier(tree)
+          }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
           def receiverClass = qualifier.tpe.typeSymbol
