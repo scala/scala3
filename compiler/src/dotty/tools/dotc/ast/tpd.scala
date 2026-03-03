@@ -1109,7 +1109,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** The translation of `tree = rhs`.
      *  This is either the tree as an assignment, or a setter call.
      */
-    def becomes(rhs: Tree)(using Context): Tree =
+    def becomes(rhs: Tree)(using Context): Tree = {
       val sym = tree.symbol
       if sym.is(Method) then
         val setter = sym.setter.orElse:
@@ -1117,6 +1117,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           sym
         setterAppliedTo(setter, rhs)
       else Assign(tree, rhs)
+    }
 
     def setterAppliedTo(setter: Symbol, rhs: Tree)(using Context): Tree =
       val qual = tree match
