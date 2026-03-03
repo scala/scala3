@@ -99,9 +99,24 @@ jobs:
       - name: Install html-proofer
         run: gem install html-proofer
 
+      - name: Check if docs/ was modified
+        id: docs-changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if git diff --name-only "$BASE" HEAD | grep -q '^docs/'; then
+            echo "modified=true" >> $GITHUB_OUTPUT
+          else
+            echo "modified=false" >> $GITHUB_OUTPUT
+          fi
+
      # Full tree except api/scala/** (top-level api/*.html only; 60k+ refs in subdirs)
      # ignore-urls: slash-delimited = regex (required to match all blob/... URLs); plain string = exact match only
      # ignore-files: regexes for paths to skip (api/scala subdirs; blog posts before 2022-01-01)
+     # External links are checked only when docs/ was modified (saves time and avoids flaky external failures).
       - name: Validate documentation links
         run: |
           IGNORE_URLS='/^http:\/\/localhost:8080\//'
@@ -122,7 +137,11 @@ jobs:
           IGNORE_FILES="${IGNORE_FILES},/blog\/(201[5-9]|202[0-4])\//"
           IGNORE_FILES="${IGNORE_FILES},/release-notes-0.1.2.html/"
           IGNORE_FILES="${IGNORE_FILES},/docs\/release-notes\//"
-          IGNORE_FILES="${IGNORE_FILES},/release-notes-0.1.2.html/"
+
+          OPTIONAL_FLAGS=""
+          if [ "${{ steps.docs-changed.outputs.modified }}" != "true" ]; then
+            OPTIONAL_FLAGS="--disable-external"
+          fi
 
           htmlproofer scaladoc/output/scala3 \
             --checks "Links" \
@@ -133,6 +152,7 @@ jobs:
             --no-enforce-https \
             --ignore-urls "$IGNORE_URLS" \
             --ignore-files "$IGNORE_FILES" \
+            $OPTIONAL_FLAGS \
             --log-level :debug
 
 
