@@ -3906,9 +3906,9 @@ object Parsers {
           then
             report.warning(AmbiguousTemplateName(md), md.namePos)
         md match
-        case md @ TypeDef(name, impl: Template) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
-        case md @ ModuleDef(name, impl) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
-        case _ =>
+          case md @ TypeDef(name, impl: Template) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
+          case md @ ModuleDef(name, impl) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
+          case _ =>
       checkName()
       md.withMods(mods).setComment(in.getDocComment(start))
 
