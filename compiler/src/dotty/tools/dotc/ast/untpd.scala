@@ -577,6 +577,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeConsumeAnnot()(using Context): Tree =
     New(scalaCapsInternalDot(tpnme.consume), Nil :: Nil)
 
+  def makeValhallaAnnot()(using Context): Tree =
+    New(scalaAnnotationDot(tpnme.valhalla), Nil :: Nil)
+
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
 

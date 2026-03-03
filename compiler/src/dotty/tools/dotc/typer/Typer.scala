@@ -1250,7 +1250,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         for case parent: RefTree <- templ1.parents do
           typedAhead(parent, tree => inferTypeParams(typedType(tree), pt))
         val anon = tpnme.ANON_CLASS
-        val clsDef = TypeDef(anon, templ1).withFlags(Final | Synthetic)
+        val clsDef = TypeDef(anon, templ1).withFlags(Final | Synthetic).withAddedAnnotation(makeValhallaAnnot().withSpan(tree.span)) //here omg .withAddedAnnotation(makeValhallaAnnot())
         typed(
           cpy.Block(tree)(
             clsDef :: Nil,
