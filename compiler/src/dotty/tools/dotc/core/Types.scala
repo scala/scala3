@@ -3601,7 +3601,10 @@ object Types extends TypeUtils {
           val rightSize = count - leftSize
           apply(build(leftSize, it), build(rightSize, it))
 
-      build(size(tp1) + size(tp2), iterator(tp1) ++ iterator(tp2))
+      val size1 = size(tp1)
+      val size2 = size(tp2)
+      if Math.abs(size1 - size2) <= 1 then apply(tp1, tp2)
+      else build(size1 + size2, iterator(tp1) ++ iterator(tp2))
 
     def unchecked(tp1: Type, tp2: Type)(using Context): AndType = {
       assertUnerased()
@@ -3752,7 +3755,10 @@ object Types extends TypeUtils {
           val rightSize = count - leftSize
           apply(build(leftSize, it), build(rightSize, it), soft)
 
-      build(size(tp1) + size(tp2), iterator(tp1) ++ iterator(tp2))
+      val size1 = size(tp1)
+      val size2 = size(tp2)
+      if Math.abs(size1 - size2) <= 1 then apply(tp1, tp2, soft)
+      else build(size1 + size2, iterator(tp1) ++ iterator(tp2))
 
     def make(tp1: Type, tp2: Type, soft: Boolean)(using Context): Type =
       if (tp1 eq tp2) tp1
