@@ -1994,6 +1994,7 @@ object Build {
             )))
             .add(GenerateAPI(false))
             .add(SnippetCompiler(List(
+              s"${docs.getAbsolutePath}/_docs/reference/new-types=compile",
               s"${docs.getAbsolutePath}/_docs/reference/enums=compile",
               s"$ccDocs=compile|-language:experimental.captureChecking",
               s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
@@ -2945,6 +2946,7 @@ object ScaladocConfigs {
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(
         snippetCompilerTargets(s"$stdlib/src") ++ List(
+        "docs/_docs/reference/new-types=compile",
         "docs/_docs/reference/enums=compile",
         "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
         "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
@@ -2955,6 +2957,5 @@ object ScaladocConfigs {
       .add(ApiSubdirectory(true))
       .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))
   }
-
 
 }
