@@ -388,7 +388,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     private def fabricateStaticInitAndroid(): Unit = {
 
       val clinit: asm.MethodVisitor = cnode.visitMethod(
-        GenBCodeOps.PublicStatic, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
+        asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
         CLASS_CONSTRUCTOR_NAME,
         "()V",
         null, // no java-generic-signature

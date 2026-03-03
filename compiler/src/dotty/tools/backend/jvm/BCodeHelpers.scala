@@ -351,7 +351,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
        *  and we don't know what classes might be subclassing the companion class.  See SI-4827.
        */
       // TODO: evaluate the other flags we might be dropping on the floor here.
-      val flags = GenBCodeOps.PublicStatic | (
+      val flags = asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC | (
         if (m.is(JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
       ) | (
         if (isSynthetic) asm.Opcodes.ACC_SYNTHETIC else 0
@@ -489,7 +489,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
       // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
       jclass.visitField(
-        GenBCodeOps.PrivateStaticFinal,
+        asm.Opcodes.ACC_PRIVATE | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
         "serialVersionUID",
         "J",
         null, // no java-generic-signature
@@ -583,7 +583,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       val tdesc_creator = androidCreatorType.descriptor
 
       cnode.visitField(
-        GenBCodeOps.PublicStaticFinal,
+        asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
         "CREATOR",
         tdesc_creator,
         null, // no java-generic-signature
