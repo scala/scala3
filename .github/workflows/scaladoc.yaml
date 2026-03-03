@@ -85,6 +85,8 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Download scaladoc output
         uses: actions/download-artifact@v4
@@ -114,7 +116,7 @@ jobs:
           fi
 
       - name: Validate documentation links
-        run: ./project/scripts/validateScaladocLinks.sh scaladoc-output/scala3 --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
+        run: ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
 
 
   stdlib-sourcelinks-test:
