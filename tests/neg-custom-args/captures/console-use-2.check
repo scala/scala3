@@ -1,0 +1,26 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/console-use-2/Test_2.scala:4:2 -------------------------
+4 |  Console.println("hello") // error
+  |  ^^^^^^^
+  |  Reference `test.Console` is not included in the allowed capture set {}
+  |  of the enclosing constructor Test in object Test.
+  |
+  |  Note that `test.Console` is a capability because it contains a field out: java.io.PrintStream^.
+  |
+  |  External uses should be declared explicitly with a uses_init clause in object Test:
+  |
+  |      uses_init test.Console
+  |
+  |  where:    ^ refers to a root capability in the type of value out
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/console-use-2/Test_2.scala:7:4 -------------------------
+7 |    Console.println("hello") // error
+  |    ^^^^^^^
+  |    Reference `test.Console` is not included in the allowed capture set {}
+  |    of the enclosing object Test in package test.
+  |
+  |    Note that `test.Console` is a capability because it contains a field out: java.io.PrintStream^.
+  |
+  |    External uses should be declared explicitly with a uses clause in object Test:
+  |
+  |        uses test.Console
+  |
+  |    where:    ^ refers to a root capability in the type of value out

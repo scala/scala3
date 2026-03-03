@@ -22,7 +22,7 @@ import scala.annotation.tailrec
   *
   *  $concurrentmapinfo
   *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#concurrent_maps "Scala's Collection Library overview"]]
+  *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#concurrent_maps)
   *  section on `Concurrent Maps` for more information.
   *
   *  @tparam K  the key type of the map

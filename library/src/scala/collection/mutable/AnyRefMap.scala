@@ -42,7 +42,6 @@ import scala.language.implicitConversions
  *  This map is not intended to contain more than 2^29^ entries (approximately
  *  500 million).  The maximum capacity is 2^30^, but performance will degrade
  *  rapidly as 2^30^ is approached.
- *
  */
 @(deprecated @companionClass)("Use `scala.collection.mutable.HashMap` instead for better performance.", since = "2.13.16")
 class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initialBufferSize: Int, initBlank: Boolean)
@@ -463,8 +462,8 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   }
 
   /** Applies a transformation function to all values stored in this map.
-    *  Note: the default, if any,  is not transformed.
-    */
+   *  Note: the default, if any,  is not transformed.
+   */
   @deprecated("Use transformValuesInPlace instead of transformValues", "2.13.0")
   @`inline` final def transformValues(f: V => V): this.type = transformValuesInPlace(f)
 
@@ -486,27 +485,24 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
 
   // The implicit dummy parameter is necessary to distinguish these methods from the base methods they overload (not override).
   // Previously, in Scala 2, f took `K with AnyRef` scala/bug#11035
-  /**
-   * An overload of `map` which produces an `AnyRefMap`.
+  /** An overload of `map` which produces an `AnyRefMap`.
    *
-   * @param f the mapping function must produce a key-value pair where the key is an `AnyRef`
-   * @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
+   *  @param f the mapping function must produce a key-value pair where the key is an `AnyRef`
+   *  @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
    */
   def map[K2 <: AnyRef, V2](f: ((K, V)) => (K2, V2))(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.Map(this, f))
-  /**
-   * An overload of `flatMap` which produces an `AnyRefMap`.
+  /** An overload of `flatMap` which produces an `AnyRefMap`.
    *
-   * @param f the mapping function must produce key-value pairs where the key is an `AnyRef`
-   * @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
+   *  @param f the mapping function must produce key-value pairs where the key is an `AnyRef`
+   *  @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
    */
   def flatMap[K2 <: AnyRef, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.FlatMap(this, f))
-  /**
-   * An overload of `collect` which produces an `AnyRefMap`.
+  /** An overload of `collect` which produces an `AnyRefMap`.
    *
-   * @param pf the mapping function must produce a key-value pair where the key is an `AnyRef`
-   * @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
+   *  @param pf the mapping function must produce a key-value pair where the key is an `AnyRef`
+   *  @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
    */
   def collect[K2 <: AnyRef, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     strictOptimizedCollect(AnyRefMap.newBuilder[K2, V2], pf)
@@ -574,15 +570,15 @@ object AnyRefMap {
   def withDefault[K <: AnyRef, V](default: K -> V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
 
   /** Creates a new `AnyRefMap` from an existing source collection. A source collection
-    * which is already an `AnyRefMap` gets cloned.
-    *
-    * @param source Source collection
-    * @tparam K the type of the keys
-    * @tparam V the type of the values
-    * @return a new `AnyRefMap` with the elements of `source`
-    */
+   *  which is already an `AnyRefMap` gets cloned.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param source Source collection
+   *  @return a new `AnyRefMap` with the elements of `source`
+   */
   def from[K <: AnyRef, V](source: IterableOnce[(K, V)]^): AnyRefMap[K, V] = source match {
-    case source: AnyRefMap[_, _] => source.clone().asInstanceOf[AnyRefMap[K, V]]
+    case source: AnyRefMap[?, ?] => source.clone().asInstanceOf[AnyRefMap[K, V]]
     case _ => buildFromIterableOnce(source)
   }
 

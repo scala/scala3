@@ -1,4 +1,4 @@
-import caps.cap
+import caps.any
 
 abstract class Foo:
   def foo: () => Unit = () => ()

@@ -34,6 +34,6 @@ object Test2:
 
   val console: Console^ = Console() // provide capability locally
 
-  def addWritesToConsole: (Int, Int) -> Int = (a, b) => // ok since `console` is static (maybe flag this?)
+  def addWritesToConsole: (Int, Int) -> Int = (a, b) => // error
     log(s"adding a ($a) to b ($b)")(using console)
     a + b

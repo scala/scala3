@@ -19,16 +19,15 @@ import language.experimental.captureChecking
 import IsMap.Tupled
 import scala.collection.immutable.{IntMap, LongMap}
 
-/**
-  * Type class witnessing that a collection type `Repr`
-  * has keys of type `K`, values of type `V` and has a conversion to
-  * `MapOps[K, V, Iterable, C]`, for some types `K`, `V` and `C`.
-  *
-  * This type enables simple enrichment of `Map`s with extension methods.
-  *
-  * @see [[scala.collection.generic.IsIterable]]
-  * @tparam Repr Collection type (e.g. `Map[Int, String]`)
-  */
+/** Type class witnessing that a collection type `Repr`
+ *  has keys of type `K`, values of type `V` and has a conversion to
+ *  `MapOps[K, V, Iterable, C]`, for some types `K`, `V` and `C`.
+ *
+ *  This type enables simple enrichment of `Map`s with extension methods.
+ *
+ *  @see [[scala.collection.generic.IsIterable]]
+ *  @tparam Repr Collection type (e.g. `Map[Int, String]`)
+ */
 transparent trait IsMap[Repr] extends IsIterable[Repr] {
 
   /** The type of keys. */
@@ -40,11 +39,11 @@ transparent trait IsMap[Repr] extends IsIterable[Repr] {
   type A = (K, V)
 
   /** A conversion from the type `Repr` to `MapOps[K, V, Iterable, C]`
-    *
-    * @note The third type parameter of the returned `MapOps` value is
-    *       still `Iterable` (and not `Map`) because `MapView[K, V]` only
-    *       extends `MapOps[K, V, View, View[A]]`.
-    */
+   *
+   *  @note The third type parameter of the returned `MapOps` value is
+   *       still `Iterable` (and not `Map`) because `MapView[K, V]` only
+   *       extends `MapOps[K, V, View, View[A]]`.
+   */
   override def apply(c: Repr): MapOps[K, V, Tupled[Iterable]#Ap, C]
 
 }
@@ -52,11 +51,11 @@ transparent trait IsMap[Repr] extends IsIterable[Repr] {
 object IsMap {
 
   /** Convenient type level function that takes a unary type constructor `F[_]`
-    * and returns a binary type constructor that tuples its parameters and passes
-    * them to `F`.
-    *
-    * `Tupled[F]#Ap` is equivalent to `({ type Ap[X, +Y] = F[(X, Y)] })#Ap`.
-    */
+   *  and returns a binary type constructor that tuples its parameters and passes
+   *  them to `F`.
+   *
+   *  `Tupled[F]#Ap` is equivalent to `({ type Ap[X, +Y] = F[(X, Y)] })#Ap`.
+   */
   type Tupled[F[+_]] = { type Ap[X, Y] = F[(X, Y)] }
 
   // Map collections

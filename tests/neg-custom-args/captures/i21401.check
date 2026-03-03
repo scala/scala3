@@ -1,37 +1,34 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:15:23 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:15:28 ---------------------------------------
 15 |  val a = usingIO[IO^](x => x) // error
-   |                       ^^^^^^
-   |Found:    (x: IO^'s1) ->'s2 IO^{x}
-   |Required: IO^ => IO^²
+   |                            ^
+   |Found:    IO^{x}
+   |Required: IO^{any}
    |
-   |Note that capability x is not included in capture set {cap}
-   |because (x : IO^'s1) is not visible from cap in value a.
+   |Note that capability `x` cannot flow into capture set {any}
+   |because (x : IO^) in an enclosing function is not visible from any in value a.
    |
-   |where:    =>         refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
-   |          ^          refers to the universal root capability
-   |          ^² and cap refer to a fresh root capability created in value a
+   |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
+   |          any is a root capability created in value a
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
 16 |  val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error
    |                                                                  ^^^
    |     Type variable R of method usingIO cannot be instantiated to [R, X <: Boxed[IO^] -> R] => (op: X) -> R since
-   |     the part IO^ of that type captures the root capability `cap`.
+   |     the part IO^ of that type captures the root capability `any`.
    |
-   |     where:    ^ refers to the universal root capability
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:67 ---------------------------------------
+   |     where:    ^ refers to the root capability caps.any
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:72 ---------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error
-   |                                                                   ^^^^^^
-   |Found:    (x: Boxed[IO^]^'s3) ->'s4 Boxed[IO^²]
-   |Required: Boxed[IO^] -> Boxed[IO^³]
+   |                                                                        ^
+   |                                        Found:    Boxed[IO^{x*}]
+   |                                        Required: Boxed[IO^{any}]
    |
-   |Note that capability cap is not included in capture set {cap²}
-   |because cap is not visible from cap² in value x².
+   |                                        Note that capability `x*` cannot flow into capture set {any}
+   |                                        because x* in an enclosing function is not visible from any in value x².
    |
-   |where:    ^           refers to the universal root capability
-   |          ^² and cap  refer to a root capability associated with the result type of (x: Boxed[IO^]^'s3): Boxed[IO^²]
-   |          ^³ and cap² refer to a fresh root capability created in value x²
-   |          x           is a reference to a value parameter
-   |          x²          is a value in method test2
+   |                                        where:    any is a root capability created in value x²
+   |                                                  x   is a parameter in an anonymous function in method test2
+   |                                                  x²  is a value in method test2
    |
    | longer explanation available when compiling with `-explain`

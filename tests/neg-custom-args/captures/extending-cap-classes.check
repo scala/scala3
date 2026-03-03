@@ -4,8 +4,8 @@
    |               Found:    (y2 : C2)
    |               Required: C1
    |
-   |               Note that capability cap is not included in capture set {}.
+   |               Note that capability `any` cannot flow into capture set {}.
    |
-   |               where:    cap is a fresh root capability classified as SharedCapability in the type of value y2
+   |               where:    any is a root capability classified as SharedCapability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`

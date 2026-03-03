@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/block-ending-in-def.scala:3:47 ------------------------------------------------
+3 |    if i == 0 then xs else loop(i - 1, 1 :: xs) // error
+  |                                               ^
+  |                           Found:    Unit
+  |                           Required: List[Int]
+  |
+  |                           Maybe the enclosing block is missing a final expression after the definition of `loop`?
+  |
+  | longer explanation available when compiling with `-explain`

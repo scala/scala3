@@ -7,3 +7,12 @@
   |         Note that () ->{f} Unit does not conform to Proc^{f} because () ->{f} Unit is boxed but Proc^{f} is not.
   |
   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/eta.scala:6:14 -------------------------------------------
+6 |         bar( () => f )  // error, was ok before
+  |              ^^^^^^^
+  |              Found:    () ->{f} () ->{f} Unit
+  |              Required: () -> () ->'s1 Unit
+  |
+  |              Note that capability `f` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`

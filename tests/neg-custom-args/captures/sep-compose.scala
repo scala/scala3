@@ -1,26 +1,26 @@
-import caps.cap
+import caps.any
 
-def seq1(x: () => Unit, y: () ->{x, cap} Unit): Unit =
+def seq1(x: () => Unit, y: () ->{x, any} Unit): Unit =
   x(); y()
 
-def seq2(x: () => Unit)(y: () ->{x, cap} Unit): Unit =
+def seq2(x: () => Unit)(y: () ->{x, any} Unit): Unit =
   x(); y()
 
-def seq5(x: () ->{cap} Unit)(y: () => Unit): Unit =
+def seq5(x: () ->{any} Unit)(y: () => Unit): Unit =
   x(); y()
 
 def test(io: Object^, a: Object^{io}): Unit =
 
-  def seq3(x: () => Unit)(y: () ->{a, cap} Unit): Unit =
+  def seq3(x: () => Unit)(y: () ->{a, any} Unit): Unit =
     x(); y()
 
-  def seq4(x: () ->{a, cap} Unit)(y: () => Unit): Unit =
+  def seq4(x: () ->{a, any} Unit)(y: () => Unit): Unit =
     x(); y()
 
-  def seq6(x: () => Unit, y: () ->{a, cap} Unit): Unit =
+  def seq6(x: () => Unit, y: () ->{a, any} Unit): Unit =
     x(); y()
 
-  def seq7(x: () ->{a, cap} Unit, y: () => Unit): Unit =
+  def seq7(x: () ->{a, any} Unit, y: () => Unit): Unit =
     x(); y()
 
   def seq8(x: () => Unit)(y: () ->{a} Unit): Unit =

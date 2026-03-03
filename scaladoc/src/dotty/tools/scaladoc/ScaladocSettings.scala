@@ -120,6 +120,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val apiSubdirectory: Setting[Boolean] =
     BooleanSetting(RootSetting, "Yapi-subdirectory", "Put the API documentation pages inside a directory `api/`", false)
 
+  val generateApi: Setting[Boolean] =
+    BooleanSetting(RootSetting, "Ygenerate-api", "Controls whether API documentation should be generated. If disabled, only documentation pages will be generated", true)
+
   val scastieConfiguration: Setting[String] =
     StringSetting(RootSetting, "scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
 
@@ -148,4 +151,4 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     BooleanSetting(RootSetting, "suppressCC", "Suppress rendering anything related to experimental capture checking", false)
 
   def scaladocSpecificSettings: Set[Setting[?]] =
-    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu, suppressCC)
+    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu, suppressCC, generateApi)

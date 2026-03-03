@@ -15,12 +15,14 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 
+import DottyBackendInterface.{symExtensions, *}
+import tpd.*
 
 /*
  *
@@ -28,13 +30,7 @@ import dotty.tools.dotc.report
  *  @version 1.0
  *
  */
-trait BCodeSkelBuilder extends BCodeHelpers {
-  import int.{_, given}
-  import DottyBackendInterface.{symExtensions, _}
-  import tpd.*
-  import bTypes.*
-  import coreBTypes.*
-  import bCodeAsmCommon.*
+trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
   lazy val NativeAttr: Symbol = requiredClass[scala.native]
 
@@ -151,12 +147,15 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
+    // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
+    val superCallTargets = mutable.LinkedHashSet[ClassBType]()
+
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      (funSym.info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      funSym.info.firstParamTypes.map(toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {
@@ -179,8 +178,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       thisName          = internalName(claszSymbol)
 
       cnode = new ClassNode1()
-
-      initJClass(cnode)
 
       val cd = if (isCZStaticModule) {
         // Move statements from the primary constructor following the superclass constructor call to
@@ -291,11 +288,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       addClassFields()
       gen(cd.rhs)
+      // This needs to wait until now since it uses `superCallTargets` which is populating while emitting the class body
+      initJClass(cnode)
 
       if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
         AsmUtils.traceClass(cnode)
 
-      cnode.innerClasses
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
     } // end of method genPlainClass()
@@ -306,8 +304,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ObjectRef.internalName else internalName(ps.head.typeSymbol)
-      val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces.map(_.internalName)
+      val superClass: String = if (ps.isEmpty) ts.ObjectRef.internalName else internalName(ps.head.typeSymbol)
+
+      // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
+      // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.
+      //  It could be cleaned up given some work to make sure changing the order isn't a problem.)
+      val directInterfaces = claszSymbol.directlyInheritedTraits
+      val directInterfacesBTypes = directInterfaces.map(ts.classBTypeFromSymbol)
+      val baseClassesBTypes = directInterfaces.iterator.flatMap(_.asClass.baseClasses.drop(1)).map(ts.classBTypeFromSymbol).toSet
+      val additionalBTypes = superCallTargets.filter(!directInterfacesBTypes.contains(_))
+      val interfaces = directInterfacesBTypes.filter(t => !baseClassesBTypes(t) || superCallTargets(t)) ++ additionalBTypes
+
+      val interfaceNames0 = interfaces.iterator.map(_.internalName).toList
       /* To avoid deadlocks when combining objects, lambdas and multi-threading,
        * lambdas in objects are compiled to instance methods of the module class
        * instead of static methods (see tests/run/deadlock.scala and
@@ -328,9 +336,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         else
           interfaceNames0
 
-      val flags = javaFlags(claszSymbol)
+      val flags = BCodeUtils.javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
+      val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
+                                              else BCodeUtils.checkConstantStringLength(thisName)
+      if !lengthOk then
+        report.error("Class name is too long for the JVM", claszSymbol.srcPos)
+        return
       cnode.visit(backendUtils.classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
@@ -339,8 +352,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
-        case Some(EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
+      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
+        case Some(BCodeAsmCommon.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
       }
@@ -389,6 +402,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       clinit.visitInsn(asm.Opcodes.RETURN)
       clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
       clinit.visitEnd()
+    }
+    
+    private lazy val TransientAttr = requiredClass[scala.transient]
+    private lazy val VolatileAttr = requiredClass[scala.volatile]
+
+    private def javaFieldFlags(sym: Symbol) = {
+      import asm.Opcodes.*
+      import GenBCodeOps.addFlagIf
+      BCodeUtils.javaFlags(sym)
+        .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
+        .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
+        .addFlagIf(!sym.is(Mutable), ACC_FINAL)
     }
 
     def addClassFields(): Unit = {
@@ -702,7 +727,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           val body =
             if (tree.constr.rhs.isEmpty) tree.body
             else tree.constr :: tree.body
-          body foreach gen
+          body.foreach(gen)
 
         case _ => abort(s"Illegal tree in gen: $tree")
       }
@@ -711,7 +736,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    def initJMethod(flags: Int, params: List[Symbol]): Unit = {
+    private def initJMethod(flags: Int, params: List[Symbol]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
@@ -722,6 +747,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         else jMethodName
 
       val mdesc = asmMethodType(methSymbol).descriptor
+      val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
+                                        else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
+      if !lengthOk then
+        report.error("Method signature is too long for the JVM", methSymbol.srcPos)
+        return
       mnode = cnode.visitMethod(
         flags,
         bytecodeName,
@@ -730,7 +760,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         mkArrayS(thrownExceptions)
       ).asInstanceOf[MethodNode1]
 
-      // TODO param names: (m.params map (p => javaName(p.sym)))
+      // TODO param names: (m.params.map(p => javaName(p.sym)))
 
       emitAnnotations(mnode, others)
       emitParamNames(mnode, params)
@@ -766,7 +796,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
             .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
           treeMap = {
-            case tree: This if tree.symbol == enclosingClass => selfParamRef
+            case tree: This if tree.symbol == enclosingClass =>
+              // Since we want the positions to be accurate in the bytecode, we preserve
+              // the original span of the `this` node when we `statify` it.
+              selfParamRef.withSpan(tree.span)
             case tree => tree
           },
           oldOwners = origSym :: Nil,
@@ -845,7 +878,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
       val flags =
         import GenBCodeOps.addFlagIf
-        javaFlags(methSymbol)
+        BCodeUtils.javaFlags(methSymbol)
           .addFlagIf(isAbstractMethod, asm.Opcodes.ACC_ABSTRACT)
           .addFlagIf(false /*methSymbol.isStrictFP*/, asm.Opcodes.ACC_STRICT)
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
@@ -853,7 +886,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
       val paramSyms = params.map(_.symbol)
       initJMethod(flags, paramSyms)
-
+      if mnode eq null then
+        // we failed to emit the method header, no point in continuing
+        return
 
       if (!isAbstractMethod && !isNative) {
         // #14773 Reuse locals slots for tailrec-generated mutable vars
@@ -958,7 +993,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // android creator code
       if (isCZParcelable) {
         // add a static field ("CREATOR") to this class to cache android.os.Parcelable$Creator
-        val andrFieldDescr = classBTypeFromSymbol(AndroidCreatorClass).descriptor
+        val andrFieldDescr = ts.classBTypeFromSymbol(AndroidCreatorClass).descriptor
         cnode.visitField(
           asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
           "CREATOR",

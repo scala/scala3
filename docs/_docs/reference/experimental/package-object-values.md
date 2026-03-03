@@ -1,7 +1,6 @@
 ---
 layout: doc-page
 title: "Reference-able Package Objects"
-redirectFrom: /docs/reference/experimental/package-object-values.html
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/package-object-values.html
 ---
 

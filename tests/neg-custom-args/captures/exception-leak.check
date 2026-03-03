@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/exception-leak.scala:4:8 ------------------------------------------------------
+4 |  self: E^ => // error
+  |        ^^
+  |        E is a pure type, it makes no sense to add a capture set to it
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/exception-leak.scala:1:8 -------------------------------
+1 |class E(f: () => Unit) extends Exception // error
+  |        ^
+  |        Reference `E.this.f` is not included in the allowed capture set {} of the self type of class E.

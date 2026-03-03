@@ -920,7 +920,7 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = CCState.withCollapsedFresh:
+            val joint = CCState.withCollapsedLocalCaps:
                 // We have to do a collapseFresh here since `pdenot` will see the class
                 // view and a fresh in the class will not be able to subsume a
                 // refinement from outside since level checking would fail.
@@ -2486,7 +2486,7 @@ object Types extends TypeUtils {
       util.Stats.record("NamedType.computeDenot")
 
       def finish(d: Denotation) = {
-        if (d.exists)
+        if d.exists then
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
@@ -3336,15 +3336,6 @@ object Types extends TypeUtils {
     override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
       PreciseRefinedType(parent, refinedName, refinedInfo)
 
-  /** Used for refined function types created at cc/Setup that come from original
-   *  generic function types. Function types of this class don't get their result
-   *  captures mapped from FreshCaps to ResultCaps with toResult.
-   */
-  class InferredRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
-  extends RefinedType(parent, refinedName, refinedInfo):
-    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
-      InferredRefinedType(parent, refinedName, refinedInfo)
-
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(using Context): Type =
       if (names.isEmpty) parent
@@ -3358,10 +3349,6 @@ object Types extends TypeUtils {
     def precise(parent: Type, name: Name, info: Type)(using Context): RefinedType =
       assert(!ctx.erasedTypes)
       unique(new PreciseRefinedType(parent, name, info)).checkInst
-
-    def inferred(parent: Type, name: Name, info: Type)(using Context): RefinedType =
-      assert(!ctx.erasedTypes)
-      unique(new InferredRefinedType(parent, name, info)).checkInst
   }
 
   /** A recursive type. Instances should be constructed via the companion object.
@@ -3506,39 +3493,37 @@ object Types extends TypeUtils {
     override final def baseClasses(using Context): List[ClassSymbol] = hi.baseClasses
   }
 
-  object FlexibleType {
+  object FlexibleType:
     def apply(tp: Type)(using Context): FlexibleType =
       assert(tp.isValueType, s"Should not flexify ${tp}")
-      tp match {
-      case ft: FlexibleType => ft
-      case _ =>
-        // val tp1 = tp.stripNull()
-        // if tp1.isNullType then
-        //   // (Null)? =:= ? >: Null <: (Object & Null)
-        //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
-        // else
-        //   // (T | Null)? =:= ? >: T | Null <: T
-        //   // (T)? =:= ? >: T | Null <: T
-        //   val hi = tp1
-        //   val lo = if hi eq tp then OrNull(hi) else tp
-        //   FlexibleType(lo, hi)
-        //
-        // The commented out code does more work to analyze the original type to ensure the
-        // flexible type is always a subtype of the original type and the Object type.
-        // It is not necessary according to the use cases, so we choose to use a simpler
-        // rule.
-        FlexibleType(OrNull(tp), tp)
-    }
-
-    def make(tp: Type)(using Context): Type =
       tp match
-        case _: FlexibleType => tp
-        case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
-        case wt: WildcardType => wt.optBounds match
-          case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
-          case _ => wt
-        case other => FlexibleType(tp)
-  }
+        case ft: FlexibleType => ft
+        case _ => FlexibleType(OrNull(tp), tp)
+          // val tp1 = tp.stripNull()
+          // if tp1.isNullType then
+          //   // (Null)? =:= ? >: Null <: (Object & Null)
+          //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
+          // else
+          //   // (T | Null)? =:= ? >: T | Null <: T
+          //   // (T)? =:= ? >: T | Null <: T
+          //   val hi = tp1
+          //   val lo = if hi eq tp then OrNull(hi) else tp
+          //   FlexibleType(lo, hi)
+          //
+          // The commented out code does more work to analyze the original type to ensure the
+          // flexible type is always a subtype of the original type and the Object type.
+          // It is not necessary according to the use cases, so we choose to use a simpler
+          // rule.
+
+    def make(tp: Type)(using Context): Type = tp match
+      case _: FlexibleType => tp // tp is already flexible
+      case SimpleOrNull(_) => tp // tp is already nullable
+      case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
+      case wt: WildcardType => wt.optBounds match
+        case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
+        case _ => wt
+      case other => FlexibleType(tp)
+  end FlexibleType
 
   // --- AndType/OrType ---------------------------------------------------------------
 
@@ -3811,13 +3796,19 @@ object Types extends TypeUtils {
    *    case OrNull(tp1) => // tp had the form `tp1 | Null`
    *    case _ => // tp was not a nullable union
    */
-  object OrNull {
+  object OrNull:
     def apply(tp: Type)(using Context) =
       if tp.isNullType then tp else OrType(tp, defn.NullType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
       val tp1 = tp.stripNull()
       if tp1 ne tp then Some(tp1) else None
-  }
+
+  object SimpleOrNull:
+    def unapply(tp: Type)(using Context): Option[Type] =
+      tp match
+        case OrType(tp1, tp2) if tp1.isNullType => Some(tp2)
+        case OrType(tp1, tp2) if tp2.isNullType => Some(tp1)
+        case _ => None
 
   // ----- ExprType and LambdaTypes -----------------------------------
 
@@ -4237,7 +4228,7 @@ object Types extends TypeUtils {
             case Reach(c1) =>
               apply(c1) match
                 case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
-                case _ => GlobalCap
+                case _ => GlobalAny
             case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)
@@ -6278,6 +6269,11 @@ object Types extends TypeUtils {
     /** Fuse with another map */
     def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
 
+    /** A summarization to be used to describe capture sets resulting from this map
+     *  in cc diagnostics.
+     */
+    def summarize(using Context): String = getClass.toString
+
   end BiTypeMap
 
   /** A typemap that follows non-opaque aliases and keeps their transformed
@@ -6384,9 +6380,9 @@ object Types extends TypeUtils {
         null
 
     def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
-      case c @ FreshCap(prefix) =>
+      case c @ LocalCap(prefix) =>
         // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
-        // We create at most one such skolem per FreshCap/context owner pair.
+        // We create at most one such skolem per LocalCap/context owner pair.
         // This approximates towards creating fewer skolems than otherwise needed,
         // which means we might get more separation conflicts than otherwise. But
         // it's not clear we will get such conflicts anyway.
@@ -6400,7 +6396,7 @@ object Types extends TypeUtils {
                 val skolem = pre.narrow(ctx.owner)
                 c.skolems = c.skolems.updated(ctx.owner, skolem)
                 skolem
-        c.derivedFreshCap(ensurePath(apply(prefix)))
+        c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
@@ -7136,10 +7132,13 @@ object Types extends TypeUtils {
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
         case tp: TypeParamRef =>
-          val bounds = TypeComparer.bounds(tp)
-          val loSize = apply(n, bounds.lo)
-          val hiSize = apply(n, bounds.hi)
-          hiSize max loSize
+          if seen.contains(tp) then n
+          else
+            seen += tp
+            val bounds = TypeComparer.bounds(tp)
+            val loSize = apply(n, bounds.lo)
+            val hiSize = apply(n, bounds.hi)
+            hiSize max loSize
         case tp: LazyRef =>
           if seen.contains(tp) then n
           else

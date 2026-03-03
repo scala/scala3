@@ -12,7 +12,6 @@ object Bar {
   given Monad[Bar] = summon[Monad[Foo]] // was error, fixed by given loop prevention
 }
 
-object Test extends App {
-  println(summon[Monad[Foo]].id)
-  println(summon[Monad[Bar]].id)
-}
+@main def Test =
+  assert(summon[Monad[Foo]].id == "Foo")
+  assert(summon[Monad[Bar]].id == "Foo")

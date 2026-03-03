@@ -1,25 +1,26 @@
 package dotty.tools.pc.tests.info
 
-import scala.meta.internal.jdk.CollectionConverters._
+import java.nio.file.Paths
+
+import scala.annotation.nowarn
+import scala.language.unsafeNulls
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.CompilerOffsetParams
+import scala.meta.pc.PcSymbolInformation
 import scala.meta.pc.PcSymbolKind
 import scala.meta.pc.PcSymbolProperty
 
-import scala.meta.pc.PcSymbolInformation
 import dotty.tools.pc.base.BasePCSuite
-import scala.language.unsafeNulls
+
 import org.junit.Test
-import scala.meta.internal.metals.CompilerOffsetParams
-import java.nio.file.Paths
-import scala.annotation.nowarn
 
 class InfoSuite extends BasePCSuite {
 
-  def getInfo(symbol: String): PcSymbolInformation = {
+  def getInfo(symbol: String): PcSymbolInformation =
     val result = presentationCompiler.info(symbol).get()
     assertEquals(true, result.isPresent(), s"no info returned for symbol $symbol")
     assertNoDiff(result.get().symbol(), symbol)
     result.get()
-  }
 
   @Test def `list` =
     val info = getInfo("scala/collection/immutable/List#")
@@ -94,10 +95,78 @@ class InfoSuite extends BasePCSuite {
     assertMemberDefsAnnotations("a/D#", "scala.annotation.nowarn")
     assertMemberDefsAnnotations("a/D#bbb().", "")
 
+  @Test def `self-type` =
+    withSource(
+      """|package a
+         |trait A { def aa: Unit }
+         |trait B {
+         | this : A =>
+         |  override def aa: Unit = ()
+         |}
+         |""".stripMargin
+    )
+    val info = getInfo("a/B#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|a/A#
+         |java/lang/Object#
+         |""".stripMargin
+    )
+
+  @Test def `self-type-1` =
+    withSource(
+      """|package a
+         |trait A {
+         |  def aa(i: Int): String = ""
+         |  def aa: Unit
+         |}
+         |trait B {
+         | this : A =>
+         |  override def aa: Unit = ()
+         |}
+         |""".stripMargin
+    )
+    val info = getInfo("a/B#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|a/A#
+         |java/lang/Object#
+         |""".stripMargin
+    )
+
+  @Test def `self-type-with` =
+    withSource(
+      """|package a
+         |trait C
+         |trait A { def aa: Unit }
+         |trait B {
+         | this : A with C =>
+         |  override def aa: Unit = ()
+         |}
+         |""".stripMargin
+    )
+    val info = getInfo("a/B#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|a/A#
+         |a/C#
+         |java/lang/Object#
+         |""".stripMargin
+    )
+
+  @Test def `self-type-in-lib` =
+    val info = getInfo("scala/collection/generic/DefaultSerializable#")
+    assertNoDiff(
+      info.parents().asScala.mkString("\n"),
+      """|scala/collection/Iterable#
+         |java/lang/Object#
+         |java/io/Serializable#
+         |""".stripMargin
+    )
+
   // hacky way to add a source file to the presentation compiler sources
   private def withSource(code: String) =
     val filename = "Hover.scala"
     val pcParams = CompilerOffsetParams(Paths.get(filename).toUri(), code, 0)
     presentationCompiler.hover(pcParams).get()
-
 }

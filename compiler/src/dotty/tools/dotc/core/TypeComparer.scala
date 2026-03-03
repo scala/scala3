@@ -437,7 +437,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if isCaptureVarComparison then
-              return CCState.withCapAsRoot:
+              return CCState.withGlobalCapAsRoot:
                 subCaptures(tp1.captureSet, tp2.captureSet)
             if (tp1 eq NothingType) || isBottom(tp1) then
               return true
@@ -593,7 +593,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
         if isCaptureVarComparison then
-          return CCState.withCapAsRoot:
+          return CCState.withGlobalCapAsRoot:
             subCaptures(tp1.captureSet, tp2.captureSet)
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
@@ -695,7 +695,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               else
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
-                    return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
+                    return
+                      try isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
+                      catch case ex: AssertionError =>
+                        println(i"error while subInfo ${tp1.refinedInfo} <:< ${tp2.refinedInfo}")
+                        throw ex
                   case _ =>
           end if
 
@@ -940,6 +944,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
+          && !(isCaptureCheckingOrSetup
+               && tp1.isSingleton
+               && defn.isRefinedFunction(tp1.widen.stripCapturing))
+              // If tp1 is a refined function, `base` is the parent function, but that type
+              // is unreliabe since nonDependentResultApprox does not yield a true supertype
+              // for LocalCaps and ResultCaps. We should go the alternative route of widening
+              // in fourthTry instead.
       then
         def checkBase =
           isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow)
@@ -1041,11 +1052,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
-        if isCaptureCheckingOrSetup then
-          tp2.stripCapturing match
-            case defn.RefinedFunctionOf(_) => // was already handled in thirdTry
-              return false
-            case _ =>
+        if isCaptureCheckingOrSetup && defn.isRefinedFunction(tp2.stripCapturing) then
+          return false
         isNewSubType(tp1.parent)
       case tp1: RecType =>
         isNewSubType(tp1.parent)
@@ -1601,14 +1609,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       && tp1.derivesFrom(defn.Caps_CapSet)
       && tp2.derivesFrom(defn.Caps_CapSet)
 
-    def rollBack(prevSize: Int): Unit =
-      var i = prevSize
-      while i < undoLog.size do
-        undoLog(i)()
-        i += 1
-      undoLog.takeInPlace(prevSize)
-      assert(undoLog.size == prevSize)
-
     // begin recur
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
@@ -1640,6 +1640,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         successCount = savedSuccessCount
         throw ex
   }
+
+  /** Undo all actions in undoLog following prevSize */
+  def rollBack(prevSize: Int): Unit =
+    var i = prevSize
+    while i < undoLog.size do
+      undoLog(i)()
+      i += 1
+    undoLog.takeInPlace(prevSize)
+
+  /** Treat `op` as an atomic compare operation. If one part fails, undo
+   *  all previously inclusions of elements in capsets.
+   */
+  def atomicOp(op: => Boolean): Boolean =
+    val savedLogSize = undoLog.size
+    if op then true
+    else
+      rollBack(savedLogSize)
+      false
 
   /** Run `op` in a recursion level (indicated by `recCount`) increased by one.
    *  This affects when monitoring starts and how error notes are propagated.
@@ -3574,12 +3592,15 @@ object TypeComparer {
   def compareResult(op: => Boolean)(using Context): CompareResult =
     comparing(_.compareResult(op))
 
+  def atomicOp(op: => Boolean)(using Context): Boolean =
+    comparing(_.atomicOp(op))
+
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
     currentComparer.isolated(op, x => x)
 }
 
 object MatchReducer:
-  import printing.*, Texts.*
+  import printing.*, Texts.{*, given}
   enum MatchResult extends Showable:
     case Reduced(tp: Type)
     case Disjoint

@@ -4,6 +4,6 @@
    |                                        Found:    LazyList[A]^{xs, f}
    |                                        Required: LazyList[A]^{Mapped.this, f}
    |
-   |                                        Note that capability xs is not included in capture set {Mapped.this, f}.
+   |                                        Note that capability `xs` cannot flow into capture set {Mapped.this, f}.
    |
    | longer explanation available when compiling with `-explain`

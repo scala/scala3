@@ -341,6 +341,19 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         }
     }
 
+    /** Under cc, mark the type of InferredTypeTree arguments of inline method
+     *  with a @caps.inferred annotation. This tells Setup to prepare the marked
+     *  types in the body of the inline expansion as inferred types.
+     */
+    private def markInferred(tpt: Tree)(using Context): Tree = tpt match
+      case NamedArg(id, arg) =>
+        cpy.NamedArg(tpt)(id, markInferred(arg))
+      case tpt: InferredTypeTree =>
+        TypeTree(AnnotatedType(tpt.tpe, Annotation(defn.InferredAnnot, tpt.span)))
+          .withSpan(tpt.span)
+      case _ =>
+        tpt
+
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
@@ -513,11 +526,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 ctx.typer.checkClassType(tpe, tree.srcPos,
                     traitReq = false, stablePrefixReq = stablePrefixReq,
                     refinementOK = Feature.enabled(Feature.modularity))
-              checkClassType(tree.tpe, true)
+              checkClassType(tree.tpe, stablePrefixReq = true)
               if !nu.tpe.isLambdaSub then
                 // Check the constructor type as well; it could be an illegal singleton type
                 // which would not be reflected as `tree.tpe`
-                checkClassType(nu.tpe, false)
+                checkClassType(nu.tpe, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
@@ -539,14 +552,16 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          fn match {
+          val args1 =
+            if Feature.ccEnabled && fn.symbol.isInlineMethod
+            then transform(args).mapConserve(markInferred)
+            else transform(args)
+          val fn1 = fn match
             case sel: Select =>
-              val args1 = transform(args)
-              val sel1 = transformSelect(sel, args1)
-              cpy.TypeApply(tree1)(sel1, args1)
+              transformSelect(sel, args1) // skip the checkUsableAsValue of normal transform
             case _ =>
-              super.transform(tree1)
-          }
+              transform(fn)
+          cpy.TypeApply(tree1)(fn1, args1)
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkRef(call.symbol, pos)

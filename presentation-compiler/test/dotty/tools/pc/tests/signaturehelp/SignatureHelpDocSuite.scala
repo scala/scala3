@@ -22,17 +22,42 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       MockDocumentation("java/lang/String#valueOf(+6).", "valueOf", Seq(), Seq("l")),
       MockDocumentation("java/lang/String#valueOf(+7).", "valueOf", Seq(), Seq("f")),
       MockDocumentation("java/lang/String#valueOf(+8).", "valueOf", Seq(), Seq("d")),
-      MockDocumentation("java/io/File#`<init>`().", "<init>", Seq(), Seq("pathname")),
-      MockDocumentation("java/io/File#`<init>`(+1).", "<init>", Seq(), Seq("parent", "child")),
-      MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("parent", "child")),
-      MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("uri")),
-      ScalaMockDocumentation("java/util/Collections#singleton().", "singleton", List(MockParam("T")), List(MockParam("o"))),
+      MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("pathname")),
+      MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("parent", "child")),
+      MockDocumentation("java/io/File#`<init>`(+4).", "<init>", Seq(), Seq("parent", "child")),
+      MockDocumentation("java/io/File#`<init>`(+5).", "<init>", Seq(), Seq("uri")),
+      ScalaMockDocumentation(
+        "java/util/Collections#singleton().",
+        "singleton",
+        List(MockParam("T")),
+        List(MockParam("o"))
+      ),
       ScalaMockDocumentation("scala/Some#", "Some"),
-      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("B")), List(MockParam("ifEmpty"), MockParam("f"))),
+      ScalaMockDocumentation(
+        "scala/Option#fold().",
+        "fold",
+        List(MockParam("B")),
+        List(MockParam("ifEmpty"), MockParam("f"))
+      ),
       ScalaMockDocumentation("scala/Option.apply().", "apply", List(), List(MockParam("x"))),
-      ScalaMockDocumentation("scala/collection/immutable/List#map().", "map", List(MockParam("B")), List(MockParam("f"))),
-      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List(MockParam("B")), List(MockParam("z"), MockParam("op"))),
-      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List(), List(MockParam("pf"), MockParam("fin"), MockParam("rethrow")))
+      ScalaMockDocumentation(
+        "scala/collection/immutable/List#map().",
+        "map",
+        List(MockParam("B")),
+        List(MockParam("f"))
+      ),
+      ScalaMockDocumentation(
+        "scala/collection/LinearSeqOps#foldLeft().",
+        "foldLeft",
+        List(MockParam("B")),
+        List(MockParam("z"), MockParam("op"))
+      ),
+      ScalaMockDocumentation(
+        "scala/util/control/Exception.Catch#",
+        "Catch",
+        List(),
+        List(MockParam("pf"), MockParam("fin"), MockParam("rethrow"))
+      )
     )
 
   @Test def `curry` =

@@ -4,7 +4,7 @@
    |                            Found:    (ref1 : LazyRef[Int]{val elem: () ->{cap1} Int}^{cap1})
    |                            Required: LazyRef[Int]
    |
-   |                            Note that capability cap1 is not included in capture set {}.
+   |                            Note that capability `cap1` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:22:35 --------------------------------------
@@ -13,7 +13,7 @@
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref2*} Int}^{ref2}
    |                                   Required: LazyRef[Int]^{cap2}
    |
-   |                                   Note that capability ref2 is not included in capture set {cap2}.
+   |                                   Note that capability `ref2` cannot flow into capture set {cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:24:35 --------------------------------------
@@ -22,7 +22,7 @@
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref3*} Int}^{ref3}
    |                                   Required: LazyRef[Int]^{ref1}
    |
-   |                                   Note that capability ref3 is not included in capture set {ref1}.
+   |                                   Note that capability `ref3` cannot flow into capture set {ref1}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:30:35 --------------------------------------
@@ -31,7 +31,7 @@
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref4*} Int}^{ref4}
    |                                   Required: LazyRef[Int]^{cap1}
    |
-   |                                   Note that capability ref4 is not included in capture set {cap1}.
+   |                                   Note that capability `ref4` cannot flow into capture set {cap1}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/lazyref.scala:6:14 ------------------------------------------------------------
@@ -46,7 +46,7 @@
   |              of method get with result type () => T.
   |              This type hides capabilities  {LazyRef.this.elem}
   |
-  |              where:    => refers to a fresh root capability in the result type of method get
+  |              where:    => refers to a root capability in the result type of method get
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
 29 |    .map(g) // error: separation failure
    |         ^
@@ -62,4 +62,4 @@
    |  Footprint set of function prefix      : {ref1, cap1, ref2, cap2, ref2*}
    |  The two sets overlap at               : {cap2}
    |
-   |where:    => refers to a fresh root capability created in value ref4 when checking argument to parameter f of method map
+   |where:    => refers to a root capability created in value ref4 when checking argument to parameter f of method map

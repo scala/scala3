@@ -6,7 +6,7 @@ class C:
 
 def test =
   val c = C()
-  val _: C^{cap.rd} = c
-  val _: C^{cap.only[Unscoped]} = c
-  val _: C^{cap.only[Unscoped].rd} = c
+  val _: C^{any.rd} = c
+  val _: C^{any.only[Unscoped]} = c
+  val _: C^{any.only[Unscoped].rd} = c
   val _: C^{} = c // error

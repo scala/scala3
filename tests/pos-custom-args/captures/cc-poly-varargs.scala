@@ -3,7 +3,7 @@ import language.experimental.separationChecking
 abstract class Source[+T]
 
 extension[T](src: Source[T]^)
-  def transformValuesWith[U](f: (T -> U)^{src, caps.cap}): Source[U]^{src, f} = ???
+  def transformValuesWith[U](f: (T -> U)^{src, caps.any}): Source[U]^{src, f} = ???
 
 def race[T, D^](sources: Source[T]^{D}*): Source[T]^{D} = ???
 

@@ -17,14 +17,13 @@ import language.experimental.captureChecking
 
 import scala.annotation.implicitNotFound
 
-/**
-  * Trait that overrides sorted map operations to take advantage of strict builders.
-  *
-  * @tparam K  Type of keys
-  * @tparam V  Type of values
-  * @tparam CC Collection type constructor
-  * @tparam C  Collection type
-  */
+/** Trait that overrides sorted map operations to take advantage of strict builders.
+ *
+ *  @tparam K  Type of keys
+ *  @tparam V  Type of values
+ *  @tparam CC Collection type constructor
+ *  @tparam C  Collection type
+ */
 transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?], +C <: SortedMapOps[K, V, CC, C]]
   extends SortedMapOps[K, V, CC, C]
     with StrictOptimizedMapOps[K, V, Map, C] {

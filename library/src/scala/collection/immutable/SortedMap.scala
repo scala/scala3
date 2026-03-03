@@ -21,38 +21,38 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.Builder
 
 /** An immutable map whose key-value pairs are sorted according to an [[scala.math.Ordering]] on the keys.
-  *
-  * Allows for range queries to be performed on its keys, and implementations must guarantee that traversal happens in
-  * sorted order, according to the map's [[scala.math.Ordering]].
-  *
-  *  @example {{{
-  *  import scala.collection.immutable.SortedMap
-  *
-  *  // Make a SortedMap via the companion object factory
-  *  val weekdays = SortedMap(
-  *    2 -> "Monday",
-  *    3 -> "Tuesday",
-  *    4 -> "Wednesday",
-  *    5 -> "Thursday",
-  *    6 -> "Friday"
-  *  )
-  *  // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday)
-  *
-  *  val days = weekdays ++ List(1 -> "Sunday", 7 -> "Saturday")
-  *  // TreeMap(1 -> Sunday, 2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday, 7 -> Saturday)
-  *
-  *  val day3 = days.get(3) // Some("Tuesday")
-  *
-  *  val rangeOfDays = days.range(2, 5) // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday)
-  *
-  *  val daysUntil2 = days.rangeUntil(2) // TreeMap(1 -> Sunday)
-  *  val daysTo2 = days.rangeTo(2) // TreeMap(1 -> Sunday, 2 -> Monday)
-  *  val daysAfter5 = days.rangeFrom(5) //  TreeMap(5 -> Thursday, 6 -> Friday, 7 -> Saturday)
-  *  }}}
-  *
-  *  @tparam K the type of the keys contained in this tree map.
-  *  @tparam V the type of the values associated with the keys.
-  */
+ *
+ *  Allows for range queries to be performed on its keys, and implementations must guarantee that traversal happens in
+ *  sorted order, according to the map's [[scala.math.Ordering]].
+ *
+ *  @example ```
+ *  import scala.collection.immutable.SortedMap
+ *
+ *  // Make a SortedMap via the companion object factory
+ *  val weekdays = SortedMap(
+ *    2 -> "Monday",
+ *    3 -> "Tuesday",
+ *    4 -> "Wednesday",
+ *    5 -> "Thursday",
+ *    6 -> "Friday"
+ *  )
+ *  // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday)
+ *
+ *  val days = weekdays ++ List(1 -> "Sunday", 7 -> "Saturday")
+ *  // TreeMap(1 -> Sunday, 2 -> Monday, 3 -> Tuesday, 4 -> Wednesday, 5 -> Thursday, 6 -> Friday, 7 -> Saturday)
+ *
+ *  val day3 = days.get(3) // Some("Tuesday")
+ *
+ *  val rangeOfDays = days.range(2, 5) // TreeMap(2 -> Monday, 3 -> Tuesday, 4 -> Wednesday)
+ *
+ *  val daysUntil2 = days.rangeUntil(2) // TreeMap(1 -> Sunday)
+ *  val daysTo2 = days.rangeTo(2) // TreeMap(1 -> Sunday, 2 -> Monday)
+ *  val daysAfter5 = days.rangeFrom(5) //  TreeMap(5 -> Thursday, 6 -> Friday, 7 -> Saturday)
+ *  ```
+ *
+ *  @tparam K the type of the keys contained in this tree map.
+ *  @tparam V the type of the values associated with the keys.
+ */
 trait SortedMap[K, +V]
   extends Map[K, V]
     with collection.SortedMap[K, V]
@@ -64,25 +64,25 @@ trait SortedMap[K, +V]
   override def sortedMapFactory: SortedMapFactory[SortedMap] = SortedMap
 
   /** The same map with a given default function.
-    *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
-    *  are not affected by `withDefault`.
-    *
-    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
-    *
-    *  @param d     the function mapping keys to values, used for non-present keys
-    *  @return      a wrapper of the map with a default value
-    */
+   *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
+   *  are not affected by `withDefault`.
+   *
+   *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
+   *
+   *  @param d     the function mapping keys to values, used for non-present keys
+   *  @return      a wrapper of the map with a default value
+   */
   override def withDefault[V1 >: V](d: K -> V1): SortedMap[K, V1] = new SortedMap.WithDefault[K, V1](this, d)
 
   /** The same map with a given default value.
-    *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
-    *  are not affected by `withDefaultValue`.
-    *
-    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
-    *
-    *  @param d     default value used for non-present keys
-    *  @return      a wrapper of the map with a default value
-    */
+   *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
+   *  are not affected by `withDefaultValue`.
+   *
+   *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
+   *
+   *  @param d     default value used for non-present keys
+   *  @return      a wrapper of the map with a default value
+   */
   override def withDefaultValue[V1 >: V](d: V1): SortedMap[K, V1] = new SortedMap.WithDefault[K, V1](this, _ => d)
 }
 
@@ -93,9 +93,21 @@ transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & SortedMapOps[X, 
 
   def unsorted: Map[K, V]
 
-  override def keySet: SortedSet[K] = new ImmutableKeySortedSet
+  override def keySet: SortedSet[K] = new LazyImmutableKeySortedSet
 
   /** The implementation class of the set returned by `keySet`. */
+  private class LazyImmutableKeySortedSet extends LazyKeySortedSet with SortedSet[K] {
+    override def diff(that: scala.collection.Set[K]): SortedSet[K] = super.diff(that)
+    override def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
+      val map = self.rangeImpl(from, until)
+      new map.LazyImmutableKeySortedSet
+    }
+    def incl(elem: K): SortedSet[K] = fromSpecific(this).incl(elem)
+    def excl(elem: K): SortedSet[K] = fromSpecific(this).excl(elem)
+  }
+
+  /** The implementation class of the set returned by `keySet` */
+  @deprecated("ImmutableKeySortedSet is no longer used by the .keySet implementation", since = "3.8.0")
   protected class ImmutableKeySortedSet extends AbstractSet[K] with SortedSet[K] with GenKeySet with GenKeySortedSet {
     def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
       val map = self.rangeImpl(from, until)

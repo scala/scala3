@@ -266,6 +266,11 @@ class TreeUnpickler(reader: TastyReader,
 
     def readName(): TermName = nameAtRef(readNameRef())
 
+    /** Can `tag` start a type argument of a CompactAnnotation? */
+    def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
+      case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
+      case _ => false
+
 // ------ Reading types -----------------------------------------------------
 
     /** Read names in an interleaved sequence of types/bounds and (parameter) names,
@@ -353,11 +358,6 @@ class TreeUnpickler(reader: TastyReader,
         typeAtAddr(start) = tp
         op
       }
-
-      /** Can `tag` start a type argument of a CompactAnnotation? */
-      def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
-        case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
-        case _ => false
 
       def readLengthType(): Type = {
         val end = readEnd()
@@ -796,7 +796,10 @@ class TreeUnpickler(reader: TastyReader,
       val end = readEnd()
       readLater(end, reader =>
         val tp = reader.readType()
-        val lazyAnnotTree = reader.readLaterWithOwner(end, _.readTree())
+        def readAnnotTree(rdr: TreeReader)(using Context) =
+          if isCompactAnnotTypeTag(rdr.reader.nextByte) then TypeTree(rdr.readType())
+          else rdr.readTree()
+        val lazyAnnotTree = reader.readLaterWithOwner(end, readAnnotTree(_))
         owner =>
           new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
             // Only force computation of symbol if it has the right name. This added
@@ -1290,6 +1293,8 @@ class TreeUnpickler(reader: TastyReader,
         readType() match {
           case path: TypeRef => TypeTree(path)
           case path: TermRef => ref(path)
+          case path @ AndType(_: TermRef, _: TypeRef) => TypeTree(path)
+          case path @ AndType(_: TypeRef, _: TermRef) => TypeTree(path)
           case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
           case path: ErrorType if isBestEffortTasty => TypeTree(path)
@@ -1509,6 +1514,7 @@ class TreeUnpickler(reader: TastyReader,
               else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
+              else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))
@@ -1658,7 +1664,7 @@ class TreeUnpickler(reader: TastyReader,
               val tycon = readTpt()
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
-              val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
+              val ownType = ctx.typeAssigner.processAppliedType(tycon.tpe.safeAppliedTo(args.tpes))
               tree.withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTree())

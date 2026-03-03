@@ -25,7 +25,7 @@ def test1(): Unit =
   val c = C()
   val _: C^{r} = c
   val d = D()
-  val _: D^{r, cap} = d
+  val _: D^{r, any} = d
   val e = E()
   val _: E^{r.rd} = e
 
@@ -50,6 +50,6 @@ def test2(): Unit =
   val c = C()
   val _: C^{r} = c
   val d = D()
-  val _: D^{r, cap} = d
+  val _: D^{r, any} = d
   val e = E()
   val _: E^{r.rd} = e

@@ -20,8 +20,7 @@ import java.util.Spliterator
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{IntStepper, Stepper}
 
-/** Implements `Stepper` on a `String` where you step through chars packed into `Int`.
-  */
+/** Implements `Stepper` on a `String` where you step through chars packed into `Int`. */
 private[collection] final class CharStringStepper(underlying: String, _i0: Int, _iN: Int)
 extends IndexedStepperBase[IntStepper, CharStringStepper](_i0, _iN)
 with IntStepper {
@@ -32,8 +31,7 @@ with IntStepper {
   def semiclone(half: Int): CharStringStepper = new CharStringStepper(underlying, i0, half)
 }
 
-/** Implements `Stepper` on a `String` where you step through code points.
-  */
+/** Implements `Stepper` on a `String` where you step through code points. */
 private[collection] final class CodePointStringStepper(underlying: String, private var i0: Int, private var iN: Int)
 extends IntStepper with EfficientSplit {
   def characteristics: Int = Spliterator.IMMUTABLE | Spliterator.NONNULL | Spliterator.ORDERED

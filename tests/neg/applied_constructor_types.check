@@ -1,18 +1,18 @@
 -- [E006] Not Found Error: tests/neg/applied_constructor_types.scala:8:10 ----------------------------------------------
 8 |  val v1: f(1) = f(1) // error
   |          ^
-  |          Not found: type f
+  |          Expected a type, but found a term: f
   |
   | longer explanation available when compiling with `-explain`
 -- [E006] Not Found Error: tests/neg/applied_constructor_types.scala:9:10 ----------------------------------------------
 9 |  val v2: id(1) = f(1) // error
   |          ^^
-  |          Not found: type id - did you mean is?
+  |          Expected a type, but found a term: id
   |
   | longer explanation available when compiling with `-explain`
 -- [E006] Not Found Error: tests/neg/applied_constructor_types.scala:10:10 ---------------------------------------------
 10 |  val v3: idDependent(1) = f(1) // error
    |          ^^^^^^^^^^^
-   |          Not found: type idDependent
+   |          Expected a type, but found a term: idDependent
    |
    | longer explanation available when compiling with `-explain`

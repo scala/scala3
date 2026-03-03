@@ -11,8 +11,8 @@ class CompletionPatternSuite extends BaseCompletionSuite:
 
   def paramHint: Option[String] = Some("param-hint")
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       _parameterHintsCommand = paramHint
     )
 

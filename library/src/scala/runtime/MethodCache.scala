@@ -24,14 +24,16 @@ import scala.annotation.tailrec
  *  must only relate to one method as `PolyMethodCache` does not identify
  *  the method name and argument types. In practice, one variable will be
  *  generated per call point, and will uniquely relate to the method called
- *  at that point, making the method name and argument types irrelevant. */
+ *  at that point, making the method name and argument types irrelevant. 
+ */
 /* TODO: if performance is acceptable, PolyMethodCache should be made generic on the method type */
 private[scala] sealed abstract class MethodCache {
   /** Searches for a cached method in the `MethodCache` chain that
    *  is compatible with receiver class `forReceiver`. If none is cached,
    *  `null` is returned. If `null` is returned, find's caller should look-
    *  up the right method using whichever means it prefers, and add it to
-   *  the cache for later use. */
+   *  the cache for later use. 
+   */
   def find(forReceiver: JClass[?]): JMethod | Null
   def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache
 }

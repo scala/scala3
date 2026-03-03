@@ -42,12 +42,12 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   "externalScaladoc3",
   List(
     ".*externalStubs.*::scaladoc3::https://external.stubs/api/",
-    ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/",
+    ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/",
   ),
   List(
-    "https://dotty.epfl.ch/api/scala/collection/immutable/Map.html",
-    "https://dotty.epfl.ch/api/scala/Predef$.html#String-0",
-    "https://dotty.epfl.ch/api/scala/util/matching/Regex$$Match.html",
+    "https://nightly.scala-lang.org/api/scala/collection/immutable/Map.html",
+    "https://nightly.scala-lang.org/api/scala/Predef$.html#String-0",
+    "https://nightly.scala-lang.org/api/scala/util/matching/Regex$$Match.html",
     "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
     "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
   )

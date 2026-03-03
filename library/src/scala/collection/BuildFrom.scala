@@ -21,18 +21,19 @@ import scala.collection.immutable.WrappedString
 import scala.reflect.ClassTag
 
 /** Builds a collection of type `C` from elements of type `A` when a source collection of type `From` is available.
-  * Implicit instances of `BuildFrom` are available for all collection types.
-  *
-  * @tparam From Type of source collection
-  * @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
-  * @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
-  */
+ *  Implicit instances of `BuildFrom` are available for all collection types.
+ *
+ *  @tparam From Type of source collection
+ *  @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
+ *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
+ */
 @implicitNotFound(msg = "Cannot construct a collection of type ${C} with elements of type ${A} based on a collection of type ${From}.")
 trait BuildFrom[-From, -A, +C] extends Any { self =>
   def fromSpecific(from: From)(it: IterableOnce[A]^): C^{it}
 
   /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
-    * Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections. */
+   *  Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections. 
+   */
   def newBuilder(from: From): Builder[A, C]
 
   @deprecated("Use newBuilder() instead of apply()", "2.13.0")

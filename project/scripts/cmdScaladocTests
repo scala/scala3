@@ -21,7 +21,7 @@ dist/target/universal/stage/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
   -source-links:github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}" \
-  "-external-mappings:.*scala/.*::scaladoc3::https://dotty.epfl.ch/api/,.*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
+  "-external-mappings:.*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/,.*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/_assets/images/logo.svg \

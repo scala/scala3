@@ -8,7 +8,7 @@ import java.nio.file.Path
 class Coverage:
   private val statementsById = new mutable.LongMap[Statement](256)
 
-  private var _nextStatementId: Int = 1
+  private var _nextStatementId: Int = 0
 
   def nextStatementId(): Int = _nextStatementId
   def setNextStatementId(id: Int): Unit = _nextStatementId = id
@@ -18,11 +18,6 @@ class Coverage:
   def addStatement(stmt: Statement): Unit =
     if stmt.id >= _nextStatementId then _nextStatementId = stmt.id + 1
     statementsById(stmt.id) = stmt
-
-  def removeStatementsFromFile(sourcePath: Path | Null) =
-    val removedIds = statements.filter(_.location.sourcePath == sourcePath).map(_.id.toLong)
-    removedIds.foreach(statementsById.remove)
-
 
 /**
   * A statement that can be invoked, and thus counted as "covered" by code coverage tools.

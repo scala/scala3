@@ -26,57 +26,56 @@ import scala.runtime.{AbstractFunction1, AbstractFunction2}
 
 import IterableOnce.elemsToCopyToArray
 
-/**
-  * A template trait for collections which can be traversed either once only
-  * or one or more times.
-  *
-  * Note: `IterableOnce` does not extend [[IterableOnceOps]]. This is different than the general
-  * design of the collections library, which uses the following pattern:
-  * {{{
-  *   trait Seq extends Iterable with SeqOps
-  *   trait SeqOps extends IterableOps
-  *
-  *   trait IndexedSeq extends Seq with IndexedSeqOps
-  *   trait IndexedSeqOps extends SeqOps
-  * }}}
-  *
-  * The goal is to provide a minimal interface without any sequential operations. This allows
-  * third-party extension like Scala parallel collections to integrate at the level of IterableOnce
-  * without inheriting unwanted implementations.
-  *
-  * @define coll collection
-  * @define ccoll $coll
-  */
+/** A template trait for collections which can be traversed either once only
+ *  or one or more times.
+ *
+ *  Note: `IterableOnce` does not extend [[IterableOnceOps]]. This is different than the general
+ *  design of the collections library, which uses the following pattern:
+ *  ```
+ *   trait Seq extends Iterable with SeqOps
+ *   trait SeqOps extends IterableOps
+ *
+ *   trait IndexedSeq extends Seq with IndexedSeqOps
+ *   trait IndexedSeqOps extends SeqOps
+ *  ```
+ *
+ *  The goal is to provide a minimal interface without any sequential operations. This allows
+ *  third-party extension like Scala parallel collections to integrate at the level of IterableOnce
+ *  without inheriting unwanted implementations.
+ *
+ *  @define coll collection
+ *  @define ccoll $coll
+ */
 trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
 
   /** An [[scala.collection.Iterator]] over the elements of this $coll.
-    *
-    * If an `IterableOnce` object is in fact an [[scala.collection.Iterator]], this method always returns itself,
-    * in its current state, but if it is an [[scala.collection.Iterable]], this method always returns a new
-    * [[scala.collection.Iterator]].
-    */
+   *
+   *  If an `IterableOnce` object is in fact an [[scala.collection.Iterator]], this method always returns itself,
+   *  in its current state, but if it is an [[scala.collection.Iterable]], this method always returns a new
+   *  [[scala.collection.Iterator]].
+   */
   def iterator: Iterator[A]^{this}
 
   /** Returns a [[scala.collection.Stepper]] for the elements of this collection.
-    *
-    * The `Stepper` enables creating a Java stream to operate on the collection, see
-    * [[scala.jdk.StreamConverters]]. For collections holding primitive values, the `Stepper` can be
-    * used as an iterator which doesn't box the elements.
-    *
-    * The implicit [[scala.collection.StepperShape]] parameter defines the resulting `Stepper` type according to the
-    * element type of this collection.
-    *
-    *   - For collections of `Int`, `Short`, `Byte` or `Char`, an [[scala.collection.IntStepper]] is returned
-    *   - For collections of `Double` or `Float`, a [[scala.collection.DoubleStepper]] is returned
-    *   - For collections of `Long` a [[scala.collection.LongStepper]] is returned
-    *   - For any other element type, an [[scala.collection.AnyStepper]] is returned
-    *
-    * Note that this method is overridden in subclasses and the return type is refined to
-    * `S with EfficientSplit`, for example [[scala.collection.IndexedSeqOps.stepper]]. For `Stepper`s marked with
-    * [[scala.collection.Stepper.EfficientSplit]], the converters in [[scala.jdk.StreamConverters]]
-    * allow creating parallel streams, whereas bare `Stepper`s can be converted only to sequential
-    * streams.
-    */
+   *
+   *  The `Stepper` enables creating a Java stream to operate on the collection, see
+   *  [[scala.jdk.StreamConverters]]. For collections holding primitive values, the `Stepper` can be
+   *  used as an iterator which doesn't box the elements.
+   *
+   *  The implicit [[scala.collection.StepperShape]] parameter defines the resulting `Stepper` type according to the
+   *  element type of this collection.
+   *
+   *   - For collections of `Int`, `Short`, `Byte` or `Char`, an [[scala.collection.IntStepper]] is returned
+   *   - For collections of `Double` or `Float`, a [[scala.collection.DoubleStepper]] is returned
+   *   - For collections of `Long` a [[scala.collection.LongStepper]] is returned
+   *   - For any other element type, an [[scala.collection.AnyStepper]] is returned
+   *
+   *  Note that this method is overridden in subclasses and the return type is refined to
+   *  `S with EfficientSplit`, for example [[scala.collection.IndexedSeqOps.stepper]]. For `Stepper`s marked with
+   *  [[scala.collection.Stepper.EfficientSplit]], the converters in [[scala.jdk.StreamConverters]]
+   *  allow creating parallel streams, whereas bare `Stepper`s can be converted only to sequential
+   *  streams.
+   */
   def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S^{this} = {
     import convert.impl._
     val s: Any = shape.shape match {
@@ -301,39 +300,39 @@ object IterableOnce {
 }
 
 /** This implementation trait can be mixed into an `IterableOnce` to get the basic methods that are shared between
-  * `Iterator` and `Iterable`. The `IterableOnce` must support multiple calls to `iterator` but may or may not
-  * return the same `Iterator` every time.
-  *
-  * @define orderDependent
-  *
-  *              Note: might return different results for different runs, unless the underlying collection type is ordered.
-  * @define orderDependentReduce
-  *
-  *              Note: might return different results for different runs, unless the
-  *              underlying collection type is ordered or the operator is associative
-  *              and commutative.
-  * @define orderIndependentReduce
-  *
-  *              Note: might return different results for different runs, unless either
-  *              of the following conditions is met: (1) the operator is associative,
-  *              and the underlying collection type is ordered; or (2) the operator is
-  *              associative and commutative.
-  * @define mayNotTerminateInf
-  *
-  *              Note: may not terminate for infinite-sized collections.
-  * @define willNotTerminateInf
-  *
-  *              Note: will not terminate for infinite-sized collections.
-  * @define willForceEvaluation
-  *              Note: Even when applied to a view or a lazy collection it will always force the elements.
-  * @define consumesIterator
-  *              After calling this method, one should discard the iterator it was called
-  * on. Using it is undefined and subject to change.
-  * @define undefinedOrder
-  *              The order of applications of the operator is unspecified and may be nondeterministic.
-  * @define exactlyOnce
-  *              Each element appears exactly once in the computation.
-  */
+ *  `Iterator` and `Iterable`. The `IterableOnce` must support multiple calls to `iterator` but may or may not
+ *  return the same `Iterator` every time.
+ *
+ *  @define orderDependent
+ *
+ *              Note: might return different results for different runs, unless the underlying collection type is ordered.
+ *  @define orderDependentReduce
+ *
+ *              Note: might return different results for different runs, unless the
+ *              underlying collection type is ordered or the operator is associative
+ *              and commutative.
+ *  @define orderIndependentReduce
+ *
+ *              Note: might return different results for different runs, unless either
+ *              of the following conditions is met: (1) the operator is associative,
+ *              and the underlying collection type is ordered; or (2) the operator is
+ *              associative and commutative.
+ *  @define mayNotTerminateInf
+ *
+ *              Note: may not terminate for infinite-sized collections.
+ *  @define willNotTerminateInf
+ *
+ *              Note: will not terminate for infinite-sized collections.
+ *  @define willForceEvaluation
+ *              Note: Even when applied to a view or a lazy collection it will always force the elements.
+ *  @define consumesIterator
+ *              After calling this method, one should discard the iterator it was called
+ *  on. Using it is undefined and subject to change.
+ *  @define undefinedOrder
+ *              The order of applications of the operator is unspecified and may be nondeterministic.
+ *  @define exactlyOnce
+ *              Each element appears exactly once in the computation.
+ */
 transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
 
@@ -384,13 +383,13 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  {{{
+   *  ```
    *      scala> List(1, 2, 3, 100, 4).takeWhile(n => n < 10)
    *      val res0: List[Int] = List(1, 2, 3)
    *
    *      scala> List(1, 2, 3, 100, 4).takeWhile(n => n == 0)
    *      val res1: List[Int] = List()
-   *  }}}
+   *  ```
    *
    *  Use [[span]] to obtain both the prefix and suffix.
    *  Use [[filter]] to retain only those elements from the entire $coll that satisfy the predicate.
@@ -419,13 +418,13 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  {{{
+   *  ```
    *      scala> List(1, 2, 3, 100, 4).dropWhile(n => n < 10)
    *      val res0: List[Int] = List(100, 4)
    *
    *      scala> List(1, 2, 3, 100, 4).dropWhile(n => n == 0)
    *      val res1: List[Int] = List(1, 2, 3, 100, 4)
-   *  }}}
+   *  ```
    *
    *  Use [[span]] to obtain both the prefix and suffix.
    *  Use [[filterNot]] to drop all elements that satisfy the predicate.
@@ -439,9 +438,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Selects an interval of elements.  The returned $coll is made up
    *  of all elements `x` which satisfy the invariant:
-   *  {{{
+   *  ```
    *    from <= indexOf(x) < until
-   *  }}}
+   *  ```
    *  $orderDependent
    *
    *  @param from   the lowest index to include from this $coll.
@@ -456,8 +455,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Builds a new $ccoll by applying a function to all elements of this $coll.
    *
-   *  @param f      the function to apply to each element.
    *  @tparam B     the element type of the returned $ccoll.
+   *  @param f      the function to apply to each element.
    *  @return       a new $ccoll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
    */
@@ -468,14 +467,14 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *    For example:
    *
-   *    {{{
+   *    ```
    *      def getWords(lines: Seq[String]): Seq[String] = lines.flatMap(line => line.split("\\W+"))
-   *    }}}
+   *    ```
    *
    *    The type of the resulting collection is guided by the static type of this $coll. This might
    *    cause unexpected results sometimes. For example:
    *
-   *    {{{
+   *    ```
    *      // lettersOf will return a Seq[Char] of likely repeated letters, instead of a Set
    *      def lettersOf(words: Seq[String]) = words.flatMap(word => word.toSet)
    *
@@ -487,10 +486,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *      // ys will be a Map[Int, Int]
    *      val ys = Map("a" -> List(1 -> 11, 1 -> 111), "b" -> List(2 -> 22, 2 -> 222)).flatMap(_._2)
-   *    }}}
+   *    ```
    *
-   *  @param f      the function to apply to each element.
    *  @tparam B     the element type of the returned collection.
+   *  @param f      the function to apply to each element.
    *  @return       a new $ccoll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
    */
@@ -502,7 +501,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *    The resulting collection's type will be guided by the
    *    type of $coll. For example:
    *
-   *    {{{
+   *    ```
    *    val xs = List(
    *               Set(1, 2, 3),
    *               Set(1, 2, 3)
@@ -514,7 +513,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *               List(3, 2, 1)
    *             ).flatten
    *    // ys == Set(1, 2, 3)
-   *    }}}
+   *    ```
    *
    *  @tparam B the type of the elements of each iterable collection.
    *  @param asIterable an implicit conversion which asserts that the element
@@ -526,8 +525,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   /** Builds a new $ccoll by applying a partial function to all elements of this $coll
    *  on which the function is defined.
    *
-   *  @param pf     the partial function which filters and maps the $coll.
    *  @tparam B     the element type of the returned $coll.
+   *  @param pf     the partial function which filters and maps the $coll.
    *  @return       a new $ccoll resulting from applying the given partial function
    *                `pf` to each element on which it is defined and collecting the results.
    *                The order of the elements is preserved.
@@ -576,29 +575,29 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   }
 
   /** Applies a side-effecting function to each element in this collection.
-    * Strict collections will apply `f` to their elements immediately, while lazy collections
-    * like Views and LazyLists will only apply `f` on each element if and when that element
-    * is evaluated, and each time that element is evaluated.
-    *
-    * @param f a function to apply to each element in this $coll
-    * @tparam U the return type of f
-    * @return The same logical collection as this
-    */
+   *  Strict collections will apply `f` to their elements immediately, while lazy collections
+   *  like Views and LazyLists will only apply `f` on each element if and when that element
+   *  is evaluated, and each time that element is evaluated.
+   *
+   *  @tparam U the return type of f
+   *  @param f a function to apply to each element in this $coll
+   *  @return The same logical collection as this
+   */
   def tapEach[U](f: A => U): C^{this, f}
 
   /////////////////////////////////////////////////////////////// Concrete methods based on iterator
 
   /** Tests whether this $coll is known to have a finite size.
    *  All strict collections are known to have finite size. For a non-strict
-   *  collection such as `Stream`, the predicate returns `'''true'''` if all
-   *  elements have been computed. It returns `'''false'''` if the stream is
+   *  collection such as `Stream`, the predicate returns `**true**` if all
+   *  elements have been computed. It returns `**false**` if the stream is
    *  not yet evaluated to the end. Non-empty Iterators usually return
-   *  `'''false'''` even if they were created from a collection with a known
+   *  `**false**` even if they were created from a collection with a known
    *  finite size.
    *
    *  Note: many collection methods will not work on collections of infinite sizes.
    *  The typical failure mode is an infinite loop. These methods always attempt a
-   *  traversal without checking first that `hasDefiniteSize` returns `'''true'''`.
+   *  traversal without checking first that `hasDefiniteSize` returns `**true**`.
    *  However, checking `hasDefiniteSize` can provide an assurance that size is
    *  well-defined and non-termination is not a concern.
    *
@@ -612,8 +611,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  @see method `knownSize` for a more useful alternative
    *
-   *  @return  `'''true'''` if this collection is known to have finite size,
-   *           `'''false'''` otherwise.
+   *  @return  `**true**` if this collection is known to have finite size,
+   *           `**false**` otherwise.
    */
   @deprecated("Check .knownSize instead of .hasDefiniteSize for more actionable information (see scaladoc for details)", "2.13.0")
   def hasDefiniteSize: Boolean = true
@@ -726,9 +725,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $orderDependent
    *  $willNotTerminateInf
    *
+   *  @tparam   B       The result type of the binary operator.
    *  @param    z       An initial value.
    *  @param    op      A binary operator.
-   *  @tparam   B       The result type of the binary operator.
    *  @return           The result of applying `op` to `z` and all elements of this $coll,
    *                    going left to right. Returns `z` if this $coll is empty.
    */
@@ -760,9 +759,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $orderDependent
    *  $willNotTerminateInf
    *
+   *  @tparam   B       The result type of the binary operator.
    *  @param    z       An initial value.
    *  @param    op      A binary operator.
-   *  @tparam   B       The result type of the binary operator.
    *  @return           The result of applying `op` to all elements of this $coll and `z`,
    *                    going right to left. Returns `z` if this $coll is empty.
    */
@@ -856,8 +855,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $orderDependentReduce
    *  $willNotTerminateInf
    *
-   *  @param    op      A binary operator.
    *  @tparam   B       The result type of the binary operator, a supertype of `A`.
+   *  @param    op      A binary operator.
    *  @return           The result of applying `op` to all elements of this $coll, going
    *                    left to right.
    *  @throws UnsupportedOperationException if this $coll is empty.
@@ -893,8 +892,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $orderDependentReduce
    *  $willNotTerminateInf
    *
-   *  @param    op      A binary operator.
    *  @tparam   B       The result type of the binary operator, a supertype of `A`.
+   *  @param    op      A binary operator.
    *  @return           The result of applying `op` to all elements of this $coll, going
    *                    right to left.
    *  @throws UnsupportedOperationException if this $coll is empty.
@@ -906,7 +905,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   }
 
   /** If this $coll is nonempty, reduces it with the given binary operator `op`, going
-    * left to right.
+   *  left to right.
    *
    *  The behavior is the same as [[reduceLeft]] except that the value is `None` if the
    *  $coll is empty. $exactlyOnce
@@ -914,8 +913,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $orderDependentReduce
    *  $willNotTerminateInf
    *
-   *  @param    op      A binary operator.
    *  @tparam   B       The result type of the binary operator, a supertype of `A`.
+   *  @param    op      A binary operator.
    *  @return           The result of reducing this $coll with `op` going left to right if
    *                    the $coll is nonempty, inside a `Some`, and `None` otherwise.
    */
@@ -945,8 +944,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $orderDependentReduce
    *  $willNotTerminateInf
    *
-   *  @param    op      A binary operator.
    *  @tparam   B       The result type of the binary operator, a supertype of `A`.
+   *  @param    op      A binary operator.
    *  @return           The result of reducing this $coll with `op` going right to left if
    *                    the $coll is nonempty, inside a `Some`, and `None` otherwise.
    */
@@ -1005,8 +1004,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  Copying will stop once either all the elements of this $coll have been copied,
    *  or the end of the array is reached.
    *
-   *  @param  dest   the array to fill.
    *  @tparam B      the type of the elements of the array.
+   *  @param  dest   the array to fill.
    *  @return        the number of elements written to the array
    *
    *  @note    Reuse: $consumesIterator
@@ -1022,9 +1021,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  Copying will stop once either all the elements of this $coll have been copied,
    *  or the end of the array is reached.
    *
+   *  @tparam B      the type of the elements of the array.
    *  @param  dest   the array to fill.
    *  @param  start  the starting index of xs.
-   *  @tparam B      the type of the elements of the array.
    *  @return        the number of elements written to the array
    *
    *  @note    Reuse: $consumesIterator
@@ -1042,10 +1041,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  If `start` is less than zero, it is taken as zero.
    *
+   *  @tparam B      the type of the elements of the array.
    *  @param  dest   the array to fill.
    *  @param  start  the starting index of xs.
    *  @param  n      the maximal number of elements to copy.
-   *  @tparam B      the type of the elements of the array.
    *  @return        the number of elements written to the array
    *
    *  @note    Reuse: $consumesIterator
@@ -1075,10 +1074,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *   $willNotTerminateInf
    *
-   *   @param   num  an implicit parameter defining a set of numeric operations
+   *  @tparam  B    the result type of the `+` operator.
+   *  @param   num  an implicit parameter defining a set of numeric operations
    *                 which includes the `+` operator to be used in forming the sum.
-   *   @tparam  B    the result type of the `+` operator.
-   *   @return       the sum of all elements of this $coll with respect to the `+` operator in `num`.
+   *  @return       the sum of all elements of this $coll with respect to the `+` operator in `num`.
    */
   def sum[B >: A](implicit num: Numeric[B]): B =
     knownSize match {
@@ -1093,10 +1092,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *   @param   num  an implicit parameter defining a set of numeric operations
+   *  @tparam  B   the result type of the `*` operator.
+   *  @param   num  an implicit parameter defining a set of numeric operations
    *                 which includes the `*` operator to be used in forming the product.
-   *   @tparam  B   the result type of the `*` operator.
-   *   @return       the product of all elements of this $coll with respect to the `*` operator in `num`.
+   *  @return       the product of all elements of this $coll with respect to the `*` operator in `num`.
    */
   def product[B >: A](implicit num: Numeric[B]): B =
     knownSize match {
@@ -1109,11 +1108,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B    The type over which the ordering is defined.
-   *  @throws   UnsupportedOperationException if this $coll is empty.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @return   the smallest element of this $coll with respect to the ordering `ord`.
-   *
+   *  @throws   UnsupportedOperationException if this $coll is empty.
    */
   def min[B >: A](implicit ord: Ordering[B]): A =
     knownSize match {
@@ -1126,8 +1124,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B    The type over which the ordering is defined.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @return   an option value containing the smallest element of this $coll
    *            with respect to the ordering `ord`.
    */
@@ -1142,10 +1140,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B    The type over which the ordering is defined.
-   *  @throws   UnsupportedOperationException if this $coll is empty.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @return   the largest element of this $coll with respect to the ordering `ord`.
+   *  @throws   UnsupportedOperationException if this $coll is empty.
    */
   def max[B >: A](implicit ord: Ordering[B]): A =
     knownSize match {
@@ -1158,8 +1156,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B    The type over which the ordering is defined.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @return   an option value containing the largest element of this $coll with
    *            respect to the ordering `ord`.
    */
@@ -1174,12 +1172,12 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B     The result type of the function `f`.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @param    f     The measuring function.
-   *  @throws   UnsupportedOperationException if this $coll is empty.
    *  @return   the first element of this $coll with the largest value measured by function `f`
    *            with respect to the ordering `ord`.
+   *  @throws   UnsupportedOperationException if this $coll is empty.
    */
   def maxBy[B](f: A -> B)(implicit ord: Ordering[B]): A =
     knownSize match {
@@ -1214,8 +1212,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B     The result type of the function `f`.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @param    f     The measuring function.
    *  @return   an option value containing the first element of this $coll with the
    *            largest value measured by function `f` with respect to the ordering `ord`.
@@ -1230,12 +1228,12 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B     The result type of the function `f`.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @param    f     The measuring function.
-   *  @throws   UnsupportedOperationException if this $coll is empty.
    *  @return   the first element of this $coll with the smallest value measured by function `f`
    *            with respect to the ordering `ord`.
+   *  @throws   UnsupportedOperationException if this $coll is empty.
    */
   def minBy[B](f: A -> B)(implicit ord: Ordering[B]): A =
     knownSize match {
@@ -1247,8 +1245,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
-   *  @param    ord   An ordering to be used for comparing elements.
    *  @tparam   B     The result type of the function `f`.
+   *  @param    ord   An ordering to be used for comparing elements.
    *  @param    f     The measuring function.
    *  @return   an option value containing the first element of this $coll
    *            with the smallest value measured by function `f`
@@ -1290,13 +1288,13 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  Since this method degenerates to `foldLeft` for sequential (non-parallel) collections,
    *  where the combining operation is ignored, it is advisable to prefer `foldLeft` for that case.
    *
-   *  For [[https://github.com/scala/scala-parallel-collections parallel collections]],
+   *  For [parallel collections](https://github.com/scala/scala-parallel-collections),
    *  use the `aggregate` method specified by `scala.collection.parallel.ParIterableLike`.
    *
+   *  @tparam  B      the result type, produced by `seqop`, `combop`, and by this function as a final result.
    *  @param   z      the start value, a neutral element for `seqop`.
    *  @param   seqop  the binary operator used to accumulate the result.
    *  @param   combop an associative operator for combining sequential results, unused for sequential collections.
-   *  @tparam  B      the result type, produced by `seqop`, `combop`, and by this function as a final result.
    */
   @deprecated("For sequential collections, prefer `foldLeft(z)(seqop)`. For parallel collections, use `ParIterableLike#aggregate`.", "2.13.0")
   def aggregate[B](z: => B)(seqop: (B, A) => B, combop: (B, B) => B): B = foldLeft(z)(seqop)
@@ -1306,9 +1304,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  $willNotTerminateInf
    *
+   *  @tparam  B       the type of the elements of `that`
    *  @param   that    the other collection
    *  @param   p       the test predicate, which relates elements from both collections
-   *  @tparam  B       the type of the elements of `that`
    *  @return          `true` if both collections have the same length and
    *                   `p(x, y)` is `true` for all corresponding elements `x` of this iterator
    *                   and `y` of `that`, otherwise `false`
@@ -1374,7 +1372,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  {{{
+   *  ```
    *      scala> val a = List(1,2,3,4)
    *      a: List[Int] = List(1, 2, 3, 4)
    *
@@ -1383,7 +1381,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *      scala> a.addString(b , "List(" , ", " , ")")
    *      res5: StringBuilder = List(1, 2, 3, 4)
-   *  }}}
+   *  ```
    *
    *  @param  b    the string builder to which elements are appended.
    *  @param start the starting string.
@@ -1412,7 +1410,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  {{{
+   *  ```
    *      scala> val a = List(1,2,3,4)
    *      a: List[Int] = List(1, 2, 3, 4)
    *
@@ -1421,7 +1419,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *      scala> a.addString(b, ", ")
    *      res0: StringBuilder = 1, 2, 3, 4
-   *  }}}
+   *  ```
    *
    *  @param  b    the string builder to which elements are appended.
    *  @param sep   the separator string.
@@ -1431,11 +1429,11 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Appends all elements of this $coll to a string builder.
    *  The written text consists of the string representations (w.r.t. the method
-   * `toString`) of all elements of this $coll without any separator string.
+   *  `toString`) of all elements of this $coll without any separator string.
    *
    *  Example:
    *
-   *  {{{
+   *  ```
    *      scala> val a = List(1,2,3,4)
    *      a: List[Int] = List(1, 2, 3, 4)
    *
@@ -1444,7 +1442,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *      scala> val h = a.addString(b)
    *      h: StringBuilder = 1234
-   *  }}}
+   *  ```
    *
    *  @param  b    the string builder to which elements are appended.
    *  @return      the string builder `b` to which elements were appended.
@@ -1454,11 +1452,11 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   /** Given a collection factory `factory`, converts this $coll to the appropriate
    *  representation for the current element type `A`. Example uses:
    *
-   *  {{{
+   *  ```
    *      xs.to(List)
    *      xs.to(ArrayBuffer)
    *      xs.to(BitSet) // for xs: Iterable[Int]
-   *  }}}
+   *  ```
    */
   def to[C1](factory: Factory[A, C1]): C1^{this} = factory.fromSpecific(this)
 
@@ -1466,61 +1464,62 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   @`inline` final def toIterator: Iterator[A]^{this} = iterator
 
   /** Converts this $coll to a `List`.
-    *
-    * @return This $coll as a `List[A]`.
-    */
+   *
+   *  @return This $coll as a `List[A]`.
+   */
   def toList: immutable.List[A] = immutable.List.from(this)
 
   /** Converts this $coll to a `Vector`.
-    *
-    * @return This $coll as a `Vector[A]`.
-    */
+   *
+   *  @return This $coll as a `Vector[A]`.
+   */
   def toVector: immutable.Vector[A] = immutable.Vector.from(this)
 
   /** Converts this $coll to a `Map`, given an implicit coercion from the $coll's type to a key-value tuple.
-    *
-    * @tparam K The key type for the resulting map.
-    * @tparam V The value type for the resulting map.
-    * @param ev An implicit coercion from `A` to `[K, V]`.
-    * @return This $coll as a `Map[K, V]`.
-    */
+   *
+   *  @tparam K The key type for the resulting map.
+   *  @tparam V The value type for the resulting map.
+   *  @param ev An implicit coercion from `A` to `[K, V]`.
+   *  @return This $coll as a `Map[K, V]`.
+   */
   def toMap[K, V](implicit ev: A <:< (K, V)): immutable.Map[K, V] =
     immutable.Map.from(this.asInstanceOf[IterableOnce[(K, V)]])
 
   /** Converts this $coll to a `Set`.
-    *
-    * @tparam B The type of elements of the result, a supertype of `A`.
-    * @return This $coll as a `Set[B]`.
-    */
+   *
+   *  @tparam B The type of elements of the result, a supertype of `A`.
+   *  @return This $coll as a `Set[B]`.
+   */
   def toSet[B >: A]: immutable.Set[B] = immutable.Set.from(this)
 
-  /** @return This $coll as a `Seq[A]`. This is equivalent to `to(Seq)` but might be faster.
+  /**
+   *  @return This $coll as a `Seq[A]`. This is equivalent to `to(Seq)` but might be faster.
    */
   def toSeq: immutable.Seq[A] = immutable.Seq.from(this)
 
   /** Converts this $coll to an `IndexedSeq`.
-    *
-    * @return This $coll as an `IndexedSeq[A]`.
-    */
+   *
+   *  @return This $coll as an `IndexedSeq[A]`.
+   */
   def toIndexedSeq: immutable.IndexedSeq[A] = immutable.IndexedSeq.from(this)
 
   @deprecated("Use .to(LazyList) instead of .toStream", "2.13.0")
   @inline final def toStream: immutable.Stream[A] = to(immutable.Stream)
 
   /** Converts this $coll to a `Buffer`.
-    *
-    * @tparam B The type of elements of the result, a supertype of `A`.
-    * @return This $coll as a `Buffer[B]`.
-    */
+   *
+   *  @tparam B The type of elements of the result, a supertype of `A`.
+   *  @return This $coll as a `Buffer[B]`.
+   */
   @inline final def toBuffer[B >: A]: mutable.Buffer[B] = caps.unsafe.unsafeAssumePure(mutable.Buffer.from(this)) // TODO will go away when buffer is fixed
 
   /** Converts this $coll to an `Array`.
-    *
-    * Implementation note: DO NOT call [[Array.from]] from this method.
-    *
-    * @tparam B The type of elements of the result, a supertype of `A`.
-    * @return This $coll as an `Array[B]`.
-    */
+   *
+   *  Implementation note: DO NOT call [[Array.from]] from this method.
+   *
+   *  @tparam B The type of elements of the result, a supertype of `A`.
+   *  @return This $coll as an `Array[B]`.
+   */
   def toArray[B >: A: ClassTag]: Array[B] =
     if (knownSize >= 0) {
       val destination = new Array[B](knownSize)

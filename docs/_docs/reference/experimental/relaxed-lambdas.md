@@ -11,7 +11,7 @@ This experimental addition combines several small improvements to write function
 [SIP 75](https://github.com/scala/improvement-proposals/pull/118).
 They are enabled by the experimental language import
 ```scala
-import language.experimental.relaxedLambdas
+import language.experimental.relaxedLambdaSyntax
 ```
 
 ## Single Line Lambdas

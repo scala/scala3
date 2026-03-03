@@ -14,10 +14,9 @@ import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
-import dotty.tools.dotc.core.Names.Designator
 import dotty.tools.dotc.util.chaining.*
 
-class TypeOps:
+private[semanticdb] class TypeOps:
   import SymbolScopeOps.*
   import Scala3.given
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
@@ -529,9 +528,7 @@ class TypeOps:
         case _ => false
       }
 
-
-object SymbolScopeOps:
-  import Scala3.{_, given}
+private[semanticdb] object SymbolScopeOps:
   extension (syms: List[SemanticSymbol])
     def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): s.Scope =
       linkMode match

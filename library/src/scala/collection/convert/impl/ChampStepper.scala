@@ -19,9 +19,9 @@ import scala.collection._
 import scala.collection.immutable.Node
 
 /** A stepper that is a slightly elaborated version of the ChampBaseIterator;
-  * the main difference is that it knows when it should stop instead of running
-  * to the end of all trees.
-  */
+ *  the main difference is that it knows when it should stop instead of running
+ *  to the end of all trees.
+ */
 private[collection] abstract class ChampStepperBase[
   A, T <: Node[T], Sub, Semi <: Sub & ChampStepperBase[A, T, ?, ?]
 ](protected var maxSize: Int)
@@ -71,10 +71,9 @@ extends EfficientSplit {
     currentStackLevel = currentStackLevel - 1
   }
 
-  /**
-    * Searches for next node that contains payload values,
-    * and pushes encountered sub-nodes on a stack for depth-first traversal.
-    */
+  /** Searches for next node that contains payload values,
+   *  and pushes encountered sub-nodes on a stack for depth-first traversal.
+   */
   private final def searchNextValueNode(): Boolean = {
     while (currentStackLevel >= 0) {
       val cursorIndex = currentStackLevel * 2

@@ -22,20 +22,18 @@ import java.lang.{ Class => jClass }
 import scala.collection.mutable
 import scala.runtime.BoxedUnit
 
-/**
+/** A `ClassTag[T]` stores the erased class of a given type `T`, accessible via the `runtimeClass`
+ *  field. This is particularly useful for instantiating `Array`s whose element types are unknown
+ *  at compile time.
  *
- * A `ClassTag[T]` stores the erased class of a given type `T`, accessible via the `runtimeClass`
- * field. This is particularly useful for instantiating `Array`s whose element types are unknown
- * at compile time.
+ *  `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags#TypeTag]]s, in that they
+ *  wrap only the runtime class of a given type, whereas a `TypeTag` contains all static type
+ *  information. That is, `ClassTag`s are constructed from knowing only the top-level class of a
+ *  type, without necessarily knowing all of its argument types. This runtime information is enough
+ *  for runtime `Array` creation.
  *
- * `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags#TypeTag]]s, in that they
- * wrap only the runtime class of a given type, whereas a `TypeTag` contains all static type
- * information. That is, `ClassTag`s are constructed from knowing only the top-level class of a
- * type, without necessarily knowing all of its argument types. This runtime information is enough
- * for runtime `Array` creation.
- *
- * For example:
- * {{{
+ *  For example:
+ *  ```
  *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems: _*)
  *   mkArray: [T](elems: T*)(implicit evidence$1: scala.reflect.ClassTag[T])Array[T]
  *
@@ -44,12 +42,11 @@ import scala.runtime.BoxedUnit
  *
  *   scala> mkArray("Japan","Brazil","Germany")
  *   res1: Array[String] = Array(Japan, Brazil, Germany)
- * }}}
+ *  ```
  *
- * See [[scala.reflect.api.TypeTags]] for more examples, or the
- * [[http://docs.scala-lang.org/overviews/reflection/typetags-manifests.html Reflection Guide: TypeTags]]
- * for more details.
- *
+ *  See [[scala.reflect.api.TypeTags]] for more examples, or the
+ *  [Reflection Guide: TypeTags](http://docs.scala-lang.org/overviews/reflection/typetags-manifests.html)
+ *  for more details.
  */
 @scala.annotation.implicitNotFound(msg = "No ClassTag available for ${T}")
 trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serializable {
@@ -70,11 +67,11 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
 
   /** A ClassTag[T] can serve as an extractor that matches only objects of type T.
    *
-   * The compiler tries to turn unchecked type tests in pattern matches into checked ones
-   * by wrapping a `(_: T)` type pattern as `ct(_: T)`, where `ct` is the `ClassTag[T]` instance.
-   * Type tests necessary before calling other extractors are treated similarly.
-   * `SomeExtractor(...)` is turned into `ct(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
-   * is uncheckable, but we have an instance of `ClassTag[T]`.
+   *  The compiler tries to turn unchecked type tests in pattern matches into checked ones
+   *  by wrapping a `(_: T)` type pattern as `ct(_: T)`, where `ct` is the `ClassTag[T]` instance.
+   *  Type tests necessary before calling other extractors are treated similarly.
+   *  `SomeExtractor(...)` is turned into `ct(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
+   *  is uncheckable, but we have an instance of `ClassTag[T]`.
    */
   def unapply(x: Any): Option[T] =
     if (runtimeClass.isInstance(x)) Some(x.asInstanceOf[T])
@@ -92,9 +89,7 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   }
 }
 
-/**
- * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
- */
+/** Class tags corresponding to primitive types and constructor/extractor for ClassTags. */
 object ClassTag {
   import ManifestFactory._
 

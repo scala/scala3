@@ -1,5 +1,5 @@
 -- Error: tests/neg-custom-args/captures/classified-wf.scala:7:19 ------------------------------------------------------
-7 |def foo(x: Object^{cap.only[Async]}) = ??? // error
+7 |def foo(x: Object^{any.only[Async]}) = ??? // error
   |                   ^^^^^^^^^^^^^^^
-  |               scala.caps.cap.only[Async] is not well-formed since class Async is not a classifier class.
+  |               scala.caps.any.only[Async] is not well-formed since class Async is not a classifier class.
   |               A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.

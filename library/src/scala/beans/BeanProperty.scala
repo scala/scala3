@@ -18,15 +18,15 @@ import scala.annotation.meta.{beanGetter, beanSetter, field}
 
 /** When attached to a field, this annotation adds a setter and a getter
  *  method following the Java Bean convention. For example:
- *  {{{
+ *  ```
  *    @BeanProperty
  *    var status = ""
- *  }}}
+ *  ```
  *  adds the following methods to the class:
- *  {{{
+ *  ```
  *    def setStatus(s: String): Unit = { this.status = s }
  *    def getStatus(): String = this.status
- *  }}}
+ *  ```
  *  For fields of type `Boolean`, if you need a getter named `isStatus`,
  *  use the `scala.beans.BooleanBeanProperty` annotation instead.
  *

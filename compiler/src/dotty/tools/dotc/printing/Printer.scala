@@ -3,7 +3,7 @@ package dotc
 package printing
 
 import core.*
-import Texts.*, ast.Trees.*
+import Texts.{*, given}, ast.Trees.*
 import Types.{Type, SingletonType, LambdaParam, LambdaType, NamedType, RefinedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context

@@ -53,9 +53,7 @@ final class ConvertToNamedArgumentsProvider(
             Some(fun, argss ++ args)
           case _ => None
 
-    def edits(tree: Option[tpd.Tree])(using
-        Context
-    ): Either[String, List[l.TextEdit]] =
+    def edits(tree: Option[tpd.Tree])(using Context): Either[String, List[l.TextEdit]] =
       def makeTextEdits(fun: tpd.Tree, args: List[tpd.Tree]) =
         if fun.symbol.is(Flags.JavaDefined) then
           Left(CodeActionErrorMessages.ConvertToNamedArguments.IsJavaObject)
@@ -70,7 +68,6 @@ final class ConvertToNamedArgumentsProvider(
                   new l.TextEdit(position, s"$param = ")
               }
           )
-
       tree match
         case Some(t) =>
           t match
@@ -80,8 +77,6 @@ final class ConvertToNamedArgumentsProvider(
               makeTextEdits(fun, args)
             case _ => Right(Nil)
         case _ => Right(Nil)
-      end match
-    end edits
     edits(tree)(using newctx)
   end convertToNamedArguments
 end ConvertToNamedArgumentsProvider

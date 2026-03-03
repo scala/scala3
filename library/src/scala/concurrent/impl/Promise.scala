@@ -25,14 +25,13 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.Objects.requireNonNull
 import java.io.{IOException, NotSerializableException, ObjectInputStream, ObjectOutputStream}
 
-/**
-  * Latch used to implement waiting on a DefaultPromise's result.
-  *
-  * Inspired by: http://gee.cs.oswego.edu/cgi-bin/viewcvs.cgi/jsr166/src/main/java/util/concurrent/locks/AbstractQueuedSynchronizer.java
-  * Written by Doug Lea with assistance from members of JCP JSR-166
-  * Expert Group and released to the public domain, as explained at
-  * https://creativecommons.org/publicdomain/zero/1.0/
-  */
+/** Latch used to implement waiting on a DefaultPromise's result.
+ *
+ *  Inspired by: http://gee.cs.oswego.edu/cgi-bin/viewcvs.cgi/jsr166/src/main/java/util/concurrent/locks/AbstractQueuedSynchronizer.java
+ *  Written by Doug Lea with assistance from members of JCP JSR-166
+ *  Expert Group and released to the public domain, as explained at
+ *  https://creativecommons.org/publicdomain/zero/1.0/
+ */
 private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer with (Try[T] => Unit) {
   //@volatie not needed since we use acquire/release
   /*@volatile*/ @annotation.stableNull private var _result: Try[T] | Null = null
@@ -49,30 +48,25 @@ private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer 
 }
 
 private[concurrent] object Promise {
-  /**
-   * Link represents a completion dependency between 2 DefaultPromises.
-   * As the DefaultPromise referred to by a Link can itself be linked to another promise
-   * `relink` traverses such chains and compresses them so that the link always points
-   * to the root of the dependency chain.
+  /** Link represents a completion dependency between 2 DefaultPromises.
+   *  As the DefaultPromise referred to by a Link can itself be linked to another promise
+   *  `relink` traverses such chains and compresses them so that the link always points
+   *  to the root of the dependency chain.
    *
-   * In order to conserve memory, the owner of a Link (a DefaultPromise) is not stored
-   * on the Link, but is instead passed in as a parameter to the operation(s).
+   *  In order to conserve memory, the owner of a Link (a DefaultPromise) is not stored
+   *  on the Link, but is instead passed in as a parameter to the operation(s).
    *
-   * If when compressing a chain of Links it is discovered that the root has been completed,
-   * the `owner`'s value is completed with that value, and the Link chain is discarded.
-   **/
+   *  If when compressing a chain of Links it is discovered that the root has been completed,
+   *  the `owner`'s value is completed with that value, and the Link chain is discarded.
+   */
   private[concurrent] final class Link[T](to: DefaultPromise[T]) extends AtomicReference[DefaultPromise[T]](to) {
-    /**
-     * Compresses this chain and returns the currently known root of this chain of Links.
-     **/
+    /** Compresses this chain and returns the currently known root of this chain of Links. */
     final def promise(owner: DefaultPromise[T]): DefaultPromise[T] = {
       val c = get()
       compressed(current = c, target = c, owner = owner)
     }
 
-    /**
-     * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
-     **/
+    /** The combination of traversing and possibly unlinking of a given `target` DefaultPromise. */
     @inline @tailrec private final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
       val value = target.get()
       if (value.isInstanceOf[Callbacks[?]]) {
@@ -86,10 +80,9 @@ private[concurrent] object Promise {
     }
   }
 
-  /**
-   * The process of "resolving" a Try is to validate that it only contains
-   * those values which makes sense in the context of Futures.
-   **/
+  /** The process of "resolving" a Try is to validate that it only contains
+   *  those values which makes sense in the context of Futures.
+   */
   // requireNonNull is paramount to guard against null completions
   private final def resolve[T](value: Try[T]): Try[T] =
     if (requireNonNull(value).isInstanceOf[Success[T]]) value
@@ -105,26 +98,19 @@ private[concurrent] object Promise {
 
   // Left non-final to enable addition of extra fields by Java/Scala converters in scala-java8-compat.
   class DefaultPromise[T] private (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
-    /**
-     * Constructs a new, completed, Promise.
-     */
+    /** Constructs a new, completed, Promise. */
     final def this(result: Try[T]) = this(resolve(result): AnyRef)
 
-    /**
-     * Constructs a new, un-completed, Promise.
-     */
+    /** Constructs a new, un-completed, Promise. */
     final def this() = this(Noop: AnyRef)
 
-    /**
-     * WARNING: the `resolved` value needs to have been pre-resolved using `resolve()`
-     * INTERNAL API
+    /** WARNING: the `resolved` value needs to have been pre-resolved using `resolve()`
+     *  INTERNAL API
      */
     override final def apply(resolved: Try[T]): Unit =
       tryComplete0(get(), resolved)
 
-    /**
-     * Returns the associated `Future` with this `Promise`
-     */
+    /** Returns the associated `Future` with this `Promise` */
     override final def future: Future[T] = this
 
     override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
@@ -146,7 +132,7 @@ private[concurrent] object Promise {
         val zipped = new DefaultPromise[R]()
 
         val thisF: Try[T] => Unit = {
-          case left: Success[_] =>
+          case left: Success[?] =>
             val right = buffer.getAndSet(left).asInstanceOf[Success[U]]
             if (right ne null)
               zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
@@ -155,7 +141,7 @@ private[concurrent] object Promise {
         }
 
         val thatF: Try[U] => Unit = {
-          case right: Success[_] =>
+          case right: Success[?] =>
             val left = buffer.getAndSet(right).asInstanceOf[Success[T]]
             if (left ne null)
               zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
@@ -374,8 +360,7 @@ private[concurrent] object Promise {
         callbacks.asInstanceOf[Transformation[T, ?]].submitWithValue(resolved)
       }
 
-    /** Link this promise to the root of another promise.
-     */
+    /** Link this promise to the root of another promise. */
     @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T], link: Link[T] | Null): Unit =
       if (this ne target) {
         val state = get()
@@ -392,10 +377,9 @@ private[concurrent] object Promise {
           state.asInstanceOf[Link[T]].promise(this).linkRootOf(target, link)
       }
 
-    /**
-     * Unlinks (removes) the link chain if the root is discovered to be already completed,
-     * and completes the `owner` with that result.
-     **/
+    /** Unlinks (removes) the link chain if the root is discovered to be already completed,
+     *  and completes the `owner` with that result.
+     */
     @tailrec private[concurrent] final def unlink(resolved: Try[T]): Unit = {
       val state = get()
       if (state.isInstanceOf[Link[?]]) {
@@ -438,12 +422,11 @@ private[concurrent] object Promise {
 
   private final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null: (Any => Any) | Null, ExecutionContext.parasitic)
 
-  /**
-   * A Transformation[F, T] receives an F (it is a Callback[F]) and applies a transformation function to that F,
-   * Producing a value of type T (it is a Promise[T]).
-   * In order to conserve allocations, indirections, and avoid introducing bi/mega-morphicity the transformation
-   * function's type parameters are erased, and the _xform tag will be used to reify them.
-   **/
+  /** A Transformation[F, T] receives an F (it is a Callback[F]) and applies a transformation function to that F,
+   *  Producing a value of type T (it is a Promise[T]).
+   *  In order to conserve allocations, indirections, and avoid introducing bi/mega-morphicity the transformation
+   *  function's type parameters are erased, and the _xform tag will be used to reify them.
+   */
   final class Transformation[-F, T] private (
     @annotation.stableNull private final var _fun: (Any => Any) | Null,
     @annotation.stableNull private final var _ec: ExecutionContext | Null,

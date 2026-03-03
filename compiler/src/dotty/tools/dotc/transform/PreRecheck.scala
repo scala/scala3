@@ -16,6 +16,6 @@ abstract class PreRecheck extends Phase, DenotTransformer:
 
   var pastRecheck = false
 
-  def run(using Context): Unit = ()
+  protected def run(using Context): Unit = ()
 
   override def isCheckable = false

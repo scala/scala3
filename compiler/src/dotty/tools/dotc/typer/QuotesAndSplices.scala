@@ -258,10 +258,17 @@ trait QuotesAndSplices {
     }
     val (untpdTypeVariables, quoted0) = desugar.quotedPatternTypeVariables(desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt))))
 
-    for tdef @ untpd.TypeDef(_, rhs) <- untpdTypeVariables do rhs match
-      case _: TypeBoundsTree => // ok
-      case LambdaTypeTree(_, body: TypeBoundsTree) => // ok
-      case _ => report.error("Quote type variable definition cannot be an alias", tdef.srcPos)
+    val checkedUntpdTypeVariables = untpdTypeVariables.filter { tdef =>
+      tdef.rhs match
+        case _: TypeBoundsTree => true // ok
+        case LambdaTypeTree(_, body: TypeBoundsTree) => true // ok
+        case _: untpd.ContextBounds =>
+          report.error("Quote type variable definition cannot have context bounds", tdef.srcPos)
+          false // we filter this out to avoid crashes
+        case _ =>
+          report.error("Quote type variable definition cannot be an alias", tdef.srcPos)
+          true
+    }
 
     if ctx.mode.is(Mode.InPatternAlternative) then
       for tpVar <- untpdTypeVariables do
@@ -269,8 +276,8 @@ trait QuotesAndSplices {
 
     val (typeTypeVariables, patternBlockCtx) =
       val quoteCtx = quotePatternContext(quoted.isType)
-      if untpdTypeVariables.isEmpty then (Nil, quoteCtx)
-      else typedBlockStats(untpdTypeVariables)(using quoteCtx)
+      if checkedUntpdTypeVariables.isEmpty then (Nil, quoteCtx)
+      else typedBlockStats(checkedUntpdTypeVariables)(using quoteCtx)
     val patternCtx = patternBlockCtx.addMode(if quoted.isType then Mode.QuotedTypePattern else Mode.QuotedExprPattern)
 
     val allTypeBindings = List.newBuilder[Bind]

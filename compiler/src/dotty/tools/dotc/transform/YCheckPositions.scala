@@ -17,7 +17,7 @@ class YCheckPositions extends Phase {
 
   override def description: String = YCheckPositions.description
 
-  override def run(using Context): Unit = () // YCheck only
+  protected def run(using Context): Unit = () // YCheck only
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {

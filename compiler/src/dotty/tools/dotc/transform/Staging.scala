@@ -76,7 +76,7 @@ class Staging extends MacroTransform {
       }
   end checkPostCondition
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {

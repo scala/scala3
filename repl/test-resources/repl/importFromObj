@@ -1,6 +1,6 @@
 scala> import scala.collection.mutable
 scala> val buf = mutable.ListBuffer[Int]()
-val buf: scala.collection.mutable.ListBuffer[Int] = ListBuffer()
+val buf: mutable.ListBuffer[Int] = ListBuffer()
 scala> object o { val xs = List(1, 2, 3) }
 // defined object o
 scala> import o._
@@ -14,7 +14,7 @@ scala> buf += xs
   | longer explanation available when compiling with `-explain`
 1 error found
 scala> buf ++= xs
-val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
+val res0: mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foobar
 -- [E008] Not Found Error: -----------------------------------------------------
 1 | import util.foobar

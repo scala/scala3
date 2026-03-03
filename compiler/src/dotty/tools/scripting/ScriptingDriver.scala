@@ -27,9 +27,9 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
             val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
             detectMainClassAndMethod(outDir, classpathEntries, scriptFile.toString) match
               case Right((mainClass, mainMethod)) =>
-                val invokeMain: Boolean = Option(pack).map { func =>
-                    func(outDir, classpathEntries, mainClass)
-                  }.getOrElse(true)
+                val invokeMain: Boolean = Option(pack).forall { func =>
+                  func(outDir, classpathEntries, mainClass)
+                }
                 if invokeMain then mainMethod.invoke(null, scriptArgs)
                 None
               case Left(ex) => Some(ex)

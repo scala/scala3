@@ -1,18 +1,31 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:8:10 -------------------------------
+8 |  x.value(cap => cap.use()) // error
+  |          ^^^^^^^^^^^^^^^^
+  |          Found:    (cap: Cap^{any}) ->'s1 Int
+  |          Required: Cap^{any²} => Int
+  |
+  |          Note that capability `any²` cannot flow into capture set {any}.
+  |
+  |          where:    =>   refers to a root capability created in method test1
+  |                    any  is the root capability caps.any
+  |                    any² is a root capability in the type of value x
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:15:10 ------------------------------
 15 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
    |          Found:    (cap: Cap^{io}) ->{io} Int
    |          Required: Cap^{io} -> Int
    |
-   |          Note that capability io is not included in capture set {}.
+   |          Note that capability `io` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:29:10 ------------------------------
 29 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
-   |          Found:    (cap: Cap^'s1) ->{io, fs} Int
+   |          Found:    (cap: Cap^{io, fs}) ->{io, fs} Int
    |          Required: Cap^{io, fs} ->{io} Int
    |
-   |          Note that capability fs is not included in capture set {io}.
+   |          Note that capability `fs` cannot flow into capture set {io}.
    |
    | longer explanation available when compiling with `-explain`

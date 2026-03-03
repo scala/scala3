@@ -24,17 +24,17 @@ import scala.collection.mutable.Builder
 
 
 /** Base type of bitsets.
-  *
-  * This trait provides most of the operations of a `BitSet` independently of its representation.
-  * It is inherited by all concrete implementations of bitsets.
-  *
-  * @define bitsetinfo
-  *  Bitsets are sets of non-negative integers which are represented as
-  *  variable-size arrays of bits packed into 64-bit words. The lower bound of memory footprint of a bitset is
-  *  determined by the largest number stored in it.
-  * @define coll bitset
-  * @define Coll `BitSet`
-  */
+ *
+ *  This trait provides most of the operations of a `BitSet` independently of its representation.
+ *  It is inherited by all concrete implementations of bitsets.
+ *
+ *  @define bitsetinfo
+ *  Bitsets are sets of non-negative integers which are represented as
+ *  variable-size arrays of bits packed into 64-bit words. The lower bound of memory footprint of a bitset is
+ *  determined by the largest number stored in it.
+ *  @define coll bitset
+ *  @define Coll `BitSet`
+ */
 trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] { self: BitSet =>
   override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
@@ -99,12 +99,11 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
   protected[collection] def nwords: Int
 
   /** The words at index `idx`, or 0L if outside the range of the set
-    *  '''Note:''' requires `idx >= 0`
-    */
+   *  **Note:** requires `idx >= 0`
+   */
   protected[collection] def word(idx: Int): Long
 
-  /** Creates a new set of this kind from an array of longs
-    */
+  /** Creates a new set of this kind from an array of longs */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): C
 
   def contains(elem: Int): Boolean =
@@ -209,8 +208,7 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     }
   }
 
-  /** Creates a bit mask for this set as a new array of longs
-    */
+  /** Creates a bit mask for this set as a new array of longs */
   def toBitMask: Array[Long] = {
     val a = new Array[Long](nwords)
     var i = a.length
@@ -276,12 +274,12 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
   }
 
   /** Computes the symmetric difference of this bitset and another bitset by performing
-    *  a bitwise "exclusive-or".
-    *
-    *  @param other the other bitset to take part in the symmetric difference.
-    *  @return     a bitset containing those bits of this
-    *              bitset or the other bitset that are not contained in both bitsets.
-    */
+   *  a bitwise "exclusive-or".
+   *
+   *  @param other the other bitset to take part in the symmetric difference.
+   *  @return     a bitset containing those bits of this
+   *              bitset or the other bitset that are not contained in both bitsets.
+   */
   def xor(other: BitSet): C = {
     val len = coll.nwords max other.nwords
     val words = new Array[Long](len)
@@ -292,12 +290,11 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
 
   @`inline` final def ^ (other: BitSet): C = xor(other)
 
-  /**
-    * Builds a new bitset by applying a function to all elements of this bitset.
-    * @param f the function to apply to each element.
-    * @return a new bitset resulting from applying the given function ''f'' to
-    *         each element of this bitset and collecting the results
-    */
+  /** Builds a new bitset by applying a function to all elements of this bitset.
+   *  @param f the function to apply to each element.
+   *  @return a new bitset resulting from applying the given function *f* to
+   *         each element of this bitset and collecting the results
+   */
   def map(f: Int => Int): C = fromSpecific(new View.Map(this, f))
 
   def flatMap(f: Int => IterableOnce[Int]^): C = fromSpecific(new View.FlatMap(this, f))

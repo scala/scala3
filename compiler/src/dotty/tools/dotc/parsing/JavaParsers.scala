@@ -110,6 +110,9 @@ object JavaParsers {
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
 
+    def classOf(tpt: Tree): Tree =
+      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), List(tpt))
+
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def UnitTpt(): Tree = TypeTree(defn.UnitType)
 
@@ -287,8 +290,8 @@ object JavaParsers {
       }
 
     def typ(): Tree =
-      annotations()
-      optArrayBrackets {
+      var annots = annotations()
+      val tp = optArrayBrackets {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
           var t = typeArgs(atSpan(in.offset)(Ident(ident())))
@@ -300,7 +303,9 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
-            annotations()
+            // Read annotations from nested type in Java.
+            // For example, the syntax for annotating `Map.Entry` is `Map.@A Entry`.
+            annots ++= annotations()
             t = typeArgs(atSpan(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
@@ -308,6 +313,7 @@ object JavaParsers {
         else
           basicType()
       }
+      annots.foldLeft(tp)((tp, ann) => Annotated(tp, ann))
 
     def typeArgs(t: Tree): Tree = {
       var wildnum = 0
@@ -370,18 +376,13 @@ object JavaParsers {
       * but instead we skip entire annotation silently.
       */
     def annotation(): Option[Tree] = {
-      def classOrId(): Tree =
-        val id = qualId()
+      def classOrId(tree: RefTree | TypedSplice): Tree =
         if in.token == DOT && in.lookaheadToken == CLASS then
-          accept(DOT)
-          accept(CLASS)
-          TypeApply(
-            Select(
-              scalaDot(nme.Predef),
-              nme.classOf),
-            convertToTypeId(id) :: Nil
-          )
-        else id
+          accept(DOT) ; accept(CLASS)
+          tree match
+            case id: RefTree => classOf(convertToTypeId(tree))
+            case tree: TypedSplice => classOf(tree)
+        else tree
 
       def array(): Option[Tree] =
         accept(LBRACE)
@@ -403,8 +404,24 @@ object JavaParsers {
             case AT =>
               in.nextToken()
               annotation()
-            case IDENTIFIER => Some(classOrId())
             case LBRACE => array()
+            case IDENTIFIER => Some(classOrId(qualId()))
+            case BYTE    =>
+              accept(BYTE); Some(classOrId(TypeTree(ByteType)))
+            case SHORT   =>
+              accept(SHORT); Some(classOrId(TypeTree(ShortType)))
+            case CHAR    =>
+              accept(CHAR); Some(classOrId(TypeTree(CharType)))
+            case INT     =>
+              accept(INT); Some(classOrId(TypeTree(IntType)))
+            case LONG    =>
+              accept(LONG); Some(classOrId(TypeTree(LongType)))
+            case FLOAT   =>
+              accept(FLOAT); Some(classOrId(TypeTree(FloatType)))
+            case DOUBLE  =>
+              accept(DOUBLE); Some(classOrId(TypeTree(DoubleType)))
+            case BOOLEAN =>
+              accept(BOOLEAN); Some(classOrId(TypeTree(BooleanType)))
             case _ => None
           }
         }
@@ -554,7 +571,7 @@ object JavaParsers {
     def formalParam(): ValDef = {
       val start = in.offset
       if (in.token == FINAL) in.nextToken()
-      annotations()
+      val annots = annotations()
       var t = typ()
       if (in.token == DOTDOTDOT) {
         in.nextToken()
@@ -563,7 +580,7 @@ object JavaParsers {
         }
       }
       atSpan(start, in.offset) {
-        varDecl(Modifiers(Flags.JavaDefined | Flags.Param), t, ident().toTermName)
+        varDecl(Modifiers(Flags.JavaDefined | Flags.Param, annotations = annots), t, ident().toTermName)
       }
     }
 
@@ -761,11 +778,9 @@ object JavaParsers {
       ValDef(name, tpt2, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
-    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = in.token match
-      case CLASS | ENUM | RECORD | INTERFACE | AT =>
-        typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
-      case _ =>
-        termDecl(start, mods, parentToken)
+    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] =
+      if (isTypeDeclStart()) typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
+      else termDecl(start, mods, parentToken)
 
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
       atSpan(cdef.span) {
@@ -886,7 +901,7 @@ object JavaParsers {
 
       val accessors =
         (for (name, (tpt, annots)) <- fieldsByName yield
-          DefDef(name, List(Nil), adaptVarargsType(tpt), unimplementedExpr)
+          DefDef(name, ListOfNil, adaptVarargsType(tpt), unimplementedExpr)
             .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
         ).toList
 
@@ -1054,6 +1069,10 @@ object JavaParsers {
       }
     }
 
+    def isTypeDeclStart() = in.token match {
+      case CLASS | ENUM | RECORD | INTERFACE | AT => true
+      case _ => false
+    }
     def typeDecl(start: Offset, mods: Modifiers): List[Tree] = in.token match
       case ENUM      => enumDecl(start, mods)
       case INTERFACE => interfaceDecl(start, mods)
@@ -1103,6 +1122,13 @@ object JavaParsers {
         case Some(t)  => t.name.toTypeName
         case _        => tpnme.EMPTY
       }
+      var compact = false
+      def typeDeclOrCompact(start: Offset, mods: Modifiers): List[Tree] =
+        if (isTypeDeclStart()) typeDecl(start, mods)
+        else
+          val ts = termDecl(start, mods, CLASS)
+          if (ts.nonEmpty) compact = true
+          Nil
       val buf = new ListBuffer[Tree]
       while (in.token == IMPORT)
         buf ++= importDecl()
@@ -1112,12 +1138,13 @@ object JavaParsers {
           val start = in.offset
           val mods = modifiers(inInterface = false)
           adaptRecordIdentifier() // needed for typeDecl
-          buf ++= typeDecl(start, mods)
+          buf ++= typeDeclOrCompact(start, mods)
         }
       }
       val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
-      unit match
+      if (compact) EmptyTree
+      else unit match
         case PackageDef(Ident(nme.EMPTY_PACKAGE), Nil) => EmptyTree
         case _ => unit
     }

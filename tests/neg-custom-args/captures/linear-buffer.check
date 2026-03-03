@@ -1,13 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/linear-buffer.scala:7:29 ---------------------------------
 7 |    def bar: BadBuffer[T]^ = this // error // error separation
   |                             ^^^^
-  |      Found:    BadBuffer[T]^{BadBuffer.this.rd}
-  |      Required: BadBuffer[T]^
+  |                  Found:    BadBuffer[T]^{BadBuffer.this.rd}
+  |                  Required: BadBuffer[T]^{any}
   |
-  |      Note that {cap} is an exclusive capture set of the stateful type BadBuffer[T]^,
-  |      it cannot subsume a read-only capture set of the stateful type BadBuffer[T]^{BadBuffer.this.rd}.
+  |                  Note that {any} is an exclusive capture set of the stateful type BadBuffer[T]^{any},
+  |                  it cannot subsume a read-only capture set of the stateful type BadBuffer[T]^{BadBuffer.this.rd}.
   |
-  |      where:    ^ and cap refer to a fresh root capability classified as Unscoped in the result type of method bar
+  |                  where:    any is a root capability classified as Unscoped in the result type of method bar
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:5:27 ------------------------------------------------------
@@ -23,11 +23,11 @@
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:10:29 -----------------------------------------------------
 10 |    def bar: BadBuffer[T]^ = this // error // error
    |                             ^^^^
-   |        Separation failure: Illegal access to {BadBuffer.this} which is hidden by the previous definition
-   |        of method append with result type BadBuffer[T]^.
-   |        This type hides capabilities  {BadBuffer.this}
+   |              Separation failure: Illegal access to {BadBuffer.this} which is hidden by the previous definition
+   |              of method append with result type BadBuffer[T]^.
+   |              This type hides capabilities  {BadBuffer.this}
    |
-   |        where:    ^ refers to a fresh root capability classified as Unscoped in the result type of method append
+   |              where:    ^ refers to a root capability classified as Unscoped in the result type of method append
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:10:13 -----------------------------------------------------
 10 |    def bar: BadBuffer[T]^ = this // error // error
    |             ^^^^^^^^^^^^^
@@ -39,35 +39,35 @@
    |Separation failure: Illegal access to (buf : Buffer[Int]^), which was passed as a consume parameter to method app
    |on line 21 and therefore is no longer available.
    |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter buf
+   |where:    ^ refers to a root capability classified as Unscoped in the type of parameter buf
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:30:17 -----------------------------------------------------
 30 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
    |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
    |on line 28 and therefore is no longer available.
    |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value buf1
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:38:17 -----------------------------------------------------
 38 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
    |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
    |on line 35 and therefore is no longer available.
    |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value buf1
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:48:17 -----------------------------------------------------
 48 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
    |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
    |on line 43 and therefore is no longer available.
    |
-   |where:    ^ refers to a fresh root capability classified as Unscoped in the type of value buf1
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value buf1
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:52:8 ------------------------------------------------------
 52 |    app(buf, 1)  // error
    |        ^^^
    |        Separation failure: (buf : Buffer[Int]^) appears in a loop, therefore it cannot
    |        be passed as a consume parameter to method app.
    |
-   |        where:    ^ refers to a fresh root capability classified as Unscoped in the type of parameter buf
+   |        where:    ^ refers to a root capability classified as Unscoped in the type of parameter buf
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:62:20 -----------------------------------------------------
 62 |  val c3 = contents(buf)  // error
    |                    ^^^
