@@ -298,17 +298,34 @@ object Applications {
           untpd.Tuple(args) :: Nil
         case _ =>
           args
+      val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
+      val isProductSeqMatch = argTypes.length > 1 && argTypes.last.derivesFrom(defn.SeqClass)
+      val hasInvalidSeqWildcard =
+        if varArgs.nonEmpty && unapplyName != nme.unapplySeq && !isProductSeqMatch then
+          report.error(em"Sequence wildcard pattern is not allowed for ${unapplyName}, only unapplySeq is allowed", varArgs.head.srcPos)
+          true
+        else if varArgs.nonEmpty && unapplyName == nme.unapplySeq then
+          val sym = unapplyFn.symbol
+          // if the extractor also defines unapply
+          if sym.exists && sym.owner.info.member(nme.unapply).exists then
+            report.error(em"Sequence wildcard pattern is not allowed when the extractor also defines unapply, only unapplySeq is allowed", varArgs.head.srcPos)
+            true
+          else false
+        else false
+
       val alignedArgTypes =
         if argTypes.length == alignedArgs.length then
           argTypes
+        else if hasInvalidSeqWildcard then
+          alignedArgs.map(_ => WildcardType)
         else
           report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
           argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
 
-      val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
+
       if varArgs.length >= 2 then
-        report.error(em"Ony one spread pattern allowed in sequence", varArgs(1).srcPos)
+        report.error(em"Only one spread pattern allowed in sequence", varArgs(1).srcPos)
 
       alignedArgs.lazyZip(alignedArgTypes).map(typer.typed(_, _))
         .showing(i"unapply patterns = $result", unapp)
