@@ -78,7 +78,7 @@ object BCodeAsmCommon {
     enclosingClass(classSym.originalOwner.originalLexicallyEnclosingClass)
   }
 
-  /*final*/ case class EnclosingMethodEntry(owner: String, name: String | Null, methodDescriptor: String | Null)
+  final case class EnclosingMethodEntry(owner: String, name: String | Null, methodDescriptor: String | Null)
 
   /**
    * Data for emitting an EnclosingMethod attribute. None if `classSym` is a member class (not
@@ -112,43 +112,6 @@ object BCodeAsmCommon {
     }
 
     ca
-  }
-
-  def arrEncode(bSeven: Array[Byte]): Array[String] = {
-    var strs: List[String]  = Nil
-    // chop into slices of at most 65535 bytes, counting 0x00 as taking two bytes (as per JVMS 4.4.7 The CONSTANT_Utf8_info Structure)
-    var prevOffset = 0
-    var offset     = 0
-    var encLength  = 0
-    while(offset < bSeven.length) {
-      val deltaEncLength = if(bSeven(offset) == 0) 2 else 1
-      val newEncLength = encLength.toLong + deltaEncLength
-      if (newEncLength >= 65535) {
-        val ba     = bSeven.slice(prevOffset, offset)
-        strs     ::= new java.lang.String(ubytesToCharArray(ba))
-        encLength  = 0
-        prevOffset = offset
-      } else {
-        encLength += deltaEncLength
-        offset    += 1
-      }
-    }
-    if(prevOffset < offset) {
-      assert(offset == bSeven.length)
-      val ba = bSeven.slice(prevOffset, offset)
-      strs ::= new java.lang.String(ubytesToCharArray(ba))
-    }
-    assert(strs.size > 1, "encode instead as one String via strEncode()") // TODO too strict?
-    strs.reverse.toArray
-  }
-
-  def strEncode(bSeven: Array[Byte]): String = {
-    val ca = ubytesToCharArray(bSeven)
-    new java.lang.String(ca)
-    // debug val bvA = new asm.ByteVector; bvA.putUTF8(s)
-    // debug val enc: Array[Byte] = scala.reflect.internal.pickling.ByteCodecs.encode(bytes)
-    // debug assert(enc(idx) == bvA.getByte(idx + 2))
-    // debug assert(bvA.getLength == enc.size + 2)
   }
 
 }
