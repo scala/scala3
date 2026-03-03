@@ -23,7 +23,7 @@ is treated as a normal enum value.
 The `extends` clauses that were omitted in the example above can also
 be given explicitly:
 
-```scala
+```scala sc-name:option
 enum Option[+T]:
   case Some(x: T) extends Option[T]
   case None       extends Option[Nothing]
@@ -39,21 +39,21 @@ As for normal enum values, the cases of an `enum` are all defined in
 the `enum`s companion object. So it's `Option.Some` and `Option.None`
 unless the definitions are "pulled out" with an import:
 
-```scala sc:nocompile
-scala> Option.Some("hello")
-val res1: t2.Option[String] = Some(hello)
+```scala sc-compile-with:option
+val option = Option.Some("hello")
+// option: Option[String] = Some(hello)
 
-scala> Option.None
-val res2: t2.Option[Nothing] = None
+val none = Option.None
+// none: Option[Nothing] = None
 ```
 
 Note that the type of the expressions above is always `Option`. Generally, the type of a enum case constructor application will be widened to the underlying enum type, unless a more specific type is expected. This is a subtle difference with respect to normal case classes. The classes making up the cases do exist, and can be unveiled, either by constructing them directly with a `new`, or by explicitly providing an expected type.
 
-```scala sc:nocompile
-scala> new Option.Some(2)
-val res3: Option.Some[Int] = Some(2)
-scala> val x: Option.Some[Int] = Option.Some(3)
-val res4: Option.Some[Int] = Some(3)
+```scala sc-compile-with:option
+val some0 = new Option.Some(2)
+// some0: Option.Some[Int] = Some(2)
+val some1: Option.Some[Int] = Option.Some(3)
+// some1: Option.Some[Int] = Some(3)
 ```
 
 As all other enums, ADTs can define methods. For instance, here is `Option` again, with an

@@ -1994,6 +1994,8 @@ object Build {
             )))
             .add(GenerateAPI(false))
             .add(SnippetCompiler(List(
+              s"${docs.getAbsolutePath}/_docs/reference/new-types=compile",
+              s"${docs.getAbsolutePath}/_docs/reference/enums=compile",
               s"$ccDocs=compile|-language:experimental.captureChecking",
               s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
               s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
@@ -2848,14 +2850,6 @@ object ScaladocConfigs {
     SourceLinks(List(dottySrcLink(version), "docs=github://scala/scala3/main#docs"))
   }
 
-  def snippetCompilerTargets(dottyLibSrc: String): List[String] = List(
-    s"$dottyLibSrc/scala/compiletime=compile",
-    s"$dottyLibSrc/scala/quoted=compile",
-    s"$dottyLibSrc/scala/util/control=compile",
-    s"$dottyLibSrc/scala/util=compile",
-    s"$dottyLibSrc/scala=compile",
-  )
-
   lazy val DefaultGenerationSettings = Def.task {
     def projectVersion = version.value
     def socialLinks = SocialLinks(List(
@@ -2924,6 +2918,13 @@ object ScaladocConfigs {
       .withTargets(tastyRoots)
   }
 
+  def snippetCompilerTargets(dottyLibSrc:String) = List(
+    s"$dottyLibSrc/scala=compile",
+    s"$dottyLibSrc/scala/quoted=compile",
+    s"$dottyLibSrc/scala/compiletime=compile",
+    s"$dottyLibSrc/scala/util=compile",
+    s"$dottyLibSrc/scala/util/control=compile",
+  )
   lazy val Scala3 = Def.task {
     val stdlib = { // relative path to the stdlib directory ('library/')
       val projectRoot = (ThisBuild/baseDirectory).value.toPath
@@ -2943,7 +2944,9 @@ object ScaladocConfigs {
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
-      .add(SnippetCompiler(snippetCompilerTargets(s"$stdlib/src") ++ List(
+      .add(SnippetCompiler(
+        snippetCompilerTargets(s"$stdlib/src") ++ List(
+        "docs/_docs/reference/new-types=compile",
         "docs/_docs/reference/enums=compile",
         "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
         "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
@@ -2954,38 +2957,5 @@ object ScaladocConfigs {
       .add(ApiSubdirectory(true))
       .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))
   }
-
-  def stableScala3(version: String) = Def.task {
-    val scalaLibrarySrc = s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed"
-    val dottyLibrarySrc = "library/src"
-    Scala3.value
-      .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped"))
-      .add(ProjectVersion(version))
-      .add(SnippetCompiler(
-        List(
-          s"$dottyLibrarySrc/scala/quoted=compile",
-          s"$dottyLibrarySrc/scala/compiletime=compile",
-          s"$dottyLibrarySrc/scala/util=compile",
-          s"$dottyLibrarySrc/scala/util/control=compile"
-        )
-      ))
-      .add(CommentSyntax(List(
-        s"$dottyLibrarySrc=markdown",
-        s"$scalaLibrarySrc=wiki",
-        "wiki"
-      )))
-      .add(DocRootContent(s"$scalaLibrarySrc/rootdoc.txt"))
-      .withTargets(
-        Seq(
-          s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
-          s"out/bootstrap/scala3-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
-          s"tmp/interfaces/target/classes",
-          s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
-        )
-      )
-      .remove[SiteRoot]
-      .remove[ApiSubdirectory]
-  }
-
 
 }

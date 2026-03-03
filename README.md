@@ -1,7 +1,9 @@
-Dotty
+Scala 3
 =====
-[![Dotty CI](https://github.com/scala/scala3/workflows/Dotty/badge.svg?branch=main)](https://github.com/scala/scala3/actions?query=branch%3Amain)
+[![Scala 3 CI](https://github.com/scala/scala3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/scala/scala3/actions/workflows/ci.yaml?query=branch%3Amain)
 [![Join the chat at https://discord.com/invite/scala](https://img.shields.io/discord/632150470000902164)](https://discord.com/invite/scala)
+
+This is the home of the [Scala 3](https://www.scala-lang.org) standard library, compiler, and language spec.
 
 * [Documentation](https://docs.scala-lang.org/scala3/)
 
@@ -28,4 +30,4 @@ How to Contribute
 
 License
 =======
-Dotty is licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+Scala 3 is licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
