@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.collection.mutable
 import scala.language.unsafeNulls
 
 import dotty.tools.dotc.core.Contexts.*
@@ -72,6 +73,20 @@ object WConf:
     try Right(s.r)
     catch case e: PatternSyntaxException => Left(s"invalid pattern `$s`: ${e.getMessage}")
 
+  // Ensures a filter matches only complete path segments and exact endings.
+  //
+  // `parseFilter` invokes `regex(conf).map(anchored)` because the original
+  // pattern must be a valid regex before adding the anchor characters.
+  private def anchored(pattern: Regex) =
+    val orig = pattern.toString
+    val result = new mutable.StringBuilder
+
+    if (!orig.startsWith("/")) result += '/'
+    result ++= orig
+    if (!orig.endsWith("$")) result += '$'
+
+    result.toString.r
+
   @sharable val Splitter = raw"([^=]+)=(.+)".r
   @sharable val ErrorId = raw"E?(\d+)".r
 
@@ -105,7 +120,7 @@ object WConf:
         case "unchecked"   => Right(Unchecked)
         case _             => Left(s"unknown category: $conf")
 
-      case "src" => regex(conf).map(SourcePattern.apply)
+      case "src" => regex(conf).map(anchored).map(SourcePattern.apply)
       case "origin" => regex(conf).map(Origin.apply)
 
       case _ => Left(s"unknown filter: $filter")
