@@ -63,11 +63,10 @@ jobs:
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
       - name: Upload scaladoc output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scaladoc-output
-          path: |
-            scaladoc/output/scala3
+          path: scaladoc/output/scala3
 
   validate-docs:
     runs-on: ubuntu-latest
@@ -91,9 +90,10 @@ jobs:
           fetch-depth: 0
 
       - name: Download scaladoc output
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: scaladoc-output
+          path: ./scaladoc-output/
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -118,7 +118,9 @@ jobs:
           fi
 
       - name: Validate documentation links
-        run: ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
+        run: |
+          ls -l scaladoc-output/
+          ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
 
 
   stdlib-sourcelinks-test:
