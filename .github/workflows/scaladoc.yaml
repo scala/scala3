@@ -150,7 +150,7 @@ jobs:
             --allow-hash-href \
             --allow-missing-href \
             --no-check-external-hash \
-            --no-check-internal-hash \
+            --check-internal-hash \
             --no-enforce-https \
             --ignore-urls "$IGNORE_URLS" \
             --ignore-files "$IGNORE_FILES" \
