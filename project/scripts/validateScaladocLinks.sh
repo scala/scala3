@@ -63,4 +63,4 @@ htmlproofer "$CHECK_PATH" \
   --ignore-urls "$IGNORE_URLS" \
   --ignore-files "$IGNORE_FILES" \
   $OPTIONAL_FLAGS \
-  --log-level :debug
+  --log-level :info
