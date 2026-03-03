@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 
 import scala.tools.asm
 import scala.annotation.switch
-import Primitives.{NE, EQ, TestOp, ArithmeticOp}
+import Primitives.{NE, EQ, TestOp}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
@@ -97,34 +97,17 @@ trait BCodeIdiomatic(using Context) {
     /*
      * can-multi-thread
      */
-    final def genPrimitiveArithmetic(op: ArithmeticOp, kind: BType): Unit = {
-
-      import Primitives.{ ADD, SUB, MUL, DIV, REM, NOT }
-
-      op match {
-
-        case ADD => add(kind)
-        case SUB => sub(kind)
-        case MUL => mul(kind)
-        case DIV => div(kind)
-        case REM => rem(kind)
-
-        case NOT =>
-          if (kind.isIntSizedType) {
-            emit(Opcodes.ICONST_M1)
-            emit(Opcodes.IXOR)
-          } else if (kind == LONG) {
-            jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
-            jmethod.visitInsn(Opcodes.LXOR)
-          } else {
-            abort(s"Impossible to negate an $kind")
-          }
-
-        case _ =>
-          abort(s"Unknown arithmetic primitive $op")
+    final def genPrimitiveNot(kind: BType): Unit =
+      if (kind.isIntSizedType) {
+        emit(Opcodes.ICONST_M1)
+        emit(Opcodes.IXOR)
+      } else if (kind == LONG) {
+        jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
+        jmethod.visitInsn(Opcodes.LXOR)
+      } else {
+        abort(s"Impossible to negate an $kind")
       }
-
-    } // end of method genPrimitiveArithmetic()
+    end genPrimitiveNot
 
     /*
      * can-multi-thread
