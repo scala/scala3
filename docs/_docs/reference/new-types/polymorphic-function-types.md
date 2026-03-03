@@ -61,7 +61,9 @@ since each subexpression may have a different type.
 Here is how to implement this using polymorphic function types:
 
 ```scala sc-compile-with:expr sc-name:mapsubexpr
+//{
 import Expr.*
+//}
 def mapSubexpressions[A](e: Expr[A])(f: [B] => Expr[B] => Expr[B]): Expr[A] =
   e match
     case Apply(fun, arg) => Apply(f(fun), f(arg))

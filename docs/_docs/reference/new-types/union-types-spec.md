@@ -130,7 +130,9 @@ an alternative of expressions. For instance, the type of the expression
 ```scala sc-name:softunion
 val x = 1
 val y = "abc"
+//{
 val cond: Boolean = ???
+//}
 val xy = if cond then x else y
 ```
 is the soft union type `Int | String`. Similarly for match expressions. The type of
@@ -190,9 +192,10 @@ def test(x: A | B) = x.hello // error: value `hello` is not a member of A | B
 On the other hand, the following would be allowed
 
 ```scala
+//{
 trait D
 trait E
-
+//}
 trait C { def hello: String }
 trait A extends C with D
 trait B extends C with E

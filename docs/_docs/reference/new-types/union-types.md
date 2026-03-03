@@ -8,10 +8,11 @@ A union type `A | B` includes all values of both types.
 
 
 ```scala sc-name:id
+//{
 type Hash = Int
 def lookupName(name: String) = ???
 def lookupPassword(hash: Hash) = ???
-
+//}
 trait ID
 case class UserName(name: String) extends ID
 case class Password(hash: Hash) extends ID
@@ -52,18 +53,22 @@ explicitly, as is done for the type of `either`.
 
 The inference behavior changes if the common supertrait `ID` is declared `transparent`:
 ```scala sc-name:transparent-trait
+//{
 type Hash = Int
+//}
 transparent trait ID
-
+//{
 case class UserName(name: String) extends ID
 case class Password(hash: Hash) extends ID
+//}
 ```
 
 In that case the union type is not widened.
 
 ```scala sc-compile-with:transparent-trait
+//{
 val (name, password) = (UserName("Eve"), Password(123))
-
+//}
 if true then name else password
 // _: UserName | Password = UserName(Eve)
 ```
@@ -72,8 +77,9 @@ parent, since in that case their implied superclass is `Object`, which is among 
 assumed to be transparent. See [Transparent Traits and Classes](../other-new-features/transparent-traits.md)
 for a list of such classes.
 ```scala
+//{
 type Hash = Int
-
+//}
 case class UserName(name: String)
 case class Password(hash: Hash)
 
