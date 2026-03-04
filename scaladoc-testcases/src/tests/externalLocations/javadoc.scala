@@ -16,3 +16,7 @@ class MyArrayList[T] extends java.util.ArrayList[T]
 
 trait MyPrintStream extends java.io.PrintStream
 
+object ScalaDoubleLike {
+  /** It differs from [[java.lang.Double.MIN_VALUE]] **/
+  final val MinValue = -java.lang.Double.MAX_VALUE
+}

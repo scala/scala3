@@ -140,7 +140,7 @@ The main development discussion channels are:
 [Metals]: https://scalameta.org/metals/
 [vs-code]: https://code.visualstudio.com
 [lampepfl/dotty]: https://github.com/lampepfl/dotty
-[sbt-download]: https://www.scala-sbt.org/download.html
+[sbt-download]: https://www.scala-sbt.org/download/
 [java8]: https://www.oracle.com/java/technologies/javase-jdk8-downloads.html
 [java11]: https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
 [adopt]: https://adoptopenjdk.net/

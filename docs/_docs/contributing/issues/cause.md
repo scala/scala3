@@ -14,7 +14,7 @@ In this section, you will be able to answer questions such as:
 
 ## What phase generated a particular tree?
 
-As described in the [compiler lifecycle](../architecture/lifecycle.md#phases-2),
+As described in the [compiler lifecycle](../architecture/lifecycle.md#phases),
 each phase transforms the trees and types that represent your code in a certain
 way.
 
