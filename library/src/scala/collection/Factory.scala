@@ -34,9 +34,8 @@ import scala.reflect.ClassTag
 trait Factory[-A, +C] extends Any { self =>
 
   /**
-   *  @param it Source collection
-   *  @return A collection of type `C` containing the same elements
-   *         as the source collection `it`.
+   *  @param it the source of elements to include in the collection
+   *  @return a collection of type `C` containing the elements from `it`
    */
   def fromSpecific(it: IterableOnce[A]^): C^{it}
 
@@ -107,6 +106,7 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 
   /** Produces a $coll containing repeated applications of a function to a start value.
    *
+   *  @tparam A the element type of the $coll
    *  @param start the start value of the $coll
    *  @param len   the number of elements contained in the $coll
    *  @param f     the function that's repeatedly applied
@@ -128,6 +128,7 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 
   /** Produces a $coll containing a sequence of increasing of integers.
    *
+   *  @tparam A the element type of the $coll, which must have an `Integral` instance
    *  @param start the first element of the $coll
    *  @param end   the end value of the $coll (the first value NOT contained)
    *  @return  a $coll with values `start, start + 1, ..., end - 1`
@@ -135,6 +136,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def range[A : Integral](start: A, end: A): CC[A] = from(NumericRange(start, end, implicitly[Integral[A]].one))
 
   /** Produces a $coll containing equally spaced values in some integer interval.
+   *
+   *  @tparam A the element type of the $coll, which must have an `Integral` instance
    *  @param start the start value of the $coll
    *  @param end   the end value of the $coll (the first value NOT contained)
    *  @param step  the difference between successive elements of the $coll (must be positive or negative)
@@ -144,11 +147,13 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 
   /**
    *  @tparam A the type of the ${coll}’s elements
-   *  @return A builder for $Coll objects.
+   *  @return a builder for $Coll objects.
    */
   def newBuilder[A]: Builder[A, CC[A]]
 
   /** Produces a $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n  the number of elements contained in the $coll.
    *  @param   elem the element computation
    *  @return  A $coll that contains the results of `n` evaluations of `elem`.
@@ -156,6 +161,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def fill[A](n: Int)(elem: => A): CC[A]^{elem} = from(new View.Fill(n)(elem))
 
   /** Produces a two-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   elem the element computation
@@ -164,6 +171,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def fill[A](n1: Int, n2: Int)(elem: => A): CC[(CC[A]^{elem}) @uncheckedVariance]^{elem} = fill(n1)(fill(n2)(elem))
 
   /** Produces a three-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -173,6 +182,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): CC[(CC[CC[A]^{elem}]^{elem}) @uncheckedVariance]^{elem} = fill(n1)(fill(n2, n3)(elem))
 
   /** Produces a four-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -184,6 +195,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
     fill(n1)(fill(n2, n3, n4)(elem))
 
   /** Produces a five-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -196,6 +209,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
     fill(n1)(fill(n2, n3, n4, n5)(elem))
 
   /** Produces a $coll containing values of a given function over a range of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll
    *  @param  n   The number of elements in the $coll
    *  @param  f   The function computing element values
    *  @return A $coll consisting of elements `f(0), ..., f(n -1)`
@@ -203,6 +218,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def tabulate[A](n: Int)(f: Int => A): CC[A]^{f} = from(new View.Tabulate(n)(f))
 
   /** Produces a two-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   f   The function computing element values
@@ -213,6 +230,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
     tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
 
   /** Produces a three-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -224,6 +243,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
     tabulate(n1)(i1 => tabulate(n2, n3)(f(i1, _, _)))
 
   /** Produces a four-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -236,6 +257,8 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
     tabulate(n1)(i1 => tabulate(n2, n3, n4)(f(i1, _, _, _)))
 
   /** Produces a five-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -250,6 +273,7 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 
   /** Concatenates all argument collections into a single $coll.
    *
+   *  @tparam A the element type of the $coll
    *  @param xss the collections that are to be concatenated.
    *  @return the concatenation of all the collections.
    */
@@ -382,22 +406,46 @@ trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
  *
  *  @define coll collection
  *  @define Coll `Iterable`
+ *
+ *  @tparam CC Collection type constructor for the map (e.g. `Map`, `HashMap`)
  */
 trait MapFactory[+CC[_, _]] extends Serializable { self =>
 
-  /** An empty Map. */
+  /** An empty Map.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   */
   def empty[K, V]: CC[K, V]
 
-  /** A collection of type Map generated from given iterable object. */
+  /** A collection of type Map generated from given iterable object.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param it the source collection of key-value pairs
+   */
   def from[K, V](it: IterableOnce[(K, V)]^): CC[K, V]^{it}
 
-  /** A collection of type Map that contains given key/value bindings. */
+  /** A collection of type Map that contains given key/value bindings.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param elems the key-value pairs to include in the map
+   */
   def apply[K, V](elems: (K, V)*): CC[K, V] = from(elems)
 
-  /** The default builder for Map objects. */
+  /** The default builder for Map objects.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   */
   def newBuilder[K, V]: Builder[(K, V), CC[K, V]]
 
-  /** The default Factory instance for maps. */
+  /** The default Factory instance for maps.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   */
   implicit def mapFactory[K, V]: Factory[(K, V), CC[K, V]] = MapFactory.toFactory(this)
 }
 
@@ -454,6 +502,8 @@ trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, caps.Pure {
   def apply[A : Ev](xs: A*): CC[A] = from(xs)
 
   /** Produces a $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll, for which an implicit `Ev` instance must exist
    *  @param   n  the number of elements contained in the $coll.
    *  @param   elem the element computation
    *  @return  A $coll that contains the results of `n` evaluations of `elem`.
@@ -461,6 +511,8 @@ trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, caps.Pure {
   def fill[A : Ev](n: Int)(elem: => A): CC[A] = from(new View.Fill(n)(elem))
 
   /** Produces a $coll containing values of a given function over a range of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll, for which an implicit `Ev` instance must exist
    *  @param  n   The number of elements in the $coll
    *  @param  f   The function computing element values
    *  @return A $coll consisting of elements `f(0), ..., f(n -1)`
@@ -469,6 +521,7 @@ trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, caps.Pure {
 
   /** Produces a $coll containing repeated applications of a function to a start value.
    *
+   *  @tparam A the element type of the $coll, for which an implicit `Ev` instance must exist
    *  @param start the start value of the $coll
    *  @param len   the number of elements contained in the $coll
    *  @param f     the function that's repeatedly applied
@@ -547,6 +600,7 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
 
   /** Produces a $coll containing a sequence of increasing of integers.
    *
+   *  @tparam A the element type of the $coll, which must have `Integral` and `ClassTag` instances
    *  @param start the first element of the $coll
    *  @param end   the end value of the $coll (the first value NOT contained)
    *  @return  a $coll with values `start, start + 1, ..., end - 1`
@@ -554,6 +608,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
   def range[A : Integral : ClassTag](start: A, end: A): CC[A] = from(NumericRange(start, end, implicitly[Integral[A]].one))
 
   /** Produces a $coll containing equally spaced values in some integer interval.
+   *
+   *  @tparam A the element type of the $coll, which must have `Integral` and `ClassTag` instances
    *  @param start the start value of the $coll
    *  @param end   the end value of the $coll (the first value NOT contained)
    *  @param step  the difference between successive elements of the $coll (must be positive or negative)
@@ -562,6 +618,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
   def range[A : Integral : ClassTag](start: A, end: A, step: A): CC[A] = from(NumericRange(start, end, step))
 
   /** Produces a two-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   elem the element computation
@@ -570,6 +628,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
   def fill[A : ClassTag](n1: Int, n2: Int)(elem: => A): CC[CC[A] @uncheckedVariance] = fill(n1)(fill(n2)(elem))
 
   /** Produces a three-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -579,6 +639,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
   def fill[A : ClassTag](n1: Int, n2: Int, n3: Int)(elem: => A): CC[CC[CC[A]] @uncheckedVariance] = fill(n1)(fill(n2, n3)(elem))
 
   /** Produces a four-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -590,6 +652,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
     fill(n1)(fill(n2, n3, n4)(elem))
 
   /** Produces a five-dimensional $coll containing the results of some element computation a number of times.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -602,6 +666,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
     fill(n1)(fill(n2, n3, n4, n5)(elem))
 
   /** Produces a two-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   f   The function computing element values
@@ -612,6 +678,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
     tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
 
   /** Produces a three-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -623,6 +691,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
     tabulate(n1)(i1 => tabulate(n2, n3)(f(i1, _, _)))
 
   /** Produces a four-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -635,6 +705,8 @@ trait ClassTagIterableFactory[+CC[_]] extends EvidenceIterableFactory[CC, ClassT
     tabulate(n1)(i1 => tabulate(n2, n3, n4)(f(i1, _, _, _)))
 
   /** Produces a five-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
+   *
+   *  @tparam A the element type of the $coll, which must have a `ClassTag`
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -724,6 +796,8 @@ trait StrictOptimizedClassTagSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extend
  *
  *  @define coll collection
  *  @define Coll `Iterable`
+ *
+ *  @tparam CC Collection type constructor for the sorted map (e.g. `TreeMap`)
  */
 trait SortedMapFactory[+CC[_, _]] extends Serializable { this: SortedMapFactory[CC] =>
 

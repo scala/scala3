@@ -38,6 +38,8 @@ import caps.unsafe.untrackedCaptures
  *    List(1, 2, 3, 4, 5).filterMap(i => if(i % 2 == 0) Some(i) else None)
  *    // == List(2, 4)
  *  ```
+ *
+ *  @tparam Repr the collection representation type that can be converted to `IterableOnce`
  */
 transparent trait IsIterableOnce[Repr] {
 
@@ -48,7 +50,10 @@ transparent trait IsIterableOnce[Repr] {
   @untrackedCaptures
   val conversion: Repr => IterableOnce[A] = apply(_)
 
-  /** A conversion from the representation type `Repr` to a `IterableOnce[A]`. */
+  /** A conversion from the representation type `Repr` to an `IterableOnce[A]`.
+   *
+   *  @param coll the representation type instance to view as an `IterableOnce[A]`
+   */
   def apply(coll: Repr): IterableOnce[A]
 
 }

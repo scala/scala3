@@ -87,6 +87,11 @@ import caps.unsafe.untrackedCaptures
  *     def apply(coll: Range): IterableOps[Int, IndexedSeq, IndexedSeq[Int]] = coll
  *   }
  *  ```
+ *
+ *  (Note that in practice the `IsIterable[Range]` instance is already provided by
+ *  the standard library, and it is defined as an `IsSeq[Range]` instance)
+ *
+ *  @tparam Repr the representation type (e.g. `String`, `Array[Int]`) that can be converted to an `Iterable`
  */
 transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
 
@@ -102,7 +107,10 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
   @untrackedCaptures
   override val conversion: Repr => IterableOps[A, Iterable, C] = apply(_)
 
-  /** A conversion from the type `Repr` to `IterableOps[A, Iterable, C]`. */
+  /** A conversion from the type `Repr` to `IterableOps[A, Iterable, C]`.
+   *
+   *  @param coll the collection or value to convert to `IterableOps[A, Iterable, C]`
+   */
   def apply(coll: Repr): IterableOps[A, Iterable, C]
 
 }

@@ -21,6 +21,8 @@ import scala.annotation.{nowarn, tailrec}
 /** Base trait for linearly accessed sequences that have efficient `head` and
  *  `tail` operations.
  *  Known subclasses: List, LazyList
+ *
+ *  @tparam A the element type of the sequence
  */
 trait LinearSeq[+A] extends Seq[A]
   with LinearSeqOps[A, LinearSeq, LinearSeq[A]]
@@ -34,7 +36,12 @@ trait LinearSeq[+A] extends Seq[A]
 @SerialVersionUID(3L)
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](immutable.LinearSeq)
 
-/** Base trait for linear Seq operations. */
+/** Base trait for linear Seq operations.
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor for the collection (e.g., `List`, `LazyList`)
+ *  @tparam C the concrete collection type
+ */
 transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & LinearSeqOps[A, CC, C]] extends Any with SeqOps[A, CC, C] with caps.Pure { self =>
 
   /** @inheritdoc
@@ -288,6 +295,9 @@ transparent trait StrictOptimizedLinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: 
 
 /** A specialized Iterator for LinearSeqs that is lazy enough for Stream and LazyList. This is accomplished by not
  *  evaluating the tail after returning the current head.
+ *
+ *  @tparam A the element type of the linear sequence being iterated
+ *  @param coll the linear sequence to iterate over
  */
 private[collection] final class LinearSeqIterator[A](coll: LinearSeqOps[A, LinearSeq, LinearSeq[A]]) extends AbstractIterator[A] {
   // A call-by-need cell

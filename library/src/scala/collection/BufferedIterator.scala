@@ -17,6 +17,8 @@ import language.experimental.captureChecking
 
 /** Buffered iterators are iterators which provide a method `head`
  *  that inspects the next element without discarding it.
+ *
+ *  @tparam A the type of elements returned by this iterator
  */
 trait BufferedIterator[+A] extends Iterator[A] {
 

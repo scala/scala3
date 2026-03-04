@@ -18,7 +18,11 @@ import language.experimental.captureChecking
 
 import scala.annotation.{implicitNotFound, nowarn}
 
-/** A Map whose keys are sorted according to a [[scala.math.Ordering]]. */
+/** A Map whose keys are sorted according to a [[scala.math.Ordering]].
+ *
+ *  @tparam K the type of the keys contained in this sorted map
+ *  @tparam V the type of the values associated with the keys
+ */
 trait SortedMap[K, +V]
   extends Map[K, V]
     with SortedMapOps[K, V, SortedMap, SortedMap[K, V]]
@@ -60,11 +64,17 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    *  @note When implementing a custom collection type and refining `CC` to the new type, this
    *       method needs to be overridden to return a factory for the new type (the compiler will
    *       issue an error otherwise).
+   *
+   *  @return the factory for this sorted map type
    */
   def sortedMapFactory: SortedMapFactory[CC]
 
   /** Similar to `mapFromIterable`, but returns a SortedMap collection type.
    *  Note that the return type is now `CC[K2, V2]`.
+   *
+   *  @tparam K2 the type of the keys in the resulting sorted map
+   *  @tparam V2 the type of the values in the resulting sorted map
+   *  @param it the iterable of key-value pairs to convert into a sorted map
    */
   @`inline` protected final def sortedMapFromIterable[K2, V2](it: Iterable[(K2, V2)]^)(implicit ordering: Ordering[K2]): CC[K2, V2] = sortedMapFactory.from(it)
 
@@ -76,8 +86,9 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    *  this map. x.iteratorFrom(y) is equivalent
    *  to but often more efficient than x.from(y).iterator.
    *
-   *  @param start The lower bound (inclusive)
+   *  @param start the lower bound (inclusive)
    *  on the keys to be returned
+   *  @return an iterator over all key-value pairs with keys greater than or equal to `start`
    */
   def iteratorFrom(start: K): Iterator[(K, V)]
 
@@ -87,8 +98,9 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    *  is equivalent to but often more efficient than
    *  x.from(y).keysIterator.
    *
-   *  @param start The lower bound (inclusive)
+   *  @param start the lower bound (inclusive)
    *  on the keys to be returned
+   *  @return an iterator over all keys greater than or equal to `start`
    */
   def keysIteratorFrom(start: K): Iterator[K]
 
@@ -98,8 +110,9 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    *  equivalent to but often more efficient than
    *  x.from(y).valuesIterator.
    *
-   *  @param start The lower bound (inclusive)
+   *  @param start the lower bound (inclusive)
    *  on the keys to be returned
+   *  @return an iterator over all values associated with keys greater than or equal to `start`
    */
   def valuesIteratorFrom(start: K): Iterator[V] = iteratorFrom(start).map(_._2)
 
@@ -163,6 +176,8 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   // And finally, we add new overloads taking an ordering
   /** Builds a new sorted map by applying a function to all elements of this $coll.
    *
+   *  @tparam K2 the type of the keys in the returned sorted map
+   *  @tparam V2 the type of the values in the returned sorted map
    *  @param f      the function to apply to each element.
    *  @return       a new $coll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
@@ -173,6 +188,8 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   /** Builds a new sorted map by applying a function to all elements of this $coll
    *  and using the elements of the resulting collections.
    *
+   *  @tparam K2 the type of the keys in the returned sorted map
+   *  @tparam V2 the type of the values in the returned sorted map
    *  @param f      the function to apply to each element.
    *  @return       a new $coll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
@@ -183,6 +200,8 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   /** Builds a new sorted map by applying a partial function to all elements of this $coll
    *  on which the function is defined.
    *
+   *  @tparam K2 the type of the keys in the returned sorted map
+   *  @tparam V2 the type of the values in the returned sorted map
    *  @param pf     the partial function which filters and maps the $coll.
    *  @return       a new $coll resulting from applying the given partial function
    *                `pf` to each element on which it is defined and collecting the results.
@@ -196,7 +215,11 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
     case _ => iterator.concat(suffix.iterator)
   })(using ordering)
 
-  /** Alias for `concat`. */
+  /** Alias for `concat`.
+   *
+   *  @tparam V2 the value type of the returned sorted map, a supertype of `V`
+   *  @param xs the collection of key-value pairs to append
+   */
   @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
@@ -212,6 +235,12 @@ object SortedMapOps {
   /** Specializes `MapWithFilter` for sorted Map collections
    *
    *  @define coll sorted map collection
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @tparam IterableCC the type constructor of the underlying iterable collection
+   *  @tparam MapCC the type constructor of the underlying map collection
+   *  @tparam CC the type constructor of the sorted map collection
    */
   class WithFilter[K, +V, +IterableCC[_], +MapCC[X, Y] <: Map[X, Y], +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y, CC, ?]](
     self: SortedMapOps[K, V, CC, ?] & MapOps[K, V, MapCC, ?] & IterableOps[(K, V), IterableCC, ?],

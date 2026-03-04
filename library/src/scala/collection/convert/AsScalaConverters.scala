@@ -42,6 +42,7 @@ trait AsScalaConverters {
    *  If the Java `Iterator` was previously obtained from an implicit or explicit call of
    *  `asJava` then the original Scala `Iterator` will be returned.
    *
+   *  @tparam A the element type of the iterator
    *  @param i The Java `Iterator` to be converted.
    *  @return  A Scala `Iterator` view of the argument.
    */
@@ -59,6 +60,7 @@ trait AsScalaConverters {
    *  If the Java `Enumeration` was previously obtained from an implicit or explicit call of
    *  `asJavaEnumeration` then the original Scala `Iterator` will be returned.
    *
+   *  @tparam A the element type of the enumeration
    *  @param e The Java `Enumeration` to be converted.
    *  @return  A Scala `Iterator` view of the argument.
    */
@@ -76,6 +78,7 @@ trait AsScalaConverters {
    *  If the Java `Iterable` was previously obtained from an implicit or explicit call of
    *  `asJava` then the original Scala `Iterable` will be returned.
    *
+   *  @tparam A the element type of the iterable
    *  @param i The Java `Iterable` to be converted.
    *  @return  A Scala `Iterable` view of the argument.
    */
@@ -90,6 +93,7 @@ trait AsScalaConverters {
    *  If the Java `Collection` was previously obtained from an implicit or explicit call of
    *  `asJavaCollection` then the original Scala `Iterable` will be returned.
    *
+   *  @tparam A the element type of the collection
    *  @param c The Java `Collection` to be converted.
    *  @return  A Scala `Iterable` view of the argument.
    */
@@ -107,6 +111,7 @@ trait AsScalaConverters {
    *  If the Java `List` was previously obtained from an implicit or explicit call of
    *  `asJava` then the original Scala `Buffer` will be returned.
    *
+   *  @tparam A the element type of the list
    *  @param l The Java `List` to be converted.
    *  @return A Scala mutable `Buffer` view of the argument.
    */
@@ -124,6 +129,7 @@ trait AsScalaConverters {
    *  If the Java `Set` was previously obtained from an implicit or explicit call of
    *  `asJava` then the original Scala `Set` will be returned.
    *
+   *  @tparam A the element type of the set
    *  @param s The Java `Set` to be converted.
    *  @return  A Scala mutable `Set` view of the argument.
    */
@@ -146,6 +152,8 @@ trait AsScalaConverters {
    *  This includes `get`, as `java.util.Map`'s API does not allow for an atomic `get` when `null`
    *  values may be present.
    *
+   *  @tparam K the type of keys in the map
+   *  @tparam V the type of values in the map
    *  @param m The Java `Map` to be converted.
    *  @return  A Scala mutable `Map` view of the argument.
    */
@@ -164,6 +172,8 @@ trait AsScalaConverters {
    *  If the Java `ConcurrentMap` was previously obtained from an implicit or explicit call of
    *  `asJava` then the original Scala `ConcurrentMap` will be returned.
    *
+   *  @tparam K the type of keys in the map
+   *  @tparam V the type of values in the map
    *  @param m The Java `ConcurrentMap` to be converted.
    *  @return  A Scala mutable `ConcurrentMap` view of the argument.
    */
@@ -181,6 +191,8 @@ trait AsScalaConverters {
    *  If the Java `Dictionary` was previously obtained from an implicit or explicit call of
    *  `asJavaDictionary` then the original Scala `Map` will be returned.
    *
+   *  @tparam K the type of keys in the dictionary
+   *  @tparam V the type of values in the dictionary
    *  @param d The Java `Dictionary` to be converted.
    *  @return  A Scala mutable `Map` view of the argument.
    */

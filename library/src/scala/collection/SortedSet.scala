@@ -18,7 +18,10 @@ import language.experimental.captureChecking
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.annotation.unchecked.uncheckedVariance
 
-/** Base type of sorted sets. */
+/** Base type of sorted sets.
+ *
+ *  @tparam A the element type of the set
+ */
 trait SortedSet[A] extends Set[A]
     with SortedSetOps[A, SortedSet, SortedSet[A]]
     with SortedSetFactoryDefaults[A, SortedSet, Set] {
@@ -57,6 +60,8 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *  @note When implementing a custom collection type and refining `CC` to the new type, this
    *       method needs to be overridden to return a factory for the new type (the compiler will
    *       issue an error otherwise).
+   *
+   *  @return a factory for creating new sorted collections of the same type
    */
   def sortedIterableFactory: SortedIterableFactory[CC]
 
@@ -169,6 +174,9 @@ object SortedSetOps {
   /** Specialize `WithFilter` for sorted collections
    *
    *  @define coll sorted collection
+   *
+   *  @tparam A the element type of the sorted collection
+   *  @tparam IterableCC the type constructor for the unsorted collection type
    */
   class WithFilter[+A, +IterableCC[_], +CC[X] <: SortedSet[X]](
     self: SortedSetOps[A, CC, ?] & IterableOps[A, IterableCC, ?],

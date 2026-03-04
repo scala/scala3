@@ -28,6 +28,8 @@ import scala.reflect.ClassTag
  *  their implementation.
  *
  *  @see [[scala.collection.generic.IsIterable]]
+ *
+ *  @tparam Repr the collection representation type that is witnessed to have sequence-like operations
  */
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
@@ -40,6 +42,9 @@ transparent trait IsSeq[Repr] extends IsIterable[Repr] {
    *  @note The second type parameter of the returned `SeqOps` value is
    *       still `Iterable` (and not `Seq`) because `SeqView[A]` only
    *       extends `SeqOps[A, View, View[A]]`.
+   *
+   *  @param coll the collection to convert
+   *  @return a `SeqOps` instance that provides sequence operations on `coll`
    */
   def apply(coll: Repr): SeqOps[A, Iterable, C]
 }

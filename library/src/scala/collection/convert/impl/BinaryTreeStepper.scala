@@ -45,6 +45,11 @@ private[collection] object BinaryTreeStepper {
  *
  *  Subclasses should allow this class to do all the work of maintaining state; `next` should simply
  *  reduce `maxLength` by one, and consume `myCurrent` and set it to `null` if `hasNext` is true.
+ *
+ *  @tparam A the element type produced by this stepper
+ *  @tparam T the type of tree nodes being traversed, must be a reference type
+ *  @tparam Sub the public stepper type returned by `trySplit`
+ *  @tparam Semi the self type of the concrete stepper subclass, which must extend both `Sub` and `BinaryTreeStepperBase`
  */
 private[collection] abstract class BinaryTreeStepperBase[A, T <: AnyRef, Sub, Semi <: Sub & BinaryTreeStepperBase[A, T, ?, ?]](
   protected var maxLength: Int, protected var myCurrent: T | Null, protected var stack: Array[AnyRef | Null], protected var index: Int,
@@ -54,6 +59,8 @@ extends EfficientSplit {
   /** Unrolls a subtree onto the stack starting from a particular node, returning
    *  the last node found.  This final node is _not_ placed on the stack, and
    *  may have things to its right.
+   *
+   *  @param from the tree node from which to begin unrolling leftward
    */
   @tailrec protected final def unroll(from: T): T = {
     val l = left(from)
@@ -71,6 +78,8 @@ extends EfficientSplit {
    *  the subtree from the stack entirely (so it is ready to use).  It returns
    *  the node that is being detached. Note that the node must _not_ already be
    *  on the stack.
+   *
+   *  @param node the tree node to detach, whose left subtree has already been visited
    */
   protected final def detach(node: T): node.type = {
     val r = right(node)
@@ -88,6 +97,9 @@ extends EfficientSplit {
    *  tree is not already empty.
    *
    *  Right now overwrites everything so could allow reuse, but isn't used for it.
+   *
+   *  @param root the root node of the tree to traverse, or `null` for an empty tree
+   *  @param size the total number of elements in the tree
    */
   private[impl] final def initialize(root: T | Null, size: Int): Unit =
     if (root eq null) {
@@ -122,6 +134,8 @@ extends EfficientSplit {
    *  detaching the root, and leaving the right-hand side of the root unrolled.
    *
    *  If the tree is empty or only has one element left, it returns `null` instead of splitting.
+   *
+   *  @return a new stepper covering the left portion of the remaining elements, or `null` if the stepper cannot be split
    */
   def trySplit(): Sub | Null =
     if (!hasStep || index < 0) null
