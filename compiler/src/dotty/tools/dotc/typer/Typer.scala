@@ -3108,6 +3108,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     completeAnnotations(ddef, sym)
     val paramss1 = paramss.nestedMapConserve(typed(_)).asInstanceOf[List[ParamClause]]
     for case ValDefs(vparams) <- paramss1 do
+      if !ctx.isAfterTyper && !sym.is(Synthetic) then
+        vparams.foldLeft(mutable.Set.empty[Name]): (seen, p) =>
+          if seen(p.name) then
+            report.error(em"parameter name must be distinct from deprecated name", p.srcPos)
+          for annot <- p.symbol.getAnnotation(defn.DeprecatedNameAnnot) do
+            val nm = annot.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+            if seen(nm) then
+              report.error(em"deprecated parameter name must be distinct from other names", annot.tree.srcPos)
+            seen.addOne(nm)
+          seen.addOne(p.name)
       checkNoForwardDependencies(vparams)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
