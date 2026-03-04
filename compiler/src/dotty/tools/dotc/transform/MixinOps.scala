@@ -28,11 +28,12 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       info = cls.thisType.memberInfo(member)
     )
     .enteredAfter(thisPhase)
-    .asTerm.tap: res =>
-      res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
-      res.setParamss(res.paramSymss)
+    .asTerm.tap: forwarder =>
+      forwarder.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
+      val paramSymss = forwarder.paramSymss // compute once; different from rawParamss
+      forwarder.setParamss(paramSymss)
       atPhaseBeforeTransforms:
-        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(res.paramSymss.flatten) do
+        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(paramSymss.flatten) do
           dst.addAnnotations(src.annotations)
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {
