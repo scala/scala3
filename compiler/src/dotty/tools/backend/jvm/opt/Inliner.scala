@@ -456,7 +456,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
     var callsiteStackSlot = f.getLocals + f.getStackSize - calleeParamTypes.length - (if (isStatic) 0 else 1)
     // Counter for param slots of the callee (long / double use 2 slots)
     var calleeParamSlot = 0
-    var nextLocalIndex = BackendUtils.maxLocals(callsite.callsiteMethod)
+    var nextLocalIndex = MethodMax.maxLocals(callsite.callsiteMethod)
 
     val numLocals = f.getLocals
 
@@ -481,10 +481,10 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
       calleeParamSlot += paramSize
     }
 
-    val numSavedParamSlots = BackendUtils.maxLocals(callsite.callsiteMethod) + calleeFirstNonParamSlot - nextLocalIndex
+    val numSavedParamSlots = MethodMax.maxLocals(callsite.callsiteMethod) + calleeFirstNonParamSlot - nextLocalIndex
 
     // local var indices in the callee are adjusted
-    val localVarShift = BackendUtils.maxLocals(callsite.callsiteMethod) - numSavedParamSlots
+    val localVarShift = MethodMax.maxLocals(callsite.callsiteMethod) - numSavedParamSlots
     clonedInstructions.iterator.asScala foreach {
       case varInstruction: VarInsnNode =>
         if (varInstruction.`var` < calleeParamLocals.length)
@@ -505,7 +505,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
     // add a STORE instruction for each expected argument, including for THIS instance if any
     val argStores = new InsnList
     val nullOutLocals = new InsnList
-    val numCallsiteLocals = BackendUtils.maxLocals(callsite.callsiteMethod)
+    val numCallsiteLocals = MethodMax.maxLocals(callsite.callsiteMethod)
     calleeParamSlot = 0
     if (!isStatic) {
       def addNullCheck(): Unit = {
@@ -581,7 +581,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
     val hasReturnValue = returnType.getSort != asm.Type.VOID
     // Use a fresh slot for the return value. We could re-use local variable slot of the inlined
     // code, but this makes some cleanups (in LocalOpt) fail / generate less clean code.
-    val returnValueIndex = BackendUtils.maxLocals(callsite.callsiteMethod) + BackendUtils.maxLocals(callee) - numSavedParamSlots
+    val returnValueIndex = MethodMax.maxLocals(callsite.callsiteMethod) + MethodMax.maxLocals(callee) - numSavedParamSlots
     var needNullOutReturnValue: Boolean = false
 
     def returnValueStore(returnInstruction: AbstractInsnNode) = {
@@ -668,11 +668,11 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
     // an exception is thrown in the inlined code.
     callsite.callsiteMethod.tryCatchBlocks.addAll(0, cloneTryCatchBlockNodes(callee, labelsMap).asJava)
 
-    callsite.callsiteMethod.maxLocals = BackendUtils.maxLocals(callsite.callsiteMethod) + BackendUtils.maxLocals(callee) - numSavedParamSlots + returnType.getSize
+    callsite.callsiteMethod.maxLocals = MethodMax.maxLocals(callsite.callsiteMethod) + MethodMax.maxLocals(callee) - numSavedParamSlots + returnType.getSize
     val maxStackOfInlinedCode = {
       // One slot per value is correct for long / double, see comment in the `analysis` package object.
       val numStoredArgs = calleeParamTypes.length + (if (isStatic) 0 else 1)
-      BackendUtils.maxStack(callee) + callsite.callsiteStackHeight - numStoredArgs
+      MethodMax.maxStack(callee) + callsite.callsiteStackHeight - numStoredArgs
     }
     val stackHeightAtNullCheck = {
       val stackSlotForNullCheck =
@@ -693,7 +693,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
       callsite.callsiteStackHeight + stackSlotForNullCheck
     }
 
-    callsite.callsiteMethod.maxStack = math.max(BackendUtils.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
+    callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
 
     lazy val callsiteLambdaBodyMethods = backendUtils.onIndyLambdaImplMethod(callsite.callsiteClass.internalName)(_.getOrElseUpdate(callsite.callsiteMethod, mutable.Map.empty))
     backendUtils.onIndyLambdaImplMethodIfPresent(calleeDeclarationClass.internalName)(methods => methods.getOrElse(callee, Nil) foreach {

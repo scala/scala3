@@ -104,14 +104,14 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if AsmAnalyzer.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get.get(method) match {
+    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get.get(method) match {
       case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
         LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, backendUtils)
 
-        if (AsmAnalyzer.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get.get(method) match {
+        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get.get(method) match {
           case Some(closureInits) =>
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
@@ -165,7 +165,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
     // allocate locals for storing the arguments of the closure apply callsites.
     // if there are multiple callsites, the same locals are re-used.
     val argTypes = closureInit.lambdaMetaFactoryCall.samMethodType.getArgumentTypes
-    val firstArgLocal = BackendUtils.maxLocals(ownerMethod)
+    val firstArgLocal = MethodMax.maxLocals(ownerMethod)
 
     val argLocals = LocalsList.fromTypes(firstArgLocal, argTypes)
     ownerMethod.maxLocals = firstArgLocal + argLocals.size
@@ -370,7 +370,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
     // One slot per value is correct for long / double, see comment in the `analysis` package object.
     val numCapturedValues = localsForCapturedValues.locals.length
     val invocationStackHeight = stackHeight + numCapturedValues - 1 + (if (isNew) 2 else 0) // -1 because the closure is gone
-    if (invocationStackHeight > BackendUtils.maxStack(ownerMethod))
+    if (invocationStackHeight > MethodMax.maxStack(ownerMethod))
       ownerMethod.maxStack = invocationStackHeight
 
     // replace the callsite with a new call to the body method
@@ -470,7 +470,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
   private def storeCaptures(closureInit: ClosureInstantiation): LocalsList = {
     val indy = closureInit.lambdaMetaFactoryCall.indy
     val capturedTypes = Type.getArgumentTypes(indy.desc)
-    val firstCaptureLocal = BackendUtils.maxLocals(closureInit.ownerMethod)
+    val firstCaptureLocal = MethodMax.maxLocals(closureInit.ownerMethod)
 
     // This could be optimized: in many cases the captured values are produced by LOAD instructions.
     // If the variable is not modified within the method, we could avoid introducing yet another
