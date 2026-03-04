@@ -550,7 +550,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
     def isUnrelated(aDescOrIntN: String, bDescOrIntN: String): Boolean = {
       @tailrec
       def impl(aTp: BType, bTp: BType): Boolean = {
-        ((aTp, bTp): @unchecked) match {
+        (aTp, bTp) match {
           case (aa: ArrayBType, ba: ArrayBType) =>
             impl(aa.elementType, ba.elementType)
           case (act: ClassBType, bct: ClassBType) =>

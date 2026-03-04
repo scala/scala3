@@ -428,17 +428,28 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
     val argInfos = closureInit.capturedArgInfos ++ originalCallsite.map(cs => cs.argInfos map {
       case (index, info) => (index + numCapturedValues, info)
     }).getOrElse(IntMap.empty)
-    val bodyMethodCallsite = Callsite(
-      callsiteInstruction = bodyInvocation,
-      callsiteMethod = ownerMethod,
-      callsiteClass = closureInit.ownerClass,
-      callee = callee,
-      argInfos = argInfos,
-      callsiteStackHeight = invocationStackHeight,
-      receiverKnownNotNull = true, // see below (*)
-      callsitePosition = originalCallsite.map(_.callsitePosition).getOrElse(NoSourcePosition),
-      annotatedInline = false,
-      annotatedNoInline = false
+    val pos = originalCallsite.map(_.callsitePosition).getOrElse(NoSourcePosition)
+    val bodyMethodCallsite = callee.fold(
+      w => UnknownCallsite(
+             callsiteInstruction = bodyInvocation,
+             callsiteMethod = ownerMethod,
+             callsiteClass = closureInit.ownerClass,
+             callsitePosition = pos,
+             argInfos = argInfos,
+             warning = w
+           ),
+      c => KnownCallsite(
+             callsiteInstruction = bodyInvocation,
+             callsiteMethod = ownerMethod,
+             callsiteClass = closureInit.ownerClass,
+             callee = c,
+             argInfos = argInfos,
+             callsiteStackHeight = invocationStackHeight,
+             receiverKnownNotNull = true, // see below (*)
+             callsitePosition = pos,
+             annotatedInline = false,
+             annotatedNoInline = false
+           )
     )
     // (*) The documentation in class LambdaMetafactory says:
     //     "if implMethod corresponds to an instance method, the first capture argument
