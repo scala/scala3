@@ -19,7 +19,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
-import dotty.tools.backend.jvm.BackendReporting.NoClassBTypeInfo
+import dotty.tools.backend.jvm.BackendReporting.{ClassNotFound, NoClassBTypeInfo, OptimizerWarning}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) {
@@ -34,13 +34,13 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    *
    * This method supports both descriptors and internal names.
    */
-  def bTypeForDescriptorOrInternalNameFromClassfile(descOrIntN: String): Either[NoClassBTypeInfo, BType] = (descOrIntN(0): @switch) match {
+  def bTypeForDescriptorOrInternalNameFromClassfile(descOrIntN: String): Either[OptimizerWarning, BType] = (descOrIntN(0): @switch) match {
     case '['                           => bTypeForDescriptorFromClassfile(descOrIntN.substring(1)).map(ArrayBType.apply)
     case 'L' if descOrIntN.last == ';' => bTypeForDescriptorFromClassfile(descOrIntN)
     case _                             => classBTypeFromParsedClassfile(descOrIntN)
   }
 
-  def bTypeForDescriptorFromClassfile(desc: String): Either[NoClassBTypeInfo, BType] = (desc(0): @switch) match {
+  def bTypeForDescriptorFromClassfile(desc: String): Either[OptimizerWarning, BType] = (desc(0): @switch) match {
     case 'V'                     => Right(UNIT)
     case 'Z'                     => Right(BOOL)
     case 'C'                     => Right(CHAR)
@@ -59,7 +59,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    * Parse the classfile for `internalName` and construct the [[BTypes.ClassBType]]. If the classfile cannot
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
-  def classBTypeFromParsedClassfile(internalName: InternalName): Either[NoClassBTypeInfo, ClassBType] = {
+  def classBTypeFromParsedClassfile(internalName: InternalName): Either[OptimizerWarning, ClassBType] = {
     // JLS §4.1 "There is also a special null type, the type of the expression null [...]
     //           In practice, the programmer can ignore the null type and just pretend that null is merely a special literal that can be of any reference type."
     if internalName == "null" then Right(ts.ObjectRef)
@@ -74,13 +74,13 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
   /**
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
-  def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[NoClassBTypeInfo, ClassBType] = {
+  def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassBType] = {
     ts.classBType(classNode.name) { _ =>
       computeClassInfoFromClassNode(classNode, moduleNode)
     }
   }
 
-  private def computeClassInfoFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[NoClassBTypeInfo, ClassInfo] = {
+  private def computeClassInfoFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassInfo] = {
     val superClass = classNode.superName match {
       case null =>
         assert(classNode.name == ts.ObjectRef.internalName, s"class with missing super type: ${classNode.name}")
@@ -102,25 +102,31 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
      * to have an EnclosingMethod attribute declaring the outer class. So we keep those local and
      * anonymous classes whose outerClass is classNode.name.
      */
-    def nestedInCurrentClass(innerClassNode: InnerClassNode): Boolean = {
-      (innerClassNode.outerName != null && innerClassNode.outerName == classNode.name) ||
-      (innerClassNode.outerName == null && {
-        val (classNodeForInnerClass, _) = byteCodeRepository.classNode(innerClassNode.name).get // TODO: don't `get` here, but set the info to Left at the end
-        classNodeForInnerClass.outerClass == classNode.name
-      })
+    def nestedInCurrentClass(innerClassNode: InnerClassNode): Either[OptimizerWarning, Boolean] = {
+      if innerClassNode.outerName != null && innerClassNode.outerName == classNode.name then
+        Right(true)
+      else if innerClassNode.outerName == null then
+        byteCodeRepository.classNode(innerClassNode.name).map { case (classNodeForInnerClass, _) =>
+          classNodeForInnerClass.outerClass == classNode.name
+        }
+      else
+        Right(false)
     }
     
-    def collect(it: Iterator[Either[NoClassBTypeInfo, ClassBType]]): Either[NoClassBTypeInfo, List[ClassBType]] =
-      it.foldLeft(Right(Nil).asInstanceOf[Either[NoClassBTypeInfo, List[ClassBType]]]){
+    def collect(it: Iterator[Either[OptimizerWarning, ClassBType]]): Either[OptimizerWarning, List[ClassBType]] =
+      it.foldLeft(Right(Nil).asInstanceOf[Either[OptimizerWarning, List[ClassBType]]]){
         case (Right(xs), Right(x)) => Right(x :: xs)
         case (Left(l), _) => Left(l)
         case (_, Left(l)) => Left(l)
       }.map(_.reverse)
 
-    def nestedClasses: Either[NoClassBTypeInfo, List[ClassBType]] = 
-      collect(classNode.innerClasses.asScala.iterator.collect{
-        case i if nestedInCurrentClass(i) => classBTypeFromParsedClassfile(i.name)
-      })
+    def nestedClasses: Either[OptimizerWarning, List[ClassBType]] = 
+      collect(classNode.innerClasses.asScala.iterator.collect(Function.unlift(i =>
+        nestedInCurrentClass(i) match
+          case Left(l) => Some(Left(l))
+          case Right(false) => None
+          case Right(true) => Some(classBTypeFromParsedClassfile(i.name))
+      )))
 
     // if classNode is a nested class, it has an innerClass attribute for itself. in this
     // case we build the NestedInfo.

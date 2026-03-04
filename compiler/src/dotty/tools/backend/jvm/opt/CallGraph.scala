@@ -197,17 +197,28 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
           // graph (or when inlining).
           val receiverNotNull = call.getOpcode == Opcodes.INVOKESTATIC
 
-          methodCallsites += call -> Callsite(
-            callsiteInstruction = call,
-            callsiteMethod = methodNode,
-            callsiteClass = definingClass,
-            callee = callee,
-            argInfos = argInfos,
-            callsiteStackHeight = typeAnalyzer.frameAt(call).getStackSize,
-            receiverKnownNotNull = receiverNotNull,
-            callsitePosition = callsitePositions.get.getOrElse(call, NoSourcePosition),
-            annotatedInline = inlineAnnotatedCallsites.get(call),
-            annotatedNoInline = noInlineAnnotatedCallsites.get(call)
+          val pos = callsitePositions.get.getOrElse(call, NoSourcePosition)
+          methodCallsites += call -> callee.fold(
+            w => UnknownCallsite(
+              callsiteInstruction = call,
+              callsiteMethod = methodNode,
+              callsiteClass = definingClass,
+              argInfos = argInfos,
+              callsitePosition = pos,
+              warning = w
+            ),
+            c => KnownCallsite(
+                   callsiteInstruction = call,
+                   callsiteMethod = methodNode,
+                   callsiteClass = definingClass,
+                   callee = c,
+                   argInfos = argInfos,
+                   callsiteStackHeight = typeAnalyzer.frameAt(call).getStackSize,
+                   receiverKnownNotNull = receiverNotNull,
+                   callsitePosition = pos,
+                   annotatedInline = inlineAnnotatedCallsites.get(call),
+                   annotatedNoInline = noInlineAnnotatedCallsites.get(call)
+                 )
           )
 
         case LambdaMetaFactoryCall(indy, samMethodType, implMethod, instantiatedMethodType, indyParamTypes) if typeAnalyzer.frameAt(indy) != null =>
@@ -270,11 +281,11 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 
   private def computeArgInfos(callee: Either[OptimizerWarning, Callee], callsiteInsn: MethodInsnNode, paramTps: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
-    if (callee.isLeft) IntMap.empty
-    else {
-      val numArgs = paramTps.length + (if (callsiteInsn.getOpcode == Opcodes.INVOKESTATIC) 0 else 1)
-      argInfosForSams(callee.get.samParamTypes, callsiteInsn, numArgs, typeAnalyzer)
-    }
+    callee match
+      case Left(_) => IntMap.empty
+      case Right(c) =>
+        val numArgs = paramTps.length + (if (callsiteInsn.getOpcode == Opcodes.INVOKESTATIC) 0 else 1)
+        argInfosForSams(c.samParamTypes, callsiteInsn, numArgs, typeAnalyzer)
   }
 
   private def computeCapturedArgInfos(lmf: LambdaMetaFactoryCall, indyParamTypes: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): Option[IntMap[ArgInfo]] = {
@@ -308,7 +319,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     else samInfos
   }
 
-  def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): Either[NoClassBTypeInfo, IntMap[ClassBType]] = {
+  def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): Either[OptimizerWarning, IntMap[ClassBType]] = {
     var i = 0
     val paramTypes0 = new Array[BType](paramTps.length)
     while i < paramTps.length do
@@ -415,6 +426,13 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 }
 
+sealed trait Callsite:
+  val callsiteInstruction: MethodInsnNode
+  val callsiteMethod: MethodNode
+  val callsiteClass: ClassBType
+  val callsitePosition: SourcePosition
+  val argInfos: IntMap[ArgInfo]
+
 /**
    * A callsite in the call graph.
    *
@@ -429,20 +447,24 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
    * @param callsiteStackHeight The stack height at the callsite, required by the inliner
    * @param callsitePosition    The source position of the callsite, used for inliner warnings.
    */
-final case class Callsite(callsiteInstruction: MethodInsnNode, callsiteMethod: MethodNode, callsiteClass: ClassBType,
-                          callee: Either[OptimizerWarning, Callee], argInfos: IntMap[ArgInfo],
-                          callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: SourcePosition,
-                          annotatedInline: Boolean, annotatedNoInline: Boolean) {
-    // an annotation at the callsite takes precedence over an annotation at the definition site
-    def isInlineAnnotated: Boolean = annotatedInline || (callee.get.annotatedInline && !annotatedNoInline)
-    def isNoInlineAnnotated: Boolean = annotatedNoInline || (callee.get.annotatedNoInline && !annotatedInline)
+final case class KnownCallsite(callsiteInstruction: MethodInsnNode, callsiteMethod: MethodNode, callsiteClass: ClassBType,
+                               callee: Callee, argInfos: IntMap[ArgInfo],
+                               callsiteStackHeight: Int, receiverKnownNotNull: Boolean, callsitePosition: SourcePosition,
+                               annotatedInline: Boolean, annotatedNoInline: Boolean) extends Callsite {
+  // an annotation at the callsite takes precedence over an annotation at the definition site
+  def isInlineAnnotated: Boolean = annotatedInline || (callee.annotatedInline && !annotatedNoInline)
+  def isNoInlineAnnotated: Boolean = annotatedNoInline || (callee.annotatedNoInline && !annotatedInline)
 
-    override def toString: String =
-      "Invocation of" +
-        s" ${callee.map(_.calleeDeclarationClass.internalName).getOrElse("?")}.${callsiteInstruction.name + callsiteInstruction.desc}" +
-        s"@${callsiteMethod.instructions.indexOf(callsiteInstruction)}" +
-        s" in ${callsiteClass.internalName}.${callsiteMethod.name}${callsiteMethod.desc}"
-  }
+  override def toString: String =
+    "Invocation of" +
+      s" ${callee.calleeDeclarationClass.internalName}.${callsiteInstruction.name + callsiteInstruction.desc}" +
+      s"@${callsiteMethod.instructions.indexOf(callsiteInstruction)}" +
+      s" in ${callsiteClass.internalName}.${callsiteMethod.name}${callsiteMethod.desc}"
+}
+
+final case class UnknownCallsite(callsiteInstruction: MethodInsnNode, callsiteMethod: MethodNode, callsiteClass: ClassBType,
+                                 callsitePosition: SourcePosition, argInfos: IntMap[ArgInfo],
+                                 warning: OptimizerWarning) extends Callsite
 
 /**
  * Information about invocation arguments, obtained through data flow analysis of the callsite method.

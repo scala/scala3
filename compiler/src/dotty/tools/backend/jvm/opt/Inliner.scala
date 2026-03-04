@@ -40,7 +40,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
   // super accessors that we emit in traits. The inlined calls are marked in the call graph as
   // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
   // the call graph will always return the corresponding method in the trait.
-  private def maybeInlinedLater(callsite: Callsite, insns: List[AbstractInsnNode]): Boolean = {
+  private def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
     insns.forall({
       case mi: MethodInsnNode =>
         (mi.getOpcode != INVOKESPECIAL) || {
@@ -56,8 +56,8 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
           }
 
           mi.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME &&
-            mi.owner == callsite.callee.get.calleeDeclarationClass.internalName &&
-            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false)
+            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
+            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
         }
       case _ => false
     })
@@ -121,12 +121,12 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
     val overallChangedMethods = mutable.Set.empty[MethodNode]
 
     // Show chain of inlines that lead to a failure in inliner warnings
-    def inlineChainSuffix(callsite: Callsite, chain: List[Callsite]): String =
+    def inlineChainSuffix(callsite: KnownCallsite, chain: List[KnownCallsite]): String =
       if (chain.isEmpty) "" else
         s"""
            |Note that this callsite was itself inlined into ${BackendReporting.methodSignature(callsite.callsiteClass.internalName, callsite.callsiteMethod)}
            |by inlining the following methods:
-           |${chain.map(cs => BackendReporting.methodSignature(cs.callee.get.calleeDeclarationClass.internalName, cs.callee.get.callee)).mkString("  - ", "\n  - ", "")}""".stripMargin
+           |${chain.map(cs => BackendReporting.methodSignature(cs.callee.calleeDeclarationClass.internalName, cs.callee.callee)).mkString("  - ", "\n  - ", "")}""".stripMargin
 
     while (requests.nonEmpty || changedMethods.nonEmpty) {
       // First inline all requests that were initially collected. Then check methods that changed
@@ -241,13 +241,13 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
 
         def isLoop(call: MethodInsnNode, callee: Callee): Boolean =
           callee.callee == method || {
-            state.inlineChain(call, skipForwarders = false).exists(_.callee.get.callee == callee.callee)
+            state.inlineChain(call, skipForwarders = false).exists(_.callee.callee == callee.callee)
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
         callGraph.callsites.get(method).valuesIterator foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
-          case cs: Callsite if !failed(cs.callsiteInstruction) && cs.callee.isRight && !isLoop(cs.callsiteInstruction, cs.callee.get) =>
+          case cs: KnownCallsite if !failed(cs.callsiteInstruction) && !isLoop(cs.callsiteInstruction, cs.callee) =>
             heuristics.inlineRequest(cs) match {
               case Some(Right(req)) => rs += req
               case _ =>
@@ -287,7 +287,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
   }
 
   private val inlineRequestOrdering =
-    Ordering.by[InlineRequest, Callsite](_.callsite)(using callsiteOrdering)
+    Ordering.by[InlineRequest, KnownCallsite](_.callsite)(using callsiteOrdering)
 
   /**
    * Returns the callsites that can be inlined, grouped by method. Ensures that the returned inline
@@ -319,7 +319,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
             if (x == goal) true
             else if (visited(x)) reachableImpl(check - x, visited)
             else {
-              val callees = nonElidedRequests(x).map(_.callsite.callee.get.callee)
+              val callees = nonElidedRequests(x).map(_.callsite.callee.callee)
               reachableImpl(check - x ++ callees, visited + x)
             }
           }
@@ -338,7 +338,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
       val currentMethodRequests = mutable.ListBuffer.empty[InlineRequest]
       for (r <- requests) {
         // is there a chain of inlining requests that would inline the callsite method into the callee?
-        if (isReachable(r.callsite.callee.get.callee, r.callsite.callsiteMethod))
+        if (isReachable(r.callsite.callee.callee, r.callsite.callsiteMethod))
           elided += r
         else {
           val m = r.callsite.callsiteMethod
@@ -368,7 +368,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
         if (toAdd.nonEmpty) {
           val rest = mutable.ListBuffer.empty[(MethodNode, List[InlineRequest])]
           toAdd.foreach { case r@(_, rs) =>
-            val callees = rs.iterator.map(_.callsite.callee.get.callee)
+            val callees = rs.iterator.map(_.callsite.callee.callee)
             if (callees.forall(c => visited(c) || nonElidedRequests(c).isEmpty)) {
               result += r
               visited += r._1
@@ -403,8 +403,8 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
    * @return A map associating instruction nodes of the callee with the corresponding cloned
    *         instruction in the callsite method.
    */
-  def inlineCallsite(callsite: Callsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
-    val Right(callsiteCallee) = callsite.callee: @unchecked
+  def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
+    val callsiteCallee = callsite.callee
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
     val isStatic = isStaticMethod(callee)
@@ -733,8 +733,8 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
    *  - `Some((message, instructions))` if inlining `instructions` into the callsite method would
    *    cause an IllegalAccessError
    */
-  private def canInlineCallsite(callsite: Callsite): Option[CannotInlineWarning] = {
-    val Right(callsiteCallee) = callsite.callee: @unchecked
+  private def canInlineCallsite(callsite: KnownCallsite): Option[CannotInlineWarning] = {
+    val callsiteCallee = callsite.callee
     val callee = callsiteCallee.callee
 
     def calleeDesc = s"$callee.name} of type ${callee.desc} in ${callsiteCallee.calleeDeclarationClass.internalName}"
@@ -1037,8 +1037,8 @@ class UndoLog(backendUtils: BackendUtils, callGraph: CallGraph) {
  *   - Always remove the same request when breaking inlining cycles
  *   - Perform inlinings in a consistent order
  */
-object callsiteOrdering extends Ordering[Callsite] {
-  override def compare(x: Callsite, y: Callsite): Int = {
+object callsiteOrdering extends Ordering[KnownCallsite] {
+  override def compare(x: KnownCallsite, y: KnownCallsite): Int = {
     if (x eq y) return 0
 
     val cls = x.callsiteClass.internalName.compareTo(y.callsiteClass.internalName)
@@ -1060,7 +1060,7 @@ object callsiteOrdering extends Ordering[Callsite] {
 // The inliner speculatively inlines a callsite even if the method then has instructions that would
 // cause an IllegalAccessError in the target class. If all of those instructions are eliminated
 // (by inlining) in a later round, everything is fine. Otherwise the method is reverted.
-final case class InlinedCallsite(eliminatedCallsite: Callsite, warning: Option[IllegalAccessInstructions]) {
+final case class InlinedCallsite(eliminatedCallsite: KnownCallsite, warning: Option[IllegalAccessInstructions]) {
   // If this InlinedCallsite has a warning about a given instruction, return a copy where the warning
   // only contains that instruction.
   def filterForWarning(insn: AbstractInsnNode): Option[InlinedCallsite] = warning match {
@@ -1101,11 +1101,11 @@ final class MethodInlinerState(optLogInline: Option[String]) {
   // synthetic forwarders if skipForwarders is true (don't show those in inliner warnings, as they
   // don't show up in the source code).
   // Also used to detect inlining cycles.
-  def inlineChain(call: AbstractInsnNode, skipForwarders: Boolean): List[Callsite] = {
-    @tailrec def impl(insn: AbstractInsnNode, res: List[Callsite]): List[Callsite] = inlinedCalls.get(insn) match {
+  def inlineChain(call: AbstractInsnNode, skipForwarders: Boolean): List[KnownCallsite] = {
+    @tailrec def impl(insn: AbstractInsnNode, res: List[KnownCallsite]): List[KnownCallsite] = inlinedCalls.get(insn) match {
       case Some(inlinedCallsite) =>
         val cs = inlinedCallsite.eliminatedCallsite
-        val res1 = if (skipForwarders && BackendUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.get.callee, cs.callee.get.calleeDeclarationClass)) res else cs :: res
+        val res1 = if (skipForwarders && BackendUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.callee, cs.callee.calleeDeclarationClass)) res else cs :: res
         impl(cs.callsiteInstruction, res1)
       case _ =>
         res
@@ -1123,7 +1123,7 @@ final class MethodInlinerState(optLogInline: Option[String]) {
   // If the chain has only forwarders, `returnForwarderIfNoOther` determines whether to return `None`
   // or the last inlined forwarder.
   def rootInlinedCallsiteWithWarning(call: AbstractInsnNode, returnForwarderIfNoOther: Boolean): Option[InlinedCallsite] = {
-    def isForwarder(callsite: Callsite) = BackendUtils.isTraitSuperAccessorOrMixinForwarder(callsite.callee.get.callee, callsite.callee.get.calleeDeclarationClass)
+    def isForwarder(callsite: KnownCallsite) = BackendUtils.isTraitSuperAccessorOrMixinForwarder(callsite.callee.callee, callsite.callee.calleeDeclarationClass)
 
     def result(res: Option[InlinedCallsite]) = res match {
       case Some(r) if returnForwarderIfNoOther || !isForwarder(r.eliminatedCallsite) => res
@@ -1178,7 +1178,7 @@ final class InlineLog(optLogInline: Option[String]) {
     _active
   }
 
-  private def active(callsite: Callsite): Boolean = active(callsite.callsiteClass, callsite.callsiteMethod)
+  private def active(callsite: KnownCallsite): Boolean = active(callsite.callsiteClass, callsite.callsiteMethod)
 
   private def bufferForOuter(outer: Option[Callsite]) = outer match {
     case Some(o) => downstream.nn.getOrElse(o, roots.nn)
@@ -1198,7 +1198,7 @@ final class InlineLog(optLogInline: Option[String]) {
     bufferForOuter(outer) += InlineLogFail(request, warning)
   }
 
-  def logRollback(callsite: Callsite, reason: String, outer: Option[Callsite]) = if (active(callsite)) {
+  def logRollback(callsite: KnownCallsite, reason: String, outer: Option[Callsite]) = if (active(callsite)) {
     bufferForOuter(outer) += InlineLogRollback(reason)
   }
 
@@ -1235,7 +1235,7 @@ object InlineLog {
   sealed trait InlineLogResult {
     def entryString(indent: Int): String = {
       def calleeString(r: InlineRequest) = {
-        val callee = r.callsite.callee.get
+        val callee = r.callsite.callee
         callee.calleeDeclarationClass.internalName + "." + callee.callee.name
       }
 
