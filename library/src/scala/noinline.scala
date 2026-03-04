@@ -37,7 +37,6 @@ import scala.language.`2.13`
  *  def t5 = f2(1): @inline     // inlined if possible (override at callsite)
  *  def t6 = f3(1): @inline     // inlined if possible
  *  def t7 = f3(1): @noinline   // not inlined
- * }
  * ```
  *
  * Note: parentheses are required when annotating a callsite within a larger expression.
