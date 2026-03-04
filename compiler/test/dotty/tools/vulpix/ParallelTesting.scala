@@ -24,6 +24,7 @@ import scala.util.matching.Regex
 import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
+import dotty.tools.dotc.CoverageSupport
 import dotc.core.Contexts.*
 import dotc.decompiler
 import dotc.report
@@ -41,7 +42,7 @@ import dotty.tools.vulpix.TestConfiguration.defaultOptions
  *  using this, you should be running your JUnit tests **sequentially**, as the
  *  test suite itself runs with a high level of concurrency.
  */
-trait ParallelTesting extends RunnerOrchestration:
+trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   import ParallelTesting.*
 
   /** If the running environment supports an interactive terminal, each `Test`
@@ -793,7 +794,7 @@ trait ParallelTesting extends RunnerOrchestration:
   private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
 
-  private final class WarnTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  protected class WarnTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput):
     override def suppressErrors = true
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
@@ -874,7 +875,7 @@ trait ParallelTesting extends RunnerOrchestration:
     end getMissingExpectedWarnings
   end WarnTest
 
-  private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  protected class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       testSource.sourceFiles.foreach { file =>
@@ -1268,7 +1269,11 @@ trait ParallelTesting extends RunnerOrchestration:
           target.copy(dir = copyToDir(outDir, dir))
       }
 
-      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput)
+      val test =
+        if dotty.Properties.testsInstrumentCoverage then
+          new RewriteTestWithCoverage(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput)
+        else
+          new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput)
 
       checkFail(test, "Rewrite")
     }
