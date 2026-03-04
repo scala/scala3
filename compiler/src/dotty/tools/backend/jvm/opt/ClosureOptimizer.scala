@@ -192,7 +192,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
           declClassBType              <- bTypesFromClassfile.classBTypeFromParsedClassfile(declClass)
           lambdaOwnerBType            <- bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner)
         } yield {
-          BTypes.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
+          InlineInfo.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
         def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)

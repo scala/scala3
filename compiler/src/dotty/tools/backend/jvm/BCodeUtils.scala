@@ -376,6 +376,9 @@ object BCodeUtils {
     labelNode
   }
 
+  // when inlining, local variable names of the callee are prefixed with the name of the callee method
+  private val InlinedLocalVariablePrefixMaxLength = 128
+
   /**
    * Clone the local variable descriptors of `methodNode` and map their `start` and `end` labels
    * according to the `labelMap`.
@@ -386,20 +389,20 @@ object BCodeUtils {
       val newIdx = localIndexMap(localVariable.index)
       if (newIdx >= 0) {
         val name =
-          if (calleeMethodName.length + localVariable.name.length < BTypes.InlinedLocalVariablePrefixMaxLength) {
+          if (calleeMethodName.length + localVariable.name.length < InlinedLocalVariablePrefixMaxLength) {
             calleeMethodName + "_" + localVariable.name
           } else {
             val parts = localVariable.name.split("_").toVector
             val (methNames, varName) = (calleeMethodName +: parts.init, parts.last)
             // keep at least 5 characters per method name
-            val maxNumMethNames = BTypes.InlinedLocalVariablePrefixMaxLength / 5
+            val maxNumMethNames = InlinedLocalVariablePrefixMaxLength / 5
             val usedMethNames =
               if (methNames.length < maxNumMethNames) methNames
               else {
                 val half = maxNumMethNames / 2
                 methNames.take(half) ++ methNames.takeRight(half)
               }
-            val charsPerMethod = BTypes.InlinedLocalVariablePrefixMaxLength / usedMethNames.length
+            val charsPerMethod = InlinedLocalVariablePrefixMaxLength / usedMethNames.length
             usedMethNames.foldLeft("")((res, methName) => res + methName.take(charsPerMethod) + "_") + varName
           }
         res += new LocalVariableNode(
