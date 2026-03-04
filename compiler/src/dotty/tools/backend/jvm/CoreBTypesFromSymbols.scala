@@ -41,7 +41,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
         val internalName = classSym.javaBinaryName
         // We first create and add the ClassBType to the hash map before computing its info. This
         // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-        val result = classBType(internalName, classSym)((ct, cs) => Right(createClassInfo(ct, cs.asClass)))
+        val result = classBType(internalName)(ct => createClassInfo(ct, classSym.asClass))
         convertedClasses(classSym) = result
         result
       })
@@ -50,15 +50,15 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {
     assert(moduleClassSym.isTopLevelModuleClass, s"not a top-level module class: $moduleClassSym")
     val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
-    classBType(internalName, moduleClassSym)((_, mcs) =>
-      Right(ClassInfo(
+    classBType(internalName)(_ =>
+      ClassInfo(
         superClass = Some(ObjectRef),
         interfaces = Nil,
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
-        nestedClasses = getMemberClasses(mcs).map(classBTypeFromSymbol),
+        nestedClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
         nestedInfo = None,
         inlineInfoSource = InlineInfoSource.Missing
-      ))
+      )
     )
   }
 

@@ -154,11 +154,11 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
     // type InternalName = String
     val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
       def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
-        ts.classBTypeFromInternalName(internalName).head.info.get.nestedClasses
+        ts.classBTypeFromInternalName(internalName).head.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
         val c = ts.classBTypeFromInternalName(internalName).head
-        Option.when(c.isNestedClass.get)(c)
+        Option.when(c.isNestedClass)(c)
       }
 
       def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
@@ -185,11 +185,11 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
     // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
     val allNestedClasses = new mutable.TreeSet[ClassBType]()(using Ordering.by(_.internalName))
     allNestedClasses ++= declaredInnerClasses
-    refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain.get)
+    refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain)
     for nestedClass <- allNestedClasses
     do {
       // Extract the innerClassEntry - we know it exists, enclosingNestedClassesChain only returns nested classes.
-      val Some(e) = nestedClass.innerClassAttributeEntry.get: @unchecked
+      val Some(e) = nestedClass.innerClassAttributeEntry: @unchecked
       jclass.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
     }
   }
@@ -873,7 +873,7 @@ object BackendUtils {
   // ==============================================================================================
 
   def isTraitSuperAccessor(method: MethodNode, owner: ClassBType): Boolean = {
-    owner.isInterface.get &&
+    owner.isInterface &&
       BCodeUtils.isSyntheticMethod(method) &&
       method.name.endsWith("$") &&
       BCodeUtils.isStaticMethod(method) &&
@@ -881,7 +881,7 @@ object BackendUtils {
   }
 
   def isMixinForwarder(method: MethodNode, owner: ClassBType): Boolean = {
-    !owner.isInterface.get &&
+    !owner.isInterface &&
       // isSyntheticMethod(method) && // mixin forwarders are not synthetic it seems
       !BCodeUtils.isStaticMethod(method) &&
       BCodeUtils.findSingleCall(method, mi => mi.itf && mi.getOpcode == Opcodes.INVOKESTATIC && mi.name == method.name + "$").nonEmpty

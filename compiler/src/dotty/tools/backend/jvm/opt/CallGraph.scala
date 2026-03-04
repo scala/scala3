@@ -116,7 +116,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
 
   def addClass(classNode: ClassNode): Unit = {
     val classType = bTypesFromClassfile.classBTypeFromClassNode(classNode, None)
-    classNode.methods.asScala.foreach(addMethod(_, classType))
+    classType.foreach(ct => classNode.methods.asScala.foreach(addMethod(_, ct)))
   }
 
   def refresh(methodNode: MethodNode, definingClass: ClassBType): Unit = {
@@ -143,10 +143,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
               call.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME && {
               val owner = call.owner
               definingClass.internalName != owner && {
-                var nextSuper = definingClass.info.get.superClass
+                var nextSuper = definingClass.info.superClass
                 while (nextSuper.nonEmpty) {
                   if (nextSuper.get.internalName == owner) return true
-                  nextSuper = nextSuper.get.info.get.superClass
+                  nextSuper = nextSuper.get.info.superClass
                 }
                 false
               }
@@ -156,7 +156,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
           // This is the type where method lookup starts (implemented in byteCodeRepository.methodNode)
           val preciseOwner =
             if (isStaticCallsite(call)) call.owner
-            else if (isSuperCall) definingClass.info.get.superClass.get.internalName
+            else if (isSuperCall) definingClass.info.superClass.get.internalName
             else if (call.getOpcode == Opcodes.INVOKESPECIAL) call.owner
             else {
               // invokevirtual, invokeinterface: start search at the type of the receiver
@@ -173,8 +173,8 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
             for {
               (method, declarationClass) <- byteCodeRepository.methodNode(preciseOwner, call.name, call.desc)
               ((declarationClassNode, declarationModuleNode), calleeSourceFilePath) <- byteCodeRepository.classNodeAndSourceFilePath(declarationClass)
+              declarationClassBType <- bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode, declarationModuleNode)
             } yield {
-              val declarationClassBType = bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode, declarationModuleNode)
               val info = analyzeCallsite(method, declarationClassBType, call, paramTps, calleeSourceFilePath, definingClass)
               import info._
               Callee(
@@ -212,12 +212,13 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
 
         case LambdaMetaFactoryCall(indy, samMethodType, implMethod, instantiatedMethodType, indyParamTypes) if typeAnalyzer.frameAt(indy) != null =>
           val lmf = LambdaMetaFactoryCall(indy, samMethodType, implMethod, instantiatedMethodType)
-          val capturedArgInfos = computeCapturedArgInfos(lmf, indyParamTypes, typeAnalyzer)
-          methodClosureInstantiations += indy -> ClosureInstantiation(
-            lmf,
-            methodNode,
-            definingClass,
-            capturedArgInfos)
+          computeCapturedArgInfos(lmf, indyParamTypes, typeAnalyzer).foreach(capturedArgInfos =>
+            methodClosureInstantiations += indy -> ClosureInstantiation(
+              lmf,
+              methodNode,
+              definingClass,
+              capturedArgInfos)
+          )
 
         case _ =>
       }
@@ -276,10 +277,17 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     }
   }
 
-  private def computeCapturedArgInfos(lmf: LambdaMetaFactoryCall, indyParamTypes: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
-    val capturedTypes = indyParamTypes.map(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
+  private def computeCapturedArgInfos(lmf: LambdaMetaFactoryCall, indyParamTypes: Array[Type], typeAnalyzer: NonLubbingTypeFlowAnalyzer): Option[IntMap[ArgInfo]] = {
+    var i = 0
+    val capturedTypes = new Array[BType](indyParamTypes.length)
+    while i < indyParamTypes.length do
+      bTypesFromClassfile.bTypeForDescriptorFromClassfile(indyParamTypes(i).getDescriptor) match
+        case Left(l) => return None
+        case Right(bt) => capturedTypes(i) = bt
+      i += 1
+
     val capturedSams = samTypes(capturedTypes)
-    argInfosForSams(capturedSams, lmf.indy, indyParamTypes.length, typeAnalyzer)
+    Some(argInfosForSams(capturedSams, lmf.indy, indyParamTypes.length, typeAnalyzer))
   }
 
   private def argInfosForSams(sams: IntMap[ClassBType], consumerInsn: AbstractInsnNode, numConsumed: Int, typeAnalyzer: NonLubbingTypeFlowAnalyzer): IntMap[ArgInfo] = {
@@ -300,13 +308,21 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     else samInfos
   }
 
-  def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): IntMap[ClassBType] = {
+  def samParamTypes(methodNode: MethodNode, paramTps: Array[Type], receiverType: ClassBType): Either[NoClassBTypeInfo, IntMap[ClassBType]] = {
+    var i = 0
+    val paramTypes0 = new Array[BType](paramTps.length)
+    while i < paramTps.length do
+      bTypesFromClassfile.bTypeForDescriptorFromClassfile(paramTps(i).getDescriptor) match {
+        case Left(l) => return Left(l)
+        case Right(bt) => paramTypes0(i) = bt
+      }
+      i += 1
+
     val paramTypes = {
-      val params = paramTps.map(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
       val isStatic = BCodeUtils.isStaticMethod(methodNode)
-      if (isStatic) params else receiverType +: params
+      if (isStatic) paramTypes0 else receiverType +: paramTypes0
     }
-    samTypes(paramTypes)
+    Right(samTypes(paramTypes))
   }
 
   private def samTypes(types: Array[BType]): IntMap[ClassBType] = {
@@ -314,7 +330,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     for (i <- types.indices) {
       types(i) match {
         case c: ClassBType =>
-          if (c.info.get.inlineInfo(byteCodeRepository, primitives, ts).sam.isDefined) res = res.updated(i, c)
+          if (c.info.inlineInfo(byteCodeRepository, primitives, ts).sam.isDefined) res = res.updated(i, c)
 
         case _ =>
       }
@@ -340,61 +356,60 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   private def analyzeCallsite(calleeMethodNode: MethodNode, calleeDeclarationClassBType: ClassBType, call: MethodInsnNode, paramTps: Array[Type], calleeSourceFilePath: Option[String], callsiteClass: ClassBType): CallsiteInfo = {
     val methodSignature = (calleeMethodNode.name, calleeMethodNode.desc)
 
-    try {
-      // The inlineInfo.methodInfos of a ClassBType holds an InlineInfo for each method *declared*
-      // within a class (not for inherited methods). Since we already have the  classBType of the
-      // callee, we only check there for the methodInlineInfo, we should find it there.
-      calleeDeclarationClassBType.info.orThrow.inlineInfo(byteCodeRepository, primitives, ts).methodInfos.get(methodSignature) match {
-        case Some(methodInlineInfo) =>
-          val owner = if call.owner.startsWith("[") then "java/lang/Object" else call.owner
-          val receiverType = bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
-          // (1) Special case for trait super accessors. trait T { def f = 1 } generates a static
-          // method t$ which calls `invokespecial T.f`. Even if `f` is not final, this call will
-          // always resolve to `T.f`. This is a (very) special case. Otherwise, `invokespecial`
-          // is only used for private methods, constructors and super calls.
-          //
-          // (2) A non-final method can be safe to inline if the receiver type is a final subclass. Example:
-          //   class A { @inline def f = 1 }; object B extends A; B.f  // can be inlined
-          //
-          // TODO: (2) doesn't cover the following example:
-          //   trait TravLike { def map = ... }
-          //   sealed trait List extends TravLike { ... } // assume map is not overridden
-          //   final case class :: / final case object Nil
-          //   (l: List).map // can be inlined
-          // we need to know that
-          //   - the receiver is sealed
-          //   - what are the children of the receiver
-          //   - all children are final
-          //   - none of the children overrides map
-          //
-          // TODO: type analysis can render more calls statically resolved. Example:
-          //   new A.f  // can be inlined, the receiver type is known to be exactly A.
-          val isStaticallyResolved: Boolean = {
-            isStaticCallsite(call) ||
-              (call.getOpcode == Opcodes.INVOKESPECIAL && receiverType == callsiteClass) || // (1)
-              methodInlineInfo.effectivelyFinal ||
-              receiverType.info.orThrow.inlineInfo(byteCodeRepository, primitives, ts).isEffectivelyFinal // (2)
-          }
+    // The inlineInfo.methodInfos of a ClassBType holds an InlineInfo for each method *declared*
+    // within a class (not for inherited methods). Since we already have the  classBType of the
+    // callee, we only check there for the methodInlineInfo, we should find it there.
+    calleeDeclarationClassBType.info.inlineInfo(byteCodeRepository, primitives, ts).methodInfos.get(methodSignature) match {
+      case Some(methodInlineInfo) =>
+        val owner = if call.owner.startsWith("[") then "java/lang/Object" else call.owner
+        bTypesFromClassfile.classBTypeFromParsedClassfile(owner) match
+          case Left(w) => CallsiteInfo(warning = Some(MethodInlineInfoError(call.owner, calleeMethodNode.name, calleeMethodNode.desc, w)))
+          case Right(receiverType) =>
+            // (1) Special case for trait super accessors. trait T { def f = 1 } generates a static
+            // method t$ which calls `invokespecial T.f`. Even if `f` is not final, this call will
+            // always resolve to `T.f`. This is a (very) special case. Otherwise, `invokespecial`
+            // is only used for private methods, constructors and super calls.
+            //
+            // (2) A non-final method can be safe to inline if the receiver type is a final subclass. Example:
+            //   class A { @inline def f = 1 }; object B extends A; B.f  // can be inlined
+            //
+            // TODO: (2) doesn't cover the following example:
+            //   trait TravLike { def map = ... }
+            //   sealed trait List extends TravLike { ... } // assume map is not overridden
+            //   final case class :: / final case object Nil
+            //   (l: List).map // can be inlined
+            // we need to know that
+            //   - the receiver is sealed
+            //   - what are the children of the receiver
+            //   - all children are final
+            //   - none of the children overrides map
+            //
+            // TODO: type analysis can render more calls statically resolved. Example:
+            //   new A.f  // can be inlined, the receiver type is known to be exactly A.
+            val isStaticallyResolved: Boolean = {
+              isStaticCallsite(call) ||
+                (call.getOpcode == Opcodes.INVOKESPECIAL && receiverType == callsiteClass) || // (1)
+                methodInlineInfo.effectivelyFinal ||
+                receiverType.info.inlineInfo(byteCodeRepository, primitives, ts).isEffectivelyFinal // (2)
+            }
 
-          val warning = calleeDeclarationClassBType.info.orThrow.inlineInfo(byteCodeRepository, primitives, ts).warning.map(
-            MethodInlineInfoIncomplete(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc, _))
+            val warning = calleeDeclarationClassBType.info.inlineInfo(byteCodeRepository, primitives, ts).warning.map(
+              MethodInlineInfoIncomplete(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc, _))
 
-          CallsiteInfo(
-            isStaticallyResolved = isStaticallyResolved,
-            sourceFilePath = calleeSourceFilePath,
-            annotatedInline = methodInlineInfo.annotatedInline,
-            annotatedNoInline = methodInlineInfo.annotatedNoInline,
-            samParamTypes = samParamTypes(calleeMethodNode, paramTps, receiverType),
-            warning = warning)
+            samParamTypes(calleeMethodNode, paramTps, receiverType) match
+              case Left(w) => CallsiteInfo(warning = Some(MethodInlineInfoError(call.owner, calleeMethodNode.name, calleeMethodNode.desc, w)))
+              case Right(spts) =>
+                CallsiteInfo(
+                  isStaticallyResolved = isStaticallyResolved,
+                  sourceFilePath = calleeSourceFilePath,
+                  annotatedInline = methodInlineInfo.annotatedInline,
+                  annotatedNoInline = methodInlineInfo.annotatedNoInline,
+                  samParamTypes = spts,
+                  warning = warning)
 
-        case None =>
-          val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
-                                                calleeDeclarationClassBType.info.orThrow.inlineInfo(byteCodeRepository, primitives, ts).warning)
-          CallsiteInfo(warning = Some(warning))
-      }
-    } catch {
-      case Invalid(noInfo: NoClassBTypeInfo) =>
-        val warning = MethodInlineInfoError(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc, noInfo)
+      case None =>
+        val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
+                                              calleeDeclarationClassBType.info.inlineInfo(byteCodeRepository, primitives, ts).warning)
         CallsiteInfo(warning = Some(warning))
     }
   }

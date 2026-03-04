@@ -531,7 +531,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         return mirrorClass // not filled, but we cannot create it, and we just reported an error
       mirrorClass.visit(
         backendUtils.classfileVersion,
-        bType.info.get.flags,
+        bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
         ts.ObjectRef.internalName,

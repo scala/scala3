@@ -674,7 +674,7 @@ final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreB
 
     private val primBoxSupertypes: Map[InternalName, Set[InternalName]] = {
       def transitiveSupertypes(clsbt: ClassBType): Set[ClassBType] =
-        (clsbt.info.get.superClass ++ clsbt.info.get.interfaces).flatMap(transitiveSupertypes).toSet + clsbt
+        (clsbt.info.superClass ++ clsbt.info.interfaces).flatMap(transitiveSupertypes).toSet + clsbt
 
       ts.boxedClasses.map { bc =>
         bc.internalName -> (transitiveSupertypes(bc).map(_.internalName) + bc.internalName)
