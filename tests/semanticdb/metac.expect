@@ -2169,7 +2169,7 @@ Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
-example/InstrumentTyper#all(). => method all => List[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
+example/InstrumentTyper#all(). => method all => List[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 example/InstrumentTyper#clazzOf. => final val method clazzOf Option[Int]
 example/InstrumentTyper#singletonType(). => method singletonType (param x: Predef.type): Nothing
 example/InstrumentTyper#singletonType().(x) => param x: Predef.type
@@ -2231,7 +2231,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 Synthetics:
-[8:12..8:16):List => *.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
+[8:12..8:16):List => *.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 [8:12..21:3):List(
     Literal.int,
     Literal.long,
@@ -2245,7 +2245,7 @@ Synthetics:
     Literal.javaEnum,
     Literal.clazzOf,
     List()
-  ) => List.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]](*)
+  ) => List.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]](*)
 [20:4..20:8):List => *.apply[Nothing]
 [20:4..20:10):List() => List.apply[Nothing](*)
 
