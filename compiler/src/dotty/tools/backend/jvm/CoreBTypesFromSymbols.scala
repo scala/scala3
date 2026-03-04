@@ -57,7 +57,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
         nestedClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
         nestedInfo = None,
-        inlineInfoSource = InlineInfoSource.Missing
+        source = ClassInfoSource.Missing
       )
     )
   }
@@ -148,7 +148,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
 
     val nestedInfo = buildNestedInfo(classSym)
 
-    ClassInfo(superClass, interfaces, flags, memberClasses, nestedInfo, InlineInfoSource.Symbol(classSym.asClass, classBType.internalName))
+    ClassInfo(superClass, interfaces, flags, memberClasses, nestedInfo, ClassInfoSource.Symbol(classSym.asClass, classBType.internalName))
   }
 
   /** For currently compiled classes: All locally defined classes including local classes.

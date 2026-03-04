@@ -30,7 +30,7 @@ import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, primitives: DottyPrimitives,
+class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inlineInfoLoader: InlineInfoLoader,
               callGraph: CallGraph, coreBTypes: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer) {
 
@@ -795,7 +795,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
   private val isInternalCache = mutable.Map.empty[String, Either[OptimizerWarning, Boolean]]
   private def isInternal(name: String): Either[OptimizerWarning, Boolean] = {
     def isAccessible(ct: ClassBType): Boolean =
-      ct.info.inlineInfo(byteCodeRepository, primitives, coreBTypes)(using ppa.ctx).isAccessible
+      inlineInfoLoader.load(ct.info).isAccessible
     isInternalCache.getOrElseUpdate(name,
       coreBTypes.classBTypeFromInternalName(name) match
         case Some(ct) => Right(!isAccessible(ct))
@@ -830,11 +830,11 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
         // NEW, ANEWARRAY, CHECKCAST or INSTANCEOF. For these instructions, the reference
         // "must be a symbolic reference to a class, array, or interface type" (JVMS 6), so
         // it can be an internal name, or a full array descriptor.
-        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(ti.desc).map(BTypes.classIsAccessible(_, destinationClass))
+        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(ti.desc).map(InlineInfo.classIsAccessible(_, destinationClass))
 
       case ma: MultiANewArrayInsnNode =>
         // "a symbolic reference to a class, array, or interface type"
-        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(ma.desc).map(BTypes.classIsAccessible(_, destinationClass))
+        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(ma.desc).map(InlineInfo.classIsAccessible(_, destinationClass))
 
       case fi: FieldInsnNode =>
         isInternal(fi.owner) match
@@ -846,7 +846,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
               (fieldNode, fieldDeclClassNode) <- byteCodeRepository.fieldNode(fieldRefClass.internalName, fi.name, fi.desc): Either[OptimizerWarning, (FieldNode, InternalName)]
               fieldDeclClass                  <- bTypesFromClassfile.classBTypeFromParsedClassfile(fieldDeclClassNode)
             } yield {
-              val res = BTypes.memberIsAccessible(fieldNode.access, fieldDeclClass, fieldRefClass, destinationClass)
+              val res = InlineInfo.memberIsAccessible(fieldNode.access, fieldDeclClass, fieldRefClass, destinationClass)
               // ensure the result ClassBType is cached (for stack map frame calculation)
               if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(fi.desc)
               res
@@ -871,7 +871,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
                     destinationClass == calleeDeclarationClass
 
                   case _ => // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
-                    BTypes.memberIsAccessible(methodFlags, methodDeclClass, methodRefClass, destinationClass)
+                    InlineInfo.memberIsAccessible(methodFlags, methodDeclClass, methodRefClass, destinationClass)
                 }
               }
 
@@ -945,7 +945,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
           (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, implMethod.getName, implMethod.getDesc): Either[OptimizerWarning, (MethodNode, InternalName)]
           methodDeclClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
         } yield {
-          val res = BTypes.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
+          val res = InlineInfo.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
           // ensure the result ClassBType is cached (for stack map frame calculation)
           if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.desc).getDescriptor)
           res
@@ -954,7 +954,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, prim
       case _: InvokeDynamicInsnNode => Left(UnknownInvokeDynamicInstruction)
 
       case ci: LdcInsnNode => ci.cst match {
-        case t: asm.Type => bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(BTypes.classIsAccessible(_, destinationClass))
+        case t: asm.Type => bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(InlineInfo.classIsAccessible(_, destinationClass))
         // TODO: method handle -- check if method accessible?
         case _ => Right(true)
       }
