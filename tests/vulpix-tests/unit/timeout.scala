@@ -1,5 +1,1 @@
-object Test {
-  def main(args: Array[String]): Unit = {
-    Thread.sleep(10 * 1000)
-  }
-}
+@main def Test = Thread.sleep(1000 * 1000)
