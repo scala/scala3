@@ -18,12 +18,14 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
-import scala.tools.asm.Type
+import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.backend.jvm.BackendUtils.*
+
+import scala.tools.asm
 
 class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, optAllowSkipClassLoading: Boolean) {
 
@@ -34,7 +36,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    * by [[eliminateStaleStoresAndRewriteSomeIntrinsics]].
    */
   def copyPropagation(method: MethodNode, owner: InternalName): Boolean = {
-    AsmAnalyzer.sizeOKForAliasing(method) && {
+    Limits.sizeOKForAliasing(method) && {
       var changed = false
       val numParams = parametersSize(method)
       lazy val aliasAnalysis = new BasicAliasingAnalyzer(method, owner)
@@ -48,7 +50,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       //
       // In this example, we should change the second load from 1 to 3, which might render the
       // local variable 1 unused.
-      val knownUsed = new Array[Boolean](BackendUtils.maxLocals(method))
+      val knownUsed = new Array[Boolean](MethodMax.maxLocals(method))
 
       def usedOrMinAlias(it: IntIterator, init: Int): Int = {
         if (knownUsed(init)) init
@@ -84,6 +86,43 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     }
   }
 
+  private def classTagNewArrayInstr(mi: MethodInsnNode, prodCons: ProdConsAnalyzer): AbstractInsnNode | Null = {
+    if (mi.name == "newArray" && mi.owner == "scala/reflect/ClassTag" && mi.desc == "(I)Ljava/lang/Object;") {
+      val prods = prodCons.initialProducersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
+      if (prods.size == 1) prods.head match {
+        case ctApply: MethodInsnNode =>
+          if (ctApply.name == "apply" && ctApply.owner == "scala/reflect/ClassTag$" && ctApply.desc == "(Ljava/lang/Class;)Lscala/reflect/ClassTag;") {
+            val clsProd = prodCons.initialProducersForValueAt(ctApply, prodCons.frameAt(ctApply).stackTop)
+            if (clsProd.size == 1) clsProd.head match {
+              case ldc: LdcInsnNode =>
+                ldc.cst match {
+                  case tp: asm.Type if tp.getSort == asm.Type.OBJECT || tp.getSort == asm.Type.ARRAY =>
+                    return new TypeInsnNode(ANEWARRAY, tp.getInternalName)
+                  case _ =>
+                }
+
+              case fld: FieldInsnNode =>
+                if fld.name == "TYPE" && fld.desc == "Ljava/lang/Class;" then fld.owner match
+                  case "java/lang/Boolean" => return new IntInsnNode(NEWARRAY, Opcodes.T_BOOLEAN)
+                  case "java/lang/Byte" => return new IntInsnNode(NEWARRAY, Opcodes.T_BYTE)
+                  case "java/lang/Short" => return new IntInsnNode(NEWARRAY, Opcodes.T_SHORT)
+                  case "java/lang/Character" => return new IntInsnNode(NEWARRAY, Opcodes.T_CHAR)
+                  case "java/lang/Integer" => return new IntInsnNode(NEWARRAY, Opcodes.T_INT)
+                  case "java/lang/Long" => return new IntInsnNode(NEWARRAY, Opcodes.T_LONG)
+                  case "java/lang/Float" => return new IntInsnNode(NEWARRAY, Opcodes.T_FLOAT)
+                  case "java/lang/Double" => return new IntInsnNode(NEWARRAY, Opcodes.T_DOUBLE)
+                  case _ =>
+
+              case _ =>
+            }
+          }
+        case _ =>
+      }
+    }
+    null
+  }
+
+
   /**
    * Eliminate `xSTORE` instructions that have no consumer. If the instruction can be completely
    * eliminated, it is replaced by a POP. The [[eliminatePushPop]] cleans up unnecessary POPs.
@@ -105,7 +144,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    * Returns (staleStoreRemoved, intrinsicRewritten, callInlined).
    */
   def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean, Boolean) = {
-    if (!AsmAnalyzer.sizeOKForSourceValue(method)) (false, false, false) else {
+    if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
       lazy val prodCons = new ProdConsAnalyzer(method, owner)
       def hasNoCons(varIns: AbstractInsnNode, slot: Int) = prodCons.consumersOfValueAt(varIns.getNext, slot).isEmpty
 
@@ -124,7 +163,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       val toInline = mutable.Set.empty[MethodInsnNode]
 
       // `true` for variables that are known to be live and hold non-primitives
-      val liveRefVars = new Array[Boolean](BackendUtils.maxLocals(method))
+      val liveRefVars = new Array[Boolean](MethodMax.maxLocals(method))
 
       val firstLocalIndex = parametersSize(method)
 
@@ -160,7 +199,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
         case mi: MethodInsnNode =>
           // rewrite `ClassTag(classOf[X]).newArray` to `new Array[X]`
-          val newArrayInstr = BackendUtils.classTagNewArrayInstr(mi, prodCons)
+          val newArrayInstr = classTagNewArrayInstr(mi, prodCons)
           if (newArrayInstr != null) {
             val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
             if (receiverProds.size == 1) {
@@ -264,7 +303,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    * Returns (pushPopChanged, castAdded, nullCheckAdded)
    */
   def eliminatePushPop(method: MethodNode, owner: InternalName): (Boolean, Boolean, Boolean) = {
-    if (!AsmAnalyzer.sizeOKForSourceValue(method)) (false, false, false) else {
+    if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
       // A queue of instructions producing a value that has to be eliminated. If possible, the
       // instruction (and its inputs) will be removed, otherwise a POP is inserted after
       val queue = mutable.Queue.empty[ProducedValue]
@@ -397,7 +436,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       def runQueue(): Unit = while (queue.nonEmpty) {
         val ProducedValue(prod, size) = queue.dequeue()
 
-        def prodString = s"Producer ${AsmUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${AsmUtils.textify(method)}"
+        def prodString = s"Producer ${LogUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${LogUtils.textify(method)}"
         def popAfterProd(): Unit = toInsertAfter(prod) = getPop(size)
 
         (prod.getOpcode: @switch) match {
@@ -461,7 +500,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
               toInsertBefore(methodInsn) = nullCheck.toList
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
-              method.maxStack = math.max(BackendUtils.maxStack(method), prodCons.frameAt(methodInsn).getStackSize + 1)
+              method.maxStack = math.max(MethodMax.maxStack(method), prodCons.frameAt(methodInsn).getStackSize + 1)
               nullCheckAdded = true
             } else
               popAfterProd()
@@ -570,7 +609,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
   }
 
   private case class ProducedValue(producer: AbstractInsnNode, size: Int) {
-    override def toString = s"<${AsmUtils.textify(producer)}>"
+    override def toString = s"<${LogUtils.textify(producer)}>"
   }
 
   /**
@@ -601,7 +640,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     // TODO: use copyProp once we have cached analyses? or is the analysis invalidated anyway because instructions are deleted / changed?
     // if we cache them anyway, we can use an analysis if it exists in the cache, and skip otherwise.
     val removePairs = mutable.Set.empty[RemovePair]
-    val liveVars = new Array[Boolean](BackendUtils.maxLocals(method))
+    val liveVars = new Array[Boolean](MethodMax.maxLocals(method))
     val liveLabels = mutable.Set.empty[LabelNode]
 
     def mkRemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: List[RemovePairDependency]): RemovePair = {
@@ -742,6 +781,6 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
 sealed trait RemovePairDependency
 case class RemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: List[RemovePairDependency]) extends RemovePairDependency {
-  override def toString = s"<${AsmUtils.textify(store)},${AsmUtils.textify(other)}> [$depends]"
+  override def toString = s"<${LogUtils.textify(store)},${LogUtils.textify(other)}> [$depends]"
 }
 case class LabelNotLive(label: LabelNode) extends RemovePairDependency

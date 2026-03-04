@@ -10,18 +10,18 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools
-package backend.jvm
+package dotty.tools.backend.jvm.opt
+
+import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.jvm.opt.{BCodeRepository, ClassNotFound, InlineInfo, MethodInlineInfo, NoClassBTypeInfo, OptimizerWarning}
+import dotty.tools.backend.jvm.*
 
 import scala.annotation.{switch, unused}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
-import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.{InlineInfo, MethodInlineInfo}
-import dotty.tools.backend.jvm.opt.{ClassNotFound, NoClassBTypeInfo, OptimizerWarning}
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) {
 

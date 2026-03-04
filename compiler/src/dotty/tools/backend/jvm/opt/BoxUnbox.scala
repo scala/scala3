@@ -178,7 +178,7 @@ final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreB
    * method-local optimizations, only before to perform inlining and closure rewriting.
    */
   def boxUnboxElimination(method: MethodNode, owner: InternalName): Boolean = {
-    AsmAnalyzer.sizeOKForSourceValue(method) && {
+    Limits.sizeOKForSourceValue(method) && {
       val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
       val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
       val toDelete = mutable.Set.empty[AbstractInsnNode]
@@ -187,7 +187,7 @@ final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreB
 
       lazy val prodCons = new ProdConsAnalyzer(method, owner)
 
-      var nextLocal = BackendUtils.maxLocals(method)
+      var nextLocal = MethodMax.maxLocals(method)
       def getLocal(size: Int) = {
         val r = nextLocal
         nextLocal += size
@@ -437,7 +437,7 @@ final class BoxUnbox(backendUtils: BackendUtils, callGraph: CallGraph, ts: CoreB
       }
 
       method.maxLocals = nextLocal
-      method.maxStack = BackendUtils.maxStack(method) + maxStackGrowth
+      method.maxStack = MethodMax.maxStack(method) + maxStackGrowth
       val changed = toInsertBefore.nonEmpty || toReplace.nonEmpty || toDelete.nonEmpty
       changed
     }

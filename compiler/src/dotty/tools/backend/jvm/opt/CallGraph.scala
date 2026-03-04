@@ -129,7 +129,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 
   def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
-    if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && AsmAnalyzer.sizeOKForBasicValue(methodNode)) {
+    if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && Limits.sizeOKForBasicValue(methodNode)) {
       lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
       var methodCallsites = Map.empty[MethodInsnNode, Callsite]

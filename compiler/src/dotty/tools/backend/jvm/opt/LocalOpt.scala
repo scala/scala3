@@ -213,7 +213,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
       case _ => false
     }
     def traceIfChanged(optName: String): Unit = if (doTrace) {
-      val after = AsmUtils.textify(method)
+      val after = LogUtils.textify(method)
       if (currentTrace != after) {
         println(s"after $optName in ${method.name}")
         println(after)
@@ -380,7 +380,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
    *   - scala.runtime.BoxesRunTime.unboxToX(null) is rewritten to a zero-value load
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
-    AsmAnalyzer.sizeOKForNullness(method) && {
+    Limits.sizeOKForNullness(method) && {
       lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, ppa.compilerSettings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
@@ -525,7 +525,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
    *
    * Returns two booleans (typeInsnChanged, intrinsicRewritten)
    */
-  private def eliminateRedundantCastsAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = if (!AsmAnalyzer.sizeOKForNullness(method)) (false, false) else {
+  private def eliminateRedundantCastsAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = if (!Limits.sizeOKForNullness(method)) (false, false) else {
     def isSubType(aDescOrIntN: String, bDescOrIntN: String): Boolean = {
       // Neither a nor b may be descriptors for primitive types. INSTANCEOF and CHECKCAST require
       //   - "objectref must be of type reference" and
