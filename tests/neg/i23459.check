@@ -1,0 +1,8 @@
+-- Error: tests/neg/i23459.scala:8:14 ----------------------------------------------------------------------------------
+8 |    case Test(x*) => () // error
+  |              ^^
+  |              Sequence wildcard pattern is not allowed for unapply, only unapplySeq is allowed
+-- Error: tests/neg/i23459.scala:10:14 ---------------------------------------------------------------------------------
+10 |    case Test(_*) => () // error
+   |              ^^
+   |              Sequence wildcard pattern is not allowed for unapply, only unapplySeq is allowed
