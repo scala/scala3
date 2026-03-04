@@ -12,5 +12,6 @@ object Good uses Console uses_init Console:
   def f() =
     Console.println("hello")
 
+val _ = Console.println("hello") // error
 
-
+def f = Console.println("hello") // error

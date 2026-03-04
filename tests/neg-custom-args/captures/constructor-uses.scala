@@ -2,7 +2,7 @@ package test
 
 class File
 
-class A {
+class A extends caps.ExclusiveCapability {
   val f: File^ = File()
   val g: File^ = File()
 
